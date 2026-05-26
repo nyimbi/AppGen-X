@@ -1,15 +1,23 @@
 """Workflow Orchestration PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES
+from .runtime import WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES
+from .runtime import WORKFLOW_ORCHESTRATION_OWNED_TABLES
+from .runtime import WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC
 from .runtime import WORKFLOW_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import WORKFLOW_ORCHESTRATION_STANDARD_FEATURE_KEYS
+from .runtime import workflow_orchestration_build_api_contract
 from .runtime import workflow_orchestration_build_workbench_view
 from .runtime import workflow_orchestration_complete_workflow
 from .runtime import workflow_orchestration_configure_runtime
 from .runtime import workflow_orchestration_define_workflow
 from .runtime import workflow_orchestration_empty_state
 from .runtime import workflow_orchestration_execute_compensation
+from .runtime import workflow_orchestration_permissions_contract
 from .runtime import workflow_orchestration_record_step_result
+from .runtime import workflow_orchestration_receive_event
 from .runtime import workflow_orchestration_register_rule
 from .runtime import workflow_orchestration_register_schema_extension
 from .runtime import workflow_orchestration_runtime_capabilities
@@ -18,6 +26,7 @@ from .runtime import workflow_orchestration_schedule_timer
 from .runtime import workflow_orchestration_set_parameter
 from .runtime import workflow_orchestration_signal_instance
 from .runtime import workflow_orchestration_start_instance
+from .runtime import workflow_orchestration_verify_owned_table_boundary
 from .ui import WORKFLOW_ORCHESTRATION_UI_FRAGMENT_KEYS
 from .ui import workflow_orchestration_render_workbench
 from .ui import workflow_orchestration_ui_contract
@@ -31,6 +40,10 @@ def implementation_contract() -> dict:
     return {
         **contract,
         "standard_features": runtime["standard_features"],
+        "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES,
+        "allowed_database_backends": WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,
+        "api_contract": workflow_orchestration_build_api_contract(),
+        "permissions_contract": workflow_orchestration_permissions_contract(),
         "advanced_runtime": runtime,
         "ui_contract": workflow_orchestration_ui_contract(),
     }

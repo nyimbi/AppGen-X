@@ -8,6 +8,70 @@ import math
 import re
 
 
+WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC = "appgen.workflow.events"
+WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+WORKFLOW_ORCHESTRATION_OWNED_TABLES = (
+    "workflow_definition",
+    "workflow_instance",
+    "workflow_signal",
+    "timer_task",
+    "saga_step",
+    "compensation",
+    "human_task",
+    "workflow_rule",
+    "workflow_parameter",
+    "workflow_configuration",
+)
+WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES = (
+    "WorkflowDefinitionPublished",
+    "WorkflowStarted",
+    "WorkflowSignalAccepted",
+    "SagaStepCompleted",
+    "TimerScheduled",
+    "CompensationExecuted",
+    "WorkflowCompleted",
+)
+WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES = (
+    "InvoiceApproved",
+    "OrderVerified",
+    "ShipmentDelivered",
+    "PaymentCaptured",
+    "SchemaAccepted",
+    "AccessPolicyChanged",
+    "RoutePublished",
+)
+_WORKFLOW_ORCHESTRATION_RUNTIME_TABLES = (
+    "workflow_orchestration_appgen_outbox_event",
+    "workflow_orchestration_appgen_inbox_event",
+    "workflow_orchestration_dead_letter_event",
+)
+_WORKFLOW_ORCHESTRATION_ALLOWED_DEPENDENCIES = (
+    "gateway_workflow_projection",
+    "schema_workflow_projection",
+    "audit_workflow_projection",
+    "identity_workflow_projection",
+    "composition_workflow_projection",
+    "order_workflow_projection",
+    "payment_workflow_projection",
+    "shipment_workflow_projection",
+    "invoice_workflow_projection",
+    "GET /gateway/routes",
+    "GET /schemas/subjects",
+    "GET /identity/policies",
+    "POST /audit/workflow-events",
+    "POST /composition/workflow-projections",
+)
+_WORKFLOW_ORCHESTRATION_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 WORKFLOW_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_workflow_lifecycle",
     "graph_relational_saga_topology",
@@ -81,6 +145,7 @@ def workflow_orchestration_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "workflow_orchestration",
         "implementation_directory": "src/pyAppGen/pbcs/workflow_orchestration",
+        "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES,
         "capabilities": WORKFLOW_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS,
         "standard_features": WORKFLOW_ORCHESTRATION_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -88,6 +153,7 @@ def workflow_orchestration_runtime_capabilities() -> dict:
             "set_parameter",
             "register_rule",
             "register_schema_extension",
+            "receive_event",
             "define_workflow",
             "start_instance",
             "signal_instance",
@@ -95,7 +161,10 @@ def workflow_orchestration_runtime_capabilities() -> dict:
             "record_step_result",
             "execute_compensation",
             "complete_workflow",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -107,7 +176,7 @@ def workflow_orchestration_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.workflow.events",
+            "event_topic": WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_signal_sources": ("api_gateway_mesh", "schema_registry", "composition_engine"),
             "default_versioning": "semantic",
@@ -134,6 +203,7 @@ def workflow_orchestration_runtime_smoke() -> dict:
         },
     )["state"]
     state = workflow_orchestration_register_schema_extension(state, "workflow_instance", {"context": "jsonb"})["state"]
+    state = workflow_orchestration_receive_event(state, {"event_id": "evt_schema_1", "event_type": "SchemaAccepted", "payload": {"tenant": "tenant_alpha", "subject_id": "WorkflowStarted", "version": 1}})["state"]
     definition = workflow_orchestration_define_workflow(
         state,
         {
@@ -237,17 +307,37 @@ def workflow_orchestration_empty_state() -> dict:
         "outbox": [],
         "inbox": [],
         "dead_letters": [],
+        "dead_letter": [],
+        "handled_events": {},
+        "retry_evidence": [],
+        "schema_projections": {},
+        "access_policy_projections": {},
+        "route_projections": {},
+        "business_event_projections": {},
         "crypto_epoch": 1,
     }
 
 
 def workflow_orchestration_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    forbidden = tuple(sorted(field for field in _WORKFLOW_ORCHESTRATION_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Workflow Orchestration uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    allowed_databases = set(WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS)
     database_backend = configuration.get("database_backend")
     if database_backend not in allowed_databases:
         raise ValueError("Workflow Orchestration supports only PostgreSQL, MySQL, or MariaDB backends")
+    if configuration.get("event_topic") != WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Workflow Orchestration requires AppGen-X event topic {WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC}")
     next_state = _copy_state(state)
-    next_state["configuration"] = {**configuration, "ok": True, "event_contract": "appgen_event_contract", "allowed_database_backends": tuple(sorted(allowed_databases))}
+    next_state["configuration"] = {
+        **configuration,
+        "ok": True,
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES,
+    }
     return {"ok": True, "state": next_state, "configuration": next_state["configuration"]}
 
 
@@ -270,9 +360,51 @@ def workflow_orchestration_register_rule(state: dict, rule: dict) -> dict:
 
 
 def workflow_orchestration_register_schema_extension(state: dict, target: str, fields: dict) -> dict:
+    if target not in WORKFLOW_ORCHESTRATION_OWNED_TABLES:
+        raise ValueError(f"Workflow Orchestration schema extensions must target owned tables: {WORKFLOW_ORCHESTRATION_OWNED_TABLES}")
+    invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
+    if invalid:
+        return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
     next_state = _copy_state(state)
     next_state["schema_extensions"].setdefault(target, {}).update(fields)
-    return {"ok": True, "state": next_state, "target": target, "fields": next_state["schema_extensions"][target]}
+    return {"ok": True, "state": next_state, "schema_extension": {"table": target, "fields": dict(fields)}, "target": target, "fields": next_state["schema_extensions"][target]}
+
+
+def workflow_orchestration_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    if key in state["handled_events"] and state["handled_events"][key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
+    attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {"event_id": event_id, "event_type": event_type, "tenant": payload.get("tenant"), "attempts": attempts, "idempotency_key": key}
+    next_state = _copy_state(state)
+    next_state["inbox"].append(inbox_entry)
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"].append(evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_workflow_event"}
+            next_state["dead_letters"].append(dead)
+            next_state["dead_letter"].append(dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "SchemaAccepted":
+        next_state["schema_projections"][payload["subject_id"]] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload["policy_id"]] = payload
+    elif event_type == "RoutePublished":
+        next_state["route_projections"][payload["route_id"]] = payload
+    else:
+        projection_id = payload.get("correlation_id") or payload.get("order_id") or payload.get("invoice_id") or event_id
+        next_state["business_event_projections"][projection_id] = {"event_type": event_type, **payload}
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def workflow_orchestration_define_workflow(state: dict, workflow: dict) -> dict:
@@ -374,6 +506,23 @@ def workflow_orchestration_build_workbench_view(state: dict, *, tenant: str) -> 
         "saga_step_count": len(steps),
         "compensation_count": len(compensations),
         "signal_count": len(tuple(item for item in state["signals"].values() if state["instances"][item["instance_id"]]["tenant"] == tenant)),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES,
+            "outbox_table": "workflow_orchestration_appgen_outbox_event",
+            "inbox_table": "workflow_orchestration_appgen_inbox_event",
+            "dead_letter_table": "workflow_orchestration_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+        },
     }
 
 
@@ -429,20 +578,105 @@ def workflow_orchestration_screen_policy(state: dict, workflow_id: str, *, sever
 def workflow_orchestration_run_control_tests(state: dict) -> dict:
     hash_chain_valid = all(event["hash"] == _event_hash(event) for event in state["events"])
     checks = {
-        "configuration": state["configuration"].get("event_contract") == "appgen_event_contract",
+        "configuration": state["configuration"].get("event_contract") == "AppGen-X",
         "database": state["configuration"].get("database_backend") in {"postgresql", "mysql", "mariadb"},
         "rules": bool(state["rules"]),
         "definitions": bool(state["definitions"]),
         "instances": bool(state["instances"]),
         "outbox": all(item["idempotency_key"].startswith("workflow_orchestration:") for item in state["outbox"]),
-        "dead_letter": isinstance(state["dead_letters"], list),
+        "dead_letter": isinstance(state["dead_letters"], list) and isinstance(state.get("dead_letter", []), list),
         "hash_chain": hash_chain_valid,
     }
     return {"ok": all(checks.values()), "checks": checks, "hash_chain_valid": hash_chain_valid, "blocking_gaps": tuple(key for key, ok in checks.items() if not ok)}
 
 
 def workflow_orchestration_build_api_contract() -> dict:
-    return {"ok": True, "format": "appgen.workflow-orchestration-api-contract.v1", "routes": ("POST /workflows/definitions", "POST /workflows/instances", "POST /workflows/instances/{id}/signals", "POST /workflows/timers", "GET /workflows/workbench"), "events": {"emits": ("WorkflowDefinitionPublished", "WorkflowStarted", "WorkflowSignalAccepted", "SagaStepCompleted", "TimerScheduled", "CompensationExecuted", "WorkflowCompleted"), "consumes": ("InvoiceApproved", "OrderVerified", "ShipmentDelivered")}}
+    return {
+        "ok": True,
+        "format": "appgen.workflow-orchestration-api-contract.v1",
+        "routes": (
+            {"route": "POST /workflows/definitions", "command": "define_workflow", "owned_tables": ("workflow_definition",), "emits": ("WorkflowDefinitionPublished",), "requires_permission": "workflow_orchestration.define", "idempotency_key": "workflow_id:version"},
+            {"route": "POST /workflows/instances", "command": "start_instance", "owned_tables": ("workflow_instance",), "emits": ("WorkflowStarted",), "requires_permission": "workflow_orchestration.start", "idempotency_key": "instance_id"},
+            {"route": "POST /workflows/instances/{id}/signals", "command": "signal_instance", "owned_tables": ("workflow_signal", "workflow_instance"), "emits": ("WorkflowSignalAccepted",), "requires_permission": "workflow_orchestration.signal", "idempotency_key": "signal_id"},
+            {"route": "POST /workflows/timers", "command": "schedule_timer", "owned_tables": ("timer_task",), "emits": ("TimerScheduled",), "requires_permission": "workflow_orchestration.start", "idempotency_key": "timer_id"},
+            {"route": "POST /workflows/instances/{id}/steps", "command": "record_step_result", "owned_tables": ("saga_step",), "emits": ("SagaStepCompleted",), "requires_permission": "workflow_orchestration.signal", "idempotency_key": "step_id"},
+            {"route": "POST /workflows/instances/{id}/compensations", "command": "execute_compensation", "owned_tables": ("compensation",), "emits": ("CompensationExecuted",), "requires_permission": "workflow_orchestration.compensate", "idempotency_key": "compensation_id"},
+            {"route": "POST /workflows/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES, "requires_permission": "workflow_orchestration.event", "idempotency_key": "event_id"},
+            {"route": "GET /workflows/workbench", "query": "build_workbench_view", "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES, "requires_permission": "workflow_orchestration.audit"},
+        ),
+        "declared_catalog_routes": ("POST /workflows/definitions", "POST /workflows/instances", "POST /workflows/instances/{id}/signals", "POST /workflows/timers", "GET /workflows/workbench"),
+        "events": {"emits": WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES, "consumes": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES},
+        "emits": WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES,
+        "consumes": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(workflow_orchestration_permissions_contract()["permissions"])),
+        "database_backends": WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("WORKFLOW_ORCHESTRATION_DATABASE_URL", "WORKFLOW_ORCHESTRATION_EVENT_TOPIC", "WORKFLOW_ORCHESTRATION_RETRY_LIMIT", "WORKFLOW_ORCHESTRATION_DEFAULT_TIMEZONE"),
+    }
+
+
+def workflow_orchestration_permissions_contract() -> dict:
+    return {
+        "format": "appgen.workflow-orchestration-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "workflow_orchestration.read",
+            "workflow_orchestration.define",
+            "workflow_orchestration.start",
+            "workflow_orchestration.signal",
+            "workflow_orchestration.compensate",
+            "workflow_orchestration.event",
+            "workflow_orchestration.configure",
+            "workflow_orchestration.audit",
+        ),
+        "action_permissions": {
+            "define_workflow": "workflow_orchestration.define",
+            "start_instance": "workflow_orchestration.start",
+            "signal_instance": "workflow_orchestration.signal",
+            "schedule_timer": "workflow_orchestration.start",
+            "record_step_result": "workflow_orchestration.signal",
+            "execute_compensation": "workflow_orchestration.compensate",
+            "complete_workflow": "workflow_orchestration.start",
+            "receive_event": "workflow_orchestration.event",
+            "register_rule": "workflow_orchestration.configure",
+            "register_schema_extension": "workflow_orchestration.configure",
+            "set_parameter": "workflow_orchestration.configure",
+            "configure_runtime": "workflow_orchestration.configure",
+            "build_workbench_view": "workflow_orchestration.audit",
+            "run_control_tests": "workflow_orchestration.audit",
+        },
+    }
+
+
+def workflow_orchestration_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*WORKFLOW_ORCHESTRATION_OWNED_TABLES, *WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES, *_WORKFLOW_ORCHESTRATION_RUNTIME_TABLES, *_WORKFLOW_ORCHESTRATION_ALLOWED_DEPENDENCIES)
+    violations = tuple(reference for reference in references if reference not in set(allowed) and not str(reference).startswith("workflow_orchestration_"))
+    return {
+        "format": "appgen.workflow-orchestration-boundary.v1",
+        "ok": not violations,
+        "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /gateway/routes", "GET /schemas/subjects", "GET /identity/policies", "POST /audit/workflow-events", "POST /composition/workflow-projections"),
+            "events": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "gateway_workflow_projection",
+                "schema_workflow_projection",
+                "audit_workflow_projection",
+                "identity_workflow_projection",
+                "composition_workflow_projection",
+                "order_workflow_projection",
+                "payment_workflow_projection",
+                "shipment_workflow_projection",
+                "invoice_workflow_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def workflow_orchestration_federate_workflow_view(state: dict, instance_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -516,6 +750,13 @@ def _copy_state(state: dict) -> dict:
         "outbox": [dict(item) for item in state["outbox"]],
         "inbox": [dict(item) for item in state["inbox"]],
         "dead_letters": [dict(item) for item in state["dead_letters"]],
+        "dead_letter": [dict(item) for item in state.get("dead_letter", [])],
+        "handled_events": {key: dict(value) for key, value in state.get("handled_events", {}).items()},
+        "retry_evidence": [dict(item) for item in state.get("retry_evidence", [])],
+        "schema_projections": {key: dict(value) for key, value in state.get("schema_projections", {}).items()},
+        "access_policy_projections": {key: dict(value) for key, value in state.get("access_policy_projections", {}).items()},
+        "route_projections": {key: dict(value) for key, value in state.get("route_projections", {}).items()},
+        "business_event_projections": {key: dict(value) for key, value in state.get("business_event_projections", {}).items()},
         "crypto_epoch": state.get("crypto_epoch", 1),
     }
 

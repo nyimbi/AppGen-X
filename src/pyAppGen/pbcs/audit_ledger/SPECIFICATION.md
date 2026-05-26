@@ -1,152 +1,199 @@
-# Unified Audit Trail and Cryptographic Ledger PBC
+# Audit Ledger PBC
 
 ## Purpose
 
-The Unified Audit Trail and Cryptographic Ledger PBC owns immutable evidence for
-AppGen-X compositions. It records domain mutations, access decisions, route
-changes, workflow outcomes, package registration actions, security-relevant
-configuration changes, and release evidence as append-only sealed audit events.
+The Audit Ledger PBC is the immutable evidence and assurance package for
+AppGen-X compositions. It owns the evidence trail for domain mutations, access
+decisions, routing changes, workflow outcomes, package registration actions,
+configuration changes, release controls, forensic exports, and disclosure
+proofs. The package is intentionally composable: it never reaches into another
+PBC's operational tables. It consumes declared AppGen-X events, accepts explicit
+API commands, stores only audit-owned records, and publishes read-only
+projections for identity, gateway, schema, workflow, composition, and release
+governance consumers.
 
-The PBC does not own another PBC's operational state. It consumes declared
-events, receives explicit API calls, and publishes read-only audit projections,
-forensic exports, and verification proofs.
+The package-local implementation is executable. Runtime functions configure the
+PBC, enforce allowed database backends, reject user-selectable stream-engine
+fields, record sealed audit events, maintain a per-tenant signature chain,
+capture access evidence, define retention policy, prepare forensic exports,
+assert controls, process idempotent inbox events, produce retry and dead-letter
+evidence, render workbench state, describe APIs and permissions, and verify
+that table references stay inside the owned datastore boundary.
 
 ## Owned Datastore Boundary
 
-The PBC owns:
+Audit Ledger owns these tables:
 
-- `audit_ledger_audit_event`: immutable event envelope, tenant, actor, action,
-  source PBC, aggregate ID, payload digest, classification, and sequence.
-- `audit_ledger_signature_chain`: per-tenant hash-chain link, signature
-  algorithm, previous hash, event hash, chain root, and verification state.
-- `audit_ledger_retention_policy`: tenant, classification, retention period,
-  legal hold, export policy, and disposal eligibility.
-- `audit_ledger_forensic_export`: export request, filter, proof bundle,
-  disclosure policy, approval state, checksum, and delivery status.
-- `audit_ledger_access_evidence`: policy decision, principal, resource, action,
-  context digest, and result.
-- `audit_ledger_control_assertion`: continuous control assertion, status,
-  severity, tested evidence, and release impact.
-- `audit_ledger_outbox`, `audit_ledger_inbox`, and `audit_ledger_dead_letter`:
-  AppGen-X event contract tables for exactly-once handlers, retries, and
-  dead-letter triage.
+- `audit_ledger_audit_event`: immutable tenant-scoped evidence envelope with
+  source PBC, aggregate, actor, action, classification, payload digest,
+  sequence, previous hash, event hash, signature, and seal status.
+- `audit_ledger_signature_chain`: per-tenant hash-chain link with sequence,
+  previous hash, event hash, signature, verification flag, and tamper evidence.
+- `audit_ledger_retention_policy`: classification policy, minimum retention,
+  legal hold flag, disposal action, export policy, and policy status.
+- `audit_ledger_forensic_export`: export request, requested disclosure fields,
+  checksum, proof bundle reference, event count, approval metadata, and status.
+- `audit_ledger_access_evidence`: principal, resource, action, decision,
+  context digest, policy source, and tenant.
+- `audit_ledger_control_assertion`: continuous control assertion with severity,
+  status, evidence references, release-blocking flag, and remediation reason.
+- `audit_ledger_rule`: executable rule records for mutation, access,
+  retention, export, control, and release-gate behavior.
+- `audit_ledger_parameter`: tunable runtime parameters such as retention days,
+  export limits, tamper thresholds, disclosure limits, and review service
+  levels.
+- `audit_ledger_configuration`: backend, event topic, retry policy, signature
+  algorithm, timezone, classification list, export modes, and workbench limit.
 
-Supported backing stores are PostgreSQL, MySQL, and MariaDB.
+Runtime support tables are `audit_ledger_appgen_outbox_event`,
+`audit_ledger_appgen_inbox_event`, and `audit_ledger_dead_letter_event`.
+Ordinary backing stores are limited to PostgreSQL, MySQL, and MariaDB.
+Cross-PBC dependencies are represented only as API calls, consumed events, and
+read-only projections. Shared operational tables are not allowed.
 
-## Standard Table-Stakes Capabilities
+## Configuration and Event Contract
 
-The PBC fully implements:
+The required event topic is `appgen.audit.events`, and the event contract is
+AppGen-X. The runtime rejects unsupported eventing fields such as stream-engine
+or event-transport selectors because ordinary PBC users should not choose an
+eventing implementation. Configuration records include:
 
-- Append-only audit event capture.
-- Tenant-scoped immutable sequencing.
-- Cryptographic hash chaining and signature metadata.
+- `database_backend`: one of `postgresql`, `mysql`, or `mariadb`.
+- `event_topic`: exactly `appgen.audit.events`.
+- `retry_limit`: inbox retry limit before dead-letter evidence is written.
+- `signature_algorithm`: crypto-agile signature policy identifier.
+- `allowed_classifications`: accepted classification values for evidence.
+- `export_modes`: supported export surfaces such as proof bundle or archive.
+- `default_timezone`: timestamp interpretation boundary.
+- `workbench_limit`: bounded workbench result size.
+
+The configuration is exposed to UI/workbench binding evidence with
+`stream_engine_picker_visible` set to false and
+`user_selectable_event_contract` set to false.
+
+## Standard Capabilities
+
+The package implements the normal audit table stakes expected in enterprise
+systems:
+
+- Append-only event capture with tenant-local sequence numbers.
+- Immutable hash chaining with a genesis link per tenant.
+- Payload digesting and signature metadata for each sealed event.
+- Tamper checks that compare audit event hashes with signature-chain links.
 - Source PBC, aggregate, actor, action, and classification indexing.
-- Access-decision evidence capture.
-- Retention and legal-hold policies.
-- Forensic export request, approval, proof, checksum, and delivery metadata.
-- Continuous control assertions and release-blocking evidence.
-- Payload digesting with disclosure-minimized proof bundles.
-- Event ingestion from identity, gateway, schema, workflow, composition, and
-  domain PBCs.
-- Idempotent handlers, retry policy, and dead-letter evidence.
-- Tamper detection, chain verification, and gap detection.
-- Workbench views for event search, chain status, forensic exports, retention,
-  access evidence, controls, rules, parameters, configuration, and proofs.
-- RBAC descriptors for read, seal, verify, export, hold, configure, and audit.
-- Configuration schema, executable rules, runtime parameters, seed controls,
-  generated APIs, package metadata, generated DSL evidence, and release gates.
+- Access-decision evidence capture with context hashing.
+- Retention, disposal, and legal-hold policy management.
+- Forensic export preparation with event filtering, disclosure set, checksum,
+  and proof-bundle reference.
+- Continuous control assertions with release-blocking evidence.
+- Event outbox and inbox records under the AppGen-X contract.
+- Idempotent handlers keyed by event type and event id.
+- Retry evidence and dead-letter records for failed or unsupported consumed
+  events.
+- Projection stores for identity access, gateway routes, schema contracts,
+  workflow completions, composition releases, and deployed PBCs.
+- API descriptors for command/query routes with required permissions,
+  idempotency keys, emitted events, consumed events, and owned-table usage.
+- Permission descriptors for read, seal, verify, export, publish, event,
+  configure, and audit actions.
+- Rule and parameter engines for runtime policy behavior.
+- UI fragments for event search, chain verification, forensic exports,
+  retention, access evidence, controls, proof disclosure, anomalies, rules,
+  parameters, and configuration.
+- Package-local release evidence through smoke checks, focused tests, and
+  implementation contract output.
 
 ## Advanced Capabilities
 
-The runtime proves:
+Audit Ledger also proves advanced behavior beyond the table-stakes surface:
 
-- Event-sourced audit lifecycle with immutable hash chaining.
-- Graph-relational evidence topology across PBC sources and actors.
-- Multi-tenant audit isolation.
-- Schema-on-read evidence envelope extension.
-- Probabilistic tamper, retention, and control-risk scoring.
-- Real-time audit analytics.
-- Counterfactual retention and disclosure simulation.
-- Temporal evidence-health forecasting.
-- Autonomous control remediation recommendations.
-- Semantic audit query parsing.
-- Predictive audit risk scoring.
-- Self-healing audit ingestion route selection.
-- Zero-knowledge-style event disclosure proofs.
-- Immutable regulatory trail and automated control testing.
-- Universal API and asynchronous audit contract surfaces.
-- Cross-system audit federation through read-only projections.
-- Identity, gateway, schema, workflow, and composition integration contracts.
-- Decentralized actor identity verification.
-- Resilience drills for ingestion, chain verification, and export failures.
-- Crypto-agile signing and epoch rotation.
-- Carbon-aware export and verification scheduling.
-- Algebraic evidence minimization.
-- Mechanism-design export reviewer allocation.
-- Information-theoretic audit anomaly detection.
-- Temporal stochastic evidence exposure modeling.
-- Governed probabilistic models for audit risk and drift.
+- Event-sourced audit lifecycle: immutable events are the primary evidence
+  stream; queryable workbench views are derived from owned state.
+- Graph-relational evidence topology: source PBC, aggregate, actor, control,
+  access, export, and projection relationships remain navigable without foreign
+  table access.
+- Multi-tenant isolation: sequencing, chain verification, workbench views, and
+  retention policies are tenant-scoped.
+- Schema-on-read evidence envelopes: package-owned tables can receive validated
+  extension fields while foreign tables are rejected.
+- Probabilistic risk scoring: tamper, control, retention, and export factors
+  produce bounded risk estimates.
+- Real-time assurance analytics: workbench counters and control results are
+  derived from current state without batch export.
+- Counterfactual disclosure simulation: proposed retention and disclosure sets
+  can be scored before export.
+- Evidence-health forecasting: historical health points can be projected over a
+  future horizon.
+- Autonomous control remediation: known failure reasons map to remediation
+  actions such as rebuilding a chain from verified events or opening a release
+  blocker.
+- Semantic audit query parsing: simple natural-language search text extracts
+  audit id, actor, and action filters.
+- Self-healing ingestion route selection: available routes are selected by
+  latency, and failover use is recorded.
+- Disclosure proof generation: minimized disclosure payloads produce
+  proof-style hashes without exposing full event content.
+- Dynamic policy screening: active rules and classifications determine whether
+  an audit event is clear or requires review.
+- Automated control testing: configuration, database, rules, outbox, dead
+  letter, hash chain, and signature checks are release-audit inputs.
+- Cross-system federation: projections expose read-only evidence to declared
+  consumers.
+- Decentralized actor identity verification: AppGen-X actor identifiers can be
+  checked against trusted registry metadata.
+- Resilience drills, crypto epoch rotation, carbon-aware processing windows,
+  algebraic evidence minimization, export reviewer allocation, anomaly
+  detection, stochastic exposure modeling, and governed audit-risk model
+  registration.
 
-## Rules, Parameters, and Configuration
+## APIs
 
-Rules are executable records with `rule_id`, tenant, scope, classification,
-minimum retention, legal-hold requirement, export approval requirement,
-severity, and status. Parameters include `retention_days`, `export_batch_limit`,
-`tamper_risk_threshold`, `control_failure_threshold`, `proof_disclosure_limit`,
-and `review_sla_hours`.
+The public API contract is descriptor based:
 
-Configuration includes database backend, event topic, retry limit, signature
-algorithm, default timezone, allowed classifications, export delivery modes, and
-workbench limits. Runtime configuration rejects unsupported databases and uses
-the AppGen-X event contract as the ordinary eventing surface.
+- `POST /audit-events` records and seals an audit event.
+- `POST /audit-events/access-evidence` captures access evidence.
+- `POST /audit-events/verify-chain` verifies a tenant signature chain.
+- `POST /retention-policies` defines a retention policy.
+- `POST /forensic-exports` prepares a forensic export.
+- `POST /control-assertions` records a continuous control assertion.
+- `POST /audit-projections` publishes a read-only audit projection.
+- `POST /audit-events/inbox` handles consumed AppGen-X events idempotently.
+- `GET /audit-workbench` returns a tenant-scoped workbench view.
 
-## Public APIs
+Each route states whether it is a command or query, the owned tables it uses,
+emitted or consumed events, the required permission, and the idempotency key.
+The API contract declares `shared_table_access` as false.
 
-- `POST /audit-events`
-- `POST /audit-events/{id}/seal`
-- `POST /audit-events/verify-chain`
-- `POST /retention-policies`
-- `POST /forensic-exports`
-- `POST /control-assertions`
-- `POST /access-evidence`
-- `GET /audit-events`
-- `GET /signature-chain`
-- `GET /audit-workbench`
+## Events and Handlers
 
-## Events
+Emitted events are `AuditEventSealed`, `SignatureChainVerified`,
+`RetentionPolicyChanged`, `ForensicExportPrepared`,
+`ControlAssertionFailed`, and `AuditProjectionPublished`.
 
-Emitted events:
-
-- `AuditEventSealed`
-- `SignatureChainVerified`
-- `RetentionPolicyChanged`
-- `ForensicExportPrepared`
-- `ControlAssertionFailed`
-- `AuditProjectionPublished`
-
-Consumed events:
-
-- `AccessPolicyChanged`
-- `WorkflowCompleted`
-- `RoutePublished`
-- `SchemaAccepted`
-- `PbcDeployed`
-- `CompositionPublished`
-
-Handlers are idempotent by `audit_ledger:{event_type}:{event_id}`, retry at
-least three times, and write failures to `audit_ledger_dead_letter`.
+Consumed events are `AccessPolicyChanged`, `WorkflowCompleted`,
+`RoutePublished`, `SchemaAccepted`, `PbcDeployed`, and
+`CompositionPublished`. Handlers are idempotent by
+`{event_type}:{event_id}` unless a caller supplies an explicit idempotency key.
+Handled events record processed, retrying, or dead-letter status with attempt
+counts. Failed or unsupported events write retry evidence and, after the
+configured limit, a dead-letter record.
 
 ## UI and Workbench
 
-The UI exposes an audit workbench, event search, signature-chain verifier,
-forensic export console, retention policy board, access evidence view, control
-assertion board, proof disclosure designer, audit rule studio, parameter
-console, configuration panel, and anomaly dashboard. Actions are permission
-bound and rendered from package-owned state.
+The workbench is a real package surface, not documentation. It binds to package
+state, exposes owned-table and event-table evidence, reports configuration,
+rules, parameters, outbox, inbox, and dead-letter counts, and filters audit
+events, access evidence, exports, controls, and retention policies by tenant.
+UI actions are permission-gated; missing permissions lock the corresponding
+command. The configuration panel shows the fixed AppGen-X topic, allowed
+database backends, and hidden stream-engine picker.
 
 ## Release Evidence
 
-Release readiness requires passing runtime smoke, package-local UI contract,
-owned tables, API/event/handler surfaces, AppGen-X event contract evidence,
-rule/configuration/parameter execution, generated DSL smoke compatibility,
-package metadata, tamper-proof workbench rendering, and focused unit tests.
+Release readiness requires package-local runtime smoke success, descriptor API
+coverage, permission coverage, UI binding coverage, owned-table boundary
+verification, AppGen-X event-contract evidence, rules/parameters/configuration
+execution, hash-chain and tamper checks, idempotent inbox and dead-letter
+tests, and focused unit tests. The implementation is complete only when these
+checks pass without requiring central registry changes for the package-local
+slice.

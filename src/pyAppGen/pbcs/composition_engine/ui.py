@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS
+from .runtime import COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES
+from .runtime import COMPOSITION_ENGINE_EMITTED_EVENT_TYPES
+from .runtime import COMPOSITION_ENGINE_OWNED_TABLES
+from .runtime import COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
+from .runtime import composition_engine_permissions_contract
+
 
 COMPOSITION_ENGINE_UI_FRAGMENT_KEYS = (
     "CompositionWorkbench",
@@ -45,23 +52,14 @@ def composition_engine_ui_contract() -> dict:
             {"key": "layout", "fragment": "LayoutCanvas", "binds_to": ("layout_binding", "dsl_artifact"), "commands": ("bind_layout", "generate_composition_dsl")},
             {"key": "publication", "fragment": "PublicationConsole", "binds_to": ("release_evidence", "outbox"), "commands": ("publish_composition", "run_control_tests")},
         ),
-        "action_permissions": {
-            "create_workspace": "composition_engine.compose",
-            "select_pbc": "composition_engine.compose",
-            "register_component": "composition_engine.compose",
-            "register_ui_fragment": "composition_engine.compose",
-            "bind_layout": "composition_engine.compose",
-            "generate_composition_dsl": "composition_engine.publish",
-            "publish_composition": "composition_engine.publish",
-            "register_rule": "composition_engine.configure",
-            "set_parameter": "composition_engine.configure",
-            "configure_runtime": "composition_engine.configure",
-            "run_control_tests": "composition_engine.audit",
-        },
+        "action_permissions": composition_engine_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": ("max_fragments_per_page", "release_risk_threshold", "layout_density_target", "route_budget", "preview_batch_limit", "review_sla_hours"),
@@ -71,11 +69,13 @@ def composition_engine_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "required_fragments", "allowed_meshes", "route_policy", "severity", "status"),
         },
         "event_surfaces": {
-            "emits": ("CompositionWorkspaceCreated", "PbcSelectedForComposition", "ComponentRegistered", "UiFragmentRegistered", "LayoutBound", "CompositionPublished", "PbcDeployed"),
-            "consumes": ("SchemaAccepted", "RoutePublished", "AuditEventSealed", "AccessPolicyChanged", "WorkflowCompleted"),
+            "emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES,
+            "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -112,4 +112,12 @@ def composition_engine_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
+            "outbox_table": "composition_engine_appgen_outbox_event",
+            "inbox_table": "composition_engine_appgen_inbox_event",
+            "dead_letter_table": "composition_engine_dead_letter_event",
+        },
     }

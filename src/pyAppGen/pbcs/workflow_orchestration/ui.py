@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES
+from .runtime import WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES
+from .runtime import WORKFLOW_ORCHESTRATION_OWNED_TABLES
+from .runtime import WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC
+from .runtime import workflow_orchestration_permissions_contract
+
 
 WORKFLOW_ORCHESTRATION_UI_FRAGMENT_KEYS = (
     "WorkflowWorkbench",
@@ -45,23 +52,14 @@ def workflow_orchestration_ui_contract() -> dict:
             {"key": "saga", "fragment": "SagaStepBoard", "binds_to": ("saga_step", "compensation"), "commands": ("record_step_result", "execute_compensation", "complete_workflow")},
             {"key": "governance", "fragment": "WorkflowRuleStudio", "binds_to": ("rule", "parameter", "configuration"), "commands": ("register_rule", "set_parameter", "configure_runtime")},
         ),
-        "action_permissions": {
-            "define_workflow": "workflow_orchestration.define",
-            "start_instance": "workflow_orchestration.start",
-            "signal_instance": "workflow_orchestration.signal",
-            "schedule_timer": "workflow_orchestration.start",
-            "record_step_result": "workflow_orchestration.signal",
-            "execute_compensation": "workflow_orchestration.compensate",
-            "complete_workflow": "workflow_orchestration.start",
-            "register_rule": "workflow_orchestration.configure",
-            "set_parameter": "workflow_orchestration.configure",
-            "configure_runtime": "workflow_orchestration.configure",
-            "run_control_tests": "workflow_orchestration.audit",
-        },
+        "action_permissions": workflow_orchestration_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -78,11 +76,13 @@ def workflow_orchestration_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "trigger", "allowed_signals", "requires_compensation", "severity", "status"),
         },
         "event_surfaces": {
-            "emits": ("WorkflowDefinitionPublished", "WorkflowStarted", "WorkflowSignalAccepted", "SagaStepCompleted", "TimerScheduled", "CompensationExecuted", "WorkflowCompleted"),
-            "consumes": ("InvoiceApproved", "OrderVerified", "ShipmentDelivered", "SchemaAccepted", "AccessPolicyChanged", "RoutePublished"),
+            "emits": WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES,
+            "consumes": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -121,4 +121,12 @@ def workflow_orchestration_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES,
+            "outbox_table": "workflow_orchestration_appgen_outbox_event",
+            "inbox_table": "workflow_orchestration_appgen_inbox_event",
+            "dead_letter_table": "workflow_orchestration_dead_letter_event",
+        },
     }

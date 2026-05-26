@@ -8,6 +8,72 @@ import math
 import re
 
 
+COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC = "appgen.composition.events"
+COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+COMPOSITION_ENGINE_OWNED_TABLES = (
+    "composition_workspace",
+    "component_registry",
+    "ui_fragment",
+    "layout_binding",
+    "dsl_artifact",
+    "composition_plan",
+    "composition_validation_run",
+    "package_registration_plan",
+    "package_index_entry",
+    "release_evidence",
+    "composition_rule",
+    "composition_parameter",
+    "composition_configuration",
+)
+COMPOSITION_ENGINE_EMITTED_EVENT_TYPES = (
+    "CompositionWorkspaceCreated",
+    "PbcSelectedForComposition",
+    "ComponentRegistered",
+    "UiFragmentRegistered",
+    "LayoutBound",
+    "CompositionPlanValidated",
+    "PackageRegistrationPlanned",
+    "CompositionPublished",
+    "PbcDeployed",
+)
+COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES = (
+    "SchemaAccepted",
+    "RoutePublished",
+    "AuditEventSealed",
+    "AccessPolicyChanged",
+    "WorkflowCompleted",
+    "PackageRegistrationRequested",
+)
+_COMPOSITION_ENGINE_RUNTIME_TABLES = (
+    "composition_engine_appgen_outbox_event",
+    "composition_engine_appgen_inbox_event",
+    "composition_engine_dead_letter_event",
+)
+_COMPOSITION_ENGINE_ALLOWED_DEPENDENCIES = (
+    "identity_composition_projection",
+    "gateway_composition_projection",
+    "schema_composition_projection",
+    "workflow_composition_projection",
+    "audit_composition_projection",
+    "pbc_deployment_projection",
+    "package_registration_projection",
+    "GET /identity/policies",
+    "GET /gateway/routes",
+    "GET /schemas/contracts",
+    "POST /workflow/composition-approvals",
+    "POST /audit/composition-events",
+)
+_COMPOSITION_ENGINE_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 COMPOSITION_ENGINE_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_composition_lifecycle",
     "graph_relational_component_topology",
@@ -81,20 +147,28 @@ def composition_engine_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "composition_engine",
         "implementation_directory": "src/pyAppGen/pbcs/composition_engine",
+        "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
         "capabilities": COMPOSITION_ENGINE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": COMPOSITION_ENGINE_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "create_workspace",
             "select_pbc",
             "register_component",
             "register_ui_fragment",
             "bind_layout",
+            "validate_composition_plan",
+            "plan_package_registration",
             "generate_composition_dsl",
             "publish_composition",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -106,7 +180,7 @@ def composition_engine_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.composition.events",
+            "event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_targets": ("web", "admin", "mobile"),
             "allowed_layout_modes": ("grid", "flow", "dashboard"),
@@ -135,6 +209,10 @@ def composition_engine_runtime_smoke() -> dict:
         },
     )["state"]
     state = composition_engine_register_schema_extension(state, "layout_binding", {"responsive_rules": "jsonb"})["state"]
+    state = composition_engine_receive_event(
+        state,
+        {"event_id": "evt_schema", "event_type": "SchemaAccepted", "payload": {"tenant": "tenant_alpha", "schema_id": "CustomerUpdated", "owner_pbc": "customer_360"}},
+    )["state"]
     workspace = composition_engine_create_workspace(state, {"workspace_id": "ws_alpha", "tenant": "tenant_alpha", "name": "Ops Console", "owner": "ops_user", "target": "web"})
     state = workspace["state"]
     selected = composition_engine_select_pbc(state, "ws_alpha", {"pbc": "customer_360", "mesh": "relationship", "reason": "profile workspace"})
@@ -145,6 +223,9 @@ def composition_engine_runtime_smoke() -> dict:
     state = fragment["state"]
     binding = composition_engine_bind_layout(state, {"binding_id": "bind_main", "tenant": "tenant_alpha", "workspace_id": "ws_alpha", "page": "home", "slot": "main", "fragment_id": "frag_customer", "projection": "customer_profile_projection"})
     state = binding["state"]
+    validation = composition_engine_validate_composition_plan(state, "ws_alpha")
+    state = validation["state"]
+    package_plan = composition_engine_plan_package_registration(state, "ws_alpha", requested_by="ops_user")
     dsl = composition_engine_generate_composition_dsl(state, "ws_alpha")
     state = dsl["state"]
     publication = composition_engine_publish_composition(state, "ws_alpha")
@@ -208,15 +289,57 @@ def composition_engine_runtime_smoke() -> dict:
 
 
 def composition_engine_empty_state() -> dict:
-    return {"configuration": {}, "parameters": {}, "rules": {}, "schema_extensions": {}, "workspaces": {}, "components": {}, "fragments": {}, "bindings": {}, "dsl_artifacts": {}, "release_evidence": {}, "events": [], "outbox": [], "inbox": [], "dead_letters": [], "crypto_epoch": 1}
+    return {
+        "configuration": {},
+        "parameters": {},
+        "rules": {},
+        "schema_extensions": {},
+        "workspaces": {},
+        "components": {},
+        "fragments": {},
+        "bindings": {},
+        "dsl_artifacts": {},
+        "composition_plans": {},
+        "validation_runs": {},
+        "package_registration_plans": {},
+        "package_index_entries": {},
+        "release_evidence": {},
+        "events": [],
+        "outbox": [],
+        "inbox": [],
+        "dead_letters": [],
+        "dead_letter": [],
+        "handled_events": {},
+        "retry_evidence": [],
+        "schema_projections": {},
+        "route_projections": {},
+        "audit_projections": {},
+        "access_policy_projections": {},
+        "workflow_projections": {},
+        "package_registration_projections": {},
+        "crypto_epoch": 1,
+    }
 
 
 def composition_engine_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    forbidden = tuple(sorted(field for field in _COMPOSITION_ENGINE_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Composition Engine uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    allowed_databases = set(COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS)
     if configuration.get("database_backend") not in allowed_databases:
         raise ValueError("Composition Engine supports only PostgreSQL, MySQL, or MariaDB backends")
+    if configuration.get("event_topic") != COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Composition Engine requires AppGen-X event topic {COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC}")
     next_state = _copy_state(state)
-    next_state["configuration"] = {**configuration, "ok": True, "event_contract": "appgen_event_contract", "allowed_database_backends": tuple(sorted(allowed_databases))}
+    next_state["configuration"] = {
+        **configuration,
+        "ok": True,
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
+    }
     return {"ok": True, "state": next_state, "configuration": next_state["configuration"]}
 
 
@@ -233,15 +356,60 @@ def composition_engine_register_rule(state: dict, rule: dict) -> dict:
     required = {"rule_id", "tenant", "scope", "required_fragments", "allowed_meshes", "route_policy", "requires_approval", "severity", "status"}
     _require(rule, required)
     next_state = _copy_state(state)
-    stored = {**rule, "enabled": rule["status"] == "active"}
+    stored = {**rule, "enabled": rule["status"] == "active", "compiled_hash": _hash_payload(rule)}
     next_state["rules"][rule["rule_id"]] = stored
     return {"ok": True, "state": next_state, "rule": stored}
 
 
 def composition_engine_register_schema_extension(state: dict, target: str, fields: dict) -> dict:
+    if target not in COMPOSITION_ENGINE_OWNED_TABLES:
+        raise ValueError(f"Composition Engine schema extensions must target owned tables: {COMPOSITION_ENGINE_OWNED_TABLES}")
+    invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
+    if invalid:
+        return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
     next_state = _copy_state(state)
     next_state["schema_extensions"].setdefault(target, {}).update(fields)
-    return {"ok": True, "state": next_state, "target": target, "fields": next_state["schema_extensions"][target]}
+    return {"ok": True, "state": next_state, "schema_extension": {"table": target, "fields": dict(fields)}, "target": target, "fields": next_state["schema_extensions"][target]}
+
+
+def composition_engine_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    if key in state["handled_events"] and state["handled_events"][key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
+    attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {"event_id": event_id, "event_type": event_type, "tenant": payload.get("tenant"), "attempts": attempts, "idempotency_key": key}
+    next_state = _copy_state(state)
+    next_state["inbox"].append(inbox_entry)
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"].append(evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_composition_event"}
+            next_state["dead_letters"].append(dead)
+            next_state["dead_letter"].append(dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "SchemaAccepted":
+        next_state["schema_projections"][payload["schema_id"]] = payload
+    elif event_type == "RoutePublished":
+        next_state["route_projections"][payload["route_id"]] = payload
+    elif event_type == "AuditEventSealed":
+        next_state["audit_projections"][payload["audit_id"]] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload["policy_id"]] = payload
+    elif event_type == "WorkflowCompleted":
+        next_state["workflow_projections"][payload["workflow_id"]] = payload
+    elif event_type == "PackageRegistrationRequested":
+        next_state["package_registration_projections"][payload["package_id"]] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def composition_engine_create_workspace(state: dict, workspace: dict) -> dict:
@@ -291,11 +459,97 @@ def composition_engine_bind_layout(state: dict, binding: dict) -> dict:
     return {"ok": True, "state": next_state, "binding": stored}
 
 
+def composition_engine_validate_composition_plan(state: dict, workspace_id: str) -> dict:
+    next_state = _copy_state(state)
+    workspace = next_state["workspaces"][workspace_id]
+    bindings = tuple(binding for binding in next_state["bindings"].values() if binding["workspace_id"] == workspace_id)
+    selected_pbcs = tuple(workspace.get("selected_pbcs", ()))
+    active_rules = tuple(rule for rule in next_state["rules"].values() if rule["status"] == "active" and rule["tenant"] == workspace["tenant"])
+    missing_fragments = []
+    for rule in active_rules:
+        required = set(rule.get("required_fragments", ()))
+        available = {next_state["components"][next_state["fragments"][binding["fragment_id"]]["component_id"]]["fragment"] for binding in bindings if binding["fragment_id"] in next_state["fragments"]}
+        missing_fragments.extend(sorted(required - available))
+    route_count = len({next_state["fragments"][binding["fragment_id"]]["route"] for binding in bindings if binding["fragment_id"] in next_state["fragments"]})
+    route_budget = int(next_state["parameters"].get("route_budget", 50))
+    blockers = []
+    if not selected_pbcs:
+        blockers.append("missing_pbc_selection")
+    if not bindings:
+        blockers.append("missing_layout_binding")
+    if route_count > route_budget:
+        blockers.append("route_budget_exceeded")
+    if missing_fragments:
+        blockers.append("missing_required_fragments")
+    validation_id = f"validation_{len(next_state['validation_runs']) + 1:06d}"
+    validation = {
+        "validation_id": validation_id,
+        "workspace_id": workspace_id,
+        "tenant": workspace["tenant"],
+        "decision": "accepted" if not blockers else "blocked",
+        "blockers": tuple(blockers),
+        "missing_fragments": tuple(missing_fragments),
+        "route_count": route_count,
+        "selected_pbcs": selected_pbcs,
+    }
+    next_state["validation_runs"][validation_id] = validation
+    if not blockers:
+        next_state["composition_plans"][workspace_id] = {
+            "workspace_id": workspace_id,
+            "tenant": workspace["tenant"],
+            "selected_pbcs": selected_pbcs,
+            "route_count": route_count,
+            "bindings": tuple(binding["binding_id"] for binding in bindings),
+            "status": "validated",
+        }
+        next_state = _emit(next_state, "CompositionPlanValidated", workspace["tenant"], workspace_id, validation)
+    return {"ok": not blockers, "state": next_state, "validation": validation}
+
+
+def composition_engine_plan_package_registration(state: dict, workspace_id: str, *, requested_by: str) -> dict:
+    workspace = state["workspaces"][workspace_id]
+    validation = next((item for item in state["validation_runs"].values() if item["workspace_id"] == workspace_id and item["decision"] == "accepted"), {})
+    dsl = state["dsl_artifacts"].get(f"dsl_{workspace_id}", {})
+    plan = {
+        "plan_id": f"package_plan_{workspace_id}",
+        "workspace_id": workspace_id,
+        "tenant": workspace["tenant"],
+        "requested_by": requested_by,
+        "status": "planned" if validation else "requires_validation",
+        "side_effect_free": True,
+        "writes_performed": (),
+        "package_metadata": {
+            "pbc": "composition_engine",
+            "workspace_version": workspace["version"],
+            "selected_pbcs": tuple(workspace.get("selected_pbcs", ())),
+            "dsl_checksum": dsl.get("checksum"),
+        },
+        "index_entries": tuple(
+            {"entry_type": "pbc", "key": pbc, "source": "workspace_selection"}
+            for pbc in workspace.get("selected_pbcs", ())
+        ),
+        "registration_steps": (
+            "validate_manifest",
+            "validate_owned_tables",
+            "validate_api_event_boundaries",
+            "publish_index_metadata",
+        ),
+    }
+    return {"ok": bool(validation), "state": state, "plan": plan}
+
+
 def composition_engine_generate_composition_dsl(state: dict, workspace_id: str) -> dict:
     next_state = _copy_state(state)
     workspace = next_state["workspaces"][workspace_id]
     bindings = tuple(binding for binding in next_state["bindings"].values() if binding["workspace_id"] == workspace_id)
-    dsl = {"workspace": workspace_id, "pbcs": workspace["selected_pbcs"], "pages": tuple({"page": item["page"], "slot": item["slot"], "fragment": item["fragment_id"]} for item in bindings)}
+    dsl = {
+        "workspace": workspace_id,
+        "pbcs": workspace["selected_pbcs"],
+        "pages": tuple({"page": item["page"], "slot": item["slot"], "fragment": item["fragment_id"], "projection": item["projection"]} for item in bindings),
+        "event_contract": "AppGen-X",
+        "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
+        "dependency_boundaries": {"events": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES, "shared_tables": ()},
+    }
     checksum = _hash_payload(dsl)
     artifact = {"artifact_id": f"dsl_{workspace_id}", "workspace_id": workspace_id, "dsl": dsl, "checksum": checksum, "route_count": len(bindings), "ok": True}
     next_state["dsl_artifacts"][artifact["artifact_id"]] = artifact
@@ -306,11 +560,21 @@ def composition_engine_publish_composition(state: dict, workspace_id: str) -> di
     next_state = _copy_state(state)
     workspace = dict(next_state["workspaces"][workspace_id])
     bindings = tuple(binding for binding in next_state["bindings"].values() if binding["workspace_id"] == workspace_id)
+    validation = next((item for item in next_state["validation_runs"].values() if item["workspace_id"] == workspace_id and item["decision"] == "accepted"), None)
+    if validation is None:
+        validation_result = composition_engine_validate_composition_plan(next_state, workspace_id)
+        next_state = validation_result["state"]
+        if not validation_result["ok"]:
+            return {"ok": False, "state": next_state, "publication": {"workspace_id": workspace_id, "status": "blocked", "blockers": validation_result["validation"]["blockers"]}}
     release_risk = max(0, 0.2 - len(bindings) * 0.02)
-    publication = {"workspace_id": workspace_id, "tenant": workspace["tenant"], "version": workspace["version"], "route_count": len(bindings), "release_risk": release_risk, "status": "published", "package_registration_plan": "side_effect_free"}
+    package_plan = composition_engine_plan_package_registration(next_state, workspace_id, requested_by=workspace["owner"])["plan"]
+    publication = {"workspace_id": workspace_id, "tenant": workspace["tenant"], "version": workspace["version"], "route_count": len(bindings), "release_risk": release_risk, "status": "published", "package_registration_plan": package_plan}
     workspace["status"] = "published"
     next_state["workspaces"][workspace_id] = workspace
     next_state["release_evidence"][workspace_id] = publication
+    next_state["package_registration_plans"][package_plan["plan_id"]] = package_plan
+    next_state["package_index_entries"][workspace_id] = {"workspace_id": workspace_id, "tenant": workspace["tenant"], "selected_pbcs": workspace["selected_pbcs"], "status": "planned"}
+    next_state = _emit(next_state, "PackageRegistrationPlanned", workspace["tenant"], workspace_id, package_plan)
     next_state = _emit(next_state, "CompositionPublished", workspace["tenant"], workspace_id, publication)
     next_state = _emit(next_state, "PbcDeployed", workspace["tenant"], workspace_id, publication)
     return {"ok": True, "state": next_state, "publication": publication}
@@ -321,7 +585,35 @@ def composition_engine_build_workbench_view(state: dict, *, tenant: str) -> dict
     components = tuple(item for item in state["components"].values() if item["tenant"] == tenant)
     fragments = tuple(item for item in state["fragments"].values() if item["tenant"] == tenant)
     bindings = tuple(item for item in state["bindings"].values() if item["tenant"] == tenant)
-    return {"format": "appgen.composition-engine-workbench-view.v1", "tenant": tenant, "workspace_count": len(workspaces), "published_count": len(tuple(item for item in workspaces if item["status"] == "published")), "component_count": len(components), "fragment_count": len(fragments), "binding_count": len(bindings), "release_evidence_count": len(tuple(item for item in state["release_evidence"].values() if item["tenant"] == tenant))}
+    return {
+        "format": "appgen.composition-engine-workbench-view.v1",
+        "tenant": tenant,
+        "workspace_count": len(workspaces),
+        "published_count": len(tuple(item for item in workspaces if item["status"] == "published")),
+        "component_count": len(components),
+        "fragment_count": len(fragments),
+        "binding_count": len(bindings),
+        "validation_count": len(tuple(item for item in state["validation_runs"].values() if item["tenant"] == tenant)),
+        "package_plan_count": len(tuple(item for item in state["package_registration_plans"].values() if item["tenant"] == tenant)),
+        "release_evidence_count": len(tuple(item for item in state["release_evidence"].values() if item["tenant"] == tenant)),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
+            "outbox_table": "composition_engine_appgen_outbox_event",
+            "inbox_table": "composition_engine_appgen_inbox_event",
+            "dead_letter_table": "composition_engine_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+        },
+    }
 
 
 def composition_engine_simulate_layout(state: dict, workspace_id: str, *, added_fragments: int, removed_fragments: int) -> dict:
@@ -373,12 +665,110 @@ def composition_engine_screen_policy(state: dict, workspace_id: str, *, meshes: 
 
 def composition_engine_run_control_tests(state: dict) -> dict:
     hash_chain_valid = all(event["hash"] == _event_hash(event) for event in state["events"])
-    checks = {"configuration": state["configuration"].get("event_contract") == "appgen_event_contract", "database": state["configuration"].get("database_backend") in {"postgresql", "mysql", "mariadb"}, "rules": bool(state["rules"]), "workspaces": bool(state["workspaces"]), "dsl": bool(state["dsl_artifacts"]), "release": bool(state["release_evidence"]), "outbox": all(item["idempotency_key"].startswith("composition_engine:") for item in state["outbox"]), "dead_letter": isinstance(state["dead_letters"], list), "hash_chain": hash_chain_valid}
+    checks = {
+        "configuration": state["configuration"].get("event_contract") == "AppGen-X",
+        "database": state["configuration"].get("database_backend") in set(COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS),
+        "rules": bool(state["rules"]),
+        "workspaces": bool(state["workspaces"]),
+        "dsl": bool(state["dsl_artifacts"]),
+        "release": bool(state["release_evidence"]),
+        "package_plan": bool(state["package_registration_plans"]),
+        "outbox": all(item["idempotency_key"].startswith("composition_engine:") for item in state["outbox"]),
+        "dead_letter": isinstance(state["dead_letters"], list) and isinstance(state.get("dead_letter", []), list),
+        "hash_chain": hash_chain_valid,
+    }
     return {"ok": all(checks.values()), "checks": checks, "hash_chain_valid": hash_chain_valid, "blocking_gaps": tuple(key for key, ok in checks.items() if not ok)}
 
 
 def composition_engine_build_api_contract() -> dict:
-    return {"ok": True, "format": "appgen.composition-engine-api-contract.v1", "routes": ("POST /composition-workspaces", "POST /component-registry", "POST /ui-fragments", "POST /layout-bindings", "POST /composition-publications"), "events": {"emits": ("CompositionWorkspaceCreated", "PbcSelectedForComposition", "ComponentRegistered", "UiFragmentRegistered", "LayoutBound", "CompositionPublished", "PbcDeployed"), "consumes": ("SchemaAccepted", "RoutePublished", "AuditEventSealed")}}
+    return {
+        "ok": True,
+        "format": "appgen.composition-engine-api-contract.v1",
+        "routes": (
+            {"route": "POST /composition-workspaces", "command": "create_workspace", "owned_tables": ("composition_workspace",), "emits": ("CompositionWorkspaceCreated",), "requires_permission": "composition_engine.compose", "idempotency_key": "workspace_id"},
+            {"route": "POST /composition-workspaces/{id}/pbcs", "command": "select_pbc", "owned_tables": ("composition_workspace", "component_registry"), "emits": ("PbcSelectedForComposition",), "requires_permission": "composition_engine.compose", "idempotency_key": "workspace_id:pbc"},
+            {"route": "POST /component-registry", "command": "register_component", "owned_tables": ("component_registry",), "emits": ("ComponentRegistered",), "requires_permission": "composition_engine.compose", "idempotency_key": "component_id"},
+            {"route": "POST /ui-fragments", "command": "register_ui_fragment", "owned_tables": ("ui_fragment",), "emits": ("UiFragmentRegistered",), "requires_permission": "composition_engine.compose", "idempotency_key": "fragment_id"},
+            {"route": "POST /layout-bindings", "command": "bind_layout", "owned_tables": ("layout_binding",), "emits": ("LayoutBound",), "requires_permission": "composition_engine.compose", "idempotency_key": "binding_id"},
+            {"route": "POST /composition-plans/validate", "command": "validate_composition_plan", "owned_tables": ("composition_plan", "composition_validation_run"), "emits": ("CompositionPlanValidated",), "requires_permission": "composition_engine.approve", "idempotency_key": "workspace_id"},
+            {"route": "POST /package-registration-plans", "command": "plan_package_registration", "owned_tables": ("package_registration_plan", "package_index_entry"), "emits": ("PackageRegistrationPlanned",), "requires_permission": "composition_engine.publish", "idempotency_key": "workspace_id"},
+            {"route": "POST /composition-dsl", "command": "generate_composition_dsl", "owned_tables": ("dsl_artifact",), "emits": (), "requires_permission": "composition_engine.publish", "idempotency_key": "workspace_id"},
+            {"route": "POST /composition-publications", "command": "publish_composition", "owned_tables": ("release_evidence", "package_registration_plan", "package_index_entry"), "emits": ("CompositionPublished", "PbcDeployed"), "requires_permission": "composition_engine.publish", "idempotency_key": "workspace_id:version"},
+            {"route": "POST /composition/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES, "requires_permission": "composition_engine.event", "idempotency_key": "event_id"},
+            {"route": "GET /composition-workbench", "query": "build_workbench_view", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
+        ),
+        "declared_catalog_routes": ("POST /composition-workspaces", "POST /component-registry", "POST /ui-fragments", "POST /layout-bindings", "POST /composition-dsl", "POST /composition-publications", "GET /composition-workbench"),
+        "events": {"emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES, "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES},
+        "emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES,
+        "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(composition_engine_permissions_contract()["permissions"])),
+        "database_backends": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("COMPOSITION_ENGINE_DATABASE_URL", "COMPOSITION_ENGINE_EVENT_TOPIC", "COMPOSITION_ENGINE_RETRY_LIMIT", "COMPOSITION_ENGINE_DEFAULT_TIMEZONE"),
+    }
+
+
+def composition_engine_permissions_contract() -> dict:
+    return {
+        "format": "appgen.composition-engine-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "composition_engine.read",
+            "composition_engine.compose",
+            "composition_engine.approve",
+            "composition_engine.publish",
+            "composition_engine.event",
+            "composition_engine.configure",
+            "composition_engine.audit",
+        ),
+        "action_permissions": {
+            "create_workspace": "composition_engine.compose",
+            "select_pbc": "composition_engine.compose",
+            "register_component": "composition_engine.compose",
+            "register_ui_fragment": "composition_engine.compose",
+            "bind_layout": "composition_engine.compose",
+            "validate_composition_plan": "composition_engine.approve",
+            "plan_package_registration": "composition_engine.publish",
+            "generate_composition_dsl": "composition_engine.publish",
+            "publish_composition": "composition_engine.publish",
+            "receive_event": "composition_engine.event",
+            "register_rule": "composition_engine.configure",
+            "register_schema_extension": "composition_engine.configure",
+            "set_parameter": "composition_engine.configure",
+            "configure_runtime": "composition_engine.configure",
+            "run_control_tests": "composition_engine.audit",
+            "build_workbench_view": "composition_engine.audit",
+        },
+    }
+
+
+def composition_engine_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*COMPOSITION_ENGINE_OWNED_TABLES, *COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES, *_COMPOSITION_ENGINE_RUNTIME_TABLES, *_COMPOSITION_ENGINE_ALLOWED_DEPENDENCIES)
+    violations = tuple(reference for reference in references if reference not in set(allowed) and not str(reference).startswith("composition_engine_"))
+    return {
+        "format": "appgen.composition-engine-boundary.v1",
+        "ok": not violations,
+        "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /identity/policies", "GET /gateway/routes", "GET /schemas/contracts", "POST /workflow/composition-approvals", "POST /audit/composition-events"),
+            "events": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "identity_composition_projection",
+                "gateway_composition_projection",
+                "schema_composition_projection",
+                "workflow_composition_projection",
+                "audit_composition_projection",
+                "pbc_deployment_projection",
+                "package_registration_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def composition_engine_federate_composition_view(state: dict, workspace_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -434,7 +824,26 @@ def composition_engine_register_governed_model(model_id: str, metadata: dict) ->
 
 
 def _copy_state(state: dict) -> dict:
-    nested_keys = ("schema_extensions", "workspaces", "components", "fragments", "bindings", "dsl_artifacts", "release_evidence")
+    nested_keys = (
+        "schema_extensions",
+        "workspaces",
+        "components",
+        "fragments",
+        "bindings",
+        "dsl_artifacts",
+        "composition_plans",
+        "validation_runs",
+        "package_registration_plans",
+        "package_index_entries",
+        "release_evidence",
+        "handled_events",
+        "schema_projections",
+        "route_projections",
+        "audit_projections",
+        "access_policy_projections",
+        "workflow_projections",
+        "package_registration_projections",
+    )
     return {
         "configuration": dict(state["configuration"]),
         "parameters": dict(state["parameters"]),
@@ -444,6 +853,8 @@ def _copy_state(state: dict) -> dict:
         "outbox": [dict(item) for item in state["outbox"]],
         "inbox": [dict(item) for item in state["inbox"]],
         "dead_letters": [dict(item) for item in state["dead_letters"]],
+        "dead_letter": [dict(item) for item in state.get("dead_letter", state["dead_letters"])],
+        "retry_evidence": [dict(item) for item in state.get("retry_evidence", [])],
         "crypto_epoch": state.get("crypto_epoch", 1),
     }
 

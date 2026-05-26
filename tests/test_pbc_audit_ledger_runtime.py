@@ -1,3 +1,15 @@
+import pytest
+
+from pyAppGen.pbcs.audit_ledger import AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.audit_ledger import AUDIT_LEDGER_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.audit_ledger import AUDIT_LEDGER_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.audit_ledger import AUDIT_LEDGER_OWNED_TABLES
+from pyAppGen.pbcs.audit_ledger import AUDIT_LEDGER_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.audit_ledger import audit_ledger_build_api_contract
+from pyAppGen.pbcs.audit_ledger import audit_ledger_permissions_contract
+from pyAppGen.pbcs.audit_ledger import audit_ledger_receive_event
+from pyAppGen.pbcs.audit_ledger import audit_ledger_register_schema_extension
+from pyAppGen.pbcs.audit_ledger import audit_ledger_verify_owned_table_boundary
 from pyAppGen.pbc import AUDIT_LEDGER_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import audit_ledger_assert_control
 from pyAppGen.pbc import audit_ledger_build_workbench_view
@@ -27,6 +39,7 @@ def test_audit_ledger_runtime_executes_standard_and_advanced_capabilities() -> N
     assert runtime["format"] == "appgen.audit-ledger-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/audit_ledger"
+    assert runtime["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
     assert len(runtime["standard_features"]) >= 25
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
@@ -39,11 +52,28 @@ def test_audit_ledger_runtime_executes_standard_and_advanced_capabilities() -> N
     contract = pbc_implementation_contract("audit_ledger")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
+    assert contract["source_package"]["allowed_database_backends"] == AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "audit_ledger.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "AuditConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(AUDIT_LEDGER_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("audit_ledger",))["ok"] is True
     assert pbc_implemented_capability_audit(("audit_ledger",))["ok"] is True
+
+    api = audit_ledger_build_api_contract()
+    permissions = audit_ledger_permissions_contract()
+    assert api["format"] == "appgen.audit-ledger-api-contract.v1"
+    assert api["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
+    assert api["database_backends"] == AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS
+    assert api["emits"] == AUDIT_LEDGER_EMITTED_EVENT_TYPES
+    assert api["consumes"] == AUDIT_LEDGER_CONSUMED_EVENT_TYPES
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False
+    assert {route["route"] for route in api["routes"]} >= {"POST /audit-events", "POST /audit-events/inbox", "GET /audit-workbench"}
+    assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert permissions["action_permissions"]["publish_audit_projection"] == "audit_ledger.publish"
 
 
 def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -52,7 +82,7 @@ def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() ->
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.audit.events",
+            "event_topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "signature_algorithm": "dilithium3_simulated",
             "allowed_classifications": ("public", "internal", "regulated"),
@@ -80,6 +110,22 @@ def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() ->
             "status": "active",
         },
     )["state"]
+    extension = audit_ledger_register_schema_extension(state, "audit_ledger_audit_event", {"lineage_payload": "jsonb", "evidence_tags": "jsonb"})
+    state = extension["state"]
+    assert extension["ok"] is True
+    assert state["schema_extensions"]["audit_ledger_audit_event"]["lineage_payload"] == "jsonb"
+
+    route_event = audit_ledger_receive_event(
+        state,
+        {"event_id": "evt_route_ops", "event_type": "RoutePublished", "payload": {"tenant": "tenant_ops", "route_id": "route_ops", "service_id": "svc_ops"}},
+    )
+    state = route_event["state"]
+    assert route_event["handler"]["status"] == "processed"
+    duplicate = audit_ledger_receive_event(
+        state,
+        {"event_id": "evt_route_ops", "event_type": "RoutePublished", "payload": {"tenant": "tenant_ops", "route_id": "route_ops", "service_id": "svc_ops"}},
+    )
+    assert duplicate["duplicate"] is True
 
     event = audit_ledger_record_audit_event(
         state,
@@ -148,9 +194,18 @@ def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() ->
     assert workbench["export_count"] == 1
     assert workbench["control_count"] == 1
     assert workbench["verified_chain"] is True
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 5
+    assert workbench["inbox_count"] == 1
+    assert workbench["binding_evidence"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
+    assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
 
     ui_contract = audit_ledger_ui_contract()
-    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS
+    assert ui_contract["configuration_editor"]["required_event_topic"] == AUDIT_LEDGER_REQUIRED_EVENT_TOPIC
+    assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
+    assert ui_contract["binding_evidence"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
     assert "retention_days" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     rendered = audit_ledger_render_workbench(
@@ -163,10 +218,126 @@ def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() ->
             "audit_ledger.export",
             "audit_ledger.verify",
             "audit_ledger.read",
+            "audit_ledger.event",
+            "audit_ledger.publish",
         ),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert rendered["event_outbox_count"] == 4
+    assert rendered["inbox_count"] == 1
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+    assert rendered["binding_evidence"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
+
+    boundary = audit_ledger_verify_owned_table_boundary(
+        ("audit_ledger_audit_event", "RoutePublished", "gateway_route_projection", "GET /identity/policies", "audit_ledger_appgen_outbox_event")
+    )
+    assert boundary["ok"] is True
+    assert boundary["declared_dependencies"]["shared_tables"] == ()
+    violation_boundary = audit_ledger_verify_owned_table_boundary(("api_gateway_mesh_service_route",))
+    assert violation_boundary["ok"] is False
+    assert violation_boundary["violations"] == ("api_gateway_mesh_service_route",)
+
+    tampered_state = audit_ledger_empty_state()
+    tampered_state = audit_ledger_configure_runtime(
+        tampered_state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "signature_algorithm": "dilithium3_simulated",
+            "allowed_classifications": ("public", "internal", "regulated"),
+            "export_modes": ("proof_bundle",),
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    tampered_state = audit_ledger_record_audit_event(
+        tampered_state,
+        {
+            "audit_id": "audit_tamper",
+            "tenant": "tenant_ops",
+            "source_pbc": "workflow_orchestration",
+            "aggregate_id": "inst_tamper",
+            "actor": "ops_user",
+            "action": "complete_workflow",
+            "classification": "regulated",
+            "payload": {"instance_id": "inst_tamper", "status": "completed"},
+        },
+    )["state"]
+    tampered_state["audit_events"]["audit_tamper"]["event_hash"] = "tampered"
+    tampered = audit_ledger_verify_signature_chain(tampered_state, tenant="tenant_ops")
+    assert tampered["ok"] is False
+    assert tampered["tampered"] == ("audit_tamper",)
+
+
+def test_audit_ledger_rejects_unsupported_database_eventing_and_boundaries() -> None:
+    state = audit_ledger_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        audit_ledger_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="unsupported eventing fields"):
+        audit_ledger_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+                "stream_engine": "hidden_picker",
+            },
+        )
+
+    with pytest.raises(ValueError, match="AppGen-X event topic"):
+        audit_ledger_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": "custom.audit.events",
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Audit Ledger parameter"):
+        audit_ledger_set_parameter(state, "stream_engine", "hidden_picker")
+
+    with pytest.raises(ValueError, match="schema extensions must target owned tables"):
+        audit_ledger_register_schema_extension(state, "api_gateway_mesh_service_route", {"route_payload": "jsonb"})
+
+    configured = audit_ledger_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "signature_algorithm": "dilithium3_simulated",
+            "allowed_classifications": ("public", "internal", "regulated"),
+            "export_modes": ("proof_bundle",),
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    retrying = audit_ledger_receive_event(
+        configured,
+        {"event_id": "evt_bad", "event_type": "UnsupportedEvent", "payload": {"tenant": "tenant_ops"}},
+        simulate_failure=True,
+    )
+    dead_letter = audit_ledger_receive_event(
+        retrying["state"],
+        {"event_id": "evt_bad", "event_type": "UnsupportedEvent", "payload": {"tenant": "tenant_ops"}},
+        simulate_failure=True,
+    )
+    assert retrying["handler"]["status"] == "retrying"
+    assert dead_letter["handler"]["status"] == "dead_letter"
+    assert len(dead_letter["state"]["dead_letter"]) == 1

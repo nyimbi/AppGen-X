@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from .runtime import AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS
+from .runtime import AUDIT_LEDGER_CONSUMED_EVENT_TYPES
+from .runtime import AUDIT_LEDGER_EMITTED_EVENT_TYPES
+from .runtime import AUDIT_LEDGER_OWNED_TABLES
+from .runtime import AUDIT_LEDGER_REQUIRED_EVENT_TOPIC
+
 
 AUDIT_LEDGER_UI_FRAGMENT_KEYS = (
     "AuditLedgerWorkbench",
@@ -57,11 +63,16 @@ def audit_ledger_ui_contract() -> dict:
             "set_parameter": "audit_ledger.configure",
             "configure_runtime": "audit_ledger.configure",
             "run_control_tests": "audit_ledger.audit",
+            "receive_event": "audit_ledger.event",
+            "publish_audit_projection": "audit_ledger.publish",
         },
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "signature_algorithm", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "required_event_topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -78,10 +89,18 @@ def audit_ledger_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "classification", "minimum_retention_days", "requires_export_approval", "severity", "status"),
         },
         "event_surfaces": {
-            "emits": ("AuditEventSealed", "SignatureChainVerified", "RetentionPolicyChanged", "ForensicExportPrepared", "ControlAssertionFailed", "AuditProjectionPublished"),
-            "consumes": ("AccessPolicyChanged", "WorkflowCompleted", "RoutePublished", "SchemaAccepted", "PbcDeployed", "CompositionPublished"),
+            "emits": AUDIT_LEDGER_EMITTED_EVENT_TYPES,
+            "consumes": AUDIT_LEDGER_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": AUDIT_LEDGER_OWNED_TABLES,
+            "outbox_table": "audit_ledger_appgen_outbox_event",
+            "inbox_table": "audit_ledger_appgen_inbox_event",
+            "dead_letter_table": "audit_ledger_dead_letter_event",
+            "shared_table_access": False,
         },
     }
 
@@ -119,4 +138,7 @@ def audit_ledger_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": contract["binding_evidence"],
     }
