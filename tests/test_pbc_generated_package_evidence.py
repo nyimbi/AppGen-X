@@ -7,8 +7,10 @@ import sys
 
 from pyAppGen.dsl import schema_from_dsl
 from pyAppGen.gen import generate_app_from_schema
+from pyAppGen.pbc import IMPLEMENTED_PBC_KEYS
 from pyAppGen.pbc import pbc_composition_dsl
 from pyAppGen.pbc import pbc_generation_smoke_audit
+from pyAppGen.pbc import pbc_release_audit
 
 
 def test_generated_pbc_packages_include_schema_service_and_release_evidence(tmp_path) -> None:
@@ -83,6 +85,23 @@ def test_generated_pbc_packages_include_schema_service_and_release_evidence(tmp_
     assert contract_test_check["ok"] is True
     assert {result["pbc"] for result in contract_test_check["results"]} == set(selected)
     assert all("test_generated_schema_service_and_release_evidence" in result["executed"] for result in contract_test_check["results"])
+
+
+def test_release_audit_runs_generation_smoke_for_every_implemented_pbc() -> None:
+    audit = pbc_release_audit()
+    generation_gate = next(gate for gate in audit["gates"] if gate["id"] == "generation_smoke")
+    contract_test_check = next(
+        check for check in audit["generation_smoke"]["checks"] if check["id"] == "generated_pbc_contract_tests"
+    )
+
+    assert audit["ok"] is True
+    assert generation_gate["ok"] is True
+    assert generation_gate["selected_pbcs"] == IMPLEMENTED_PBC_KEYS
+    assert audit["generation_smoke"]["selected_pbcs"] == IMPLEMENTED_PBC_KEYS
+    assert audit["starter_generation_smoke"]["ok"] is True
+    assert len(contract_test_check["results"]) == len(IMPLEMENTED_PBC_KEYS)
+    assert {result["pbc"] for result in contract_test_check["results"]} == set(IMPLEMENTED_PBC_KEYS)
+    assert all(result["ok"] for result in contract_test_check["results"])
 
 
 def _load_module(path, module_name):

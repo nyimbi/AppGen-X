@@ -5275,7 +5275,8 @@ def pbc_release_audit() -> dict:
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
     )
-    smoke = pbc_generation_smoke_audit(sample)
+    starter_smoke = pbc_generation_smoke_audit(sample)
+    smoke = pbc_generation_smoke_audit(IMPLEMENTED_PBC_KEYS)
     required_meshes = {"finops", "scl", "hcm", "opsmfg", "cx", "platform", "commerce", "content", "relationship", "intelligence"}
     gates = (
         {
@@ -5401,7 +5402,11 @@ def pbc_release_audit() -> dict:
         },
         {
             "id": "generation_smoke",
-            "ok": smoke["ok"],
+            "ok": starter_smoke["ok"]
+            and smoke["ok"]
+            and smoke["selected_pbcs"] == IMPLEMENTED_PBC_KEYS,
+            "starter_checks": starter_smoke["checks"],
+            "selected_pbcs": smoke["selected_pbcs"],
             "checks": smoke["checks"],
         },
     )
@@ -5425,6 +5430,7 @@ def pbc_release_audit() -> dict:
         "implementation_audit": implementation_audit,
         "sample_composition": composition,
         "nl_selection": nl_selection,
+        "starter_generation_smoke": starter_smoke,
         "generation_smoke": smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
