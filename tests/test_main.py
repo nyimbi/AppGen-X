@@ -3980,6 +3980,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "handler_editor",
         "preview_replay",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in form_interaction_family_module_file_manifest()
+    )
     assert {item["family"] for item in form_interaction_family_module_test_file_manifest()} == {
         "palette_drag_source",
         "canvas_drop_target",
@@ -3987,6 +3991,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "handler_editor",
         "preview_replay",
     }
+    assert all(
+        "test_form_interaction_family_module_step_contracts" in item["exports"]
+        for item in form_interaction_family_module_test_file_manifest()
+    )
     artifact_gate = next(gate for gate in audit["gates"] if gate["id"] == "artifact_contract")
     assert artifact_gate["ok"] is True
     assert set(artifact_gate["required_artifacts"]) <= set(artifact_gate["passing_artifacts"])
@@ -15566,6 +15574,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "handler_editor",
         "preview_replay",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_form_interaction_files["modules"]
+    )
+    assert all(
+        "test_form_interaction_family_module_step_contracts" in item["exports"]
+        for item in generated_form_interaction_tests["tests"]
+    )
     for item in generated_wiring_module_files["modules"]:
         module_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(module_path), doraise=True)
@@ -15585,6 +15601,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         module = _load_module(module_path, f"generated_form_interaction_family_module_{item['module']}")
         assert module.smoke_test("Book")["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps("Book")["ok"] is True
+        assert module.validation_steps("Book")["ok"] is True
     for item in generated_form_interaction_tests["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)

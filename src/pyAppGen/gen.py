@@ -12325,6 +12325,8 @@ EXPECTED_EXPORTS = (
     "form_interaction_manifest",
     "run_interaction_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -12390,14 +12392,34 @@ def runtime_manifest(table_name=None):
     return designer.form_interaction_family_contract(designer.form_design(table_name) if table_name else None)
 
 
-def smoke_test(table_name=None):
-    """Run side-effect-free checks for this generated form interaction module."""
+def operation_steps(table_name=None):
+    """Return side-effect-free operation steps for this interaction family."""
+    operation = run_interaction_operation(table_name)
+    return {{
+        "format": "appgen.form-interaction-family-module-operation-steps.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": operation["ok"] and bool(operation["operation_steps"]),
+        "steps": tuple(operation["operation_steps"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps(table_name=None):
+    """Return validation steps proving this interaction family is safe to load."""
     contract = module_contract()
     manifest = form_interaction_manifest(table_name)
     operation = run_interaction_operation(table_name)
     runtime = runtime_manifest(table_name)
+    steps = (
+        "module_contract_ok",
+        "form_interaction_manifest_ok",
+        "interaction_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
     return {{
-        "format": "appgen.form-interaction-family-module-smoke-test.v1",
+        "format": "appgen.form-interaction-family-module-validation-steps.v1",
         "module": MODULE,
         "family": FAMILY,
         "ok": contract["ok"]
@@ -12406,13 +12428,42 @@ def smoke_test(table_name=None):
         and runtime["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated form interaction module."""
+    contract = module_contract()
+    manifest = form_interaction_manifest(table_name)
+    operation = run_interaction_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    operations = operation_steps(table_name)
+    validations = validation_steps(table_name)
+    return {{
+        "format": "appgen.form-interaction-family-module-smoke-test.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
         "checks": (
             "module_contract_resolves",
             "form_interaction_manifest_resolves",
             "interaction_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -12457,15 +12508,28 @@ def test_form_interaction_family_module_smoke():
     assert result["checks"]
 
 
+def test_form_interaction_family_module_step_contracts():
+    """Assert standalone interaction operation and validation step contracts pass."""
+    module = load_form_interaction_family_module()
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps()["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_form_interaction_family_module_contract()
     test_form_interaction_family_module_smoke()
+    test_form_interaction_family_module_step_contracts()
     return {{
         "format": "appgen.form-interaction-family-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_form_interaction_family_module_contract", "test_form_interaction_family_module_smoke"),
+        "tests": (
+            "test_form_interaction_family_module_contract",
+            "test_form_interaction_family_module_smoke",
+            "test_form_interaction_family_module_step_contracts",
+        ),
     }}
 '''
 
@@ -55373,7 +55437,15 @@ def form_interaction_family_module_file_manifest(existing_paths=None):
         ("interaction_handler_editor_module", "handler_editor"),
         ("interaction_preview_replay_module", "preview_replay"),
     )
-    exports = ("module_contract", "form_interaction_manifest", "run_interaction_operation", "runtime_manifest", "smoke_test")
+    exports = (
+        "module_contract",
+        "form_interaction_manifest",
+        "run_interaction_operation",
+        "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
+        "smoke_test",
+    )
     manifest = []
     for module, family in modules:
         path = f"app/form_interaction_family_modules/{{module}}.py"
@@ -55406,7 +55478,13 @@ def form_interaction_family_module_test_file_manifest(existing_paths=None):
             "path": path,
             "exists": path in paths,
             "target": item["path"],
-            "exports": ("load_form_interaction_family_module", "test_form_interaction_family_module_contract", "test_form_interaction_family_module_smoke", "smoke_test"),
+            "exports": (
+                "load_form_interaction_family_module",
+                "test_form_interaction_family_module_contract",
+                "test_form_interaction_family_module_smoke",
+                "test_form_interaction_family_module_step_contracts",
+                "smoke_test",
+            ),
             "ok": item["ok"] and path in paths,
         }})
     return {{

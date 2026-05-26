@@ -1173,6 +1173,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   handler registry, handler context, handler dispatch, and cross-handler call
   modules now expose side-effect-free step contracts and matching generated test
   exports.
+- Current form interaction pass adds standalone operation-step and
+  validation-step contracts to generated end-to-end interaction family modules.
+  Generated palette drag source, canvas drop target, wiring graph, handler
+  editor, and preview replay modules now expose step contracts and matching
+  generated test exports before the visual designer release gate can trust
+  drag/drop workflow evidence.
 
 ## Open Completion Areas
 

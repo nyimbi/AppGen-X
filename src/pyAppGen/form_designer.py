@@ -22067,6 +22067,8 @@ def form_interaction_family_module_file_manifest() -> tuple[dict, ...]:
         "form_interaction_manifest",
         "run_interaction_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -22096,6 +22098,7 @@ def form_interaction_family_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_form_interaction_family_module",
                 "test_form_interaction_family_module_contract",
                 "test_form_interaction_family_module_smoke",
+                "test_form_interaction_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
