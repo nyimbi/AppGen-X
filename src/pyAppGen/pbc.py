@@ -4702,6 +4702,165 @@ def pbc_source_artifact_release_audit(selected_pbcs: tuple[str, ...] | list[str]
     }
 
 
+def pbc_package_local_assurance_contract(key: str) -> dict:
+    """Execute package-local assurance evidence for one built-in PBC."""
+    source_dir = Path(__file__).resolve().parent / "pbcs" / key
+    relative_dir = f"src/pyAppGen/pbcs/{key}"
+    assurance_path = source_dir / "capability_assurance.py"
+    runtime_test_path = source_dir / "tests" / "test_runtime_capabilities.py"
+    checks = [
+        {
+            "id": "source_directory_exists",
+            "ok": source_dir.is_dir(),
+            "path": relative_dir,
+        },
+        {
+            "id": "package_local_assurance_artifact_exists",
+            "ok": assurance_path.is_file() or runtime_test_path.is_file(),
+            "capability_assurance": f"{relative_dir}/capability_assurance.py",
+            "runtime_capability_tests": f"{relative_dir}/tests/test_runtime_capabilities.py",
+        },
+    ]
+    evidence: dict[str, object] = {
+        "mode": "capability_assurance" if assurance_path.is_file() else "runtime_capability_tests",
+    }
+    if assurance_path.is_file():
+        try:
+            py_compile.compile(str(assurance_path), doraise=True)
+            module = importlib.import_module(f"pyAppGen.pbcs.{key}.capability_assurance")
+            manifest = module.table_stakes_capability_manifest()
+            validation = module.validate_table_stakes_capability_coverage()
+            smoke = module.smoke_test()
+            evidence.update(
+                {
+                    "manifest": manifest,
+                    "validation": validation,
+                    "smoke": smoke,
+                }
+            )
+            checks.extend(
+                (
+                    {
+                        "id": "capability_assurance_compiles",
+                        "ok": True,
+                        "path": f"{relative_dir}/capability_assurance.py",
+                    },
+                    {
+                        "id": "table_stakes_manifest_executes",
+                        "ok": manifest.get("ok") is True
+                        and bool(manifest.get("standard_features"))
+                        and bool(manifest.get("advanced_capabilities")),
+                    },
+                    {
+                        "id": "capability_validation_executes",
+                        "ok": validation.get("ok") is True
+                        and not validation.get("missing_standard")
+                        and not validation.get("missing_advanced")
+                        and not validation.get("missing_operations")
+                        and not validation.get("uncovered_features")
+                        and not validation.get("invalid_tables")
+                        and not validation.get("invalid_backends")
+                        and validation.get("event_contract") == "AppGen-X"
+                        and validation.get("stream_picker_visible") is False,
+                    },
+                    {
+                        "id": "assurance_smoke_side_effect_free",
+                        "ok": smoke.get("ok") is True and not smoke.get("side_effects"),
+                    },
+                )
+            )
+        except Exception as exc:  # pragma: no cover - surfaced by audit output
+            checks.append(
+                {
+                    "id": "capability_assurance_executes",
+                    "ok": False,
+                    "path": f"{relative_dir}/capability_assurance.py",
+                    "error": str(exc),
+                }
+            )
+    elif runtime_test_path.is_file():
+        try:
+            py_compile.compile(str(runtime_test_path), doraise=True)
+            text = runtime_test_path.read_text(encoding="utf-8")
+            lowered = text.lower()
+            runtime = importlib.import_module(f"pyAppGen.pbcs.{key}.runtime")
+            runtime_capabilities = getattr(runtime, f"{key}_runtime_capabilities")()
+            runtime_smoke = getattr(runtime, f"{key}_runtime_smoke")()
+            evidence.update(
+                {
+                    "runtime_capabilities": runtime_capabilities,
+                    "runtime_smoke": runtime_smoke,
+                    "test_path": f"{relative_dir}/tests/test_runtime_capabilities.py",
+                }
+            )
+            checks.extend(
+                (
+                    {
+                        "id": "runtime_capability_test_compiles",
+                        "ok": True,
+                        "path": f"{relative_dir}/tests/test_runtime_capabilities.py",
+                    },
+                    {
+                        "id": "runtime_capability_test_covers_table_stakes",
+                        "ok": "standard" in lowered
+                        and "advanced" in lowered
+                        and "configuration" in lowered
+                        and "rule" in lowered
+                        and "parameter" in lowered
+                        and "appgen-x" in lowered
+                        and "boundary" in lowered,
+                    },
+                    {
+                        "id": "runtime_capabilities_execute",
+                        "ok": runtime_capabilities.get("ok") is True
+                        and bool(runtime_capabilities.get("standard_features"))
+                        and bool(runtime_capabilities.get("capabilities")),
+                    },
+                    {
+                        "id": "runtime_smoke_executes",
+                        "ok": runtime_smoke.get("ok") is True
+                        and not tuple(runtime_smoke.get("blocking_gaps", ())),
+                    },
+                )
+            )
+        except Exception as exc:  # pragma: no cover - surfaced by audit output
+            checks.append(
+                {
+                    "id": "runtime_capability_assurance_executes",
+                    "ok": False,
+                    "path": f"{relative_dir}/tests/test_runtime_capabilities.py",
+                    "error": str(exc),
+                }
+            )
+    return {
+        "format": "appgen.pbc-package-local-assurance-contract.v1",
+        "ok": all(check["ok"] for check in checks),
+        "pbc": key,
+        "directory": relative_dir,
+        "assurance_artifact": (
+            f"{relative_dir}/capability_assurance.py"
+            if assurance_path.is_file()
+            else f"{relative_dir}/tests/test_runtime_capabilities.py"
+        ),
+        "checks": tuple(checks),
+        "evidence": evidence,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def pbc_package_local_assurance_audit(selected_pbcs: tuple[str, ...] | list[str] | None = None) -> dict:
+    """Verify every implemented PBC has executable package-local capability assurance."""
+    selected = tuple(dict.fromkeys(selected_pbcs or IMPLEMENTED_PBC_KEYS))
+    contracts = tuple(pbc_package_local_assurance_contract(key) for key in selected)
+    return {
+        "format": "appgen.pbc-package-local-assurance-audit.v1",
+        "ok": bool(contracts) and all(contract["ok"] for contract in contracts),
+        "pbc_count": len(contracts),
+        "contracts": contracts,
+        "blocking_gaps": tuple(contract for contract in contracts if not contract["ok"]),
+    }
+
+
 def _pbc_specification_path(key: str) -> Path:
     return Path(__file__).resolve().parent / "pbcs" / key / "SPECIFICATION.md"
 
@@ -5462,6 +5621,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         runtime = contract.get("advanced_runtime", {})
         source = contract.get("source_package", {})
         table_stakes = _pbc_table_stakes_evidence(contract)
+        package_local_assurance = pbc_package_local_assurance_contract(key)
         standard_features = tuple(runtime.get("standard_features") or source.get("standard_features") or ())
         advanced_capabilities = tuple(runtime.get("capabilities", ()))
         advanced_runtime = _pbc_advanced_runtime_evidence(
@@ -5493,6 +5653,11 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
                     "ok": table_stakes["ok"],
                     "required_evidence": PBC_TABLE_STAKES_REQUIRED_EVIDENCE,
                     "checks": table_stakes["checks"],
+                },
+                {
+                    "id": f"{key}:package_local_assurance",
+                    "ok": package_local_assurance["ok"],
+                    "package_local_assurance": package_local_assurance,
                 },
                 {
                     "id": f"{key}:release_audit_ready",
@@ -5845,6 +6010,7 @@ def pbc_release_audit() -> dict:
     specification_audit = pbc_specification_release_audit()
     source_artifact_audit = pbc_source_artifact_release_audit()
     source_test_coverage = pbc_source_runtime_test_coverage_audit()
+    package_local_assurance = pbc_package_local_assurance_audit()
     implementation_audit = pbc_implementation_release_audit()
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
@@ -5876,6 +6042,7 @@ def pbc_release_audit() -> dict:
             "ok": specification_audit["ok"]
             and source_artifact_audit["ok"]
             and source_test_coverage["ok"]
+            and package_local_assurance["ok"]
             and implementation_audit["ok"]
             and implementation_audit["pbc_count"] == len(PBC_CATALOG),
             "specification_checks": tuple(
@@ -5889,6 +6056,7 @@ def pbc_release_audit() -> dict:
             ),
             "source_artifacts": source_artifact_audit,
             "source_test_coverage": source_test_coverage,
+            "package_local_assurance": package_local_assurance,
             "checks": implementation_audit["checks"],
         },
         {
@@ -6009,6 +6177,7 @@ def pbc_release_audit() -> dict:
         "specification_audit": specification_audit,
         "source_artifacts": source_artifact_audit,
         "source_test_coverage": source_test_coverage,
+        "package_local_assurance": package_local_assurance,
         "implementation_audit": implementation_audit,
         "sample_composition": composition,
         "nl_selection": nl_selection,

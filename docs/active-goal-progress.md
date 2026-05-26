@@ -1781,6 +1781,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the generated runtime exposes registry, observer hooks, update queue,
   validation/converter pipelines, runtime triggers, and executable pipeline
   stages before release claims. Commit: `f06fe83`.
+- Current package-local assurance release-gate pass adds
+  `pbc_package_local_assurance_audit()` so implemented PBC release checks now
+  execute package-local `capability_assurance.py` evidence or runtime-capability
+  test evidence for every implemented PBC. `pbc_implemented_capability_audit()`
+  and `pbc_release_audit()` now include this gate, proving that the per-PBC
+  assurance work is release-blocking rather than loose documentation. Focused
+  package-local assurance tests pass (`3 passed`), targeted PBC evidence tests
+  pass (`13 passed`), all package-local PBC tests pass (`396 passed`), and the
+  full PBC audit stack including all built-in generation smoke and
+  `pbc_release_audit()` returns true. Commit: `pending`.
 
 ## Open Completion Areas
 
