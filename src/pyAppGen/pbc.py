@@ -592,6 +592,40 @@ TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "talent_mlops_governance",
 )
+MRP_ENGINE_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_planning_lifecycle",
+    "graph_relational_bom_topology",
+    "multi_tenant_site_planning_isolation",
+    "schema_evolution_resilient_planning_schema",
+    "probabilistic_shortage_capacity_risk_scoring",
+    "real_time_material_plan_analytics",
+    "counterfactual_planning_policy_simulation",
+    "temporal_demand_shortage_forecasting",
+    "autonomous_planning_exception_resolution",
+    "semantic_demand_bom_instruction_parsing",
+    "predictive_material_capacity_compliance_risk",
+    "self_healing_supply_route_selection",
+    "zero_knowledge_supply_availability_proof",
+    "immutable_planning_audit_trail",
+    "dynamic_mrp_policy_screening",
+    "automated_mrp_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_mrp_federation",
+    "inventory_order_forecast_integration",
+    "decentralized_item_source_identity",
+    "chaos_engineered_planning_tolerance",
+    "quantum_resistant_planning_authorization",
+    "carbon_aware_planning_batching",
+    "algebraic_material_allocation_optimization",
+    "mechanism_design_capacity_allocation",
+    "information_theoretic_shortage_anomaly_detection",
+    "temporal_material_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_shortage_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "planning_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -608,6 +642,7 @@ IMPLEMENTED_PBC_KEYS = (
     "time_labor",
     "payroll_engine",
     "talent_onboarding",
+    "mrp_engine",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2851,6 +2886,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = payroll_engine_runtime_capabilities()
     elif key == "talent_onboarding":
         advanced_runtime = talent_onboarding_runtime_capabilities()
+    elif key == "mrp_engine":
+        advanced_runtime = mrp_engine_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3142,6 +3179,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "time_labor": len(TIME_LABOR_ADVANCED_CAPABILITY_KEYS),
         "payroll_engine": len(PAYROLL_ENGINE_ADVANCED_CAPABILITY_KEYS),
         "talent_onboarding": len(TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS),
+        "mrp_engine": len(MRP_ENGINE_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4848,3 +4886,22 @@ from .pbcs.talent_onboarding import talent_onboarding_runtime_capabilities  # no
 from .pbcs.talent_onboarding import talent_onboarding_runtime_smoke  # noqa: E402,F401
 from .pbcs.talent_onboarding import talent_onboarding_set_parameter  # noqa: E402,F401
 from .pbcs.talent_onboarding import talent_onboarding_ui_contract  # noqa: E402,F401
+from .pbcs.mrp_engine import MRP_ENGINE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.mrp_engine import MRP_ENGINE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.mrp_engine import MRP_ENGINE_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_build_workbench_view  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_calculate_material_plan  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_configure_runtime  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_create_mrp_run  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_empty_state  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_explode_bom  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_ingest_demand_projection  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_ingest_inventory_projection  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_register_bom  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_register_rule  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_release_planned_order  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_render_workbench  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_runtime_capabilities  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_runtime_smoke  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_set_parameter  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_ui_contract  # noqa: E402,F401
