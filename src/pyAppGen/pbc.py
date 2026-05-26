@@ -197,6 +197,40 @@ PBC_LIFECYCLE_DOCUMENTATION_ARTIFACTS = (
     "tests/test_contract.py",
     "RELEASE_EVIDENCE.md",
 )
+PBC_SOURCE_RUNTIME_TEST_REQUIRED_CONCEPTS = (
+    {
+        "id": "runtime_capabilities",
+        "terms": (("runtime_capabilities",),),
+    },
+    {
+        "id": "runtime_smoke",
+        "terms": (("runtime_smoke",),),
+    },
+    {
+        "id": "schema_service_release_contracts",
+        "terms": (("build_schema_contract",), ("build_service_contract",), ("build_release_evidence",)),
+    },
+    {
+        "id": "implementation_contract",
+        "terms": (("implementation_contract",),),
+    },
+    {
+        "id": "event_handling",
+        "terms": (("receive_event", "handle_event", "ingest_event"),),
+    },
+    {
+        "id": "ui_workbench",
+        "terms": (("workbench", "ui_contract"),),
+    },
+    {
+        "id": "boundary_validation",
+        "terms": (("verify_owned_table_boundary", "foreign"),),
+    },
+    {
+        "id": "configuration_rules_parameters",
+        "terms": (("configure_runtime",), ("set_parameter",), ("register_rule",)),
+    },
+)
 PBC_ADVANCED_DOMAIN_REQUIRED_AREAS = (
     "foundational_architecture",
     "computational_analytics",
@@ -4265,6 +4299,87 @@ def pbc_lifecycle_documentation_audit() -> dict:
     }
 
 
+def pbc_source_runtime_test_coverage_audit(
+    selected_pbcs: tuple[str, ...] | list[str] | None = None,
+) -> dict:
+    """Verify every built-in PBC has focused source runtime tests for required behavior."""
+    selected = tuple(dict.fromkeys(selected_pbcs or IMPLEMENTED_PBC_KEYS))
+    repo_root = Path(__file__).resolve().parents[2]
+    contracts = []
+    for key in selected:
+        relative_path = f"tests/test_pbc_{key}_runtime.py"
+        path = repo_root / relative_path
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            contracts.append(
+                {
+                    "pbc": key,
+                    "ok": False,
+                    "path": relative_path,
+                    "error": str(exc),
+                    "checks": (
+                        {"id": "file_exists", "ok": False, "error": str(exc)},
+                    ),
+                    "blocking_gaps": (
+                        {"id": "file_exists", "ok": False, "error": str(exc)},
+                    ),
+                }
+            )
+            continue
+        lowered = text.lower()
+        test_functions = tuple(re.findall(r"^def\s+(test_[a-zA-Z0-9_]+)\s*\(", text, flags=re.MULTILINE))
+        concept_checks = []
+        for concept in PBC_SOURCE_RUNTIME_TEST_REQUIRED_CONCEPTS:
+            missing_terms = tuple(
+                alternatives
+                for alternatives in concept["terms"]
+                if not any(term.lower() in lowered for term in alternatives)
+            )
+            concept_checks.append(
+                {
+                    "id": concept["id"],
+                    "ok": not missing_terms,
+                    "missing_terms": missing_terms,
+                }
+            )
+        checks = (
+            {
+                "id": "file_exists",
+                "ok": path.is_file(),
+            },
+            {
+                "id": "stable_pbc_key_reference",
+                "ok": key in lowered,
+            },
+            {
+                "id": "focused_test_depth",
+                "ok": len(test_functions) >= 2,
+                "test_functions": test_functions,
+            },
+            *concept_checks,
+        )
+        contracts.append(
+            {
+                "pbc": key,
+                "ok": all(check["ok"] for check in checks),
+                "path": relative_path,
+                "test_function_count": len(test_functions),
+                "test_functions": test_functions,
+                "checks": checks,
+                "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+            }
+        )
+    return {
+        "format": "appgen.pbc-source-runtime-test-coverage-audit.v1",
+        "ok": bool(contracts) and all(contract["ok"] for contract in contracts),
+        "pbc_count": len(contracts),
+        "required_concepts": PBC_SOURCE_RUNTIME_TEST_REQUIRED_CONCEPTS,
+        "contracts": tuple(contracts),
+        "blocking_gaps": tuple(contract for contract in contracts if not contract["ok"]),
+    }
+
+
 def _pbc_source_package_contract(key: str) -> dict:
     try:
         module = importlib.import_module(f"pyAppGen.pbcs.{key}")
@@ -5425,6 +5540,7 @@ def pbc_release_audit() -> dict:
     package_loading = pbc_package_loading_smoke_audit()
     lifecycle_docs = pbc_lifecycle_documentation_audit()
     specification_audit = pbc_specification_release_audit()
+    source_test_coverage = pbc_source_runtime_test_coverage_audit()
     implementation_audit = pbc_implementation_release_audit()
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
@@ -5454,6 +5570,7 @@ def pbc_release_audit() -> dict:
         {
             "id": "pbc_implementation_contracts",
             "ok": specification_audit["ok"]
+            and source_test_coverage["ok"]
             and implementation_audit["ok"]
             and implementation_audit["pbc_count"] == len(PBC_CATALOG),
             "specification_checks": tuple(
@@ -5465,6 +5582,7 @@ def pbc_release_audit() -> dict:
                 }
                 for contract in specification_audit["contracts"]
             ),
+            "source_test_coverage": source_test_coverage,
             "checks": implementation_audit["checks"],
         },
         {
@@ -5583,6 +5701,7 @@ def pbc_release_audit() -> dict:
         "package_loading": package_loading,
         "lifecycle_documentation": lifecycle_docs,
         "specification_audit": specification_audit,
+        "source_test_coverage": source_test_coverage,
         "implementation_audit": implementation_audit,
         "sample_composition": composition,
         "nl_selection": nl_selection,

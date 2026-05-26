@@ -3,6 +3,7 @@ from importlib import import_module
 from pyAppGen.pbc import (
     PBC_CATALOG,
     pbc_implementation_release_audit,
+    pbc_source_runtime_test_coverage_audit,
     pbc_specification_release_audit,
 )
 
@@ -65,6 +66,19 @@ def test_every_builtin_pbc_has_comprehensive_package_specification():
         assert contract["word_count"] >= audit["minimum_words"]
         assert not contract["missing_concepts"]
         assert not contract["restricted_legacy_references"]
+
+
+def test_every_builtin_pbc_has_focused_source_runtime_test_coverage():
+    audit = pbc_source_runtime_test_coverage_audit(tuple(PBC_CATALOG))
+
+    assert audit["format"] == "appgen.pbc-source-runtime-test-coverage-audit.v1"
+    assert audit["ok"] is True
+    assert audit["pbc_count"] == len(PBC_CATALOG)
+    assert not audit["blocking_gaps"]
+    for contract in audit["contracts"]:
+        assert contract["path"] == f"tests/test_pbc_{contract['pbc']}_runtime.py"
+        assert contract["test_function_count"] >= 2
+        assert not contract["blocking_gaps"]
 
 
 def test_each_builtin_pbc_passes_release_audit_independently():
