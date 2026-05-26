@@ -1153,6 +1153,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `archive/repo-cleanup-2026-05-26/`. The moved tracked folders are excluded
   from package builds and have no active source, test, docs, README, build, or
   frontend references.
+- Current design-time package ecosystem pass adds standalone operation-step and
+  validation-step contracts to each generated package-manager module. Source
+  and generated replay matrices now fail unless install, preview, registry,
+  lifecycle, update, and rollback modules expose one-file module contracts,
+  side-effect-free operation steps, validation steps, and matching generated
+  test exports.
 
 ## Open Completion Areas
 

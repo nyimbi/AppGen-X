@@ -11308,6 +11308,8 @@ EXPECTED_EXPORTS = (
     "package_manifest",
     "run_package_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -11450,14 +11452,34 @@ def runtime_manifest(package_ids=()):
     return _runtime().package_manager_runtime_manifest(package_ids)
 
 
-def smoke_test(package_ids=()):
-    """Run side-effect-free checks for this generated package manager module."""
+def operation_steps(package_ids=()):
+    """Return the concrete side-effect-free operation steps for this module."""
+    operation = run_package_operation(package_ids)
+    return {{
+        "format": "appgen.package-manager-module-operation-steps.v1",
+        "module": MODULE,
+        "kind": operation["kind"],
+        "ok": operation["ok"] and bool(operation["operation_steps"]),
+        "steps": tuple(operation["operation_steps"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps(package_ids=()):
+    """Return the validation steps that prove this module is safe to load."""
     contract = module_contract()
     manifest = package_manifest(package_ids)
     operation = run_package_operation(package_ids)
     runtime = runtime_manifest(package_ids)
+    steps = (
+        "module_contract_ok",
+        "package_manifest_ok",
+        "package_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
     return {{
-        "format": "appgen.package-manager-module-smoke-test.v1",
+        "format": "appgen.package-manager-module-validation-steps.v1",
         "module": MODULE,
         "kind": contract["kind"],
         "ok": contract["ok"]
@@ -11466,13 +11488,42 @@ def smoke_test(package_ids=()):
         and runtime["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
+def smoke_test(package_ids=()):
+    """Run side-effect-free checks for this generated package manager module."""
+    contract = module_contract()
+    manifest = package_manifest(package_ids)
+    operation = run_package_operation(package_ids)
+    runtime = runtime_manifest(package_ids)
+    operation_step_contract = operation_steps(package_ids)
+    validation_step_contract = validation_steps(package_ids)
+    return {{
+        "format": "appgen.package-manager-module-smoke-test.v1",
+        "module": MODULE,
+        "kind": contract["kind"],
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and operation_step_contract["ok"]
+        and validation_step_contract["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
         "checks": (
             "module_contract_resolves",
             "package_manifest_resolves",
             "package_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operation_step_contract,
+        "validation_steps": validation_step_contract,
     }}
 '''
 
@@ -11517,15 +11568,28 @@ def test_package_manager_module_smoke():
     assert result["checks"]
 
 
+def test_package_manager_module_step_contracts():
+    """Assert standalone package operation and validation step contracts pass."""
+    module = load_package_manager_module()
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps()["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_package_manager_module_contract()
     test_package_manager_module_smoke()
+    test_package_manager_module_step_contracts()
     return {{
         "format": "appgen.package-manager-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_package_manager_module_contract", "test_package_manager_module_smoke"),
+        "tests": (
+            "test_package_manager_module_contract",
+            "test_package_manager_module_smoke",
+            "test_package_manager_module_step_contracts",
+        ),
     }}
 '''
 
@@ -18717,6 +18781,8 @@ def package_manager_module_file_manifest(package_ids=()):
         "package_manifest",
         "run_package_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     module_dir = Path(__file__).with_name("package_manager_modules")
@@ -18768,6 +18834,7 @@ def package_manager_module_test_file_manifest(package_ids=()):
         "load_package_manager_module",
         "test_package_manager_module_contract",
         "test_package_manager_module_smoke",
+        "test_package_manager_module_step_contracts",
         "smoke_test",
     )
     test_dir = Path(__file__).with_name("package_manager_module_tests")
@@ -18820,15 +18887,24 @@ def package_manager_module_runtime_replay_matrix(package_ids=()):
         module_path = module_dir / f"{item['module']}.py"
         smoke = {"ok": False, "side_effects": (), "error": "missing_module"}
         operation = {"ok": False, "side_effects": (), "error": "missing_module"}
+        operation_step_contract = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
+        validation_step_contract = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_package_manager_replay_{item['module']}")
             smoke = module.smoke_test(package_ids)
             operation = module.run_package_operation(package_ids)
+            operation_step_contract = module.operation_steps(package_ids)
+            validation_step_contract = module.validation_steps(package_ids)
         replays.append(
             {
                 "module": item["module"],
                 "kind": operation.get("kind", smoke.get("kind", "")) if isinstance(operation, dict) else "",
-                "operation_steps": tuple(operation.get("operation_steps", ())) if isinstance(operation, dict) else (),
+                "operation_steps": tuple(operation_step_contract.get("steps", ()))
+                if isinstance(operation_step_contract, dict)
+                else (),
+                "validation_steps": tuple(validation_step_contract.get("steps", ()))
+                if isinstance(validation_step_contract, dict)
+                else (),
                 "operation_name": operation_by_kind.get(operation.get("kind", smoke.get("kind", "")), "")
                 if isinstance(operation, dict)
                 else "",
@@ -18838,10 +18914,14 @@ def package_manager_module_runtime_replay_matrix(package_ids=()):
                 and tests_by_module.get(item["module"], {}).get("smoke_ok", False)
                 and bool(smoke.get("ok"))
                 and bool(operation.get("ok"))
+                and bool(operation_step_contract.get("ok"))
+                and bool(validation_step_contract.get("ok"))
                 and not tuple(smoke.get("side_effects", ()))
                 and not tuple(operation.get("side_effects", ())),
                 "smoke": smoke,
                 "operation": operation,
+                "operation_step_contract": operation_step_contract,
+                "validation_step_contract": validation_step_contract,
                 "test": tests_by_module.get(item["module"], {}),
             }
         )
@@ -18876,6 +18956,13 @@ def package_manager_module_runtime_replay_matrix(package_ids=()):
         "restore_registry",
         "verify_registry_clean",
     }
+    required_validation_steps = {
+        "module_contract_ok",
+        "package_manifest_ok",
+        "package_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    }
     checks = (
         {
             "id": "generated_package_manager_modules_replay",
@@ -18894,10 +18981,18 @@ def package_manager_module_runtime_replay_matrix(package_ids=()):
             "evidence": tuple(sorted({step for item in replays for step in item["operation_steps"]})),
         },
         {
+            "id": "generated_package_manager_validation_step_coverage",
+            "ok": required_validation_steps
+            <= {step for item in replays if item["ok"] for step in item["validation_steps"]},
+            "evidence": tuple(sorted({step for item in replays for step in item["validation_steps"]})),
+        },
+        {
             "id": "generated_package_manager_replays_side_effect_free",
             "ok": all(
                 not tuple(item["smoke"].get("side_effects", ()))
                 and not tuple(item["operation"].get("side_effects", ()))
+                and not tuple(item["operation_step_contract"].get("side_effects", ()))
+                and not tuple(item["validation_step_contract"].get("side_effects", ()))
                 for item in replays
             ),
             "evidence": (),
@@ -18911,6 +19006,7 @@ def package_manager_module_runtime_replay_matrix(package_ids=()):
         "guards": (
             "generated_module_contracts_before_runtime_claim",
             "generated_module_tests_before_release_claim",
+            "generated_module_step_contracts_before_release_claim",
             "generated_operations_side_effect_free",
         ),
         "side_effects": (),
@@ -50294,7 +50390,7 @@ def component_package_readiness_contract(package_ids=()):
 def package_manager_module_replay_matrix(package_ids=()):
     """Replay generated package manager module contracts as one release gate."""
     package_manager_module_artifacts = tuple(
-        {{"module": module, "kind": kind, "path": f"app/package_manager_modules/{{module}}.py", "exports": ("module_contract", "package_manifest", "run_package_operation", "runtime_manifest", "smoke_test"), "ok": True}}
+        {{"module": module, "kind": kind, "path": f"app/package_manager_modules/{{module}}.py", "exports": ("module_contract", "package_manifest", "run_package_operation", "runtime_manifest", "operation_steps", "validation_steps", "smoke_test"), "ok": True}}
         for module, kind in (
             ("package_install_module", "install"),
             ("package_preview_module", "preview"),
@@ -50305,7 +50401,7 @@ def package_manager_module_replay_matrix(package_ids=()):
         )
     )
     package_manager_module_test_artifacts = tuple(
-        {{"module": item["module"], "kind": item["kind"], "path": f"app/package_manager_module_tests/test_{{item['module']}}.py", "exports": ("load_package_manager_module", "test_package_manager_module_contract", "test_package_manager_module_smoke", "smoke_test"), "ok": True}}
+        {{"module": item["module"], "kind": item["kind"], "path": f"app/package_manager_module_tests/test_{{item['module']}}.py", "exports": ("load_package_manager_module", "test_package_manager_module_contract", "test_package_manager_module_smoke", "test_package_manager_module_step_contracts", "smoke_test"), "ok": True}}
         for item in package_manager_module_artifacts
     )
     tests_by_module = {{item["module"]: item for item in package_manager_module_test_artifacts}}
@@ -50317,12 +50413,26 @@ def package_manager_module_replay_matrix(package_ids=()):
         "package_update_module": "versioned_update",
         "package_rollback_module": "uninstall_cleanup",
     }}
+    operation_steps_by_module = {{
+        "package_install_module": ("read_package_manifest", "validate_metadata", "resolve_dependency_graph", "prepare_lockfile_entry"),
+        "package_preview_module": ("validate_load_request", "create_sandbox_loader", "instantiate_preview_adapter", "run_adapter_smoke", "unload_preview"),
+        "package_registry_module": ("load_adapter", "register_palette_entries", "register_inspector_editors", "register_binding_adapters", "commit_project_manifest", "refresh_palette"),
+        "package_lifecycle_module": ("trust_validation", "install", "update", "uninstall", "verify_registry_clean"),
+        "package_update_module": ("snapshot_lockfile", "download_to_sandbox", "run_adapter_smoke", "refresh_palette", "commit_lockfile"),
+        "package_rollback_module": ("find_palette_references", "disable_adapters", "remove_palette_entries", "restore_lockfile", "record_audit", "restore_registry"),
+    }}
+    validation_steps_by_module = {{
+        module: ("module_contract_ok", "package_manifest_ok", "package_operation_ok", "runtime_manifest_ok", "side_effects_disallowed")
+        for module in operation_by_module
+    }}
     module_replays = tuple(
         {{
             "module": item["module"],
             "kind": item["kind"],
             "operation": operation_by_module[item["module"]],
-            "ok": item["ok"] and "run_package_operation" in item["exports"] and item["module"] in tests_by_module and tests_by_module[item["module"]]["ok"] and "test_package_manager_module_smoke" in tests_by_module[item["module"]]["exports"],
+            "ok": item["ok"] and "run_package_operation" in item["exports"] and "operation_steps" in item["exports"] and "validation_steps" in item["exports"] and item["module"] in tests_by_module and tests_by_module[item["module"]]["ok"] and "test_package_manager_module_smoke" in tests_by_module[item["module"]]["exports"],
+            "operation_steps": operation_steps_by_module[item["module"]],
+            "validation_steps": validation_steps_by_module[item["module"]],
             "exports": item["exports"],
             "test_exports": tests_by_module[item["module"]]["exports"],
         }}
@@ -50332,6 +50442,8 @@ def package_manager_module_replay_matrix(package_ids=()):
     lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
     checks = (
         {{"id": "package_manager_modules_replay", "ok": len(module_replays) == 6 and all(item["ok"] for item in module_replays) and {{"install_and_register", "preview_load", "registry_commit", "lifecycle_execution", "versioned_update", "uninstall_cleanup"}} <= {{item["operation"] for item in module_replays}}, "evidence": module_replays}},
+        {{"id": "package_manager_operation_step_coverage", "ok": {{"read_package_manifest", "validate_metadata", "resolve_dependency_graph", "validate_load_request", "create_sandbox_loader", "instantiate_preview_adapter", "register_palette_entries", "register_inspector_editors", "register_binding_adapters", "commit_project_manifest", "trust_validation", "install", "update", "uninstall", "snapshot_lockfile", "download_to_sandbox", "find_palette_references", "disable_adapters", "remove_palette_entries", "restore_registry", "verify_registry_clean"}} <= {{step for item in module_replays if item["ok"] for step in item["operation_steps"]}}, "evidence": tuple(sorted({{step for item in module_replays for step in item["operation_steps"]}}))}},
+        {{"id": "package_manager_validation_step_coverage", "ok": {{"module_contract_ok", "package_manifest_ok", "package_operation_ok", "runtime_manifest_ok", "side_effects_disallowed"}} <= {{step for item in module_replays if item["ok"] for step in item["validation_steps"]}}, "evidence": tuple(sorted({{step for item in module_replays for step in item["validation_steps"]}}))}},
         {{"id": "package_lifecycle_replay_aligned", "ok": lifecycle_replay["ok"] and all(item["final_state"]["registry_clean"] for item in lifecycle_replay["replay"]), "evidence": lifecycle_replay}},
         {{"id": "package_execution_replay_aligned", "ok": lifecycle_execution["ok"] and all(transaction["final_state"]["registry_clean"] for transaction in lifecycle_execution["transactions"]), "evidence": lifecycle_execution}},
         {{"id": "package_module_replays_side_effect_free", "ok": not lifecycle_replay["side_effects"] and not lifecycle_execution["side_effects"], "evidence": {{"lifecycle_replay": lifecycle_replay["side_effects"], "lifecycle_execution": lifecycle_execution["side_effects"]}}}},
@@ -50374,11 +50486,11 @@ def design_time_package_manager_workbench(package_ids=()):
     installation_scenario = component_package_run_installation_scenario_operation(next(iter(session["packages"]), "devexpress-native"))
     marketplace = component_package_marketplace_publication_contract(package_ids)
     package_manager_module_artifacts = tuple(
-        {{"module": module, "path": f"app/package_manager_modules/{{module}}.py", "exports": ("module_contract", "package_manifest", "run_package_operation", "runtime_manifest", "smoke_test"), "ok": True}}
+        {{"module": module, "path": f"app/package_manager_modules/{{module}}.py", "exports": ("module_contract", "package_manifest", "run_package_operation", "runtime_manifest", "operation_steps", "validation_steps", "smoke_test"), "ok": True}}
         for module in ("package_install_module", "package_preview_module", "package_registry_module", "package_lifecycle_module", "package_update_module", "package_rollback_module")
     )
     package_manager_module_test_artifacts = tuple(
-        {{"module": module, "path": f"app/package_manager_module_tests/test_{{module}}.py", "exports": ("load_package_manager_module", "test_package_manager_module_contract", "test_package_manager_module_smoke", "smoke_test"), "ok": True}}
+        {{"module": module, "path": f"app/package_manager_module_tests/test_{{module}}.py", "exports": ("load_package_manager_module", "test_package_manager_module_contract", "test_package_manager_module_smoke", "test_package_manager_module_step_contracts", "smoke_test"), "ok": True}}
         for module in ("package_install_module", "package_preview_module", "package_registry_module", "package_lifecycle_module", "package_update_module", "package_rollback_module")
     )
     module_replay_matrix = package_manager_module_replay_matrix(package_ids)
@@ -50411,9 +50523,9 @@ def design_time_package_manager_workbench(package_ids=()):
         }},
         {{"id": "marketplace_publication", "ok": marketplace["ok"] and {{"catalog_entries_present", "self_registration_entrypoints", "publication_pipeline_reviewed", "rollback_recipe_attached"}} <= {{check["id"] for check in marketplace["checks"] if check["ok"]}} and not marketplace["side_effects"], "evidence": marketplace}},
         {{"id": "package_readiness_contract", "ok": readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "marketplace_publication_ready", "installation_scenario_ready", "operation_surface_ready", "phase_order_ready", "side_effect_guard_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
-        {{"id": "package_manager_modules", "ok": len(package_manager_module_artifacts) == 6 and all(item["ok"] and "run_package_operation" in item["exports"] for item in package_manager_module_artifacts), "evidence": package_manager_module_artifacts}},
+        {{"id": "package_manager_modules", "ok": len(package_manager_module_artifacts) == 6 and all(item["ok"] and "run_package_operation" in item["exports"] and "operation_steps" in item["exports"] and "validation_steps" in item["exports"] for item in package_manager_module_artifacts), "evidence": package_manager_module_artifacts}},
         {{"id": "package_manager_module_tests", "ok": len(package_manager_module_test_artifacts) == 6 and all(item["ok"] and "test_package_manager_module_smoke" in item["exports"] for item in package_manager_module_test_artifacts), "evidence": package_manager_module_test_artifacts}},
-        {{"id": "package_manager_module_replay_matrix", "ok": module_replay_matrix["ok"] and {{"package_manager_modules_replay", "package_lifecycle_replay_aligned", "package_execution_replay_aligned", "package_module_replays_side_effect_free"}} <= {{check["id"] for check in module_replay_matrix["checks"] if check["ok"]}} and not module_replay_matrix["side_effects"], "evidence": module_replay_matrix}},
+        {{"id": "package_manager_module_replay_matrix", "ok": module_replay_matrix["ok"] and {{"package_manager_modules_replay", "package_manager_operation_step_coverage", "package_manager_validation_step_coverage", "package_lifecycle_replay_aligned", "package_execution_replay_aligned", "package_module_replays_side_effect_free"}} <= {{check["id"] for check in module_replay_matrix["checks"] if check["ok"]}} and not module_replay_matrix["side_effects"], "evidence": module_replay_matrix}},
         {{
             "id": "side_effect_guards",
             "ok": not session["side_effects"]

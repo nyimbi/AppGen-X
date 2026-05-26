@@ -3017,7 +3017,13 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         {
             "id": "package_manager_modules",
             "ok": len(package_manager_module_artifacts) == 6
-            and all(item["ok"] and "run_package_operation" in item["exports"] for item in package_manager_module_artifacts),
+            and all(
+                item["ok"]
+                and "run_package_operation" in item["exports"]
+                and "operation_steps" in item["exports"]
+                and "validation_steps" in item["exports"]
+                for item in package_manager_module_artifacts
+            ),
             "evidence": package_manager_module_artifacts,
         },
         {
@@ -3034,6 +3040,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "ok": module_replay_matrix["ok"]
             and {
                 "package_manager_modules_replay",
+                "package_manager_operation_step_coverage",
+                "package_manager_validation_step_coverage",
                 "package_lifecycle_replay_aligned",
                 "package_execution_replay_aligned",
                 "package_module_replays_side_effect_free",
@@ -24247,6 +24255,8 @@ def package_manager_module_file_manifest() -> tuple[dict, ...]:
         "package_manifest",
         "run_package_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -24273,6 +24283,7 @@ def package_manager_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_package_manager_module",
                 "test_package_manager_module_contract",
                 "test_package_manager_module_smoke",
+                "test_package_manager_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
@@ -24294,6 +24305,61 @@ def package_manager_module_replay_matrix(package_ids: tuple[str, ...] = ()) -> d
         "package_update_module": "versioned_update",
         "package_rollback_module": "uninstall_cleanup",
     }
+    operation_steps_by_module = {
+        "package_install_module": (
+            "read_package_manifest",
+            "validate_metadata",
+            "resolve_dependency_graph",
+            "prepare_lockfile_entry",
+        ),
+        "package_preview_module": (
+            "validate_load_request",
+            "create_sandbox_loader",
+            "instantiate_preview_adapter",
+            "run_adapter_smoke",
+            "unload_preview",
+        ),
+        "package_registry_module": (
+            "load_adapter",
+            "register_palette_entries",
+            "register_inspector_editors",
+            "register_binding_adapters",
+            "commit_project_manifest",
+            "refresh_palette",
+        ),
+        "package_lifecycle_module": (
+            "trust_validation",
+            "install",
+            "update",
+            "uninstall",
+            "verify_registry_clean",
+        ),
+        "package_update_module": (
+            "snapshot_lockfile",
+            "download_to_sandbox",
+            "run_adapter_smoke",
+            "refresh_palette",
+            "commit_lockfile",
+        ),
+        "package_rollback_module": (
+            "find_palette_references",
+            "disable_adapters",
+            "remove_palette_entries",
+            "restore_lockfile",
+            "record_audit",
+            "restore_registry",
+        ),
+    }
+    validation_steps_by_module = {
+        module: (
+            "module_contract_ok",
+            "package_manifest_ok",
+            "package_operation_ok",
+            "runtime_manifest_ok",
+            "side_effects_disallowed",
+        )
+        for module in operation_by_module
+    }
     module_replays = tuple(
         {
             "module": item["module"],
@@ -24301,9 +24367,13 @@ def package_manager_module_replay_matrix(package_ids: tuple[str, ...] = ()) -> d
             "operation": operation_by_module[item["module"]],
             "ok": item["ok"]
             and "run_package_operation" in item["exports"]
+            and "operation_steps" in item["exports"]
+            and "validation_steps" in item["exports"]
             and item["module"] in tests_by_module
             and tests_by_module[item["module"]]["ok"]
             and "test_package_manager_module_smoke" in tests_by_module[item["module"]]["exports"],
+            "operation_steps": operation_steps_by_module[item["module"]],
+            "validation_steps": validation_steps_by_module[item["module"]],
             "exports": item["exports"],
             "test_exports": tests_by_module.get(item["module"], {}).get("exports", ()),
         }
@@ -24319,6 +24389,36 @@ def package_manager_module_replay_matrix(package_ids: tuple[str, ...] = ()) -> d
         "versioned_update",
         "uninstall_cleanup",
     }
+    required_operation_steps = {
+        "read_package_manifest",
+        "validate_metadata",
+        "resolve_dependency_graph",
+        "validate_load_request",
+        "create_sandbox_loader",
+        "instantiate_preview_adapter",
+        "register_palette_entries",
+        "register_inspector_editors",
+        "register_binding_adapters",
+        "commit_project_manifest",
+        "trust_validation",
+        "install",
+        "update",
+        "uninstall",
+        "snapshot_lockfile",
+        "download_to_sandbox",
+        "find_palette_references",
+        "disable_adapters",
+        "remove_palette_entries",
+        "restore_registry",
+        "verify_registry_clean",
+    }
+    required_validation_steps = {
+        "module_contract_ok",
+        "package_manifest_ok",
+        "package_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    }
     checks = (
         {
             "id": "package_manager_modules_replay",
@@ -24326,6 +24426,18 @@ def package_manager_module_replay_matrix(package_ids: tuple[str, ...] = ()) -> d
             and all(item["ok"] for item in module_replays)
             and required_operations <= {item["operation"] for item in module_replays},
             "evidence": module_replays,
+        },
+        {
+            "id": "package_manager_operation_step_coverage",
+            "ok": required_operation_steps
+            <= {step for item in module_replays if item["ok"] for step in item["operation_steps"]},
+            "evidence": tuple(sorted({step for item in module_replays for step in item["operation_steps"]})),
+        },
+        {
+            "id": "package_manager_validation_step_coverage",
+            "ok": required_validation_steps
+            <= {step for item in module_replays if item["ok"] for step in item["validation_steps"]},
+            "evidence": tuple(sorted({step for item in module_replays for step in item["validation_steps"]})),
         },
         {
             "id": "package_lifecycle_replay_aligned",

@@ -3278,15 +3278,26 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } == {check["id"] for check in package_manager["checks"]}
     assert len(package_manager["package_manager_module_artifacts"]) == 6
     assert len(package_manager["package_manager_module_test_artifacts"]) == 6
-    assert all("run_package_operation" in item["exports"] for item in package_manager["package_manager_module_artifacts"])
+    assert all(
+        {"run_package_operation", "operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in package_manager["package_manager_module_artifacts"]
+    )
     assert all(
         "test_package_manager_module_smoke" in item["exports"]
+        for item in package_manager["package_manager_module_test_artifacts"]
+    )
+    assert all(
+        "test_package_manager_module_step_contracts" in item["exports"]
         for item in package_manager["package_manager_module_test_artifacts"]
     )
     package_module_replay_matrix = package_manager_module_replay_matrix()
     assert package_module_replay_matrix["format"] == "appgen.package-manager-module-replay-matrix.v1"
     assert package_module_replay_matrix["ok"] is True
     assert len(package_module_replay_matrix["module_replays"]) == 6
+    assert {
+        "package_manager_operation_step_coverage",
+        "package_manager_validation_step_coverage",
+    } <= {check["id"] for check in package_module_replay_matrix["checks"] if check["ok"]}
     assert package_manager["module_replay_matrix"]["ok"] is True
     assert {
         "package_manager_modules_replay",
@@ -15214,11 +15225,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_package_module_replay_matrix["module_replays"]) == 6
     assert generated_package_manager["module_replay_matrix"]["ok"] is True
     assert all(
-        "run_package_operation" in item["exports"]
+        {"run_package_operation", "operation_steps", "validation_steps"} <= set(item["exports"])
         for item in generated_package_manager["package_manager_module_artifacts"]
     )
     assert all(
         "test_package_manager_module_smoke" in item["exports"]
+        for item in generated_package_manager["package_manager_module_test_artifacts"]
+    )
+    assert all(
+        "test_package_manager_module_step_contracts" in item["exports"]
         for item in generated_package_manager["package_manager_module_test_artifacts"]
     )
     assert tuple(phase["phase"] for phase in generated_package_manager["package_readiness"]["phases"]) == (
@@ -16541,6 +16556,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "generated_package_manager_modules_replay",
         "generated_package_manager_operations_replay",
         "generated_package_manager_operation_step_coverage",
+        "generated_package_manager_validation_step_coverage",
         "generated_package_manager_replays_side_effect_free",
     } <= {check["id"] for check in package_manager_module_runtime_matrix["checks"] if check["ok"]}
     assert {item["module"] for item in package_manager_module_files["modules"]} == {
@@ -16565,6 +16581,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         module = _load_module(module_path, f"generated_package_manager_module_{item['module']}")
         assert module.smoke_test()["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
     for item in package_manager_module_tests["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
@@ -16588,6 +16606,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for step in item["operation_steps"]
     }
     assert all(item["operation_steps"] for item in package_manager_module_runtime_matrix["module_replays"])
+    assert all(item["validation_steps"] for item in package_manager_module_runtime_matrix["module_replays"])
+    assert {"side_effects_disallowed"} <= {
+        step
+        for item in package_manager_module_runtime_matrix["module_replays"]
+        for step in item["validation_steps"]
+    }
     assert package_manager_replay["side_effects"] == ()
     runtime_operations_file = output_dir / "runtime_operations.py"
     assert runtime_operations_file.exists()
