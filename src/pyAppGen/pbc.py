@@ -4390,6 +4390,9 @@ def _pbc_source_package_contract(key: str) -> dict:
         contract = module.implementation_contract()
         register = getattr(module, "register_pbc", None)
         registration_plan = getattr(module, "registration_plan", None)
+        package_metadata_manifest = getattr(module, "package_metadata_manifest", None)
+        validate_package_metadata = getattr(module, "validate_package_metadata", None)
+        package_discovery_plan = getattr(module, "package_discovery_plan", None)
         manifest = register() if callable(register) else None
         registration = (
             registration_plan()
@@ -4401,6 +4404,9 @@ def _pbc_source_package_contract(key: str) -> dict:
                 "error": "registration_plan entrypoint is missing or not callable",
             }
         )
+        metadata = package_metadata_manifest() if callable(package_metadata_manifest) else None
+        metadata_validation = validate_package_metadata() if callable(validate_package_metadata) else None
+        discovery = package_discovery_plan() if callable(package_discovery_plan) else None
     except Exception as exc:  # pragma: no cover - exercised by release audit failures
         return {
             "format": "appgen.pbc-source-package.v1",
@@ -4422,6 +4428,15 @@ def _pbc_source_package_contract(key: str) -> dict:
         and registration.get("ok") is True
         and registration.get("decision") in {"approved", "draft"}
         and key in (registration.get("catalog_patch") or {})
+        and isinstance(metadata, dict)
+        and metadata.get("pbc") == key
+        and metadata.get("stream_engine_picker_visible") is False
+        and metadata.get("event_contract") == "AppGen-X"
+        and isinstance(metadata_validation, dict)
+        and metadata_validation.get("ok") is True
+        and isinstance(discovery, dict)
+        and discovery.get("ok") is True
+        and discovery.get("side_effects") == ()
     )
     return {
         **contract,
@@ -4430,6 +4445,9 @@ def _pbc_source_package_contract(key: str) -> dict:
         "expected_directory": expected_directory,
         "manifest": manifest,
         "registration": registration,
+        "package_metadata": metadata,
+        "package_metadata_validation": metadata_validation,
+        "package_discovery": discovery,
     }
 
 
@@ -4531,6 +4549,9 @@ def pbc_source_artifact_contract(key: str) -> dict:
             "id": "self_registration_entrypoints_materialized",
             "ok": "def register_pbc(" in init_text
             and "def registration_plan(" in init_text
+            and "def package_metadata_manifest(" in init_text
+            and "def validate_package_metadata(" in init_text
+            and "def package_discovery_plan(" in init_text
             and "source_registration_plan" in init_text,
             "path": f"{relative_dir}/__init__.py",
         },
@@ -4623,6 +4644,9 @@ def pbc_source_artifact_contract(key: str) -> dict:
             and "release_readiness_manifest" in tests_text
             and "validate_release_evidence" in tests_text
             and "test_registration_plan_is_side_effect_free" in tests_text
+            and "package_metadata_manifest" in tests_text
+            and "validate_package_metadata" in tests_text
+            and "package_discovery_plan" in tests_text
             and "test_service_and_route_surface_are_executable" in tests_text
             and "service_operation_contracts" in tests_text
             and "api_route_contracts" in tests_text

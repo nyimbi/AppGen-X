@@ -70,12 +70,25 @@ def test_manifest_and_event_contract():
 
 
 def test_registration_plan_is_side_effect_free():
-    from .. import register_pbc, registration_plan
+    from .. import package_discovery_plan, package_metadata_manifest, register_pbc, registration_plan, validate_package_metadata
 
     assert register_pbc()['pbc'] == 'schema_registry'
     plan = registration_plan()
     assert plan['ok'] is True
     assert plan['catalog_patch']
+    metadata = package_metadata_manifest()
+    metadata_validation = validate_package_metadata()
+    discovery = package_discovery_plan()
+    assert metadata['ok'] is True
+    assert metadata_validation['ok'] is True
+    assert discovery['ok'] is True
+    assert metadata['stream_engine_picker_visible'] is False
+    assert metadata['event_contract'] == 'AppGen-X'
+    assert not metadata_validation['missing_entrypoints']
+    assert not metadata_validation['missing_publish_artifacts']
+    assert not metadata_validation['missing_capability_evidence']
+    assert not metadata_validation['invalid']
+    assert not discovery['side_effects']
 
 
 def test_service_and_route_surface_are_executable():

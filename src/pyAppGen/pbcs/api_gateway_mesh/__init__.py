@@ -3,6 +3,8 @@
 from .manifest import PBC_MANIFEST
 
 from ..source_contract import source_pbc_package_contract
+from ..source_contract import source_package_metadata
+from ..source_contract import validate_source_package_metadata
 from ..source_contract import source_registration_plan
 from .runtime import API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS
 from .runtime import API_GATEWAY_MESH_CONSUMED_EVENT_TYPES
@@ -73,3 +75,38 @@ def registration_plan(existing_catalog: dict | None = None) -> dict:
         register_pbc(),
         existing_catalog=existing_catalog,
     )
+
+
+def package_metadata_manifest() -> dict:
+    """Return package identity, artifacts, and discovery metadata."""
+    return source_package_metadata(PBC_KEY, register_pbc(), implementation_contract())
+
+
+def validate_package_metadata() -> dict:
+    """Validate package metadata without mutating catalog state."""
+    return validate_source_package_metadata(package_metadata_manifest())
+
+
+def package_discovery_plan(existing_catalog: dict | None = None) -> dict:
+    """Return side-effect-free package discovery and registration evidence."""
+    metadata_validation = validate_package_metadata()
+    registration = registration_plan(existing_catalog=existing_catalog)
+    return {
+        "format": "appgen.pbc-source-package-discovery-plan.v1",
+        "ok": metadata_validation["ok"] and registration["ok"],
+        "pbc": PBC_KEY,
+        "metadata_validation": metadata_validation,
+        "registration": registration,
+        "side_effects": (),
+    }
+
+
+def smoke_test() -> dict:
+    """Exercise package metadata validation and discovery planning."""
+    discovery = package_discovery_plan()
+    return {
+        "ok": discovery["ok"],
+        "discovery": discovery,
+        "side_effects": (),
+    }
+

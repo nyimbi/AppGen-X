@@ -1719,6 +1719,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and records the cleanup scope in a manifest. This keeps source, docs,
   templates, and in-flight PBC release-evidence edits untouched while removing
   generated cache directories from the working tree. Commit: `f6ebf82`.
+- Current PBC package metadata and discovery pass makes every built-in and
+  generated PBC expose executable package metadata, metadata validation,
+  package discovery plans, and package smoke tests that prove identity,
+  required entrypoints, publish artifacts, datastore allowlists, AppGen-X event
+  contracts, no stream-engine picker exposure, and side-effect-free
+  registration. Syntax checks pass, source/generated package evidence tests
+  pass (`8 passed`), all package-local PBC tests pass (`322 passed`), and the
+  full PBC audit stack including all built-in generation smoke and
+  `pbc_release_audit()` returns true. Commit: `pending`.
 
 ## Open Completion Areas
 
