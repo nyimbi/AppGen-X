@@ -3,6 +3,7 @@ import pytest
 from pyAppGen.pbcs.streaming_analytics import STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.streaming_analytics import STREAMING_ANALYTICS_OWNED_TABLES
 from pyAppGen.pbcs.streaming_analytics import STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.streaming_analytics import streaming_analytics_build_api_contract
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_build_workbench_view
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_configure_runtime
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_create_dashboard_projection
@@ -12,10 +13,12 @@ from pyAppGen.pbcs.streaming_analytics import streaming_analytics_ingest_metric_
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_receive_event
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_register_metric_stream
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_register_rule
+from pyAppGen.pbcs.streaming_analytics import streaming_analytics_register_schema_extension
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_render_workbench
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_runtime_capabilities
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_runtime_smoke
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_set_parameter
+from pyAppGen.pbcs.streaming_analytics import streaming_analytics_permissions_contract
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_ui_contract
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_verify_owned_table_boundary
 
@@ -51,6 +54,9 @@ def test_streaming_analytics_runtime_applies_rules_parameters_events_and_ui() ->
         state,
         {"event_id": "pay_ops", "event_type": "PaymentCaptured", "payload": {"tenant": "tenant_ops", "region": "US", "amount": 1200.0, "currency": "USD"}},
     )["state"]
+    extension = streaming_analytics_register_schema_extension(state, "kpi_snapshot", {"risk_features": "jsonb"})
+    state = extension["state"]
+    assert extension["extension"]["version"] == 1
     state = streaming_analytics_ingest_metric_event(
         state,
         {"event_id": "metric_ops", "tenant": "tenant_ops", "event_type": "payment", "region": "US", "values": {"amount": 300.0}},
@@ -91,6 +97,18 @@ def test_streaming_analytics_runtime_applies_rules_parameters_events_and_ui() ->
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == STREAMING_ANALYTICS_OWNED_TABLES
 
+    api_contract = streaming_analytics_build_api_contract()
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["shared_table_access"] is False
+    assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
+        "register_metric_stream",
+        "define_window",
+        "ingest_metric_event",
+    }
+    permissions = streaming_analytics_permissions_contract()
+    assert "streaming_analytics_admin" in permissions["roles"]
+    assert "shared_table_access_forbidden" in permissions["policy_controls"]
+
 
 def test_streaming_analytics_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
     state = streaming_analytics_empty_state()
@@ -124,10 +142,18 @@ def test_streaming_analytics_rejects_invalid_inputs_and_proves_boundary_and_dead
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
-    boundary = streaming_analytics_verify_owned_table_boundary()
+    boundary = streaming_analytics_verify_owned_table_boundary(
+        ("metric_stream", "kpi_snapshot", "audit_ledger.AuditEventSealed", "GET /kpis")
+    )
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == ("metric_stream", "aggregation_window", "kpi_snapshot", "dashboard_projection")
     assert boundary["declared_dependencies"]["shared_tables"] == ()
+    violated = streaming_analytics_verify_owned_table_boundary(("payment_intent",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("payment_intent",)
+
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        streaming_analytics_register_schema_extension(state, "payment_intent", {"amount": "numeric"})
 
 
 def _configured_state() -> dict:

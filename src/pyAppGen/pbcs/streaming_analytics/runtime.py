@@ -144,12 +144,16 @@ def streaming_analytics_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "register_metric_stream",
             "define_window",
             "receive_event",
             "ingest_metric_event",
             "create_dashboard_projection",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -417,16 +421,120 @@ def streaming_analytics_build_workbench_view(state: dict, *, tenant: str) -> dic
     }
 
 
-def streaming_analytics_verify_owned_table_boundary() -> dict:
-    return {"format": "appgen.streaming-analytics-boundary.v1", "ok": True, "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES, "declared_dependencies": {"apis": ("POST /metric-streams", "GET /kpis", "GET /projections"), "events": STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES, "shared_tables": ()}}
+def streaming_analytics_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed_event_dependencies = {
+        "audit_ledger.AuditEventSealed",
+        "dom.OrderShipped",
+        "payment_orchestration.PaymentCaptured",
+    }
+    allowed_api_dependencies = {
+        "POST /metric-streams",
+        "GET /kpis",
+        "GET /projections",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(STREAMING_ANALYTICS_OWNED_TABLES)
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_api_dependencies
+        and not str(reference).startswith("streaming_analytics_")
+    )
+    return {
+        "format": "appgen.streaming-analytics-boundary.v1",
+        "ok": not violations,
+        "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": tuple(sorted(allowed_api_dependencies)),
+            "events": STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES,
+            "event_providers": tuple(sorted(allowed_event_dependencies)),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def streaming_analytics_build_api_contract() -> dict:
-    return {"format": "appgen.streaming-analytics-api-contract.v1", "ok": True, "routes": ("POST /metric-streams", "GET /kpis", "GET /projections"), "shared_table_access": False, "event_contract": "AppGen-X"}
+    return {
+        "format": "appgen.streaming-analytics-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {
+                "route": "POST /metric-streams",
+                "command": "register_metric_stream",
+                "owned_tables": ("metric_stream",),
+                "requires_permission": "streaming_analytics.stream.write",
+                "idempotency_key": "stream_id",
+            },
+            {
+                "route": "POST /aggregation-windows",
+                "command": "define_window",
+                "owned_tables": ("aggregation_window",),
+                "requires_permission": "streaming_analytics.window.write",
+                "idempotency_key": "window_id",
+            },
+            {
+                "route": "POST /metric-events",
+                "command": "ingest_metric_event",
+                "owned_tables": ("kpi_snapshot",),
+                "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES,
+                "requires_permission": "streaming_analytics.event.write",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /kpis",
+                "query": "kpi_snapshot",
+                "owned_tables": ("kpi_snapshot",),
+                "requires_permission": "streaming_analytics.audit",
+            },
+            {
+                "route": "GET /projections",
+                "query": "dashboard_projection",
+                "owned_tables": ("dashboard_projection",),
+                "requires_permission": "streaming_analytics.audit",
+            },
+        ),
+        "declared_catalog_routes": ("POST /metric-streams", "GET /kpis", "GET /projections"),
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "database_backends": STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS,
+    }
 
 
 def streaming_analytics_permissions_contract() -> dict:
-    return {"format": "appgen.streaming-analytics-permissions.v1", "ok": True, "permissions": ("streaming_analytics.stream.write", "streaming_analytics.window.write", "streaming_analytics.event.write", "streaming_analytics.event.consume", "streaming_analytics.configure", "streaming_analytics.audit")}
+    permissions = (
+        "streaming_analytics.stream.write",
+        "streaming_analytics.window.write",
+        "streaming_analytics.event.write",
+        "streaming_analytics.event.consume",
+        "streaming_analytics.configure",
+        "streaming_analytics.audit",
+    )
+    return {
+        "format": "appgen.streaming-analytics-permissions.v1",
+        "ok": True,
+        "permissions": permissions,
+        "roles": {
+            "streaming_analytics_admin": permissions,
+            "streaming_analytics_operator": (
+                "streaming_analytics.stream.write",
+                "streaming_analytics.window.write",
+                "streaming_analytics.event.write",
+                "streaming_analytics.event.consume",
+            ),
+            "streaming_analytics_auditor": ("streaming_analytics.audit",),
+        },
+        "policy_controls": (
+            "tenant_scope_required",
+            "supported_event_type_required",
+            "supported_region_required",
+            "quality_threshold_enforced",
+            "event_idempotency_required",
+            "shared_table_access_forbidden",
+        ),
+    }
 
 
 def _recompute_stream(state: dict, stream: dict) -> None:
