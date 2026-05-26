@@ -1575,7 +1575,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   those contracts, and the component module replay matrix proves surface,
   operation-step, validation-step, and side-effect-free coverage before
   generated component readiness is trusted. Source syntax checks and a direct
-  generated-artifact probe pass. Commit: pending.
+  generated-artifact probe pass. Commit: `c110d2d`.
 
 ## Open Completion Areas
 
