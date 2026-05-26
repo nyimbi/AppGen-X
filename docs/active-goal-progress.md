@@ -784,6 +784,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   asset resolution modules are now replayed as source and generated runtime
   evidence required by the visual-depth workbench, platform requirement audit,
   generated visual runtime validation, and focused smoke tests.
+- `302ae98` archives package-excluded local clutter into
+  `archive/unused-2026-05-26/` and records the cleanup manifest without
+  adding bulky binaries, third-party example dumps, scratch generated files, or
+  local IDE state to Git history.
 
 ## Open Completion Areas
 
