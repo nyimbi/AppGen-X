@@ -140,6 +140,15 @@ set parameters, and apply them during availability and allocation decisions.
 The runtime must prove:
 
 - Rule, parameter, and configuration operations execute and influence allocation.
+- Runtime configuration rejects unsupported backends and exposes only the
+  AppGen-X event contract.
+- Runtime parameters are explicitly bounded to safety stock, partial
+  allocation, reservation TTL, reconciliation tolerance, stockout risk, and
+  workbench controls.
+- Package-local UI fragments expose item master, node master, goods receipt,
+  adjustment, availability, allocation, release, quality hold, in-transit,
+  traceability, replenishment, reconciliation, risk, rule, parameter, and
+  configuration workflows.
 - Inventory positions are owned by this package and never require shared tables.
 - Standard feature keys are explicit and release-audited.
 - Advanced capability keys each have a passing smoke check.

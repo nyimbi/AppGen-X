@@ -299,17 +299,43 @@ def inventory_positioning_empty_state() -> dict:
 
 
 def inventory_positioning_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    config = {**configuration, "ok": ok}
-    return {"ok": ok, "state": {**state, "configuration": config}, "configuration": config}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Inventory Positioning supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Inventory Positioning requires an AppGen-X event topic")
+    config = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": config}, "configuration": config}
 
 
 def inventory_positioning_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "safety_stock_percent",
+        "partial_allocation_threshold",
+        "reservation_ttl_minutes",
+        "reconciliation_tolerance_units",
+        "stockout_risk_threshold",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported Inventory Positioning parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def inventory_positioning_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Inventory Positioning rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("Inventory Positioning rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     next_state = {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}
     return {"ok": True, "state": next_state, "rule": enriched}
 
@@ -563,7 +589,20 @@ def inventory_positioning_verify_formal_invariants(state: dict) -> dict:
 def inventory_positioning_build_workbench_view(state: dict, *, tenant: str) -> dict:
     positions = tuple(position for position in state["positions"].values() if position["tenant"] == tenant)
     allocations = tuple(allocation for allocation in state["allocations"].values() if allocation["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "item_count": len(tuple(item for item in state["items"].values() if item["tenant"] == tenant)), "node_count": len(tuple(node for node in state["nodes"].values() if node["tenant"] == tenant)), "position_count": len(positions), "allocation_count": len(allocations), "on_hand": round(sum(position["on_hand"] for position in positions), 2), "reserved": round(sum(position["reserved"] for position in positions), 2), "quarantine": round(sum(position["quarantine"] for position in positions), 2)}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "item_count": len(tuple(item for item in state["items"].values() if item["tenant"] == tenant)),
+        "node_count": len(tuple(node for node in state["nodes"].values() if node["tenant"] == tenant)),
+        "position_count": len(positions),
+        "allocation_count": len(allocations),
+        "on_hand": round(sum(position["on_hand"] for position in positions), 2),
+        "reserved": round(sum(position["reserved"] for position in positions), 2),
+        "quarantine": round(sum(position["quarantine"] for position in positions), 2),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def inventory_positioning_register_governed_model(name: str, metadata: dict) -> dict:

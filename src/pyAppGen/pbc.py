@@ -5186,6 +5186,7 @@ from .pbcs.tax_localization import tax_localization_ui_contract  # noqa: E402,F4
 from .pbcs.tax_localization import tax_localization_validate_exemption_certificate  # noqa: E402,F401
 from .pbcs.inventory_positioning import INVENTORY_POSITIONING_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.inventory_positioning import INVENTORY_POSITIONING_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.inventory_positioning import INVENTORY_POSITIONING_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_allocate_inventory  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_build_workbench_view  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_calculate_availability  # noqa: E402,F401
@@ -5196,9 +5197,11 @@ from .pbcs.inventory_positioning import inventory_positioning_release_allocation
 from .pbcs.inventory_positioning import inventory_positioning_register_item  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_register_node  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_register_rule  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_render_workbench  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_runtime_capabilities  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_runtime_smoke  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_set_parameter  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_ui_contract  # noqa: E402,F401
 from .pbcs.wms_core import WMS_CORE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.wms_core import WMS_CORE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_configure_runtime  # noqa: E402,F401
