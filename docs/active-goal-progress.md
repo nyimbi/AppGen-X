@@ -817,6 +817,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   modules, binding module tests, designer family modules, and designer family
   tests are loaded and replayed as required evidence for binding runtime
   validation.
+- `fd8dd9e` adds generated device component runtime replay matrices: every
+  generated device API component module and generated test module is replayed,
+  checked for API coverage, event pipeline coverage, unsupported-target
+  fallback, and required by device runtime validation.
 - `2eac7a8` normalizes `ar_credit` into the complete package surface used by
   implemented PBC slices: package-local `SPECIFICATION.md`, UI/workbench
   contract, executable configuration/rule/parameter operations, central PBC
@@ -847,6 +851,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   central PBC exports, focused tax tests, and release-audit evidence.
   Verification passed for tax focused tests, the 63-test PBC regression slice,
   central enterprise composition selection, implemented-capability audit,
+  implementation release audit, `pbc_release_audit()`, all-46-PBC generation
+  smoke audit, and the restricted legacy-name diff scan.
+- `d5e5430` normalizes `inventory_positioning` into the complete package
+  surface: package-local inventory UI/workbench contract, stricter executable
+  configuration and parameter validation, source contract wiring, central PBC
+  exports, focused inventory tests, and release-audit evidence. Verification
+  passed for inventory focused tests, the 64-test PBC regression slice, central
+  enterprise composition selection, implemented-capability audit,
   implementation release audit, `pbc_release_audit()`, all-46-PBC generation
   smoke audit, and the restricted legacy-name diff scan.
 
