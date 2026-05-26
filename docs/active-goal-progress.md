@@ -1221,6 +1221,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   operations manifests and tests now fail unless each module proves concrete
   provider, add-on, cutover, and projection steps before data tooling readiness
   is trusted.
+- Current data access tooling pass adds standalone operation-step and
+  validation-step contracts to generated query runtime, mutation runtime,
+  audit/export, and workbench release modules. Generated data-access manifests
+  and tests now fail unless each module proves side-effect-free query,
+  mutation, audit, export, and release steps before data-access readiness is
+  trusted.
 
 ## Open Completion Areas
 

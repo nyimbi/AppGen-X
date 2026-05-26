@@ -5815,6 +5815,8 @@ EXPECTED_EXPORTS = (
     "module_contract",
     "data_access_manifest",
     "run_data_access_operation",
+    "operation_steps",
+    "validation_steps",
     "release_context",
     "smoke_test",
 )
@@ -5943,11 +5945,58 @@ def release_context():
     }}
 
 
+def operation_steps():
+    """Return concrete side-effect-free data access steps this module replays."""
+    steps = {{
+        "query_runtime": ("load_resource_catalog", "build_limited_query", "save_query_contract", "build_query_export"),
+        "mutation_runtime": ("load_resource_catalog", "build_create_plan", "build_update_plan", "build_reviewed_delete_plan", "build_bulk_plan"),
+        "audit_export": ("build_mutation_plan", "create_audit_event", "build_saved_query", "build_export_url"),
+        "workbench_release": ("load_resource_workbench", "build_index_workbench", "run_release_gate", "verify_bulk_mutations"),
+    }}[SURFACE]
+    operation = run_data_access_operation()
+    return {{
+        "format": "appgen.data-access-module-operation-steps.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "steps": steps,
+        "ok": operation["ok"] and bool(steps),
+        "side_effects": operation.get("side_effects", ()),
+    }}
+
+
+def validation_steps():
+    """Return validation steps proving this data access module is usable."""
+    manifest = data_access_manifest()
+    operation = run_data_access_operation()
+    release = release_context()
+    steps = (
+        "data_access_manifest_ok",
+        "data_access_operation_ok",
+        "release_context_ok",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.data-access-module-validation-steps.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "steps": steps,
+        "ok": manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "side_effects": (),
+    }}
+
+
 def smoke_test():
     """Run side-effect-free checks for this generated data access module."""
     contract = module_contract()
     manifest = data_access_manifest()
     operation = run_data_access_operation()
+    operations = operation_steps()
+    validations = validation_steps()
     release = release_context()
     return {{
         "format": "appgen.data-access-module-smoke-test.v1",
@@ -5956,6 +6005,8 @@ def smoke_test():
         "ok": contract["ok"]
         and manifest["ok"]
         and operation["ok"]
+        and operations["ok"]
+        and validations["ok"]
         and release["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"]
@@ -5963,11 +6014,15 @@ def smoke_test():
         "contract": contract,
         "manifest": manifest,
         "operation": operation,
+        "operation_steps": operations,
+        "validation_steps": validations,
         "release": release,
         "checks": (
             "module_contract_resolves",
             "data_access_manifest_ok",
             "data_access_operation_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "release_context_ok",
             "no_side_effects",
         ),
@@ -6019,16 +6074,45 @@ def test_data_access_module_smoke():
     assert result["checks"]
 
 
+def test_data_access_module_operation_steps():
+    """Assert the module exposes concrete operation steps."""
+    module = load_data_access_module()
+    result = module.operation_steps()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["steps"]
+    assert result["side_effects"] == ()
+
+
+def test_data_access_module_validation_steps():
+    """Assert the module exposes concrete validation steps."""
+    module = load_data_access_module()
+    result = module.validation_steps()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["steps"]
+    assert result["side_effects"] == ()
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_data_access_module_contract()
     test_data_access_module_smoke()
+    test_data_access_module_operation_steps()
+    test_data_access_module_validation_steps()
     return {{
         "format": "appgen.data-access-module-generated-test-smoke.v1",
         "module": MODULE,
         "surface": SURFACE,
         "ok": True,
-        "tests": ("test_data_access_module_contract", "test_data_access_module_smoke"),
+        "tests": (
+            "test_data_access_module_contract",
+            "test_data_access_module_smoke",
+            "test_data_access_module_operation_steps",
+            "test_data_access_module_validation_steps",
+        ),
     }}
 '''
 
@@ -39731,6 +39815,8 @@ def data_access_module_file_manifest():
         "module_contract",
         "data_access_manifest",
         "run_data_access_operation",
+        "operation_steps",
+        "validation_steps",
         "release_context",
         "smoke_test",
     )
@@ -39741,11 +39827,15 @@ def data_access_module_file_manifest():
         exports = ()
         contract_ok = False
         smoke_ok = False
+        operation_steps_ok = False
+        validation_steps_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_data_access_module_{{module_name}}")
             exports = tuple(name for name in expected_exports if hasattr(module, name))
             contract = module.module_contract()
             smoke = module.smoke_test()
+            operation_steps_ok = module.operation_steps()["ok"]
+            validation_steps_ok = module.validation_steps()["ok"]
             contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
             smoke_ok = smoke["ok"] and smoke["surface"] == surface
         entries.append(
@@ -39758,6 +39848,8 @@ def data_access_module_file_manifest():
                 "expected_exports": expected_exports,
                 "contract_ok": contract_ok,
                 "smoke_ok": smoke_ok,
+                "operation_steps_ok": operation_steps_ok,
+                "validation_steps_ok": validation_steps_ok,
             }}
         )
     return {{
@@ -39767,11 +39859,19 @@ def data_access_module_file_manifest():
             item["exists"]
             and item["contract_ok"]
             and item["smoke_ok"]
+            and item["operation_steps_ok"]
+            and item["validation_steps_ok"]
             and set(item["expected_exports"]) <= set(item["exports"])
             for item in entries
         ),
         "modules": tuple(entries),
-        "guards": ("one_file_per_data_access_module", "declared_exports_present", "module_smoke_loads"),
+        "guards": (
+            "one_file_per_data_access_module",
+            "declared_exports_present",
+            "module_smoke_loads",
+            "operation_steps_declared",
+            "validation_steps_declared",
+        ),
         "side_effects": (),
     }}
 
@@ -39783,6 +39883,8 @@ def data_access_module_test_file_manifest():
         "load_data_access_module",
         "test_data_access_module_contract",
         "test_data_access_module_smoke",
+        "test_data_access_module_operation_steps",
+        "test_data_access_module_validation_steps",
         "smoke_test",
     )
     test_dir = Path(__file__).with_name("data_access_module_tests")
@@ -39813,7 +39915,11 @@ def data_access_module_test_file_manifest():
         and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
         "tests": tuple(entries),
         "required_exports": required_exports,
-        "guards": ("one_test_file_per_data_access_module", "contract_and_smoke_tests_exported"),
+        "guards": (
+            "one_test_file_per_data_access_module",
+            "contract_and_smoke_tests_exported",
+            "operation_and_validation_tests_exported",
+        ),
         "side_effects": (),
     }}
 
