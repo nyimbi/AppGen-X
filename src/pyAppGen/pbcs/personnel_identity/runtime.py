@@ -12,18 +12,55 @@ PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC = "appgen.people.events"
 PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 PERSONNEL_IDENTITY_OWNED_TABLES = (
     "personnel_department",
+    "personnel_department_hierarchy",
+    "personnel_position",
+    "personnel_job",
     "personnel_employee",
+    "personnel_employee_contact",
+    "personnel_employee_document",
     "personnel_employment_lifecycle",
+    "personnel_employment_status_history",
     "personnel_manager_relationship",
+    "personnel_org_assignment",
+    "personnel_work_location",
+    "personnel_cost_center_assignment",
     "personnel_role_assignment",
+    "personnel_role_catalog",
     "personnel_role_review",
+    "personnel_role_separation_check",
     "personnel_identity_attribute",
     "personnel_identity_assurance",
+    "personnel_identity_verification",
+    "personnel_identity_proof",
+    "personnel_access_policy_projection",
+    "personnel_access_exception",
+    "personnel_provisioning_event",
+    "personnel_provisioning_replay",
+    "personnel_directory_projection",
+    "personnel_org_chart_projection",
+    "personnel_privacy_consent",
+    "personnel_residency_rule",
+    "personnel_retention_policy",
+    "personnel_policy_screening",
+    "personnel_audit_trace",
+    "personnel_federation_projection",
+    "personnel_carbon_processing_window",
+    "personnel_role_access_optimization",
+    "personnel_manager_capacity_allocation",
+    "personnel_identity_anomaly_signal",
+    "personnel_workforce_risk_model",
+    "personnel_workforce_risk_forecast",
+    "personnel_parsed_event",
+    "personnel_seed_data",
+    "personnel_schema_extension",
+    "personnel_control_assertion",
+    "personnel_governed_model",
     "personnel_policy_rule",
     "personnel_parameter",
     "personnel_configuration",
-    "personnel_provisioning_event",
-    "personnel_access_exception",
+    "personnel_identity_appgen_outbox_event",
+    "personnel_identity_appgen_inbox_event",
+    "personnel_identity_dead_letter_event",
 )
 PERSONNEL_IDENTITY_EMITTED_EVENT_TYPES = (
     "DepartmentRegistered",
@@ -99,27 +136,63 @@ PERSONNEL_IDENTITY_RUNTIME_CAPABILITY_KEYS = (
 )
 PERSONNEL_IDENTITY_STANDARD_FEATURE_KEYS = (
     "department_master",
+    "department_hierarchy",
+    "position_management",
+    "job_catalog",
     "employee_master",
+    "employee_contact_management",
+    "employee_document_management",
     "employment_lifecycle",
+    "employment_status_history",
     "manager_hierarchy",
+    "org_assignment",
+    "work_location_management",
+    "cost_center_assignment",
     "org_chart",
     "role_assignment",
+    "role_catalog",
     "role_change",
+    "role_separation_check",
     "identity_attribute",
+    "identity_verification",
+    "identity_proof",
     "segregation_of_duties",
     "identity_assurance",
+    "access_policy_projection",
     "provisioning_handler",
+    "provisioning_replay",
+    "directory_projection",
+    "org_chart_projection",
     "employee_events",
     "multi_entity_isolation",
     "privacy_residency_retention",
+    "privacy_consent",
+    "residency_rules",
+    "retention_policy",
+    "policy_screening",
+    "audit_trace",
+    "federation_projection",
     "directory_search",
     "approval_review",
+    "appgen_x_outbox",
+    "appgen_x_inbox",
     "idempotent_handlers",
+    "retry_dead_letter_evidence",
     "permissions",
     "configuration_schema",
     "rule_engine",
     "parameter_engine",
     "seed_data",
+    "schema_extension",
+    "control_assertion",
+    "governed_model",
+    "carbon_processing_window",
+    "role_access_optimization",
+    "manager_capacity_allocation",
+    "identity_anomaly_signal",
+    "workforce_risk_model",
+    "workforce_risk_forecast",
+    "semantic_event_parser",
     "workbench",
 )
 
@@ -147,6 +220,9 @@ def personnel_identity_runtime_capabilities() -> dict:
             "upsert_identity_attribute",
             "build_org_chart",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -261,6 +337,9 @@ def personnel_identity_runtime_smoke() -> dict:
     screening = personnel_identity_screen_policy(state, "emp_100", restricted_roles=("restricted_role",))
     controls = personnel_identity_run_control_tests(state)
     api = personnel_identity_build_api_contract()
+    schema = personnel_identity_build_schema_contract()
+    service = personnel_identity_build_service_contract()
+    release = personnel_identity_build_release_evidence()
     federation = personnel_identity_federate_people_view(state, "emp_100", systems=("time", "payroll", "access"))
     identity = personnel_identity_verify_employee_identity(employee["employee"]["identity"])
     resilience = personnel_identity_run_resilience_drill(state, "directory_api_timeout")
@@ -289,7 +368,7 @@ def personnel_identity_runtime_smoke() -> dict:
         {"id": "immutable_workforce_identity_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_personnel_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_identity_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "EmployeeCreated" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "EmployeeCreated" in api["events"]["emits"]},
         {"id": "cross_system_people_federation", "ok": federation["ok"] and "payroll" in federation["systems"]},
         {"id": "identity_provider_directory_integration", "ok": route["idempotency_key"].startswith("personnel_identity:Provisioning")},
         {"id": "decentralized_employee_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -588,13 +667,19 @@ def personnel_identity_build_api_contract() -> dict:
     permissions = personnel_identity_permissions_contract()
     routes = (
         {"route": "POST /personnel/departments", "command": "register_department", "owned_table": "personnel_department"},
+        {"route": "POST /personnel/departments/{id}/hierarchy", "command": "register_department", "owned_table": "personnel_department_hierarchy"},
         {"route": "POST /personnel/employees", "command": "create_employee", "owned_table": "personnel_employee"},
+        {"route": "POST /personnel/employees/{id}/contacts", "command": "create_employee", "owned_table": "personnel_employee_contact"},
+        {"route": "POST /personnel/employees/{id}/documents", "command": "create_employee", "owned_table": "personnel_employee_document"},
         {"route": "POST /personnel/employees/{id}/status", "command": "transition_employee_status", "owned_table": "personnel_employment_lifecycle"},
         {"route": "POST /personnel/employees/{id}/roles", "command": "assign_role", "owned_table": "personnel_role_assignment"},
         {"route": "POST /personnel/employees/{id}/attributes", "command": "upsert_identity_attribute", "owned_table": "personnel_identity_attribute"},
+        {"route": "POST /personnel/employees/{id}/verification", "command": "verify_employee_identity", "owned_table": "personnel_identity_verification"},
+        {"route": "POST /personnel/employees/{id}/proofs", "command": "generate_eligibility_proof", "owned_table": "personnel_identity_proof"},
         {"route": "GET /personnel/org-chart", "query": "build_org_chart", "owned_table": "personnel_manager_relationship"},
         {"route": "GET /personnel/workbench", "query": "build_workbench_view", "owned_table": "personnel_employee"},
         {"route": "POST /personnel/events/inbox", "command": "receive_event", "owned_table": "personnel_provisioning_event"},
+        {"route": "POST /personnel/provisioning/routes", "command": "route_provisioning", "owned_table": "personnel_provisioning_replay"},
         {"route": "POST /personnel/rules", "command": "register_rule", "owned_table": "personnel_policy_rule"},
         {"route": "POST /personnel/parameters", "command": "set_parameter", "owned_table": "personnel_parameter"},
         {"route": "POST /personnel/configuration", "command": "configure_runtime", "owned_table": "personnel_configuration"},
@@ -621,6 +706,176 @@ def personnel_identity_build_api_contract() -> dict:
             "PERSONNEL_IDENTITY_RETRY_LIMIT",
             "PERSONNEL_IDENTITY_DEFAULT_COUNTRY",
         ),
+    }
+
+
+def personnel_identity_build_schema_contract() -> dict:
+    """Return generated Personnel Identity schema, migration, and model evidence."""
+    default_fields = ("tenant", "record_id", "source_id", "status", "effective_at", "audit_hash")
+    table_fields = {table: default_fields for table in PERSONNEL_IDENTITY_OWNED_TABLES}
+    table_fields.update(
+        {
+            "personnel_department": ("tenant", "department_id", "name", "legal_entity", "cost_center", "manager_employee_id", "status", "audit_hash"),
+            "personnel_department_hierarchy": ("tenant", "relationship_id", "parent_department_id", "child_department_id", "depth", "valid_from", "audit_hash"),
+            "personnel_position": ("tenant", "position_id", "department_id", "job_id", "fte", "vacancy_status", "audit_hash"),
+            "personnel_job": ("tenant", "job_id", "job_family", "title", "level", "grade_band", "audit_hash"),
+            "personnel_employee": ("tenant", "employee_id", "person_id", "worker_type", "status", "department_id", "manager_employee_id", "country", "hire_date", "identity_hash"),
+            "personnel_employee_contact": ("tenant", "contact_id", "employee_id", "contact_type", "value_hash", "verified_at", "audit_hash"),
+            "personnel_employee_document": ("tenant", "document_id", "employee_id", "document_type", "storage_ref", "retention_policy_id", "audit_hash"),
+            "personnel_employment_lifecycle": ("tenant", "lifecycle_id", "employee_id", "from_status", "to_status", "changed_by", "changed_at", "audit_hash"),
+            "personnel_employment_status_history": ("tenant", "history_id", "employee_id", "status", "valid_from", "valid_to", "source_event_id", "audit_hash"),
+            "personnel_manager_relationship": ("tenant", "relationship_id", "employee_id", "manager_employee_id", "valid_from", "valid_to", "audit_hash"),
+            "personnel_org_assignment": ("tenant", "assignment_id", "employee_id", "department_id", "position_id", "valid_from", "audit_hash"),
+            "personnel_work_location": ("tenant", "location_id", "employee_id", "country", "region", "site_id", "audit_hash"),
+            "personnel_cost_center_assignment": ("tenant", "assignment_id", "employee_id", "cost_center", "allocation_percent", "valid_from", "audit_hash"),
+            "personnel_role_assignment": ("tenant", "assignment_id", "employee_id", "role", "scope", "assigned_by", "status", "audit_hash"),
+            "personnel_role_catalog": ("tenant", "role_id", "role_name", "risk_level", "sensitive", "owner", "audit_hash"),
+            "personnel_role_review": ("tenant", "review_id", "assignment_id", "reviewer", "decision", "reviewed_at", "audit_hash"),
+            "personnel_role_separation_check": ("tenant", "check_id", "employee_id", "role_pair", "decision", "policy_rule_id", "audit_hash"),
+            "personnel_identity_attribute": ("tenant", "attribute_id", "employee_id", "name", "value_hash", "assurance", "status", "audit_hash"),
+            "personnel_identity_assurance": ("tenant", "assurance_id", "employee_id", "attribute_id", "score", "evidence_ref", "audit_hash"),
+            "personnel_identity_verification": ("tenant", "verification_id", "employee_id", "issuer", "did", "verification_status", "audit_hash"),
+            "personnel_identity_proof": ("tenant", "proof_id", "employee_id", "public_claims_hash", "proof_hash", "expires_at", "audit_hash"),
+            "personnel_access_policy_projection": ("tenant", "policy_id", "policy_version", "projection_hash", "received_event_id", "audit_hash"),
+            "personnel_provisioning_event": ("tenant", "event_id", "event_type", "employee_id", "attempts", "handler_status", "audit_hash"),
+            "personnel_provisioning_replay": ("tenant", "replay_id", "event_id", "route", "idempotency_key", "status", "audit_hash"),
+            "personnel_policy_rule": ("tenant", "rule_id", "scope", "compiled_hash", "enabled", "status", "audit_hash"),
+            "personnel_parameter": ("tenant", "parameter_name", "parameter_value", "effective_at", "changed_by", "audit_hash"),
+            "personnel_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "event_contract", "stream_engine_picker_visible", "audit_hash"),
+            "personnel_identity_appgen_outbox_event": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "published_at", "audit_hash"),
+            "personnel_identity_appgen_inbox_event": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "audit_hash"),
+            "personnel_identity_dead_letter_event": ("tenant", "event_id", "event_type", "payload", "reason", "attempts", "audit_hash"),
+        }
+    )
+    relationships = (
+        {"from_table": "personnel_department_hierarchy", "from_field": "parent_department_id", "to_table": "personnel_department", "to_field": "department_id"},
+        {"from_table": "personnel_department_hierarchy", "from_field": "child_department_id", "to_table": "personnel_department", "to_field": "department_id"},
+        {"from_table": "personnel_position", "from_field": "department_id", "to_table": "personnel_department", "to_field": "department_id"},
+        {"from_table": "personnel_position", "from_field": "job_id", "to_table": "personnel_job", "to_field": "job_id"},
+        {"from_table": "personnel_employee", "from_field": "department_id", "to_table": "personnel_department", "to_field": "department_id"},
+        {"from_table": "personnel_employee_contact", "from_field": "employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+        {"from_table": "personnel_employee_document", "from_field": "employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+        {"from_table": "personnel_employment_lifecycle", "from_field": "employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+        {"from_table": "personnel_employment_status_history", "from_field": "employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+        {"from_table": "personnel_manager_relationship", "from_field": "employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+        {"from_table": "personnel_manager_relationship", "from_field": "manager_employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+        {"from_table": "personnel_org_assignment", "from_field": "employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+        {"from_table": "personnel_org_assignment", "from_field": "department_id", "to_table": "personnel_department", "to_field": "department_id"},
+        {"from_table": "personnel_role_assignment", "from_field": "employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+        {"from_table": "personnel_role_review", "from_field": "assignment_id", "to_table": "personnel_role_assignment", "to_field": "assignment_id"},
+        {"from_table": "personnel_identity_attribute", "from_field": "employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+        {"from_table": "personnel_identity_assurance", "from_field": "attribute_id", "to_table": "personnel_identity_attribute", "to_field": "attribute_id"},
+        {"from_table": "personnel_identity_proof", "from_field": "employee_id", "to_table": "personnel_employee", "to_field": "employee_id"},
+    )
+    tables = tuple({"table": table, "fields": table_fields[table], "owner": "personnel_identity"} for table in PERSONNEL_IDENTITY_OWNED_TABLES)
+    return {
+        "format": "appgen.personnel-identity-owned-schema-contract.v1",
+        "ok": len(tables) == len(PERSONNEL_IDENTITY_OWNED_TABLES) and len(tables) >= 40 and all(item["table"].startswith("personnel_") for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/personnel_identity/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(PERSONNEL_IDENTITY_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in PERSONNEL_IDENTITY_OWNED_TABLES
+        ),
+        "datastore_backends": PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def personnel_identity_build_service_contract() -> dict:
+    """Return Personnel Identity command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_department",
+        "create_employee",
+        "transition_employee_status",
+        "assign_role",
+        "upsert_identity_attribute",
+        "route_provisioning",
+        "generate_eligibility_proof",
+        "screen_policy",
+        "federate_people_view",
+        "verify_employee_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_processing",
+        "optimize_role_access",
+        "allocate_manager_capacity",
+        "run_control_tests",
+        "register_governed_model",
+        "recommend_access_exception",
+        "verify_owned_table_boundary",
+        "build_workbench_view",
+    )
+    return {
+        "format": "appgen.personnel-identity-service-contract.v1",
+        "ok": len(command_methods) >= 25,
+        "transaction_boundary": "personnel_identity_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_org_chart",
+            "score_access_risk",
+            "simulate_access_policy",
+            "forecast_workforce_risk",
+            "parse_personnel_event",
+            "score_workforce_risk",
+            "detect_identity_anomaly",
+            "model_stochastic_workforce_exposure",
+            "build_api_contract",
+            "build_schema_contract",
+            "build_release_evidence",
+        ),
+        "mutates_only": PERSONNEL_IDENTITY_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _PERSONNEL_IDENTITY_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _PERSONNEL_IDENTITY_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def personnel_identity_build_release_evidence() -> dict:
+    """Return Personnel Identity package-local release evidence."""
+    schema = personnel_identity_build_schema_contract()
+    service = personnel_identity_build_service_contract()
+    api = personnel_identity_build_api_contract()
+    permissions = personnel_identity_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 40},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(PERSONNEL_IDENTITY_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 25},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"create_employee", "assign_role", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.personnel-identity-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -673,12 +928,27 @@ def personnel_identity_permissions_contract() -> dict:
             "route_provisioning": "personnel_identity.update",
             "run_resilience_drill": "personnel_identity.audit",
             "federate_people_view": "personnel_identity.review",
+            "verify_employee_identity": "personnel_identity.audit",
+            "rotate_crypto_epoch": "personnel_identity.audit",
+            "schedule_carbon_aware_processing": "personnel_identity.configure",
+            "optimize_role_access": "personnel_identity.review",
+            "allocate_manager_capacity": "personnel_identity.review",
+            "recommend_access_exception": "personnel_identity.review",
+            "register_governed_model": "personnel_identity.audit",
+            "detect_identity_anomaly": "personnel_identity.audit",
+            "model_stochastic_workforce_exposure": "personnel_identity.audit",
+            "parse_personnel_event": "personnel_identity.review",
+            "score_workforce_risk": "personnel_identity.review",
+            "forecast_workforce_risk": "personnel_identity.review",
             "receive_event": "personnel_identity.event",
             "register_rule": "personnel_identity.configure",
             "register_schema_extension": "personnel_identity.configure",
             "set_parameter": "personnel_identity.configure",
             "configure_runtime": "personnel_identity.configure",
             "build_workbench_view": "personnel_identity.audit",
+            "build_schema_contract": "personnel_identity.audit",
+            "build_service_contract": "personnel_identity.audit",
+            "build_release_evidence": "personnel_identity.audit",
         },
     }
 

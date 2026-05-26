@@ -11,6 +11,9 @@ from .runtime import PERSONNEL_IDENTITY_STANDARD_FEATURE_KEYS
 from .runtime import personnel_identity_assign_role
 from .runtime import personnel_identity_build_api_contract
 from .runtime import personnel_identity_build_org_chart
+from .runtime import personnel_identity_build_release_evidence
+from .runtime import personnel_identity_build_schema_contract
+from .runtime import personnel_identity_build_service_contract
 from .runtime import personnel_identity_build_workbench_view
 from .runtime import personnel_identity_configure_runtime
 from .runtime import personnel_identity_create_employee
@@ -42,7 +45,13 @@ def implementation_contract() -> dict:
         "owned_tables": PERSONNEL_IDENTITY_OWNED_TABLES,
         "allowed_database_backends": PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS,
         "api_contract": personnel_identity_build_api_contract(),
+        "schema_contract": personnel_identity_build_schema_contract(),
+        "service_contract": personnel_identity_build_service_contract(),
+        "release_evidence_contract": personnel_identity_build_release_evidence(),
         "permissions_contract": personnel_identity_permissions_contract(),
+        "required_event_topic": PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC,
+        "consumes": PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES,
+        "emits": PERSONNEL_IDENTITY_EMITTED_EVENT_TYPES,
         "advanced_runtime": runtime,
         "ui_contract": personnel_identity_ui_contract(),
     }

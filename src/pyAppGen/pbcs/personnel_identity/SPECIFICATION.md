@@ -11,12 +11,33 @@ onboarding, finance, and operations packages. The implementation is owned under
 
 - **PBC key:** `personnel_identity`
 - **Mesh:** `hcm`
-- **Owned tables:** `personnel_department`, `personnel_employee`,
-  `personnel_employment_lifecycle`, `personnel_manager_relationship`,
-  `personnel_role_assignment`, `personnel_role_review`,
-  `personnel_identity_attribute`, `personnel_identity_assurance`,
-  `personnel_policy_rule`, `personnel_parameter`, `personnel_configuration`,
-  `personnel_provisioning_event`, `personnel_access_exception`
+- **Owned tables:** `personnel_department`,
+  `personnel_department_hierarchy`, `personnel_position`, `personnel_job`,
+  `personnel_employee`, `personnel_employee_contact`,
+  `personnel_employee_document`, `personnel_employment_lifecycle`,
+  `personnel_employment_status_history`, `personnel_manager_relationship`,
+  `personnel_org_assignment`, `personnel_work_location`,
+  `personnel_cost_center_assignment`, `personnel_role_assignment`,
+  `personnel_role_catalog`, `personnel_role_review`,
+  `personnel_role_separation_check`, `personnel_identity_attribute`,
+  `personnel_identity_assurance`, `personnel_identity_verification`,
+  `personnel_identity_proof`, `personnel_access_policy_projection`,
+  `personnel_access_exception`, `personnel_provisioning_event`,
+  `personnel_provisioning_replay`, `personnel_directory_projection`,
+  `personnel_org_chart_projection`, `personnel_privacy_consent`,
+  `personnel_residency_rule`, `personnel_retention_policy`,
+  `personnel_policy_screening`, `personnel_audit_trace`,
+  `personnel_federation_projection`, `personnel_carbon_processing_window`,
+  `personnel_role_access_optimization`,
+  `personnel_manager_capacity_allocation`,
+  `personnel_identity_anomaly_signal`, `personnel_workforce_risk_model`,
+  `personnel_workforce_risk_forecast`, `personnel_parsed_event`,
+  `personnel_seed_data`, `personnel_schema_extension`,
+  `personnel_control_assertion`, `personnel_governed_model`,
+  `personnel_policy_rule`, `personnel_parameter`,
+  `personnel_configuration`, `personnel_identity_appgen_outbox_event`,
+  `personnel_identity_appgen_inbox_event`,
+  `personnel_identity_dead_letter_event`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
 - **Event contract:** AppGen-X outbox/inbox event contract only
 - **Required event topic:** `appgen.people.events`
@@ -25,11 +46,16 @@ onboarding, finance, and operations packages. The implementation is owned under
 - **Consumes:** `EmployeeProvisioned`, `AccessPolicyChanged`,
   `OrgUnitChanged`, `RoleReviewRequested`
 - **Primary APIs:** `POST /personnel/departments`,
+  `POST /personnel/departments/{id}/hierarchy`,
   `POST /personnel/employees`, `POST /personnel/employees/{id}/status`,
   `POST /personnel/employees/{id}/roles`,
   `POST /personnel/employees/{id}/attributes`,
-  `POST /personnel/events/inbox`, `GET /personnel/org-chart`,
-  `GET /personnel/workbench`
+  `POST /personnel/employees/{id}/verification`,
+  `POST /personnel/employees/{id}/proofs`,
+  `POST /personnel/provisioning/routes`,
+  `POST /personnel/events/inbox`, `POST /personnel/rules`,
+  `POST /personnel/parameters`, `POST /personnel/configuration`,
+  `GET /personnel/org-chart`, `GET /personnel/workbench`
 - **UI artifacts:** people directory, org chart, identity attribute console,
   role assignment workbench, access context review, lifecycle exception queue,
   policy editor
@@ -120,36 +146,92 @@ configuration panel. UI binding evidence includes the owned tables, outbox,
 inbox, dead-letter tables, RBAC mapping, required event topic, allowed database
 backends, AppGen-X event contract, and hidden stream-engine picker.
 
+## Generated Schema, Services, and Release Evidence
+
+`build_schema_contract` emits the generated schema contract for every owned
+Personnel Identity table. It includes table fields, table relationships,
+per-table migration artifact paths under `pbcs/personnel_identity/migrations/`,
+generated model class names, backend allowlists, and
+`shared_table_access: false`. The model and migration descriptors cover
+departments, hierarchy, positions, jobs, employees, contacts, documents,
+lifecycle history, manager relationships, org assignments, locations, cost
+centers, role catalog, role assignments, role reviews, separation checks,
+attributes, assurance, verification, proofs, access policy projections,
+provisioning replay, directory projections, privacy, residency, retention,
+policy screening, audit trace, optimization, anomaly, risk, governed-model,
+rule, parameter, configuration, outbox, inbox, and dead-letter evidence.
+
+`build_service_contract` declares the transaction boundary as the owned
+Personnel Identity datastore plus the AppGen-X outbox. Commands configure the
+runtime, set parameters, register rules and schema extensions, receive events,
+register departments, create employees, transition statuses, assign roles,
+upsert identity attributes, route provisioning, generate eligibility proofs,
+screen policies, federate people views, verify employee identities, run
+resilience drills, rotate crypto epochs, schedule carbon-aware processing,
+optimize role access, allocate manager capacity, run controls, and register
+governed models. Queries cover org charts, workbench views, access risk,
+counterfactual policy simulation, workforce-risk forecasts, semantic event
+parsing, anomaly detection, stochastic exposure, and boundary verification.
+External dependencies are limited to declared APIs, consumed AppGen-X events,
+and package-local projections; shared tables are not allowed.
+
+`build_release_evidence` combines schema, service, API, and RBAC evidence into
+release checks: owned schema depth, migration coverage, command depth, AppGen-X
+event contract, permission coverage for key commands, backend allowlist, and no
+shared-table access. A release is valid only when all checks pass and
+`blocking_gaps` is empty.
+
 ## Standard Table-Stakes Capabilities
 
 1. Department and organization-unit registration with parent relationships,
    legal entity, cost center, and manager assignment.
-2. Employee/person record creation with worker type, employment status, hire
+2. Department hierarchy and position management for reporting depth,
+   vacancies, department-to-position assignments, and org topology.
+3. Job catalog management with job family, title, level, grade band, and role
+   eligibility context.
+4. Employee/person record creation with worker type, employment status, hire
    date, job, department, manager, country, and identity handle.
-3. Employee lifecycle transitions for provisioned, active, leave, suspended,
+5. Employee contact and document management with privacy-preserving hashes,
+   verification timestamps, retention policy, and storage references.
+6. Employee lifecycle transitions for provisioned, active, leave, suspended,
    terminated, and alumni states.
-4. Manager hierarchy and org-chart generation.
-5. Role assignment, role change, removal, expiry, and access-context evidence.
-6. Identity attributes for email, directory id, badge, region, clearance,
+7. Employment status history for valid-time, event-time, and audit-time
+   reconstruction.
+8. Manager hierarchy and org-chart generation.
+9. Org assignments, work locations, and cost center allocations.
+10. Role catalog management with owners, risk levels, sensitivity flags, and
+    eligibility metadata.
+11. Role assignment, role change, removal, expiry, and access-context evidence.
+12. Separation checks for incompatible role pairs and policy-rule enforcement.
+13. Identity attributes for email, directory id, badge, region, clearance,
    employment profile, payroll profile, and time profile.
-7. Segregation-of-duties and sensitive-role screening.
-8. Identity assurance, proof, and access-risk scoring.
-9. Employee provisioning consumed-event handling with idempotency evidence.
-10. Employee and role event emission for downstream time, payroll, onboarding,
+14. Segregation-of-duties and sensitive-role screening.
+15. Identity assurance, verification, proof, and access-risk scoring.
+16. Access policy projections from external policy systems without shared table
+    reads.
+17. Employee provisioning consumed-event handling with idempotency evidence.
+18. Provisioning replay and route selection with retry and dead-letter
+    artifacts.
+19. Directory and org-chart projections for read models generated inside the
+    package.
+20. Employee and role event emission for downstream time, payroll, onboarding,
     access, finance, and service packages.
-11. Multi-tenant and multi-entity personnel isolation.
-12. Privacy, residency, retention, and attribute minimization controls.
-13. Directory search, identity attribute lookup, and org projection APIs.
-14. Approval and review workflow for sensitive changes.
-15. Retry, dead-letter, and idempotency evidence for role and provisioning
+21. Multi-tenant and multi-entity personnel isolation.
+22. Privacy consent, residency, retention, and attribute minimization controls.
+23. Policy screening, audit trace, and control assertion evidence.
+24. Directory search, identity attribute lookup, and org projection APIs.
+25. Approval and review workflow for sensitive changes.
+26. AppGen-X outbox and inbox tables plus retry and dead-letter evidence for
+    role and provisioning
     handlers.
-16. Permissions and ABAC descriptors for create, update, role, attribute,
+27. Permissions and ABAC descriptors for create, update, role, attribute,
     review, configure, and audit operations.
-17. Configuration schema and seed data for worker types, statuses, role groups,
+28. Configuration schema and seed data for worker types, statuses, role groups,
     countries, and default parameters.
-18. Workbench views for active workers, role risk, provisioning gaps, org
+29. Rules, parameters, and schema extensions as executable package state.
+30. Workbench views for active workers, role risk, provisioning gaps, org
     exceptions, stale attributes, and review queues.
-19. Release-audit evidence for package ownership, manifests, schema, migrations,
+31. Release-audit evidence for package ownership, manifests, schema, migrations,
     models, services, routes, events, handlers, UI, permissions, configuration,
     tests, registration metadata, and generation smoke.
 

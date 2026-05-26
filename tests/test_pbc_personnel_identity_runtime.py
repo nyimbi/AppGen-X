@@ -6,6 +6,9 @@ from pyAppGen.pbcs.personnel_identity import PERSONNEL_IDENTITY_EMITTED_EVENT_TY
 from pyAppGen.pbcs.personnel_identity import PERSONNEL_IDENTITY_OWNED_TABLES
 from pyAppGen.pbcs.personnel_identity import PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.personnel_identity import personnel_identity_build_api_contract
+from pyAppGen.pbcs.personnel_identity import personnel_identity_build_release_evidence
+from pyAppGen.pbcs.personnel_identity import personnel_identity_build_schema_contract
+from pyAppGen.pbcs.personnel_identity import personnel_identity_build_service_contract
 from pyAppGen.pbcs.personnel_identity import personnel_identity_permissions_contract
 from pyAppGen.pbcs.personnel_identity import personnel_identity_receive_event
 from pyAppGen.pbcs.personnel_identity import personnel_identity_register_schema_extension
@@ -39,10 +42,14 @@ def test_personnel_identity_runtime_executes_standard_and_advanced_capabilities(
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/personnel_identity"
     assert runtime["owned_tables"] == PERSONNEL_IDENTITY_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 18
+    assert len(runtime["owned_tables"]) >= 40
+    assert len(runtime["standard_features"]) >= 40
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
+    assert "appgen_x_outbox" in runtime["standard_features"]
+    assert "appgen_x_inbox" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert set(PERSONNEL_IDENTITY_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
     assert not smoke["blocking_gaps"]
@@ -54,7 +61,13 @@ def test_personnel_identity_runtime_executes_standard_and_advanced_capabilities(
     assert contract["source_package"]["allowed_database_backends"] == PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
     assert contract["source_package"]["api_contract"]["stream_engine_picker_visible"] is False
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "personnel_identity.event"
+    assert contract["source_package"]["required_event_topic"] == PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == PERSONNEL_IDENTITY_EMITTED_EVENT_TYPES
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "PersonnelConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(PERSONNEL_IDENTITY_ADVANCED_CAPABILITY_KEYS)
@@ -62,6 +75,9 @@ def test_personnel_identity_runtime_executes_standard_and_advanced_capabilities(
     assert pbc_implemented_capability_audit(("personnel_identity",))["ok"] is True
 
     api = personnel_identity_build_api_contract()
+    schema = personnel_identity_build_schema_contract()
+    service = personnel_identity_build_service_contract()
+    release = personnel_identity_build_release_evidence()
     permissions = personnel_identity_permissions_contract()
     assert api["format"] == "appgen.personnel-identity-api-contract.v1"
     assert api["owned_tables"] == PERSONNEL_IDENTITY_OWNED_TABLES
@@ -72,6 +88,25 @@ def test_personnel_identity_runtime_executes_standard_and_advanced_capabilities(
     assert api["stream_engine_picker_visible"] is False
     assert {route["route"] for route in api["routes"]} >= {"POST /personnel/employees", "POST /personnel/events/inbox", "GET /personnel/workbench"}
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert schema["format"] == "appgen.personnel-identity-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(PERSONNEL_IDENTITY_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(PERSONNEL_IDENTITY_OWNED_TABLES)
+    assert {
+        "personnel_department_hierarchy",
+        "personnel_employee_contact",
+        "personnel_role_catalog",
+        "personnel_identity_verification",
+        "personnel_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.personnel-identity-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.personnel-identity-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert permissions["action_permissions"]["receive_event"] == "personnel_identity.event"
 
 
