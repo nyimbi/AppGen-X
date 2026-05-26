@@ -13,9 +13,10 @@ def test_package_local_assurance_executes_for_every_implemented_pbc() -> None:
     assert not audit["blocking_gaps"]
     assert {contract["pbc"] for contract in audit["contracts"]} == set(IMPLEMENTED_PBC_KEYS)
     assert all(contract["assurance_artifact"].startswith(f"src/pyAppGen/pbcs/{contract['pbc']}/") for contract in audit["contracts"])
+    assert all(contract["evidence"]["mode"] == "capability_assurance" for contract in audit["contracts"])
 
 
-def test_package_local_assurance_supports_module_and_runtime_test_modes() -> None:
+def test_package_local_assurance_uses_first_class_modules_for_core_and_platform_pbcs() -> None:
     financial = pbc_package_local_assurance_contract("gl_core")
     platform = pbc_package_local_assurance_contract("federated_iam")
 
@@ -24,9 +25,9 @@ def test_package_local_assurance_supports_module_and_runtime_test_modes() -> Non
     assert financial["evidence"]["validation"]["event_contract"] == "AppGen-X"
     assert financial["evidence"]["validation"]["stream_picker_visible"] is False
     assert platform["ok"] is True
-    assert platform["evidence"]["mode"] == "runtime_capability_tests"
-    assert platform["evidence"]["runtime_capabilities"]["ok"] is True
-    assert platform["evidence"]["runtime_smoke"]["ok"] is True
+    assert platform["evidence"]["mode"] == "capability_assurance"
+    assert platform["evidence"]["validation"]["event_contract"] == "AppGen-X"
+    assert platform["evidence"]["validation"]["stream_picker_visible"] is False
 
 
 def test_release_and_capability_audits_require_package_local_assurance() -> None:

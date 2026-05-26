@@ -4727,13 +4727,13 @@ def pbc_package_local_assurance_contract(key: str) -> dict:
         },
         {
             "id": "package_local_assurance_artifact_exists",
-            "ok": assurance_path.is_file() or runtime_test_path.is_file(),
+            "ok": assurance_path.is_file(),
             "capability_assurance": f"{relative_dir}/capability_assurance.py",
             "runtime_capability_tests": f"{relative_dir}/tests/test_runtime_capabilities.py",
         },
     ]
     evidence: dict[str, object] = {
-        "mode": "capability_assurance" if assurance_path.is_file() else "runtime_capability_tests",
+        "mode": "capability_assurance" if assurance_path.is_file() else "missing_capability_assurance",
     }
     if assurance_path.is_file():
         try:

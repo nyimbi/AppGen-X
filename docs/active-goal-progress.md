@@ -1807,6 +1807,19 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`16 passed`), all package-local PBC tests pass (`396 passed`), and the full
   PBC audit stack including all built-in generation smoke and
   `pbc_release_audit()` returns true. Commit: `4d38f94`.
+- Current uniform capability-assurance pass adds first-class
+  `capability_assurance.py` modules for the remaining PBCs that previously
+  relied on runtime-capability tests as assurance evidence:
+  `inventory_positioning`, `wms_core`, `procurement_sourcing`,
+  `transportation_management`, `dom`, `federated_iam`, `api_gateway_mesh`,
+  `schema_registry`, `workflow_orchestration`, `audit_ledger`,
+  `composition_engine`, `global_inventory_visibility`,
+  `order_routing_optimization`, and `returns_reverse_logistics`. The
+  package-local assurance audit now requires `capability_assurance.py` for
+  every implemented PBC. Package-local assurance tests pass (`3 passed`),
+  targeted PBC evidence tests pass (`16 passed`), all package-local PBC tests
+  pass (`396 passed`), and the full PBC audit stack including all built-in
+  generation smoke and `pbc_release_audit()` returns true. Commit: `pending`.
 
 ## Open Completion Areas
 
