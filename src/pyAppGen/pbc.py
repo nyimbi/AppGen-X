@@ -4538,6 +4538,9 @@ def pbc_source_artifact_contract(key: str) -> dict:
         {
             "id": "service_route_runtime_surface_materialized",
             "ok": "def service_operation_manifest(" in service_text
+            and "def service_operation_contracts(" in service_text
+            and "def operation_plan(" in service_text
+            and "operation_contract" in service_text
             and "def smoke_test(" in service_text
             and "def dispatch_route(" in route_text
             and "def smoke_test(" in route_text,
@@ -4594,6 +4597,8 @@ def pbc_source_artifact_contract(key: str) -> dict:
             and "test_manifest_and_event_contract" in tests_text
             and "test_registration_plan_is_side_effect_free" in tests_text
             and "test_service_and_route_surface_are_executable" in tests_text
+            and "service_operation_contracts" in tests_text
+            and "operation_contract" in tests_text
             and "test_configuration_permissions_and_seed_hooks_are_executable" in tests_text
             and "governance_smoke_test" in tests_text,
             "path": f"{relative_dir}/tests/test_contract.py",

@@ -3,17 +3,60 @@
 EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.workflow_orchestration.events', 'inbox_topic': 'pbc.workflow_orchestration.inbox', 'outbox_table': 'workflow_orchestration_appgen_outbox_event', 'inbox_table': 'workflow_orchestration_appgen_inbox_event', 'dead_letter_table': 'workflow_orchestration_appgen_dead_letter_event', 'emitted': ({'event_type': 'WorkflowStarted', 'schema': 'workflow_orchestration.workflow_started.emitted.v1', 'topic': 'pbc.workflow_orchestration.events', 'outbox_table': 'workflow_orchestration_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'SagaCompensated', 'schema': 'workflow_orchestration.saga_compensated.emitted.v1', 'topic': 'pbc.workflow_orchestration.events', 'outbox_table': 'workflow_orchestration_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'WorkflowCompleted', 'schema': 'workflow_orchestration.workflow_completed.emitted.v1', 'topic': 'pbc.workflow_orchestration.events', 'outbox_table': 'workflow_orchestration_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'InvoiceApproved', 'schema': 'workflow_orchestration.invoice_approved.consumed.v1', 'topic': 'pbc.workflow_orchestration.inbox', 'inbox_table': 'workflow_orchestration_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'OrderVerified', 'schema': 'workflow_orchestration.order_verified.consumed.v1', 'topic': 'pbc.workflow_orchestration.inbox', 'inbox_table': 'workflow_orchestration_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'ShipmentDelivered', 'schema': 'workflow_orchestration.shipment_delivered.consumed.v1', 'topic': 'pbc.workflow_orchestration.inbox', 'inbox_table': 'workflow_orchestration_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'workflow_orchestration_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'workflow_orchestration_appgen_inbox_event'}}
 
 
+OPERATION_CONTRACTS = ({'operation': 'command_workflows', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/workflow_orchestration/workflows', 'permission': 'workflow_orchestration.command.1', 'owned_tables': ('workflow_orchestration_workflow_definition', 'workflow_orchestration_workflow_instance', 'workflow_orchestration_saga_step', 'workflow_orchestration_timer_task'), 'read_tables': (), 'emitted_event': 'WorkflowStarted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_instances', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/workflow_orchestration/instances', 'permission': 'workflow_orchestration.command.2', 'owned_tables': ('workflow_orchestration_workflow_definition', 'workflow_orchestration_workflow_instance', 'workflow_orchestration_saga_step', 'workflow_orchestration_timer_task'), 'read_tables': (), 'emitted_event': 'SagaCompensated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_signals', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/workflow_orchestration/signals', 'permission': 'workflow_orchestration.command.3', 'owned_tables': ('workflow_orchestration_workflow_definition', 'workflow_orchestration_workflow_instance', 'workflow_orchestration_saga_step', 'workflow_orchestration_timer_task'), 'read_tables': (), 'emitted_event': 'WorkflowCompleted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
+
+
+def service_operation_contracts():
+    """Return route-bound service operation contracts for this PBC."""
+    operations = tuple(item['operation'] for item in OPERATION_CONTRACTS)
+    return {
+        'ok': bool(OPERATION_CONTRACTS)
+        and all(item['event_contract'] == 'AppGen-X' for item in OPERATION_CONTRACTS)
+        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in OPERATION_CONTRACTS),
+        'pbc': 'workflow_orchestration',
+        'operations': operations,
+        'contracts': OPERATION_CONTRACTS,
+        'side_effects': (),
+    }
+
+
+def operation_plan(operation_name, payload=None):
+    """Plan one service operation without mutating state."""
+    contract = next((item for item in OPERATION_CONTRACTS if item['operation'] == operation_name), None)
+    if contract is None:
+        return {'ok': False, 'reason': 'unknown_operation', 'operation': operation_name, 'side_effects': ()}
+    supplied = dict(payload or {})
+    table_scope = contract['owned_tables'] or contract['read_tables']
+    return {
+        'ok': bool(table_scope) and contract['event_contract'] == 'AppGen-X',
+        'pbc': 'workflow_orchestration',
+        'operation': operation_name,
+        'operation_kind': contract['operation_kind'],
+        'route': {'method': contract['method'], 'path': contract['path']},
+        'permission': contract['permission'],
+        'owned_tables': contract['owned_tables'],
+        'read_tables': contract['read_tables'],
+        'emitted_event': contract['emitted_event'],
+        'payload_keys': tuple(sorted(supplied)),
+        'transaction_boundary': contract['transaction_boundary'],
+        'event_contract': contract['event_contract'],
+        'side_effects': (),
+    }
+
+
 class WorkflowOrchestrationService:
     """Side-effect-free generated command facade."""
 
     def _command(self, command_name, payload):
-        event_type = EVENT_CONTRACT['emitted'][0]['event_type'] if EVENT_CONTRACT['emitted'] else 'CommandAccepted'
+        plan = operation_plan(command_name, payload)
+        event_type = plan.get('emitted_event') or (EVENT_CONTRACT['emitted'][0]['event_type'] if EVENT_CONTRACT['emitted'] else 'CommandAccepted')
         return {
-            'ok': True,
+            'ok': plan['ok'],
             'pbc': 'workflow_orchestration',
             'command': command_name,
             'payload': dict(payload),
-            'transaction_boundary': 'owned_datastore_plus_outbox',
+            'operation_contract': plan,
+            'transaction_boundary': plan.get('transaction_boundary'),
             'outbox_table': EVENT_CONTRACT['outbox_table'],
             'emits': (event_type,),
             'side_effects': (),
@@ -39,10 +82,11 @@ def service_operation_manifest():
         and callable(getattr(service, name))
     )
     return {
-        'ok': bool(operations),
+        'ok': bool(operations) and service_operation_contracts()['ok'],
         'pbc': 'workflow_orchestration',
         'service_class': service.__class__.__name__,
         'operations': operations,
+        'operation_contracts': service_operation_contracts()['contracts'],
         'transaction_boundary': 'owned_datastore_plus_outbox',
         'outbox_table': EVENT_CONTRACT['outbox_table'],
         'side_effects': (),
@@ -56,7 +100,9 @@ def smoke_test():
     operation = manifest['operations'][0] if manifest['operations'] else None
     result = getattr(service, operation)({'smoke': True}) if operation else {'ok': False}
     return {
-        'ok': manifest['ok'] and result.get('ok') is True,
+        'ok': manifest['ok']
+        and result.get('ok') is True
+        and result.get('operation_contract', {}).get('ok') is True,
         'manifest': manifest,
         'result': result,
         'side_effects': (),

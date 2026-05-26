@@ -48,10 +48,17 @@ def test_service_and_route_surface_are_executable():
     from .. import routes, services
 
     service_smoke = services.smoke_test()
+    operation_contracts = services.service_operation_contracts()
     route_smoke = routes.smoke_test()
     assert service_smoke['ok'] is True
+    assert operation_contracts['ok'] is True
+    assert service_smoke['result']['operation_contract']['route']['path']
+    assert service_smoke['result']['operation_contract']['permission']
+    assert service_smoke['result']['operation_contract']['event_contract'] == 'AppGen-X'
+    assert service_smoke['result']['operation_contract']['owned_tables'] or service_smoke['result']['operation_contract']['read_tables']
     assert route_smoke['ok'] is True
     assert not service_smoke['side_effects']
+    assert not operation_contracts['side_effects']
     assert not route_smoke['side_effects']
 
 
