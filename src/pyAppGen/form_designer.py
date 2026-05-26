@@ -9543,7 +9543,11 @@ def livebindings_workbench() -> dict:
         {
             "id": "binding_generated_modules",
             "ok": len(binding_module_artifacts) == 6
-            and all(item["ok"] and "run_binding_operation" in item["exports"] for item in binding_module_artifacts),
+            and all(
+                item["ok"]
+                and {"run_binding_operation", "operation_steps", "validation_steps"} <= set(item["exports"])
+                for item in binding_module_artifacts
+            ),
             "evidence": binding_module_artifacts,
         },
         {
@@ -24035,6 +24039,8 @@ def binding_module_file_manifest() -> tuple[dict, ...]:
         "binding_manifest",
         "run_binding_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(

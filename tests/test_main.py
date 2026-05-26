@@ -2334,6 +2334,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert len(binding_workbench["binding_module_artifacts"]) == 6
     assert len(binding_workbench["binding_module_test_artifacts"]) == 6
     assert all("run_binding_operation" in item["exports"] for item in binding_workbench["binding_module_artifacts"])
+    assert all("operation_steps" in item["exports"] for item in binding_workbench["binding_module_artifacts"])
+    assert all("validation_steps" in item["exports"] for item in binding_workbench["binding_module_artifacts"])
     assert all(
         "test_binding_module_smoke" in item["exports"]
         for item in binding_workbench["binding_module_test_artifacts"]
@@ -15724,6 +15726,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_bindings["binding_designer_family_artifacts"]) == 6
     assert len(generated_bindings["binding_designer_family_test_artifacts"]) == 6
     assert all("run_binding_operation" in item["exports"] for item in generated_bindings["binding_module_artifacts"])
+    assert all("operation_steps" in item["exports"] for item in generated_bindings["binding_module_artifacts"])
+    assert all("validation_steps" in item["exports"] for item in generated_bindings["binding_module_artifacts"])
     assert all(
         "test_binding_module_smoke" in item["exports"]
         for item in generated_bindings["binding_module_test_artifacts"]
@@ -16478,6 +16482,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding_designer_family_coverage",
         "binding_module_operation_step_coverage",
         "binding_designer_family_operation_step_coverage",
+        "binding_module_validation_step_coverage",
         "binding_module_replays_side_effect_free",
     } <= {check["id"] for check in binding_module_runtime_matrix["checks"] if check["ok"]}
     assert {"validate_nodes", "sandbox_expression", "emit_binding_registry", "recover_validator_failure"} <= {
@@ -16491,6 +16496,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for step in item["operation_steps"]
     }
     assert all(item["operation_steps"] for item in binding_module_runtime_matrix["binding_designer_family_replays"])
+    assert all(
+        "side_effects_disallowed" in item["validation_steps"]
+        for item in binding_module_runtime_matrix["binding_module_replays"]
+    )
     binding_replay = binding_runtime.replay_binding_runtime()
     assert binding_replay["ok"] is True
     assert {"dataset_to_field", "field_to_control", "control_to_field"} <= set(binding_replay["propagation_ops"])

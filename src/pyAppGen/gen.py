@@ -11545,6 +11545,8 @@ EXPECTED_EXPORTS = (
     "binding_manifest",
     "run_binding_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -11677,12 +11679,53 @@ def runtime_manifest():
     return _runtime().binding_runtime_manifest()
 
 
+def operation_steps():
+    """Return concrete side-effect-free binding steps this module replays."""
+    operation = run_binding_operation()
+    steps = tuple(operation.get("operation_steps", ()))
+    return {{
+        "format": "appgen.binding-module-operation-steps.v1",
+        "module": MODULE,
+        "kind": _module_kind(),
+        "steps": steps,
+        "ok": operation["ok"] and bool(steps),
+        "side_effects": operation.get("side_effects", ()),
+    }}
+
+
+def validation_steps():
+    """Return validation steps proving this binding module is usable."""
+    manifest = binding_manifest()
+    operation = run_binding_operation()
+    runtime = runtime_manifest()
+    steps = (
+        "binding_manifest_ok",
+        "binding_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.binding-module-validation-steps.v1",
+        "module": MODULE,
+        "kind": _module_kind(),
+        "steps": steps,
+        "ok": manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "side_effects": (),
+    }}
+
+
 def smoke_test():
     """Run side-effect-free checks for this generated binding module."""
     contract = module_contract()
     manifest = binding_manifest()
     operation = run_binding_operation()
     runtime = runtime_manifest()
+    operations = operation_steps()
+    validations = validation_steps()
     return {{
         "format": "appgen.binding-module-smoke-test.v1",
         "module": MODULE,
@@ -11691,6 +11734,8 @@ def smoke_test():
         and manifest["ok"]
         and operation["ok"]
         and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
         "checks": (
@@ -11698,8 +11743,12 @@ def smoke_test():
             "binding_manifest_resolves",
             "binding_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -11733,6 +11782,8 @@ def test_binding_module_contract():
     assert contract["module"] == MODULE
     assert contract["ok"] is True
     assert all(hasattr(module, name) for name in contract["expected_exports"])
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
 
 
 def test_binding_module_smoke():
@@ -11742,6 +11793,8 @@ def test_binding_module_smoke():
     assert result["ok"] is True
     assert result["module"] == MODULE
     assert result["checks"]
+    assert "operation_steps_declared" in result["checks"]
+    assert "validation_steps_declared" in result["checks"]
 
 
 def smoke_test():
@@ -17919,6 +17972,8 @@ def binding_module_file_manifest():
         "binding_manifest",
         "run_binding_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     module_dir = Path(__file__).with_name("binding_modules")
@@ -18120,11 +18175,15 @@ def binding_module_runtime_replay_matrix():
         test_path = binding_test_dir / f"test_{item['module']}.py"
         module_smoke = {"ok": False, "checks": (), "side_effects": (), "error": "missing_module"}
         operation = {"ok": False, "side_effects": (), "error": "missing_module"}
+        operation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
+        validation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
         test_smoke = {"ok": False, "tests": (), "error": "missing_test_module"}
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_binding_runtime_matrix_{item['module']}")
             module_smoke = module.smoke_test()
             operation = module.run_binding_operation()
+            operation_steps = module.operation_steps()
+            validation_steps = module.validation_steps()
         if test_path.exists():
             test_module = _load_generated_module(test_path, f"generated_binding_runtime_matrix_test_{item['module']}")
             test_smoke = test_module.smoke_test()
@@ -18132,7 +18191,8 @@ def binding_module_runtime_replay_matrix():
             {
                 "module": item["module"],
                 "kind": operation.get("kind"),
-                "operation_steps": tuple(operation.get("operation_steps", ())),
+                "operation_steps": tuple(operation_steps.get("steps", ())),
+                "validation_steps": tuple(validation_steps.get("steps", ())),
                 "path": item["path"],
                 "test_path": tests_by_module.get(item["module"], {}).get("path"),
                 "ok": item["exists"]
@@ -18142,11 +18202,17 @@ def binding_module_runtime_replay_matrix():
                 and tests_by_module.get(item["module"], {}).get("smoke_ok", False)
                 and bool(module_smoke.get("ok"))
                 and bool(operation.get("ok"))
+                and bool(operation_steps.get("ok"))
+                and bool(validation_steps.get("ok"))
                 and bool(test_smoke.get("ok"))
                 and not tuple(module_smoke.get("side_effects", ()))
-                and not tuple(operation.get("side_effects", ())),
+                and not tuple(operation.get("side_effects", ()))
+                and not tuple(operation_steps.get("side_effects", ()))
+                and not tuple(validation_steps.get("side_effects", ())),
                 "module_smoke": module_smoke,
                 "operation": operation,
+                "operation_step_contract": operation_steps,
+                "validation_step_contract": validation_steps,
                 "test_smoke": test_smoke,
             }
         )
@@ -18244,11 +18310,21 @@ def binding_module_runtime_replay_matrix():
             "evidence": tuple(sorted({step for item in family_replays for step in item["operation_steps"]})),
         },
         {
+            "id": "binding_module_validation_step_coverage",
+            "ok": all("side_effects_disallowed" in item["validation_steps"] for item in binding_replays),
+            "evidence": tuple((item["module"], item["validation_steps"]) for item in binding_replays),
+        },
+        {
             "id": "binding_module_replays_side_effect_free",
             "ok": all(
                 not tuple(item["module_smoke"].get("side_effects", ()))
                 and not tuple(item["operation"].get("side_effects", ()))
                 for item in (*binding_replays, *family_replays)
+            )
+            and all(
+                not tuple(item["operation_step_contract"].get("side_effects", ()))
+                and not tuple(item["validation_step_contract"].get("side_effects", ()))
+                for item in binding_replays
             ),
             "evidence": (),
         },
@@ -57561,7 +57637,7 @@ def livebindings_workbench():
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
     designer_scenario = livebindings_run_designer_scenario_operation()
     binding_module_artifacts = tuple(
-        {{"module": module, "path": f"app/binding_modules/{{module}}.py", "exports": ("module_contract", "binding_manifest", "run_binding_operation", "runtime_manifest", "smoke_test"), "ok": True}}
+        {{"module": module, "path": f"app/binding_modules/{{module}}.py", "exports": ("module_contract", "binding_manifest", "run_binding_operation", "runtime_manifest", "operation_steps", "validation_steps", "smoke_test"), "ok": True}}
         for module in ("binding_graph_module", "binding_expression_module", "binding_designer_module", "binding_runtime_wiring_module", "binding_propagation_module", "binding_lifecycle_module")
     )
     binding_module_test_artifacts = tuple(
@@ -57613,7 +57689,7 @@ def livebindings_workbench():
         {{"id": "inspector_binding_bridge", "ok": inspector_binding_bridge["ok"] and {{"binding_preview_refresh", "runtime_wiring_refresh"}} <= {{item["phase"] for item in inspector_binding_bridge["replay"]}} and "runtime_wiring_refreshes_after_inspector_commit" in inspector_binding_bridge["guards"] and not inspector_binding_bridge["side_effects"], "evidence": inspector_binding_bridge}},
         {{"id": "binding_readiness_contract", "ok": readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "operation_surface_ready", "designer_scenario_ready", "phase_order_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
         {{"id": "binding_designer_scenario", "ok": designer_scenario["ok"] and {{"commit_designer_transaction", "release_binding_runtime"}} <= {{item["step"] for item in designer_scenario["pipeline"]}} and "side_effect_free_designer_scenario" in designer_scenario["guards"] and not designer_scenario["side_effects"], "evidence": designer_scenario}},
-        {{"id": "binding_generated_modules", "ok": len(binding_module_artifacts) == 6 and all(item["ok"] and "run_binding_operation" in item["exports"] for item in binding_module_artifacts), "evidence": binding_module_artifacts}},
+        {{"id": "binding_generated_modules", "ok": len(binding_module_artifacts) == 6 and all(item["ok"] and {{"run_binding_operation", "operation_steps", "validation_steps"}} <= set(item["exports"]) for item in binding_module_artifacts), "evidence": binding_module_artifacts}},
         {{"id": "binding_generated_module_tests", "ok": len(binding_module_test_artifacts) == 6 and all(item["ok"] and "test_binding_module_smoke" in item["exports"] for item in binding_module_test_artifacts), "evidence": binding_module_test_artifacts}},
         {{"id": "binding_designer_family_contract", "ok": binding_designer_families["ok"] and set(binding_designer_families["required_families"]) <= {{family["family"] for family in binding_designer_families["families"] if family["evidence"]}} and not binding_designer_families["side_effects"], "evidence": binding_designer_families}},
         {{"id": "binding_designer_family_modules", "ok": len(binding_designer_family_artifacts) == 6 and all(item["ok"] and {{"binding_designer_family_manifest", "run_binding_designer_operation", "smoke_test"}} <= set(item["exports"]) for item in binding_designer_family_artifacts), "evidence": binding_designer_family_artifacts}},
