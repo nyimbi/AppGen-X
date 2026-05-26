@@ -8,6 +8,20 @@ import math
 import re
 
 
+ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC = "appgen.order-routing.events"
+ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES = (
+    "routing_rule",
+    "route_candidate",
+    "capacity_snapshot",
+    "routing_decision",
+    "node_reservation",
+    "routing_parameter",
+    "routing_configuration",
+)
+ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES = (
+    "FulfillmentRouteSelected",
+    "NodeCapacityReserved",
+)
 ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_routing_lifecycle",
     "graph_relational_fulfillment_topology",
@@ -102,6 +116,24 @@ ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES = (
     "AvailabilityProjected",
     "TaxCalculated",
 )
+_ORDER_ROUTING_OPTIMIZATION_RUNTIME_TABLES = (
+    "order_routing_optimization_appgen_outbox_event",
+    "order_routing_optimization_appgen_inbox_event",
+    "order_routing_optimization_dead_letter_event",
+)
+_ORDER_ROUTING_OPTIMIZATION_ALLOWED_DEPENDENCIES = (
+    "POST /orders/verify",
+    "GET /availability-projections",
+    "GET /tax-calculations",
+    "GET /inventory-nodes",
+    "GET /wms-capacity",
+    "order_projection",
+    "availability_projection",
+    "tax_projection",
+    "inventory_projection",
+    "wms_capacity_projection",
+    "dom_projection",
+)
 _ORDER_ROUTING_OPTIMIZATION_CONFIGURATION_SEQUENCE_FIELDS = {
     "supported_regions",
     "supported_split_policies",
@@ -134,6 +166,7 @@ def order_routing_optimization_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "order_routing_optimization",
         "implementation_directory": "src/pyAppGen/pbcs/order_routing_optimization",
+        "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
         "capabilities": ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS,
         "standard_features": ORDER_ROUTING_OPTIMIZATION_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -146,7 +179,10 @@ def order_routing_optimization_runtime_capabilities() -> dict:
             "upsert_route_candidate",
             "route_orders",
             "reserve_node_capacity",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -158,7 +194,7 @@ def order_routing_optimization_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.order-routing.events",
+            "event_topic": ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "supported_regions": ("west", "central"),
@@ -584,9 +620,9 @@ def order_routing_optimization_configure_runtime(
             "or MariaDB backends"
         )
     event_topic = str(configuration.get("event_topic", "")).strip()
-    if not event_topic or not event_topic.startswith("appgen."):
+    if event_topic != ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC:
         raise ValueError(
-            "Order Routing Optimization requires an AppGen-X event topic"
+            f"Order Routing Optimization requires AppGen-X event topic {ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC}"
         )
     configured = {
         **_normalize_fields(
@@ -594,12 +630,12 @@ def order_routing_optimization_configure_runtime(
             _ORDER_ROUTING_OPTIMIZATION_CONFIGURATION_SEQUENCE_FIELDS,
         ),
         "ok": True,
-        "event_contract": "appgen_event_contract",
+        "event_contract": "AppGen-X",
         "allowed_database_backends": ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS,
         "supported_configuration_fields": (
             ORDER_ROUTING_OPTIMIZATION_SUPPORTED_CONFIGURATION_FIELDS
         ),
-        "visible_event_contracts": ("appgen_event_contract",),
+        "visible_event_contracts": ("AppGen-X",),
         "stream_engine_picker_visible": False,
         "user_selectable_event_contract": False,
     }
@@ -697,6 +733,11 @@ def order_routing_optimization_register_schema_extension(
     table: str,
     fields: dict,
 ) -> dict:
+    if table not in ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES:
+        raise ValueError(
+            "Order Routing Optimization schema extensions must target owned "
+            f"tables: {ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES}"
+        )
     invalid = tuple(
         name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name)
     )
@@ -713,9 +754,10 @@ def order_routing_optimization_register_schema_extension(
             **state,
             "schema_extensions": {
                 **state["schema_extensions"],
-                table: dict(fields),
+                table: {**state["schema_extensions"].get(table, {}), **dict(fields)},
             },
         },
+        "schema_extension": {"table": table, "fields": dict(fields)},
     }
 
 
@@ -1478,32 +1520,159 @@ def order_routing_optimization_run_control_tests(state: dict) -> dict:
 
 def order_routing_optimization_build_api_contract() -> dict:
     return {
+        "format": "appgen.order-routing-optimization-api-contract.v1",
         "ok": True,
         "routes": (
+            {
+                "route": "POST /route-orders",
+                "command": "route_orders",
+                "owned_tables": ("routing_decision", "node_reservation"),
+                "emits": ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
+                "requires_permission": "order_routing_optimization.route",
+                "idempotency_key": "request_id",
+            },
+            {
+                "route": "GET /route-candidates",
+                "query": "build_workbench_view",
+                "owned_tables": ("route_candidate", "capacity_snapshot"),
+                "declared_projection_dependencies": (
+                    "availability_projection",
+                    "tax_projection",
+                    "order_projection",
+                ),
+                "requires_permission": "order_routing_optimization.read",
+            },
+            {
+                "route": "POST /capacity",
+                "command": "ingest_capacity_snapshot",
+                "owned_tables": ("capacity_snapshot",),
+                "emits": (),
+                "requires_permission": "order_routing_optimization.capacity",
+                "idempotency_key": "snapshot_id",
+            },
+            {
+                "route": "POST /route-candidates",
+                "command": "upsert_route_candidate",
+                "owned_tables": ("route_candidate",),
+                "declared_projection_dependencies": (
+                    "tax_projection",
+                    "inventory_projection",
+                    "wms_capacity_projection",
+                ),
+                "emits": (),
+                "requires_permission": "order_routing_optimization.capacity",
+                "idempotency_key": "candidate_id",
+            },
+            {
+                "route": "POST /order-routing/events/inbox",
+                "command": "handle_event",
+                "owned_tables": (),
+                "consumes": ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
+                "requires_permission": "order_routing_optimization.event",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /routing-workbench",
+                "query": "build_workbench_view",
+                "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+                "requires_permission": "order_routing_optimization.audit",
+            },
+        ),
+        "declared_catalog_routes": (
             "POST /route-orders",
             "GET /route-candidates",
             "POST /capacity",
         ),
         "events": {
-            "emits": (
-                "FulfillmentRouteSelected",
-                "NodeCapacityReserved",
-            ),
+            "emits": ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
             "consumes": ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
         },
-        "permissions": (
-            "order_routing_optimization.route",
-            "order_routing_optimization.capacity",
-            "order_routing_optimization.configure",
-            "order_routing_optimization.audit",
-            "order_routing_optimization.event",
-        ),
+        "emits": ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
+        "consumes": ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(order_routing_optimization_permissions_contract()["permissions"])),
+        "database_backends": ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
         "configuration": (
             "ORDER_ROUTING_OPTIMIZATION_DATABASE_BACKEND",
             "ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC",
             "ORDER_ROUTING_OPTIMIZATION_RETRY_LIMIT",
             "ORDER_ROUTING_OPTIMIZATION_DEFAULT_CURRENCY",
         ),
+    }
+
+
+def order_routing_optimization_permissions_contract() -> dict:
+    return {
+        "format": "appgen.order-routing-optimization-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "order_routing_optimization.read",
+            "order_routing_optimization.route",
+            "order_routing_optimization.capacity",
+            "order_routing_optimization.configure",
+            "order_routing_optimization.audit",
+            "order_routing_optimization.event",
+        ),
+        "action_permissions": {
+            "route_orders": "order_routing_optimization.route",
+            "reserve_node_capacity": "order_routing_optimization.route",
+            "ingest_capacity_snapshot": "order_routing_optimization.capacity",
+            "upsert_route_candidate": "order_routing_optimization.capacity",
+            "handle_event": "order_routing_optimization.event",
+            "simulate_counterfactual": "order_routing_optimization.audit",
+            "register_rule": "order_routing_optimization.configure",
+            "register_schema_extension": "order_routing_optimization.configure",
+            "set_parameter": "order_routing_optimization.configure",
+            "configure_runtime": "order_routing_optimization.configure",
+            "run_control_tests": "order_routing_optimization.audit",
+            "build_workbench_view": "order_routing_optimization.audit",
+        },
+    }
+
+
+def order_routing_optimization_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed = (
+        *ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+        *ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
+        *_ORDER_ROUTING_OPTIMIZATION_RUNTIME_TABLES,
+        *_ORDER_ROUTING_OPTIMIZATION_ALLOWED_DEPENDENCIES,
+    )
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(allowed)
+        and not str(reference).startswith("order_routing_optimization_")
+    )
+    return {
+        "format": "appgen.order-routing-optimization-boundary.v1",
+        "ok": not violations,
+        "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "POST /orders/verify",
+                "GET /availability-projections",
+                "GET /tax-calculations",
+                "GET /inventory-nodes",
+                "GET /wms-capacity",
+            ),
+            "events": ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "order_projection",
+                "availability_projection",
+                "tax_projection",
+                "inventory_projection",
+                "wms_capacity_projection",
+                "dom_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -1537,7 +1706,7 @@ def order_routing_optimization_run_resilience_drill(
 ) -> dict:
     event_topic = state["configuration"].get(
         "event_topic",
-        "appgen.order-routing.events",
+        ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
     )
     return {
         "ok": bool(state["outbox"])
@@ -1802,6 +1971,10 @@ def order_routing_optimization_build_workbench_view(
                 "supported": ORDER_ROUTING_OPTIMIZATION_SUPPORTED_PARAMETER_KEYS,
                 "active": parameter_names,
             },
+            "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+            "outbox_table": "order_routing_optimization_appgen_outbox_event",
+            "inbox_table": "order_routing_optimization_appgen_inbox_event",
+            "dead_letter_table": "order_routing_optimization_dead_letter_event",
         },
     }
 

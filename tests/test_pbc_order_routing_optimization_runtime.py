@@ -1,9 +1,27 @@
 import pytest
 
 from pyAppGen.pbcs.order_routing_optimization import (
+    ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
+    ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
+    ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
+    ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
+    ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
     ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS,
 )
 from pyAppGen.pbcs.order_routing_optimization import implementation_contract
+from pyAppGen.pbcs.order_routing_optimization import (
+    order_routing_optimization_build_api_contract,
+)
 from pyAppGen.pbcs.order_routing_optimization import (
     order_routing_optimization_build_workbench_view,
 )
@@ -20,7 +38,13 @@ from pyAppGen.pbcs.order_routing_optimization import (
     order_routing_optimization_ingest_capacity_snapshot,
 )
 from pyAppGen.pbcs.order_routing_optimization import (
+    order_routing_optimization_permissions_contract,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
     order_routing_optimization_register_rule,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
+    order_routing_optimization_register_schema_extension,
 )
 from pyAppGen.pbcs.order_routing_optimization import (
     order_routing_optimization_render_workbench,
@@ -43,6 +67,9 @@ from pyAppGen.pbcs.order_routing_optimization import (
 from pyAppGen.pbcs.order_routing_optimization import (
     order_routing_optimization_upsert_route_candidate,
 )
+from pyAppGen.pbcs.order_routing_optimization import (
+    order_routing_optimization_verify_owned_table_boundary,
+)
 
 
 def test_order_routing_optimization_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -52,6 +79,7 @@ def test_order_routing_optimization_runtime_executes_standard_and_advanced_capab
     assert runtime["format"] == "appgen.order-routing-optimization-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/order_routing_optimization"
+    assert runtime["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
     assert len(runtime["standard_features"]) >= 18
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
@@ -66,6 +94,10 @@ def test_order_routing_optimization_runtime_executes_standard_and_advanced_capab
     assert contract["pbc"] == "order_routing_optimization"
     assert contract["ui_contract"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+    assert contract["allowed_database_backends"] == ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS
+    assert contract["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["permissions_contract"]["action_permissions"]["register_schema_extension"] == "order_routing_optimization.configure"
     assert (
         "RoutingConfigurationPanel"
         in contract["ui_contract"]["fragments"]
@@ -74,6 +106,25 @@ def test_order_routing_optimization_runtime_executes_standard_and_advanced_capab
         ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS
     )
 
+    api = order_routing_optimization_build_api_contract()
+    permissions = order_routing_optimization_permissions_contract()
+    assert api["format"] == "appgen.order-routing-optimization-api-contract.v1"
+    assert api["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+    assert api["database_backends"] == ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS
+    assert api["emits"] == ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES
+    assert api["consumes"] == ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False
+    assert {route["route"] for route in api["routes"]} >= {
+        "POST /route-orders",
+        "GET /route-candidates",
+        "POST /capacity",
+        "POST /order-routing/events/inbox",
+        "GET /routing-workbench",
+    }
+    assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert permissions["action_permissions"]["route_orders"] == "order_routing_optimization.route"
+
 
 def test_order_routing_optimization_runtime_applies_rules_parameters_configuration_and_ui() -> None:
     state = order_routing_optimization_empty_state()
@@ -81,7 +132,7 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.order-routing.events",
+            "event_topic": ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "supported_regions": ("west", "central"),
@@ -135,6 +186,14 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
         "substitution_mode",
         "status",
     )
+    extension = order_routing_optimization_register_schema_extension(
+        state,
+        "routing_decision",
+        {"counterfactual_vector": "jsonb", "risk_features": "jsonb"},
+    )
+    state = extension["state"]
+    assert extension["ok"] is True
+    assert state["schema_extensions"]["routing_decision"]["risk_features"] == "jsonb"
 
     for event in (
         {
@@ -266,9 +325,9 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
     assert workbench["binding_evidence"]["configuration"] == {
         "bound": True,
         "database_backend": "postgresql",
-        "event_contract": "appgen_event_contract",
-        "event_topic": "appgen.order-routing.events",
-        "visible_event_contracts": ("appgen_event_contract",),
+        "event_contract": "AppGen-X",
+        "event_topic": ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
+        "visible_event_contracts": ("AppGen-X",),
         "stream_engine_picker_visible": False,
         "user_selectable_event_contract": False,
         "supported_fields": (
@@ -284,6 +343,7 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
             "workbench_limit",
         ),
     }
+    assert workbench["binding_evidence"]["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
     assert workbench["binding_evidence"]["rules"] == (
         {
             "rule_id": "rule_ops",
@@ -325,11 +385,11 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
         "mysql",
         "mariadb",
     )
-    assert ui_contract["configuration_editor"]["visible_event_contracts"] == (
-        "appgen_event_contract",
-    )
+    assert ui_contract["configuration_editor"]["required_event_topic"] == ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC
+    assert ui_contract["configuration_editor"]["visible_event_contracts"] == ("AppGen-X",)
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["configuration_editor"]["user_selectable_event_contract"] is False
+    assert ui_contract["binding_evidence"]["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
     assert (
         ui_contract["rule_editor"]["compiled_evidence_fields"]
         == ("compiled_hash", "compiled_evidence")
@@ -378,6 +438,23 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
     assert rendered["binding_evidence"]["parameters"] == workbench["binding_evidence"][
         "parameters"
     ]
+    assert rendered["binding_evidence"]["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+
+    boundary = order_routing_optimization_verify_owned_table_boundary(
+        (
+            "routing_decision",
+            "route_candidate",
+            "AvailabilityProjected",
+            "availability_projection",
+            "GET /tax-calculations",
+            "order_routing_optimization_appgen_outbox_event",
+        )
+    )
+    assert boundary["ok"] is True
+    assert boundary["declared_dependencies"]["shared_tables"] == ()
+    violation = order_routing_optimization_verify_owned_table_boundary(("orders",))
+    assert violation["ok"] is False
+    assert violation["violations"] == ("orders",)
 
 
 def test_order_routing_optimization_rejects_invalid_backend_and_preserves_idempotent_retry_evidence() -> None:
@@ -388,7 +465,7 @@ def test_order_routing_optimization_rejects_invalid_backend_and_preserves_idempo
             state,
             {
                 "database_backend": "stream_store",
-                "event_topic": "appgen.order-routing.events",
+                "event_topic": ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "default_currency": "USD",
                 "supported_regions": ("west",),
@@ -405,7 +482,7 @@ def test_order_routing_optimization_rejects_invalid_backend_and_preserves_idempo
             state,
             {
                 "database_backend": "postgresql",
-                "event_topic": "appgen.order-routing.events",
+                "event_topic": ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "default_currency": "USD",
                 "supported_regions": ("west",),
@@ -421,6 +498,9 @@ def test_order_routing_optimization_rejects_invalid_backend_and_preserves_idempo
     with pytest.raises(ValueError, match="Unsupported Order Routing Optimization parameter"):
         order_routing_optimization_set_parameter(state, "stream_engine", 1)
 
+    with pytest.raises(ValueError, match="schema extensions must target owned tables"):
+        order_routing_optimization_register_schema_extension(state, "orders", {"route_hint": "jsonb"})
+
     with pytest.raises(ValueError, match="must be between 0.0 and 1.0"):
         order_routing_optimization_set_parameter(state, "confidence_floor", 1.1)
 
@@ -428,7 +508,7 @@ def test_order_routing_optimization_rejects_invalid_backend_and_preserves_idempo
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.order-routing.events",
+            "event_topic": ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
             "retry_limit": 2,
             "default_currency": "USD",
             "supported_regions": ("west",),

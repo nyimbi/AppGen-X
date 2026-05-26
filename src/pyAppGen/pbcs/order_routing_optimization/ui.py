@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from .runtime import ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
 from .runtime import ORDER_ROUTING_OPTIMIZATION_REQUIRED_RULE_FIELDS
+from .runtime import ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC
 from .runtime import ORDER_ROUTING_OPTIMIZATION_SUPPORTED_CONFIGURATION_FIELDS
 from .runtime import ORDER_ROUTING_OPTIMIZATION_SUPPORTED_PARAMETER_KEYS
 from .runtime import order_routing_optimization_build_workbench_view
+from .runtime import order_routing_optimization_permissions_contract
 
 ORDER_ROUTING_OPTIMIZATION_UI_FRAGMENT_KEYS = (
     "OrderRoutingWorkbench",
@@ -79,23 +82,13 @@ def order_routing_optimization_ui_contract() -> dict:
                 ),
             },
         ),
-        "action_permissions": {
-            "route_orders": "order_routing_optimization.route",
-            "reserve_node_capacity": "order_routing_optimization.route",
-            "ingest_capacity_snapshot": "order_routing_optimization.capacity",
-            "upsert_route_candidate": "order_routing_optimization.capacity",
-            "handle_event": "order_routing_optimization.event",
-            "simulate_counterfactual": "order_routing_optimization.audit",
-            "register_rule": "order_routing_optimization.configure",
-            "set_parameter": "order_routing_optimization.configure",
-            "configure_runtime": "order_routing_optimization.configure",
-            "run_control_tests": "order_routing_optimization.audit",
-        },
+        "action_permissions": order_routing_optimization_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ORDER_ROUTING_OPTIMIZATION_SUPPORTED_CONFIGURATION_FIELDS,
             "allowed_database_backends": ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
-            "visible_event_contracts": ("appgen_event_contract",),
+            "visible_event_contracts": ("AppGen-X",),
             "stream_engine_picker_visible": False,
             "user_selectable_event_contract": False,
         },
@@ -128,6 +121,10 @@ def order_routing_optimization_ui_contract() -> dict:
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+            "shared_table_access": False,
         },
     }
 
@@ -204,6 +201,10 @@ def order_routing_optimization_render_workbench(
                 for item in view["binding_evidence"]["rules"]
             ),
             "parameters": view["binding_evidence"]["parameters"],
+            "owned_tables": view["binding_evidence"]["owned_tables"],
+            "outbox_table": view["binding_evidence"]["outbox_table"],
+            "inbox_table": view["binding_evidence"]["inbox_table"],
+            "dead_letter_table": view["binding_evidence"]["dead_letter_table"],
         },
         "event_outbox_count": view["event_outbox_count"],
         "inbox_count": view["inbox_count"],

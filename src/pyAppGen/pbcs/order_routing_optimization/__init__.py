@@ -1,6 +1,11 @@
 """Order Routing Optimization PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES
+from .runtime import ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES
+from .runtime import ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+from .runtime import ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC
 from .runtime import ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import ORDER_ROUTING_OPTIMIZATION_STANDARD_FEATURE_KEYS
 from .runtime import order_routing_optimization_build_api_contract
@@ -16,6 +21,7 @@ from .runtime import order_routing_optimization_handle_event
 from .runtime import order_routing_optimization_ingest_capacity_snapshot
 from .runtime import order_routing_optimization_optimize_route_network
 from .runtime import order_routing_optimization_parse_route_request
+from .runtime import order_routing_optimization_permissions_contract
 from .runtime import order_routing_optimization_recommend_exception_resolution
 from .runtime import order_routing_optimization_register_governed_model
 from .runtime import order_routing_optimization_register_rule
@@ -35,6 +41,7 @@ from .runtime import order_routing_optimization_set_parameter
 from .runtime import order_routing_optimization_simulate_counterfactual
 from .runtime import order_routing_optimization_model_stochastic_exposure
 from .runtime import order_routing_optimization_upsert_route_candidate
+from .runtime import order_routing_optimization_verify_owned_table_boundary
 from .ui import ORDER_ROUTING_OPTIMIZATION_UI_FRAGMENT_KEYS
 from .ui import order_routing_optimization_render_workbench
 from .ui import order_routing_optimization_ui_contract
@@ -50,4 +57,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": order_routing_optimization_ui_contract(),
+        "api_contract": order_routing_optimization_build_api_contract(),
+        "permissions_contract": order_routing_optimization_permissions_contract(),
+        "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+        "allowed_database_backends": ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS,
     }
