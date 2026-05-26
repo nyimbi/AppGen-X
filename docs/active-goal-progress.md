@@ -1843,7 +1843,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   boundary rules; applies bounded domain/workflow/data parameters; keeps
   AppGen-X eventing fixed; and rejects stream-engine picker inputs. Focused
   governance plus package-local assurance tests pass (`5 passed`). Commit:
-  `pending`.
+  `a24c9c1`.
 - Current mobile/device target readiness pass adds full API-by-runtime-target
   scenario matrix replay for source and generated apps. Readiness now requires
   supported targets to replay, unsupported targets to block with a visible
