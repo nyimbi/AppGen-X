@@ -1537,7 +1537,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   operation-step and validation-step contracts, generated package tests replay
   those contracts, and generated device API component tests preserve set-based
   release gate assertions. Focused source-side component package probes and
-  generated-app regression pass. Commit: `pending`.
+  generated-app regression pass. Commit: `8d151cf`.
 
 ## Open Completion Areas
 
