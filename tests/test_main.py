@@ -5410,6 +5410,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "binding_designer_family_module_tests_ready",
         "binding_modules_ready",
         "binding_module_tests_ready",
+        "binding_module_runtime_replay_matrix_ready",
         "runtime_replay",
     } <= set(binding_runtime_smoke["passing_checks"])
     package_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_package_manager_runtime")
@@ -16279,6 +16280,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding_designer_family_module_tests_ready",
         "binding_modules_ready",
         "binding_module_tests_ready",
+        "binding_module_runtime_replay_matrix_ready",
         "runtime_replay",
     } <= set(binding_runtime_smoke["checks"])
     binding_module_files = binding_runtime.binding_module_file_manifest()
@@ -16312,6 +16314,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_binding_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
+    binding_module_runtime_matrix = binding_runtime.binding_module_runtime_replay_matrix()
+    assert binding_module_runtime_matrix["format"] == "appgen.generated-binding-module-runtime-replay-matrix.v1"
+    assert binding_module_runtime_matrix["ok"] is True
+    assert len(binding_module_runtime_matrix["binding_module_replays"]) == 6
+    assert len(binding_module_runtime_matrix["binding_designer_family_replays"]) == 6
+    assert {
+        "binding_modules_replay",
+        "binding_module_kind_coverage",
+        "binding_designer_family_modules_replay",
+        "binding_designer_family_coverage",
+        "binding_module_replays_side_effect_free",
+    } <= {check["id"] for check in binding_module_runtime_matrix["checks"] if check["ok"]}
+    assert all(item["operation_steps"] for item in binding_module_runtime_matrix["binding_designer_family_replays"])
     binding_replay = binding_runtime.replay_binding_runtime()
     assert binding_replay["ok"] is True
     assert {"dataset_to_field", "field_to_control", "control_to_field"} <= set(binding_replay["propagation_ops"])

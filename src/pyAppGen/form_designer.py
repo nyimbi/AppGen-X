@@ -25509,6 +25509,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "binding_designer_family_module_tests_ready",
         "binding_modules_ready",
         "binding_module_tests_ready",
+        "binding_module_runtime_replay_matrix_ready",
         "runtime_replay",
     )
     required_package_manager_runtime_checks = (

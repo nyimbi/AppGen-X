@@ -17517,6 +17517,141 @@ def replay_binding_runtime():
     }
 
 
+def binding_module_runtime_replay_matrix():
+    """Replay generated binding modules, designer family modules, and their tests."""
+    form_designer = _load_form_designer()
+    module_files = binding_module_file_manifest()
+    module_tests = binding_module_test_file_manifest()
+    family_modules = form_designer.binding_designer_family_module_file_manifest()
+    family_tests = form_designer.binding_designer_family_module_test_file_manifest()
+    tests_by_module = {item["module"]: item for item in module_tests["tests"]}
+    family_tests_by_module = {item["module"]: item for item in family_tests["tests"]}
+    binding_module_dir = Path(__file__).with_name("binding_modules")
+    binding_test_dir = Path(__file__).with_name("binding_module_tests")
+    family_module_dir = Path(__file__).with_name("binding_designer_family_modules")
+    family_test_dir = Path(__file__).with_name("binding_designer_family_module_tests")
+    binding_replays = []
+    for item in module_files["modules"]:
+        module_path = binding_module_dir / f"{item['module']}.py"
+        test_path = binding_test_dir / f"test_{item['module']}.py"
+        module_smoke = {"ok": False, "checks": (), "side_effects": (), "error": "missing_module"}
+        operation = {"ok": False, "side_effects": (), "error": "missing_module"}
+        test_smoke = {"ok": False, "tests": (), "error": "missing_test_module"}
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_binding_runtime_matrix_{item['module']}")
+            module_smoke = module.smoke_test()
+            operation = module.run_binding_operation()
+        if test_path.exists():
+            test_module = _load_generated_module(test_path, f"generated_binding_runtime_matrix_test_{item['module']}")
+            test_smoke = test_module.smoke_test()
+        binding_replays.append(
+            {
+                "module": item["module"],
+                "kind": operation.get("kind"),
+                "path": item["path"],
+                "test_path": tests_by_module.get(item["module"], {}).get("path"),
+                "ok": item["exists"]
+                and item["contract_ok"]
+                and item["smoke_ok"]
+                and tests_by_module.get(item["module"], {}).get("exists", False)
+                and tests_by_module.get(item["module"], {}).get("smoke_ok", False)
+                and bool(module_smoke.get("ok"))
+                and bool(operation.get("ok"))
+                and bool(test_smoke.get("ok"))
+                and not tuple(module_smoke.get("side_effects", ()))
+                and not tuple(operation.get("side_effects", ())),
+                "module_smoke": module_smoke,
+                "operation": operation,
+                "test_smoke": test_smoke,
+            }
+        )
+    family_replays = []
+    for item in family_modules["modules"]:
+        module_path = family_module_dir / f"{item['module']}.py"
+        test_path = family_test_dir / f"test_{item['module']}.py"
+        module_smoke = {"ok": False, "checks": (), "side_effects": (), "error": "missing_module"}
+        operation = {"ok": False, "operation_steps": (), "side_effects": (), "error": "missing_module"}
+        test_smoke = {"ok": False, "tests": (), "error": "missing_test_module"}
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_binding_family_runtime_matrix_{item['module']}")
+            module_smoke = module.smoke_test()
+            operation = module.run_binding_designer_operation()
+        if test_path.exists():
+            test_module = _load_generated_module(test_path, f"generated_binding_family_runtime_matrix_test_{item['module']}")
+            test_smoke = test_module.smoke_test()
+        family_replays.append(
+            {
+                "module": item["module"],
+                "family": item["family"],
+                "path": item["path"],
+                "test_path": family_tests_by_module.get(item["module"], {}).get("path"),
+                "operation_steps": tuple(operation.get("operation_steps", ())),
+                "ok": item["exists"]
+                and item["ok"]
+                and family_tests_by_module.get(item["module"], {}).get("exists", False)
+                and family_tests_by_module.get(item["module"], {}).get("ok", False)
+                and bool(module_smoke.get("ok"))
+                and bool(operation.get("ok"))
+                and bool(test_smoke.get("ok"))
+                and "validate_graph" in tuple(operation.get("operation_steps", ()))
+                and not tuple(module_smoke.get("side_effects", ()))
+                and not tuple(operation.get("side_effects", ())),
+                "module_smoke": module_smoke,
+                "operation": operation,
+                "test_smoke": test_smoke,
+            }
+        )
+    required_kinds = {"graph", "expression", "designer", "runtime_wiring", "propagation", "lifecycle"}
+    required_families = set(form_designer.binding_designer_family_contract()["required_families"])
+    checks = (
+        {
+            "id": "binding_modules_replay",
+            "ok": len(binding_replays) == len(required_kinds) and all(item["ok"] for item in binding_replays),
+            "evidence": tuple(item["module"] for item in binding_replays),
+        },
+        {
+            "id": "binding_module_kind_coverage",
+            "ok": required_kinds == {item["kind"] for item in binding_replays},
+            "evidence": tuple(sorted(item["kind"] for item in binding_replays)),
+        },
+        {
+            "id": "binding_designer_family_modules_replay",
+            "ok": len(family_replays) == len(required_families) and all(item["ok"] for item in family_replays),
+            "evidence": tuple(item["module"] for item in family_replays),
+        },
+        {
+            "id": "binding_designer_family_coverage",
+            "ok": required_families == {item["family"] for item in family_replays},
+            "evidence": tuple(sorted(item["family"] for item in family_replays)),
+        },
+        {
+            "id": "binding_module_replays_side_effect_free",
+            "ok": all(
+                not tuple(item["module_smoke"].get("side_effects", ()))
+                and not tuple(item["operation"].get("side_effects", ()))
+                for item in (*binding_replays, *family_replays)
+            ),
+            "evidence": (),
+        },
+    )
+    return {
+        "format": "appgen.generated-binding-module-runtime-replay-matrix.v1",
+        "ok": module_files["ok"] and module_tests["ok"] and family_modules["ok"] and family_tests["ok"] and all(check["ok"] for check in checks),
+        "binding_module_replays": tuple(binding_replays),
+        "binding_designer_family_replays": tuple(family_replays),
+        "checks": checks,
+        "guards": (
+            "binding_modules_before_runtime_claim",
+            "binding_tests_before_runtime_claim",
+            "binding_designer_family_modules_before_runtime_claim",
+            "binding_designer_family_tests_before_runtime_claim",
+            "binding_replays_are_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def validate_binding_runtime():
     """Validate generated visual binding runtime readiness."""
     form_designer = _load_form_designer()
@@ -17526,6 +17661,7 @@ def validate_binding_runtime():
     module_tests = binding_module_test_file_manifest()
     family_modules = form_designer.binding_designer_family_module_file_manifest()
     family_tests = form_designer.binding_designer_family_module_test_file_manifest()
+    module_replay_matrix = binding_module_runtime_replay_matrix()
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "graph_nodes_present", "ok": {"dataset", "field", "control", "expression"} <= {node["kind"] for node in manifest["graph"]["nodes"]}},
@@ -17544,6 +17680,7 @@ def validate_binding_runtime():
         {"id": "binding_designer_family_module_tests_ready", "ok": family_tests["ok"] and not family_tests["side_effects"]},
         {"id": "binding_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
         {"id": "binding_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
+        {"id": "binding_module_runtime_replay_matrix_ready", "ok": module_replay_matrix["ok"] and not module_replay_matrix["side_effects"]},
         {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -17555,6 +17692,7 @@ def validate_binding_runtime():
         "module_tests": module_tests,
         "binding_designer_family_modules": family_modules,
         "binding_designer_family_tests": family_tests,
+        "module_replay_matrix": module_replay_matrix,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
