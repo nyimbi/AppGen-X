@@ -8,6 +8,9 @@ from pyAppGen.pbcs.ar_credit import AR_CREDIT_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.ar_credit import AR_CREDIT_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.ar_credit import ar_credit_apply_cash
 from pyAppGen.pbcs.ar_credit import ar_credit_build_api_contract
+from pyAppGen.pbcs.ar_credit import ar_credit_build_release_evidence
+from pyAppGen.pbcs.ar_credit import ar_credit_build_schema_contract
+from pyAppGen.pbcs.ar_credit import ar_credit_build_service_contract
 from pyAppGen.pbcs.ar_credit import ar_credit_build_workbench_view
 from pyAppGen.pbcs.ar_credit import ar_credit_calculate_aging
 from pyAppGen.pbcs.ar_credit import ar_credit_configure_runtime
@@ -55,11 +58,20 @@ def test_ar_credit_runtime_executes_standard_and_advanced_contracts() -> None:
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/ar_credit"
     assert runtime["owned_tables"] == AR_CREDIT_OWNED_TABLES
+    assert len(runtime["owned_tables"]) >= 35
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "appgen_x_inbox" in runtime["standard_features"]
     assert "retry_dead_letter_evidence" in runtime["standard_features"]
+    assert "customer_site_management" in runtime["standard_features"]
+    assert "customer_credit_profile" in runtime["standard_features"]
+    assert "invoice_line_management" in runtime["standard_features"]
+    assert "cash_application_batching" in runtime["standard_features"]
+    assert "dispute_case_management" in runtime["standard_features"]
+    assert "revenue_recognition" in runtime["standard_features"]
+    assert "e_invoice_submission" in runtime["standard_features"]
+    assert "invoice_financing" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert set(runtime["capabilities"]) == set(AR_CREDIT_RUNTIME_CAPABILITY_KEYS)
     assert smoke["ok"] is True
@@ -70,11 +82,20 @@ def test_ar_credit_runtime_executes_standard_and_advanced_contracts() -> None:
     assert contract["ui_contract"]["ok"] is True
     assert contract["owned_tables"] == AR_CREDIT_OWNED_TABLES
     assert contract["allowed_database_backends"] == AR_CREDIT_ALLOWED_DATABASE_BACKENDS
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence_contract"]["ok"] is True
+    assert contract["required_event_topic"] == AR_CREDIT_REQUIRED_EVENT_TOPIC
+    assert contract["consumes"] == AR_CREDIT_CONSUMED_EVENT_TYPES
+    assert contract["emits"] == AR_CREDIT_EMITTED_EVENT_TYPES
     assert contract["api_contract"]["event_contract"] == "AppGen-X"
     assert contract["api_contract"]["shared_table_access"] is False
     assert contract["permissions_contract"]["action_permissions"]["receive_event"] == "ar_credit.event"
 
     api = ar_credit_build_api_contract()
+    schema = ar_credit_build_schema_contract()
+    service = ar_credit_build_service_contract()
+    release = ar_credit_build_release_evidence()
     permissions = ar_credit_permissions_contract()
     assert api["format"] == "appgen.ar-credit-api-contract.v1"
     assert api["database_backends"] == AR_CREDIT_ALLOWED_DATABASE_BACKENDS
@@ -88,6 +109,25 @@ def test_ar_credit_runtime_executes_standard_and_advanced_contracts() -> None:
         "POST /ar/events/inbox",
         "GET /ar/workbench",
     }
+    assert schema["format"] == "appgen.ar-credit-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(AR_CREDIT_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(AR_CREDIT_OWNED_TABLES)
+    assert {
+        "ar_customer_credit_profile",
+        "ar_invoice_line",
+        "ar_cash_application",
+        "ar_revenue_schedule_line",
+        "ar_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.ar-credit-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.ar-credit-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert permissions["action_permissions"]["verify_owned_table_boundary"] == "ar_credit.audit"
 
 

@@ -10,6 +10,9 @@ from .runtime import AR_CREDIT_STANDARD_FEATURE_KEYS
 from .runtime import AR_CREDIT_RUNTIME_CAPABILITY_KEYS
 from .runtime import ar_credit_apply_cash
 from .runtime import ar_credit_build_api_contract
+from .runtime import ar_credit_build_release_evidence
+from .runtime import ar_credit_build_schema_contract
+from .runtime import ar_credit_build_service_contract
 from .runtime import ar_credit_build_workbench_view
 from .runtime import ar_credit_calculate_aging
 from .runtime import ar_credit_configure_runtime
@@ -72,7 +75,13 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": ar_credit_ui_contract(),
         "api_contract": ar_credit_build_api_contract(),
+        "schema_contract": ar_credit_build_schema_contract(),
+        "service_contract": ar_credit_build_service_contract(),
+        "release_evidence_contract": ar_credit_build_release_evidence(),
         "permissions_contract": ar_credit_permissions_contract(),
         "owned_tables": AR_CREDIT_OWNED_TABLES,
         "allowed_database_backends": AR_CREDIT_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": AR_CREDIT_REQUIRED_EVENT_TOPIC,
+        "consumes": AR_CREDIT_CONSUMED_EVENT_TYPES,
+        "emits": AR_CREDIT_EMITTED_EVENT_TYPES,
     }

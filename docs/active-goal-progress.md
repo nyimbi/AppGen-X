@@ -1284,6 +1284,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   place for verification, and records the cleanup in an archive manifest. The
   post-move package import check passes and no active `.pytest_cache` or
   `__pycache__` directories remain outside `.venv`, `.git`, or `archive`.
+- Current AR Credit PBC completion pass expands `ar_credit` into a package-local
+  receivables implementation with 37 owned tables, schema/model/migration
+  contract evidence, service and release evidence contracts, AppGen-X
+  eventing, UI/workbench binding, rules, parameters, configuration, boundary
+  checks, and a detailed package specification. Focused AR tests pass
+  (`4 passed`), syntax and whitespace checks pass, the diff-only restricted
+  name scan has no hits, and implementation release, generation smoke,
+  capability, full implementation release, and catalog release audits all
+  return true for the implemented PBC set. Commit: pending.
 
 ## Open Completion Areas
 

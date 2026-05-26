@@ -2,83 +2,175 @@
 
 ## Purpose
 
-The Accounts Receivable and Credit PBC owns customer credit, invoice issue,
-delivery confirmation, receivable subledger state, cash application, unapplied
-cash, disputes, credit memos, refunds, write-offs, aging, dunning,
-collections, customer statements, revenue schedules, and receivables workbench
-evidence. It integrates with GL, treasury, tax, order, identity, workflow,
-schema registry, audit ledger, and gateway PBCs through APIs, AppGen-X events,
-and read-only projections.
+The Accounts Receivable and Credit PBC owns the quote-to-cash financial
+boundary after customer identity and order fulfillment signals are available.
+It manages customer credit, sites, payment terms, invoice issue, invoice lines,
+tax evidence, delivery confirmation, receivable subledger state, cash receipts,
+remittance interpretation, cash application, unapplied cash, disputes, credit
+memos, refunds, write-offs, aging, dunning, collection actions, customer
+statements, revenue schedules, credit decisions, electronic invoice evidence,
+cross-border receivables, invoice-finance programs, controls, rules,
+parameters, governed models, and the AR workbench.
+
+The PBC integrates with other AppGen-X capabilities only through declared
+APIs, AppGen-X events, and read-only projections. It does not share tables with
+GL, treasury, tax, order, identity, workflow, audit, or gateway PBCs.
 
 ## Owned Datastore Boundary
 
-The PBC owns:
+The executable runtime declares the following AR-owned tables and migrations.
+Every table is owned by `ar_credit`, has a generated model, and is included in
+the schema contract:
 
-- `ar_credit_customer`: customer master, credit terms, identity, beneficial
-  ownership, risk signals, topology, status, and compliance metadata.
-- `ar_credit_invoice`: invoice header, lines, tax, performance obligations,
-  due date, open amount, lifecycle state, and revenue evidence.
-- `ar_credit_delivery`: fulfillment confirmation evidence referenced by
-  receivable validation and revenue scheduling.
-- `ar_credit_receipt`: received cash, remittance parse result, bank reference,
-  application confidence, and cash-pool assignment.
-- `ar_credit_unapplied_cash`: receipts that cannot be matched, triage status,
-  reason, and resolution trail.
-- `ar_credit_adjustment`: credit memo, refund, write-off, dispute resolution,
-  approval evidence, and customer impact.
-- `ar_credit_collection_action`: dunning notices, collection channel, schedule,
-  idempotency key, and outcome evidence.
-- `ar_credit_outbox`, `ar_credit_inbox`, and `ar_credit_dead_letter`:
-  AppGen-X event contract tables for exactly-once handlers, retries, and
-  dead-letter triage.
+- `ar_customer`: tenant, customer identity, name, status, default probability,
+  credit limit, and audit proof.
+- `ar_customer_site`: bill-to and ship-to locations, site status, and customer
+  references.
+- `ar_customer_graph`: parent entities, beneficial owners, network hashes, and
+  risk context.
+- `ar_customer_credit_profile`: approved limits, risk grades, approval state,
+  and scoring model version.
+- `ar_customer_payment_terms`: net days, discount windows, discount rate, and
+  terms state.
+- `ar_customer_risk_signal`: observed signals, source lineage, score, and
+  observation time.
+- `ar_invoice`: invoice header, customer, currency, dates, total, open amount,
+  and lifecycle state.
+- `ar_invoice_line`: SKU, quantity, unit price, account, and tax code.
+- `ar_invoice_tax`: jurisdiction, rate, tax amount, and proof hash.
+- `ar_invoice_performance_obligation`: allocated obligations, satisfaction
+  state, and recognition evidence.
+- `ar_delivery_confirmation`: delivery evidence hash and confirmation time.
+- `ar_cash_receipt`: received amount, currency, bank reference, and receipt
+  timestamp.
+- `ar_remittance_advice`: parsed remittance, invoice reference, confidence,
+  source hash, and bank reference.
+- `ar_cash_application`: receipt-to-invoice application decision, confidence,
+  and applied amount.
+- `ar_unapplied_cash`: unmatched receipt amount, reason, triage state, and
+  resolution trace.
+- `ar_credit_memo`: invoice adjustment, amount, reason, and status.
+- `ar_write_off`: authorized write-off amount, approver, reason, and status.
+- `ar_refund`: refund amount, currency, reason, and schedule state.
+- `ar_dispute_case`: disputed invoice amount, reason, decision, and audit
+  trace.
+- `ar_collection_action`: channel, due date, status, and collection ownership.
+- `ar_dunning_notice`: dunning level, channel, days past due, and send time.
+- `ar_statement`: customer statement balance, hash, status, and as-of date.
+- `ar_revenue_schedule`: recognized and deferred revenue for invoice
+  obligations.
+- `ar_revenue_schedule_line`: schedule line obligation, amount, and recognition
+  state.
+- `ar_cash_pool`: currency cash pool, received cash, unapplied cash, and as-of
+  view.
+- `ar_credit_decision`: recommended limit, risk-adjusted score, and decision.
+- `ar_e_invoice_submission`: jurisdiction, standard, submission hash, and
+  acceptance state.
+- `ar_cross_border_receivable`: target country, settlement amount, and message
+  identifier.
+- `ar_invoice_finance_program`: financing program, advance amount, and
+  counterparty.
+- `ar_policy_rule`: executable AR rule, scope, status, predicate, and compiled
+  hash.
+- `ar_runtime_parameter`: bounded runtime parameter, value, and compiled hash.
+- `ar_schema_extension`: table-scoped field extension and version.
+- `ar_control_assertion`: continuous control assertion, result, evidence hash,
+  and test time.
+- `ar_governed_model`: model lineage, drift score, and governance state.
+- `ar_credit_appgen_outbox_event`: emitted AppGen-X event, topic, idempotency
+  key, and audit hash.
+- `ar_credit_appgen_inbox_event`: consumed AppGen-X event, idempotency key,
+  attempts, and status.
+- `ar_credit_dead_letter_event`: failed event, idempotency key, attempts, and
+  dead-letter reason.
 
-Supported backing stores are PostgreSQL, MySQL, and MariaDB.
+Supported backing stores for ordinary AR deployments are PostgreSQL, MySQL,
+and MariaDB. The runtime rejects unsupported database backends.
 
-## Standard Table-Stakes Capabilities
+## Standard Capabilities
 
-The PBC fully implements customer master, customer onboarding, credit terms,
-invoice generation, invoice validation, delivery confirmation, cash
-application, partial payment, unapplied cash, credit memo, write-off, refund,
-aging, dunning, collection action scheduling, customer statements, revenue
-schedule recognition, credit-limit decisions, dispute management, audit trail,
-controls, configuration schema, executable rules, runtime parameters, seed
-data, permissions, and AR workbench views.
+The PBC implements ordinary AR table-stakes functionality:
+
+- Customer master, customer site maintenance, customer graph ownership, credit
+  profile management, identity projection, beneficial-owner risk context, and
+  payment terms.
+- Invoice issue with lines, taxes, due dates, performance obligations, open
+  amount, status transitions, and deterministic invoice totals.
+- Delivery confirmation before revenue or cash automation where the active
+  rule requires fulfillment evidence.
+- Remittance parsing, received cash, probabilistic application, partial
+  payment, auto-clear thresholds, cash pool updates, and unapplied cash triage.
+- Credit memo, refund, write-off, dispute case, dunning, collection action,
+  customer statement, aging, and revenue schedule workflows.
+- Credit extension decisions, credit-limit buffers, customer default scoring,
+  and collection routing.
+- Executable configuration, parameter, rule, schema-extension, permission,
+  audit, control, and workbench contracts.
+- AppGen-X inbox, outbox, idempotent handlers, retry evidence, and dead-letter
+  records.
 
 ## Advanced Capabilities
 
-The runtime proves event-sourced receivable lifecycle, graph-relational
-customer topology, multi-tenant cash application isolation, schema-evolution
-resilient receivable metadata, probabilistic cash application, liquidity-aware
-credit extension, counterfactual collection strategy optimization, temporal
-revenue-to-cash forecasting, autonomous dispute resolution, semantic
-remittance parsing, predictive customer default scoring, self-healing
-collection routing, disclosure-minimized revenue verification, immutable
-electronic invoicing tax evidence, dynamic sanction and fraud screening,
-automated controls, universal API and asynchronous events, cross-border
-receivable federation, invoice-finance network integration, decentralized
-customer identity, payment-rail resilience drills, crypto-agile payment
-authorization, carbon-aware collection scheduling, algebraic collection
-optimization, payment-term mechanism design, information-shift cash anomaly
-detection, temporal receivable stochastic modeling, formal invariants, and
-governed financial models.
+The runtime also proves advanced AR capabilities:
+
+- Event-sourced receivable lifecycle with immutable emitted event evidence and
+  projection-friendly state reconstruction.
+- Graph-relational customer topology for beneficial-owner, parent, and network
+  risk context.
+- Multi-tenant cash application isolation with tenant-scoped receipts,
+  invoices, rules, and workbench views.
+- Schema evolution through owned extension records and schema contract
+  migration evidence.
+- Probabilistic cash application using confidence thresholds and manual review
+  fallbacks.
+- Liquidity-aware credit extension using treasury forecast projections without
+  treasury table access.
+- Counterfactual collection strategy optimization against DSO targets.
+- Temporal revenue-to-cash forecasting and stochastic receivable modeling.
+- Autonomous dispute resolution with evidence-scored recommendations.
+- Semantic remittance parsing for unstructured payment text.
+- Predictive customer default scoring and governed model registration.
+- Self-healing collection routing with channel availability failover.
+- Disclosure-minimized revenue verification using deterministic proof hashes.
+- Immutable electronic invoicing and tax audit evidence.
+- Dynamic sanction and fraud screening across customer graph context.
+- Continuous control testing for event contracts, write-off authorization, and
+  open-balance integrity.
+- Universal API plus asynchronous AppGen-X events with no user-facing stream
+  engine selection.
+- Cross-border receivable federation and invoice-finance program integration.
+- Decentralized customer identity verification through signed identity
+  projections.
+- Payment-rail resilience drills, crypto-agile payment authorization,
+  carbon-aware collection scheduling, algebraic collection optimization,
+  payment-term mechanism design, information-shift cash application anomaly
+  detection, formal invariant checks, and financial model governance.
 
 ## Rules, Parameters, and Configuration
 
-Rules are executable records with `rule_id`, tenant, scope, status, and
-scope-specific predicates such as cash application threshold, required delivery
-confirmation, credit buffer, collection threshold, dispute auto-resolution
-criteria, write-off approval, refund approval, and release-gate constraints.
+Configuration is executable and validated by `ar_credit_configure_runtime`.
+Required settings include `database_backend`, `event_topic`, `retry_limit`,
+`default_currency`, `default_timezone`, allowed collection channels, and
+workbench limits. The ordinary event contract is always AppGen-X on
+`appgen.ar.events`; users are not exposed to a stream-engine picker.
 
-Parameters include `auto_cash_threshold`, `credit_limit_buffer`,
+Runtime parameters are validated by `ar_credit_set_parameter`. Supported
+parameters include `auto_cash_threshold`, `credit_limit_buffer`,
 `collection_risk_threshold`, `dunning_grace_days`, `write_off_approval_limit`,
 and `workbench_limit`.
 
-Configuration includes database backend, event topic, retry limit, default
-currency, default timezone, allowed collection channels, and workbench limits.
-Runtime configuration rejects unsupported databases and exposes the AppGen-X
-event contract as the ordinary eventing surface.
+Rules are registered by `ar_credit_register_rule` and compiled into owned rule
+records. Supported rule scopes include cash application, delivery evidence,
+credit extension, dunning, collection, dispute resolution, write-off approval,
+refund approval, and release gates. Rules and parameters are surfaced in the
+workbench and are counted in release smoke evidence.
+
+Schema extensions are accepted only for AR-owned tables. Attempts to extend
+foreign tables fail boundary validation.
 
 ## Public APIs
+
+The API contract exposes AR commands and queries:
 
 - `POST /ar/customers`
 - `POST /ar/invoices`
@@ -89,14 +181,30 @@ event contract as the ordinary eventing surface.
 - `POST /ar/credit-memos`
 - `POST /ar/write-offs`
 - `POST /ar/refunds`
+- `POST /ar/disputes`
 - `POST /ar/collections`
+- `POST /ar/e-invoices`
+- `POST /ar/events/inbox`
 - `GET /ar/aging`
 - `GET /ar/statements/{customer_id}`
+- `GET /ar/revenue-schedules/{invoice_id}`
 - `GET /ar/workbench`
 
-## Events
+Declared external dependencies are APIs and projections only:
 
-Emitted events:
+- `GET /customer_360/customers/{id}/profile`
+- `GET /treasury/cash-forecast`
+- `POST /tax_localization/quotes`
+- `GET /federated_iam/access-policies/{id}`
+- `customer_identity_projection`
+- `delivery_projection`
+- `tax_policy_projection`
+- `cash_forecast_projection`
+- `access_policy_projection`
+
+## Events and Handlers
+
+Emitted AppGen-X events:
 
 - `CustomerOnboarded`
 - `InvoiceIssued`
@@ -108,7 +216,7 @@ Emitted events:
 - `CustomerRefundScheduled`
 - `CollectionActionScheduled`
 
-Consumed events:
+Consumed AppGen-X events:
 
 - `CustomerIdentityVerified`
 - `DeliveryConfirmed`
@@ -117,21 +225,64 @@ Consumed events:
 - `AccessPolicyChanged`
 - `CollectionPolicyChanged`
 
-Handlers are idempotent by `ar_credit:{event_type}:{event_id}`, retry at
-least three times, and write failures to `ar_credit_dead_letter`.
+Handlers are idempotent by `ar_credit:{event_type}:{event_id}`. Processing
+failures retry according to configuration and then write to the AR dead-letter
+table with the failing event type, idempotency key, attempts, and reason.
 
 ## UI and Workbench
 
-The UI exposes an AR workbench, customer credit console, invoice issue queue,
-delivery confirmation board, cash application workbench, unapplied-cash triage,
-dispute resolution board, credit memo console, dunning and collections console,
-customer statement view, revenue schedule view, customer risk panel, AR rule
-studio, AR parameter console, and configuration panel. Actions are
-permission-bound and rendered from package-owned state.
+The package includes AR UI/workbench fragments for:
+
+- AR workbench summary.
+- Customer credit console.
+- Customer sites and terms panel.
+- Invoice issue queue and invoice detail.
+- Delivery confirmation board.
+- Cash application workbench and remittance parser.
+- Unapplied-cash triage.
+- Dispute, credit memo, refund, and write-off boards.
+- Aging, dunning, collection, and statement views.
+- Revenue schedule view.
+- Credit risk, model governance, and anomaly panels.
+- Rule studio, parameter console, schema-extension panel, configuration panel,
+  inbox/outbox monitor, dead-letter triage, and release evidence panel.
+
+Every visible action is permission-bound and rendered from AR-owned state plus
+declared projection inputs.
+
+## Permissions and RBAC
+
+The permission contract includes read, configure, rule, parameter, schema,
+customer, invoice, cash, dispute, credit, collection, revenue, event,
+workbench, and audit permissions. Command methods require scoped permissions;
+release evidence checks that critical actions such as `issue_invoice`,
+`apply_cash`, and `receive_event` are covered.
+
+## Package Metadata and Self-Registration
+
+The package key is `ar_credit`. Package metadata advertises the implementation
+directory, capabilities, standard features, owned tables, database allowlist,
+AppGen-X topic, emitted events, consumed events, UI fragments, API contract,
+schema contract, service contract, permissions, and release evidence. External
+PBC registration plans must remain side-effect-free and may depend on this PBC
+only through APIs, events, or projections.
 
 ## Release Evidence
 
-Release readiness requires passing runtime smoke, package-local UI contract,
-owned tables, API/event/handler surfaces, AppGen-X event contract evidence,
-configuration/rule/parameter execution, generated DSL compatibility, package
-metadata, workbench rendering, and focused unit tests.
+Release readiness requires all of the following evidence to pass:
+
+- `ar_credit_runtime_smoke()` returns `ok`.
+- `implementation_contract()` includes runtime, UI, API, schema, service,
+  permissions, AppGen-X event topic, and release evidence contracts.
+- `ar_credit_build_schema_contract()` proves all owned tables, models,
+  relationships, migrations, backend allowlist, and no shared table access.
+- `ar_credit_build_service_contract()` proves command and query surfaces,
+  transaction boundary, owned mutations, and declared external dependencies.
+- `ar_credit_build_release_evidence()` proves schema depth, migration coverage,
+  service depth, API/event contract, permission coverage, backend allowlist,
+  and shared-table isolation.
+- Focused AR tests pass.
+- The global PBC release audit, implementation release audit, implemented
+  capability audit, and generation smoke audit pass for the implemented PBC
+  set.
+- Diff scans contain no banned legacy product or framework names.
