@@ -3948,6 +3948,14 @@ def run_native_form_operation(table_name=None):
     runtime = _runtime()
     operations = _operations()
     kind = _module_kind()
+    operation_name = {{
+        "stream": "round_trip_stream",
+        "unit": "parse_unit_resource_binding",
+        "resource": "refresh_resources",
+        "compile": "compile_preview",
+        "runtime_load": "reload_runtime_preview",
+        "design_edit": "apply_property_delta",
+    }}[kind]
     operation = {{
         "stream": operations.run_runtime_operation("round_trip_stream", table_name),
         "unit": runtime.native_form_runtime_manifest(table_name)["unit_parse"],
@@ -3958,13 +3966,16 @@ def run_native_form_operation(table_name=None):
     }}[kind]
     operation_ok = operation["ok"] if isinstance(operation, dict) and "ok" in operation else bool(operation)
     side_effects = operation.get("side_effects", ()) if isinstance(operation, dict) else ()
+    runtime_replay = runtime.replay_native_form_runtime(table_name)
     return {{
         "format": "appgen.native-form-module-operation.v1",
         "module": MODULE,
         "kind": kind,
+        "operation_name": operation_name,
         "table": table_name,
-        "ok": operation_ok and not side_effects and runtime.replay_native_form_runtime(table_name)["ok"],
+        "ok": operation_ok and not side_effects and runtime_replay["ok"],
         "operation": operation,
+        "runtime_replay": runtime_replay,
         "side_effects": (),
     }}
 
@@ -4355,6 +4366,14 @@ def run_compiler_surface(table_name=None):
     manifest = compiler_manifest(table_name)
     payload = manifest["payload"]
     surface_ok = bool(payload)
+    validation_steps = {{
+        "compiler_pipeline": ("parse_units", "type_check", "resource_link", "emit_target"),
+        "unit_parse": ("parse_unit", "read_uses", "map_component_declarations", "attach_resource_directive"),
+        "semantic_validation": ("resolve_symbols", "validate_types", "collect_diagnostics"),
+        "incremental_compile": ("hash_unit_source", "hash_stream_resource", "reuse_clean_cache_entries"),
+        "diagnostic_mapping": ("map_source_spans", "map_stream_nodes", "publish_diagnostics"),
+        "toolchain_adapter": ("select_adapter", "sandbox_invocation", "collect_artifacts"),
+    }}[SURFACE]
     if SURFACE == "compiler_pipeline":
         surface_ok = {{"parse_units", "type_check", "resource_link", "emit_target"}} <= set(payload["stages"])
     elif SURFACE == "unit_parse":
@@ -4374,6 +4393,7 @@ def run_compiler_surface(table_name=None):
         "table": table_name,
         "ok": manifest["ok"] and surface_ok and not manifest["side_effects"],
         "payload": payload,
+        "validation_steps": validation_steps,
         "side_effects": (),
     }}
 
@@ -4566,6 +4586,16 @@ def run_runtime_surface(table_name=None):
     manifest = runtime_manifest(table_name)
     payload = manifest["payload"]
     surface_ok = bool(payload)
+    validation_steps = {{
+        "package_target_matrix": ("resolve_targets", "verify_resource_bundle", "publish_package_matrix"),
+        "language_frontend": ("parse_units", "build_symbol_table", "review_language_guards"),
+        "static_analysis": ("resolve_type_edges", "verify_assignability", "block_invalid_emit"),
+        "compiler_recovery": ("detect_error_scenarios", "block_emit", "surface_recovery_actions"),
+        "form_stream_schema": ("read_stream_schema", "verify_streamed_properties", "publish_schema_diff"),
+        "stream_migration": ("plan_migration", "verify_rollback", "apply_version_bridge"),
+        "debug_symbols": ("map_symbols", "attach_source_spans", "publish_debug_bundle"),
+        "runtime_memory_model": ("track_ownership", "verify_release_hooks", "detect_leaks"),
+    }}[SURFACE]
     if SURFACE == "package_target_matrix":
         surface_ok = payload["ok"] and all("resource_bundle" in item["artifacts"] for item in payload["targets"])
     elif SURFACE == "language_frontend":
@@ -4589,6 +4619,7 @@ def run_runtime_surface(table_name=None):
         "table": table_name,
         "ok": manifest["ok"] and surface_ok and not manifest["side_effects"],
         "payload": payload,
+        "validation_steps": validation_steps,
         "side_effects": (),
     }}
 
@@ -19081,6 +19112,9 @@ def native_runtime_module_replay_matrix(table_name=None):
         native_replays.append({
             "module": item["module"],
             "surface": item.get("kind"),
+            "operation_name": result.get("operation_name", ""),
+            "runtime_phases": tuple(result.get("runtime_replay", {}).get("runtime_phases", ())),
+            "design_phases": tuple(result.get("runtime_replay", {}).get("design_phases", ())),
             "ok": result["ok"] and not result.get("side_effects", ()),
             "result": result,
         })
@@ -19094,6 +19128,7 @@ def native_runtime_module_replay_matrix(table_name=None):
         compiler_replays.append({
             "module": item["module"],
             "surface": item["surface"],
+            "validation_steps": tuple(result.get("validation_steps", ())),
             "ok": result["ok"] and not result.get("side_effects", ()),
             "result": result,
         })
@@ -19107,13 +19142,63 @@ def native_runtime_module_replay_matrix(table_name=None):
         deep_replays.append({
             "module": item["module"],
             "surface": item["surface"],
+            "validation_steps": tuple(result.get("validation_steps", ())),
             "ok": result["ok"] and not result.get("side_effects", ()),
             "result": result,
         })
+    required_native_operations = {
+        "round_trip_stream",
+        "parse_unit_resource_binding",
+        "refresh_resources",
+        "compile_preview",
+        "reload_runtime_preview",
+        "apply_property_delta",
+    }
+    required_compiler_steps = {
+        "parse_units",
+        "type_check",
+        "resource_link",
+        "emit_target",
+        "map_component_declarations",
+        "resolve_symbols",
+        "hash_stream_resource",
+        "map_source_spans",
+        "sandbox_invocation",
+    }
+    required_deep_steps = {
+        "resolve_targets",
+        "build_symbol_table",
+        "verify_assignability",
+        "block_emit",
+        "verify_streamed_properties",
+        "verify_rollback",
+        "attach_source_spans",
+        "verify_release_hooks",
+    }
     checks = (
         {"id": "generated_native_form_modules_replay", "ok": len(native_replays) == 6 and all(item["ok"] for item in native_replays)},
         {"id": "generated_compiler_runtime_modules_replay", "ok": len(compiler_replays) == 6 and all(item["ok"] for item in compiler_replays)},
         {"id": "generated_deep_runtime_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)},
+        {
+            "id": "generated_native_form_operation_coverage",
+            "ok": required_native_operations <= {item["operation_name"] for item in native_replays if item["ok"]},
+            "evidence": tuple(sorted(item["operation_name"] for item in native_replays if item["operation_name"])),
+        },
+        {
+            "id": "generated_compiler_validation_step_coverage",
+            "ok": required_compiler_steps
+            <= {step for item in compiler_replays if item["ok"] for step in item["validation_steps"]},
+            "evidence": tuple(sorted({step for item in compiler_replays for step in item["validation_steps"]})),
+        },
+        {
+            "id": "generated_deep_runtime_validation_step_coverage",
+            "ok": required_deep_steps <= {step for item in deep_replays if item["ok"] for step in item["validation_steps"]},
+            "evidence": tuple(sorted({step for item in deep_replays for step in item["validation_steps"]})),
+        },
+        {
+            "id": "generated_native_runtime_replays_side_effect_free",
+            "ok": all(not item["result"].get("side_effects", ()) for item in (*native_replays, *compiler_replays, *deep_replays)),
+        },
     )
     return {
         "format": "appgen.generated-native-runtime-module-replay-matrix.v1",
@@ -19127,6 +19212,10 @@ def native_runtime_module_replay_matrix(table_name=None):
             "generated_native_form_modules_replay_exports",
             "generated_compiler_runtime_modules_replay_exports",
             "generated_deep_runtime_modules_replay_exports",
+            "generated_native_form_operation_coverage_required",
+            "generated_compiler_validation_step_coverage_required",
+            "generated_deep_runtime_validation_step_coverage_required",
+            "generated_native_runtime_replay_side_effect_guards",
         ),
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),

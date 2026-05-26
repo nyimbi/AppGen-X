@@ -16485,6 +16485,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(native_runtime_matrix["native_form_replays"]) == 6
     assert len(native_runtime_matrix["compiler_runtime_replays"]) == 6
     assert len(native_runtime_matrix["deep_runtime_replays"]) == 8
+    assert {
+        "generated_native_form_operation_coverage",
+        "generated_compiler_validation_step_coverage",
+        "generated_deep_runtime_validation_step_coverage",
+        "generated_native_runtime_replays_side_effect_free",
+    } <= {check["id"] for check in native_runtime_matrix["checks"] if check["ok"]}
+    assert {
+        "round_trip_stream",
+        "parse_unit_resource_binding",
+        "refresh_resources",
+        "compile_preview",
+        "reload_runtime_preview",
+        "apply_property_delta",
+    } == {item["operation_name"] for item in native_runtime_matrix["native_form_replays"]}
+    assert {"map_component_declarations", "sandbox_invocation"} <= {
+        step
+        for item in native_runtime_matrix["compiler_runtime_replays"]
+        for step in item["validation_steps"]
+    }
+    assert {"verify_streamed_properties", "verify_release_hooks"} <= {
+        step
+        for item in native_runtime_matrix["deep_runtime_replays"]
+        for step in item["validation_steps"]
+    }
     assert {item["module"] for item in native_form_module_files["modules"]} == {
         "native_stream_module",
         "native_unit_module",

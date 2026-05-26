@@ -825,6 +825,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated device API component module and generated test module is replayed,
   checked for API coverage, event pipeline coverage, unsupported-target
   fallback, and required by device runtime validation.
+- Current runtime parity pass tightens generated native form/runtime module
+  replay: generated stream, unit, resource, compile, runtime-load, design-edit,
+  compiler, and deep runtime modules now emit named operation or validation
+  step evidence, and the generated runtime matrix fails when required replay
+  paths or side-effect guards are missing.
 - `2eac7a8` normalizes `ar_credit` into the complete package surface used by
   implemented PBC slices: package-local `SPECIFICATION.md`, UI/workbench
   contract, executable configuration/rule/parameter operations, central PBC
