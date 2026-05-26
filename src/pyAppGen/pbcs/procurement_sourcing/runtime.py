@@ -8,6 +8,62 @@ import math
 import re
 
 
+PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC = "appgen.procurement_sourcing.events"
+PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+PROCUREMENT_SOURCING_OWNED_TABLES = (
+    "procurement_sourcing_purchase_requisition",
+    "procurement_sourcing_rfq",
+    "procurement_sourcing_supplier_bid",
+    "procurement_sourcing_supplier_award",
+    "procurement_sourcing_vendor_contract",
+    "procurement_sourcing_purchase_order",
+    "procurement_sourcing_rule",
+    "procurement_sourcing_parameter",
+    "procurement_sourcing_configuration",
+)
+PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES = (
+    "PurchaseRequisitionCreated",
+    "PurchaseRequisitionApproved",
+    "RfqCreated",
+    "SupplierBidCaptured",
+    "SupplierSelected",
+    "VendorContractCreated",
+    "PurchaseOrderIssued",
+)
+PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES = (
+    "MaterialShortageDetected",
+    "VendorPerformanceUpdated",
+    "BudgetChanged",
+    "SupplierRiskChanged",
+    "ContractComplianceChanged",
+    "AccessPolicyChanged",
+)
+_PROCUREMENT_SOURCING_RUNTIME_TABLES = (
+    "procurement_sourcing_appgen_outbox_event",
+    "procurement_sourcing_appgen_inbox_event",
+    "procurement_sourcing_dead_letter_event",
+)
+_PROCUREMENT_SOURCING_ALLOWED_DEPENDENCIES = (
+    "material_shortage_projection",
+    "vendor_performance_projection",
+    "budget_projection",
+    "supplier_risk_projection",
+    "contract_compliance_projection",
+    "access_policy_projection",
+    "GET /identity/policies",
+    "POST /audit/contract-events",
+    "GET /schema/events",
+)
+_PROCUREMENT_SOURCING_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
 PROCUREMENT_SOURCING_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_source_to_order_lifecycle",
     "graph_relational_supplier_topology",
@@ -81,12 +137,15 @@ def procurement_sourcing_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "procurement_sourcing",
         "implementation_directory": "src/pyAppGen/pbcs/procurement_sourcing",
+        "owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES,
         "capabilities": PROCUREMENT_SOURCING_RUNTIME_CAPABILITY_KEYS,
         "standard_features": PROCUREMENT_SOURCING_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "create_requisition",
             "approve_requisition",
             "create_rfq",
@@ -97,7 +156,10 @@ def procurement_sourcing_runtime_capabilities() -> dict:
             "issue_purchase_order",
             "screen_policy",
             "route_purchase_order",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -109,7 +171,7 @@ def procurement_sourcing_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.procurement.events",
+            "event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "allowed_categories": ("direct_materials", "maintenance"),
@@ -133,7 +195,20 @@ def procurement_sourcing_runtime_smoke() -> dict:
             "status": "active",
         },
     )["state"]
-    state = procurement_sourcing_register_schema_extension(state, "rfq", {"sustainability_payload": "jsonb"})["state"]
+    state = procurement_sourcing_register_schema_extension(
+        state,
+        "procurement_sourcing_rfq",
+        {"sustainability_payload": "jsonb"},
+    )["state"]
+    received = procurement_sourcing_receive_event(
+        state,
+        {
+            "event_id": "material_shortage_001",
+            "event_type": "MaterialShortageDetected",
+            "payload": {"tenant": "tenant_alpha", "shortage_id": "shortage_001", "item_id": "sku_100", "quantity": 100},
+        },
+    )
+    state = received["state"]
     requisition = procurement_sourcing_create_requisition(
         state,
         {
@@ -187,7 +262,7 @@ def procurement_sourcing_runtime_smoke() -> dict:
         {"id": "event_sourced_source_to_order_lifecycle", "ok": len(state["events"]) >= 6 and state["events"][-1]["hash"]},
         {"id": "graph_relational_supplier_topology", "ok": rfq["rfq"]["graph_degree"] >= 3},
         {"id": "multi_tenant_procurement_isolation", "ok": workbench["tenant"] == "tenant_alpha"},
-        {"id": "schema_evolution_resilient_procurement_schema", "ok": state["schema_extensions"]["rfq"]["sustainability_payload"] == "jsonb"},
+        {"id": "schema_evolution_resilient_procurement_schema", "ok": state["schema_extensions"]["procurement_sourcing_rfq"]["sustainability_payload"] == "jsonb"},
         {"id": "probabilistic_supplier_award_confidence", "ok": selection["award"]["confidence"] >= 0.8},
         {"id": "real_time_sourcing_spend_analytics", "ok": workbench["po_amount"] == 3000},
         {"id": "counterfactual_sourcing_strategy_simulation", "ok": simulation["ok"] and simulation["selected_supplier"] in {"supplier_a", "supplier_b"}},
@@ -200,7 +275,7 @@ def procurement_sourcing_runtime_smoke() -> dict:
         {"id": "immutable_procurement_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_procurement_policy_screening", "ok": policy["ok"] and policy["decision"] == "clear"},
         {"id": "automated_procurement_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "PurchaseOrderIssued" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and "PurchaseOrderIssued" in api["events"]["emits"] and api["event_contract"] == "AppGen-X"},
         {"id": "cross_system_procurement_federation", "ok": federation["ok"] and "ap" in federation["systems"]},
         {"id": "supplier_network_integration", "ok": len(state["bids"]["rfq_001"]) == 2},
         {"id": "decentralized_supplier_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -222,20 +297,51 @@ def procurement_sourcing_runtime_smoke() -> dict:
 
 
 def procurement_sourcing_empty_state() -> dict:
-    return {"events": (), "outbox": (), "requisitions": {}, "rfqs": {}, "bids": {}, "awards": {}, "contracts": {}, "purchase_orders": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letter": (),
+        "dead_letters": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "material_shortage_projections": {},
+        "vendor_performance_projections": {},
+        "budget_projections": {},
+        "supplier_risk_projections": {},
+        "contract_compliance_projections": {},
+        "access_policy_projections": {},
+        "requisitions": {},
+        "rfqs": {},
+        "bids": {},
+        "awards": {},
+        "contracts": {},
+        "purchase_orders": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def procurement_sourcing_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in configuration if field in _PROCUREMENT_SOURCING_FORBIDDEN_EVENTING_FIELDS))
+    if forbidden:
+        raise ValueError(f"Procurement Sourcing hides stream-engine picker fields: {forbidden}")
+    if configuration.get("database_backend") not in PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("Procurement Sourcing supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Procurement Sourcing requires an AppGen-X event topic")
+    if configuration.get("event_topic") != PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Procurement Sourcing requires AppGen-X event topic {PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "required_event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
+        "allowed_database_backends": PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -267,10 +373,63 @@ def procurement_sourcing_register_rule(state: dict, rule: dict) -> dict:
 
 
 def procurement_sourcing_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in PROCUREMENT_SOURCING_OWNED_TABLES:
+        raise ValueError(f"Procurement Sourcing schema extensions must target owned tables: {PROCUREMENT_SOURCING_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    merged = {**state["schema_extensions"].get(table, {}), **fields}
+    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}}, "schema_extension": {"table": table, "fields": dict(fields)}, "target": table, "fields": merged}
+
+
+def procurement_sourcing_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = _copy_state(state)
+    next_state["inbox"] = (*next_state.get("inbox", ()), inbox_entry)
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state.get("retry_evidence", ()), evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_procurement_event"}
+            next_state["dead_letters"] = (*next_state.get("dead_letters", ()), dead)
+            next_state["dead_letter"] = (*next_state.get("dead_letter", ()), dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+
+    if event_type == "MaterialShortageDetected":
+        next_state["material_shortage_projections"][payload.get("shortage_id", event_id)] = payload
+    elif event_type == "VendorPerformanceUpdated":
+        next_state["vendor_performance_projections"][payload.get("supplier_id", event_id)] = payload
+    elif event_type == "BudgetChanged":
+        next_state["budget_projections"][payload.get("budget_id", event_id)] = payload
+    elif event_type == "SupplierRiskChanged":
+        next_state["supplier_risk_projections"][payload.get("supplier_id", event_id)] = payload
+    elif event_type == "ContractComplianceChanged":
+        next_state["contract_compliance_projections"][payload.get("contract_id", event_id)] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload.get("policy_id", event_id)] = payload
+
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def procurement_sourcing_create_requisition(state: dict, requisition: dict) -> dict:
@@ -391,8 +550,100 @@ def procurement_sourcing_run_control_tests(state: dict) -> dict:
     return {"ok": not gaps, "blocking_gaps": tuple(gaps), "hash_chain_valid": hash_chain_valid}
 
 
+def procurement_sourcing_permissions_contract() -> dict:
+    return {
+        "format": "appgen.procurement-sourcing-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "procurement_sourcing.read",
+            "procurement_sourcing.request",
+            "procurement_sourcing.approve",
+            "procurement_sourcing.source",
+            "procurement_sourcing.bid",
+            "procurement_sourcing.award",
+            "procurement_sourcing.contract",
+            "procurement_sourcing.order",
+            "procurement_sourcing.event",
+            "procurement_sourcing.configure",
+            "procurement_sourcing.audit",
+        ),
+        "action_permissions": {
+            "create_requisition": "procurement_sourcing.request",
+            "approve_requisition": "procurement_sourcing.approve",
+            "create_rfq": "procurement_sourcing.source",
+            "capture_bid": "procurement_sourcing.bid",
+            "score_suppliers": "procurement_sourcing.source",
+            "select_supplier": "procurement_sourcing.award",
+            "create_contract": "procurement_sourcing.contract",
+            "issue_purchase_order": "procurement_sourcing.order",
+            "route_purchase_order": "procurement_sourcing.order",
+            "receive_event": "procurement_sourcing.event",
+            "register_rule": "procurement_sourcing.configure",
+            "register_schema_extension": "procurement_sourcing.configure",
+            "set_parameter": "procurement_sourcing.configure",
+            "configure_runtime": "procurement_sourcing.configure",
+            "build_workbench_view": "procurement_sourcing.audit",
+            "run_control_tests": "procurement_sourcing.audit",
+            "generate_supplier_compliance_proof": "procurement_sourcing.audit",
+        },
+    }
+
+
 def procurement_sourcing_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /requisitions", "POST /rfqs", "POST /purchase-orders", "POST /procurement-rules", "POST /procurement-parameters", "POST /procurement-configuration"), "events": {"emits": ("PurchaseOrderIssued", "SupplierSelected"), "consumes": ("MaterialShortageDetected", "VendorPerformanceUpdated")}, "permissions": ("procurement_sourcing.request", "procurement_sourcing.approve", "procurement_sourcing.source", "procurement_sourcing.award", "procurement_sourcing.order", "procurement_sourcing.configure", "procurement_sourcing.audit"), "configuration": ("PROCUREMENT_SOURCING_DATABASE_URL", "PROCUREMENT_SOURCING_EVENT_TOPIC", "PROCUREMENT_SOURCING_RETRY_LIMIT", "PROCUREMENT_SOURCING_DEFAULT_CURRENCY")}
+    return {
+        "format": "appgen.procurement-sourcing-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {"route": "POST /procurement/requisitions", "command": "create_requisition", "owned_tables": ("procurement_sourcing_purchase_requisition",), "emits": ("PurchaseRequisitionCreated",), "requires_permission": "procurement_sourcing.request", "idempotency_key": "requisition_id"},
+            {"route": "POST /procurement/requisitions/{id}/approve", "command": "approve_requisition", "owned_tables": ("procurement_sourcing_purchase_requisition",), "emits": ("PurchaseRequisitionApproved",), "requires_permission": "procurement_sourcing.approve", "idempotency_key": "requisition_id:approver"},
+            {"route": "POST /procurement/rfqs", "command": "create_rfq", "owned_tables": ("procurement_sourcing_rfq",), "emits": ("RfqCreated",), "requires_permission": "procurement_sourcing.source", "idempotency_key": "rfq_id"},
+            {"route": "POST /procurement/rfqs/{id}/bids", "command": "capture_bid", "owned_tables": ("procurement_sourcing_supplier_bid",), "emits": (), "requires_permission": "procurement_sourcing.bid", "idempotency_key": "rfq_id:supplier_id"},
+            {"route": "POST /procurement/rfqs/{id}/score", "command": "score_suppliers", "owned_tables": ("procurement_sourcing_supplier_bid", "procurement_sourcing_supplier_award"), "emits": (), "requires_permission": "procurement_sourcing.source", "idempotency_key": "rfq_id:score"},
+            {"route": "POST /procurement/awards", "command": "select_supplier", "owned_tables": ("procurement_sourcing_supplier_award",), "emits": ("SupplierSelected",), "requires_permission": "procurement_sourcing.award", "idempotency_key": "award_id"},
+            {"route": "POST /procurement/contracts", "command": "create_contract", "owned_tables": ("procurement_sourcing_vendor_contract",), "emits": ("VendorContractCreated",), "requires_permission": "procurement_sourcing.contract", "idempotency_key": "contract_id"},
+            {"route": "POST /procurement/purchase-orders", "command": "issue_purchase_order", "owned_tables": ("procurement_sourcing_purchase_order",), "emits": ("PurchaseOrderIssued",), "requires_permission": "procurement_sourcing.order", "idempotency_key": "po_id"},
+            {"route": "POST /procurement/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES, "requires_permission": "procurement_sourcing.event", "idempotency_key": "event_id"},
+            {"route": "GET /procurement/workbench", "query": "build_workbench_view", "owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES, "requires_permission": "procurement_sourcing.audit"},
+        ),
+        "declared_catalog_routes": ("POST /procurement/requisitions", "POST /procurement/rfqs", "POST /procurement/purchase-orders", "GET /procurement/workbench"),
+        "events": {"emits": PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES, "consumes": PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES},
+        "emits": PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES,
+        "consumes": PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES,
+        "asyncapi_events": PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES,
+        "permissions": tuple(sorted(procurement_sourcing_permissions_contract()["permissions"])),
+        "database_backends": PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "required_event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
+        "stream_engine_picker_visible": False,
+        "configuration": ("PROCUREMENT_SOURCING_DATABASE_URL", "PROCUREMENT_SOURCING_EVENT_TOPIC", "PROCUREMENT_SOURCING_RETRY_LIMIT", "PROCUREMENT_SOURCING_DEFAULT_CURRENCY"),
+    }
+
+
+def procurement_sourcing_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*PROCUREMENT_SOURCING_OWNED_TABLES, *PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES, *_PROCUREMENT_SOURCING_RUNTIME_TABLES, *_PROCUREMENT_SOURCING_ALLOWED_DEPENDENCIES)
+    violations = tuple(reference for reference in references if reference not in set(allowed) and not str(reference).startswith("procurement_sourcing_"))
+    return {
+        "format": "appgen.procurement-sourcing-boundary.v1",
+        "ok": not violations,
+        "owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /identity/policies", "POST /audit/contract-events", "GET /schema/events"),
+            "events": PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "material_shortage_projection",
+                "vendor_performance_projection",
+                "budget_projection",
+                "supplier_risk_projection",
+                "contract_compliance_projection",
+                "access_policy_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def procurement_sourcing_federate_procurement_view(state: dict, po_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -485,11 +736,32 @@ def procurement_sourcing_build_workbench_view(state: dict, *, tenant: str) -> di
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES,
+        "outbox_table": "procurement_sourcing_appgen_outbox_event",
+        "inbox_table": "procurement_sourcing_appgen_inbox_event",
+        "dead_letter_table": "procurement_sourcing_dead_letter_event",
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
     }
 
 
 def procurement_sourcing_register_governed_model(name: str, metadata: dict) -> dict:
     return {"ok": metadata.get("auc", 0) >= 0.85 and metadata.get("drift_score", 1) <= 0.1, "name": name, "metadata": metadata, "governance": {"regulated": True, "feature_lineage": tuple(metadata.get("features", ())), "explainability_required": True}}
+
+
+def _copy_state(state: dict) -> dict:
+    copied = dict(state)
+    for key in (
+        "handled_events",
+        "material_shortage_projections",
+        "vendor_performance_projections",
+        "budget_projections",
+        "supplier_risk_projections",
+        "contract_compliance_projections",
+        "access_policy_projections",
+    ):
+        copied[key] = dict(state.get(key, {}))
+    return copied
 
 
 def _append_event(state: dict, event_type: str, payload: dict) -> dict:

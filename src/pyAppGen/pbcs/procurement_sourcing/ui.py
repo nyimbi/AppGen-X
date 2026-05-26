@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS
+from .runtime import PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES
+from .runtime import PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES
+from .runtime import PROCUREMENT_SOURCING_OWNED_TABLES
+from .runtime import PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC
+from .runtime import procurement_sourcing_permissions_contract
+
 
 PROCUREMENT_SOURCING_UI_FRAGMENT_KEYS = (
     "ProcurementSourcingWorkbench",
@@ -85,26 +92,14 @@ def procurement_sourcing_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": {
-            "create_requisition": "procurement_sourcing.request",
-            "approve_requisition": "procurement_sourcing.approve",
-            "create_rfq": "procurement_sourcing.source",
-            "capture_bid": "procurement_sourcing.source",
-            "score_suppliers": "procurement_sourcing.source",
-            "select_supplier": "procurement_sourcing.award",
-            "create_contract": "procurement_sourcing.contract",
-            "issue_purchase_order": "procurement_sourcing.order",
-            "route_purchase_order": "procurement_sourcing.order",
-            "generate_supplier_compliance_proof": "procurement_sourcing.audit",
-            "register_rule": "procurement_sourcing.configure",
-            "set_parameter": "procurement_sourcing.configure",
-            "configure_runtime": "procurement_sourcing.configure",
-            "run_control_tests": "procurement_sourcing.audit",
-        },
+        "action_permissions": procurement_sourcing_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "allowed_categories"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -121,18 +116,13 @@ def procurement_sourcing_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": (
-                "PurchaseRequisitionCreated",
-                "PurchaseRequisitionApproved",
-                "RfqCreated",
-                "SupplierSelected",
-                "VendorContractCreated",
-                "PurchaseOrderIssued",
-            ),
-            "consumes": ("MaterialShortageDetected", "VendorPerformanceUpdated", "BudgetChanged", "SupplierRiskChanged", "AccessPolicyChanged"),
+            "emits": PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES,
+            "consumes": PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -170,4 +160,12 @@ def procurement_sourcing_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES,
+            "outbox_table": "procurement_sourcing_appgen_outbox_event",
+            "inbox_table": "procurement_sourcing_appgen_inbox_event",
+            "dead_letter_table": "procurement_sourcing_dead_letter_event",
+        },
     }

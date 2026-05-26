@@ -8,6 +8,79 @@ import math
 import re
 
 
+WMS_CORE_REQUIRED_EVENT_TOPIC = "appgen.wms.events"
+WMS_CORE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+WMS_CORE_OWNED_TABLES = (
+    "warehouse",
+    "bin_location",
+    "inbound_receipt",
+    "dock_door",
+    "putaway_task",
+    "replenishment_task",
+    "pick_wave",
+    "pick_task",
+    "pack_task",
+    "carton",
+    "label_evidence",
+    "staging_lane",
+    "shipment_confirmation",
+    "cross_dock_flow",
+    "cycle_count",
+    "warehouse_exception",
+    "labor_task",
+    "edge_device_command",
+    "wms_rule",
+    "wms_parameter",
+    "wms_configuration",
+)
+WMS_CORE_EMITTED_EVENT_TYPES = (
+    "WarehouseRegistered",
+    "BinRegistered",
+    "GoodsReceiptPosted",
+    "PutawayTaskCreated",
+    "PutawayConfirmed",
+    "PickWaveReleased",
+    "Picked",
+    "PackTaskCreated",
+    "Packed",
+    "OrderShipped",
+)
+WMS_CORE_CONSUMED_EVENT_TYPES = (
+    "InventoryAllocated",
+    "InboundArrived",
+    "QualityHoldReleased",
+    "CarrierBooked",
+    "AccessPolicyChanged",
+)
+_WMS_CORE_RUNTIME_TABLES = (
+    "wms_core_appgen_outbox_event",
+    "wms_core_appgen_inbox_event",
+    "wms_core_dead_letter_event",
+)
+_WMS_CORE_ALLOWED_DEPENDENCIES = (
+    "inventory_allocation_projection",
+    "inbound_arrival_projection",
+    "quality_hold_projection",
+    "carrier_booking_projection",
+    "access_policy_projection",
+    "GET /inventory/allocations/{id}",
+    "GET /inbound/arrivals/{id}",
+    "GET /quality/holds/{id}",
+    "GET /transportation/bookings/{id}",
+    "GET /identity/policies",
+    "POST /audit/warehouse-events",
+)
+_WMS_CORE_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 WMS_CORE_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_warehouse_lifecycle",
     "graph_relational_warehouse_topology",
@@ -81,12 +154,15 @@ def wms_core_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "wms_core",
         "implementation_directory": "src/pyAppGen/pbcs/wms_core",
+        "owned_tables": WMS_CORE_OWNED_TABLES,
         "capabilities": WMS_CORE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": WMS_CORE_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_warehouse",
             "register_bin",
             "receive_inbound",
@@ -107,6 +183,7 @@ def wms_core_runtime_capabilities() -> dict:
             "screen_warehouse_policy",
             "run_control_tests",
             "build_api_contract",
+            "permissions_contract",
             "federate_warehouse_view",
             "verify_warehouse_identity",
             "run_resilience_drill",
@@ -117,6 +194,7 @@ def wms_core_runtime_capabilities() -> dict:
             "detect_warehouse_anomaly",
             "model_stochastic_throughput",
             "build_workbench_view",
+            "verify_owned_table_boundary",
             "register_governed_model",
         ),
         "smoke": smoke,
@@ -129,7 +207,7 @@ def wms_core_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.wms.events",
+            "event_topic": WMS_CORE_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "timezone": "UTC",
             "allowed_bin_statuses": ("available", "blocked", "maintenance"),
@@ -270,20 +348,51 @@ def wms_core_runtime_smoke() -> dict:
 
 
 def wms_core_empty_state() -> dict:
-    return {"events": (), "outbox": (), "warehouses": {}, "bins": {}, "receipts": {}, "putaway_tasks": {}, "waves": {}, "picks": {}, "pack_tasks": {}, "shipments": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "inventory_allocation_projections": {},
+        "inbound_arrival_projections": {},
+        "quality_hold_projections": {},
+        "carrier_booking_projections": {},
+        "access_policy_projections": {},
+        "warehouses": {},
+        "bins": {},
+        "receipts": {},
+        "putaway_tasks": {},
+        "waves": {},
+        "picks": {},
+        "pack_tasks": {},
+        "shipments": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def wms_core_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _WMS_CORE_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"WMS Core uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(WMS_CORE_ALLOWED_DATABASE_BACKENDS):
         raise ValueError("WMS Core supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("WMS Core requires an AppGen-X event topic")
+    if configuration.get("event_topic") != WMS_CORE_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"WMS Core requires AppGen-X event topic {WMS_CORE_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": WMS_CORE_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": WMS_CORE_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -315,10 +424,76 @@ def wms_core_register_rule(state: dict, rule: dict) -> dict:
 
 
 def wms_core_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in WMS_CORE_OWNED_TABLES:
+        raise ValueError(f"WMS Core schema extensions must target owned tables: {WMS_CORE_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    existing = dict(state.get("schema_extensions", {}).get(table, {}))
+    merged = {**existing, **fields}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}},
+        "schema_extension": {"table": table, "fields": dict(fields)},
+        "target": table,
+        "fields": merged,
+    }
+
+
+def wms_core_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {
+        **state,
+        "inbox": (*state.get("inbox", ()), inbox_entry),
+        "handled_events": dict(handled),
+        "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "dead_letters": tuple(state.get("dead_letters", ())),
+        "dead_letter": tuple(state.get("dead_letter", ())),
+        "inventory_allocation_projections": dict(state.get("inventory_allocation_projections", {})),
+        "inbound_arrival_projections": dict(state.get("inbound_arrival_projections", {})),
+        "quality_hold_projections": dict(state.get("quality_hold_projections", {})),
+        "carrier_booking_projections": dict(state.get("carrier_booking_projections", {})),
+        "access_policy_projections": dict(state.get("access_policy_projections", {})),
+    }
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in WMS_CORE_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state["retry_evidence"], evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_wms_event"}
+            next_state["dead_letters"] = (*next_state["dead_letters"], dead)
+            next_state["dead_letter"] = (*next_state["dead_letter"], dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "InventoryAllocated":
+        next_state["inventory_allocation_projections"][payload.get("allocation_id", event_id)] = payload
+    elif event_type == "InboundArrived":
+        next_state["inbound_arrival_projections"][payload.get("arrival_id", event_id)] = payload
+    elif event_type == "QualityHoldReleased":
+        next_state["quality_hold_projections"][payload.get("hold_id", event_id)] = payload
+    elif event_type == "CarrierBooked":
+        next_state["carrier_booking_projections"][payload.get("booking_id", event_id)] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload.get("policy_id", event_id)] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def wms_core_register_warehouse(state: dict, warehouse: dict) -> dict:
@@ -475,7 +650,105 @@ def wms_core_run_control_tests(state: dict) -> dict:
 
 
 def wms_core_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /putaway", "POST /pick-waves", "POST /pack-tasks", "POST /wms-rules", "POST /wms-parameters", "POST /wms-configuration"), "events": {"emits": ("Picked", "Packed", "GoodsReceiptPosted", "OrderShipped"), "consumes": ("InventoryAllocated", "InboundArrived")}, "permissions": ("wms_core.receive", "wms_core.putaway", "wms_core.pick", "wms_core.pack", "wms_core.ship", "wms_core.configure", "wms_core.audit"), "configuration": ("WMS_CORE_DATABASE_URL", "WMS_CORE_EVENT_TOPIC", "WMS_CORE_RETRY_LIMIT", "WMS_CORE_LABEL_FORMAT")}
+    return {
+        "ok": True,
+        "format": "appgen.wms-core-api-contract.v1",
+        "routes": (
+            {"route": "POST /wms/warehouses", "command": "register_warehouse", "owned_tables": ("warehouse", "dock_door"), "emits": ("WarehouseRegistered",), "requires_permission": "wms_core.master", "idempotency_key": "warehouse_id"},
+            {"route": "POST /wms/bins", "command": "register_bin", "owned_tables": ("bin_location",), "emits": ("BinRegistered",), "requires_permission": "wms_core.master", "idempotency_key": "bin_id"},
+            {"route": "POST /wms/inbound", "command": "receive_inbound", "owned_tables": ("inbound_receipt",), "emits": ("GoodsReceiptPosted",), "requires_permission": "wms_core.receive", "idempotency_key": "receipt_id"},
+            {"route": "POST /wms/putaway", "command": "create_putaway_task", "owned_tables": ("putaway_task", "bin_location"), "emits": ("PutawayTaskCreated",), "requires_permission": "wms_core.putaway", "idempotency_key": "receipt_id:item_id"},
+            {"route": "POST /wms/pick-waves", "command": "create_pick_wave", "owned_tables": ("pick_wave", "pick_task"), "emits": ("PickWaveReleased",), "requires_permission": "wms_core.pick", "idempotency_key": "wave_id"},
+            {"route": "POST /wms/picks/{id}/execute", "command": "execute_pick", "owned_tables": ("pick_task", "warehouse_exception"), "emits": ("Picked",), "requires_permission": "wms_core.pick", "idempotency_key": "wave_id:order_id"},
+            {"route": "POST /wms/pack-tasks", "command": "create_pack_task", "owned_tables": ("pack_task", "carton"), "emits": ("PackTaskCreated",), "requires_permission": "wms_core.pack", "idempotency_key": "pack_id"},
+            {"route": "POST /wms/shipments", "command": "confirm_shipment", "owned_tables": ("shipment_confirmation", "staging_lane"), "emits": ("OrderShipped",), "requires_permission": "wms_core.ship", "idempotency_key": "shipment_id"},
+            {"route": "POST /wms/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": WMS_CORE_CONSUMED_EVENT_TYPES, "requires_permission": "wms_core.event", "idempotency_key": "event_id"},
+            {"route": "GET /wms/workbench", "query": "build_workbench_view", "owned_tables": WMS_CORE_OWNED_TABLES, "requires_permission": "wms_core.audit"},
+        ),
+        "declared_catalog_routes": ("POST /putaway", "POST /pick-waves", "POST /pack-tasks", "GET /warehouses/{id}"),
+        "events": {"emits": WMS_CORE_EMITTED_EVENT_TYPES, "consumes": WMS_CORE_CONSUMED_EVENT_TYPES},
+        "emits": WMS_CORE_EMITTED_EVENT_TYPES,
+        "consumes": WMS_CORE_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(wms_core_permissions_contract()["permissions"])),
+        "database_backends": WMS_CORE_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": WMS_CORE_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("WMS_CORE_DATABASE_URL", "WMS_CORE_EVENT_TOPIC", "WMS_CORE_RETRY_LIMIT", "WMS_CORE_LABEL_FORMAT"),
+    }
+
+
+def wms_core_permissions_contract() -> dict:
+    return {
+        "format": "appgen.wms-core-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "wms_core.read",
+            "wms_core.master",
+            "wms_core.receive",
+            "wms_core.putaway",
+            "wms_core.pick",
+            "wms_core.pack",
+            "wms_core.ship",
+            "wms_core.count",
+            "wms_core.edge",
+            "wms_core.event",
+            "wms_core.configure",
+            "wms_core.audit",
+        ),
+        "action_permissions": {
+            "register_warehouse": "wms_core.master",
+            "register_bin": "wms_core.master",
+            "receive_inbound": "wms_core.receive",
+            "create_putaway_task": "wms_core.putaway",
+            "confirm_putaway": "wms_core.putaway",
+            "create_pick_wave": "wms_core.pick",
+            "execute_pick": "wms_core.pick",
+            "create_pack_task": "wms_core.pack",
+            "confirm_pack": "wms_core.pack",
+            "confirm_shipment": "wms_core.ship",
+            "route_edge_command": "wms_core.edge",
+            "receive_event": "wms_core.event",
+            "register_rule": "wms_core.configure",
+            "register_schema_extension": "wms_core.configure",
+            "set_parameter": "wms_core.configure",
+            "configure_runtime": "wms_core.configure",
+            "generate_shipment_proof": "wms_core.audit",
+            "run_control_tests": "wms_core.audit",
+            "build_workbench_view": "wms_core.audit",
+        },
+    }
+
+
+def wms_core_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *WMS_CORE_OWNED_TABLES,
+        *WMS_CORE_CONSUMED_EVENT_TYPES,
+        *_WMS_CORE_RUNTIME_TABLES,
+        *_WMS_CORE_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(reference for reference in references if reference not in allowed_set and not str(reference).startswith("wms_core_"))
+    return {
+        "format": "appgen.wms-core-boundary.v1",
+        "ok": not violations,
+        "owned_tables": WMS_CORE_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /inventory/allocations/{id}", "GET /inbound/arrivals/{id}", "GET /quality/holds/{id}", "GET /transportation/bookings/{id}", "GET /identity/policies", "POST /audit/warehouse-events"),
+            "events": WMS_CORE_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "inventory_allocation_projection",
+                "inbound_arrival_projection",
+                "quality_hold_projection",
+                "carrier_booking_projection",
+                "access_policy_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def wms_core_federate_warehouse_view(state: dict, warehouse_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -551,6 +824,21 @@ def wms_core_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": WMS_CORE_OWNED_TABLES,
+            "outbox_table": "wms_core_appgen_outbox_event",
+            "inbox_table": "wms_core_appgen_inbox_event",
+            "dead_letter_table": "wms_core_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+            "permissions": tuple(sorted(wms_core_permissions_contract()["permissions"])),
+        },
     }
 
 

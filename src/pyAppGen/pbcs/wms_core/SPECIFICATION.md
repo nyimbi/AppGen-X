@@ -9,18 +9,53 @@ its implementation under `src/pyAppGen/pbcs/wms_core/`.
 
 - **PBC key:** `wms_core`
 - **Mesh:** `scl`
-- **Owned tables:** `warehouse`, `bin_location`, `pick_wave`, `pack_task`
+- **Owned tables:** `warehouse`, `bin_location`, `inbound_receipt`,
+  `dock_door`, `putaway_task`, `replenishment_task`, `pick_wave`,
+  `pick_task`, `pack_task`, `carton`, `label_evidence`, `staging_lane`,
+  `shipment_confirmation`, `cross_dock_flow`, `cycle_count`,
+  `warehouse_exception`, `labor_task`, `edge_device_command`, `wms_rule`,
+  `wms_parameter`, and `wms_configuration`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
-- **Event contract:** AppGen-X outbox/inbox event contract only
-- **Emits:** `Picked`, `Packed`, `GoodsReceiptPosted`, `OrderShipped`
-- **Consumes:** `InventoryAllocated`, `InboundArrived`
-- **Primary APIs:** `POST /putaway`, `POST /pick-waves`, `POST /pack-tasks`
+- **Event contract:** AppGen-X outbox/inbox event contract only, fixed to
+  `appgen.wms.events`
+- **Emits:** `WarehouseRegistered`, `BinRegistered`, `GoodsReceiptPosted`,
+  `PutawayTaskCreated`, `PutawayConfirmed`, `PickWaveReleased`, `Picked`,
+  `PackTaskCreated`, `Packed`, and `OrderShipped`
+- **Consumes:** `InventoryAllocated`, `InboundArrived`,
+  `QualityHoldReleased`, `CarrierBooked`, and `AccessPolicyChanged`
+- **Primary APIs:** `POST /wms/warehouses`, `POST /wms/bins`,
+  `POST /wms/inbound`, `POST /wms/putaway`, `POST /wms/pick-waves`,
+  `POST /wms/picks/{id}/execute`, `POST /wms/pack-tasks`,
+  `POST /wms/shipments`, `POST /wms/events/inbox`, and
+  `GET /wms/workbench`
 - **UI artifacts:** warehouse execution workbench, dock door board, putaway
   queue, wave monitor, pack station view, exception queue, rule editor
 
 The package owns warehouse execution state. Inventory ownership remains in
 `inventory_positioning`; WMS references inventory through allocation and receipt
-events only.
+events only. Carrier status, quality release, and access policy state are
+represented as projections from declared events or APIs, never through shared
+tables. Package-level boundary verification must accept owned tables,
+AppGen-X runtime event tables, declared consumed events, and named projections;
+it must reject references such as `inventory_balance` or customer/account tables
+unless those references are represented by a declared API or event projection.
+
+## Package Metadata and Registration
+
+The package exports a stable `PBC_KEY`, implementation contract, capability
+catalog, API descriptor, permission descriptor, UI contract, owned table list,
+database backend allowlist, emitted event list, and consumed event list from
+the package directory. Package discovery can load `pyAppGen.pbcs.wms_core`
+without causing side effects. The implementation contract is a read-only
+registration plan: it describes the source package, runtime capability proof,
+UI fragments, API descriptors, RBAC descriptors, owned tables, and datastore
+constraints without mutating application state.
+
+Generated applications must include WMS-owned schema, migrations, models,
+services, routes, event contracts, handlers, and workbench fragments derived
+from this package. The package does not offer a stream-engine picker or a
+user-selectable eventing mode; the only user-visible eventing contract is the
+AppGen-X outbox/inbox contract with retry and dead-letter evidence.
 
 ## Rules, Parameters, and Configuration
 
@@ -41,6 +76,19 @@ and configuration:
 The PBC exposes operations to configure runtime behavior, set parameters,
 register rules, and apply them during putaway, wave planning, picking, packing,
 and shipping.
+
+Runtime configuration must reject unsupported database backends, any topic other
+than `appgen.wms.events`, and fields that attempt to expose a user stream-engine
+or eventing picker. Configuration evidence stored in state must include
+`event_contract: AppGen-X`, the backend allowlist, `stream_engine_picker_visible:
+false`, `user_selectable_event_contract: false`, and the owned table list.
+
+Schema extensions are allowed only on WMS-owned tables. Extensions are
+schema-on-read metadata used by generated migrations and models; they must use
+lowercase snake-case field names and merge with any existing extension metadata
+for the same table. Attempts to extend inventory, transportation, quality,
+identity, customer, finance, or other external tables are package-boundary
+violations.
 
 ## Standard Table-Stakes Capabilities
 
@@ -81,6 +129,54 @@ and shipping.
 21. Release-audit evidence for package ownership, manifests, schema, migrations,
     models, services, routes, events, handlers, UI, permissions, configuration,
     tests, registration metadata, and generation smoke.
+
+## Event Handling and Reliability
+
+`wms_core` maintains an AppGen-X outbox for domain events it emits and an inbox
+for declared events it consumes. Consumed events are handled idempotently through
+an idempotency key derived from the incoming event type and event identifier
+unless a caller supplies an explicit idempotency key. Duplicate processed events
+return the original handler evidence and do not append another inbox entry.
+
+Supported consumed events are projected into package-owned read models:
+
+- `InventoryAllocated` becomes an inventory-allocation projection used by wave
+  release and picking decisions.
+- `InboundArrived` becomes an inbound-arrival projection used by receiving and
+  dock-door visibility.
+- `QualityHoldReleased` becomes a quality-hold projection used by putaway and
+  pick eligibility.
+- `CarrierBooked` becomes a carrier-booking projection used by staging and ship
+  confirmation.
+- `AccessPolicyChanged` becomes an access-policy projection used by dynamic
+  policy screening and workbench authorization evidence.
+
+Unsupported or failed consumed events create retry evidence until the configured
+retry limit is reached; then they move to the WMS dead-letter surface with a
+reason and immutable handler evidence. Generated applications must expose
+outbox, inbox, retry, and dead-letter state through package-local models and
+workbench fragments.
+
+## API, RBAC, and Workbench Binding
+
+Every API descriptor declares its route, command or query, owned tables touched,
+emitted or consumed events, required permission, and idempotency key basis. The
+API contract declares `shared_table_access: false`, the AppGen-X event contract,
+allowed database backends, owned tables, and generated configuration variables.
+
+The permission contract includes read, master-data, receiving, putaway, picking,
+packing, shipping, cycle-count, edge-device, event, configure, and audit
+permissions. Each command and query maps to exactly one permission so generated
+apps can enforce RBAC and ABAC rules consistently across service methods, API
+routes, event handlers, and UI actions.
+
+The UI contract binds fragments to WMS-owned tables and runtime surfaces:
+warehouse master, bins, receipts, putaway tasks, pick waves, picks, pack tasks,
+shipments, rules, parameters, configuration, AppGen-X outbox, inbox, and
+dead-letter tables. The workbench render contract reports visible and locked
+actions from RBAC, counts outbox/inbox/dead-letter records, and includes binding
+evidence proving that configuration and events use the package-local AppGen-X
+contract.
 
 ## Advanced Capabilities
 

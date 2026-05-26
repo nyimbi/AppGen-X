@@ -1,8 +1,14 @@
 """Procurement Sourcing PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS
+from .runtime import PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES
+from .runtime import PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES
+from .runtime import PROCUREMENT_SOURCING_OWNED_TABLES
+from .runtime import PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC
 from .runtime import PROCUREMENT_SOURCING_RUNTIME_CAPABILITY_KEYS
 from .runtime import PROCUREMENT_SOURCING_STANDARD_FEATURE_KEYS
+from .runtime import procurement_sourcing_build_api_contract
 from .runtime import procurement_sourcing_approve_requisition
 from .runtime import procurement_sourcing_build_workbench_view
 from .runtime import procurement_sourcing_capture_bid
@@ -12,12 +18,16 @@ from .runtime import procurement_sourcing_create_requisition
 from .runtime import procurement_sourcing_create_rfq
 from .runtime import procurement_sourcing_empty_state
 from .runtime import procurement_sourcing_issue_purchase_order
+from .runtime import procurement_sourcing_permissions_contract
+from .runtime import procurement_sourcing_receive_event
 from .runtime import procurement_sourcing_register_rule
+from .runtime import procurement_sourcing_register_schema_extension
 from .runtime import procurement_sourcing_runtime_capabilities
 from .runtime import procurement_sourcing_runtime_smoke
 from .runtime import procurement_sourcing_score_suppliers
 from .runtime import procurement_sourcing_select_supplier
 from .runtime import procurement_sourcing_set_parameter
+from .runtime import procurement_sourcing_verify_owned_table_boundary
 from .ui import PROCUREMENT_SOURCING_UI_FRAGMENT_KEYS
 from .ui import procurement_sourcing_render_workbench
 from .ui import procurement_sourcing_ui_contract
@@ -33,4 +43,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": procurement_sourcing_ui_contract(),
+        "api_contract": procurement_sourcing_build_api_contract(),
+        "permissions_contract": procurement_sourcing_permissions_contract(),
+        "owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES,
+        "allowed_database_backends": PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS,
     }

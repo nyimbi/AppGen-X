@@ -21,6 +21,17 @@ from pyAppGen.pbc import procurement_sourcing_score_suppliers
 from pyAppGen.pbc import procurement_sourcing_select_supplier
 from pyAppGen.pbc import procurement_sourcing_set_parameter
 from pyAppGen.pbc import procurement_sourcing_ui_contract
+from pyAppGen.pbcs.procurement_sourcing import PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.procurement_sourcing import PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.procurement_sourcing import PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.procurement_sourcing import PROCUREMENT_SOURCING_OWNED_TABLES
+from pyAppGen.pbcs.procurement_sourcing import PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.procurement_sourcing import implementation_contract as procurement_sourcing_package_contract
+from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_build_api_contract
+from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_permissions_contract
+from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_receive_event
+from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_register_schema_extension
+from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_verify_owned_table_boundary
 
 
 def test_procurement_sourcing_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -30,6 +41,7 @@ def test_procurement_sourcing_runtime_executes_standard_and_advanced_capabilitie
     assert runtime["format"] == "appgen.procurement-sourcing-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/procurement_sourcing"
+    assert runtime["owned_tables"] == PROCUREMENT_SOURCING_OWNED_TABLES
     assert len(runtime["standard_features"]) >= 18
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
@@ -44,6 +56,12 @@ def test_procurement_sourcing_runtime_executes_standard_and_advanced_capabilitie
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "ProcurementConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS)
+
+    package_contract = procurement_sourcing_package_contract()
+    assert package_contract["api_contract"]["event_contract"] == "AppGen-X"
+    assert package_contract["permissions_contract"]["action_permissions"]["receive_event"] == "procurement_sourcing.event"
+    assert package_contract["owned_tables"] == PROCUREMENT_SOURCING_OWNED_TABLES
+    assert package_contract["allowed_database_backends"] == PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS
     assert pbc_implementation_release_audit(("procurement_sourcing",))["ok"] is True
     assert pbc_implemented_capability_audit(("procurement_sourcing",))["ok"] is True
 
@@ -54,7 +72,7 @@ def test_procurement_sourcing_runtime_applies_rules_parameters_and_configuration
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.procurement.events",
+            "event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "allowed_categories": ("maintenance",),
@@ -144,9 +162,16 @@ def test_procurement_sourcing_runtime_applies_rules_parameters_and_configuration
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 3
+    assert workbench["owned_tables"] == PROCUREMENT_SOURCING_OWNED_TABLES
+    assert workbench["inbox_table"] == "procurement_sourcing_appgen_inbox_event"
 
     ui_contract = procurement_sourcing_ui_contract()
-    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS
+    assert ui_contract["configuration_editor"]["required_event_topic"] == PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC
+    assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
+    assert ui_contract["event_surfaces"]["emits"] == PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES
+    assert ui_contract["event_surfaces"]["consumes"] == PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES
+    assert ui_contract["binding_evidence"]["shared_table_access"] is False
     assert "approval_limit" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     rendered = procurement_sourcing_render_workbench(
@@ -156,9 +181,11 @@ def test_procurement_sourcing_runtime_applies_rules_parameters_and_configuration
             "procurement_sourcing.request",
             "procurement_sourcing.approve",
             "procurement_sourcing.source",
+            "procurement_sourcing.bid",
             "procurement_sourcing.award",
             "procurement_sourcing.contract",
             "procurement_sourcing.order",
+            "procurement_sourcing.event",
             "procurement_sourcing.audit",
             "procurement_sourcing.configure",
         ),
@@ -166,6 +193,9 @@ def test_procurement_sourcing_runtime_applies_rules_parameters_and_configuration
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert rendered["event_outbox_count"] == 6
+    assert rendered["inbox_count"] == 0
+    assert rendered["dead_letter_count"] == 0
+    assert rendered["binding_evidence"]["owned_tables"] == PROCUREMENT_SOURCING_OWNED_TABLES
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
 
@@ -178,7 +208,7 @@ def test_procurement_sourcing_rejects_unsupported_database_backends_and_unknown_
             state,
             {
                 "database_backend": "stream_store",
-                "event_topic": "appgen.procurement.events",
+                "event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "default_currency": "USD",
             },
@@ -186,3 +216,123 @@ def test_procurement_sourcing_rejects_unsupported_database_backends_and_unknown_
 
     with pytest.raises(ValueError, match="Unsupported Procurement Sourcing parameter"):
         procurement_sourcing_set_parameter(state, "stream_engine", "hidden_picker")
+
+    with pytest.raises(ValueError, match=PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC):
+        procurement_sourcing_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": "appgen.procurement.events",
+                "retry_limit": 3,
+                "default_currency": "USD",
+            },
+        )
+
+    with pytest.raises(ValueError, match="stream-engine picker"):
+        procurement_sourcing_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
+                "retry_limit": 3,
+                "default_currency": "USD",
+                "stream_engine": "user_selected_queue",
+            },
+        )
+
+    with pytest.raises(ValueError, match="owned tables"):
+        procurement_sourcing_register_schema_extension(state, "inventory_position", {"supplier_rank": "decimal"})
+
+
+def test_procurement_sourcing_hardened_event_api_permission_and_boundary_contracts() -> None:
+    state = procurement_sourcing_empty_state()
+    state = procurement_sourcing_configure_runtime(
+        state,
+        {
+            "database_backend": "mysql",
+            "event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "default_currency": "USD",
+            "allowed_categories": ("maintenance",),
+            "workbench_limit": 50,
+        },
+    )["state"]
+    extension = procurement_sourcing_register_schema_extension(
+        state,
+        "procurement_sourcing_rfq",
+        {"sustainability_payload": "jsonb"},
+    )
+    state = extension["state"]
+    assert extension["fields"]["sustainability_payload"] == "jsonb"
+
+    received = procurement_sourcing_receive_event(
+        state,
+        {
+            "event_id": "shortage_ops",
+            "event_type": "MaterialShortageDetected",
+            "payload": {"tenant": "tenant_ops", "shortage_id": "shortage_ops", "item_id": "filter_ops"},
+        },
+    )
+    state = received["state"]
+    assert received["ok"] is True
+    assert state["material_shortage_projections"]["shortage_ops"]["item_id"] == "filter_ops"
+
+    duplicate = procurement_sourcing_receive_event(
+        state,
+        {
+            "event_id": "shortage_ops",
+            "event_type": "MaterialShortageDetected",
+            "payload": {"tenant": "tenant_ops", "shortage_id": "shortage_ops", "item_id": "filter_ops"},
+        },
+    )
+    assert duplicate["duplicate"] is True
+    assert len(duplicate["state"]["inbox"]) == 1
+
+    retrying = procurement_sourcing_receive_event(
+        state,
+        {
+            "event_id": "unsupported_ops",
+            "event_type": "UndeclaredEvent",
+            "payload": {"tenant": "tenant_ops"},
+        },
+    )
+    assert retrying["ok"] is False
+    assert retrying["handler"]["status"] == "retrying"
+    dead_letter = procurement_sourcing_receive_event(
+        retrying["state"],
+        {
+            "event_id": "unsupported_ops",
+            "event_type": "UndeclaredEvent",
+            "payload": {"tenant": "tenant_ops"},
+        },
+    )
+    assert dead_letter["handler"]["status"] == "dead_letter"
+    assert dead_letter["state"]["dead_letter"][-1]["reason"] == "unsupported_or_failed_procurement_event"
+
+    api = procurement_sourcing_build_api_contract()
+    assert api["owned_tables"] == PROCUREMENT_SOURCING_OWNED_TABLES
+    assert api["database_backends"] == PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False
+    assert api["events"]["consumes"] == PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES
+    assert any(route["command"] == "receive_event" for route in api["routes"])
+
+    permissions = procurement_sourcing_permissions_contract()
+    assert permissions["action_permissions"]["register_schema_extension"] == "procurement_sourcing.configure"
+    assert permissions["action_permissions"]["receive_event"] == "procurement_sourcing.event"
+
+    valid_boundary = procurement_sourcing_verify_owned_table_boundary(
+        (
+            "procurement_sourcing_purchase_order",
+            "procurement_sourcing_appgen_inbox_event",
+            "MaterialShortageDetected",
+            "budget_projection",
+            "GET /identity/policies",
+        ),
+    )
+    assert valid_boundary["ok"] is True
+    assert not valid_boundary["declared_dependencies"]["shared_tables"]
+
+    invalid_boundary = procurement_sourcing_verify_owned_table_boundary(("inventory_position", "gl_core_journal_entry"))
+    assert invalid_boundary["ok"] is False
+    assert invalid_boundary["violations"] == ("inventory_position", "gl_core_journal_entry")

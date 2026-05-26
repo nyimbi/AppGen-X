@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS
+from .runtime import INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES
+from .runtime import INVENTORY_POSITIONING_EMITTED_EVENT_TYPES
+from .runtime import INVENTORY_POSITIONING_OWNED_TABLES
+from .runtime import INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC
+from .runtime import inventory_positioning_permissions_contract
+
 
 INVENTORY_POSITIONING_UI_FRAGMENT_KEYS = (
     "InventoryPositioningWorkbench",
@@ -82,26 +89,14 @@ def inventory_positioning_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": {
-            "register_item": "inventory_positioning.master",
-            "register_node": "inventory_positioning.master",
-            "post_goods_receipt": "inventory_positioning.receive",
-            "post_adjustment": "inventory_positioning.adjust",
-            "calculate_availability": "inventory_positioning.read",
-            "allocate_inventory": "inventory_positioning.allocate",
-            "release_allocation": "inventory_positioning.release",
-            "apply_quality_hold": "inventory_positioning.quality",
-            "reconcile_inventory": "inventory_positioning.reconcile",
-            "generate_stock_proof": "inventory_positioning.audit",
-            "register_rule": "inventory_positioning.configure",
-            "set_parameter": "inventory_positioning.configure",
-            "configure_runtime": "inventory_positioning.configure",
-            "run_control_tests": "inventory_positioning.audit",
-        },
+        "action_permissions": inventory_positioning_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_uom", "precision"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -118,11 +113,13 @@ def inventory_positioning_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": ("ItemRegistered", "InventoryNodeRegistered", "GoodsReceiptPosted", "InventoryAdjusted", "InventoryAllocated", "InventoryReleased", "QualityHoldApplied"),
-            "consumes": ("OrderVerified", "ShipmentDelivered", "QualityHoldReleased", "PurchaseReceiptPosted", "DemandForecastChanged"),
+            "emits": INVENTORY_POSITIONING_EMITTED_EVENT_TYPES,
+            "consumes": INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": INVENTORY_POSITIONING_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -159,4 +156,12 @@ def inventory_positioning_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": INVENTORY_POSITIONING_OWNED_TABLES,
+            "outbox_table": "inventory_positioning_appgen_outbox_event",
+            "inbox_table": "inventory_positioning_appgen_inbox_event",
+            "dead_letter_table": "inventory_positioning_dead_letter_event",
+        },
     }

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from .runtime import WMS_CORE_ALLOWED_DATABASE_BACKENDS
+from .runtime import WMS_CORE_CONSUMED_EVENT_TYPES
+from .runtime import WMS_CORE_EMITTED_EVENT_TYPES
+from .runtime import WMS_CORE_OWNED_TABLES
+from .runtime import WMS_CORE_REQUIRED_EVENT_TOPIC
+
 
 WMS_CORE_UI_FRAGMENT_KEYS = (
     "WarehouseExecutionWorkbench",
@@ -96,16 +102,21 @@ def wms_core_ui_contract() -> dict:
             "confirm_pack": "wms_core.pack",
             "confirm_shipment": "wms_core.ship",
             "route_edge_command": "wms_core.edge",
+            "receive_event": "wms_core.event",
             "generate_shipment_proof": "wms_core.audit",
             "register_rule": "wms_core.configure",
+            "register_schema_extension": "wms_core.configure",
             "set_parameter": "wms_core.configure",
             "configure_runtime": "wms_core.configure",
             "run_control_tests": "wms_core.audit",
         },
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "timezone", "label_format"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": WMS_CORE_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "fixed_event_topic": WMS_CORE_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -122,10 +133,31 @@ def wms_core_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": ("WarehouseRegistered", "BinRegistered", "GoodsReceiptPosted", "PutawayTaskCreated", "Picked", "Packed", "OrderShipped"),
-            "consumes": ("InventoryAllocated", "InboundArrived", "QualityHoldReleased", "CarrierBooked", "AccessPolicyChanged"),
+            "emits": WMS_CORE_EMITTED_EVENT_TYPES,
+            "consumes": WMS_CORE_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": WMS_CORE_OWNED_TABLES,
+            "outbox_table": "wms_core_appgen_outbox_event",
+            "inbox_table": "wms_core_appgen_inbox_event",
+            "dead_letter_table": "wms_core_dead_letter_event",
+            "rbac_permissions": (
+                "wms_core.read",
+                "wms_core.master",
+                "wms_core.receive",
+                "wms_core.putaway",
+                "wms_core.pick",
+                "wms_core.pack",
+                "wms_core.ship",
+                "wms_core.count",
+                "wms_core.edge",
+                "wms_core.event",
+                "wms_core.configure",
+                "wms_core.audit",
+            ),
         },
     }
 
@@ -163,4 +195,18 @@ def wms_core_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "event_inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": WMS_CORE_OWNED_TABLES,
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+            },
+            "outbox_table": "wms_core_appgen_outbox_event",
+            "inbox_table": "wms_core_appgen_inbox_event",
+            "dead_letter_table": "wms_core_dead_letter_event",
+            "rbac_permissions": contract["binding_evidence"]["rbac_permissions"],
+        },
     }

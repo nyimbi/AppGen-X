@@ -1,8 +1,14 @@
 """Warehouse Management Core PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import WMS_CORE_ALLOWED_DATABASE_BACKENDS
+from .runtime import WMS_CORE_CONSUMED_EVENT_TYPES
+from .runtime import WMS_CORE_EMITTED_EVENT_TYPES
+from .runtime import WMS_CORE_OWNED_TABLES
+from .runtime import WMS_CORE_REQUIRED_EVENT_TOPIC
 from .runtime import WMS_CORE_RUNTIME_CAPABILITY_KEYS
 from .runtime import WMS_CORE_STANDARD_FEATURE_KEYS
+from .runtime import wms_core_build_api_contract
 from .runtime import wms_core_build_workbench_view
 from .runtime import wms_core_configure_runtime
 from .runtime import wms_core_confirm_pack
@@ -16,10 +22,14 @@ from .runtime import wms_core_execute_pick
 from .runtime import wms_core_receive_inbound
 from .runtime import wms_core_register_bin
 from .runtime import wms_core_register_rule
+from .runtime import wms_core_register_schema_extension
 from .runtime import wms_core_register_warehouse
+from .runtime import wms_core_permissions_contract
+from .runtime import wms_core_receive_event
 from .runtime import wms_core_runtime_capabilities
 from .runtime import wms_core_runtime_smoke
 from .runtime import wms_core_set_parameter
+from .runtime import wms_core_verify_owned_table_boundary
 from .ui import WMS_CORE_UI_FRAGMENT_KEYS
 from .ui import wms_core_render_workbench
 from .ui import wms_core_ui_contract
@@ -35,4 +45,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": wms_core_ui_contract(),
+        "api_contract": wms_core_build_api_contract(),
+        "permissions_contract": wms_core_permissions_contract(),
+        "owned_tables": WMS_CORE_OWNED_TABLES,
+        "allowed_database_backends": WMS_CORE_ALLOWED_DATABASE_BACKENDS,
     }

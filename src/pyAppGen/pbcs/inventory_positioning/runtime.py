@@ -8,6 +8,65 @@ import math
 import re
 
 
+INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC = "appgen.inventory.events"
+INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+INVENTORY_POSITIONING_OWNED_TABLES = (
+    "inventory_positioning_item",
+    "inventory_positioning_node",
+    "inventory_positioning_inventory_position",
+    "inventory_positioning_receipt",
+    "inventory_positioning_adjustment",
+    "inventory_positioning_allocation",
+    "inventory_positioning_quality_hold",
+    "inventory_positioning_replenishment_signal",
+    "inventory_positioning_rule",
+    "inventory_positioning_parameter",
+    "inventory_positioning_configuration",
+)
+INVENTORY_POSITIONING_EMITTED_EVENT_TYPES = (
+    "ItemRegistered",
+    "InventoryNodeRegistered",
+    "GoodsReceiptPosted",
+    "InventoryAdjusted",
+    "InventoryAllocated",
+    "InventoryReleased",
+    "QualityHoldApplied",
+)
+INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES = (
+    "OrderVerified",
+    "ShipmentDelivered",
+    "QualityHoldReleased",
+    "PurchaseReceiptPosted",
+    "DemandForecastChanged",
+    "AccessPolicyChanged",
+)
+_INVENTORY_POSITIONING_RUNTIME_TABLES = (
+    "inventory_positioning_appgen_outbox_event",
+    "inventory_positioning_appgen_inbox_event",
+    "inventory_positioning_dead_letter_event",
+)
+_INVENTORY_POSITIONING_ALLOWED_DEPENDENCIES = (
+    "order_demand_projection",
+    "shipment_delivery_projection",
+    "quality_release_projection",
+    "purchase_receipt_projection",
+    "demand_forecast_projection",
+    "access_policy_projection",
+    "GET /identity/policies",
+    "POST /audit/contract-events",
+    "GET /schema/events",
+)
+_INVENTORY_POSITIONING_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 INVENTORY_POSITIONING_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_inventory_lifecycle",
     "graph_relational_inventory_topology",
@@ -77,12 +136,15 @@ def inventory_positioning_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "inventory_positioning",
         "implementation_directory": "src/pyAppGen/pbcs/inventory_positioning",
+        "owned_tables": INVENTORY_POSITIONING_OWNED_TABLES,
         "capabilities": INVENTORY_POSITIONING_RUNTIME_CAPABILITY_KEYS,
         "standard_features": INVENTORY_POSITIONING_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_item",
             "register_node",
             "post_goods_receipt",
@@ -103,6 +165,7 @@ def inventory_positioning_runtime_capabilities() -> dict:
             "screen_inventory_policy",
             "run_control_tests",
             "build_api_contract",
+            "permissions_contract",
             "federate_inventory_view",
             "verify_node_identity",
             "run_resilience_drill",
@@ -113,6 +176,7 @@ def inventory_positioning_runtime_capabilities() -> dict:
             "detect_inventory_anomaly",
             "model_stochastic_stock_exposure",
             "build_workbench_view",
+            "verify_owned_table_boundary",
             "register_governed_model",
         ),
         "smoke": smoke,
@@ -125,7 +189,7 @@ def inventory_positioning_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.inventory.events",
+            "event_topic": INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_uom": "EA",
             "precision": 2,
@@ -149,7 +213,16 @@ def inventory_positioning_runtime_smoke() -> dict:
             "status": "active",
         },
     )["state"]
-    state = inventory_positioning_register_schema_extension(state, "inventory_position", {"temperature_band": "jsonb"})["state"]
+    state = inventory_positioning_register_schema_extension(state, "inventory_positioning_inventory_position", {"temperature_band": "jsonb"})["state"]
+    received = inventory_positioning_receive_event(
+        state,
+        {
+            "event_id": "order_verified_001",
+            "event_type": "OrderVerified",
+            "payload": {"tenant": "tenant_alpha", "order_id": "order_100", "item_id": "sku_100", "quantity": 50},
+        },
+    )
+    state = received["state"]
     item = inventory_positioning_register_item(
         state,
         {
@@ -248,7 +321,7 @@ def inventory_positioning_runtime_smoke() -> dict:
         {"id": "event_sourced_inventory_lifecycle", "ok": len(state["events"]) >= 7 and state["events"][-1]["hash"]},
         {"id": "graph_relational_inventory_topology", "ok": item["item"]["graph_degree"] >= 2 and node["node"]["graph_degree"] >= 3},
         {"id": "multi_tenant_stock_isolation", "ok": workbench["tenant"] == "tenant_alpha"},
-        {"id": "schema_evolution_resilient_inventory_schema", "ok": state["schema_extensions"]["inventory_position"]["temperature_band"] == "jsonb"},
+        {"id": "schema_evolution_resilient_inventory_schema", "ok": state["schema_extensions"]["inventory_positioning_inventory_position"]["temperature_band"] == "jsonb"},
         {"id": "probabilistic_availability_projection", "ok": transit["expected_quantity"] == 16.0},
         {"id": "real_time_atp_ctp_convergence", "ok": availability["available_to_promise"] == 88.2},
         {"id": "counterfactual_allocation_policy_simulation", "ok": simulation["ok"] and simulation["delta_available"] < 0},
@@ -263,7 +336,7 @@ def inventory_positioning_runtime_smoke() -> dict:
         {"id": "automated_inventory_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
         {"id": "universal_api_async_streaming", "ok": api["ok"] and "InventoryAllocated" in api["events"]["emits"]},
         {"id": "cross_node_inventory_federation", "ok": federation["ok"] and "warehouse" in federation["systems"]},
-        {"id": "warehouse_order_quality_integration", "ok": set(api["events"]["consumes"]) == {"OrderVerified", "ShipmentDelivered", "QualityHoldReleased"}},
+        {"id": "warehouse_order_quality_integration", "ok": {"OrderVerified", "ShipmentDelivered", "QualityHoldReleased"} <= set(api["events"]["consumes"]) and received["handler"]["status"] == "processed"},
         {"id": "decentralized_node_lot_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
         {"id": "chaos_engineered_node_tolerance", "ok": resilience["ok"] and resilience["mode"] == "degraded_node_route"},
         {"id": "quantum_resistant_inventory_authorization", "ok": crypto["ok"] and crypto["algorithm"] == "dilithium3_simulated"},
@@ -286,6 +359,17 @@ def inventory_positioning_empty_state() -> dict:
     return {
         "events": (),
         "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "order_demand_projections": {},
+        "shipment_delivery_projections": {},
+        "quality_release_projections": {},
+        "purchase_receipt_projections": {},
+        "demand_forecast_projections": {},
+        "access_policy_projections": {},
         "items": {},
         "nodes": {},
         "positions": {},
@@ -299,16 +383,21 @@ def inventory_positioning_empty_state() -> dict:
 
 
 def inventory_positioning_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _INVENTORY_POSITIONING_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Inventory Positioning uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS):
         raise ValueError("Inventory Positioning supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Inventory Positioning requires an AppGen-X event topic")
+    if configuration.get("event_topic") != INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Inventory Positioning requires AppGen-X event topic {INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC}")
     config = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": INVENTORY_POSITIONING_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": config}, "configuration": config}
 
@@ -341,10 +430,63 @@ def inventory_positioning_register_rule(state: dict, rule: dict) -> dict:
 
 
 def inventory_positioning_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in INVENTORY_POSITIONING_OWNED_TABLES:
+        raise ValueError(f"Inventory Positioning schema extensions must target owned tables: {INVENTORY_POSITIONING_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    merged = {**state["schema_extensions"].get(table, {}), **fields}
+    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}}, "schema_extension": {"table": table, "fields": dict(fields)}, "target": table, "fields": merged}
+
+
+def inventory_positioning_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = _copy_state(state)
+    next_state["inbox"] = (*next_state.get("inbox", ()), inbox_entry)
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state.get("retry_evidence", ()), evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_inventory_event"}
+            next_state["dead_letters"] = (*next_state.get("dead_letters", ()), dead)
+            next_state["dead_letter"] = (*next_state.get("dead_letter", ()), dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+
+    if event_type == "OrderVerified":
+        next_state["order_demand_projections"][payload.get("order_id", event_id)] = payload
+    elif event_type == "ShipmentDelivered":
+        next_state["shipment_delivery_projections"][payload.get("shipment_id", event_id)] = payload
+    elif event_type == "QualityHoldReleased":
+        next_state["quality_release_projections"][payload.get("hold_id", event_id)] = payload
+    elif event_type == "PurchaseReceiptPosted":
+        next_state["purchase_receipt_projections"][payload.get("receipt_id", event_id)] = payload
+    elif event_type == "DemandForecastChanged":
+        next_state["demand_forecast_projections"][payload.get("forecast_id", event_id)] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload.get("policy_id", event_id)] = payload
+
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def inventory_positioning_register_item(state: dict, item: dict) -> dict:
@@ -517,10 +659,32 @@ def inventory_positioning_run_control_tests(state: dict) -> dict:
 
 def inventory_positioning_build_api_contract() -> dict:
     return {
+        "format": "appgen.inventory-positioning-api-contract.v1",
         "ok": True,
-        "routes": ("GET /availability", "POST /allocations", "POST /inventory-events", "POST /inventory-rules", "POST /inventory-parameters", "POST /inventory-configuration"),
-        "events": {"emits": ("InventoryAllocated", "InventoryReleased", "GoodsReceiptPosted"), "consumes": ("OrderVerified", "ShipmentDelivered", "QualityHoldReleased")},
-        "permissions": ("inventory_positioning.read", "inventory_positioning.receive", "inventory_positioning.allocate", "inventory_positioning.release", "inventory_positioning.configure", "inventory_positioning.audit"),
+        "routes": (
+            {"route": "POST /inventory/items", "command": "register_item", "owned_tables": ("inventory_positioning_item",), "emits": ("ItemRegistered",), "requires_permission": "inventory_positioning.master", "idempotency_key": "item_id"},
+            {"route": "POST /inventory/nodes", "command": "register_node", "owned_tables": ("inventory_positioning_node",), "emits": ("InventoryNodeRegistered",), "requires_permission": "inventory_positioning.master", "idempotency_key": "node_id"},
+            {"route": "POST /inventory/receipts", "command": "post_goods_receipt", "owned_tables": ("inventory_positioning_receipt", "inventory_positioning_inventory_position"), "emits": ("GoodsReceiptPosted",), "requires_permission": "inventory_positioning.receive", "idempotency_key": "receipt_id"},
+            {"route": "POST /inventory/adjustments", "command": "post_adjustment", "owned_tables": ("inventory_positioning_adjustment", "inventory_positioning_inventory_position"), "emits": ("InventoryAdjusted",), "requires_permission": "inventory_positioning.adjust", "idempotency_key": "adjustment_id"},
+            {"route": "GET /inventory/availability", "query": "calculate_availability", "owned_tables": ("inventory_positioning_inventory_position",), "emits": (), "requires_permission": "inventory_positioning.read"},
+            {"route": "POST /inventory/allocations", "command": "allocate_inventory", "owned_tables": ("inventory_positioning_allocation", "inventory_positioning_inventory_position"), "emits": ("InventoryAllocated",), "requires_permission": "inventory_positioning.allocate", "idempotency_key": "allocation_id"},
+            {"route": "POST /inventory/allocations/{id}/release", "command": "release_allocation", "owned_tables": ("inventory_positioning_allocation", "inventory_positioning_inventory_position"), "emits": ("InventoryReleased",), "requires_permission": "inventory_positioning.release", "idempotency_key": "allocation_id"},
+            {"route": "POST /inventory/quality-holds", "command": "apply_quality_hold", "owned_tables": ("inventory_positioning_quality_hold", "inventory_positioning_inventory_position"), "emits": ("QualityHoldApplied",), "requires_permission": "inventory_positioning.quality", "idempotency_key": "hold_id"},
+            {"route": "POST /inventory/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES, "requires_permission": "inventory_positioning.event", "idempotency_key": "event_id"},
+            {"route": "GET /inventory/workbench", "query": "build_workbench_view", "owned_tables": INVENTORY_POSITIONING_OWNED_TABLES, "requires_permission": "inventory_positioning.audit"},
+        ),
+        "declared_catalog_routes": ("POST /inventory/items", "POST /inventory/nodes", "GET /inventory/availability", "POST /inventory/allocations", "GET /inventory/workbench"),
+        "events": {"emits": INVENTORY_POSITIONING_EMITTED_EVENT_TYPES, "consumes": INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES},
+        "emits": INVENTORY_POSITIONING_EMITTED_EVENT_TYPES,
+        "consumes": INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES,
+        "asyncapi_events": INVENTORY_POSITIONING_EMITTED_EVENT_TYPES,
+        "permissions": tuple(sorted(inventory_positioning_permissions_contract()["permissions"])),
+        "database_backends": INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": INVENTORY_POSITIONING_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "required_event_topic": INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC,
+        "stream_engine_picker_visible": False,
         "configuration": ("INVENTORY_POSITIONING_DATABASE_URL", "INVENTORY_POSITIONING_EVENT_TOPIC", "INVENTORY_POSITIONING_RETRY_LIMIT", "INVENTORY_POSITIONING_DEFAULT_UOM"),
     }
 
@@ -602,11 +766,110 @@ def inventory_positioning_build_workbench_view(state: dict, *, tenant: str) -> d
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "owned_tables": INVENTORY_POSITIONING_OWNED_TABLES,
+        "outbox_table": "inventory_positioning_appgen_outbox_event",
+        "inbox_table": "inventory_positioning_appgen_inbox_event",
+        "dead_letter_table": "inventory_positioning_dead_letter_event",
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
     }
 
 
 def inventory_positioning_register_governed_model(name: str, metadata: dict) -> dict:
     return {"ok": metadata.get("auc", 0) >= 0.85 and metadata.get("drift_score", 1) <= 0.1, "name": name, "metadata": metadata, "governance": {"regulated": True, "feature_lineage": tuple(metadata.get("features", ())), "explainability_required": True}}
+
+
+def inventory_positioning_permissions_contract() -> dict:
+    return {
+        "format": "appgen.inventory-positioning-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "inventory_positioning.read",
+            "inventory_positioning.master",
+            "inventory_positioning.receive",
+            "inventory_positioning.adjust",
+            "inventory_positioning.allocate",
+            "inventory_positioning.release",
+            "inventory_positioning.quality",
+            "inventory_positioning.replenish",
+            "inventory_positioning.reconcile",
+            "inventory_positioning.event",
+            "inventory_positioning.configure",
+            "inventory_positioning.audit",
+        ),
+        "action_permissions": {
+            "register_item": "inventory_positioning.master",
+            "register_node": "inventory_positioning.master",
+            "post_goods_receipt": "inventory_positioning.receive",
+            "post_adjustment": "inventory_positioning.adjust",
+            "calculate_availability": "inventory_positioning.read",
+            "allocate_inventory": "inventory_positioning.allocate",
+            "release_allocation": "inventory_positioning.release",
+            "apply_quality_hold": "inventory_positioning.quality",
+            "generate_replenishment_signal": "inventory_positioning.replenish",
+            "reconcile_inventory": "inventory_positioning.reconcile",
+            "receive_event": "inventory_positioning.event",
+            "register_rule": "inventory_positioning.configure",
+            "register_schema_extension": "inventory_positioning.configure",
+            "set_parameter": "inventory_positioning.configure",
+            "configure_runtime": "inventory_positioning.configure",
+            "build_workbench_view": "inventory_positioning.audit",
+            "run_control_tests": "inventory_positioning.audit",
+            "generate_stock_proof": "inventory_positioning.audit",
+        },
+    }
+
+
+def inventory_positioning_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *INVENTORY_POSITIONING_OWNED_TABLES,
+        *INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES,
+        *_INVENTORY_POSITIONING_RUNTIME_TABLES,
+        *_INVENTORY_POSITIONING_ALLOWED_DEPENDENCIES,
+    )
+    violations = tuple(reference for reference in references if reference not in set(allowed) and not str(reference).startswith("inventory_positioning_"))
+    return {
+        "format": "appgen.inventory-positioning-boundary.v1",
+        "ok": not violations,
+        "owned_tables": INVENTORY_POSITIONING_OWNED_TABLES,
+        "allowed_dependencies": {
+            "apis": ("GET /identity/policies", "POST /audit/contract-events", "GET /schema/events"),
+            "events": INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "order_demand_projection",
+                "shipment_delivery_projection",
+                "quality_release_projection",
+                "purchase_receipt_projection",
+                "demand_forecast_projection",
+                "access_policy_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
+
+
+def _copy_state(state: dict) -> dict:
+    return {
+        **state,
+        "configuration": dict(state.get("configuration", {})),
+        "parameters": dict(state.get("parameters", {})),
+        "rules": dict(state.get("rules", {})),
+        "events": tuple(dict(item) for item in state.get("events", ())),
+        "outbox": tuple(dict(item) for item in state.get("outbox", ())),
+        "inbox": tuple(dict(item) for item in state.get("inbox", ())),
+        "dead_letters": tuple(dict(item) for item in state.get("dead_letters", ())),
+        "dead_letter": tuple(dict(item) for item in state.get("dead_letter", state.get("dead_letters", ()))),
+        "handled_events": {key: dict(value) for key, value in state.get("handled_events", {}).items()},
+        "retry_evidence": tuple(dict(item) for item in state.get("retry_evidence", ())),
+        "order_demand_projections": {key: dict(value) for key, value in state.get("order_demand_projections", {}).items()},
+        "shipment_delivery_projections": {key: dict(value) for key, value in state.get("shipment_delivery_projections", {}).items()},
+        "quality_release_projections": {key: dict(value) for key, value in state.get("quality_release_projections", {}).items()},
+        "purchase_receipt_projections": {key: dict(value) for key, value in state.get("purchase_receipt_projections", {}).items()},
+        "demand_forecast_projections": {key: dict(value) for key, value in state.get("demand_forecast_projections", {}).items()},
+        "access_policy_projections": {key: dict(value) for key, value in state.get("access_policy_projections", {}).items()},
+    }
 
 
 def _append_event(state: dict, event_type: str, payload: dict) -> dict:

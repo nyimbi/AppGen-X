@@ -12,14 +12,26 @@ evidence.
 
 - **PBC key:** `inventory_positioning`
 - **Mesh:** `scl`
-- **Owned tables:** `item`, `inventory_node`, `inventory_position`,
-  `allocation`
+- **Owned tables:** `inventory_positioning_item`,
+  `inventory_positioning_node`, `inventory_positioning_inventory_position`,
+  `inventory_positioning_receipt`, `inventory_positioning_adjustment`,
+  `inventory_positioning_allocation`, `inventory_positioning_quality_hold`,
+  `inventory_positioning_replenishment_signal`,
+  `inventory_positioning_rule`, `inventory_positioning_parameter`,
+  `inventory_positioning_configuration`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
 - **Event contract:** AppGen-X outbox/inbox event contract only
-- **Emits:** `InventoryAllocated`, `InventoryReleased`, `GoodsReceiptPosted`
-- **Consumes:** `OrderVerified`, `ShipmentDelivered`, `QualityHoldReleased`
-- **Primary APIs:** `GET /availability`, `POST /allocations`,
-  `POST /inventory-events`
+- **Required event topic:** `appgen.inventory.events`
+- **Emits:** `ItemRegistered`, `InventoryNodeRegistered`,
+  `GoodsReceiptPosted`, `InventoryAdjusted`, `InventoryAllocated`,
+  `InventoryReleased`, `QualityHoldApplied`
+- **Consumes:** `OrderVerified`, `ShipmentDelivered`,
+  `QualityHoldReleased`, `PurchaseReceiptPosted`, `DemandForecastChanged`,
+  `AccessPolicyChanged`
+- **Primary APIs:** `POST /inventory/items`, `POST /inventory/nodes`,
+  `POST /inventory/receipts`, `POST /inventory/adjustments`,
+  `GET /inventory/availability`, `POST /inventory/allocations`,
+  `POST /inventory/events/inbox`, `GET /inventory/workbench`
 - **UI artifacts:** availability workbench, node position grid, allocation
   monitor, exception queue, inventory event replay view, policy editor
 
@@ -46,6 +58,48 @@ business rules, runtime parameters, and configuration:
 
 The runtime exposes executable operations to set configuration, register rules,
 set parameters, and apply them during availability and allocation decisions.
+
+## Package-Local Hardening Contract
+
+`inventory_positioning` is not a catalog label or documentation artifact. It is
+an executable package with explicit ownership metadata, descriptor APIs,
+idempotent event handlers, and UI binding evidence. The runtime exports the
+allowed database backend tuple, owned table tuple, emitted and consumed event
+tuples, and the single required AppGen-X event topic. Runtime configuration
+rejects any user-facing event-engine picker such as alternate transports,
+stream engine fields, or user-selectable eventing modes. A generated app must
+therefore wire this PBC to the AppGen-X outbox/inbox contract automatically
+instead of asking users to select an eventing substrate.
+
+Schema extension is allowed only on the owned inventory tables listed above.
+Extensions are field-name validated and merged into the package-local schema
+extension registry. Attempts to extend warehouse, order, finance, procurement,
+transportation, quality, commerce, or platform tables are rejected because
+cross-PBC integration must flow through APIs, events, and projections rather
+than shared table access. The boundary verifier accepts only owned tables,
+runtime outbox/inbox/dead-letter tables, declared consumed event names, declared
+dependency projections, and package-prefixed inventory runtime objects.
+
+The inbox handler consumes order, shipment, quality, purchase receipt, demand
+forecast, and access policy events. Each consumed event uses an idempotency key,
+records an inbox entry, creates or updates the relevant projection, and stores
+handled-event evidence. Duplicate processed events return without replaying side
+effects. Unsupported events and simulated handler failures create retry evidence
+until the configured retry limit is reached, then write dead-letter records with
+reason codes. These records are surfaced in the workbench and UI contract so
+operators can inspect retry and exception posture without querying shared
+infrastructure tables.
+
+The API contract is descriptor-level: each route declares its command/query,
+owned tables, emitted or consumed events, required permission, and idempotency
+shape. The permissions contract maps every command to a package-scoped RBAC
+permission, including `inventory_positioning.event` for inbox handling and
+`inventory_positioning.configure` for rules, parameters, configuration, and
+schema extension. The workbench binding evidence includes the owned table set,
+AppGen-X outbox/inbox/dead-letter tables, fixed event topic, hidden stream
+picker, and action-level permissions. This evidence is intentionally executable
+so focused tests, release audits, and generated app smoke checks can prove the
+PBC is complete.
 
 ## Standard Table-Stakes Capabilities
 
