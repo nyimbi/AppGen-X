@@ -49,9 +49,21 @@ def test_service_and_route_surface_are_executable():
 
     service_smoke = services.smoke_test()
     operation_contracts = services.service_operation_contracts()
+    route_contracts = routes.api_route_contracts()
+    route_validation = routes.validate_api_route_contracts()
     route_smoke = routes.smoke_test()
     assert service_smoke['ok'] is True
     assert operation_contracts['ok'] is True
+    assert route_contracts['ok'] is True
+    assert route_validation['ok'] is True
+    assert route_contracts['contracts']
+    assert all(item['permission'] for item in route_contracts['contracts'])
+    assert all(item['event_contract'] == 'AppGen-X' for item in route_contracts['contracts'])
+    assert all(item['stream_engine_picker_visible'] is False for item in route_contracts['contracts'])
+    assert all(item['shared_table_access'] is False for item in route_contracts['contracts'])
+    assert not route_validation['service_mismatches']
+    assert not route_validation['missing_idempotency']
+    assert not route_validation['invalid_table_scope']
     assert service_smoke['result']['operation_contract']['route']['path']
     assert service_smoke['result']['operation_contract']['permission']
     assert service_smoke['result']['operation_contract']['event_contract'] == 'AppGen-X'
@@ -59,6 +71,8 @@ def test_service_and_route_surface_are_executable():
     assert route_smoke['ok'] is True
     assert not service_smoke['side_effects']
     assert not operation_contracts['side_effects']
+    assert not route_contracts['side_effects']
+    assert not route_validation['side_effects']
     assert not route_smoke['side_effects']
 
 

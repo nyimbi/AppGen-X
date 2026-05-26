@@ -4541,6 +4541,10 @@ def pbc_source_artifact_contract(key: str) -> dict:
             and "def service_operation_contracts(" in service_text
             and "def operation_plan(" in service_text
             and "operation_contract" in service_text
+            and "def api_route_contracts(" in route_text
+            and "def validate_api_route_contracts(" in route_text
+            and "idempotency_key" in route_text
+            and "stream_engine_picker_visible" in route_text
             and "def smoke_test(" in service_text
             and "def dispatch_route(" in route_text
             and "def smoke_test(" in route_text,
@@ -4599,6 +4603,8 @@ def pbc_source_artifact_contract(key: str) -> dict:
             and "test_registration_plan_is_side_effect_free" in tests_text
             and "test_service_and_route_surface_are_executable" in tests_text
             and "service_operation_contracts" in tests_text
+            and "api_route_contracts" in tests_text
+            and "validate_api_route_contracts" in tests_text
             and "operation_contract" in tests_text
             and "test_configuration_permissions_and_seed_hooks_are_executable" in tests_text
             and "governance_smoke_test" in tests_text,

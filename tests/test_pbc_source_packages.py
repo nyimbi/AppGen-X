@@ -66,6 +66,12 @@ def test_release_audit_requires_builtin_pbc_source_packages():
                 item["id"] == "service_route_runtime_surface_materialized" and item["ok"]
                 for item in check["source_artifacts"]["checks"]
             )
+            service_route_check = next(
+                item
+                for item in check["source_artifacts"]["checks"]
+                if item["id"] == "service_route_runtime_surface_materialized"
+            )
+            assert service_route_check["ok"] is True
             assert any(
                 item["id"] == "handler_runtime_surface_materialized" and item["ok"]
                 for item in check["source_artifacts"]["checks"]
@@ -116,6 +122,17 @@ def test_every_builtin_pbc_has_materialized_source_artifacts():
             check["id"] == "service_route_runtime_surface_materialized" and check["ok"]
             for check in contract["checks"]
         )
+        route_module = import_module(f"pyAppGen.pbcs.{contract['pbc']}.routes")
+        route_contract = route_module.api_route_contracts()
+        route_validation = route_module.validate_api_route_contracts()
+        assert route_contract["ok"] is True
+        assert route_validation["ok"] is True
+        assert all(item["event_contract"] == "AppGen-X" for item in route_contract["contracts"])
+        assert all(item["stream_engine_picker_visible"] is False for item in route_contract["contracts"])
+        assert all(item["shared_table_access"] is False for item in route_contract["contracts"])
+        assert not route_validation["service_mismatches"]
+        assert not route_validation["missing_idempotency"]
+        assert not route_validation["invalid_table_scope"]
         assert any(
             check["id"] == "handler_runtime_surface_materialized" and check["ok"]
             for check in contract["checks"]
