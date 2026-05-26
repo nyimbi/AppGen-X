@@ -13645,6 +13645,23 @@ def run_read_only_probe():
     contract = module_contract()
     plan = smoke_plan()
     runtime = _runtime().data_tooling_runtime_manifest()
+    available_operations = (
+        "connection_catalog",
+        "test_connection",
+        "transaction_scope",
+        "field_catalog",
+        "open_dataset",
+        "post_changes",
+        "reconcile_errors",
+        "client_proxy",
+        "request_validator",
+        "response_mapper",
+        "contract_tests",
+        "operation_log",
+        "replay_plan",
+        "conflict_review",
+        "queue_integrity",
+    )
     export_results = tuple(
         {{
             "export": name,
@@ -13660,6 +13677,7 @@ def run_read_only_probe():
         and runtime["ok"]
         and all(item["available"] for item in export_results),
         "exports": export_results,
+        "available_operations": tuple(name for name in available_operations if name in globals()),
         "side_effects": (),
     }}
 
@@ -14100,11 +14118,12 @@ def run_ide_operation():
         }}
     else:
         manifest = getattr(runtime, OPERATION)()
+        pipeline = tuple(item["phase"] for item in manifest.get("replay", ())) or manifest.get("guards", ())
         operation = {{
             "format": "appgen.enterprise-data-ide-operation.v1",
             "ok": manifest["ok"],
             "runtime_manifest": manifest,
-            "pipeline": manifest.get("guards", ()),
+            "pipeline": pipeline,
             "guards": manifest.get("guards", ()),
             "side_effects": (),
         }}
@@ -17004,6 +17023,14 @@ def data_tooling_module_runtime_replay_matrix():
         standard_replays.append(
             {
                 "module": item["module"],
+                "available_operations": tuple(probe.get("available_operations", ())) if isinstance(probe, dict) else (),
+                "export_names": tuple(
+                    export["export"]
+                    for export in probe.get("exports", ())
+                    if isinstance(export, dict) and export.get("available")
+                )
+                if isinstance(probe, dict)
+                else (),
                 "ok": result["ok"] and probe["ok"] and not probe.get("side_effects", ()),
                 "result": result,
                 "probe": probe,
@@ -17015,18 +17042,24 @@ def data_tooling_module_runtime_replay_matrix():
     for item in deep_entries:
         result = {"ok": False, "side_effects": (), "error": "missing_module"}
         operation = {"ok": False, "side_effects": (), "error": "missing_module"}
+        operation_manifest = {"ok": False, "pipeline": (), "guards": (), "error": "missing_module"}
         module_path = deep_dir / f"{item['module']}.py"
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_deep_data_tooling_replay_{item['module']}")
             result = module.smoke_test()
             operation = module.run_data_operation()
+            operation_manifest = module.operation_manifest()
         deep_replays.append(
             {
                 "module": item["module"],
                 "surface": item["surface"],
+                "operation_name": operation_manifest.get("operation", ""),
+                "pipeline": tuple(operation_manifest.get("pipeline", ()) or ()),
+                "guards": tuple(operation_manifest.get("guards", ()) or ()),
                 "ok": result["ok"] and operation["ok"] and not operation.get("side_effects", ()),
                 "result": result,
                 "operation": operation,
+                "operation_manifest": operation_manifest,
             }
         )
 
@@ -17035,25 +17068,104 @@ def data_tooling_module_runtime_replay_matrix():
     for item in enterprise_entries:
         result = {"ok": False, "side_effects": (), "error": "missing_module"}
         operation = {"ok": False, "side_effects": (), "error": "missing_module"}
+        surface_manifest = {"ok": False, "pipeline": (), "guards": (), "error": "missing_module"}
         module_path = enterprise_dir / f"{item['module']}.py"
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_enterprise_data_ide_replay_{item['module']}")
             result = module.smoke_test()
             operation = module.run_ide_operation()
+            surface_manifest = module.ide_surface_manifest()
         enterprise_replays.append(
             {
                 "module": item["module"],
                 "surface": item["surface"],
+                "operation_name": surface_manifest.get("operation", ""),
+                "pipeline": tuple(surface_manifest.get("pipeline", ()) or ()),
+                "guards": tuple(surface_manifest.get("guards", ()) or ()),
                 "ok": result["ok"] and operation["ok"] and not operation.get("side_effects", ()),
                 "result": result,
                 "operation": operation,
+                "surface_manifest": surface_manifest,
             }
         )
 
+    required_standard_operations = {
+        "connection_catalog",
+        "test_connection",
+        "transaction_scope",
+        "field_catalog",
+        "open_dataset",
+        "post_changes",
+        "reconcile_errors",
+        "client_proxy",
+        "request_validator",
+        "response_mapper",
+        "contract_tests",
+        "operation_log",
+        "replay_plan",
+        "conflict_review",
+        "queue_integrity",
+    }
+    required_deep_operations = {
+        "data_tooling_browse_schema_operation",
+        "data_tooling_preview_schema_diff",
+        "data_tooling_generate_lookup_editors",
+        "data_tooling_design_dataset_operation",
+        "data_tooling_publish_resource",
+        "data_tooling_rehearse_offline_replay_operation",
+        "data_tooling_monitor_replication_operation",
+        "data_tooling_run_module_smoke_operation",
+    }
+    required_enterprise_surfaces = {
+        "connection_designer",
+        "dataset_state",
+        "service_publisher",
+        "embedded_store",
+        "failover_replay",
+        "relationship_lookup",
+    }
+    required_enterprise_steps = {
+        "connection_probe_rolls_back",
+        "foreign_key_fields_get_lookup_editors",
+        "contract_tests_before_publish",
+        "backup",
+        "restore",
+        "manual_review_offline_replay",
+        "publish_lookup_endpoints",
+    }
     checks = (
         {"id": "generated_data_tooling_modules_replay", "ok": len(standard_replays) == 4 and all(item["ok"] for item in standard_replays)},
         {"id": "generated_deep_data_tooling_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)},
         {"id": "generated_enterprise_data_ide_modules_replay", "ok": len(enterprise_replays) == 6 and all(item["ok"] for item in enterprise_replays)},
+        {
+            "id": "generated_data_tooling_standard_operation_coverage",
+            "ok": required_standard_operations
+            <= {operation for item in standard_replays if item["ok"] for operation in item["available_operations"]},
+            "evidence": tuple(sorted({operation for item in standard_replays for operation in item["available_operations"]})),
+        },
+        {
+            "id": "generated_deep_data_tooling_operation_coverage",
+            "ok": required_deep_operations <= {item["operation_name"] for item in deep_replays if item["ok"]},
+            "evidence": tuple(sorted(item["operation_name"] for item in deep_replays if item["operation_name"])),
+        },
+        {
+            "id": "generated_enterprise_data_surface_coverage",
+            "ok": required_enterprise_surfaces == {item["surface"] for item in enterprise_replays if item["ok"]},
+            "evidence": tuple(sorted(item["surface"] for item in enterprise_replays)),
+        },
+        {
+            "id": "generated_enterprise_data_pipeline_coverage",
+            "ok": required_enterprise_steps
+            <= {
+                step
+                for item in enterprise_replays
+                if item["ok"]
+                for step in (*item["pipeline"], *item["guards"])
+            },
+            "evidence": tuple(
+                sorted({step for item in enterprise_replays for step in (*item["pipeline"], *item["guards"])})
+            ),
+        },
         {"id": "generated_module_replays_side_effect_free", "ok": all(not item["operation"].get("side_effects", ()) for item in (*deep_replays, *enterprise_replays))},
     )
     return {

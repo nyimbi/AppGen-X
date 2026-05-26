@@ -16112,6 +16112,38 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(data_module_replay_matrix["data_module_replays"]) == 4
     assert len(data_module_replay_matrix["deep_data_tooling_replays"]) == 8
     assert len(data_module_replay_matrix["enterprise_data_ide_replays"]) == 6
+    assert {
+        "generated_data_tooling_standard_operation_coverage",
+        "generated_deep_data_tooling_operation_coverage",
+        "generated_enterprise_data_surface_coverage",
+        "generated_enterprise_data_pipeline_coverage",
+        "generated_module_replays_side_effect_free",
+    } <= {check["id"] for check in data_module_replay_matrix["checks"] if check["ok"]}
+    assert {
+        "connection_catalog",
+        "open_dataset",
+        "contract_tests",
+        "conflict_review",
+        "queue_integrity",
+    } <= {
+        operation
+        for item in data_module_replay_matrix["data_module_replays"]
+        for operation in item["available_operations"]
+    }
+    assert {
+        "data_tooling_browse_schema_operation",
+        "data_tooling_generate_lookup_editors",
+        "data_tooling_publish_resource",
+        "data_tooling_rehearse_offline_replay_operation",
+    } <= {item["operation_name"] for item in data_module_replay_matrix["deep_data_tooling_replays"]}
+    assert {"embedded_store", "failover_replay", "relationship_lookup"} <= {
+        item["surface"] for item in data_module_replay_matrix["enterprise_data_ide_replays"]
+    }
+    assert {"backup", "manual_review_offline_replay", "publish_lookup_endpoints"} <= {
+        step
+        for item in data_module_replay_matrix["enterprise_data_ide_replays"]
+        for step in (*item["pipeline"], *item["guards"])
+    }
     data_runtime_replay = data_runtime.replay_data_tooling_runtime()
     assert data_runtime_replay["ok"] is True
     assert {"service_invocation", "offline_replay"} <= set(data_runtime_replay["runtime_ops"])

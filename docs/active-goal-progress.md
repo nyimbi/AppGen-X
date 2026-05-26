@@ -835,6 +835,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   asset resolution modules now publish required pipeline steps, and generated
   validation fails when any runtime operation coverage or side-effect guard is
   missing.
+- Current data tooling pass tightens generated module replay: standard data
+  modules now publish available read-only operations, deep data tooling modules
+  expose operation names, enterprise data modules expose surface pipelines, and
+  generated validation fails when required operation, surface, replay-phase, or
+  side-effect evidence is missing.
 - `2eac7a8` normalizes `ar_credit` into the complete package surface used by
   implemented PBC slices: package-local `SPECIFICATION.md`, UI/workbench
   contract, executable configuration/rule/parameter operations, central PBC
