@@ -1227,6 +1227,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and tests now fail unless each module proves side-effect-free query,
   mutation, audit, export, and release steps before data-access readiness is
   trusted.
+- Current data exchange tooling pass adds standalone operation-step and
+  validation-step contracts to generated template export, import validation,
+  migration batch, and workbench release modules. Generated data-exchange
+  manifests and tests now fail unless each module proves CSV/JSON round-trip,
+  import error, migration batch, and release-workbench steps before data
+  exchange readiness is trusted.
 - Current commerce and customer PBC boundary pass hardens `customer_360`,
   `product_catalog_pim`, `global_inventory_visibility`,
   `payment_orchestration`, and `returns_reverse_logistics` with
@@ -1239,6 +1245,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   owned-table boundary verifiers, and implementation release, generation
   smoke, capability, full implementation release, and catalog release audits
   all return true for the implemented PBC set. Commit: `7a1d4fb`.
+- Current checkout PBC contract-parity pass exposes
+  `checkout_processing` API, permissions, owned-table, backend, event, and
+  boundary contracts through the package implementation contract and central
+  `pyAppGen.pbc` facade. Focused checkout tests pass (`3 passed`), the
+  cross-PBC package-contract scan has no missing API/permissions/owned-table/
+  backend metadata, and implementation release, generation smoke, capability,
+  full implementation release, and catalog release audits all return true.
+  Commit: `652f24f`.
 
 ## Open Completion Areas
 

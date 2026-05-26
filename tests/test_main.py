@@ -11485,6 +11485,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         assert module.module_contract()["ok"] is True
         assert module.exchange_manifest()["ok"] is True
         assert module.run_data_exchange_operation()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
         assert module.release_context()["ok"] is True
         assert module.smoke_test()["ok"] is True
     for item in data_exchange_module_tests["tests"]:
