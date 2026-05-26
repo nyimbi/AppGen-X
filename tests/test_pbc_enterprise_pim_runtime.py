@@ -4,10 +4,14 @@ from pyAppGen.pbcs.enterprise_pim import ENTERPRISE_PIM_ALLOWED_DATABASE_BACKEND
 from pyAppGen.pbcs.enterprise_pim import ENTERPRISE_PIM_CONSUMED_EVENT_TYPES
 from pyAppGen.pbcs.enterprise_pim import ENTERPRISE_PIM_EMITTED_EVENT_TYPES
 from pyAppGen.pbcs.enterprise_pim import ENTERPRISE_PIM_OWNED_TABLES
+from pyAppGen.pbcs.enterprise_pim import ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.enterprise_pim import ENTERPRISE_PIM_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.enterprise_pim import enterprise_pim_accept_dependency_schema
 from pyAppGen.pbcs.enterprise_pim import enterprise_pim_approve_validation_workflow
 from pyAppGen.pbcs.enterprise_pim import enterprise_pim_build_api_contract
+from pyAppGen.pbcs.enterprise_pim import enterprise_pim_build_release_evidence
+from pyAppGen.pbcs.enterprise_pim import enterprise_pim_build_schema_contract
+from pyAppGen.pbcs.enterprise_pim import enterprise_pim_build_service_contract
 from pyAppGen.pbcs.enterprise_pim import enterprise_pim_build_workbench_view
 from pyAppGen.pbcs.enterprise_pim import enterprise_pim_configure_runtime
 from pyAppGen.pbcs.enterprise_pim import enterprise_pim_create_taxonomy
@@ -34,7 +38,7 @@ def _configured_state() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.enterprise-pim.events",
+            "event_topic": ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC,
             "retry_limit": 2,
             "default_locale": "en-US",
             "allowed_locales": ("en-US", "fr-FR"),
@@ -76,10 +80,13 @@ def test_enterprise_pim_runtime_executes_package_local_smoke() -> None:
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/enterprise_pim"
     assert runtime["owned_tables"] == ENTERPRISE_PIM_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 20
+    assert len(runtime["owned_tables"]) >= 40
+    assert len(runtime["standard_features"]) >= 40
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
+    assert "appgen_x_outbox_inbox_eventing" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert {check["id"] for check in smoke["checks"]} == set(ENTERPRISE_PIM_RUNTIME_CAPABILITY_KEYS)
@@ -89,8 +96,14 @@ def test_enterprise_pim_runtime_executes_package_local_smoke() -> None:
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["owned_tables"] == ENTERPRISE_PIM_OWNED_TABLES
     assert contract["allowed_database_backends"] == ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS
+    assert contract["required_event_topic"] == ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC
+    assert contract["consumes"] == ENTERPRISE_PIM_CONSUMED_EVENT_TYPES
+    assert contract["emits"] == ENTERPRISE_PIM_EMITTED_EVENT_TYPES
     assert contract["ui_contract"]["ok"] is True
     assert contract["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence_contract"]["ok"] is True
     assert contract["permissions_contract"]["action_permissions"]["register_schema_extension"] == "enterprise_pim.configure"
 
     api = enterprise_pim_build_api_contract()
@@ -112,6 +125,25 @@ def test_enterprise_pim_runtime_executes_package_local_smoke() -> None:
     }
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
     assert permissions["action_permissions"]["approve_validation_workflow"] == "enterprise_pim.approve"
+
+    schema = enterprise_pim_build_schema_contract()
+    service = enterprise_pim_build_service_contract()
+    release = enterprise_pim_build_release_evidence()
+    assert schema["format"] == "appgen.enterprise-pim-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(ENTERPRISE_PIM_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(ENTERPRISE_PIM_OWNED_TABLES)
+    assert {"taxonomy_node", "attribute_group", "publication_readiness_check", "pim_governed_model", "enterprise_pim_appgen_inbox_event"} <= {
+        item["table"] for item in schema["tables"]
+    }
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.enterprise-pim-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 24
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.enterprise-pim-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
 
 def test_enterprise_pim_applies_taxonomy_attributes_localization_workflows_dependencies_and_ui() -> None:
@@ -252,6 +284,8 @@ def test_enterprise_pim_applies_taxonomy_attributes_localization_workflows_depen
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["binding_evidence"]["owned_tables"] == ENTERPRISE_PIM_OWNED_TABLES
+    assert ui_contract["binding_evidence"]["shared_table_access"] is False
+    assert ui_contract["binding_evidence"]["required_event_topic"] == ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC
     rendered = enterprise_pim_render_workbench(
         state,
         tenant="tenant_ops",
@@ -264,12 +298,14 @@ def test_enterprise_pim_applies_taxonomy_attributes_localization_workflows_depen
             "enterprise_pim.integrate",
             "enterprise_pim.configure",
             "enterprise_pim.audit",
+            "enterprise_pim.read",
         ),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == ENTERPRISE_PIM_OWNED_TABLES
+    assert rendered["binding_evidence"]["shared_table_access"] is False
 
     boundary = enterprise_pim_verify_owned_table_boundary(
         (

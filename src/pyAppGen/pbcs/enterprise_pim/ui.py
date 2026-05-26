@@ -100,6 +100,10 @@ def enterprise_pim_ui_contract() -> dict:
         },
         "binding_evidence": {
             "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
+            "outbox_table": "enterprise_pim_appgen_outbox_event",
+            "inbox_table": "enterprise_pim_appgen_inbox_event",
+            "dead_letter_table": "enterprise_pim_dead_letter_event",
+            "required_event_topic": ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC,
             "shared_table_access": False,
         },
     }
@@ -146,5 +150,7 @@ def enterprise_pim_render_workbench(
             "outbox_table": "enterprise_pim_appgen_outbox_event",
             "inbox_table": "enterprise_pim_appgen_inbox_event",
             "dead_letter_table": "enterprise_pim_dead_letter_event",
+            "required_event_topic": ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
         },
     }

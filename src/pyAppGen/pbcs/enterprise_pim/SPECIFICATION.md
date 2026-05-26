@@ -19,11 +19,57 @@ Package-local implementation contract for the Enterprise PIM PBC. The package ow
 Owned tables and generated model artifacts:
 
 - `product_taxonomy`
+- `taxonomy_node`
+- `taxonomy_relationship`
+- `taxonomy_publication`
+- `taxonomy_classification_candidate`
 - `product_attribute`
+- `attribute_group`
+- `attribute_value_option`
+- `attribute_inheritance_rule`
+- `attribute_validation_rule`
+- `attribute_quality_signal`
 - `localized_content`
+- `localized_content_version`
+- `translation_memory_entry`
+- `locale_fallback_rule`
+- `content_completeness_score`
 - `validation_workflow`
+- `validation_workflow_step`
+- `approval_decision`
+- `publication_readiness_check`
 - `dependency_schema`
 - `dependency_projection`
+- `media_dependency_projection`
+- `price_dependency_projection`
+- `tax_dependency_projection`
+- `inventory_dependency_projection`
+- `search_dependency_projection`
+- `catalog_publication_projection`
+- `channel_publication_policy`
+- `product_relationship`
+- `product_bundle_definition`
+- `product_variant_family`
+- `product_variant_member`
+- `assortment_assignment`
+- `data_steward_assignment`
+- `pim_exception`
+- `exception_resolution_plan`
+- `pim_audit_trace`
+- `pim_master_data_proof`
+- `pim_policy_screening`
+- `pim_federation_projection`
+- `carbon_enrichment_window`
+- `taxonomy_optimization_plan`
+- `workflow_allocation`
+- `content_anomaly_signal`
+- `enrichment_forecast`
+- `enrichment_risk_model`
+- `semantic_instruction_parse`
+- `pim_schema_extension`
+- `pim_control_assertion`
+- `pim_governed_model`
+- `pim_seed_data`
 - `pim_rule`
 - `pim_parameter`
 - `pim_configuration`
@@ -178,6 +224,14 @@ UI fragments:
 - `PimAuditEvidencePanel`
 
 The workbench exposes visible actions based on RBAC, binds to owned tables and event evidence, and includes binding evidence for owned tables, outbox, inbox, and dead-letter artifacts.
+
+## Generated Schema, Services, And Release Evidence
+
+`enterprise_pim_build_schema_contract` emits generation-ready table, field, relationship, model, and migration descriptors for every owned table. Migration paths are package-local under `pbcs/enterprise_pim/migrations/{sequence}_{table}.sql`, generated models are package-local under `pbcs/enterprise_pim/models/{table}.py`, datastore backends are limited to PostgreSQL, MySQL, and MariaDB, and `shared_table_access` is always false.
+
+`enterprise_pim_build_service_contract` publishes the command and query surface used by generated applications: runtime configuration, parameters, rules, schema extension, dependency-schema acceptance, idempotent inbox handling, taxonomy creation, attribute definition, localized content upsert, workflow start and approval, publication readiness, route failover, selective disclosure proof generation, policy screening, federation, resilience drills, crypto epoch rotation, carbon-aware enrichment, taxonomy optimization, workflow allocation, control testing, governed model registration, and boundary verification.
+
+`enterprise_pim_build_release_evidence` is the package-local release gate. It proves owned schema depth, one migration descriptor per owned table, service command depth, AppGen-X-only API/eventing, permission coverage for core commands, backend allowlist compliance, no shared table access, and UI/workbench evidence.
 
 ## Release Evidence
 

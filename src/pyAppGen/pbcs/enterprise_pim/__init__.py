@@ -5,11 +5,15 @@ from .runtime import ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS
 from .runtime import ENTERPRISE_PIM_CONSUMED_EVENT_TYPES
 from .runtime import ENTERPRISE_PIM_EMITTED_EVENT_TYPES
 from .runtime import ENTERPRISE_PIM_OWNED_TABLES
+from .runtime import ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC
 from .runtime import ENTERPRISE_PIM_RUNTIME_CAPABILITY_KEYS
 from .runtime import ENTERPRISE_PIM_STANDARD_FEATURE_KEYS
 from .runtime import enterprise_pim_accept_dependency_schema
 from .runtime import enterprise_pim_approve_validation_workflow
 from .runtime import enterprise_pim_build_api_contract
+from .runtime import enterprise_pim_build_release_evidence
+from .runtime import enterprise_pim_build_schema_contract
+from .runtime import enterprise_pim_build_service_contract
 from .runtime import enterprise_pim_build_workbench_view
 from .runtime import enterprise_pim_configure_runtime
 from .runtime import enterprise_pim_create_taxonomy
@@ -41,7 +45,13 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": enterprise_pim_ui_contract(),
         "api_contract": enterprise_pim_build_api_contract(),
+        "schema_contract": enterprise_pim_build_schema_contract(),
+        "service_contract": enterprise_pim_build_service_contract(),
+        "release_evidence_contract": enterprise_pim_build_release_evidence(),
         "permissions_contract": enterprise_pim_permissions_contract(),
         "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
         "allowed_database_backends": ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC,
+        "consumes": ENTERPRISE_PIM_CONSUMED_EVENT_TYPES,
+        "emits": ENTERPRISE_PIM_EMITTED_EVENT_TYPES,
     }

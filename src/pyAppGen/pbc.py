@@ -3138,11 +3138,50 @@ PBC_CATALOG.update(
         "enterprise_pim": {
             "label": "Enterprise Product Information Management",
             "mesh": "content",
-            "description": "Taxonomies, multilingual attributes, inheritance, localization, and validation.",
-            "tables": ("product_taxonomy", "product_attribute", "localized_content", "validation_workflow"),
-            "apis": ("POST /taxonomies", "POST /attributes", "POST /localized-content"),
-            "emits": ("ProductClassified", "ProductPublished"),
-            "consumes": ("SchemaAccepted",),
+            "description": "Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.",
+            "tables": (
+                "product_taxonomy",
+                "taxonomy_node",
+                "taxonomy_relationship",
+                "product_attribute",
+                "attribute_group",
+                "attribute_validation_rule",
+                "localized_content",
+                "localized_content_version",
+                "validation_workflow",
+                "validation_workflow_step",
+                "approval_decision",
+                "publication_readiness_check",
+                "dependency_schema",
+                "dependency_projection",
+                "pim_rule",
+                "pim_parameter",
+                "pim_configuration",
+            ),
+            "apis": (
+                "POST /product-taxonomies",
+                "POST /product-attributes",
+                "POST /localized-content",
+                "POST /validation-workflows",
+                "POST /validation-workflows/{id}/approve",
+                "POST /dependency-schemas",
+                "POST /pim-events",
+                "POST /pim-publications",
+                "GET /pim-workbench",
+            ),
+            "emits": (
+                "TaxonomyClassified",
+                "AttributeDefined",
+                "ContentLocalized",
+                "ValidationApproved",
+                "PimMasterDataReady",
+            ),
+            "consumes": (
+                "InventoryPositionUpdated",
+                "MediaAssetApproved",
+                "PricePromotionApproved",
+                "TaxCalculated",
+            ),
             "template": "crm",
         },
         "dam_core": {
@@ -6818,6 +6857,9 @@ from .pbcs.enterprise_pim import ENTERPRISE_PIM_UI_FRAGMENT_KEYS  # noqa: E402,F
 from .pbcs.enterprise_pim import enterprise_pim_accept_dependency_schema  # noqa: E402,F401
 from .pbcs.enterprise_pim import enterprise_pim_approve_validation_workflow  # noqa: E402,F401
 from .pbcs.enterprise_pim import enterprise_pim_build_api_contract  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_build_release_evidence  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_build_schema_contract  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_build_service_contract  # noqa: E402,F401
 from .pbcs.enterprise_pim import enterprise_pim_build_workbench_view  # noqa: E402,F401
 from .pbcs.enterprise_pim import enterprise_pim_configure_runtime  # noqa: E402,F401
 from .pbcs.enterprise_pim import enterprise_pim_create_taxonomy  # noqa: E402,F401
