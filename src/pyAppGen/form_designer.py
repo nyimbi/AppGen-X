@@ -10451,10 +10451,10 @@ def data_module_generation_contract() -> dict:
     dataset = data_dataset_field_catalog_contract()
     services = data_service_method_contract()
     artifacts = (
-        {"name": "connection_module", "exports": ("connection_catalog", "test_connection", "transaction_scope")},
-        {"name": "dataset_module", "exports": ("field_catalog", "open_dataset", "post_changes", "reconcile_errors")},
-        {"name": "service_proxy_module", "exports": ("client_proxy", "request_validator", "response_mapper", "contract_tests")},
-        {"name": "offline_module", "exports": ("operation_log", "replay_plan", "conflict_review", "queue_integrity")},
+        {"name": "connection_module", "exports": ("connection_catalog", "test_connection", "transaction_scope", "operation_steps", "validation_steps")},
+        {"name": "dataset_module", "exports": ("field_catalog", "open_dataset", "post_changes", "reconcile_errors", "operation_steps", "validation_steps")},
+        {"name": "service_proxy_module", "exports": ("client_proxy", "request_validator", "response_mapper", "contract_tests", "operation_steps", "validation_steps")},
+        {"name": "offline_module", "exports": ("operation_log", "replay_plan", "conflict_review", "queue_integrity", "operation_steps", "validation_steps")},
     )
     return {
         "format": "appgen.data-module-generation-contract.v1",
@@ -12195,14 +12195,15 @@ def rad_data_tooling_workbench() -> dict:
         {
             "id": "data_tooling_modules",
             "ok": len(data_module_artifacts) == 4
-            and all(item["ok"] and item["exports"] for item in data_module_artifacts),
+            and all(item["ok"] and {"operation_steps", "validation_steps"} <= set(item["exports"]) for item in data_module_artifacts),
             "evidence": data_module_artifacts,
         },
         {
             "id": "data_tooling_module_tests",
             "ok": len(data_module_test_artifacts) == 4
             and all(
-                item["ok"] and "test_data_tooling_module_smoke" in item["exports"]
+                item["ok"]
+                and {"test_data_tooling_module_smoke", "test_data_tooling_module_step_contracts"} <= set(item["exports"])
                 for item in data_module_test_artifacts
             ),
             "evidence": data_module_test_artifacts,
@@ -12210,14 +12211,19 @@ def rad_data_tooling_workbench() -> dict:
         {
             "id": "deep_data_tooling_modules",
             "ok": len(deep_data_tooling_module_artifacts) == 8
-            and all(item["ok"] and "run_data_operation" in item["exports"] for item in deep_data_tooling_module_artifacts),
+            and all(
+                item["ok"]
+                and {"run_data_operation", "operation_steps", "validation_steps"} <= set(item["exports"])
+                for item in deep_data_tooling_module_artifacts
+            ),
             "evidence": deep_data_tooling_module_artifacts,
         },
         {
             "id": "deep_data_tooling_module_tests",
             "ok": len(deep_data_tooling_module_test_artifacts) == 8
             and all(
-                item["ok"] and "test_deep_data_tooling_module_smoke" in item["exports"]
+                item["ok"]
+                and {"test_deep_data_tooling_module_smoke", "test_deep_data_tooling_module_step_contracts"} <= set(item["exports"])
                 for item in deep_data_tooling_module_test_artifacts
             ),
             "evidence": deep_data_tooling_module_test_artifacts,
@@ -12225,14 +12231,19 @@ def rad_data_tooling_workbench() -> dict:
         {
             "id": "enterprise_data_ide_modules",
             "ok": len(enterprise_data_ide_module_artifacts) == 6
-            and all(item["ok"] and "run_ide_operation" in item["exports"] for item in enterprise_data_ide_module_artifacts),
+            and all(
+                item["ok"]
+                and {"run_ide_operation", "operation_steps", "validation_steps"} <= set(item["exports"])
+                for item in enterprise_data_ide_module_artifacts
+            ),
             "evidence": enterprise_data_ide_module_artifacts,
         },
         {
             "id": "enterprise_data_ide_module_tests",
             "ok": len(enterprise_data_ide_module_test_artifacts) == 6
             and all(
-                item["ok"] and "test_enterprise_data_ide_module_smoke" in item["exports"]
+                item["ok"]
+                and {"test_enterprise_data_ide_module_smoke", "test_enterprise_data_ide_module_step_contracts"} <= set(item["exports"])
                 for item in enterprise_data_ide_module_test_artifacts
             ),
             "evidence": enterprise_data_ide_module_test_artifacts,
@@ -23239,7 +23250,13 @@ def data_tooling_module_test_file_manifest() -> tuple[dict, ...]:
             "module": item["module"],
             "path": item["path"].replace("app/data_tooling_modules/", "app/data_tooling_module_tests/test_"),
             "target": item["path"],
-            "exports": ("load_data_tooling_module", "test_data_tooling_module_contract", "test_data_tooling_module_smoke", "smoke_test"),
+            "exports": (
+                "load_data_tooling_module",
+                "test_data_tooling_module_contract",
+                "test_data_tooling_module_smoke",
+                "test_data_tooling_module_step_contracts",
+                "smoke_test",
+            ),
             "ok": item["ok"],
         }
         for item in data_tooling_module_file_manifest()
@@ -23263,6 +23280,8 @@ def deep_data_tooling_module_file_manifest() -> tuple[dict, ...]:
         "operation_manifest",
         "run_data_operation",
         "runtime_context",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -23289,6 +23308,7 @@ def deep_data_tooling_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_deep_data_tooling_module",
                 "test_deep_data_tooling_module_contract",
                 "test_deep_data_tooling_module_smoke",
+                "test_deep_data_tooling_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
@@ -23312,6 +23332,8 @@ def enterprise_data_ide_module_file_manifest() -> tuple[dict, ...]:
         "ide_surface_manifest",
         "run_ide_operation",
         "runtime_context",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -23338,6 +23360,7 @@ def enterprise_data_ide_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_enterprise_data_ide_module",
                 "test_enterprise_data_ide_module_contract",
                 "test_enterprise_data_ide_module_smoke",
+                "test_enterprise_data_ide_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],

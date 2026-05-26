@@ -2574,7 +2574,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert len(data_workbench["enterprise_data_ide_module_test_artifacts"]) == 6
     assert all(item["exports"] for item in data_workbench["data_module_artifacts"])
     assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in data_workbench["data_module_artifacts"]
+    )
+    assert all(
         "test_data_tooling_module_smoke" in item["exports"]
+        for item in data_workbench["data_module_test_artifacts"]
+    )
+    assert all(
+        "test_data_tooling_module_step_contracts" in item["exports"]
         for item in data_workbench["data_module_test_artifacts"]
     )
     assert all(
@@ -2582,7 +2590,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         for item in data_workbench["deep_data_tooling_module_artifacts"]
     )
     assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in data_workbench["deep_data_tooling_module_artifacts"]
+    )
+    assert all(
         "test_deep_data_tooling_module_smoke" in item["exports"]
+        for item in data_workbench["deep_data_tooling_module_test_artifacts"]
+    )
+    assert all(
+        "test_deep_data_tooling_module_step_contracts" in item["exports"]
         for item in data_workbench["deep_data_tooling_module_test_artifacts"]
     )
     assert all(
@@ -2590,7 +2606,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         for item in data_workbench["enterprise_data_ide_module_artifacts"]
     )
     assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in data_workbench["enterprise_data_ide_module_artifacts"]
+    )
+    assert all(
         "test_enterprise_data_ide_module_smoke" in item["exports"]
+        for item in data_workbench["enterprise_data_ide_module_test_artifacts"]
+    )
+    assert all(
+        "test_enterprise_data_ide_module_step_contracts" in item["exports"]
         for item in data_workbench["enterprise_data_ide_module_test_artifacts"]
     )
     module_replay_matrix = data_tooling_module_replay_matrix()
@@ -16166,7 +16190,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_data_tooling["enterprise_data_ide_module_test_artifacts"]["tests"]) == 6
     assert all(item["exports"] for item in generated_data_tooling["data_module_artifacts"])
     assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_data_tooling["data_module_artifacts"]
+    )
+    assert all(
         "test_data_tooling_module_smoke" in item["exports"]
+        for item in generated_data_tooling["data_module_test_artifacts"]
+    )
+    assert all(
+        "test_data_tooling_module_step_contracts" in item["exports"]
         for item in generated_data_tooling["data_module_test_artifacts"]
     )
     assert all(
@@ -16174,7 +16206,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for item in generated_data_tooling["deep_data_tooling_module_artifacts"]
     )
     assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_data_tooling["deep_data_tooling_module_artifacts"]
+    )
+    assert all(
         "test_deep_data_tooling_module_smoke" in item["exports"]
+        for item in generated_data_tooling["deep_data_tooling_module_test_artifacts"]
+    )
+    assert all(
+        "test_deep_data_tooling_module_step_contracts" in item["exports"]
         for item in generated_data_tooling["deep_data_tooling_module_test_artifacts"]
     )
     assert all(
@@ -16182,7 +16222,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for item in generated_data_tooling["enterprise_data_ide_module_artifacts"]["modules"]
     )
     assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_data_tooling["enterprise_data_ide_module_artifacts"]["modules"]
+    )
+    assert all(
         "test_enterprise_data_ide_module_smoke" in item["exports"]
+        for item in generated_data_tooling["enterprise_data_ide_module_test_artifacts"]["tests"]
+    )
+    assert all(
+        "test_enterprise_data_ide_module_step_contracts" in item["exports"]
         for item in generated_data_tooling["enterprise_data_ide_module_test_artifacts"]["tests"]
     )
     generated_data_replay_matrix = form_designer.data_tooling_module_replay_matrix()
