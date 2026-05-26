@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import MRP_ENGINE_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import mrp_engine_build_workbench_view
 from pyAppGen.pbc import mrp_engine_calculate_material_plan
@@ -134,6 +136,9 @@ def test_mrp_engine_runtime_applies_rules_parameters_configuration_and_ui() -> N
     assert workbench["planned_order_count"] == 1
     assert workbench["released_order_count"] == 1
     assert workbench["shortage_total"] == 20
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 7
 
     ui_contract = mrp_engine_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
@@ -154,3 +159,21 @@ def test_mrp_engine_runtime_applies_rules_parameters_configuration_and_ui() -> N
     assert rendered["event_outbox_count"] == 6
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+
+def test_mrp_engine_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = mrp_engine_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        mrp_engine_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.mrp.events",
+                "retry_limit": 3,
+                "default_planning_bucket": "daily",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported MRP Engine parameter"):
+        mrp_engine_set_parameter(state, "stream_engine", "hidden_picker")

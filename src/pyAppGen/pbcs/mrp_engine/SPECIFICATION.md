@@ -75,7 +75,7 @@ The PBC must understand and execute:
 - Parameters: planning horizon days, bucket size days, safety stock multiplier, lot size minimum, lead time days, capacity threshold, shortage severity threshold, and scrap factor.
 - Rules: planning item eligibility, BOM revision eligibility, demand-source eligibility, shortage severity, substitution, release, and planner approval policies.
 
-Rules are compiled into deterministic hashes, parameters are stored in owned runtime state, and configuration gates BOM, demand, MRP run, planned order, and release operations.
+Rules are compiled into deterministic hashes, parameters are stored in owned runtime state, backend configuration rejects anything outside PostgreSQL, MySQL, or MariaDB, eventing remains bound to the AppGen-X event contract without user-facing stream-engine selection, and configuration gates BOM, demand, MRP run, planned order, and release operations.
 
 ## UI Contract
 

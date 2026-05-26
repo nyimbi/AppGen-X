@@ -230,16 +230,47 @@ def mrp_engine_empty_state() -> dict:
 
 
 def mrp_engine_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("MRP Engine supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("MRP Engine requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def mrp_engine_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "planning_horizon_days",
+        "bucket_size_days",
+        "safety_stock_multiplier",
+        "lot_size_minimum",
+        "lead_time_days",
+        "capacity_threshold",
+        "shortage_severity_threshold",
+        "scrap_factor",
+        "planner_approval_threshold",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported MRP Engine parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def mrp_engine_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required MRP Engine rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("MRP Engine rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -448,7 +479,21 @@ def mrp_engine_build_workbench_view(state: dict, *, tenant: str) -> dict:
     demands = tuple(demand for demand in state["demands"].values() if demand["tenant"] == tenant)
     runs = tuple(run for run in state["mrp_runs"].values() if run["tenant"] == tenant)
     orders = tuple(order for order in state["planned_orders"].values() if order["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "bom_count": len(boms), "demand_count": len(demands), "run_count": len(runs), "planned_order_count": len(orders), "released_order_count": len(tuple(order for order in orders if order["status"] == "released")), "shortage_total": round(sum(order["shortage_qty"] for order in orders), 2), "purchase_suggestion_count": len(tuple(order for order in orders if order["route"] == "buy")), "production_suggestion_count": len(tuple(order for order in orders if order["route"] in {"make", "assemble"}))}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "bom_count": len(boms),
+        "demand_count": len(demands),
+        "run_count": len(runs),
+        "planned_order_count": len(orders),
+        "released_order_count": len(tuple(order for order in orders if order["status"] == "released")),
+        "shortage_total": round(sum(order["shortage_qty"] for order in orders), 2),
+        "purchase_suggestion_count": len(tuple(order for order in orders if order["route"] == "buy")),
+        "production_suggestion_count": len(tuple(order for order in orders if order["route"] in {"make", "assemble"})),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def mrp_engine_register_governed_model(name: str, metadata: dict) -> dict:
