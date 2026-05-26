@@ -1357,6 +1357,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   restricted-name scan has no hits, and implementation release, generation
   smoke, capability, full implementation release, and catalog release audits
   all return true for the implemented PBC set. Commit: `f692949`.
+- Current Procurement Sourcing PBC completion pass expands
+  `procurement_sourcing` into a package-local source-to-order implementation
+  with 59 owned tables, schema/model/migration contract evidence, service and
+  release evidence contracts, AppGen-X eventing, UI/workbench binding, rules,
+  parameters, configuration, boundary checks, and a detailed package
+  specification. Focused Procurement tests pass (`4 passed`), syntax and
+  whitespace checks pass, the restricted-name scan has no hits, and
+  implementation release, generation smoke, capability, full implementation
+  release, and catalog release audits all return true for the implemented PBC
+  set. Commit: `pending`.
 - Current visual binding runtime pass hardens generated binding module tests
   and binding designer family modules so generated binding readiness fails
   unless visual graph, expression, designer, runtime wiring, propagation, and
@@ -1367,6 +1377,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   source, docs, tests, package files, and unrelated dirty implementation work
   untouched. No active `__pycache__` or `.pytest_cache` directories remain
   outside `.venv`, `archive`, and ignored dependency folders.
+- Current generated IDE history pass hardens generated version-history modules
+  so generated application management cannot claim readiness unless every
+  resource catalog, snapshot history, schema diff, branch plan, rollback plan,
+  and release workbench module exposes reusable operation-step and
+  validation-step contracts, generated tests assert those contracts, and the
+  replay matrix proves step coverage without side effects.
 
 ## Open Completion Areas
 

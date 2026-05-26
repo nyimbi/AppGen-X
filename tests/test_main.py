@@ -13687,6 +13687,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert version_control_module_files["ok"] is True
     assert version_control_module_tests["format"] == "appgen.version-control-module-test-file-manifest.v1"
     assert version_control_module_tests["ok"] is True
+    assert {"operation_steps_declared", "validation_steps_declared"} <= set(version_control_module_files["guards"])
+    assert "step_contract_tests_exported" in version_control_module_tests["guards"]
     assert {
         "resource_catalog",
         "snapshot_history",
@@ -13703,12 +13705,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         assert module.version_control_manifest_contract()["ok"] is True
         assert module.run_version_control_operation()["ok"] is True
         assert module.release_context()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
+        assert "side_effects_disallowed" in module.validation_steps()["steps"]
         assert module.smoke_test()["ok"] is True
     for item in version_control_module_tests["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_version_control_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
+        assert "test_version_control_module_step_contracts" in module.smoke_test()["tests"]
+    version_control_replay = version_control.version_control_module_replay_matrix()
+    assert version_control_replay["format"] == "appgen.version-control-module-replay-matrix.v1"
+    assert version_control_replay["ok"] is True
+    assert len(version_control_replay["module_replays"]) == 6
+    assert {
+        "version_control_operation_step_coverage",
+        "version_control_validation_step_coverage",
+        "version_control_replays_side_effect_free",
+    } <= {check["id"] for check in version_control_replay["checks"] if check["ok"]}
+    assert all(item["operation_steps"] for item in version_control_replay["module_replays"])
+    assert all("side_effects_disallowed" in item["validation_steps"] for item in version_control_replay["module_replays"])
     assert {item["tool"] for item in devtools.devtool_catalog()} == {"vscode", "eclipse", "jetbrains"}
     assert devtools.vscode_launch_profile()["module"] == "flask"
     assert any(task["label"] == "AppGen quality" for task in devtools.vscode_tasks())

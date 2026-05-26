@@ -23,6 +23,11 @@ Post-verification cleanup:
 - 50 regenerated `__pycache__` directories moved to `post-verify-cache`.
 - 157 regenerated cache files moved to `post-verify-cache`.
 
+Generated history verification cleanup:
+
+- Focused generated-app verification regenerated the same cache family.
+- Regenerated cache artifacts moved to `post-version-history-cache`.
+
 ## Rationale
 
 These files are generated interpreter/test-run artifacts. They are not source
