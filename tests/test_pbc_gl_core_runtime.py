@@ -3,6 +3,9 @@ import pytest
 from pyAppGen.pbc import GL_CORE_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import gl_core_append_ledger_event
 from pyAppGen.pbc import gl_core_build_projection
+from pyAppGen.pbc import gl_core_build_release_evidence
+from pyAppGen.pbc import gl_core_build_schema_contract
+from pyAppGen.pbc import gl_core_build_service_contract
 from pyAppGen.pbc import gl_core_build_workbench_view
 from pyAppGen.pbc import gl_core_configure_runtime
 from pyAppGen.pbc import gl_core_empty_state
@@ -34,17 +37,24 @@ def test_gl_core_runtime_executes_all_documented_advanced_capabilities() -> None
     package_contract = gl_core_package_contract()
     contract = pbc_implementation_contract("gl_core")
     api = gl_core_build_api_contract()
+    schema = gl_core_build_schema_contract()
+    service = gl_core_build_service_contract()
+    release = gl_core_build_release_evidence()
     permissions = gl_core_permissions_contract()
 
     assert runtime["format"] == "appgen.gl-core-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/gl_core"
     assert runtime["owned_tables"] == GL_CORE_OWNED_TABLES
+    assert len(runtime["owned_tables"]) >= 30
     assert runtime["allowed_database_backends"] == GL_CORE_ALLOWED_DATABASE_BACKENDS
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
+    assert "recurring_journals" in runtime["standard_features"]
+    assert "currency_translation" in runtime["standard_features"]
+    assert "electronic_audit_file" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert set(GL_CORE_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
     assert not smoke["blocking_gaps"]
@@ -52,6 +62,9 @@ def test_gl_core_runtime_executes_all_documented_advanced_capabilities() -> None
     assert package_contract["api_contract"]["event_contract"] == "AppGen-X"
     assert package_contract["permissions_contract"]["action_permissions"]["receive_event"] == "gl_core.event"
     assert package_contract["owned_tables"] == GL_CORE_OWNED_TABLES
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
     assert package_contract["allowed_database_backends"] == GL_CORE_ALLOWED_DATABASE_BACKENDS
     assert package_contract["required_event_topic"] == GL_CORE_REQUIRED_EVENT_TOPIC
 
@@ -63,6 +76,19 @@ def test_gl_core_runtime_executes_all_documented_advanced_capabilities() -> None
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "LedgerConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(GL_CORE_ADVANCED_CAPABILITY_KEYS)
+
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(GL_CORE_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(GL_CORE_OWNED_TABLES)
+    assert {"gl_core_ledger_account", "gl_core_accounting_period", "gl_core_audit_proof"} <= {
+        item["table"] for item in schema["tables"]
+    }
+    assert all(item["table"].startswith("gl_core_") for item in schema["tables"])
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 20
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
     assert api["owned_tables"] == GL_CORE_OWNED_TABLES
     assert api["shared_table_access"] is False

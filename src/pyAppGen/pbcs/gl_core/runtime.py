@@ -12,12 +12,37 @@ import re
 GL_CORE_REQUIRED_EVENT_TOPIC = "appgen.gl.events"
 GL_CORE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 GL_CORE_OWNED_TABLES = (
+    "gl_core_ledger_event_log",
     "gl_core_journal_event",
+    "gl_core_journal_entry",
     "gl_core_journal_line",
+    "gl_core_ledger_account",
+    "gl_core_accounting_period",
+    "gl_core_ledger_projection",
     "gl_core_account_projection",
+    "gl_core_consensus_replica",
+    "gl_core_schema_extension",
+    "gl_core_tenant_ledger_partition",
+    "gl_core_probabilistic_posting",
     "gl_core_close_snapshot",
+    "gl_core_causal_scenario",
     "gl_core_reconciliation_case",
+    "gl_core_semantic_source_document",
+    "gl_core_regulatory_rule_version",
     "gl_core_policy_rule",
+    "gl_core_predictive_validation_run",
+    "gl_core_audit_proof",
+    "gl_core_policy_decision",
+    "gl_core_control_assertion",
+    "gl_core_ledger_federation_link",
+    "gl_core_identity_credential",
+    "gl_core_resilience_drill",
+    "gl_core_crypto_key_epoch",
+    "gl_core_carbon_execution_window",
+    "gl_core_financial_model",
+    "gl_core_appgen_outbox_event",
+    "gl_core_appgen_inbox_event",
+    "gl_core_dead_letter_event",
 )
 GL_CORE_EMITTED_EVENT_TYPES = (
     "JournalPosted",
@@ -106,12 +131,23 @@ GL_CORE_STANDARD_FEATURE_KEYS = (
     "ledger_projection",
     "account_reconciliation",
     "financial_statement_projection",
+    "financial_statement_mapping",
     "period_close",
+    "recurring_journals",
+    "reversal_entries",
+    "accruals_and_deferrals",
+    "allocations",
+    "consolidation",
+    "retained_earnings_rollforward",
     "audit_trail",
     "approval_policy",
     "tax_and_reporting_dimensions",
+    "segment_reporting",
+    "statutory_reporting",
+    "electronic_audit_file",
     "multi_entity_tenant_isolation",
     "currency_and_revaluation",
+    "currency_translation",
     "intercompany_support",
     "subledger_integration",
     "budget_control",
@@ -147,6 +183,9 @@ def gl_core_runtime_capabilities() -> dict:
             "register_schema_extension",
             "build_projection",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "verify_owned_table_boundary",
             "query_temporal_ledger",
@@ -269,6 +308,9 @@ def gl_core_runtime_smoke() -> dict:
         ({"system": "subledger_a", "account": "cash", "balance": 25},),
     )
     api = gl_core_build_api_contract()
+    schema = gl_core_build_schema_contract()
+    service = gl_core_build_service_contract()
+    release = gl_core_build_release_evidence()
     permissions = gl_core_permissions_contract()
     boundary = gl_core_verify_owned_table_boundary(
         (
@@ -327,7 +369,7 @@ def gl_core_runtime_smoke() -> dict:
         {"id": "dynamic_policy_enforcement", "ok": policy["ok"] and policy["decision"] == "allow"},
         {"id": "immutable_regulatory_trail", "ok": controls["hash_chain_valid"]},
         {"id": "automated_control_testing", "ok": controls["ok"]},
-        {"id": "universal_api_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and all(key in proof for key in ("proof", "public_claims"))},
+        {"id": "universal_api_contract", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and api["event_contract"] == "AppGen-X" and all(key in proof for key in ("proof", "public_claims"))},
         {"id": "cross_system_ledger_federation", "ok": federation["ok"] and federation["balances"]["cash"] == 1225.0},
         {"id": "event_driven_subledger_synchronization", "ok": append["outbox_event"]["idempotency_key"].startswith("gl_core:") and received["handler"]["status"] == "processed" and duplicate["duplicate"]},
         {"id": "decentralized_identity_integration", "ok": identity["ok"] and identity["subject"] == "tenant_alpha"},
@@ -832,6 +874,160 @@ def gl_core_build_api_contract() -> dict:
             "GL_CORE_DEFAULT_CURRENCY",
             "GL_CORE_DEFAULT_TIMEZONE",
         ),
+    }
+
+
+def gl_core_build_schema_contract() -> dict:
+    """Return the GL owned schema, migration, model, and relationship contract."""
+    table_roles = {
+        "gl_core_ledger_event_log": ("tenant", "event_id", "event_type", "valid_at", "processing_time", "payload_hash", "previous_hash", "signature"),
+        "gl_core_journal_event": ("tenant", "event_id", "event_type", "valid_at", "processing_time", "payload", "hash"),
+        "gl_core_journal_entry": ("tenant", "journal_id", "period_id", "status", "source_document_hash", "approval_state"),
+        "gl_core_journal_line": ("tenant", "journal_id", "line_id", "account_id", "debit", "credit", "currency", "dimensions"),
+        "gl_core_ledger_account": ("tenant", "account_id", "account_code", "account_type", "normal_balance", "parent_account_id"),
+        "gl_core_accounting_period": ("tenant", "period_id", "fiscal_year", "period_number", "status", "closed_at"),
+        "gl_core_ledger_projection": ("tenant", "projection_id", "period_id", "dimension_hash", "balance_hash", "source_event_count"),
+        "gl_core_account_projection": ("tenant", "account_id", "period_id", "currency", "debit_total", "credit_total", "ending_balance"),
+        "gl_core_consensus_replica": ("tenant", "replica_id", "node_region", "term", "commit_index", "health_state"),
+        "gl_core_schema_extension": ("tenant", "table_name", "field_name", "field_type", "version", "compatibility"),
+        "gl_core_tenant_ledger_partition": ("tenant", "partition_id", "encryption_key_ref", "residency_region", "retention_policy"),
+        "gl_core_probabilistic_posting": ("tenant", "posting_id", "account_id", "amount", "confidence", "uncertainty_exposure"),
+        "gl_core_close_snapshot": ("tenant", "snapshot_id", "period_id", "audit_ready", "control_hash", "approval_state"),
+        "gl_core_causal_scenario": ("tenant", "scenario_id", "driver", "counterfactual_hash", "impact_hash"),
+        "gl_core_reconciliation_case": ("tenant", "case_id", "source_id", "ledger_event_id", "score", "decision"),
+        "gl_core_semantic_source_document": ("tenant", "document_id", "source_hash", "derived_account", "confidence", "audit_trace"),
+        "gl_core_regulatory_rule_version": ("tenant", "rule_version_id", "standard", "version_hash", "effective_from", "compiled_predicate"),
+        "gl_core_policy_rule": ("tenant", "rule_id", "scope", "status", "predicate", "decision_effect"),
+        "gl_core_predictive_validation_run": ("tenant", "run_id", "journal_id", "decision", "risk_score", "model_version"),
+        "gl_core_audit_proof": ("tenant", "proof_id", "proof_type", "public_claims_hash", "proof_hash", "channel"),
+        "gl_core_policy_decision": ("tenant", "decision_id", "actor", "action", "decision", "reason_codes"),
+        "gl_core_control_assertion": ("tenant", "control_id", "assertion", "status", "tested_at", "evidence_hash"),
+        "gl_core_ledger_federation_link": ("tenant", "link_id", "external_system", "projection_name", "api_contract", "event_contract"),
+        "gl_core_identity_credential": ("tenant", "credential_id", "did", "issuer", "subject", "credential_hash"),
+        "gl_core_resilience_drill": ("tenant", "drill_id", "scenario", "decision", "remaining_quorum", "executed_at"),
+        "gl_core_crypto_key_epoch": ("tenant", "key_epoch", "algorithm", "attestation", "rotated_at"),
+        "gl_core_carbon_execution_window": ("tenant", "window_id", "region", "carbon_intensity", "selected", "scheduled_at"),
+        "gl_core_financial_model": ("tenant", "model_id", "model_name", "feature_lineage", "drift_score", "materiality_gate"),
+        "gl_core_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "payload_hash"),
+        "gl_core_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "gl_core_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "gl_core_journal_line.journal_id", "to": "gl_core_journal_entry.journal_id", "type": "owned_parent"},
+        {"from": "gl_core_journal_line.account_id", "to": "gl_core_ledger_account.account_id", "type": "owned_reference"},
+        {"from": "gl_core_journal_entry.period_id", "to": "gl_core_accounting_period.period_id", "type": "owned_reference"},
+        {"from": "gl_core_account_projection.account_id", "to": "gl_core_ledger_account.account_id", "type": "owned_projection"},
+        {"from": "gl_core_close_snapshot.period_id", "to": "gl_core_accounting_period.period_id", "type": "owned_snapshot"},
+        {"from": "gl_core_reconciliation_case.ledger_event_id", "to": "gl_core_journal_event.event_id", "type": "owned_reconciliation"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_roles[table],
+            "primary_key": tuple(field for field in table_roles[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "gl_core",
+        }
+        for table in GL_CORE_OWNED_TABLES
+    )
+    migrations = tuple(
+        {
+            "path": f"pbcs/gl_core/migrations/{position + 1:03d}_{table.replace('gl_core_', '')}.sql",
+            "operation": "create_owned_table",
+            "table": table,
+            "backend_allowlist": GL_CORE_ALLOWED_DATABASE_BACKENDS,
+        }
+        for position, table in enumerate(GL_CORE_OWNED_TABLES)
+    )
+    return {
+        "format": "appgen.gl-core-owned-schema-contract.v1",
+        "ok": len(tables) == len(GL_CORE_OWNED_TABLES)
+        and all(set(item["fields"]) for item in tables)
+        and all(item["table"].startswith("gl_core_") for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": migrations,
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.removeprefix("gl_core_").split("_")),
+                "table": table,
+                "fields": table_roles[table],
+            }
+            for table in GL_CORE_OWNED_TABLES
+        ),
+        "datastore_backends": GL_CORE_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def gl_core_build_service_contract() -> dict:
+    """Return command/query service evidence for table-stakes and advanced GL behavior."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_chart_account",
+        "open_accounting_period",
+        "append_ledger_event",
+        "post_recurring_journal",
+        "post_reversal_entry",
+        "calculate_allocation",
+        "translate_currency",
+        "run_intercompany_settlement",
+        "build_projection",
+        "build_trial_balance",
+        "map_financial_statement",
+        "create_continuous_close_snapshot",
+        "suggest_reconciliation",
+        "compile_regulatory_rules",
+        "predict_posting_validation",
+        "generate_audit_proof",
+        "run_control_tests",
+        "receive_event",
+    )
+    return {
+        "format": "appgen.gl-core-service-contract.v1",
+        "ok": True,
+        "transaction_boundary": "gl_core_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "query_temporal_ledger",
+            "build_federated_view",
+            "measure_information_auditability",
+            "build_workbench_view",
+        ),
+        "mutates_only": GL_CORE_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": _GL_CORE_ALLOWED_DEPENDENCIES,
+            "events": GL_CORE_CONSUMED_EVENT_TYPES,
+            "shared_tables": (),
+        },
+    }
+
+
+def gl_core_build_release_evidence() -> dict:
+    """Return package-local release evidence required before GL Core is complete."""
+    schema = gl_core_build_schema_contract()
+    service = gl_core_build_service_contract()
+    api = gl_core_build_api_contract()
+    permissions = gl_core_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 30},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(GL_CORE_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": len(service["command_methods"]) >= 20},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"append_ledger_event", "receive_event", "run_control_tests"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == GL_CORE_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.gl-core-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 

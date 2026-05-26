@@ -9,8 +9,11 @@ from .runtime import GL_CORE_REQUIRED_EVENT_TOPIC
 from .runtime import GL_CORE_STANDARD_FEATURE_KEYS
 from .runtime import gl_core_append_ledger_event
 from .runtime import gl_core_build_api_contract
+from .runtime import gl_core_build_release_evidence
 from .runtime import gl_core_build_federated_view
 from .runtime import gl_core_build_projection
+from .runtime import gl_core_build_schema_contract
+from .runtime import gl_core_build_service_contract
 from .runtime import gl_core_build_workbench_view
 from .runtime import gl_core_compile_regulatory_rules
 from .runtime import gl_core_configure_runtime
@@ -59,6 +62,9 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": gl_core_ui_contract(),
         "api_contract": gl_core_build_api_contract(),
+        "schema_contract": gl_core_build_schema_contract(),
+        "service_contract": gl_core_build_service_contract(),
+        "release_evidence_contract": gl_core_build_release_evidence(),
         "permissions_contract": gl_core_permissions_contract(),
         "owned_tables": GL_CORE_OWNED_TABLES,
         "allowed_database_backends": GL_CORE_ALLOWED_DATABASE_BACKENDS,
