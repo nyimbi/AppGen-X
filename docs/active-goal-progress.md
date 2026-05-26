@@ -1070,6 +1070,19 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   scan, and the 110-test PBC runtime regression slice. Full `tests/test_main.py`
   remains blocked by the existing `ideas_release_audit` / `palette_breadth`
   gate mismatch outside this slice.
+- `2ce39db` implements the formerly skeletal `notifications` package:
+  package-local specification, executable notification-template,
+  delivery-channel, message-delivery, preference-snapshot, trigger-event,
+  consent, channel-routing, template-rendering, delivery-attempt, and status
+  runtime, UI/workbench contract, central audit wiring, and focused tests. The
+  package enforces PostgreSQL/MySQL/MariaDB datastore boundaries, AppGen-X
+  eventing without user-facing stream-engine selection, bounded rules and
+  parameters, idempotent consumed-event handling, retry/dead-letter evidence,
+  advanced runtime smoke evidence, owned-table boundary evidence, and workbench
+  binding evidence. Verification passed for notifications py-compile, focused
+  runtime tests, implemented-capability audit, implementation release audit,
+  `pbc_release_audit()`, generation smoke audit, the restricted legacy-name
+  scan, and the 113-test PBC runtime regression slice.
 
 ## Open Completion Areas
 
