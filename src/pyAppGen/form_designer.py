@@ -4713,6 +4713,113 @@ def pascal_run_runtime_authoring_scenario_operation(design: dict | None = None) 
     }
 
 
+def pascal_runtime_authoring_replay_matrix(design: dict | None = None) -> dict:
+    """Replay native runtime authoring operations as one ordered release matrix."""
+    design = design or form_design()
+    operations = pascal_runtime_actionable_operations(design)
+    authoring_scenario = pascal_run_runtime_authoring_scenario_operation(design)
+    readiness = pascal_runtime_readiness_contract(design)
+    module_replay = pascal_runtime_module_replay_matrix(design)
+    ordered_operations = (
+        ("open_design_stream", ("read_text_stream", "parse_text_stream", "decode_binary_stream")),
+        ("apply_property_delta", ("capture_selection", "apply_property_delta", "route_diagnostics")),
+        ("round_trip_stream", ("serialize_text_stream", "decode_binary_stream", "compare_json_model")),
+        ("refresh_resources", ("collect_resource_manifest", "record_resource_hashes", "validate_resource_round_trip")),
+        ("compile_preview", ("build_unit", "run_language_frontend", "run_static_analysis", "map_diagnostics_to_design_surface")),
+        ("reload_runtime_preview", ("stream_decode", "unit_frontend", "target_emit", "runtime_load")),
+        ("start_debug_preview", ("load_symbol_map", "bind_breakpoints", "route_debug_diagnostics", "start_runtime_preview")),
+    )
+    replays = tuple(
+        {
+            "operation": operation_name,
+            "ok": operation_name in operations["operations"]
+            and operations["operations"][operation_name]["ok"]
+            and set(required_steps) <= set(operations["operations"][operation_name]["pipeline"])
+            and not operations["operations"][operation_name]["side_effects"],
+            "operation_steps": operations["operations"][operation_name]["pipeline"],
+            "required_steps": required_steps,
+            "validation_steps": (
+                "operation_ok",
+                "required_steps_present",
+                "runtime_state_traceable",
+                "side_effects_disallowed",
+            ),
+        }
+        for operation_name, required_steps in ordered_operations
+    )
+    replay_order = tuple(item["operation"] for item in replays)
+    scenario_order = tuple(
+        "refresh_resources" if step == "refresh_resource_manifest" else step
+        for step in authoring_scenario["pipeline"]
+        if step in replay_order or step == "refresh_resource_manifest"
+    )
+    checks = (
+        {
+            "id": "authoring_operations_replay",
+            "ok": operations["ok"] and len(replays) == len(ordered_operations) and all(item["ok"] for item in replays),
+            "evidence": replay_order,
+        },
+        {
+            "id": "authoring_pipeline_order",
+            "ok": replay_order == scenario_order
+            and replay_order.index("open_design_stream") < replay_order.index("compile_preview")
+            < replay_order.index("reload_runtime_preview")
+            < replay_order.index("start_debug_preview"),
+            "evidence": {"replay_order": replay_order, "scenario_order": scenario_order},
+        },
+        {
+            "id": "authoring_operation_step_coverage",
+            "ok": all(set(item["required_steps"]) <= set(item["operation_steps"]) for item in replays),
+            "evidence": tuple((item["operation"], item["operation_steps"]) for item in replays),
+        },
+        {
+            "id": "authoring_validation_step_coverage",
+            "ok": all(
+                {"operation_ok", "required_steps_present", "runtime_state_traceable", "side_effects_disallowed"}
+                <= set(item["validation_steps"])
+                for item in replays
+            ),
+            "evidence": tuple((item["operation"], item["validation_steps"]) for item in replays),
+        },
+        {
+            "id": "readiness_and_module_replay_aligned",
+            "ok": readiness["ok"]
+            and module_replay["ok"]
+            and "phase_order_ready" in {check["id"] for check in readiness["checks"] if check["ok"]}
+            and "runtime_operation_modules_replay" in {check["id"] for check in module_replay["checks"] if check["ok"]},
+            "evidence": {
+                "readiness": tuple(check["id"] for check in readiness["checks"] if check["ok"]),
+                "module_replay": tuple(check["id"] for check in module_replay["checks"] if check["ok"]),
+            },
+        },
+        {
+            "id": "side_effect_free_authoring_replay",
+            "ok": not operations["side_effects"]
+            and not authoring_scenario["side_effects"]
+            and not readiness["side_effects"]
+            and not module_replay["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.pascal-runtime-authoring-replay-matrix.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "replays": replays,
+        "checks": checks,
+        "guards": (
+            "authoring_operations_replay_in_order",
+            "required_operation_steps_present",
+            "validation_steps_required_before_release",
+            "readiness_and_module_replay_must_align",
+            "authoring_replay_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
     """Return end-to-end readiness for opening, compiling, and previewing a design stream."""
     design = design or form_design()
@@ -4870,6 +4977,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     actionable_operations = pascal_runtime_actionable_operations(design)
     authoring_scenario = pascal_run_runtime_authoring_scenario_operation(design)
     readiness = pascal_runtime_readiness_contract(design)
+    authoring_replay_matrix = pascal_runtime_authoring_replay_matrix(design)
     binary_round_trip = dfm_binary_round_trip(design)
     stream_variants = dfm_stream_variant_round_trip_contract(design)
     native_form_modules = native_form_module_file_manifest()
@@ -5118,6 +5226,20 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "evidence": readiness,
         },
         {
+            "id": "runtime_authoring_replay_matrix",
+            "ok": authoring_replay_matrix["ok"]
+            and {
+                "authoring_operations_replay",
+                "authoring_pipeline_order",
+                "authoring_operation_step_coverage",
+                "authoring_validation_step_coverage",
+                "readiness_and_module_replay_aligned",
+                "side_effect_free_authoring_replay",
+            }
+            <= {check["id"] for check in authoring_replay_matrix["checks"] if check["ok"]},
+            "evidence": authoring_replay_matrix,
+        },
+        {
             "id": "native_form_modules",
             "ok": len(native_form_modules) == 6
             and all(item["ok"] and "native_form_manifest" in item["exports"] for item in native_form_modules),
@@ -5239,6 +5361,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "actionable_operations": actionable_operations,
         "authoring_scenario": authoring_scenario,
         "readiness": readiness,
+        "authoring_replay_matrix": authoring_replay_matrix,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,
         "native_form_modules": native_form_modules,
@@ -16367,6 +16490,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "deep_runtime_modules",
                 "deep_runtime_module_tests",
                 "runtime_module_replay_matrix",
+                "runtime_authoring_replay_matrix",
             } <= {check["id"] for check in runtime["checks"] if check["ok"]},
             "deep_checks": (
                 "stream_identity_ready",
@@ -16384,6 +16508,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "deep_runtime_modules",
                 "deep_runtime_module_tests",
                 "runtime_module_replay_matrix",
+                "runtime_authoring_replay_matrix",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": runtime, "readiness": runtime_readiness},
@@ -19798,6 +19923,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "deep_runtime_modules",
         "deep_runtime_module_tests",
         "runtime_module_replay_matrix",
+        "runtime_authoring_replay_matrix",
     )
     passing_runtime_workbench_checks = tuple(check["id"] for check in runtime_workbench["checks"] if check["ok"])
     required_stream_round_trip_features = (

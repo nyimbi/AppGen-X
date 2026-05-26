@@ -254,6 +254,7 @@ from pyAppGen.form_designer import pascal_run_runtime_authoring_scenario_operati
 from pyAppGen.form_designer import pascal_round_trip_stream_operation
 from pyAppGen.form_designer import pascal_start_debug_preview_operation
 from pyAppGen.form_designer import pascal_runtime_actionable_operations
+from pyAppGen.form_designer import pascal_runtime_authoring_replay_matrix
 from pyAppGen.form_designer import pascal_runtime_module_replay_matrix
 from pyAppGen.form_designer import pascal_runtime_workbench
 from pyAppGen.form_designer import pascal_unit_contract
@@ -3716,6 +3717,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "actionable_runtime_operations",
         "runtime_authoring_scenario",
         "runtime_readiness_contract",
+        "runtime_authoring_replay_matrix",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -3818,6 +3820,28 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert pascal_runtime_actionable_operations(design)["ok"] is True
     assert runtime["authoring_scenario"]["ok"] is True
     assert runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
+    runtime_authoring_replay = pascal_runtime_authoring_replay_matrix(design)
+    assert runtime_authoring_replay["format"] == "appgen.pascal-runtime-authoring-replay-matrix.v1"
+    assert runtime_authoring_replay["ok"] is True
+    assert tuple(item["operation"] for item in runtime_authoring_replay["replays"]) == (
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "refresh_resources",
+        "compile_preview",
+        "reload_runtime_preview",
+        "start_debug_preview",
+    )
+    assert {
+        "authoring_operations_replay",
+        "authoring_pipeline_order",
+        "authoring_operation_step_coverage",
+        "authoring_validation_step_coverage",
+        "readiness_and_module_replay_aligned",
+        "side_effect_free_authoring_replay",
+    } == {check["id"] for check in runtime_authoring_replay["checks"]}
+    assert runtime["authoring_replay_matrix"]["ok"] is True
+    assert all("side_effects_disallowed" in item["validation_steps"] for item in runtime_authoring_replay["replays"])
     assert len(runtime["native_form_modules"]) == 6
     assert len(runtime["native_form_module_tests"]) == 6
     assert len(runtime["runtime_operation_modules"]) == 7
@@ -5094,6 +5118,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "deep_runtime_modules",
         "deep_runtime_module_tests",
         "runtime_module_replay_matrix",
+        "runtime_authoring_replay_matrix",
     } <= set(requirements_by_id["native_runtime_streaming"]["deep_checks"])
     assert {
         "inspector_generated_modules",
@@ -5159,6 +5184,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
                 "runtime_operation_modules",
                 "compiler_runtime_modules",
                 "deep_runtime_modules",
+                "runtime_authoring_replay_matrix",
             },
         ),
         (
@@ -15184,6 +15210,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "deep_runtime_modules",
         "deep_runtime_module_tests",
         "runtime_module_replay_matrix",
+        "runtime_authoring_replay_matrix",
     } <= set(generated_requirements_by_id["native_runtime_streaming"]["deep_checks"])
     assert {
         "inspector_generated_modules",
@@ -15249,6 +15276,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
                 "runtime_operation_modules",
                 "compiler_runtime_modules",
                 "deep_runtime_modules",
+                "runtime_authoring_replay_matrix",
             },
         ),
         (
@@ -15503,6 +15531,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "actionable_runtime_operations",
         "runtime_authoring_scenario",
         "runtime_readiness_contract",
+        "runtime_authoring_replay_matrix",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -15597,6 +15626,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_authoring_scenario["ok"] is True
     assert "verify_runtime_state" in generated_authoring_scenario["pipeline"]
     assert generated_runtime["authoring_scenario"]["ok"] is True
+    assert generated_runtime["authoring_replay_matrix"]["format"] == (
+        "appgen.generated-pascal-runtime-authoring-replay-matrix.v1"
+    )
+    assert generated_runtime["authoring_replay_matrix"]["ok"] is True
+    assert tuple(item["operation"] for item in generated_runtime["authoring_replay_matrix"]["replays"]) == (
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "refresh_resources",
+        "compile_preview",
+        "reload_runtime_preview",
+        "start_debug_preview",
+    )
+    assert {
+        "authoring_operations_replay",
+        "authoring_pipeline_order",
+        "authoring_operation_step_coverage",
+        "authoring_validation_step_coverage",
+        "readiness_and_module_replay_aligned",
+        "side_effect_free_authoring_replay",
+    } <= {
+        check["id"]
+        for check in generated_runtime["authoring_replay_matrix"]["checks"]
+        if check["ok"]
+    }
     assert form_designer.pascal_runtime_debug_authoring_contract("Book")["ok"] is True
     assert form_designer.pascal_runtime_actionable_operations("Book")["ok"] is True
     assert generated_runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
