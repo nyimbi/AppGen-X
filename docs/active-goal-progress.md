@@ -1610,6 +1610,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   builders. Focused source-package and Price Promotion Engine tests pass
   (`5 passed`), and full generation, capability, implementation release, and
   catalog release audits all return true. Commit: `2da8bd7`.
+- Current repo cleanup pass archives regenerated `.pytest_cache` and
+  `__pycache__` runtime/test debris under
+  `archive/repo-cleanup-2026-05-26-5/`, keeps the payload ignored, and leaves
+  `.venv`, tracked source, docs, configuration, tests, and existing archive
+  history in place because they were not proven unused. Commit: pending.
 
 ## Open Completion Areas
 
