@@ -43,6 +43,8 @@ PBC_MANIFEST_OPTIONAL_FIELDS = (
     "tests",
     "docs",
     "capabilities",
+    "standard_features",
+    "advanced_capabilities",
     "workflows",
     "analytics",
 )
@@ -3786,6 +3788,8 @@ def pbc_manifest_schema() -> dict:
             "tests": "Optional test artifact paths that prove the PBC package contract.",
             "docs": "Optional documentation artifact paths for builders and operators.",
             "capabilities": "Optional domain capability module names implemented by the PBC.",
+            "standard_features": "Optional standard table-stakes features implemented by the PBC runtime.",
+            "advanced_capabilities": "Optional advanced differentiating capabilities implemented by the PBC runtime.",
             "workflows": "Optional workflow/service method names implemented by the PBC.",
             "analytics": "Optional metrics/projections implemented by the PBC.",
         },
@@ -4413,6 +4417,8 @@ def _pbc_source_package_contract(key: str) -> dict:
         and contract.get("side_effect_free") is True
         and isinstance(manifest, dict)
         and manifest.get("pbc") == key
+        and tuple(manifest.get("standard_features", ())) == tuple(contract.get("standard_features", ()))
+        and tuple(manifest.get("advanced_capabilities", ())) == tuple(contract.get("advanced_runtime", {}).get("capabilities", ()))
         and registration.get("ok") is True
         and registration.get("decision") in {"approved", "draft"}
         and key in (registration.get("catalog_patch") or {})
@@ -4495,6 +4501,14 @@ def pbc_source_artifact_contract(key: str) -> dict:
         {
             "id": "manifest_materialized",
             "ok": "PBC_MANIFEST" in manifest_text and repr(key) in manifest_text,
+            "path": f"{relative_dir}/manifest.py",
+        },
+        {
+            "id": "manifest_capability_surface_materialized",
+            "ok": "standard_features" in manifest_text
+            and "advanced_capabilities" in manifest_text
+            and "advanced_capabilities': ()" not in manifest_text
+            and '"advanced_capabilities": ()' not in manifest_text,
             "path": f"{relative_dir}/manifest.py",
         },
         {
@@ -4851,9 +4865,11 @@ def pbc_implementation_contract(key: str) -> dict:
             "permissions": permissions,
             "configuration": configuration,
             "capabilities": tuple(item["capability"] for item in domain_functionality["capability_modules"]),
+            "standard_features": tuple(advanced_runtime.get("standard_features", ())),
             "workflows": tuple(item["workflow"] for item in domain_functionality["workflow_implementations"]),
             "analytics": tuple(item["metric"] for item in domain_functionality["analytics"]),
-            "advanced_capabilities": tuple(item["capability"] for item in advanced_blueprint.get("capabilities", ())),
+            "advanced_capabilities": tuple(advanced_runtime.get("capabilities", ()))
+            or tuple(item["capability"] for item in advanced_blueprint.get("capabilities", ())),
             "migrations": ("migrations/001_initial.sql",),
             "seed_data": ("seed_data.py",),
             "tests": ("tests/test_contract.py",),

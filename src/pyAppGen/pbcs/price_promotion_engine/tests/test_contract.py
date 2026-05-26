@@ -20,15 +20,17 @@ def test_generated_schema_service_and_release_evidence():
 
 def test_manifest_and_event_contract():
     assert PBC_MANIFEST['pbc'] == 'price_promotion_engine'
+    assert PBC_MANIFEST['standard_features']
+    assert PBC_MANIFEST['advanced_capabilities']
     assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'
     assert EVENT_CONTRACT['outbox_table'].startswith('price_promotion_engine_')
     assert EVENT_CONTRACT['inbox_table'].startswith('price_promotion_engine_')
 
+
 def test_registration_plan_is_side_effect_free():
     from .. import register_pbc, registration_plan
 
-    assert register_pbc()['pbc'] == PBC_MANIFEST['pbc']
+    assert register_pbc()['pbc'] == 'price_promotion_engine'
     plan = registration_plan()
     assert plan['ok'] is True
     assert plan['catalog_patch']
-

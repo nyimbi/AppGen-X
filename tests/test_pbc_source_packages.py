@@ -20,6 +20,8 @@ def test_every_builtin_pbc_has_its_own_source_package_directory():
         assert contract["owns_code"] is True
         assert contract["side_effect_free"] is True
         assert module.register_pbc()["pbc"] == key
+        assert module.register_pbc()["standard_features"] == contract["standard_features"]
+        assert module.register_pbc()["advanced_capabilities"] == contract["advanced_runtime"]["capabilities"]
         catalog_snapshot = dict(PBC_CATALOG)
         registration = module.registration_plan()
         assert registration["ok"] is True
@@ -56,6 +58,10 @@ def test_release_audit_requires_builtin_pbc_source_packages():
         if check["id"].endswith(":source_artifacts_materialized"):
             assert check["ok"] is True
             assert not check["source_artifacts"]["blocking_gaps"]
+            assert any(
+                item["id"] == "manifest_capability_surface_materialized" and item["ok"]
+                for item in check["source_artifacts"]["checks"]
+            )
         if check["id"].endswith(":source_package_directory"):
             assert check["ok"] is True
         if check["id"].endswith(":table_stakes_evidence"):
@@ -82,6 +88,10 @@ def test_every_builtin_pbc_has_materialized_source_artifacts():
             for file in contract["files"]
             if file["exists"]
         } == set(audit["required_artifacts"])
+        assert any(
+            check["id"] == "manifest_capability_surface_materialized" and check["ok"]
+            for check in contract["checks"]
+        )
         assert not contract["blocking_gaps"]
 
 
