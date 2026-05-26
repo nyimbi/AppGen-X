@@ -116,6 +116,7 @@ from pyAppGen.form_designer import preview_component_drop_operation
 from pyAppGen.form_designer import start_component_drag_operation
 from pyAppGen.form_designer import component_family_module_file_manifest
 from pyAppGen.form_designer import component_family_module_test_file_manifest
+from pyAppGen.form_designer import component_family_runtime_replay_matrix
 from pyAppGen.form_designer import component_wiring_module_file_manifest
 from pyAppGen.form_designer import component_wiring_module_test_file_manifest
 from pyAppGen.form_designer import form_interaction_family_contract
@@ -3558,6 +3559,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_behavior",
         "generated_modules",
         "generated_tests",
+        "component_family_replay",
         "component_scenario",
         "ide_catalog_release",
     )
@@ -3567,6 +3569,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "behavior_surface_ready",
         "generated_modules_ready",
         "generated_tests_ready",
+        "family_replay_ready",
         "scenario_ready",
         "ide_release_ready",
         "phase_order_ready",
@@ -3606,11 +3609,32 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("test_component_smoke" in item["exports"] for item in usability["component_test_files"])
     assert all("test_package_smoke" in item["exports"] for item in usability["package_test_files"])
     assert all("run_family_replay" in item["exports"] for item in usability["component_family_modules"])
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in usability["component_family_modules"]
+    )
     assert all("test_component_family_module_smoke" in item["exports"] for item in usability["component_family_module_tests"])
+    assert all(
+        "test_component_family_module_step_contracts" in item["exports"]
+        for item in usability["component_family_module_tests"]
+    )
     assert all(item["ok"] for item in usability["component_test_files"])
     assert all(item["ok"] for item in usability["package_test_files"])
     assert all(item["ok"] for item in usability["component_family_modules"])
     assert all(item["ok"] for item in usability["component_family_module_tests"])
+    family_replay = component_family_runtime_replay_matrix()
+    assert family_replay["format"] == "appgen.component-family-runtime-replay-matrix.v1"
+    assert family_replay["ok"] is True
+    assert {
+        "component_family_modules_replay",
+        "component_family_group_coverage",
+        "component_family_operation_step_coverage",
+        "component_family_validation_step_coverage",
+        "component_family_replays_have_components",
+        "component_family_replays_side_effect_free",
+    } == {check["id"] for check in family_replay["checks"]}
+    assert all(item["operation_steps"] for item in family_replay["family_replays"])
+    assert all(item["validation_steps"] for item in family_replay["family_replays"])
 
     canvas = form_canvas("Customer")
     assert canvas["format"] == "appgen.package-form-canvas.v1"
@@ -4907,6 +4931,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_behavior",
         "generated_modules",
         "generated_tests",
+        "component_family_replay",
         "component_scenario",
         "ide_catalog_release",
     )
@@ -4916,6 +4941,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "behavior_surface_ready",
         "generated_modules_ready",
         "generated_tests_ready",
+        "family_replay_ready",
         "scenario_ready",
         "ide_release_ready",
     } <= set(lifecycle_by_phase["component_surface_baseline"]["evidence"]["readiness_passing_checks"])
@@ -14988,6 +15014,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_behavior",
         "generated_modules",
         "generated_tests",
+        "component_family_replay",
         "component_scenario",
         "ide_catalog_release",
     )
@@ -14997,6 +15024,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "behavior_surface_ready",
         "generated_modules_ready",
         "generated_tests_ready",
+        "family_replay_ready",
         "scenario_ready",
         "ide_release_ready",
     } <= set(generated_lifecycle_by_phase["component_surface_baseline"]["evidence"]["readiness_passing_checks"])
@@ -16634,10 +16662,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "component_family_modules_replay",
         "component_family_group_coverage",
+        "component_family_operation_step_coverage",
+        "component_family_validation_step_coverage",
         "component_family_replays_have_components",
         "component_family_replays_side_effect_free",
     } <= {check["id"] for check in component_family_runtime_matrix["checks"] if check["ok"]}
     assert all(item["components"] for item in component_family_runtime_matrix["family_replays"])
+    assert all(item["operation_steps"] for item in component_family_runtime_matrix["family_replays"])
+    assert all(item["validation_steps"] for item in component_family_runtime_matrix["family_replays"])
     inspector_runtime_file = output_dir / "inspector_runtime.py"
     assert inspector_runtime_file.exists()
     py_compile.compile(str(inspector_runtime_file), doraise=True)
@@ -18712,7 +18744,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert all("run_family_replay" in item["exports"] for item in generated_usability["component_family_modules"])
     assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_usability["component_family_modules"]
+    )
+    assert all(
         "test_component_family_module_smoke" in item["exports"]
+        for item in generated_usability["component_family_module_tests"]
+    )
+    assert all(
+        "test_component_family_module_step_contracts" in item["exports"]
         for item in generated_usability["component_family_module_tests"]
     )
     assert "module_smoke_tests" in {
@@ -18777,10 +18817,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         assert module.family_manifest()["ok"] is True
         assert module.run_family_replay()["ok"] is True
         assert module.readiness_context()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
+        assert "replay_family_components" in module.operation_steps()["steps"]
+        assert "side_effects_disallowed" in module.validation_steps()["steps"]
         assert module.smoke_test()["ok"] is True
     for index, item in enumerate(generated_usability["component_family_module_tests"]):
         module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_component_family_test_smoke_{index}")
         assert module.smoke_test()["ok"] is True
+        assert "test_component_family_module_step_contracts" in module.smoke_test()["tests"]
     assert text_box_component.target_adapters()["adapters"]
     assert {"created", "loaded"} <= set(text_box_component.state_model()["states"])
     assert text_box_component.serialization_contract()["property_stream"]

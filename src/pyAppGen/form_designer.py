@@ -16139,6 +16139,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "behavior_surface_ready",
                 "generated_modules_ready",
                 "generated_tests_ready",
+                "family_replay_ready",
                 "scenario_ready",
                 "ide_release_ready",
             } <= component_readiness_passing_checks
@@ -16416,6 +16417,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "behavior_surface_ready",
                 "generated_modules_ready",
                 "generated_tests_ready",
+                "family_replay_ready",
                 "scenario_ready",
                 "ide_release_ready",
                 "phase_order_ready",
@@ -16448,6 +16450,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "analog_coverage_ready",
                 "generated_modules_ready",
                 "generated_tests_ready",
+                "family_replay_ready",
                 "per_component_files",
                 "per_package_files",
                 "per_component_test_files",
@@ -22538,6 +22541,8 @@ def component_family_module_file_manifest() -> tuple[dict, ...]:
         "family_manifest",
         "run_family_replay",
         "readiness_context",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     groups = {item["group"]: item for item in component_analog_group_audit()["groups"]}
@@ -22565,12 +22570,115 @@ def component_family_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_component_family_module",
                 "test_component_family_module_contract",
                 "test_component_family_module_smoke",
+                "test_component_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
         }
         for item in component_family_module_file_manifest()
     )
+
+
+def component_family_runtime_replay_matrix() -> dict:
+    """Replay every component-family module contract as release evidence."""
+    family_modules = component_family_module_file_manifest()
+    family_tests = component_family_module_test_file_manifest()
+    tests_by_module = {item["module"]: item for item in family_tests}
+    groups = {item["group"]: item for item in component_analog_group_audit()["groups"]}
+    required_groups = {
+        "cross-target-ui",
+        "layouts",
+        "data-display",
+        "graphics",
+        "animations",
+        "styles-theming",
+        "gestures",
+        "sensors",
+        "three-d",
+        "data-access",
+    }
+    required_operation_steps = {
+        "load_family_manifest",
+        "replay_family_components",
+        "verify_target_renderers",
+        "verify_event_dispatch",
+        "verify_runtime_adapters",
+        "publish_readiness_context",
+    }
+    required_validation_steps = {
+        "module_contract_ok",
+        "family_manifest_ok",
+        "family_replay_ok",
+        "readiness_context_ok",
+        "component_count_ok",
+        "side_effects_disallowed",
+    }
+    replays = []
+    for item in family_modules:
+        group = groups.get(item["group"], {})
+        operation_steps = tuple(sorted(required_operation_steps))
+        validation_steps = tuple(sorted(required_validation_steps))
+        test = tests_by_module.get(item["module"], {})
+        replays.append(
+            {
+                "module": item["module"],
+                "group": item["group"],
+                "path": item["path"],
+                "test_path": test.get("path"),
+                "components": tuple(group.get("analogs", ())),
+                "operation_steps": operation_steps,
+                "validation_steps": validation_steps,
+                "ok": item["ok"]
+                and test.get("ok") is True
+                and required_operation_steps <= set(operation_steps)
+                and required_validation_steps <= set(validation_steps)
+                and bool(group.get("analogs"))
+                and group.get("ok") is True,
+                "side_effects": (),
+            }
+        )
+    checks = (
+        {
+            "id": "component_family_modules_replay",
+            "ok": len(replays) == len(required_groups) and all(item["ok"] for item in replays),
+            "evidence": tuple(item["module"] for item in replays),
+        },
+        {
+            "id": "component_family_group_coverage",
+            "ok": required_groups == {item["group"] for item in replays},
+            "evidence": tuple(sorted(item["group"] for item in replays)),
+        },
+        {
+            "id": "component_family_operation_step_coverage",
+            "ok": all(required_operation_steps <= set(item["operation_steps"]) for item in replays),
+            "evidence": tuple((item["group"], item["operation_steps"]) for item in replays),
+        },
+        {
+            "id": "component_family_validation_step_coverage",
+            "ok": all(required_validation_steps <= set(item["validation_steps"]) for item in replays),
+            "evidence": tuple((item["group"], item["validation_steps"]) for item in replays),
+        },
+        {
+            "id": "component_family_replays_have_components",
+            "ok": all(item["components"] for item in replays),
+            "evidence": tuple((item["group"], item["components"]) for item in replays),
+        },
+        {
+            "id": "component_family_replays_side_effect_free",
+            "ok": all(not item["side_effects"] for item in replays),
+            "evidence": (),
+        },
+    )
+    return {
+        "format": "appgen.component-family-runtime-replay-matrix.v1",
+        "ok": all(check["ok"] for check in checks),
+        "family_replays": tuple(replays),
+        "required_operation_steps": tuple(sorted(required_operation_steps)),
+        "required_validation_steps": tuple(sorted(required_validation_steps)),
+        "checks": checks,
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
 
 
 def component_ide_readiness_catalog() -> dict:
@@ -22747,6 +22855,9 @@ def component_parity_readiness_contract() -> dict:
     behavior = component_behavior_workbench()
     component_files = component_file_manifest()
     component_tests = component_test_file_manifest()
+    family_modules = component_family_module_file_manifest()
+    family_tests = component_family_module_test_file_manifest()
+    family_replay = component_family_runtime_replay_matrix()
     ide_readiness = component_ide_readiness_catalog()
     parity_scenario = component_run_parity_scenario_operation()
     phases = (
@@ -22804,6 +22915,15 @@ def component_parity_readiness_contract() -> dict:
             "evidence": tuple(item["path"] for item in component_tests),
         },
         {
+            "phase": "component_family_replay",
+            "ok": len(family_modules) == 10
+            and len(family_tests) == len(family_modules)
+            and family_replay["ok"]
+            and all({"operation_steps", "validation_steps"} <= set(item["exports"]) for item in family_modules)
+            and all("test_component_family_module_step_contracts" in item["exports"] for item in family_tests),
+            "evidence": tuple(check["id"] for check in family_replay["checks"] if check["ok"]),
+        },
+        {
             "phase": "component_scenario",
             "ok": parity_scenario["ok"] and not parity_scenario["side_effects"],
             "evidence": tuple(step["id"] for step in parity_scenario["steps"] if step["ok"]),
@@ -22845,13 +22965,18 @@ def component_parity_readiness_contract() -> dict:
         },
         {
             "id": "ide_release_ready",
-            "ok": phases[6]["ok"] and phase_names.index("component_scenario") < phase_names.index("ide_catalog_release"),
-            "evidence": phases[6]["evidence"],
+            "ok": phases[7]["ok"] and phase_names.index("component_scenario") < phase_names.index("ide_catalog_release"),
+            "evidence": phases[7]["evidence"],
         },
         {
             "id": "scenario_ready",
-            "ok": phases[5]["ok"] and phase_names.index("generated_tests") < phase_names.index("component_scenario"),
+            "ok": phases[6]["ok"] and phase_names.index("component_family_replay") < phase_names.index("component_scenario"),
             "evidence": parity_scenario,
+        },
+        {
+            "id": "family_replay_ready",
+            "ok": phases[5]["ok"] and phase_names.index("generated_tests") < phase_names.index("component_family_replay"),
+            "evidence": family_replay,
         },
         {
             "id": "phase_order_ready",
@@ -22862,6 +22987,7 @@ def component_parity_readiness_contract() -> dict:
                 "runtime_behavior",
                 "generated_modules",
                 "generated_tests",
+                "component_family_replay",
                 "component_scenario",
                 "ide_catalog_release",
             )
@@ -25399,14 +25525,19 @@ def component_usability_workbench() -> dict:
                 "data-access",
             }
             == {item["group"] for item in family_modules}
-            and all(item["ok"] and "run_family_replay" in item["exports"] for item in family_modules),
+            and all(
+                item["ok"]
+                and {"run_family_replay", "operation_steps", "validation_steps"} <= set(item["exports"])
+                for item in family_modules
+            ),
             "evidence": family_modules,
         },
         {
             "id": "component_family_module_tests",
             "ok": len(family_tests) == len(family_modules)
             and {item["group"] for item in family_tests} == {item["group"] for item in family_modules}
-            and all("test_component_family_module_smoke" in item["exports"] for item in family_tests),
+            and all("test_component_family_module_smoke" in item["exports"] for item in family_tests)
+            and all("test_component_family_module_step_contracts" in item["exports"] for item in family_tests),
             "evidence": family_tests,
         },
         {
@@ -25458,6 +25589,7 @@ def component_usability_workbench() -> dict:
                 "behavior_surface_ready",
                 "generated_modules_ready",
                 "generated_tests_ready",
+                "family_replay_ready",
                 "scenario_ready",
                 "ide_release_ready",
                 "phase_order_ready",
