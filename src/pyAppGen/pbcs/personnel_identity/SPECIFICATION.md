@@ -11,14 +11,25 @@ onboarding, finance, and operations packages. The implementation is owned under
 
 - **PBC key:** `personnel_identity`
 - **Mesh:** `hcm`
-- **Owned tables:** `department`, `employee`, `role_assignment`,
-  `identity_attribute`
+- **Owned tables:** `personnel_department`, `personnel_employee`,
+  `personnel_employment_lifecycle`, `personnel_manager_relationship`,
+  `personnel_role_assignment`, `personnel_role_review`,
+  `personnel_identity_attribute`, `personnel_identity_assurance`,
+  `personnel_policy_rule`, `personnel_parameter`, `personnel_configuration`,
+  `personnel_provisioning_event`, `personnel_access_exception`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
 - **Event contract:** AppGen-X outbox/inbox event contract only
-- **Emits:** `EmployeeCreated`, `RoleChanged`, `CustomerUpdated`
-- **Consumes:** `EmployeeProvisioned`
-- **Primary APIs:** `POST /employees`, `GET /org-chart`,
-  `GET /identity-attributes`
+- **Required event topic:** `appgen.people.events`
+- **Emits:** `DepartmentRegistered`, `EmployeeCreated`,
+  `EmployeeStatusChanged`, `RoleChanged`, `IdentityAttributeChanged`
+- **Consumes:** `EmployeeProvisioned`, `AccessPolicyChanged`,
+  `OrgUnitChanged`, `RoleReviewRequested`
+- **Primary APIs:** `POST /personnel/departments`,
+  `POST /personnel/employees`, `POST /personnel/employees/{id}/status`,
+  `POST /personnel/employees/{id}/roles`,
+  `POST /personnel/employees/{id}/attributes`,
+  `POST /personnel/events/inbox`, `GET /personnel/org-chart`,
+  `GET /personnel/workbench`
 - **UI artifacts:** people directory, org chart, identity attribute console,
   role assignment workbench, access context review, lifecycle exception queue,
   policy editor
@@ -26,6 +37,11 @@ onboarding, finance, and operations packages. The implementation is owned under
 The package owns personnel identity records. Payroll, time, onboarding,
 federated identity, CRM, finance, and operations packages receive personnel
 facts through APIs, events, and projections rather than shared people tables.
+Runtime dependencies are explicitly declared as consumed AppGen-X events,
+package APIs, or package-local projections such as
+`employee_provisioning_projection`, `access_policy_projection`,
+`org_unit_projection`, and `role_review_projection`. No external PBC receives
+permission to read or mutate the owned personnel tables directly.
 
 ## Rules, Parameters, and Configuration
 
@@ -48,6 +64,61 @@ The runtime exposes operations to configure the package, set parameters,
 register rules, and apply them during department registration, employee
 creation, role assignment, identity attribute updates, org-chart generation, and
 access-risk review.
+
+Configuration is executable, not documentary. `configure_runtime` rejects any
+backend outside PostgreSQL, MySQL, or MariaDB, rejects every event topic except
+`appgen.people.events`, marks `event_contract` as `AppGen-X`, and records that
+the stream-engine picker is not visible or user selectable. Unsupported
+parameters such as stream-engine selectors are rejected by the parameter layer.
+Rules compile to stable hashes so later audit trails can prove which personnel
+policy controlled a worker, role, lifecycle transition, or identity attribute
+decision.
+
+Schema extension is restricted to owned personnel tables. Regional identity
+payloads, clearance metadata, local workforce attributes, or privacy tags may be
+registered against owned tables, but attempts to extend payroll, time, finance,
+access, or commerce tables fail. Field names must be lowercase snake case, and
+new extension fields merge with existing table-local extension definitions.
+
+## Event Handling and Resilience
+
+The runtime uses the AppGen-X event contract only. Outbound events are appended
+to the package outbox with stable idempotency keys of the form
+`personnel_identity:<event_type>:<event_id>`. Inbound events enter
+`personnel_identity_appgen_inbox_event`, are keyed by event type and event id,
+and are stored in `handled_events` so duplicate delivery is side effect free.
+`EmployeeProvisioned` updates employee provisioning projections,
+`AccessPolicyChanged` updates policy projections, `OrgUnitChanged` updates org
+unit projections, and `RoleReviewRequested` updates role review projections.
+Unsupported or failed inbound events create retry evidence until the configured
+retry limit is reached; after that they move to
+`personnel_identity_dead_letter_event` with the reason
+`unsupported_or_failed_personnel_event`.
+
+The package therefore proves the usual distributed-system requirements for a
+composable PBC: idempotent handlers, explicit retry accounting, visible
+dead-letter evidence, no user-selectable event transport, no shared tables, and
+declared dependency projections for data owned elsewhere.
+
+## API, RBAC, and UI Contract
+
+`build_api_contract` returns descriptor routes rather than opaque strings. Every
+route names its command or query and the owned table it uses. The contract also
+declares owned tables, allowed database backends, emitted and consumed events,
+the fixed AppGen-X topic, hidden stream-engine picker state, and
+`shared_table_access: false`. `permissions_contract` defines action-level RBAC
+for department creation, employee creation, lifecycle transition, role
+assignment, identity attributes, reviews, inbound event handling, configuration,
+schema extension, control testing, and workbench access.
+
+The UI contract exposes the personnel workbench, department console, employee
+master console, lifecycle board, manager hierarchy, org chart, role console,
+role review queue, identity attribute console, segregation-of-duties panel,
+assurance panel, provisioning monitor, employee event timeline, privacy panel,
+directory search, approval queue, rule studio, parameter console, and
+configuration panel. UI binding evidence includes the owned tables, outbox,
+inbox, dead-letter tables, RBAC mapping, required event topic, allowed database
+backends, AppGen-X event contract, and hidden stream-engine picker.
 
 ## Standard Table-Stakes Capabilities
 

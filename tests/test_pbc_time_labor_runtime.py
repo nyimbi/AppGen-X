@@ -1,24 +1,34 @@
 import pytest
 
-from pyAppGen.pbc import TIME_LABOR_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
-from pyAppGen.pbc import time_labor_approve_labor_summary
-from pyAppGen.pbc import time_labor_build_workbench_view
-from pyAppGen.pbc import time_labor_calculate_time_entry
-from pyAppGen.pbc import time_labor_configure_runtime
-from pyAppGen.pbc import time_labor_create_shift
-from pyAppGen.pbc import time_labor_empty_state
-from pyAppGen.pbc import time_labor_record_absence
-from pyAppGen.pbc import time_labor_record_clock_event
-from pyAppGen.pbc import time_labor_register_rule
-from pyAppGen.pbc import time_labor_render_workbench
-from pyAppGen.pbc import time_labor_runtime_capabilities
-from pyAppGen.pbc import time_labor_runtime_smoke
-from pyAppGen.pbc import time_labor_set_parameter
-from pyAppGen.pbc import time_labor_ui_contract
-from pyAppGen.pbc import time_labor_upsert_employee_projection
+from pyAppGen.pbcs.time_labor import TIME_LABOR_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.time_labor import TIME_LABOR_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.time_labor import TIME_LABOR_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.time_labor import TIME_LABOR_OWNED_TABLES
+from pyAppGen.pbcs.time_labor import TIME_LABOR_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.time_labor import TIME_LABOR_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.time_labor import time_labor_approve_labor_summary
+from pyAppGen.pbcs.time_labor import time_labor_build_api_contract
+from pyAppGen.pbcs.time_labor import time_labor_build_workbench_view
+from pyAppGen.pbcs.time_labor import time_labor_calculate_time_entry
+from pyAppGen.pbcs.time_labor import time_labor_configure_runtime
+from pyAppGen.pbcs.time_labor import time_labor_create_shift
+from pyAppGen.pbcs.time_labor import time_labor_empty_state
+from pyAppGen.pbcs.time_labor import time_labor_permissions_contract
+from pyAppGen.pbcs.time_labor import time_labor_receive_event
+from pyAppGen.pbcs.time_labor import time_labor_record_absence
+from pyAppGen.pbcs.time_labor import time_labor_record_clock_event
+from pyAppGen.pbcs.time_labor import time_labor_register_rule
+from pyAppGen.pbcs.time_labor import time_labor_register_schema_extension
+from pyAppGen.pbcs.time_labor import time_labor_render_workbench
+from pyAppGen.pbcs.time_labor import time_labor_runtime_capabilities
+from pyAppGen.pbcs.time_labor import time_labor_runtime_smoke
+from pyAppGen.pbcs.time_labor import time_labor_set_parameter
+from pyAppGen.pbcs.time_labor import time_labor_ui_contract
+from pyAppGen.pbcs.time_labor import time_labor_upsert_employee_projection
+from pyAppGen.pbcs.time_labor import time_labor_verify_owned_table_boundary
 
 
 def test_time_labor_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -33,7 +43,8 @@ def test_time_labor_runtime_executes_standard_and_advanced_capabilities() -> Non
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
     assert smoke["ok"] is True
-    assert set(TIME_LABOR_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
+    assert runtime["owned_tables"] == TIME_LABOR_OWNED_TABLES
+    assert set(TIME_LABOR_RUNTIME_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
     assert not smoke["blocking_gaps"]
 
     contract = pbc_implementation_contract("time_labor")
@@ -41,7 +52,11 @@ def test_time_labor_runtime_executes_standard_and_advanced_capabilities() -> Non
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "TimeConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
-    assert set(contract["advanced_runtime"]["capabilities"]) == set(TIME_LABOR_ADVANCED_CAPABILITY_KEYS)
+    assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["permissions_contract"]["ok"] is True
+    assert contract["source_package"]["owned_tables"] == TIME_LABOR_OWNED_TABLES
+    assert contract["source_package"]["allowed_database_backends"] == TIME_LABOR_ALLOWED_DATABASE_BACKENDS
+    assert set(contract["advanced_runtime"]["capabilities"]) == set(TIME_LABOR_RUNTIME_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("time_labor",))["ok"] is True
     assert pbc_implemented_capability_audit(("time_labor",))["ok"] is True
 
@@ -52,7 +67,7 @@ def test_time_labor_runtime_applies_rules_parameters_and_configuration() -> None
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.time.events",
+            "event_topic": TIME_LABOR_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_timezone": "UTC",
             "allowed_clock_sources": ("mobile", "kiosk"),
@@ -79,6 +94,8 @@ def test_time_labor_runtime_applies_rules_parameters_and_configuration() -> None
             "status": "active",
         },
     )["state"]
+    state = time_labor_register_schema_extension(state, "time_entry", {"device_payload": "jsonb"})["state"]
+    assert state["schema_extensions"]["time_entry"]["device_payload"] == "jsonb"
     state = time_labor_upsert_employee_projection(
         state,
         {"employee_id": "emp_ops", "tenant": "tenant_ops", "role": "warehouse_operator", "status": "active", "site": "wh_ops", "identity": {"did": "did:appgen:emp-ops", "issuer": "trusted_registry", "status": "active"}},
@@ -127,29 +144,128 @@ def test_time_labor_runtime_applies_rules_parameters_and_configuration() -> None
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 4
+    assert workbench["binding_evidence"]["owned_tables"] == TIME_LABOR_OWNED_TABLES
+    assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
+    assert workbench["binding_evidence"]["configuration"]["stream_engine_picker_visible"] is False
 
     ui_contract = time_labor_ui_contract()
     assert ui_contract["ok"] is True
-    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == TIME_LABOR_ALLOWED_DATABASE_BACKENDS
+    assert ui_contract["configuration_editor"]["required_event_topic"] == TIME_LABOR_REQUIRED_EVENT_TOPIC
+    assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert "standard_daily_hours" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    assert ui_contract["event_surfaces"]["emits"] == TIME_LABOR_EMITTED_EVENT_TYPES
+    assert ui_contract["event_surfaces"]["consumes"] == TIME_LABOR_CONSUMED_EVENT_TYPES
     rendered = time_labor_render_workbench(
         state,
         tenant="tenant_ops",
         principal_permissions=(
-            "time_labor.create",
+            "time_labor.schedule",
             "time_labor.clock",
+            "time_labor.summarize",
             "time_labor.absence",
             "time_labor.approve",
-            "time_labor.admin",
+            "time_labor.event",
+            "time_labor.configure",
             "time_labor.audit",
         ),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert rendered["event_outbox_count"] == 6
+    assert rendered["binding_evidence"]["inbox_table"] == "time_labor_appgen_inbox_event"
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+    api = time_labor_build_api_contract()
+    assert api["ok"] is True
+    assert api["shared_table_access"] is False
+    assert api["event_contract"] == "AppGen-X"
+    assert api["stream_engine_picker_visible"] is False
+    assert api["database_backends"] == TIME_LABOR_ALLOWED_DATABASE_BACKENDS
+    assert api["owned_tables"] == TIME_LABOR_OWNED_TABLES
+    assert "LaborHoursApproved" in api["emits"]
+    assert "EmployeeCreated" in api["consumes"]
+
+    permissions = time_labor_permissions_contract()
+    assert permissions["action_permissions"]["receive_event"] == "time_labor.event"
+    assert permissions["action_permissions"]["register_schema_extension"] == "time_labor.configure"
+
+    boundary = time_labor_verify_owned_table_boundary(
+        ("shift", "time_labor_appgen_inbox_event", "EmployeeCreated", "personnel_identity_projection", "GET /employees")
+    )
+    assert boundary["ok"] is True
+    assert boundary["declared_dependencies"]["shared_tables"] == ()
+
+    violation = time_labor_verify_owned_table_boundary(("payroll_run",))
+    assert violation["ok"] is False
+    assert violation["violations"] == ("payroll_run",)
+
+
+def test_time_labor_receives_events_idempotently_and_records_dead_letters() -> None:
+    state = time_labor_configure_runtime(
+        time_labor_empty_state(),
+        {
+            "database_backend": "postgresql",
+            "event_topic": TIME_LABOR_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "default_timezone": "UTC",
+        },
+    )["state"]
+    event = {
+        "event_id": "people_evt_ops",
+        "event_type": "EmployeeCreated",
+        "payload": {
+            "employee_id": "emp_ops",
+            "tenant": "tenant_ops",
+            "role": "associate",
+            "status": "active",
+            "site": "wh_ops",
+            "identity": {"did": "did:appgen:emp-ops", "issuer": "trusted_registry", "status": "active"},
+        },
+    }
+    handled = time_labor_receive_event(state, event)
+    state = handled["state"]
+    assert handled["ok"] is True
+    assert handled["duplicate"] is False
+    assert state["employees"]["emp_ops"]["role"] == "associate"
+    assert len(state["inbox"]) == 1
+
+    duplicate = time_labor_receive_event(state, event)
+    assert duplicate["ok"] is True
+    assert duplicate["duplicate"] is True
+    assert duplicate["state"] is state
+
+    role_change = time_labor_receive_event(
+        state,
+        {
+            "event_id": "role_evt_ops",
+            "event_type": "RoleChanged",
+            "payload": {"employee_id": "emp_ops", "tenant": "tenant_ops", "role": "lead"},
+        },
+    )
+    state = role_change["state"]
+    assert state["employees"]["emp_ops"]["role"] == "lead"
+    assert state["roles"]["emp_ops"]["role"] == "lead"
+
+    failed_once = time_labor_receive_event(
+        state,
+        {"event_id": "bad_evt", "event_type": "UnsupportedEvent", "payload": {"tenant": "tenant_ops"}},
+        simulate_failure=True,
+    )
+    state = failed_once["state"]
+    assert failed_once["handler"]["status"] == "retrying"
+
+    failed_twice = time_labor_receive_event(
+        state,
+        {"event_id": "bad_evt", "event_type": "UnsupportedEvent", "payload": {"tenant": "tenant_ops"}},
+        simulate_failure=True,
+    )
+    state = failed_twice["state"]
+    assert failed_twice["handler"]["status"] == "dead_letter"
+    assert state["dead_letter"][-1]["reason"] == "unsupported_or_failed_time_labor_event"
+    assert state["retry_evidence"][-1]["attempts"] == 2
 
 
 def test_time_labor_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
@@ -160,11 +276,37 @@ def test_time_labor_rejects_unsupported_database_backends_and_unknown_parameters
             state,
             {
                 "database_backend": "stream_store",
-                "event_topic": "appgen.time.events",
+                "event_topic": TIME_LABOR_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "default_timezone": "UTC",
             },
         )
 
+    with pytest.raises(ValueError, match=TIME_LABOR_REQUIRED_EVENT_TOPIC):
+        time_labor_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": "custom.time.events",
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="unsupported eventing fields"):
+        time_labor_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": TIME_LABOR_REQUIRED_EVENT_TOPIC,
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+                "stream_engine_picker": "user_choice",
+            },
+        )
+
     with pytest.raises(ValueError, match="Unsupported Time and Labor parameter"):
         time_labor_set_parameter(state, "stream_engine", "hidden_picker")
+
+    with pytest.raises(ValueError, match="owned tables"):
+        time_labor_register_schema_extension(state, "employee_master", {"regional_payload": "jsonb"})

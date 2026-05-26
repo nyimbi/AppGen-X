@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS
+from .runtime import PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES
+from .runtime import PERSONNEL_IDENTITY_EMITTED_EVENT_TYPES
+from .runtime import PERSONNEL_IDENTITY_OWNED_TABLES
+from .runtime import PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC
+from .runtime import personnel_identity_permissions_contract
+
 
 PERSONNEL_IDENTITY_UI_FRAGMENT_KEYS = (
     "PersonnelIdentityWorkbench",
@@ -86,29 +93,14 @@ def personnel_identity_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": {
-            "register_department": "personnel_identity.create",
-            "create_employee": "personnel_identity.create",
-            "transition_employee_status": "personnel_identity.update",
-            "build_org_chart": "personnel_identity.review",
-            "assign_role": "personnel_identity.role",
-            "score_access_risk": "personnel_identity.review",
-            "simulate_access_policy": "personnel_identity.review",
-            "screen_policy": "personnel_identity.audit",
-            "upsert_identity_attribute": "personnel_identity.attribute",
-            "generate_eligibility_proof": "personnel_identity.audit",
-            "run_control_tests": "personnel_identity.audit",
-            "route_provisioning": "personnel_identity.update",
-            "run_resilience_drill": "personnel_identity.audit",
-            "federate_people_view": "personnel_identity.review",
-            "register_rule": "personnel_identity.configure",
-            "set_parameter": "personnel_identity.configure",
-            "configure_runtime": "personnel_identity.configure",
-        },
+        "action_permissions": personnel_identity_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_country", "allowed_worker_types", "allowed_statuses", "privacy_region"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -129,11 +121,13 @@ def personnel_identity_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": ("DepartmentRegistered", "EmployeeCreated", "EmployeeStatusChanged", "RoleChanged", "IdentityAttributeChanged"),
-            "consumes": ("EmployeeProvisioned", "AccessPolicyChanged", "OrgUnitChanged", "RoleReviewRequested"),
+            "emits": PERSONNEL_IDENTITY_EMITTED_EVENT_TYPES,
+            "consumes": PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": PERSONNEL_IDENTITY_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -172,4 +166,13 @@ def personnel_identity_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": PERSONNEL_IDENTITY_OWNED_TABLES,
+            "outbox_table": "personnel_identity_appgen_outbox_event",
+            "inbox_table": "personnel_identity_appgen_inbox_event",
+            "dead_letter_table": "personnel_identity_dead_letter_event",
+            "permissions": contract["action_permissions"],
+        },
     }

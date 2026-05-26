@@ -8,6 +8,48 @@ import math
 import re
 
 
+TIME_LABOR_REQUIRED_EVENT_TOPIC = "appgen.time.events"
+TIME_LABOR_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+TIME_LABOR_OWNED_TABLES = (
+    "shift",
+    "clock_event",
+    "time_entry",
+    "absence",
+    "labor_summary",
+    "time_rule",
+    "time_parameter",
+    "time_configuration",
+)
+TIME_LABOR_CONSUMED_EVENT_TYPES = ("EmployeeCreated", "RoleChanged")
+TIME_LABOR_EMITTED_EVENT_TYPES = ("LaborHoursApproved", "AbsenceRecorded")
+_TIME_LABOR_RUNTIME_TABLES = (
+    "time_labor_appgen_outbox_event",
+    "time_labor_appgen_inbox_event",
+    "time_labor_dead_letter_event",
+)
+_TIME_LABOR_ALLOWED_DEPENDENCIES = (
+    "personnel_identity_projection",
+    "payroll_labor_projection",
+    "warehouse_site_projection",
+    "manufacturing_shift_projection",
+    "project_cost_projection",
+    "audit_ledger_projection",
+    "GET /employees",
+    "GET /roles",
+    "POST /payroll-labor-hours",
+    "POST /labor-cost-projections",
+)
+_TIME_LABOR_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 TIME_LABOR_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_labor_lifecycle",
     "graph_relational_labor_topology",
@@ -76,19 +118,25 @@ def time_labor_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "time_labor",
         "implementation_directory": "src/pyAppGen/pbcs/time_labor",
+        "owned_tables": TIME_LABOR_OWNED_TABLES,
         "capabilities": TIME_LABOR_RUNTIME_CAPABILITY_KEYS,
         "standard_features": TIME_LABOR_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "upsert_employee_projection",
             "create_shift",
             "record_clock_event",
             "calculate_time_entry",
             "record_absence",
             "approve_labor_summary",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -100,7 +148,7 @@ def time_labor_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.time.events",
+            "event_topic": TIME_LABOR_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_timezone": "UTC",
             "allowed_clock_sources": ("mobile", "kiosk", "web"),
@@ -129,6 +177,22 @@ def time_labor_runtime_smoke() -> dict:
         },
     )["state"]
     state = time_labor_register_schema_extension(state, "time_entry", {"device_payload": "jsonb"})["state"]
+    employee_event = time_labor_receive_event(
+        state,
+        {
+            "event_id": "people_evt_100",
+            "event_type": "EmployeeCreated",
+            "payload": {
+                "employee_id": "emp_100",
+                "tenant": "tenant_alpha",
+                "role": "warehouse_operator",
+                "status": "active",
+                "site": "wh_east",
+                "identity": {"did": "did:appgen:emp-100", "issuer": "trusted_registry", "status": "active"},
+            },
+        },
+    )
+    state = employee_event["state"]
     state = time_labor_upsert_employee_projection(
         state,
         {"employee_id": "emp_100", "tenant": "tenant_alpha", "role": "warehouse_operator", "status": "active", "site": "wh_east", "identity": {"did": "did:appgen:emp-100", "issuer": "trusted_registry", "status": "active"}},
@@ -216,20 +280,45 @@ def time_labor_runtime_smoke() -> dict:
 
 
 def time_labor_empty_state() -> dict:
-    return {"events": (), "outbox": (), "employees": {}, "shifts": {}, "clock_events": {}, "time_entries": {}, "absences": {}, "summaries": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "employees": {},
+        "roles": {},
+        "shifts": {},
+        "clock_events": {},
+        "time_entries": {},
+        "absences": {},
+        "summaries": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def time_labor_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    forbidden = tuple(sorted(field for field in _TIME_LABOR_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Time and Labor uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    allowed_databases = set(TIME_LABOR_ALLOWED_DATABASE_BACKENDS)
     if configuration.get("database_backend") not in allowed_databases:
         raise ValueError("Time and Labor supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Time and Labor requires an AppGen-X event topic")
+    if configuration.get("event_topic") != TIME_LABOR_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Time and Labor requires AppGen-X event topic {TIME_LABOR_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": TIME_LABOR_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": TIME_LABOR_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -265,10 +354,57 @@ def time_labor_register_rule(state: dict, rule: dict) -> dict:
 
 
 def time_labor_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in TIME_LABOR_OWNED_TABLES:
+        raise ValueError(f"Time and Labor schema extensions must target owned tables: {TIME_LABOR_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    extensions = {**state["schema_extensions"], table: {**state["schema_extensions"].get(table, {}), **dict(fields)}}
+    return {"ok": True, "state": {**state, "schema_extensions": extensions}, "schema_extension": {"table": table, "fields": dict(fields)}}
+
+
+def time_labor_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    if key in state["handled_events"] and state["handled_events"][key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
+    attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {"event_id": event_id, "event_type": event_type, "tenant": payload.get("tenant"), "attempts": attempts, "idempotency_key": key}
+    next_state = {**state, "inbox": (*state["inbox"], inbox_entry)}
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in TIME_LABOR_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}, "retry_evidence": (*next_state["retry_evidence"], evidence)}
+        if status == "dead_letter":
+            dead_letter = {**inbox_entry, "reason": "unsupported_or_failed_time_labor_event"}
+            next_state = {**next_state, "dead_letter": (*next_state["dead_letter"], dead_letter)}
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "EmployeeCreated":
+        employee = {
+            "employee_id": payload["employee_id"],
+            "tenant": payload["tenant"],
+            "role": payload.get("role", "unassigned"),
+            "status": payload.get("status", "active"),
+            "site": payload.get("site"),
+            "identity": payload.get("identity", {}),
+        }
+        next_state = {**next_state, "employees": {**next_state["employees"], employee["employee_id"]: employee}}
+    elif event_type == "RoleChanged":
+        employee_id = payload["employee_id"]
+        employee = dict(next_state["employees"].get(employee_id, {"employee_id": employee_id, "tenant": payload.get("tenant"), "status": "active"}))
+        employee["role"] = payload["role"]
+        next_state = {
+            **next_state,
+            "employees": {**next_state["employees"], employee_id: employee},
+            "roles": {**next_state["roles"], employee_id: {"employee_id": employee_id, "tenant": payload.get("tenant"), "role": payload["role"]}},
+        }
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}}
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def time_labor_upsert_employee_projection(state: dict, employee: dict) -> dict:
@@ -392,7 +528,92 @@ def time_labor_run_control_tests(state: dict) -> dict:
 
 
 def time_labor_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /clock-events", "POST /absences", "GET /labor-summaries", "POST /time-rules", "POST /time-parameters", "POST /time-configuration"), "events": {"emits": ("LaborHoursApproved", "AbsenceRecorded"), "consumes": ("EmployeeCreated", "RoleChanged")}, "permissions": ("time_labor.schedule", "time_labor.clock", "time_labor.approve", "time_labor.absence", "time_labor.summarize", "time_labor.configure", "time_labor.audit"), "configuration": ("TIME_LABOR_DATABASE_URL", "TIME_LABOR_EVENT_TOPIC", "TIME_LABOR_RETRY_LIMIT", "TIME_LABOR_DEFAULT_TIMEZONE")}
+    return {
+        "format": "appgen.time-labor-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {"route": "POST /shifts", "command": "create_shift", "owned_tables": ("shift",), "emits": (), "requires_permission": "time_labor.schedule", "idempotency_key": "shift_id"},
+            {"route": "POST /clock-events", "command": "record_clock_event", "owned_tables": ("clock_event",), "emits": (), "requires_permission": "time_labor.clock", "idempotency_key": "event_id"},
+            {"route": "POST /time-entries/calculate", "command": "calculate_time_entry", "owned_tables": ("time_entry",), "emits": (), "requires_permission": "time_labor.summarize", "idempotency_key": "shift_id"},
+            {"route": "POST /absences", "command": "record_absence", "owned_tables": ("absence",), "emits": ("AbsenceRecorded",), "requires_permission": "time_labor.absence", "idempotency_key": "absence_id"},
+            {"route": "POST /labor-summaries/{id}/approve", "command": "approve_labor_summary", "owned_tables": ("labor_summary",), "emits": ("LaborHoursApproved",), "requires_permission": "time_labor.approve", "idempotency_key": "summary_id:approved_by"},
+            {"route": "POST /time/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": TIME_LABOR_CONSUMED_EVENT_TYPES, "requires_permission": "time_labor.event", "idempotency_key": "event_id"},
+            {"route": "GET /labor-summaries", "query": "build_workbench_view", "owned_tables": ("labor_summary", "time_entry"), "requires_permission": "time_labor.read"},
+            {"route": "GET /time-workbench", "query": "build_workbench_view", "owned_tables": TIME_LABOR_OWNED_TABLES, "requires_permission": "time_labor.audit"},
+        ),
+        "declared_catalog_routes": ("POST /clock-events", "POST /absences", "GET /labor-summaries", "POST /time-rules", "POST /time-parameters", "POST /time-configuration"),
+        "events": {"emits": TIME_LABOR_EMITTED_EVENT_TYPES, "consumes": TIME_LABOR_CONSUMED_EVENT_TYPES},
+        "emits": TIME_LABOR_EMITTED_EVENT_TYPES,
+        "consumes": TIME_LABOR_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(time_labor_permissions_contract()["permissions"])),
+        "database_backends": TIME_LABOR_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": TIME_LABOR_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("TIME_LABOR_DATABASE_URL", "TIME_LABOR_EVENT_TOPIC", "TIME_LABOR_RETRY_LIMIT", "TIME_LABOR_DEFAULT_TIMEZONE"),
+    }
+
+
+def time_labor_permissions_contract() -> dict:
+    return {
+        "format": "appgen.time-labor-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "time_labor.read",
+            "time_labor.schedule",
+            "time_labor.clock",
+            "time_labor.approve",
+            "time_labor.absence",
+            "time_labor.summarize",
+            "time_labor.event",
+            "time_labor.configure",
+            "time_labor.audit",
+        ),
+        "action_permissions": {
+            "create_shift": "time_labor.schedule",
+            "record_clock_event": "time_labor.clock",
+            "calculate_time_entry": "time_labor.summarize",
+            "record_absence": "time_labor.absence",
+            "approve_labor_summary": "time_labor.approve",
+            "receive_event": "time_labor.event",
+            "register_rule": "time_labor.configure",
+            "register_schema_extension": "time_labor.configure",
+            "set_parameter": "time_labor.configure",
+            "configure_runtime": "time_labor.configure",
+            "build_workbench_view": "time_labor.audit",
+        },
+    }
+
+
+def time_labor_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*TIME_LABOR_OWNED_TABLES, *TIME_LABOR_CONSUMED_EVENT_TYPES, *_TIME_LABOR_RUNTIME_TABLES, *_TIME_LABOR_ALLOWED_DEPENDENCIES)
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(allowed)
+        and not str(reference).startswith("time_labor_")
+    )
+    return {
+        "format": "appgen.time-labor-boundary.v1",
+        "ok": not violations,
+        "owned_tables": TIME_LABOR_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /employees", "GET /roles", "POST /payroll-labor-hours", "POST /labor-cost-projections"),
+            "events": TIME_LABOR_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "personnel_identity_projection",
+                "payroll_labor_projection",
+                "warehouse_site_projection",
+                "manufacturing_shift_projection",
+                "project_cost_projection",
+                "audit_ledger_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def time_labor_federate_labor_view(state: dict, summary_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -461,6 +682,20 @@ def time_labor_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": TIME_LABOR_OWNED_TABLES,
+            "outbox_table": "time_labor_appgen_outbox_event",
+            "inbox_table": "time_labor_appgen_inbox_event",
+            "dead_letter_table": "time_labor_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+        },
     }
 
 

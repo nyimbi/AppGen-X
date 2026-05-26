@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import TIME_LABOR_ALLOWED_DATABASE_BACKENDS
+from .runtime import TIME_LABOR_CONSUMED_EVENT_TYPES
+from .runtime import TIME_LABOR_EMITTED_EVENT_TYPES
+from .runtime import TIME_LABOR_OWNED_TABLES
+from .runtime import TIME_LABOR_REQUIRED_EVENT_TOPIC
+from .runtime import time_labor_permissions_contract
+
 
 TIME_LABOR_UI_FRAGMENT_KEYS = (
     "TimeLaborWorkbench",
@@ -64,20 +71,14 @@ def time_labor_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "create_shift": "time_labor.create",
-            "record_clock_event": "time_labor.clock",
-            "record_absence": "time_labor.absence",
-            "approve_labor_summary": "time_labor.approve",
-            "register_rule": "time_labor.admin",
-            "set_parameter": "time_labor.admin",
-            "configure_runtime": "time_labor.admin",
-            "run_control_tests": "time_labor.audit",
-        },
+        "action_permissions": time_labor_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": TIME_LABOR_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": TIME_LABOR_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -93,11 +94,13 @@ def time_labor_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "rule_type", "eligible_roles", "status"),
         },
         "event_surfaces": {
-            "emits": ("LaborHoursApproved", "AbsenceRecorded"),
-            "consumes": ("EmployeeCreated", "RoleChanged"),
+            "emits": TIME_LABOR_EMITTED_EVENT_TYPES,
+            "consumes": TIME_LABOR_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": TIME_LABOR_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -144,4 +147,12 @@ def time_labor_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": TIME_LABOR_OWNED_TABLES,
+            "outbox_table": "time_labor_appgen_outbox_event",
+            "inbox_table": "time_labor_appgen_inbox_event",
+            "dead_letter_table": "time_labor_dead_letter_event",
+        },
     }

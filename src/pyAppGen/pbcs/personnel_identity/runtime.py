@@ -8,6 +8,61 @@ import math
 import re
 
 
+PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC = "appgen.people.events"
+PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+PERSONNEL_IDENTITY_OWNED_TABLES = (
+    "personnel_department",
+    "personnel_employee",
+    "personnel_employment_lifecycle",
+    "personnel_manager_relationship",
+    "personnel_role_assignment",
+    "personnel_role_review",
+    "personnel_identity_attribute",
+    "personnel_identity_assurance",
+    "personnel_policy_rule",
+    "personnel_parameter",
+    "personnel_configuration",
+    "personnel_provisioning_event",
+    "personnel_access_exception",
+)
+PERSONNEL_IDENTITY_EMITTED_EVENT_TYPES = (
+    "DepartmentRegistered",
+    "EmployeeCreated",
+    "EmployeeStatusChanged",
+    "RoleChanged",
+    "IdentityAttributeChanged",
+)
+PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES = (
+    "EmployeeProvisioned",
+    "AccessPolicyChanged",
+    "OrgUnitChanged",
+    "RoleReviewRequested",
+)
+_PERSONNEL_IDENTITY_RUNTIME_TABLES = (
+    "personnel_identity_appgen_outbox_event",
+    "personnel_identity_appgen_inbox_event",
+    "personnel_identity_dead_letter_event",
+)
+_PERSONNEL_IDENTITY_ALLOWED_DEPENDENCIES = (
+    "employee_provisioning_projection",
+    "access_policy_projection",
+    "org_unit_projection",
+    "role_review_projection",
+    "GET /identity/policies",
+    "GET /org-units/{id}",
+    "POST /audit/personnel-events",
+)
+_PERSONNEL_IDENTITY_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 PERSONNEL_IDENTITY_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_workforce_identity_lifecycle",
     "graph_relational_org_identity_topology",
@@ -76,19 +131,25 @@ def personnel_identity_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "personnel_identity",
         "implementation_directory": "src/pyAppGen/pbcs/personnel_identity",
+        "owned_tables": PERSONNEL_IDENTITY_OWNED_TABLES,
         "capabilities": PERSONNEL_IDENTITY_RUNTIME_CAPABILITY_KEYS,
         "standard_features": PERSONNEL_IDENTITY_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_department",
             "create_employee",
             "transition_employee_status",
             "assign_role",
             "upsert_identity_attribute",
             "build_org_chart",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -100,7 +161,7 @@ def personnel_identity_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.people.events",
+            "event_topic": PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_country": "US",
             "allowed_worker_types": ("employee", "contractor"),
@@ -128,6 +189,14 @@ def personnel_identity_runtime_smoke() -> dict:
         },
     )["state"]
     state = personnel_identity_register_schema_extension(state, "identity_attribute", {"regional_payload": "jsonb"})["state"]
+    state = personnel_identity_receive_event(
+        state,
+        {
+            "event_id": "evt_provisioned_1",
+            "event_type": "EmployeeProvisioned",
+            "payload": {"tenant": "tenant_alpha", "employee_id": "emp_100", "provisioning_status": "ready"},
+        },
+    )["state"]
     dept = personnel_identity_register_department(
         state,
         {
@@ -231,7 +300,7 @@ def personnel_identity_runtime_smoke() -> dict:
         {"id": "mechanism_design_manager_role_allocation", "ok": allocation["ok"] and allocation["allocations"][0]["reports"] > allocation["allocations"][1]["reports"]},
         {"id": "information_theoretic_identity_anomaly_detection", "ok": anomaly["ok"] and anomaly["entropy"] >= 0},
         {"id": "temporal_workforce_risk_stochastic_modeling", "ok": stochastic["ok"] and stochastic["tail_risk"] > 0},
-        {"id": "distributed_systems_engineering", "ok": state["outbox"][-1]["idempotency_key"].startswith("personnel_identity:IdentityAttributeChanged")},
+        {"id": "distributed_systems_engineering", "ok": state["outbox"][-1]["idempotency_key"].startswith("personnel_identity:IdentityAttributeChanged") and state["handled_events"]["EmployeeProvisioned:evt_provisioned_1"]["status"] == "processed"},
         {"id": "probabilistic_ml_workforce_risk", "ok": model["ok"] and model["metadata"]["auc"] >= 0.9},
         {"id": "cryptographic_engineering", "ok": proof["hash"] and crypto["epoch"] == 2},
         {"id": "mathematical_optimization", "ok": optimization["objective_score"] > 0 and allocation["clearing_bid"] > 0},
@@ -242,20 +311,46 @@ def personnel_identity_runtime_smoke() -> dict:
 
 
 def personnel_identity_empty_state() -> dict:
-    return {"events": (), "outbox": (), "departments": {}, "employees": {}, "roles": {}, "attributes": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "employee_provisioning_projections": {},
+        "access_policy_projections": {},
+        "org_unit_projections": {},
+        "role_review_projections": {},
+        "departments": {},
+        "employees": {},
+        "roles": {},
+        "attributes": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def personnel_identity_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _PERSONNEL_IDENTITY_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Personnel Identity uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS):
         raise ValueError("Personnel Identity supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Personnel Identity requires an AppGen-X event topic")
+    if configuration.get("event_topic") != PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Personnel Identity requires AppGen-X event topic {PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": PERSONNEL_IDENTITY_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -291,10 +386,80 @@ def personnel_identity_register_rule(state: dict, rule: dict) -> dict:
 
 
 def personnel_identity_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    aliases = {
+        "department": "personnel_department",
+        "employee": "personnel_employee",
+        "role_assignment": "personnel_role_assignment",
+        "identity_attribute": "personnel_identity_attribute",
+    }
+    target = aliases.get(table, table)
+    if target not in PERSONNEL_IDENTITY_OWNED_TABLES:
+        raise ValueError(f"Personnel Identity schema extensions must target owned tables: {PERSONNEL_IDENTITY_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    existing = dict(state.get("schema_extensions", {}).get(table, {}))
+    merged = {**existing, **fields}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged, target: merged}},
+        "schema_extension": {"table": target, "fields": dict(fields)},
+        "target": target,
+        "fields": merged,
+    }
+
+
+def personnel_identity_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {
+        **state,
+        "inbox": (*state.get("inbox", ()), inbox_entry),
+        "handled_events": dict(handled),
+        "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "dead_letters": tuple(state.get("dead_letters", ())),
+        "dead_letter": tuple(state.get("dead_letter", ())),
+        "employee_provisioning_projections": dict(state.get("employee_provisioning_projections", {})),
+        "access_policy_projections": dict(state.get("access_policy_projections", {})),
+        "org_unit_projections": dict(state.get("org_unit_projections", {})),
+        "role_review_projections": dict(state.get("role_review_projections", {})),
+    }
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state["retry_evidence"], evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_personnel_event"}
+            next_state["dead_letters"] = (*next_state["dead_letters"], dead)
+            next_state["dead_letter"] = (*next_state["dead_letter"], dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "EmployeeProvisioned":
+        next_state["employee_provisioning_projections"][payload.get("employee_id", event_id)] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload.get("policy_id", event_id)] = payload
+    elif event_type == "OrgUnitChanged":
+        next_state["org_unit_projections"][payload.get("department_id", payload.get("org_unit_id", event_id))] = payload
+    elif event_type == "RoleReviewRequested":
+        next_state["role_review_projections"][payload.get("review_id", event_id)] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def personnel_identity_register_department(state: dict, department: dict) -> dict:
@@ -420,7 +585,131 @@ def personnel_identity_run_control_tests(state: dict) -> dict:
 
 
 def personnel_identity_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /employees", "GET /org-chart", "GET /identity-attributes", "POST /personnel-rules", "POST /personnel-parameters", "POST /personnel-configuration"), "events": {"emits": ("EmployeeCreated", "RoleChanged", "CustomerUpdated"), "consumes": ("EmployeeProvisioned",)}, "permissions": ("personnel_identity.create", "personnel_identity.update", "personnel_identity.role", "personnel_identity.attribute", "personnel_identity.review", "personnel_identity.configure", "personnel_identity.audit"), "configuration": ("PERSONNEL_IDENTITY_DATABASE_URL", "PERSONNEL_IDENTITY_EVENT_TOPIC", "PERSONNEL_IDENTITY_RETRY_LIMIT", "PERSONNEL_IDENTITY_DEFAULT_COUNTRY")}
+    permissions = personnel_identity_permissions_contract()
+    routes = (
+        {"route": "POST /personnel/departments", "command": "register_department", "owned_table": "personnel_department"},
+        {"route": "POST /personnel/employees", "command": "create_employee", "owned_table": "personnel_employee"},
+        {"route": "POST /personnel/employees/{id}/status", "command": "transition_employee_status", "owned_table": "personnel_employment_lifecycle"},
+        {"route": "POST /personnel/employees/{id}/roles", "command": "assign_role", "owned_table": "personnel_role_assignment"},
+        {"route": "POST /personnel/employees/{id}/attributes", "command": "upsert_identity_attribute", "owned_table": "personnel_identity_attribute"},
+        {"route": "GET /personnel/org-chart", "query": "build_org_chart", "owned_table": "personnel_manager_relationship"},
+        {"route": "GET /personnel/workbench", "query": "build_workbench_view", "owned_table": "personnel_employee"},
+        {"route": "POST /personnel/events/inbox", "command": "receive_event", "owned_table": "personnel_provisioning_event"},
+        {"route": "POST /personnel/rules", "command": "register_rule", "owned_table": "personnel_policy_rule"},
+        {"route": "POST /personnel/parameters", "command": "set_parameter", "owned_table": "personnel_parameter"},
+        {"route": "POST /personnel/configuration", "command": "configure_runtime", "owned_table": "personnel_configuration"},
+    )
+    return {
+        "format": "appgen.personnel-identity-api-contract.v1",
+        "ok": True,
+        "pbc": "personnel_identity",
+        "owned_tables": PERSONNEL_IDENTITY_OWNED_TABLES,
+        "database_backends": PERSONNEL_IDENTITY_ALLOWED_DATABASE_BACKENDS,
+        "event_contract": "AppGen-X",
+        "required_event_topic": PERSONNEL_IDENTITY_REQUIRED_EVENT_TOPIC,
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
+        "routes": routes,
+        "events": {"emits": PERSONNEL_IDENTITY_EMITTED_EVENT_TYPES, "consumes": PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES},
+        "emits": PERSONNEL_IDENTITY_EMITTED_EVENT_TYPES,
+        "consumes": PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(set(permissions["action_permissions"].values()))),
+        "action_permissions": permissions["action_permissions"],
+        "configuration": (
+            "PERSONNEL_IDENTITY_DATABASE_URL",
+            "PERSONNEL_IDENTITY_EVENT_TOPIC",
+            "PERSONNEL_IDENTITY_RETRY_LIMIT",
+            "PERSONNEL_IDENTITY_DEFAULT_COUNTRY",
+        ),
+    }
+
+
+def personnel_identity_permissions_contract() -> dict:
+    return {
+        "format": "appgen.personnel-identity-permissions.v1",
+        "ok": True,
+        "pbc": "personnel_identity",
+        "permissions": (
+            "personnel_identity.create",
+            "personnel_identity.update",
+            "personnel_identity.role",
+            "personnel_identity.attribute",
+            "personnel_identity.review",
+            "personnel_identity.event",
+            "personnel_identity.configure",
+            "personnel_identity.audit",
+        ),
+        "roles": {
+            "personnel_identity_admin": (
+                "personnel_identity.create",
+                "personnel_identity.update",
+                "personnel_identity.role",
+                "personnel_identity.attribute",
+                "personnel_identity.review",
+                "personnel_identity.event",
+                "personnel_identity.configure",
+                "personnel_identity.audit",
+            ),
+            "personnel_identity_steward": (
+                "personnel_identity.create",
+                "personnel_identity.update",
+                "personnel_identity.attribute",
+                "personnel_identity.review",
+            ),
+            "personnel_identity_auditor": ("personnel_identity.review", "personnel_identity.audit"),
+        },
+        "action_permissions": {
+            "register_department": "personnel_identity.create",
+            "create_employee": "personnel_identity.create",
+            "transition_employee_status": "personnel_identity.update",
+            "assign_role": "personnel_identity.role",
+            "upsert_identity_attribute": "personnel_identity.attribute",
+            "build_org_chart": "personnel_identity.review",
+            "score_access_risk": "personnel_identity.review",
+            "simulate_access_policy": "personnel_identity.review",
+            "screen_policy": "personnel_identity.audit",
+            "generate_eligibility_proof": "personnel_identity.audit",
+            "run_control_tests": "personnel_identity.audit",
+            "route_provisioning": "personnel_identity.update",
+            "run_resilience_drill": "personnel_identity.audit",
+            "federate_people_view": "personnel_identity.review",
+            "receive_event": "personnel_identity.event",
+            "register_rule": "personnel_identity.configure",
+            "register_schema_extension": "personnel_identity.configure",
+            "set_parameter": "personnel_identity.configure",
+            "configure_runtime": "personnel_identity.configure",
+            "build_workbench_view": "personnel_identity.audit",
+        },
+    }
+
+
+def personnel_identity_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *PERSONNEL_IDENTITY_OWNED_TABLES,
+        *PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES,
+        *_PERSONNEL_IDENTITY_RUNTIME_TABLES,
+        *_PERSONNEL_IDENTITY_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(reference for reference in references if reference not in allowed_set and not str(reference).startswith("personnel_identity_"))
+    return {
+        "format": "appgen.personnel-identity-boundary.v1",
+        "ok": not violations,
+        "owned_tables": PERSONNEL_IDENTITY_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /identity/policies", "GET /org-units/{id}", "POST /audit/personnel-events"),
+            "events": PERSONNEL_IDENTITY_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "employee_provisioning_projection",
+                "access_policy_projection",
+                "org_unit_projection",
+                "role_review_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def personnel_identity_federate_people_view(state: dict, employee_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -490,6 +779,21 @@ def personnel_identity_build_workbench_view(state: dict, *, tenant: str) -> dict
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": PERSONNEL_IDENTITY_OWNED_TABLES,
+            "outbox_table": "personnel_identity_appgen_outbox_event",
+            "inbox_table": "personnel_identity_appgen_inbox_event",
+            "dead_letter_table": "personnel_identity_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+            "permissions": personnel_identity_permissions_contract()["action_permissions"],
+        },
     }
 
 
