@@ -2487,10 +2487,29 @@ PBC_CATALOG: dict[str, dict] = {
         "label": "Procurement and Strategic Sourcing",
         "mesh": "scl",
         "description": "Requisitions, RFQs, contracts, purchase orders, and vendor performance.",
-        "tables": ("purchase_requisition", "rfq", "vendor_contract", "purchase_order"),
-        "apis": ("POST /requisitions", "POST /rfqs", "POST /purchase-orders"),
-        "emits": ("PurchaseOrderIssued", "SupplierSelected"),
-        "consumes": ("MaterialShortageDetected", "VendorPerformanceUpdated"),
+        "tables": (
+            "procurement_sourcing_purchase_requisition",
+            "procurement_sourcing_purchase_requisition_line",
+            "procurement_sourcing_requisition_approval",
+            "procurement_sourcing_category_strategy",
+            "procurement_sourcing_supplier_profile",
+            "procurement_sourcing_supplier_qualification",
+            "procurement_sourcing_rfq",
+            "procurement_sourcing_rfq_line",
+            "procurement_sourcing_supplier_invitation",
+            "procurement_sourcing_supplier_bid",
+            "procurement_sourcing_supplier_scorecard",
+            "procurement_sourcing_supplier_award",
+            "procurement_sourcing_vendor_contract",
+            "procurement_sourcing_purchase_order",
+            "procurement_sourcing_purchase_order_line",
+            "procurement_sourcing_appgen_outbox_event",
+            "procurement_sourcing_appgen_inbox_event",
+            "procurement_sourcing_dead_letter_event",
+        ),
+        "apis": ("POST /procurement/requisitions", "POST /procurement/rfqs", "POST /procurement/rfqs/{id}/bids", "POST /procurement/awards", "POST /procurement/contracts", "POST /procurement/purchase-orders", "GET /procurement/workbench"),
+        "emits": ("PurchaseRequisitionCreated", "PurchaseRequisitionApproved", "RfqCreated", "SupplierBidCaptured", "SupplierSelected", "VendorContractCreated", "PurchaseOrderIssued"),
+        "consumes": ("MaterialShortageDetected", "VendorPerformanceUpdated", "BudgetChanged", "SupplierRiskChanged", "ContractComplianceChanged", "AccessPolicyChanged"),
         "template": "purchasing",
     },
     "transportation_management": {
@@ -5839,6 +5858,9 @@ from .pbcs.procurement_sourcing import PROCUREMENT_SOURCING_STANDARD_FEATURE_KEY
 from .pbcs.procurement_sourcing import PROCUREMENT_SOURCING_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_approve_requisition  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_build_api_contract  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_build_release_evidence  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_build_schema_contract  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_build_service_contract  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_build_workbench_view  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_capture_bid  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_configure_runtime  # noqa: E402,F401

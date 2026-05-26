@@ -12,14 +12,64 @@ PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC = "appgen.procurement_sourcing.events"
 PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 PROCUREMENT_SOURCING_OWNED_TABLES = (
     "procurement_sourcing_purchase_requisition",
+    "procurement_sourcing_purchase_requisition_line",
+    "procurement_sourcing_requisition_approval",
+    "procurement_sourcing_requisition_budget_check",
+    "procurement_sourcing_category_strategy",
+    "procurement_sourcing_category_policy",
+    "procurement_sourcing_supplier_profile",
+    "procurement_sourcing_supplier_identity",
+    "procurement_sourcing_supplier_site",
+    "procurement_sourcing_supplier_qualification",
+    "procurement_sourcing_supplier_risk_signal",
+    "procurement_sourcing_preferred_supplier_policy",
     "procurement_sourcing_rfq",
+    "procurement_sourcing_rfq_line",
+    "procurement_sourcing_supplier_invitation",
     "procurement_sourcing_supplier_bid",
+    "procurement_sourcing_supplier_bid_line",
+    "procurement_sourcing_bid_normalization",
+    "procurement_sourcing_supplier_scorecard",
     "procurement_sourcing_supplier_award",
+    "procurement_sourcing_split_award",
     "procurement_sourcing_vendor_contract",
+    "procurement_sourcing_contract_clause",
+    "procurement_sourcing_contract_compliance_obligation",
+    "procurement_sourcing_contract_renewal",
     "procurement_sourcing_purchase_order",
+    "procurement_sourcing_purchase_order_line",
+    "procurement_sourcing_change_order",
+    "procurement_sourcing_po_tolerance_check",
+    "procurement_sourcing_payment_terms",
+    "procurement_sourcing_material_shortage_projection",
+    "procurement_sourcing_vendor_performance_projection",
+    "procurement_sourcing_budget_projection",
+    "procurement_sourcing_supplier_risk_projection",
+    "procurement_sourcing_contract_compliance_projection",
+    "procurement_sourcing_access_policy_projection",
+    "procurement_sourcing_policy_screening",
+    "procurement_sourcing_purchase_order_route",
+    "procurement_sourcing_supplier_compliance_proof",
+    "procurement_sourcing_audit_trace",
+    "procurement_sourcing_federation_projection",
+    "procurement_sourcing_carbon_sourcing_selection",
+    "procurement_sourcing_award_optimization",
+    "procurement_sourcing_rfq_mechanism_allocation",
+    "procurement_sourcing_bid_anomaly_signal",
+    "procurement_sourcing_supply_exposure_model",
+    "procurement_sourcing_price_lead_time_forecast",
+    "procurement_sourcing_sourcing_strategy_simulation",
+    "procurement_sourcing_parsed_document",
+    "procurement_sourcing_seed_data",
+    "procurement_sourcing_schema_extension",
+    "procurement_sourcing_control_assertion",
+    "procurement_sourcing_governed_model",
     "procurement_sourcing_rule",
     "procurement_sourcing_parameter",
     "procurement_sourcing_configuration",
+    "procurement_sourcing_appgen_outbox_event",
+    "procurement_sourcing_appgen_inbox_event",
+    "procurement_sourcing_dead_letter_event",
 )
 PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES = (
     "PurchaseRequisitionCreated",
@@ -100,27 +150,50 @@ PROCUREMENT_SOURCING_RUNTIME_CAPABILITY_KEYS = (
 )
 PROCUREMENT_SOURCING_STANDARD_FEATURE_KEYS = (
     "purchase_requisition",
+    "purchase_requisition_lines",
     "approval_routing",
     "budget_policy_check",
     "category_reference",
+    "category_strategy",
+    "category_policy",
     "supplier_reference",
+    "supplier_profiles",
+    "supplier_sites",
+    "supplier_qualification",
+    "supplier_identity",
+    "supplier_risk_signals",
     "preferred_supplier_policy",
     "rfq_creation",
+    "rfq_lines",
     "supplier_invitation",
     "bid_capture",
+    "bid_lines",
     "bid_normalization",
     "supplier_scoring",
+    "supplier_scorecards",
     "award_recommendation",
     "split_award",
     "contract_creation",
+    "contract_clauses",
+    "contract_compliance_obligations",
     "contract_renewal_monitor",
     "purchase_order_creation",
+    "purchase_order_lines",
     "po_tolerance_check",
     "change_order",
+    "payment_terms",
     "supplier_risk_screening",
     "spend_analytics",
     "consumed_event_handlers",
+    "material_shortage_projection",
+    "vendor_performance_projection",
+    "budget_projection",
+    "contract_compliance_projection",
+    "appgen_x_outbox",
+    "appgen_x_inbox",
+    "retry_dead_letter_evidence",
     "multi_entity_isolation",
+    "idempotent_handlers",
     "permissions",
     "configuration_schema",
     "rule_engine",
@@ -157,6 +230,9 @@ def procurement_sourcing_runtime_capabilities() -> dict:
             "screen_policy",
             "route_purchase_order",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -243,6 +319,9 @@ def procurement_sourcing_runtime_smoke() -> dict:
     proof = procurement_sourcing_generate_supplier_compliance_proof(state, "supplier_a", disclosure=("supplier_id", "risk"))
     controls = procurement_sourcing_run_control_tests(state)
     api = procurement_sourcing_build_api_contract()
+    schema = procurement_sourcing_build_schema_contract()
+    service = procurement_sourcing_build_service_contract()
+    release = procurement_sourcing_build_release_evidence()
     federation = procurement_sourcing_federate_procurement_view(state, "po_001", systems=("ap", "inventory", "manufacturing"))
     identity = procurement_sourcing_verify_supplier_identity(state["bids"]["rfq_001"][0]["identity"])
     resilience = procurement_sourcing_run_resilience_drill(state, "supplier_route_timeout")
@@ -275,7 +354,7 @@ def procurement_sourcing_runtime_smoke() -> dict:
         {"id": "immutable_procurement_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_procurement_policy_screening", "ok": policy["ok"] and policy["decision"] == "clear"},
         {"id": "automated_procurement_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "PurchaseOrderIssued" in api["events"]["emits"] and api["event_contract"] == "AppGen-X"},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "PurchaseOrderIssued" in api["events"]["emits"] and api["event_contract"] == "AppGen-X"},
         {"id": "cross_system_procurement_federation", "ok": federation["ok"] and "ap" in federation["systems"]},
         {"id": "supplier_network_integration", "ok": len(state["bids"]["rfq_001"]) == 2},
         {"id": "decentralized_supplier_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -618,6 +697,180 @@ def procurement_sourcing_build_api_contract() -> dict:
         "required_event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
         "configuration": ("PROCUREMENT_SOURCING_DATABASE_URL", "PROCUREMENT_SOURCING_EVENT_TOPIC", "PROCUREMENT_SOURCING_RETRY_LIMIT", "PROCUREMENT_SOURCING_DEFAULT_CURRENCY"),
+    }
+
+
+def procurement_sourcing_build_schema_contract() -> dict:
+    """Return Procurement-owned schema, migration, model, and relationship evidence."""
+    default_fields = ("tenant", "record_id", "source_id", "status", "effective_at", "audit_hash")
+    table_fields = {
+        table: default_fields for table in PROCUREMENT_SOURCING_OWNED_TABLES
+    } | {
+        "procurement_sourcing_purchase_requisition": ("tenant", "requisition_id", "legal_entity", "category", "estimated_amount", "currency", "status"),
+        "procurement_sourcing_purchase_requisition_line": ("tenant", "line_id", "requisition_id", "item_id", "quantity", "uom", "required_date"),
+        "procurement_sourcing_requisition_approval": ("tenant", "approval_id", "requisition_id", "approver", "status", "approved_at"),
+        "procurement_sourcing_requisition_budget_check": ("tenant", "budget_check_id", "requisition_id", "budget_id", "amount", "decision"),
+        "procurement_sourcing_category_strategy": ("tenant", "strategy_id", "category", "preferred_method", "risk_weight", "status"),
+        "procurement_sourcing_category_policy": ("tenant", "policy_id", "category", "approval_limit", "minimum_bid_count", "status"),
+        "procurement_sourcing_supplier_profile": ("tenant", "supplier_id", "name", "category", "risk_score", "status"),
+        "procurement_sourcing_supplier_identity": ("tenant", "identity_id", "supplier_id", "did", "issuer", "status"),
+        "procurement_sourcing_supplier_site": ("tenant", "site_id", "supplier_id", "country", "lead_time_days", "status"),
+        "procurement_sourcing_supplier_qualification": ("tenant", "qualification_id", "supplier_id", "category", "expires_at", "status"),
+        "procurement_sourcing_supplier_risk_signal": ("tenant", "risk_signal_id", "supplier_id", "signal_type", "risk_score", "observed_at"),
+        "procurement_sourcing_preferred_supplier_policy": ("tenant", "preferred_policy_id", "category", "supplier_id", "priority", "status"),
+        "procurement_sourcing_rfq": ("tenant", "rfq_id", "requisition_id", "category", "status", "released_at"),
+        "procurement_sourcing_rfq_line": ("tenant", "rfq_line_id", "rfq_id", "item_id", "quantity", "target_price"),
+        "procurement_sourcing_supplier_invitation": ("tenant", "invitation_id", "rfq_id", "supplier_id", "status", "sent_at"),
+        "procurement_sourcing_supplier_bid": ("tenant", "bid_id", "rfq_id", "supplier_id", "price", "lead_time_days", "risk"),
+        "procurement_sourcing_supplier_bid_line": ("tenant", "bid_line_id", "bid_id", "rfq_line_id", "price", "quantity"),
+        "procurement_sourcing_bid_normalization": ("tenant", "normalization_id", "bid_id", "normalized_price", "currency", "audit_hash"),
+        "procurement_sourcing_supplier_scorecard": ("tenant", "scorecard_id", "rfq_id", "supplier_id", "score", "award_confidence"),
+        "procurement_sourcing_supplier_award": ("tenant", "award_id", "rfq_id", "supplier_id", "amount", "confidence", "status"),
+        "procurement_sourcing_split_award": ("tenant", "split_award_id", "award_id", "supplier_id", "quantity", "clearing_bid"),
+        "procurement_sourcing_vendor_contract": ("tenant", "contract_id", "award_id", "supplier_id", "term_months", "status"),
+        "procurement_sourcing_contract_clause": ("tenant", "clause_id", "contract_id", "clause_type", "obligation", "status"),
+        "procurement_sourcing_contract_compliance_obligation": ("tenant", "obligation_id", "contract_id", "metric", "threshold", "status"),
+        "procurement_sourcing_contract_renewal": ("tenant", "renewal_id", "contract_id", "renewal_date", "decision", "status"),
+        "procurement_sourcing_purchase_order": ("tenant", "po_id", "contract_id", "supplier_id", "amount", "currency", "status"),
+        "procurement_sourcing_purchase_order_line": ("tenant", "po_line_id", "po_id", "item_id", "quantity", "price"),
+        "procurement_sourcing_change_order": ("tenant", "change_order_id", "po_id", "change_type", "amount_delta", "status"),
+        "procurement_sourcing_po_tolerance_check": ("tenant", "tolerance_check_id", "po_id", "contract_id", "amount", "decision"),
+        "procurement_sourcing_payment_terms": ("tenant", "payment_terms_id", "contract_id", "term_code", "discount_rate", "status"),
+        "procurement_sourcing_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        "procurement_sourcing_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "procurement_sourcing_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "procurement_sourcing_purchase_requisition_line.requisition_id", "to": "procurement_sourcing_purchase_requisition.requisition_id", "type": "owned_child"},
+        {"from": "procurement_sourcing_requisition_approval.requisition_id", "to": "procurement_sourcing_purchase_requisition.requisition_id", "type": "owned_approval"},
+        {"from": "procurement_sourcing_rfq.requisition_id", "to": "procurement_sourcing_purchase_requisition.requisition_id", "type": "owned_sourcing_flow"},
+        {"from": "procurement_sourcing_rfq_line.rfq_id", "to": "procurement_sourcing_rfq.rfq_id", "type": "owned_child"},
+        {"from": "procurement_sourcing_supplier_bid.rfq_id", "to": "procurement_sourcing_rfq.rfq_id", "type": "owned_bid"},
+        {"from": "procurement_sourcing_supplier_bid_line.bid_id", "to": "procurement_sourcing_supplier_bid.bid_id", "type": "owned_child"},
+        {"from": "procurement_sourcing_supplier_award.rfq_id", "to": "procurement_sourcing_rfq.rfq_id", "type": "owned_award"},
+        {"from": "procurement_sourcing_vendor_contract.award_id", "to": "procurement_sourcing_supplier_award.award_id", "type": "owned_contract"},
+        {"from": "procurement_sourcing_contract_clause.contract_id", "to": "procurement_sourcing_vendor_contract.contract_id", "type": "owned_clause"},
+        {"from": "procurement_sourcing_purchase_order.contract_id", "to": "procurement_sourcing_vendor_contract.contract_id", "type": "owned_order"},
+        {"from": "procurement_sourcing_purchase_order_line.po_id", "to": "procurement_sourcing_purchase_order.po_id", "type": "owned_child"},
+        {"from": "procurement_sourcing_supplier_identity.supplier_id", "to": "procurement_sourcing_supplier_profile.supplier_id", "type": "owned_identity"},
+        {"from": "procurement_sourcing_supplier_site.supplier_id", "to": "procurement_sourcing_supplier_profile.supplier_id", "type": "owned_site"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "procurement_sourcing",
+        }
+        for table in PROCUREMENT_SOURCING_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.procurement-sourcing-owned-schema-contract.v1",
+        "ok": len(tables) == len(PROCUREMENT_SOURCING_OWNED_TABLES)
+        and len(tables) >= 40
+        and all(item["table"].startswith("procurement_sourcing_") for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/procurement_sourcing/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(PROCUREMENT_SOURCING_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in PROCUREMENT_SOURCING_OWNED_TABLES
+        ),
+        "datastore_backends": PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def procurement_sourcing_build_service_contract() -> dict:
+    """Return Procurement command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "create_requisition",
+        "approve_requisition",
+        "create_rfq",
+        "capture_bid",
+        "score_suppliers",
+        "select_supplier",
+        "create_contract",
+        "issue_purchase_order",
+        "screen_policy",
+        "route_purchase_order",
+        "generate_supplier_compliance_proof",
+        "federate_procurement_view",
+        "verify_supplier_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_sourcing",
+        "optimize_award",
+        "allocate_rfq_award",
+        "run_control_tests",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.procurement-sourcing-service-contract.v1",
+        "ok": len(command_methods) >= 25,
+        "transaction_boundary": "procurement_sourcing_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "detect_bid_anomaly",
+            "model_stochastic_supply_exposure",
+            "forecast_price_lead_time",
+            "simulate_sourcing_strategy",
+            "parse_document",
+            "score_supplier_risk",
+            "verify_owned_table_boundary",
+        ),
+        "mutates_only": PROCUREMENT_SOURCING_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _PROCUREMENT_SOURCING_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _PROCUREMENT_SOURCING_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def procurement_sourcing_build_release_evidence() -> dict:
+    """Return Procurement package-local release evidence."""
+    schema = procurement_sourcing_build_schema_contract()
+    service = procurement_sourcing_build_service_contract()
+    api = procurement_sourcing_build_api_contract()
+    permissions = procurement_sourcing_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 40},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(PROCUREMENT_SOURCING_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 25},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"create_requisition", "issue_purchase_order", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.procurement-sourcing-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 

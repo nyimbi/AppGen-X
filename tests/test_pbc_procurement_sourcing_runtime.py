@@ -28,6 +28,9 @@ from pyAppGen.pbcs.procurement_sourcing import PROCUREMENT_SOURCING_OWNED_TABLES
 from pyAppGen.pbcs.procurement_sourcing import PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.procurement_sourcing import implementation_contract as procurement_sourcing_package_contract
 from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_build_api_contract
+from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_build_release_evidence
+from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_build_schema_contract
+from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_build_service_contract
 from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_permissions_contract
 from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_receive_event
 from pyAppGen.pbcs.procurement_sourcing import procurement_sourcing_register_schema_extension
@@ -42,10 +45,13 @@ def test_procurement_sourcing_runtime_executes_standard_and_advanced_capabilitie
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/procurement_sourcing"
     assert runtime["owned_tables"] == PROCUREMENT_SOURCING_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 18
+    assert len(runtime["owned_tables"]) >= 40
+    assert len(runtime["standard_features"]) >= 40
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
+    assert "appgen_x_outbox" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert set(PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
     assert not smoke["blocking_gaps"]
@@ -59,9 +65,15 @@ def test_procurement_sourcing_runtime_executes_standard_and_advanced_capabilitie
 
     package_contract = procurement_sourcing_package_contract()
     assert package_contract["api_contract"]["event_contract"] == "AppGen-X"
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
     assert package_contract["permissions_contract"]["action_permissions"]["receive_event"] == "procurement_sourcing.event"
     assert package_contract["owned_tables"] == PROCUREMENT_SOURCING_OWNED_TABLES
     assert package_contract["allowed_database_backends"] == PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS
+    assert package_contract["required_event_topic"] == PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC
+    assert package_contract["consumes"] == PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES
+    assert package_contract["emits"] == PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES
     assert pbc_implementation_release_audit(("procurement_sourcing",))["ok"] is True
     assert pbc_implemented_capability_audit(("procurement_sourcing",))["ok"] is True
 
@@ -316,6 +328,29 @@ def test_procurement_sourcing_hardened_event_api_permission_and_boundary_contrac
     assert api["stream_engine_picker_visible"] is False
     assert api["events"]["consumes"] == PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES
     assert any(route["command"] == "receive_event" for route in api["routes"])
+
+    schema = procurement_sourcing_build_schema_contract()
+    service = procurement_sourcing_build_service_contract()
+    release = procurement_sourcing_build_release_evidence()
+    assert schema["format"] == "appgen.procurement-sourcing-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(PROCUREMENT_SOURCING_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(PROCUREMENT_SOURCING_OWNED_TABLES)
+    assert {
+        "procurement_sourcing_purchase_requisition_line",
+        "procurement_sourcing_supplier_profile",
+        "procurement_sourcing_rfq_line",
+        "procurement_sourcing_purchase_order_line",
+        "procurement_sourcing_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.procurement-sourcing-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.procurement-sourcing-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
     permissions = procurement_sourcing_permissions_contract()
     assert permissions["action_permissions"]["register_schema_extension"] == "procurement_sourcing.configure"

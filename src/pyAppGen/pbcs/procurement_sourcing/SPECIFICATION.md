@@ -11,12 +11,62 @@ vendor performance, and supply-risk governance. The implementation lives under
 - **PBC key:** `procurement_sourcing`
 - **Mesh:** `scl`
 - **Owned tables:** `procurement_sourcing_purchase_requisition`,
-  `procurement_sourcing_rfq`, `procurement_sourcing_supplier_bid`,
+  `procurement_sourcing_purchase_requisition_line`,
+  `procurement_sourcing_requisition_approval`,
+  `procurement_sourcing_requisition_budget_check`,
+  `procurement_sourcing_category_strategy`,
+  `procurement_sourcing_category_policy`,
+  `procurement_sourcing_supplier_profile`,
+  `procurement_sourcing_supplier_identity`,
+  `procurement_sourcing_supplier_site`,
+  `procurement_sourcing_supplier_qualification`,
+  `procurement_sourcing_supplier_risk_signal`,
+  `procurement_sourcing_preferred_supplier_policy`,
+  `procurement_sourcing_rfq`, `procurement_sourcing_rfq_line`,
+  `procurement_sourcing_supplier_invitation`,
+  `procurement_sourcing_supplier_bid`,
+  `procurement_sourcing_supplier_bid_line`,
+  `procurement_sourcing_bid_normalization`,
+  `procurement_sourcing_supplier_scorecard`,
   `procurement_sourcing_supplier_award`,
+  `procurement_sourcing_split_award`,
   `procurement_sourcing_vendor_contract`,
+  `procurement_sourcing_contract_clause`,
+  `procurement_sourcing_contract_compliance_obligation`,
+  `procurement_sourcing_contract_renewal`,
   `procurement_sourcing_purchase_order`,
+  `procurement_sourcing_purchase_order_line`,
+  `procurement_sourcing_change_order`,
+  `procurement_sourcing_po_tolerance_check`,
+  `procurement_sourcing_payment_terms`,
+  `procurement_sourcing_material_shortage_projection`,
+  `procurement_sourcing_vendor_performance_projection`,
+  `procurement_sourcing_budget_projection`,
+  `procurement_sourcing_supplier_risk_projection`,
+  `procurement_sourcing_contract_compliance_projection`,
+  `procurement_sourcing_access_policy_projection`,
+  `procurement_sourcing_policy_screening`,
+  `procurement_sourcing_purchase_order_route`,
+  `procurement_sourcing_supplier_compliance_proof`,
+  `procurement_sourcing_audit_trace`,
+  `procurement_sourcing_federation_projection`,
+  `procurement_sourcing_carbon_sourcing_selection`,
+  `procurement_sourcing_award_optimization`,
+  `procurement_sourcing_rfq_mechanism_allocation`,
+  `procurement_sourcing_bid_anomaly_signal`,
+  `procurement_sourcing_supply_exposure_model`,
+  `procurement_sourcing_price_lead_time_forecast`,
+  `procurement_sourcing_sourcing_strategy_simulation`,
+  `procurement_sourcing_parsed_document`,
+  `procurement_sourcing_seed_data`,
+  `procurement_sourcing_schema_extension`,
+  `procurement_sourcing_control_assertion`,
+  `procurement_sourcing_governed_model`,
   `procurement_sourcing_rule`, `procurement_sourcing_parameter`,
-  `procurement_sourcing_configuration`
+  `procurement_sourcing_configuration`,
+  `procurement_sourcing_appgen_outbox_event`,
+  `procurement_sourcing_appgen_inbox_event`, and
+  `procurement_sourcing_dead_letter_event`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
 - **Event contract:** AppGen-X outbox/inbox event contract only
 - **Fixed event topic:** `appgen.procurement_sourcing.events`
@@ -27,8 +77,11 @@ vendor performance, and supply-risk governance. The implementation lives under
   `BudgetChanged`, `SupplierRiskChanged`, `ContractComplianceChanged`,
   `AccessPolicyChanged`
 - **Primary APIs:** `POST /procurement/requisitions`,
-  `POST /procurement/rfqs`, `POST /procurement/purchase-orders`,
-  `POST /procurement/events/inbox`, `GET /procurement/workbench`
+  `POST /procurement/requisitions/{id}/approve`,
+  `POST /procurement/rfqs`, `POST /procurement/rfqs/{id}/bids`,
+  `POST /procurement/rfqs/{id}/score`, `POST /procurement/awards`,
+  `POST /procurement/contracts`, `POST /procurement/purchase-orders`,
+  `POST /procurement/events/inbox`, and `GET /procurement/workbench`
 - **UI artifacts:** sourcing workbench, requisition queue, RFQ monitor,
   supplier scorecard, contract award board, purchase-order console, policy
   editor
@@ -47,6 +100,14 @@ package-local projections such as `material_shortage_projection` and
 `budget_projection`. The runtime boundary verifier rejects references to
 foreign tables and accepts only owned tables, runtime event tables, declared
 consumed event names, declared API projections, and declared platform APIs.
+
+The package exports schema, service, and release-evidence contracts from
+`pyAppGen.pbcs.procurement_sourcing`. Package discovery must load the module
+without mutating state; registration output is a side-effect-free plan that
+contains owned tables, generated migration paths, generated model descriptors,
+service command/query descriptors, route descriptors, event contracts, UI
+fragments, permissions, configuration schema, consumed and emitted events, and
+the AppGen-X topic.
 
 ## Rules, Parameters, and Configuration
 
@@ -82,34 +143,47 @@ Procurement Sourcing owned tables and rejects invalid field names.
 
 1. Purchase requisition creation, validation, enrichment, approval routing, and
    budget/policy checks.
-2. Category, commodity, cost center, project, and legal entity references.
-3. Supplier registration references, preferred supplier policy, and supplier
-   performance projections.
-4. RFQ creation, supplier invitation, response capture, bid normalization, and
+2. Purchase requisition lines, cost center, project, legal entity, category,
+   item, quantity, due-date, and currency validation.
+3. Category strategy, category policy, commodity references, and preferred
+   source methods.
+4. Supplier profile, site, qualification, identity, risk signal, and preferred
+   supplier policy.
+5. RFQ creation, RFQ lines, supplier invitation, response capture, bid
+   normalization, and
    response-window controls.
-5. Supplier scoring across price, lead time, risk, quality, performance,
+6. Supplier scoring across price, lead time, risk, quality, performance,
    sustainability, diversity, and compliance dimensions.
-6. Award recommendation, split award, negotiation summary, and award approval.
-7. Contract creation with price, term, renewal, service-level, compliance, and
+7. Award recommendation, split award, negotiation summary, and award approval.
+8. Contract creation with price, term, clauses, renewal, service-level,
+   compliance obligations, and
    evidence metadata.
-8. Purchase order creation, line validation, tolerance checks, contract binding,
+9. Purchase order creation, line validation, tolerance checks, contract binding,
    approval status, and idempotent event emission.
-9. Blanket PO, planned PO, emergency PO, service PO, and direct/indirect spend
+10. Blanket PO, planned PO, emergency PO, service PO, and direct/indirect spend
    support.
-10. Change order and cancellation control.
-11. Supplier risk and compliance screening.
-12. Spend analytics, savings calculation, and budget commitment projection.
-13. Contract renewal, expiry, and obligation monitoring.
-14. Material shortage and supplier performance consumed-event handling with
+11. Change order, cancellation control, and payment terms.
+12. Supplier risk, restricted supplier, and compliance screening.
+13. Spend analytics, savings calculation, and budget commitment projection.
+14. Contract renewal, expiry, and obligation monitoring.
+15. Material shortage and supplier performance consumed-event handling with
     retry/dead-letter evidence.
-15. Multi-tenant and multi-entity procurement isolation.
-16. Permissions and ABAC descriptors for request, approve, source, award,
+16. Local projections for material shortage, supplier performance, budget,
+    supplier risk, contract compliance, and access policy events.
+17. AppGen-X outbox, inbox, retry, and dead-letter tables.
+18. Multi-tenant and multi-entity procurement isolation.
+19. Permissions and ABAC descriptors for request, approve, source, award,
     contract, order, configure, and audit operations.
-17. Configuration schema and seed data for categories, award methods, approval
+20. Configuration schema and seed data for categories, award methods, approval
     levels, currencies, and default parameters.
-18. Workbench views for open requisitions, active RFQs, pending awards, PO
+21. Workbench views for open requisitions, active RFQs, pending awards, PO
     backlog, supplier risks, contract renewals, and sourcing exceptions.
-19. Release-audit evidence for package ownership, manifests, schema, migrations,
+22. Schema-contract evidence for every owned table, including generated
+    migration paths and model descriptors.
+23. Service-contract evidence proving commands mutate only Procurement-owned
+    tables and external state enters through declared APIs, events, or
+    projections.
+24. Release-audit evidence for package ownership, manifests, schema, migrations,
     models, services, routes, events, handlers, UI, permissions, configuration,
     tests, registration metadata, and generation smoke.
 
@@ -148,6 +222,33 @@ capture, normalization, scoring, awards, contracts, renewals, purchase orders,
 risk, spend, rules, parameters, and configuration. UI binding evidence includes
 owned tables, outbox, inbox, dead-letter tables, hidden stream picker, fixed
 topic, AppGen-X contract, and no shared table access.
+
+## Generated Schema, Models, and Services
+
+`procurement_sourcing_build_schema_contract()` emits generated schema evidence
+for every Procurement-owned table: field names, ownership, primary-key
+evidence, relationship descriptors, migration paths under
+`pbcs/procurement_sourcing/migrations/`, generated model class names, allowed
+datastore backends, and `shared_table_access: false`.
+
+`procurement_sourcing_build_service_contract()` emits service evidence for
+configuration, parameters, rules, schema extensions, event handling,
+requisition creation, approval, RFQ creation, bid capture, supplier scoring,
+supplier award, contract creation, PO issuance, policy screening, PO routing,
+compliance proofs, federation, identity verification, resilience drills,
+crypto epoch rotation, carbon-aware sourcing, award optimization, RFQ
+allocation, controls, and governed model registration. Query services cover
+the workbench, bid anomaly detection, stochastic supply exposure, price and
+lead-time forecasts, sourcing strategy simulation, document parsing, supplier
+risk scoring, and boundary verification. The service contract declares the
+transaction boundary as the Procurement-owned datastore plus AppGen-X outbox
+and lists only declared APIs, consumed events, and projections as external
+dependencies.
+
+`procurement_sourcing_build_release_evidence()` combines schema, service, API,
+permission, backend, and shared-table checks into the release gate. A generated
+app must not mark Procurement complete unless this release evidence returns
+`ok: true` with no blocking gaps.
 
 ## Advanced Capabilities
 

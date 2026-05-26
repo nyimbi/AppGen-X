@@ -9,6 +9,9 @@ from .runtime import PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC
 from .runtime import PROCUREMENT_SOURCING_RUNTIME_CAPABILITY_KEYS
 from .runtime import PROCUREMENT_SOURCING_STANDARD_FEATURE_KEYS
 from .runtime import procurement_sourcing_build_api_contract
+from .runtime import procurement_sourcing_build_release_evidence
+from .runtime import procurement_sourcing_build_schema_contract
+from .runtime import procurement_sourcing_build_service_contract
 from .runtime import procurement_sourcing_approve_requisition
 from .runtime import procurement_sourcing_build_workbench_view
 from .runtime import procurement_sourcing_capture_bid
@@ -41,10 +44,16 @@ def implementation_contract() -> dict:
     return {
         **contract,
         "standard_features": runtime["standard_features"],
-        "advanced_runtime": runtime,
-        "ui_contract": procurement_sourcing_ui_contract(),
-        "api_contract": procurement_sourcing_build_api_contract(),
-        "permissions_contract": procurement_sourcing_permissions_contract(),
         "owned_tables": PROCUREMENT_SOURCING_OWNED_TABLES,
         "allowed_database_backends": PROCUREMENT_SOURCING_ALLOWED_DATABASE_BACKENDS,
+        "api_contract": procurement_sourcing_build_api_contract(),
+        "schema_contract": procurement_sourcing_build_schema_contract(),
+        "service_contract": procurement_sourcing_build_service_contract(),
+        "release_evidence_contract": procurement_sourcing_build_release_evidence(),
+        "permissions_contract": procurement_sourcing_permissions_contract(),
+        "required_event_topic": PROCUREMENT_SOURCING_REQUIRED_EVENT_TOPIC,
+        "consumes": PROCUREMENT_SOURCING_CONSUMED_EVENT_TYPES,
+        "emits": PROCUREMENT_SOURCING_EMITTED_EVENT_TYPES,
+        "advanced_runtime": runtime,
+        "ui_contract": procurement_sourcing_ui_contract(),
     }
