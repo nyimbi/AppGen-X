@@ -38,6 +38,15 @@ def test_release_audit_requires_builtin_pbc_source_packages():
         for check in audit["checks"]
         if check["id"].endswith(":specification_completeness")
     } == {f"{key}:specification_completeness" for key in PBC_CATALOG}
+    assert {
+        check["id"]
+        for check in audit["checks"]
+        if check["id"].endswith(":table_stakes_evidence")
+    } == {f"{key}:table_stakes_evidence" for key in PBC_CATALOG}
+    for check in audit["checks"]:
+        if check["id"].endswith(":table_stakes_evidence"):
+            assert check["ok"] is True
+            assert not check["table_stakes"]["blocking_gaps"]
 
 
 def test_every_builtin_pbc_has_comprehensive_package_specification():

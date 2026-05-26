@@ -127,6 +127,19 @@ PBC_RESTRICTED_LEGACY_REFERENCES = (
     r"\b" + "Sales" + "force" + r"\b",
     r"\b" + "Quick" + "Books" + r"\b",
 )
+PBC_TABLE_STAKES_REQUIRED_EVIDENCE = (
+    "owned_schema_migrations_models",
+    "service_api_route_contracts",
+    "appgen_event_contract",
+    "idempotent_handlers",
+    "retry_dead_letter_policy",
+    "ui_workbench",
+    "permissions_rbac",
+    "configuration_schema",
+    "rule_engine",
+    "parameter_engine",
+    "seed_data",
+)
 PBC_ADVANCED_DOMAIN_REQUIRED_AREAS = (
     "foundational_architecture",
     "computational_analytics",
@@ -4526,6 +4539,84 @@ def pbc_implementation_contracts(selected_pbcs: tuple[str, ...] | list[str] | No
     return tuple(pbc_implementation_contract(key) for key in selected)
 
 
+def _pbc_table_stakes_evidence(contract: dict) -> dict:
+    runtime = contract.get("advanced_runtime", {})
+    source = contract.get("source_package", {})
+    standard_features = tuple(runtime.get("standard_features") or source.get("standard_features") or ())
+    feature_text = " ".join(standard_features).lower()
+    source_service = source.get("service_contract", {})
+    command_text = " ".join(source_service.get("command_methods", ())).lower()
+    checks = (
+        {
+            "id": "owned_schema_migrations_models",
+            "ok": bool(contract.get("owned_schema", {}).get("tables"))
+            and bool(contract.get("migrations"))
+            and bool(contract.get("models")),
+        },
+        {
+            "id": "service_api_route_contracts",
+            "ok": bool(contract.get("services", {}).get("command_methods"))
+            and bool(contract.get("apis")),
+        },
+        {
+            "id": "appgen_event_contract",
+            "ok": contract.get("events", {}).get("contract") == "appgen_event_contract"
+            and bool(contract.get("events", {}).get("outbox_table"))
+            and bool(contract.get("events", {}).get("inbox_table")),
+        },
+        {
+            "id": "idempotent_handlers",
+            "ok": bool(contract.get("handlers"))
+            and all(
+                handler.get("idempotency_key", "").startswith(f"{contract['pbc']}:")
+                for handler in contract.get("handlers", ())
+            ),
+        },
+        {
+            "id": "retry_dead_letter_policy",
+            "ok": contract.get("events", {}).get("retry_policy", {}).get("max_attempts", 0) >= 3
+            and bool(contract.get("events", {}).get("dead_letter_table")),
+        },
+        {
+            "id": "ui_workbench",
+            "ok": bool(contract.get("ui", {}).get("fragments"))
+            and bool(contract.get("ui", {}).get("workbench_view"))
+            and "workbench" in feature_text,
+        },
+        {
+            "id": "permissions_rbac",
+            "ok": bool(contract.get("permissions"))
+            and ("permission" in feature_text or "rbac" in feature_text),
+        },
+        {
+            "id": "configuration_schema",
+            "ok": bool(contract.get("configuration"))
+            and ("configuration" in feature_text or "configure_runtime" in command_text),
+        },
+        {
+            "id": "rule_engine",
+            "ok": "rule" in feature_text or "register_rule" in command_text,
+        },
+        {
+            "id": "parameter_engine",
+            "ok": "parameter" in feature_text or "set_parameter" in command_text,
+        },
+        {
+            "id": "seed_data",
+            "ok": bool(contract.get("seed_data"))
+            and bool(contract.get("manifest", {}).get("seed_data")),
+        },
+    )
+    return {
+        "format": "appgen.pbc-table-stakes-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "pbc": contract["pbc"],
+        "required_evidence": PBC_TABLE_STAKES_REQUIRED_EVIDENCE,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] | None = None) -> dict:
     """Verify every requested PBC has concrete generated implementation evidence."""
     contracts = pbc_implementation_contracts(selected_pbcs)
@@ -4550,6 +4641,7 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
             contract["events"]["dead_letter_table"],
         }
         specification = pbc_specification_contract(contract["pbc"])
+        table_stakes = _pbc_table_stakes_evidence(contract)
         source_package = contract["source_package"]
         source_schema = source_package.get("schema_contract", {})
         source_service = source_package.get("service_contract", {})
@@ -4574,6 +4666,11 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                     "id": f"{contract['pbc']}:specification_completeness",
                     "ok": specification["ok"],
                     "specification": specification,
+                },
+                {
+                    "id": f"{contract['pbc']}:table_stakes_evidence",
+                    "ok": table_stakes["ok"],
+                    "table_stakes": table_stakes,
                 },
                 {
                     "id": f"{contract['pbc']}:source_package_schema_service_release",
@@ -4726,6 +4823,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         key = contract["pbc"]
         runtime = contract.get("advanced_runtime", {})
         source = contract.get("source_package", {})
+        table_stakes = _pbc_table_stakes_evidence(contract)
         standard_features = tuple(runtime.get("standard_features") or source.get("standard_features") or ())
         advanced_capabilities = tuple(runtime.get("capabilities", ()))
         checks.extend(
@@ -4751,6 +4849,12 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
                     "advanced_capability_count": len(advanced_capabilities),
                 },
                 {
+                    "id": f"{key}:table_stakes_evidence",
+                    "ok": table_stakes["ok"],
+                    "required_evidence": PBC_TABLE_STAKES_REQUIRED_EVIDENCE,
+                    "checks": table_stakes["checks"],
+                },
+                {
                     "id": f"{key}:release_audit_ready",
                     "ok": pbc_implementation_release_audit((key,))["ok"],
                 },
@@ -4761,6 +4865,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "ok": bool(contracts) and all(check["ok"] for check in checks),
         "implemented_pbcs": selected,
         "minimum_standard_features": minimum_standard_features,
+        "required_table_stakes_evidence": PBC_TABLE_STAKES_REQUIRED_EVIDENCE,
         "contracts": contracts,
         "checks": tuple(checks),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
