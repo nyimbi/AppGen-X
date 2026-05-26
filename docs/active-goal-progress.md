@@ -1185,6 +1185,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   source navigation, stub editor, breakpoint, user-code-region, and refactor
   propagation modules now expose step contracts and matching generated tests so
   handler editing is checked independently from handler dispatch.
+- Current Object Inspector family pass adds standalone operation-step and
+  validation-step contracts to generated property editor, event editor,
+  component editor, and custom designer family modules. The generated family
+  modules and tests now prove editor, event, component-verb, and designer-hook
+  operations independently before Object Inspector readiness is trusted.
 
 ## Open Completion Areas
 

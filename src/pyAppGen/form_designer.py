@@ -7349,7 +7349,14 @@ def object_inspector_workbench() -> dict:
             "ok": len(property_editor_family_artifacts) == 8
             and all(
                 item["ok"]
-                and {"property_editor_family_manifest", "run_editor_operation", "smoke_test"} <= set(item["exports"])
+                and {
+                    "property_editor_family_manifest",
+                    "run_editor_operation",
+                    "operation_steps",
+                    "validation_steps",
+                    "smoke_test",
+                }
+                <= set(item["exports"])
                 for item in property_editor_family_artifacts
             ),
             "evidence": property_editor_family_artifacts,
@@ -7358,7 +7365,9 @@ def object_inspector_workbench() -> dict:
             "id": "property_editor_family_module_tests",
             "ok": len(property_editor_family_test_artifacts) == 8
             and all(
-                item["ok"] and "test_property_editor_family_module_smoke" in item["exports"]
+                item["ok"]
+                and "test_property_editor_family_module_smoke" in item["exports"]
+                and "test_property_editor_family_module_step_contracts" in item["exports"]
                 for item in property_editor_family_test_artifacts
             ),
             "evidence": property_editor_family_test_artifacts,
@@ -7376,7 +7385,14 @@ def object_inspector_workbench() -> dict:
             "ok": len(event_editor_family_artifacts) == 6
             and all(
                 item["ok"]
-                and {"event_editor_family_manifest", "run_event_editor_operation", "smoke_test"} <= set(item["exports"])
+                and {
+                    "event_editor_family_manifest",
+                    "run_event_editor_operation",
+                    "operation_steps",
+                    "validation_steps",
+                    "smoke_test",
+                }
+                <= set(item["exports"])
                 for item in event_editor_family_artifacts
             ),
             "evidence": event_editor_family_artifacts,
@@ -7385,7 +7401,9 @@ def object_inspector_workbench() -> dict:
             "id": "event_editor_family_module_tests",
             "ok": len(event_editor_family_test_artifacts) == 6
             and all(
-                item["ok"] and "test_event_editor_family_module_smoke" in item["exports"]
+                item["ok"]
+                and "test_event_editor_family_module_smoke" in item["exports"]
+                and "test_event_editor_family_module_step_contracts" in item["exports"]
                 for item in event_editor_family_test_artifacts
             ),
             "evidence": event_editor_family_test_artifacts,
@@ -7403,7 +7421,14 @@ def object_inspector_workbench() -> dict:
             "ok": len(component_editor_family_artifacts) == 6
             and all(
                 item["ok"]
-                and {"component_editor_family_manifest", "run_component_editor_operation", "smoke_test"} <= set(item["exports"])
+                and {
+                    "component_editor_family_manifest",
+                    "run_component_editor_operation",
+                    "operation_steps",
+                    "validation_steps",
+                    "smoke_test",
+                }
+                <= set(item["exports"])
                 for item in component_editor_family_artifacts
             ),
             "evidence": component_editor_family_artifacts,
@@ -7412,7 +7437,9 @@ def object_inspector_workbench() -> dict:
             "id": "component_editor_family_module_tests",
             "ok": len(component_editor_family_test_artifacts) == 6
             and all(
-                item["ok"] and "test_component_editor_family_module_smoke" in item["exports"]
+                item["ok"]
+                and "test_component_editor_family_module_smoke" in item["exports"]
+                and "test_component_editor_family_module_step_contracts" in item["exports"]
                 for item in component_editor_family_test_artifacts
             ),
             "evidence": component_editor_family_test_artifacts,
@@ -7430,7 +7457,14 @@ def object_inspector_workbench() -> dict:
             "ok": len(custom_designer_family_artifacts) == 6
             and all(
                 item["ok"]
-                and {"custom_designer_family_manifest", "run_custom_designer_operation", "smoke_test"} <= set(item["exports"])
+                and {
+                    "custom_designer_family_manifest",
+                    "run_custom_designer_operation",
+                    "operation_steps",
+                    "validation_steps",
+                    "smoke_test",
+                }
+                <= set(item["exports"])
                 for item in custom_designer_family_artifacts
             ),
             "evidence": custom_designer_family_artifacts,
@@ -7439,7 +7473,9 @@ def object_inspector_workbench() -> dict:
             "id": "custom_designer_family_module_tests",
             "ok": len(custom_designer_family_test_artifacts) == 6
             and all(
-                item["ok"] and "test_custom_designer_family_module_smoke" in item["exports"]
+                item["ok"]
+                and "test_custom_designer_family_module_smoke" in item["exports"]
+                and "test_custom_designer_family_module_step_contracts" in item["exports"]
                 for item in custom_designer_family_test_artifacts
             ),
             "evidence": custom_designer_family_test_artifacts,
@@ -23629,6 +23665,8 @@ def property_editor_family_module_file_manifest() -> tuple[dict, ...]:
         "property_editor_family_manifest",
         "run_editor_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -23658,6 +23696,7 @@ def property_editor_family_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_property_editor_family_module",
                 "test_property_editor_family_module_contract",
                 "test_property_editor_family_module_smoke",
+                "test_property_editor_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
@@ -23765,6 +23804,8 @@ def event_editor_family_module_file_manifest() -> tuple[dict, ...]:
         "event_editor_family_manifest",
         "run_event_editor_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -23794,6 +23835,7 @@ def event_editor_family_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_event_editor_family_module",
                 "test_event_editor_family_module_contract",
                 "test_event_editor_family_module_smoke",
+                "test_event_editor_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
@@ -23896,6 +23938,8 @@ def component_editor_family_module_file_manifest() -> tuple[dict, ...]:
         "component_editor_family_manifest",
         "run_component_editor_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -23925,6 +23969,7 @@ def component_editor_family_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_component_editor_family_module",
                 "test_component_editor_family_module_contract",
                 "test_component_editor_family_module_smoke",
+                "test_component_editor_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
@@ -24034,6 +24079,8 @@ def custom_designer_family_module_file_manifest() -> tuple[dict, ...]:
         "custom_designer_family_manifest",
         "run_custom_designer_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -24063,6 +24110,7 @@ def custom_designer_family_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_custom_designer_family_module",
                 "test_custom_designer_family_module_contract",
                 "test_custom_designer_family_module_smoke",
+                "test_custom_designer_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],

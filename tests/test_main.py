@@ -2099,9 +2099,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         item["family"] for item in property_editor_family_module_file_manifest()
     } == {"string", "number", "boolean", "choice", "collection", "binding", "color", "resource"}
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in property_editor_family_module_file_manifest()
+    )
     assert {
         item["family"] for item in property_editor_family_module_test_file_manifest()
     } == {"string", "number", "boolean", "choice", "collection", "binding", "color", "resource"}
+    assert all(
+        "test_property_editor_family_module_step_contracts" in item["exports"]
+        for item in property_editor_family_module_test_file_manifest()
+    )
     assert {
         item["family"] for item in event_editor_family_module_file_manifest()
     } == {
@@ -2122,18 +2130,42 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "signature_validation",
         "orphan_cleanup",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in event_editor_family_module_file_manifest()
+    )
+    assert all(
+        "test_event_editor_family_module_step_contracts" in item["exports"]
+        for item in event_editor_family_module_test_file_manifest()
+    )
     assert {
         item["family"] for item in component_editor_family_module_file_manifest()
     } == {"selection", "dialog", "transaction", "layout", "binding", "preview"}
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in component_editor_family_module_file_manifest()
+    )
     assert {
         item["family"] for item in component_editor_family_module_test_file_manifest()
     } == {"selection", "dialog", "transaction", "layout", "binding", "preview"}
+    assert all(
+        "test_component_editor_family_module_step_contracts" in item["exports"]
+        for item in component_editor_family_module_test_file_manifest()
+    )
     assert {
         item["family"] for item in custom_designer_family_module_file_manifest()
     } == {"paint_overlay", "verb_menu", "selection_handles", "smart_tags", "alignment_guides", "inline_preview"}
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in custom_designer_family_module_file_manifest()
+    )
     assert {
         item["family"] for item in custom_designer_family_module_test_file_manifest()
     } == {"paint_overlay", "verb_menu", "selection_handles", "smart_tags", "alignment_guides", "inline_preview"}
+    assert all(
+        "test_custom_designer_family_module_step_contracts" in item["exports"]
+        for item in custom_designer_family_module_test_file_manifest()
+    )
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -18106,12 +18138,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "color",
         "resource",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_property_editor_files["modules"]
+    )
+    assert all(
+        "test_property_editor_family_module_step_contracts" in item["exports"]
+        for item in generated_property_editor_tests["tests"]
+    )
     for item in generated_property_editor_files["modules"]:
         module_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(module_path), doraise=True)
         module = _load_module(module_path, f"generated_property_editor_family_module_{item['module']}")
         assert module.smoke_test()["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
         family_manifest = module.property_editor_family_manifest()
         assert family_manifest["ok"] is True
         assert {"property_editor_families_complete", "undo_snapshot_recorded"} <= set(family_manifest["guards"])
@@ -18136,12 +18178,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "signature_validation",
         "orphan_cleanup",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_event_editor_files["modules"]
+    )
+    assert all(
+        "test_event_editor_family_module_step_contracts" in item["exports"]
+        for item in generated_event_editor_tests["tests"]
+    )
     for item in generated_event_editor_files["modules"]:
         module_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(module_path), doraise=True)
         module = _load_module(module_path, f"generated_event_editor_family_module_{item['module']}")
         assert module.smoke_test()["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
         family_manifest = module.event_editor_family_manifest()
         assert family_manifest["ok"] is True
         assert {"event_editor_families_complete", "handler_reference_preserved"} <= set(family_manifest["guards"])
@@ -18166,12 +18218,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding",
         "preview",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_component_editor_files["modules"]
+    )
+    assert all(
+        "test_component_editor_family_module_step_contracts" in item["exports"]
+        for item in generated_component_editor_tests["tests"]
+    )
     for item in generated_component_editor_files["modules"]:
         module_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(module_path), doraise=True)
         module = _load_module(module_path, f"generated_component_editor_family_module_{item['module']}")
         assert module.smoke_test()["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
         family_manifest = module.component_editor_family_manifest()
         assert family_manifest["ok"] is True
         assert {"component_editor_families_complete", "cancel_restores_snapshot"} <= set(family_manifest["guards"])
@@ -18196,12 +18258,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "alignment_guides",
         "inline_preview",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_custom_designer_files["modules"]
+    )
+    assert all(
+        "test_custom_designer_family_module_step_contracts" in item["exports"]
+        for item in generated_custom_designer_tests["tests"]
+    )
     for item in generated_custom_designer_files["modules"]:
         module_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(module_path), doraise=True)
         module = _load_module(module_path, f"generated_custom_designer_family_module_{item['module']}")
         assert module.smoke_test()["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
         family_manifest = module.custom_designer_family_manifest()
         assert family_manifest["ok"] is True
         assert {"custom_designer_families_complete", "designer_failure_isolated"} <= set(family_manifest["guards"])

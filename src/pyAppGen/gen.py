@@ -13142,6 +13142,8 @@ EXPECTED_EXPORTS = (
     "property_editor_family_manifest",
     "run_editor_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -13213,14 +13215,34 @@ def runtime_manifest():
     return _load_form_designer().property_editor_family_contract()
 
 
-def smoke_test():
-    """Run side-effect-free checks for this generated property editor family module."""
+def operation_steps():
+    """Return side-effect-free operation steps for this property editor family."""
+    operation = run_editor_operation()
+    return {{
+        "format": "appgen.property-editor-family-module-operation-steps.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": operation["ok"] and bool(operation["operation_steps"]),
+        "steps": tuple(operation["operation_steps"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps():
+    """Return validation steps proving this property editor family is safe to load."""
     contract = module_contract()
     manifest = property_editor_family_manifest()
     operation = run_editor_operation()
     runtime = runtime_manifest()
+    steps = (
+        "module_contract_ok",
+        "property_editor_family_manifest_ok",
+        "editor_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
     return {{
-        "format": "appgen.property-editor-family-module-smoke-test.v1",
+        "format": "appgen.property-editor-family-module-validation-steps.v1",
         "module": MODULE,
         "family": FAMILY,
         "ok": contract["ok"]
@@ -13229,13 +13251,42 @@ def smoke_test():
         and runtime["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated property editor family module."""
+    contract = module_contract()
+    manifest = property_editor_family_manifest()
+    operation = run_editor_operation()
+    runtime = runtime_manifest()
+    operations = operation_steps()
+    validations = validation_steps()
+    return {{
+        "format": "appgen.property-editor-family-module-smoke-test.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
         "checks": (
             "module_contract_resolves",
             "property_editor_family_manifest_resolves",
             "editor_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -13280,15 +13331,28 @@ def test_property_editor_family_module_smoke():
     assert result["checks"]
 
 
+def test_property_editor_family_module_step_contracts():
+    """Assert standalone property editor operation and validation step contracts pass."""
+    module = load_property_editor_family_module()
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps()["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_property_editor_family_module_contract()
     test_property_editor_family_module_smoke()
+    test_property_editor_family_module_step_contracts()
     return {{
         "format": "appgen.property-editor-family-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_property_editor_family_module_contract", "test_property_editor_family_module_smoke"),
+        "tests": (
+            "test_property_editor_family_module_contract",
+            "test_property_editor_family_module_smoke",
+            "test_property_editor_family_module_step_contracts",
+        ),
     }}
 '''
 
@@ -13321,6 +13385,8 @@ EXPECTED_EXPORTS = (
     "event_editor_family_manifest",
     "run_event_editor_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -13392,14 +13458,34 @@ def runtime_manifest():
     return _load_form_designer().event_editor_family_contract()
 
 
-def smoke_test():
-    """Run side-effect-free checks for this generated event editor family module."""
+def operation_steps():
+    """Return side-effect-free operation steps for this event editor family."""
+    operation = run_event_editor_operation()
+    return {{
+        "format": "appgen.event-editor-family-module-operation-steps.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": operation["ok"] and bool(operation["operation_steps"]),
+        "steps": tuple(operation["operation_steps"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps():
+    """Return validation steps proving this event editor family is safe to load."""
     contract = module_contract()
     manifest = event_editor_family_manifest()
     operation = run_event_editor_operation()
     runtime = runtime_manifest()
+    steps = (
+        "module_contract_ok",
+        "event_editor_family_manifest_ok",
+        "event_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
     return {{
-        "format": "appgen.event-editor-family-module-smoke-test.v1",
+        "format": "appgen.event-editor-family-module-validation-steps.v1",
         "module": MODULE,
         "family": FAMILY,
         "ok": contract["ok"]
@@ -13408,13 +13494,42 @@ def smoke_test():
         and runtime["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated event editor family module."""
+    contract = module_contract()
+    manifest = event_editor_family_manifest()
+    operation = run_event_editor_operation()
+    runtime = runtime_manifest()
+    operations = operation_steps()
+    validations = validation_steps()
+    return {{
+        "format": "appgen.event-editor-family-module-smoke-test.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
         "checks": (
             "module_contract_resolves",
             "event_editor_family_manifest_resolves",
             "event_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -13459,15 +13574,28 @@ def test_event_editor_family_module_smoke():
     assert result["checks"]
 
 
+def test_event_editor_family_module_step_contracts():
+    """Assert standalone event editor operation and validation step contracts pass."""
+    module = load_event_editor_family_module()
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps()["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_event_editor_family_module_contract()
     test_event_editor_family_module_smoke()
+    test_event_editor_family_module_step_contracts()
     return {{
         "format": "appgen.event-editor-family-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_event_editor_family_module_contract", "test_event_editor_family_module_smoke"),
+        "tests": (
+            "test_event_editor_family_module_contract",
+            "test_event_editor_family_module_smoke",
+            "test_event_editor_family_module_step_contracts",
+        ),
     }}
 '''
 
@@ -13500,6 +13628,8 @@ EXPECTED_EXPORTS = (
     "component_editor_family_manifest",
     "run_component_editor_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -13572,14 +13702,34 @@ def runtime_manifest():
     return _load_form_designer().component_editor_family_contract()
 
 
-def smoke_test():
-    """Run side-effect-free checks for this generated component editor family module."""
+def operation_steps():
+    """Return side-effect-free operation steps for this component editor family."""
+    operation = run_component_editor_operation()
+    return {{
+        "format": "appgen.component-editor-family-module-operation-steps.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": operation["ok"] and bool(operation["operation_steps"]),
+        "steps": tuple(operation["operation_steps"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps():
+    """Return validation steps proving this component editor family is safe to load."""
     contract = module_contract()
     manifest = component_editor_family_manifest()
     operation = run_component_editor_operation()
     runtime = runtime_manifest()
+    steps = (
+        "module_contract_ok",
+        "component_editor_family_manifest_ok",
+        "component_editor_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
     return {{
-        "format": "appgen.component-editor-family-module-smoke-test.v1",
+        "format": "appgen.component-editor-family-module-validation-steps.v1",
         "module": MODULE,
         "family": FAMILY,
         "ok": contract["ok"]
@@ -13588,13 +13738,42 @@ def smoke_test():
         and runtime["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated component editor family module."""
+    contract = module_contract()
+    manifest = component_editor_family_manifest()
+    operation = run_component_editor_operation()
+    runtime = runtime_manifest()
+    operations = operation_steps()
+    validations = validation_steps()
+    return {{
+        "format": "appgen.component-editor-family-module-smoke-test.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
         "checks": (
             "module_contract_resolves",
             "component_editor_family_manifest_resolves",
             "component_editor_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -13639,15 +13818,28 @@ def test_component_editor_family_module_smoke():
     assert result["checks"]
 
 
+def test_component_editor_family_module_step_contracts():
+    """Assert standalone component editor operation and validation step contracts pass."""
+    module = load_component_editor_family_module()
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps()["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_component_editor_family_module_contract()
     test_component_editor_family_module_smoke()
+    test_component_editor_family_module_step_contracts()
     return {{
         "format": "appgen.component-editor-family-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_component_editor_family_module_contract", "test_component_editor_family_module_smoke"),
+        "tests": (
+            "test_component_editor_family_module_contract",
+            "test_component_editor_family_module_smoke",
+            "test_component_editor_family_module_step_contracts",
+        ),
     }}
 '''
 
@@ -13680,6 +13872,8 @@ EXPECTED_EXPORTS = (
     "custom_designer_family_manifest",
     "run_custom_designer_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -13752,14 +13946,34 @@ def runtime_manifest():
     return _load_form_designer().custom_designer_family_contract()
 
 
-def smoke_test():
-    """Run side-effect-free checks for this generated custom designer family module."""
+def operation_steps():
+    """Return side-effect-free operation steps for this custom designer family."""
+    operation = run_custom_designer_operation()
+    return {{
+        "format": "appgen.custom-designer-family-module-operation-steps.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": operation["ok"] and bool(operation["operation_steps"]),
+        "steps": tuple(operation["operation_steps"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps():
+    """Return validation steps proving this custom designer family is safe to load."""
     contract = module_contract()
     manifest = custom_designer_family_manifest()
     operation = run_custom_designer_operation()
     runtime = runtime_manifest()
+    steps = (
+        "module_contract_ok",
+        "custom_designer_family_manifest_ok",
+        "custom_designer_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
     return {{
-        "format": "appgen.custom-designer-family-module-smoke-test.v1",
+        "format": "appgen.custom-designer-family-module-validation-steps.v1",
         "module": MODULE,
         "family": FAMILY,
         "ok": contract["ok"]
@@ -13768,13 +13982,42 @@ def smoke_test():
         and runtime["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated custom designer family module."""
+    contract = module_contract()
+    manifest = custom_designer_family_manifest()
+    operation = run_custom_designer_operation()
+    runtime = runtime_manifest()
+    operations = operation_steps()
+    validations = validation_steps()
+    return {{
+        "format": "appgen.custom-designer-family-module-smoke-test.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
         "checks": (
             "module_contract_resolves",
             "custom_designer_family_manifest_resolves",
             "custom_designer_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -13819,15 +14062,28 @@ def test_custom_designer_family_module_smoke():
     assert result["checks"]
 
 
+def test_custom_designer_family_module_step_contracts():
+    """Assert standalone custom designer operation and validation step contracts pass."""
+    module = load_custom_designer_family_module()
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps()["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_custom_designer_family_module_contract()
     test_custom_designer_family_module_smoke()
+    test_custom_designer_family_module_step_contracts()
     return {{
         "format": "appgen.custom-designer-family-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_custom_designer_family_module_contract", "test_custom_designer_family_module_smoke"),
+        "tests": (
+            "test_custom_designer_family_module_contract",
+            "test_custom_designer_family_module_smoke",
+            "test_custom_designer_family_module_step_contracts",
+        ),
     }}
 '''
 
@@ -54490,17 +54746,17 @@ def object_inspector_workbench():
         {{"id": "handler_source_ide_modules", "ok": len(handler_source_ide_artifacts) == 5 and all(item["ok"] and {{"handler_source_manifest", "run_source_operation", "operation_steps", "validation_steps", "smoke_test"}} <= set(item["exports"]) for item in handler_source_ide_artifacts), "evidence": handler_source_ide_artifacts}},
         {{"id": "handler_source_ide_module_tests", "ok": len(handler_source_ide_test_artifacts) == 5 and all(item["ok"] and "test_handler_source_ide_module_smoke" in item["exports"] and "test_handler_source_ide_module_step_contracts" in item["exports"] for item in handler_source_ide_test_artifacts), "evidence": handler_source_ide_test_artifacts}},
         {{"id": "property_editor_family_contract", "ok": property_editor_families["ok"] and set(property_editor_families["required_families"]) <= {{family["family"] for family in property_editor_families["families"] if family["editors"]}} and not property_editor_families["side_effects"], "evidence": property_editor_families}},
-        {{"id": "property_editor_family_modules", "ok": len(property_editor_family_artifacts) == 8 and all(item["ok"] and {{"property_editor_family_manifest", "run_editor_operation", "smoke_test"}} <= set(item["exports"]) for item in property_editor_family_artifacts), "evidence": property_editor_family_artifacts}},
-        {{"id": "property_editor_family_module_tests", "ok": len(property_editor_family_test_artifacts) == 8 and all(item["ok"] and "test_property_editor_family_module_smoke" in item["exports"] for item in property_editor_family_test_artifacts), "evidence": property_editor_family_test_artifacts}},
+        {{"id": "property_editor_family_modules", "ok": len(property_editor_family_artifacts) == 8 and all(item["ok"] and {{"property_editor_family_manifest", "run_editor_operation", "operation_steps", "validation_steps", "smoke_test"}} <= set(item["exports"]) for item in property_editor_family_artifacts), "evidence": property_editor_family_artifacts}},
+        {{"id": "property_editor_family_module_tests", "ok": len(property_editor_family_test_artifacts) == 8 and all(item["ok"] and "test_property_editor_family_module_smoke" in item["exports"] and "test_property_editor_family_module_step_contracts" in item["exports"] for item in property_editor_family_test_artifacts), "evidence": property_editor_family_test_artifacts}},
         {{"id": "event_editor_family_contract", "ok": event_editor_families["ok"] and set(event_editor_families["required_families"]) <= {{family["family"] for family in event_editor_families["families"] if family["events"]}} and not event_editor_families["side_effects"], "evidence": event_editor_families}},
-        {{"id": "event_editor_family_modules", "ok": len(event_editor_family_artifacts) == 6 and all(item["ok"] and {{"event_editor_family_manifest", "run_event_editor_operation", "smoke_test"}} <= set(item["exports"]) for item in event_editor_family_artifacts), "evidence": event_editor_family_artifacts}},
-        {{"id": "event_editor_family_module_tests", "ok": len(event_editor_family_test_artifacts) == 6 and all(item["ok"] and "test_event_editor_family_module_smoke" in item["exports"] for item in event_editor_family_test_artifacts), "evidence": event_editor_family_test_artifacts}},
+        {{"id": "event_editor_family_modules", "ok": len(event_editor_family_artifacts) == 6 and all(item["ok"] and {{"event_editor_family_manifest", "run_event_editor_operation", "operation_steps", "validation_steps", "smoke_test"}} <= set(item["exports"]) for item in event_editor_family_artifacts), "evidence": event_editor_family_artifacts}},
+        {{"id": "event_editor_family_module_tests", "ok": len(event_editor_family_test_artifacts) == 6 and all(item["ok"] and "test_event_editor_family_module_smoke" in item["exports"] and "test_event_editor_family_module_step_contracts" in item["exports"] for item in event_editor_family_test_artifacts), "evidence": event_editor_family_test_artifacts}},
         {{"id": "component_editor_family_contract", "ok": component_editor_families["ok"] and set(component_editor_families["required_families"]) <= {{family["family"] for family in component_editor_families["families"] if family["editors"]}} and not component_editor_families["side_effects"], "evidence": component_editor_families}},
-        {{"id": "component_editor_family_modules", "ok": len(component_editor_family_artifacts) == 6 and all(item["ok"] and {{"component_editor_family_manifest", "run_component_editor_operation", "smoke_test"}} <= set(item["exports"]) for item in component_editor_family_artifacts), "evidence": component_editor_family_artifacts}},
-        {{"id": "component_editor_family_module_tests", "ok": len(component_editor_family_test_artifacts) == 6 and all(item["ok"] and "test_component_editor_family_module_smoke" in item["exports"] for item in component_editor_family_test_artifacts), "evidence": component_editor_family_test_artifacts}},
+        {{"id": "component_editor_family_modules", "ok": len(component_editor_family_artifacts) == 6 and all(item["ok"] and {{"component_editor_family_manifest", "run_component_editor_operation", "operation_steps", "validation_steps", "smoke_test"}} <= set(item["exports"]) for item in component_editor_family_artifacts), "evidence": component_editor_family_artifacts}},
+        {{"id": "component_editor_family_module_tests", "ok": len(component_editor_family_test_artifacts) == 6 and all(item["ok"] and "test_component_editor_family_module_smoke" in item["exports"] and "test_component_editor_family_module_step_contracts" in item["exports"] for item in component_editor_family_test_artifacts), "evidence": component_editor_family_test_artifacts}},
         {{"id": "custom_designer_family_contract", "ok": custom_designer_families["ok"] and set(custom_designer_families["required_families"]) <= {{family["family"] for family in custom_designer_families["families"] if family["hooks"]}} and not custom_designer_families["side_effects"], "evidence": custom_designer_families}},
-        {{"id": "custom_designer_family_modules", "ok": len(custom_designer_family_artifacts) == 6 and all(item["ok"] and {{"custom_designer_family_manifest", "run_custom_designer_operation", "smoke_test"}} <= set(item["exports"]) for item in custom_designer_family_artifacts), "evidence": custom_designer_family_artifacts}},
-        {{"id": "custom_designer_family_module_tests", "ok": len(custom_designer_family_test_artifacts) == 6 and all(item["ok"] and "test_custom_designer_family_module_smoke" in item["exports"] for item in custom_designer_family_test_artifacts), "evidence": custom_designer_family_test_artifacts}},
+        {{"id": "custom_designer_family_modules", "ok": len(custom_designer_family_artifacts) == 6 and all(item["ok"] and {{"custom_designer_family_manifest", "run_custom_designer_operation", "operation_steps", "validation_steps", "smoke_test"}} <= set(item["exports"]) for item in custom_designer_family_artifacts), "evidence": custom_designer_family_artifacts}},
+        {{"id": "custom_designer_family_module_tests", "ok": len(custom_designer_family_test_artifacts) == 6 and all(item["ok"] and "test_custom_designer_family_module_smoke" in item["exports"] and "test_custom_designer_family_module_step_contracts" in item["exports"] for item in custom_designer_family_test_artifacts), "evidence": custom_designer_family_test_artifacts}},
         {{"id": "inspector_family_replay_matrix", "ok": family_replay_matrix["ok"] and {{"property_editor_families_replay", "event_editor_families_replay", "component_editor_families_replay", "custom_designer_families_replay", "family_contracts_side_effect_free"}} <= {{check["id"] for check in family_replay_matrix["checks"] if check["ok"]}}, "evidence": family_replay_matrix}},
     )
     ok = all(check["ok"] for check in checks)
@@ -55857,6 +56113,8 @@ def property_editor_family_module_file_manifest(existing_paths=None):
         "property_editor_family_manifest",
         "run_editor_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     manifest = []
@@ -55898,6 +56156,7 @@ def property_editor_family_module_test_file_manifest(existing_paths=None):
                 "load_property_editor_family_module",
                 "test_property_editor_family_module_contract",
                 "test_property_editor_family_module_smoke",
+                "test_property_editor_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"] and path in paths,
@@ -55971,6 +56230,8 @@ def event_editor_family_module_file_manifest(existing_paths=None):
         "event_editor_family_manifest",
         "run_event_editor_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     manifest = []
@@ -56012,6 +56273,7 @@ def event_editor_family_module_test_file_manifest(existing_paths=None):
                 "load_event_editor_family_module",
                 "test_event_editor_family_module_contract",
                 "test_event_editor_family_module_smoke",
+                "test_event_editor_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"] and path in paths,
@@ -56085,6 +56347,8 @@ def component_editor_family_module_file_manifest(existing_paths=None):
         "component_editor_family_manifest",
         "run_component_editor_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     manifest = []
@@ -56126,6 +56390,7 @@ def component_editor_family_module_test_file_manifest(existing_paths=None):
                 "load_component_editor_family_module",
                 "test_component_editor_family_module_contract",
                 "test_component_editor_family_module_smoke",
+                "test_component_editor_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"] and path in paths,
@@ -56199,6 +56464,8 @@ def custom_designer_family_module_file_manifest(existing_paths=None):
         "custom_designer_family_manifest",
         "run_custom_designer_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     manifest = []
@@ -56240,6 +56507,7 @@ def custom_designer_family_module_test_file_manifest(existing_paths=None):
                 "load_custom_designer_family_module",
                 "test_custom_designer_family_module_contract",
                 "test_custom_designer_family_module_smoke",
+                "test_custom_designer_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"] and path in paths,
