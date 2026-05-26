@@ -16637,15 +16637,29 @@ def test_device_component_smoke():
     assert "validation_steps_declared" in result["checks"]
 
 
+def test_device_component_step_contracts():
+    """Assert operation and validation step contracts are reusable release gates."""
+    module = load_device_component_module()
+    operations = module.operation_steps()
+    validations = module.validation_steps()
+    assert operations["ok"] is True
+    assert validations["ok"] is True
+    assert {"request_permission", "load_simulator_fixture", "emit_component_event", "dispatch_component_events"} <= set(operations["steps"])
+    assert {"resolve_component_spec", "validate_default_props", "reject_unknown_props", "verify_event_trace"} <= set(validations["steps"])
+    assert operations["side_effects"] == ()
+    assert validations["side_effects"] == ()
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_device_component_contract()
     test_device_component_smoke()
+    test_device_component_step_contracts()
     return {{
         "format": "appgen.device-api-component-generated-test-smoke.v1",
         "api": API,
         "ok": True,
-        "tests": ("test_device_component_contract", "test_device_component_smoke"),
+        "tests": ("test_device_component_contract", "test_device_component_smoke", "test_device_component_step_contracts"),
     }}
 '''
 
@@ -21921,11 +21935,27 @@ def device_api_component_module_manifest():
         module_path = component_dir / f"{module_name}.py"
         exports = ()
         contract_ok = False
+        operation_steps_ok = False
+        validation_steps_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_device_api_component_{module_name}")
             exports = tuple(name for name in ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "operation_steps", "validation_steps", "smoke_test") if hasattr(module, name))
             contract = module.spec()
+            operation_steps = module.operation_steps()
+            validation_steps = module.validation_steps()
             contract_ok = contract["ok"] and contract["api"] == item["api"]
+            operation_steps_ok = (
+                operation_steps["ok"]
+                and {"request_permission", "load_simulator_fixture", "emit_component_event", "dispatch_component_events"}
+                <= set(operation_steps["steps"])
+                and not operation_steps["side_effects"]
+            )
+            validation_steps_ok = (
+                validation_steps["ok"]
+                and {"resolve_component_spec", "validate_default_props", "reject_unknown_props", "verify_event_trace"}
+                <= set(validation_steps["steps"])
+                and not validation_steps["side_effects"]
+            )
         entries.append(
             {
                 "api": item["api"],
@@ -21934,16 +21964,31 @@ def device_api_component_module_manifest():
                 "exists": module_path.exists(),
                 "exports": exports,
                 "contract_ok": contract_ok,
+                "operation_steps_ok": operation_steps_ok,
+                "validation_steps_ok": validation_steps_ok,
             }
         )
     required_exports = {"spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "operation_steps", "validation_steps", "smoke_test"}
     return {
         "format": "appgen.generated-device-api-component-module-manifest.v1",
         "ok": bool(entries)
-        and all(item["exists"] and item["contract_ok"] and required_exports <= set(item["exports"]) for item in entries),
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["operation_steps_ok"]
+            and item["validation_steps_ok"]
+            and required_exports <= set(item["exports"])
+            for item in entries
+        ),
         "components": tuple(entries),
         "required_exports": tuple(sorted(required_exports)),
-        "guards": ("one_module_per_device_api", "permission_fixture_and_events_bound", "runtime_replay_exported"),
+        "guards": (
+            "one_module_per_device_api",
+            "permission_fixture_and_events_bound",
+            "runtime_replay_exported",
+            "operation_steps_declared",
+            "validation_steps_declared",
+        ),
         "side_effects": (),
     }
 
@@ -21958,24 +22003,37 @@ def device_api_component_test_module_manifest():
         module_name = _module_name(item["api"])
         module_path = test_dir / f"test_{module_name}.py"
         exports = ()
+        step_contracts_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_device_api_component_test_{module_name}")
-            exports = tuple(name for name in ("load_device_component_module", "test_device_component_contract", "test_device_component_smoke", "smoke_test") if hasattr(module, name))
+            exports = tuple(name for name in ("load_device_component_module", "test_device_component_contract", "test_device_component_smoke", "test_device_component_step_contracts", "smoke_test") if hasattr(module, name))
+            step_contracts_ok = "test_device_component_step_contracts" in exports
         entries.append(
             {
                 "api": item["api"],
                 "path": f"app/device_api_component_tests/test_{module_name}.py",
                 "exists": module_path.exists(),
                 "exports": exports,
+                "step_contracts_ok": step_contracts_ok,
             }
         )
-    required_exports = {"load_device_component_module", "test_device_component_contract", "test_device_component_smoke", "smoke_test"}
+    required_exports = {"load_device_component_module", "test_device_component_contract", "test_device_component_smoke", "test_device_component_step_contracts", "smoke_test"}
     return {
         "format": "appgen.generated-device-api-component-test-module-manifest.v1",
-        "ok": bool(entries) and all(item["exists"] and required_exports <= set(item["exports"]) for item in entries),
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["step_contracts_ok"]
+            and required_exports <= set(item["exports"])
+            for item in entries
+        ),
         "tests": tuple(entries),
         "required_exports": tuple(sorted(required_exports)),
-        "guards": ("one_test_module_per_device_api", "contract_and_smoke_tests_exported"),
+        "guards": (
+            "one_test_module_per_device_api",
+            "contract_and_smoke_tests_exported",
+            "step_contract_tests_exported",
+        ),
         "side_effects": (),
     }
 
@@ -62405,7 +62463,7 @@ def mobile_native_api_workbench():
         for item in mobile_device_component_spec_contract()["specs"]
     )
     device_component_test_artifacts = tuple(
-        {{"api": item["api"], "component": item["component"], "path": f"app/device_api_component_tests/test_{{_module_name(item['api'])}}.py", "exports": ("load_device_component_module", "test_device_component_contract", "test_device_component_smoke", "smoke_test"), "ok": True}}
+        {{"api": item["api"], "component": item["component"], "path": f"app/device_api_component_tests/test_{{_module_name(item['api'])}}.py", "exports": ("load_device_component_module", "test_device_component_contract", "test_device_component_smoke", "test_device_component_step_contracts", "smoke_test"), "ok": True}}
         for item in mobile_device_component_spec_contract()["specs"]
     )
     readiness = mobile_native_api_readiness_contract()
@@ -62442,7 +62500,7 @@ def mobile_native_api_workbench():
         {{"id": "capability_lifecycle_replay", "ok": capability_lifecycle_replay["ok"] and {{"privacy_before_permission", "runtime_and_designer_replay_aligned"}} <= set(capability_lifecycle_replay["guards"]) and not capability_lifecycle_replay["side_effects"], "evidence": capability_lifecycle_replay}},
         {{"id": "mobile_readiness_contract", "ok": readiness["ok"] and {{"privacy_permission_ready", "simulator_ready", "bridge_component_ready", "fallback_lifecycle_ready", "runtime_delivery_ready", "device_scenarios_ready", "designer_capability_ready", "operation_surface_ready", "phase_order_ready"}} <= set(check["id"] for check in readiness["checks"] if check["ok"]) and not readiness["side_effects"], "evidence": readiness}},
         {{"id": "device_component_modules", "ok": len(device_component_module_artifacts) == len(api_set) and api_set == {{item["api"] for item in device_component_module_artifacts}} and all(item["ok"] and {{"replay", "run_scenario", "operation_steps", "validation_steps"}} <= set(item["exports"]) for item in device_component_module_artifacts), "evidence": device_component_module_artifacts}},
-        {{"id": "device_component_module_tests", "ok": len(device_component_test_artifacts) == len(api_set) and api_set == {{item["api"] for item in device_component_test_artifacts}} and all(item["ok"] and "test_device_component_smoke" in item["exports"] for item in device_component_test_artifacts), "evidence": device_component_test_artifacts}},
+        {{"id": "device_component_module_tests", "ok": len(device_component_test_artifacts) == len(api_set) and api_set == {{item["api"] for item in device_component_test_artifacts}} and all(item["ok"] and {{"test_device_component_smoke", "test_device_component_step_contracts"}} <= set(item["exports"]) for item in device_component_test_artifacts), "evidence": device_component_test_artifacts}},
     )
     ok = all(check["ok"] for check in checks)
     return {{"format": "appgen.generated-mobile-native-api-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "permission_workflow": permission_workflow, "adapter_dispatch": adapter_dispatch, "simulator_replay": simulator_replay, "platform_fallback": platform_fallback, "privacy_review": privacy_review, "background_resume": background_resume, "actionable_operations": actionable_operations, "device_component_specs": device_component_specs, "capability_matrix": capability_matrix, "event_traces": event_traces, "bridge_matrix": bridge_matrix, "permission_revocation": permission_revocation, "background_delivery": background_delivery, "media_file_pipeline": media_file_pipeline, "bridge_errors": bridge_errors, "store_privacy_manifest": store_privacy_manifest, "permission_state_machine": permission_state_machine, "deep_link_routing": deep_link_routing, "app_lifecycle_delivery": app_lifecycle_delivery, "simulator_fixture_integrity": simulator_fixture_integrity, "runtime_replay": runtime_replay, "scenario_matrix": scenario_matrix, "designer_transaction_replay": designer_transaction_replay, "capability_lifecycle_replay": capability_lifecycle_replay, "device_component_module_artifacts": device_component_module_artifacts, "device_component_test_artifacts": device_component_test_artifacts, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}

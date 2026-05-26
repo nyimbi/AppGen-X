@@ -1243,6 +1243,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   fail unless standalone operation-step and validation-step contracts pass and
   the generated module tests explicitly export step-contract tests before
   package installation readiness is trusted.
+- Current mobile/device component pass hardens generated camera, sensor,
+  biometric, media, storage, lifecycle, and platform bridge component modules
+  so runtime manifests fail unless every generated device API component proves
+  reusable operation-step and validation-step contracts, and generated component
+  test modules explicitly export step-contract tests before mobile/device
+  readiness is trusted.
 - Current commerce and customer PBC boundary pass hardens `customer_360`,
   `product_catalog_pim`, `global_inventory_visibility`,
   `payment_orchestration`, and `returns_reverse_logistics` with

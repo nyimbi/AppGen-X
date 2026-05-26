@@ -2894,6 +2894,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "test_device_component_smoke" in item["exports"]
         for item in mobile_workbench["device_component_test_artifacts"]
     )
+    assert all(
+        "test_device_component_step_contracts" in item["exports"]
+        for item in mobile_workbench["device_component_test_artifacts"]
+    )
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -17155,6 +17159,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "test_device_component_smoke" in item["exports"]
         for item in generated_mobile["device_component_test_artifacts"]
     )
+    assert all(
+        "test_device_component_step_contracts" in item["exports"]
+        for item in generated_mobile["device_component_test_artifacts"]
+    )
     mobile_runtime_file = output_dir / "mobile_device_runtime.py"
     assert mobile_runtime_file.exists()
     py_compile.compile(str(mobile_runtime_file), doraise=True)
@@ -17182,6 +17190,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_runtime_scenarios = mobile_runtime.device_api_component_scenario_matrix()
     assert device_module_manifest["ok"] is True
     assert device_test_manifest["ok"] is True
+    assert {
+        "operation_steps_declared",
+        "validation_steps_declared",
+    } <= set(device_module_manifest["guards"])
+    assert "step_contract_tests_exported" in device_test_manifest["guards"]
+    assert all(item["operation_steps_ok"] for item in device_module_manifest["components"])
+    assert all(item["validation_steps_ok"] for item in device_module_manifest["components"])
+    assert all(item["step_contracts_ok"] for item in device_test_manifest["tests"])
     assert generated_runtime_scenarios["format"] == "appgen.generated-device-api-component-scenario-matrix.v1"
     assert generated_runtime_scenarios["ok"] is True
     assert generated_runtime_scenarios["scenario_count"] == len(generated_mobile_apis)

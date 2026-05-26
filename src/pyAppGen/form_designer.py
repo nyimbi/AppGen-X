@@ -24607,6 +24607,7 @@ def device_api_component_test_module_file_manifest() -> tuple[dict, ...]:
                 "load_device_component_module",
                 "test_device_component_contract",
                 "test_device_component_smoke",
+                "test_device_component_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
