@@ -1704,6 +1704,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   PBC tests pass (`322 passed`), syntax checks pass for the shared generator,
   audit, and event modules, and the full PBC audit stack including all built-in
   generation smoke and `pbc_release_audit()` returns true. Commit: `5a1ff9d`.
+- Current PBC release-evidence execution pass regenerates every built-in PBC
+  `release_evidence.py` so release artifacts expose side-effect-free readiness
+  manifests, release validators, and smoke tests that prove checks, blocking
+  gaps, schema/service sections, command-method evidence, and no shared-table
+  access. Generated release evidence can also load sibling schema/service
+  modules when imported directly from generated apps. Syntax checks pass,
+  source/generated package evidence tests pass (`8 passed`), all package-local
+  PBC tests pass (`322 passed`), and the full PBC audit stack including all
+  built-in generation smoke and `pbc_release_audit()` returns true. Commit:
+  `1c6a27c`.
 
 ## Open Completion Areas
 
