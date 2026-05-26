@@ -931,6 +931,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   slice, central enterprise composition selection, implemented-capability
   audit, implementation release audit, `pbc_release_audit()`, payroll
   generation smoke audit, py-compile, and the restricted legacy-name diff scan.
+- `e892c73` tightens `talent_onboarding` into the complete package execution
+  contract: existing package-local UI/workbench wiring is preserved while
+  runtime configuration now rejects unsupported backends, parameters are
+  bounded, rules compile with required scope/status evidence, workbench
+  summaries expose configuration/rule/parameter bindings, and the package-local
+  specification records the strict datastore and AppGen-X eventing guarantees.
+  Verification passed for talent onboarding focused tests, the 72-test PBC
+  regression slice, central enterprise composition selection,
+  implemented-capability audit, implementation release audit,
+  `pbc_release_audit()`, talent onboarding generation smoke audit, py-compile,
+  and the restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
