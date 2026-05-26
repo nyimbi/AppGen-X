@@ -19862,11 +19862,15 @@ def package_manager_module_file_manifest(package_ids=()):
         exports = ()
         contract_ok = False
         smoke_ok = False
+        operation_steps_ok = False
+        validation_steps_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_package_manager_module_{module_name}")
             exports = tuple(name for name in required_exports if hasattr(module, name))
             contract = module.module_contract()
             smoke = module.smoke_test(package_ids)
+            operation_steps_ok = module.operation_steps(package_ids)["ok"]
+            validation_steps_ok = module.validation_steps(package_ids)["ok"]
             contract_ok = contract["ok"] and contract["module"] == module_name
             smoke_ok = smoke["ok"] and smoke["module"] == module_name
         entries.append(
@@ -19878,14 +19882,30 @@ def package_manager_module_file_manifest(package_ids=()):
                 "expected_exports": required_exports,
                 "contract_ok": contract_ok,
                 "smoke_ok": smoke_ok,
+                "operation_steps_ok": operation_steps_ok,
+                "validation_steps_ok": validation_steps_ok,
             }
         )
     return {
         "format": "appgen.generated-package-manager-module-file-manifest.v1",
         "ok": bool(entries)
-        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and item["operation_steps_ok"]
+            and item["validation_steps_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
         "modules": tuple(entries),
-        "guards": ("one_file_per_package_manager_surface", "declared_exports_present", "module_smoke_replays"),
+        "guards": (
+            "one_file_per_package_manager_surface",
+            "declared_exports_present",
+            "module_smoke_replays",
+            "operation_steps_declared",
+            "validation_steps_declared",
+        ),
         "side_effects": (),
     }
 
@@ -19913,11 +19933,16 @@ def package_manager_module_test_file_manifest(package_ids=()):
         module_path = test_dir / f"test_{module_name}.py"
         exports = ()
         smoke_ok = False
+        step_contracts_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_package_manager_module_test_{module_name}")
             exports = tuple(name for name in required_exports if hasattr(module, name))
             smoke = module.smoke_test()
             smoke_ok = smoke["ok"] and smoke["module"] == module_name
+            step_contracts_ok = (
+                "test_package_manager_module_step_contracts" in exports
+                and "test_package_manager_module_step_contracts" in smoke.get("tests", ())
+            )
         entries.append(
             {
                 "module": module_name,
@@ -19926,14 +19951,26 @@ def package_manager_module_test_file_manifest(package_ids=()):
                 "exports": exports,
                 "required_exports": required_exports,
                 "smoke_ok": smoke_ok,
+                "step_contracts_ok": step_contracts_ok,
             }
         )
     return {
         "format": "appgen.generated-package-manager-module-test-file-manifest.v1",
-        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] and set(item["required_exports"]) <= set(item["exports"]) for item in entries),
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["smoke_ok"]
+            and item["step_contracts_ok"]
+            and set(item["required_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
         "tests": tuple(entries),
         "required_exports": required_exports,
-        "guards": ("one_test_file_per_package_manager_surface", "contract_and_smoke_tests_exported"),
+        "guards": (
+            "one_test_file_per_package_manager_surface",
+            "contract_and_smoke_tests_exported",
+            "step_contract_tests_exported",
+        ),
         "side_effects": (),
     }
 

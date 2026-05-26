@@ -16664,6 +16664,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     package_manager_module_runtime_matrix = package_manager_runtime.package_manager_module_runtime_replay_matrix()
     assert package_manager_module_files["ok"] is True
     assert package_manager_module_tests["ok"] is True
+    assert {
+        "operation_steps_declared",
+        "validation_steps_declared",
+    } <= set(package_manager_module_files["guards"])
+    assert "step_contract_tests_exported" in package_manager_module_tests["guards"]
+    assert all(item["operation_steps_ok"] for item in package_manager_module_files["modules"])
+    assert all(item["validation_steps_ok"] for item in package_manager_module_files["modules"])
+    assert all(item["step_contracts_ok"] for item in package_manager_module_tests["tests"])
     assert package_manager_module_runtime_matrix["format"] == (
         "appgen.generated-package-manager-module-runtime-replay-matrix.v1"
     )

@@ -1233,6 +1233,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   manifests and tests now fail unless each module proves CSV/JSON round-trip,
   import error, migration batch, and release-workbench steps before data
   exchange readiness is trusted.
+- Current package manager tooling pass hardens generated install, preview,
+  registry, lifecycle, update, and rollback modules so their runtime manifests
+  fail unless standalone operation-step and validation-step contracts pass and
+  the generated module tests explicitly export step-contract tests before
+  package installation readiness is trusted.
 - Current commerce and customer PBC boundary pass hardens `customer_360`,
   `product_catalog_pim`, `global_inventory_visibility`,
   `payment_orchestration`, and `returns_reverse_logistics` with
