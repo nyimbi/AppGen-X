@@ -1248,7 +1248,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   so runtime manifests fail unless every generated device API component proves
   reusable operation-step and validation-step contracts, and generated component
   test modules explicitly export step-contract tests before mobile/device
-  readiness is trusted.
+  readiness is trusted. Commit: `b860cb8`.
 - Current commerce and customer PBC boundary pass hardens `customer_360`,
   `product_catalog_pim`, `global_inventory_visibility`,
   `payment_orchestration`, and `returns_reverse_logistics` with
