@@ -1660,6 +1660,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   package evidence tests pass (`8 passed`), all package-local PBC tests pass
   (`322 passed`), and the full PBC audit stack including all built-in generation
   smoke and `pbc_release_audit()` returns true. Commit: `bba1460`.
+- Current PBC service operation contract pass regenerates all built-in PBC
+  service facades so each package exposes route-bound executable operation
+  contracts with command/query kind, route, permission, owned-table mutation or
+  read scope, emitted event, AppGen-X event-contract evidence, and
+  owned-datastore-plus-outbox transaction boundaries. Package-local tests now
+  prove operation contracts through service and route smoke tests, syntax checks
+  pass, source/generated package evidence tests pass (`8 passed`), all
+  package-local PBC tests pass (`322 passed`), and the full PBC audit stack
+  including all built-in generation smoke and `pbc_release_audit()` returns true.
+  Commit: `0f60fe1`.
 
 ## Open Completion Areas
 
