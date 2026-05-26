@@ -247,6 +247,11 @@ and exception queues. The package validates those seeds with schema, migration,
 model, service, route, event, handler, UI, RBAC, configuration, and release
 contracts.
 
+## Read-Only Workbench Query Surface
+
+- `GET /payment-orchestration-workbench` maps to `query_payment_orchestration_workbench` and exposes a read-only workbench/query contract for this command-heavy PBC.
+- The query route has read-table scope only, emits no outbox event, requires no idempotency key, and remains inside the PBC-owned datastore boundary.
+
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
 
 ## Manifest Traceability Appendix

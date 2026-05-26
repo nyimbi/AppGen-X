@@ -201,6 +201,11 @@ audits prove all of the following:
 - Restricted-name scans over the package and tests are clean, and ordinary users
   cannot choose stream engines or non-AppGen-X event contracts.
 
+## Read-Only Workbench Query Surface
+
+- `GET /enterprise-search-vector-workbench` maps to `query_enterprise_search_vector_workbench` and exposes a read-only workbench/query contract for this command-heavy PBC.
+- The query route has read-table scope only, emits no outbox event, requires no idempotency key, and remains inside the PBC-owned datastore boundary.
+
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
 
 ## Manifest Traceability Appendix

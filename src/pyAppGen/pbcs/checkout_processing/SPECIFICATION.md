@@ -194,6 +194,11 @@ The focused test suite proves:
 - Boundary validation accepts owned tables and declared dependencies, then rejects direct foreign-table references.
 - Invalid backend, wrong event topic, stream picker fields, unsupported parameters, invalid rules, unsupported events, and non-owned schema extensions fail.
 
+## Read-Only Workbench Query Surface
+
+- `GET /checkout-processing-workbench` maps to `query_checkout_processing_workbench` and exposes a read-only workbench/query contract for this command-heavy PBC.
+- The query route has read-table scope only, emits no outbox event, requires no idempotency key, and remains inside the PBC-owned datastore boundary.
+
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
 
 ## Manifest Traceability Appendix

@@ -231,6 +231,11 @@ Focused tests prove:
 - The package participates in `pbc_implementation_release_audit()` and the
   all-PBC generation smoke audit through central exports.
 
+## Read-Only Workbench Query Surface
+
+- `GET /subscription-billing-workbench` maps to `query_subscription_billing_workbench` and exposes a read-only workbench/query contract for this command-heavy PBC.
+- The query route has read-table scope only, emits no outbox event, requires no idempotency key, and remains inside the PBC-owned datastore boundary.
+
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
 
 ## Manifest Traceability Appendix

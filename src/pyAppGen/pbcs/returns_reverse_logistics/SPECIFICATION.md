@@ -227,6 +227,11 @@ Focused validation for this package must include:
 - package-local checks that no stream-engine picker or user eventing selector
   appears in the package contract surface
 
+## Read-Only Workbench Query Surface
+
+- `GET /returns-reverse-logistics-workbench` maps to `query_returns_reverse_logistics_workbench` and exposes a read-only workbench/query contract for this command-heavy PBC.
+- The query route has read-table scope only, emits no outbox event, requires no idempotency key, and remains inside the PBC-owned datastore boundary.
+
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
 
 ## Manifest Traceability Appendix

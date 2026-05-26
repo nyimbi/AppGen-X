@@ -1860,6 +1860,18 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`5 passed`), generated service-template probes pass for `gl_core` and
   `ap_automation`, and `pbc_release_audit()` returns true with zero blocking
   gaps. Commit: `ad166b8`.
+- Current PBC read-only query coverage pass adds a workbench query route,
+  service operation, manifest workflow, API traceability entry, and
+  specification note to the eight PBCs that were still command-only:
+  `quality_assurance`, `workflow_orchestration`, `checkout_processing`,
+  `payment_orchestration`, `subscription_billing`,
+  `returns_reverse_logistics`, `cross_border_trade`, and
+  `enterprise_search_vector`. Every implemented PBC now has at least one
+  read-only query operation with read-table scope and no outbox emission.
+  Focused service semantics plus targeted PBC evidence tests pass
+  (`22 passed`), and source/package/specification/implementation/capability,
+  all built-in generation smoke, and `pbc_release_audit()` return true with
+  zero blocking gaps. Commit: `pending`.
 
 ## Open Completion Areas
 

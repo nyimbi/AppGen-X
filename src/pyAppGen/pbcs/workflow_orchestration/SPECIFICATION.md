@@ -202,6 +202,11 @@ applications should include this package as a self-registering PBC with models,
 services, routes, events, handlers, workbench fragments, permissions, seed
 data, and release audit evidence derived from these package-local contracts.
 
+## Read-Only Workbench Query Surface
+
+- `GET /workflow-orchestration-workbench` maps to `query_workflow_orchestration_workbench` and exposes a read-only workbench/query contract for this command-heavy PBC.
+- The query route has read-table scope only, emits no outbox event, requires no idempotency key, and remains inside the PBC-owned datastore boundary.
+
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
 
 ## Manifest Traceability Appendix

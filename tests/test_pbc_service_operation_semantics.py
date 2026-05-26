@@ -3,6 +3,14 @@ import importlib
 from pyAppGen.pbc import IMPLEMENTED_PBC_KEYS
 
 
+def test_every_pbc_service_exposes_at_least_one_read_only_query() -> None:
+    for key in IMPLEMENTED_PBC_KEYS:
+        services = importlib.import_module(f"pyAppGen.pbcs.{key}.services")
+        manifest = services.service_operation_manifest()
+
+        assert manifest["query_operations"], key
+
+
 def test_pbc_service_facades_separate_commands_from_queries() -> None:
     for key in IMPLEMENTED_PBC_KEYS:
         services = importlib.import_module(f"pyAppGen.pbcs.{key}.services")

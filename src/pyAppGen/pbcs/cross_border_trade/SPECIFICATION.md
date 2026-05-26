@@ -233,6 +233,11 @@ and landed-cost reason codes. Generated packages validate those seed
 descriptors with schema, migration, model, service, route, event, handler, UI,
 RBAC, configuration, and release contracts.
 
+## Read-Only Workbench Query Surface
+
+- `GET /cross-border-trade-workbench` maps to `query_cross_border_trade_workbench` and exposes a read-only workbench/query contract for this command-heavy PBC.
+- The query route has read-table scope only, emits no outbox event, requires no idempotency key, and remains inside the PBC-owned datastore boundary.
+
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
 
 ## Manifest Traceability Appendix

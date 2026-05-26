@@ -258,6 +258,11 @@ Completion requires:
   duplicate plus dead-letter control evidence.
 - Focused Quality Assurance tests pass.
 
+## Read-Only Workbench Query Surface
+
+- `GET /quality-assurance-workbench` maps to `query_quality_assurance_workbench` and exposes a read-only workbench/query contract for this command-heavy PBC.
+- The query route has read-table scope only, emits no outbox event, requires no idempotency key, and remains inside the PBC-owned datastore boundary.
+
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
 
 ## Manifest Traceability Appendix
