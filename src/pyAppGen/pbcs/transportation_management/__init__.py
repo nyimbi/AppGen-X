@@ -9,6 +9,9 @@ from .runtime import TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC
 from .runtime import TRANSPORTATION_MANAGEMENT_RUNTIME_CAPABILITY_KEYS
 from .runtime import TRANSPORTATION_MANAGEMENT_STANDARD_FEATURE_KEYS
 from .runtime import transportation_management_build_api_contract
+from .runtime import transportation_management_build_release_evidence
+from .runtime import transportation_management_build_schema_contract
+from .runtime import transportation_management_build_service_contract
 from .runtime import transportation_management_build_workbench_view
 from .runtime import transportation_management_calculate_eta
 from .runtime import transportation_management_configure_runtime
@@ -41,10 +44,16 @@ def implementation_contract() -> dict:
     return {
         **contract,
         "standard_features": runtime["standard_features"],
-        "advanced_runtime": runtime,
-        "ui_contract": transportation_management_ui_contract(),
-        "api_contract": transportation_management_build_api_contract(),
-        "permissions_contract": transportation_management_permissions_contract(),
         "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
         "allowed_database_backends": TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
+        "api_contract": transportation_management_build_api_contract(),
+        "schema_contract": transportation_management_build_schema_contract(),
+        "service_contract": transportation_management_build_service_contract(),
+        "release_evidence_contract": transportation_management_build_release_evidence(),
+        "permissions_contract": transportation_management_permissions_contract(),
+        "required_event_topic": TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC,
+        "consumes": TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES,
+        "emits": TRANSPORTATION_MANAGEMENT_EMITTED_EVENT_TYPES,
+        "advanced_runtime": runtime,
+        "ui_contract": transportation_management_ui_contract(),
     }

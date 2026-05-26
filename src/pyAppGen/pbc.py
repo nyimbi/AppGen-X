@@ -2516,10 +2516,30 @@ PBC_CATALOG: dict[str, dict] = {
         "label": "Transportation Management",
         "mesh": "scl",
         "description": "Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.",
-        "tables": ("shipment", "carrier", "freight_route", "tracking_event"),
-        "apis": ("POST /shipments", "POST /carrier-selection", "GET /eta"),
-        "emits": ("InboundArrived", "ShipmentDelivered", "EtaUpdated"),
-        "consumes": ("Packed", "PurchaseOrderIssued"),
+        "tables": (
+            "shipment",
+            "shipment_line",
+            "shipment_package",
+            "carrier",
+            "carrier_service_level",
+            "carrier_lane",
+            "freight_route",
+            "route_stop",
+            "route_leg",
+            "carrier_tender",
+            "dispatch_confirmation",
+            "tracking_event",
+            "eta_snapshot",
+            "inbound_arrival",
+            "delivery_proof",
+            "freight_cost_accrual",
+            "transportation_management_appgen_outbox_event",
+            "transportation_management_appgen_inbox_event",
+            "transportation_management_dead_letter_event",
+        ),
+        "apis": ("POST /transportation/shipments", "POST /transportation/carriers", "POST /transportation/shipments/{id}/carrier-selection", "POST /transportation/routes", "POST /transportation/tracking-events", "POST /transportation/shipments/{id}/delivery", "GET /transportation/workbench"),
+        "emits": ("CarrierRegistered", "ShipmentCreated", "CarrierSelected", "FreightRoutePlanned", "ShipmentDispatched", "EtaUpdated", "InboundArrived", "ShipmentDelivered"),
+        "consumes": ("Packed", "PurchaseOrderIssued", "ReturnAuthorized", "InventoryTransferRequested", "AccessPolicyChanged"),
         "template": None,
     },
     "personnel_identity": {
@@ -5890,6 +5910,9 @@ from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_RUNTIME_CA
 from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_build_api_contract  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_build_release_evidence  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_build_schema_contract  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_build_service_contract  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_build_workbench_view  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_calculate_eta  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_configure_runtime  # noqa: E402,F401

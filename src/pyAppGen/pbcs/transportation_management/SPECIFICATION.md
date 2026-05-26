@@ -10,12 +10,52 @@ implementation is owned under `src/pyAppGen/pbcs/transportation_management/`.
 
 - **PBC key:** `transportation_management`
 - **Mesh:** `scl`
-- **Owned tables:** `shipment`, `carrier`, `freight_route`, `tracking_event`
+- **Owned tables:** `shipment`, `shipment_line`, `shipment_party`,
+  `shipment_reference`, `shipment_package`, `carrier`,
+  `carrier_service_level`, `carrier_lane`, `carrier_contract`,
+  `carrier_identity`, `freight_route`, `route_stop`, `route_leg`,
+  `route_constraint`, `carrier_tender`, `carrier_tender_response`,
+  `dispatch_confirmation`, `tracking_event`, `eta_snapshot`,
+  `inbound_arrival`, `delivery_proof`, `delivery_exception`,
+  `transportation_exception`, `freight_cost_accrual`,
+  `freight_invoice_projection`, `cross_border_document`,
+  `temperature_hazard_control`, `carrier_scorecard`,
+  `carrier_risk_signal`, `carbon_distance_metric`,
+  `packed_order_projection`, `purchase_order_projection`,
+  `return_authorization_projection`, `inventory_transfer_projection`,
+  `access_policy_projection`, `transportation_policy_screening`,
+  `transportation_telematics_event`, `transportation_telematics_replay`,
+  `transportation_delivery_proof_hash`, `transportation_audit_trace`,
+  `transportation_federation_projection`,
+  `transportation_carbon_route_selection`,
+  `transportation_route_optimization`,
+  `transportation_tender_allocation`,
+  `transportation_tracking_anomaly_signal`,
+  `transportation_transit_exposure_model`,
+  `transportation_eta_cost_forecast`, `transportation_parsed_event`,
+  `transportation_seed_data`, `transportation_schema_extension`,
+  `transportation_control_assertion`, `transportation_governed_model`,
+  `transportation_rule`, `transportation_parameter`,
+  `transportation_configuration`,
+  `transportation_management_appgen_outbox_event`,
+  `transportation_management_appgen_inbox_event`, and
+  `transportation_management_dead_letter_event`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
 - **Event contract:** AppGen-X outbox/inbox event contract only
-- **Emits:** `InboundArrived`, `ShipmentDelivered`, `EtaUpdated`
-- **Consumes:** `Packed`, `PurchaseOrderIssued`
-- **Primary APIs:** `POST /shipments`, `POST /carrier-selection`, `GET /eta`
+- **Emits:** `CarrierRegistered`, `ShipmentCreated`, `CarrierSelected`,
+  `FreightRoutePlanned`, `ShipmentDispatched`, `EtaUpdated`,
+  `InboundArrived`, and `ShipmentDelivered`
+- **Consumes:** `Packed`, `PurchaseOrderIssued`, `ReturnAuthorized`,
+  `InventoryTransferRequested`, and `AccessPolicyChanged`
+- **Primary APIs:** `POST /transportation/shipments`,
+  `POST /transportation/carriers`,
+  `POST /transportation/shipments/{id}/carrier-selection`,
+  `POST /transportation/routes`,
+  `POST /transportation/shipments/{id}/dispatch`,
+  `POST /transportation/tracking-events`,
+  `POST /transportation/shipments/{id}/arrival`,
+  `POST /transportation/shipments/{id}/delivery`,
+  `POST /transportation/events/inbox`, and `GET /transportation/workbench`
 - **UI artifacts:** transportation workbench, carrier selection board, route
   planner, tender monitor, tracking console, exception queue, policy editor
 
@@ -49,36 +89,51 @@ confirmation.
 
 1. Shipment creation from packed order, purchase order, transfer, return, or
    inbound movement references.
-2. Carrier master references with mode, service levels, lane coverage, cost,
-   on-time performance, carbon profile, risk signals, and identity evidence.
-3. Freight route planning with origin, destination, stops, distance, mode,
+2. Shipment lines, parties, references, packages, weights, handling codes, and
+   source-package projections.
+3. Carrier master references with mode, service levels, lane coverage,
+   contracts, cost, on-time performance, carbon profile, risk signals, and
+   identity evidence.
+4. Freight route planning with origin, destination, stops, legs, constraints,
+   distance, mode,
    service level, appointment windows, and cost estimate.
-4. Carrier selection and tendering with scorecard, eligibility, fallback, and
+5. Carrier selection and tendering with scorecard, eligibility, fallback,
+   tender response, and
    award evidence.
-5. Dispatch confirmation and shipment status progression.
-6. Tracking event ingestion from telematics, carrier portal, EDI-style payloads,
+6. Dispatch confirmation and shipment status progression.
+7. Tracking event ingestion from telematics, carrier portal, EDI-style payloads,
    manual events, and warehouse dock events.
-7. ETA calculation, confidence scoring, and `EtaUpdated` emission.
-8. Inbound arrival and delivery confirmation with idempotent event emission.
-9. Exception management for delay, damaged freight, missed appointment, missing
+8. ETA calculation, confidence scoring, and `EtaUpdated` emission.
+9. Inbound arrival and delivery confirmation with idempotent event emission.
+10. Exception management for delay, damaged freight, missed appointment,
+    missing
    proof, carrier rejection, and tracking silence.
-10. Freight cost accrual, surcharge, accessorial, and variance projection.
-11. Multi-stop, multi-leg, inbound, outbound, parcel, LTL, truckload, ocean, air,
+11. Freight cost accrual, surcharge, accessorial, invoice projection, and
+    variance projection.
+12. Multi-stop, multi-leg, inbound, outbound, parcel, LTL, truckload, ocean, air,
     rail, and intermodal support.
-12. Cross-border document and customs evidence references.
-13. Temperature-controlled and hazardous-material handling controls.
-14. Carrier performance scorecards and freight audit preparation.
-15. Carbon, distance, utilization, and modal-shift analytics.
-16. Consumed-event handlers for `Packed` and `PurchaseOrderIssued` with
+13. Cross-border document and customs evidence references.
+14. Temperature-controlled and hazardous-material handling controls.
+15. Carrier performance scorecards and freight audit preparation.
+16. Carbon, distance, utilization, and modal-shift analytics.
+17. Local projections for packed orders, purchase orders, returns, inventory
+    transfers, and access policies.
+18. Consumed-event handlers for declared events with
     retry/dead-letter evidence.
-17. Multi-tenant and multi-entity transportation isolation.
-18. Permissions and ABAC descriptors for plan, tender, dispatch, track, confirm,
+19. AppGen-X outbox, inbox, retry, and dead-letter tables.
+20. Multi-tenant and multi-entity transportation isolation.
+21. Permissions and ABAC descriptors for plan, tender, dispatch, track, confirm,
     configure, and audit operations.
-19. Configuration schema and seed data for modes, service levels, carriers,
+22. Configuration schema and seed data for modes, service levels, carriers,
     route statuses, and default parameters.
-20. Workbench views for open shipments, tenders, late ETAs, exceptions,
+23. Workbench views for open shipments, tenders, late ETAs, exceptions,
     deliveries, carrier risk, and cost variance.
-21. Release-audit evidence for package ownership, manifests, schema, migrations,
+24. Schema-contract evidence for every owned table, including generated
+    migration paths and model descriptors.
+25. Service-contract evidence proving commands mutate only Transportation-owned
+    tables and external state enters through declared APIs, events, or
+    projections.
+26. Release-audit evidence for package ownership, manifests, schema, migrations,
     models, services, routes, events, handlers, UI, permissions, configuration,
     tests, registration metadata, and generation smoke.
 
@@ -147,16 +202,35 @@ chooses AppGen-X event semantics at the platform layer, while this package owns
 only transportation behavior and its own inbox/outbox/dead-letter evidence.
 
 Owned tables are declared as package metadata and as runtime evidence:
-`shipment`, `carrier`, `freight_route`, `route_stop`, `carrier_tender`,
-`dispatch_confirmation`, `tracking_event`, `eta_snapshot`, `inbound_arrival`,
-`delivery_proof`, `transportation_exception`, `freight_cost_accrual`,
-`cross_border_document`, `temperature_hazard_control`, `carrier_scorecard`,
-`carbon_distance_metric`, `transportation_rule`, `transportation_parameter`, and
-`transportation_configuration`. Schema extensions must target only those tables
+the owned table list above is the complete datastore boundary, including
+operational shipment, carrier, route, tender, dispatch, tracking, proof, cost,
+projection, policy, telematics, optimization, governance, configuration, and
+AppGen-X runtime tables. Schema extensions must target only those tables
 and field names must be stable lowercase identifiers. Extensions merge with
 existing extension metadata so a package user can add telematics payloads,
 appointment attributes, exception classifications, or proof metadata without
 overwriting prior extension declarations.
+
+`transportation_management_build_schema_contract()` emits generated schema
+evidence for every owned table: fields, ownership, primary key evidence,
+relationship descriptors, migration paths under
+`pbcs/transportation_management/migrations/`, generated model class names,
+allowed datastore backends, and `shared_table_access: false`.
+
+`transportation_management_build_service_contract()` emits service evidence for
+configuration, parameters, rules, schema extensions, event handling, carrier
+registration, shipment creation, carrier selection, route planning, dispatch,
+tracking, arrival, delivery, telematics routing, proofs, policy screening,
+federation, identity, resilience, crypto epoch rotation, carbon-aware route
+selection, route optimization, tender allocation, controls, and governed model
+registration. Query services cover ETA, workbench, simulations, forecasts,
+document/event parsing, risk scoring, exception recommendations, anomaly
+detection, stochastic transit exposure, and boundary verification.
+
+`transportation_management_build_release_evidence()` combines schema, service,
+API, permission, backend, and shared-table checks into a blocking release gate.
+A generated app must not mark Transportation complete unless this release
+evidence returns `ok: true` with no blocking gaps.
 
 The API contract is descriptor-level rather than a list of strings. Each route
 declares its command or query, owned tables touched, event effects, required

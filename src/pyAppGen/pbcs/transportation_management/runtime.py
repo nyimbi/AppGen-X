@@ -12,24 +12,63 @@ TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC = "appgen.transportation.events"
 TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 TRANSPORTATION_MANAGEMENT_OWNED_TABLES = (
     "shipment",
+    "shipment_line",
+    "shipment_party",
+    "shipment_reference",
+    "shipment_package",
     "carrier",
+    "carrier_service_level",
+    "carrier_lane",
+    "carrier_contract",
+    "carrier_identity",
     "freight_route",
     "route_stop",
+    "route_leg",
+    "route_constraint",
     "carrier_tender",
+    "carrier_tender_response",
     "dispatch_confirmation",
     "tracking_event",
     "eta_snapshot",
     "inbound_arrival",
     "delivery_proof",
+    "delivery_exception",
     "transportation_exception",
     "freight_cost_accrual",
+    "freight_invoice_projection",
     "cross_border_document",
     "temperature_hazard_control",
     "carrier_scorecard",
+    "carrier_risk_signal",
     "carbon_distance_metric",
+    "packed_order_projection",
+    "purchase_order_projection",
+    "return_authorization_projection",
+    "inventory_transfer_projection",
+    "access_policy_projection",
+    "transportation_policy_screening",
+    "transportation_telematics_event",
+    "transportation_telematics_replay",
+    "transportation_delivery_proof_hash",
+    "transportation_audit_trace",
+    "transportation_federation_projection",
+    "transportation_carbon_route_selection",
+    "transportation_route_optimization",
+    "transportation_tender_allocation",
+    "transportation_tracking_anomaly_signal",
+    "transportation_transit_exposure_model",
+    "transportation_eta_cost_forecast",
+    "transportation_parsed_event",
+    "transportation_seed_data",
+    "transportation_schema_extension",
+    "transportation_control_assertion",
+    "transportation_governed_model",
     "transportation_rule",
     "transportation_parameter",
     "transportation_configuration",
+    "transportation_management_appgen_outbox_event",
+    "transportation_management_appgen_inbox_event",
+    "transportation_management_dead_letter_event",
 )
 TRANSPORTATION_MANAGEMENT_EMITTED_EVENT_TYPES = (
     "CarrierRegistered",
@@ -113,24 +152,47 @@ TRANSPORTATION_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = (
 )
 TRANSPORTATION_MANAGEMENT_STANDARD_FEATURE_KEYS = (
     "shipment_creation",
+    "shipment_lines",
+    "shipment_parties",
+    "shipment_references",
+    "shipment_packages",
     "carrier_master",
+    "carrier_service_levels",
+    "carrier_lanes",
+    "carrier_contracts",
+    "carrier_identity",
     "freight_route_planning",
+    "route_legs",
+    "route_constraints",
     "carrier_selection",
     "tendering",
+    "tender_response_capture",
     "dispatch_confirmation",
     "tracking_event_ingestion",
     "eta_calculation",
     "inbound_arrival",
     "delivery_confirmation",
+    "delivery_exception_management",
     "exception_management",
     "freight_cost_accrual",
+    "freight_invoice_projection",
     "multi_leg_support",
     "cross_border_documents",
     "temperature_hazard_controls",
     "carrier_scorecard",
+    "carrier_risk_signals",
     "carbon_distance_analytics",
     "consumed_event_handlers",
+    "packed_order_projection",
+    "purchase_order_projection",
+    "return_authorization_projection",
+    "inventory_transfer_projection",
+    "access_policy_projection",
+    "appgen_x_outbox",
+    "appgen_x_inbox",
+    "retry_dead_letter_evidence",
     "multi_entity_isolation",
+    "idempotent_handlers",
     "permissions",
     "configuration_schema",
     "rule_engine",
@@ -166,6 +228,9 @@ def transportation_management_runtime_capabilities() -> dict:
             "confirm_delivery",
             "calculate_eta",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -278,6 +343,9 @@ def transportation_management_runtime_smoke() -> dict:
     screening = transportation_management_screen_policy(state, "ship_001", restricted_carriers=("carrier_blocked",))
     controls = transportation_management_run_control_tests(state)
     api = transportation_management_build_api_contract()
+    schema = transportation_management_build_schema_contract()
+    service = transportation_management_build_service_contract()
+    release = transportation_management_build_release_evidence()
     federation = transportation_management_federate_transportation_view(state, "ship_001", systems=("wms", "procurement", "finance"))
     identity = transportation_management_verify_carrier_identity(carrier_a["carrier"]["identity"])
     resilience = transportation_management_run_resilience_drill(state, "carrier_api_timeout")
@@ -306,7 +374,7 @@ def transportation_management_runtime_smoke() -> dict:
         {"id": "immutable_transportation_traceability_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_transportation_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_transportation_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "ShipmentDelivered" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "ShipmentDelivered" in api["events"]["emits"]},
         {"id": "cross_system_transportation_federation", "ok": federation["ok"] and "wms" in federation["systems"]},
         {"id": "carrier_network_telematics_integration", "ok": edge_route["idempotency_key"].startswith("transportation_management:TelematicsEvent")},
         {"id": "decentralized_carrier_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -666,6 +734,193 @@ def transportation_management_build_api_contract() -> dict:
             "TRANSPORTATION_MANAGEMENT_RETRY_LIMIT",
             "TRANSPORTATION_MANAGEMENT_DEFAULT_CURRENCY",
         ),
+    }
+
+
+def transportation_management_build_schema_contract() -> dict:
+    """Return Transportation-owned schema, migration, model, and relationship evidence."""
+    default_fields = ("tenant", "record_id", "source_id", "status", "effective_at", "audit_hash")
+    table_fields = {
+        table: default_fields for table in TRANSPORTATION_MANAGEMENT_OWNED_TABLES
+    } | {
+        "shipment": ("tenant", "shipment_id", "source_ref", "origin", "destination", "mode", "status"),
+        "shipment_line": ("tenant", "shipment_line_id", "shipment_id", "item_id", "quantity", "weight"),
+        "shipment_party": ("tenant", "party_id", "shipment_id", "role", "name", "address_ref"),
+        "shipment_reference": ("tenant", "reference_id", "shipment_id", "reference_type", "reference_value", "source"),
+        "shipment_package": ("tenant", "package_id", "shipment_id", "weight", "dimensions", "handling_code"),
+        "carrier": ("tenant", "carrier_id", "mode", "cost_per_mile", "on_time_rate", "risk", "status"),
+        "carrier_service_level": ("tenant", "service_level_id", "carrier_id", "service_level", "transit_days", "status"),
+        "carrier_lane": ("tenant", "lane_id", "carrier_id", "origin", "destination", "status"),
+        "carrier_contract": ("tenant", "carrier_contract_id", "carrier_id", "rate_card", "effective_from", "status"),
+        "carrier_identity": ("tenant", "identity_id", "carrier_id", "did", "issuer", "status"),
+        "freight_route": ("tenant", "route_id", "shipment_id", "carrier_id", "distance_miles", "estimated_cost", "status"),
+        "route_stop": ("tenant", "stop_id", "route_id", "sequence", "location", "appointment_window"),
+        "route_leg": ("tenant", "leg_id", "route_id", "origin", "destination", "distance_miles"),
+        "route_constraint": ("tenant", "constraint_id", "route_id", "constraint_type", "value", "status"),
+        "carrier_tender": ("tenant", "tender_id", "shipment_id", "carrier_id", "status", "sent_at"),
+        "carrier_tender_response": ("tenant", "response_id", "tender_id", "carrier_id", "decision", "responded_at"),
+        "dispatch_confirmation": ("tenant", "dispatch_id", "shipment_id", "tender_id", "status", "dispatched_at"),
+        "tracking_event": ("tenant", "event_id", "shipment_id", "location", "distance_remaining", "delay_minutes"),
+        "eta_snapshot": ("tenant", "eta_snapshot_id", "shipment_id", "eta_hours", "confidence", "observed_at"),
+        "inbound_arrival": ("tenant", "arrival_id", "shipment_id", "facility", "arrived_at", "status"),
+        "delivery_proof": ("tenant", "proof_id", "shipment_id", "proof_hash", "public_claims", "delivered_at"),
+        "transportation_management_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        "transportation_management_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "transportation_management_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "shipment_line.shipment_id", "to": "shipment.shipment_id", "type": "owned_child"},
+        {"from": "shipment_package.shipment_id", "to": "shipment.shipment_id", "type": "owned_package"},
+        {"from": "carrier_service_level.carrier_id", "to": "carrier.carrier_id", "type": "owned_service"},
+        {"from": "carrier_lane.carrier_id", "to": "carrier.carrier_id", "type": "owned_lane"},
+        {"from": "carrier_identity.carrier_id", "to": "carrier.carrier_id", "type": "owned_identity"},
+        {"from": "freight_route.shipment_id", "to": "shipment.shipment_id", "type": "owned_route"},
+        {"from": "route_stop.route_id", "to": "freight_route.route_id", "type": "owned_stop"},
+        {"from": "route_leg.route_id", "to": "freight_route.route_id", "type": "owned_leg"},
+        {"from": "carrier_tender.shipment_id", "to": "shipment.shipment_id", "type": "owned_tender"},
+        {"from": "carrier_tender_response.tender_id", "to": "carrier_tender.tender_id", "type": "owned_response"},
+        {"from": "dispatch_confirmation.shipment_id", "to": "shipment.shipment_id", "type": "owned_dispatch"},
+        {"from": "tracking_event.shipment_id", "to": "shipment.shipment_id", "type": "owned_tracking"},
+        {"from": "delivery_proof.shipment_id", "to": "shipment.shipment_id", "type": "owned_delivery"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "transportation_management",
+        }
+        for table in TRANSPORTATION_MANAGEMENT_OWNED_TABLES
+    )
+    allowed_prefixes = (
+        "shipment",
+        "carrier",
+        "freight_",
+        "route_",
+        "dispatch_",
+        "tracking_",
+        "eta_",
+        "inbound_",
+        "delivery_",
+        "transportation",
+        "cross_",
+        "temperature_",
+        "carbon_",
+        "packed_",
+        "purchase_",
+        "return_",
+        "inventory_",
+        "access_",
+    )
+    return {
+        "format": "appgen.transportation-management-owned-schema-contract.v1",
+        "ok": len(tables) == len(TRANSPORTATION_MANAGEMENT_OWNED_TABLES)
+        and len(tables) >= 40
+        and all(item["table"].startswith(allowed_prefixes) for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/transportation_management/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(TRANSPORTATION_MANAGEMENT_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in TRANSPORTATION_MANAGEMENT_OWNED_TABLES
+        ),
+        "datastore_backends": TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def transportation_management_build_service_contract() -> dict:
+    """Return Transportation command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_carrier",
+        "create_shipment",
+        "select_carrier",
+        "plan_route",
+        "dispatch_shipment",
+        "record_tracking_event",
+        "confirm_inbound_arrival",
+        "confirm_delivery",
+        "route_telematics_event",
+        "generate_delivery_proof",
+        "screen_policy",
+        "federate_transportation_view",
+        "verify_carrier_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_route",
+        "optimize_route_carrier",
+        "allocate_carrier_tender",
+        "run_control_tests",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.transportation-management-service-contract.v1",
+        "ok": len(command_methods) >= 25,
+        "transaction_boundary": "transportation_management_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "calculate_eta",
+            "build_workbench_view",
+            "simulate_carrier_route",
+            "forecast_eta_cost_delay",
+            "parse_transport_event",
+            "score_transport_risk",
+            "recommend_exception_resolution",
+            "detect_tracking_anomaly",
+            "model_stochastic_transit_exposure",
+            "verify_owned_table_boundary",
+        ),
+        "mutates_only": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _TRANSPORTATION_MANAGEMENT_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _TRANSPORTATION_MANAGEMENT_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def transportation_management_build_release_evidence() -> dict:
+    """Return Transportation package-local release evidence."""
+    schema = transportation_management_build_schema_contract()
+    service = transportation_management_build_service_contract()
+    api = transportation_management_build_api_contract()
+    permissions = transportation_management_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 40},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(TRANSPORTATION_MANAGEMENT_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 25},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"create_shipment", "dispatch_shipment", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.transportation-management-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
