@@ -18,6 +18,9 @@ from .runtime import procurement_sourcing_runtime_smoke
 from .runtime import procurement_sourcing_score_suppliers
 from .runtime import procurement_sourcing_select_supplier
 from .runtime import procurement_sourcing_set_parameter
+from .ui import PROCUREMENT_SOURCING_UI_FRAGMENT_KEYS
+from .ui import procurement_sourcing_render_workbench
+from .ui import procurement_sourcing_ui_contract
 
 PBC_KEY = "procurement_sourcing"
 
@@ -29,4 +32,5 @@ def implementation_contract() -> dict:
         **contract,
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
+        "ui_contract": procurement_sourcing_ui_contract(),
     }

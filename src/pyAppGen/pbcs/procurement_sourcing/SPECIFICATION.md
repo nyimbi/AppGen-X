@@ -122,6 +122,11 @@ selection, contract award, and purchase-order issuance.
 ## Runtime Completeness Contract
 
 The runtime must prove that rules, parameters, and configuration execute and
-affect procurement decisions; that requisitions, RFQs, contracts, and POs stay
-inside the package boundary; that AppGen-X outbox events are idempotent; and
-that all standard and advanced capability claims have testable release evidence.
+affect procurement decisions; that runtime configuration rejects unsupported
+backends while exposing only the AppGen-X event contract; that package-local UI
+fragments cover requisitions, approval, budget policy, suppliers, RFQs,
+invitations, bid capture, scoring, awards, contracts, renewals, purchase orders,
+risk, spend analytics, rules, parameters, and configuration; that requisitions,
+RFQs, contracts, and POs stay inside the package boundary; that AppGen-X outbox
+events are idempotent; and that all standard and advanced capability claims
+have testable release evidence.

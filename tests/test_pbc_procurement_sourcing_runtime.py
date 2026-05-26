@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
@@ -12,11 +14,13 @@ from pyAppGen.pbc import procurement_sourcing_create_rfq
 from pyAppGen.pbc import procurement_sourcing_empty_state
 from pyAppGen.pbc import procurement_sourcing_issue_purchase_order
 from pyAppGen.pbc import procurement_sourcing_register_rule
+from pyAppGen.pbc import procurement_sourcing_render_workbench
 from pyAppGen.pbc import procurement_sourcing_runtime_capabilities
 from pyAppGen.pbc import procurement_sourcing_runtime_smoke
 from pyAppGen.pbc import procurement_sourcing_score_suppliers
 from pyAppGen.pbc import procurement_sourcing_select_supplier
 from pyAppGen.pbc import procurement_sourcing_set_parameter
+from pyAppGen.pbc import procurement_sourcing_ui_contract
 
 
 def test_procurement_sourcing_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -37,6 +41,8 @@ def test_procurement_sourcing_runtime_executes_standard_and_advanced_capabilitie
     contract = pbc_implementation_contract("procurement_sourcing")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert "ProcurementConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("procurement_sourcing",))["ok"] is True
     assert pbc_implemented_capability_audit(("procurement_sourcing",))["ok"] is True
@@ -135,3 +141,48 @@ def test_procurement_sourcing_runtime_applies_rules_parameters_and_configuration
     assert workbench["rfq_count"] == 1
     assert workbench["contract_count"] == 1
     assert workbench["po_amount"] == 1700
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 3
+
+    ui_contract = procurement_sourcing_ui_contract()
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert "approval_limit" in ui_contract["parameter_editor"]["numeric_parameters"]
+    assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    rendered = procurement_sourcing_render_workbench(
+        state,
+        tenant="tenant_ops",
+        principal_permissions=(
+            "procurement_sourcing.request",
+            "procurement_sourcing.approve",
+            "procurement_sourcing.source",
+            "procurement_sourcing.award",
+            "procurement_sourcing.contract",
+            "procurement_sourcing.order",
+            "procurement_sourcing.audit",
+            "procurement_sourcing.configure",
+        ),
+    )
+    assert rendered["ok"] is True
+    assert rendered["configuration_bound"] is True
+    assert rendered["event_outbox_count"] == 6
+    assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
+    assert not rendered["locked_actions"]
+
+
+def test_procurement_sourcing_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = procurement_sourcing_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        procurement_sourcing_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.procurement.events",
+                "retry_limit": 3,
+                "default_currency": "USD",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Procurement Sourcing parameter"):
+        procurement_sourcing_set_parameter(state, "stream_engine", "hidden_picker")

@@ -226,16 +226,43 @@ def procurement_sourcing_empty_state() -> dict:
 
 
 def procurement_sourcing_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Procurement Sourcing supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Procurement Sourcing requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def procurement_sourcing_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "approval_limit",
+        "minimum_bid_count",
+        "supplier_risk_threshold",
+        "price_variance_tolerance",
+        "renewal_horizon_days",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported Procurement Sourcing parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def procurement_sourcing_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Procurement Sourcing rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("Procurement Sourcing rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -447,7 +474,18 @@ def procurement_sourcing_score_supplier_risk(signals: dict) -> dict:
 
 def procurement_sourcing_build_workbench_view(state: dict, *, tenant: str) -> dict:
     pos = tuple(po for po in state["purchase_orders"].values() if po["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "requisition_count": len(tuple(req for req in state["requisitions"].values() if req["tenant"] == tenant)), "rfq_count": len(tuple(rfq for rfq in state["rfqs"].values() if rfq["tenant"] == tenant)), "contract_count": len(tuple(contract for contract in state["contracts"].values() if contract["tenant"] == tenant)), "po_count": len(pos), "po_amount": round(sum(po["amount"] for po in pos), 2)}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "requisition_count": len(tuple(req for req in state["requisitions"].values() if req["tenant"] == tenant)),
+        "rfq_count": len(tuple(rfq for rfq in state["rfqs"].values() if rfq["tenant"] == tenant)),
+        "contract_count": len(tuple(contract for contract in state["contracts"].values() if contract["tenant"] == tenant)),
+        "po_count": len(pos),
+        "po_amount": round(sum(po["amount"] for po in pos), 2),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def procurement_sourcing_register_governed_model(name: str, metadata: dict) -> dict:

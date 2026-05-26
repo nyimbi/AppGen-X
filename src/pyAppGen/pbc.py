@@ -5226,6 +5226,7 @@ from .pbcs.wms_core import wms_core_set_parameter  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_ui_contract  # noqa: E402,F401
 from .pbcs.procurement_sourcing import PROCUREMENT_SOURCING_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.procurement_sourcing import PROCUREMENT_SOURCING_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.procurement_sourcing import PROCUREMENT_SOURCING_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_approve_requisition  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_build_workbench_view  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_capture_bid  # noqa: E402,F401
@@ -5236,11 +5237,13 @@ from .pbcs.procurement_sourcing import procurement_sourcing_create_rfq  # noqa: 
 from .pbcs.procurement_sourcing import procurement_sourcing_empty_state  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_issue_purchase_order  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_register_rule  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_render_workbench  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_runtime_capabilities  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_runtime_smoke  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_score_suppliers  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_select_supplier  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_set_parameter  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_ui_contract  # noqa: E402,F401
 from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_calculate_eta  # noqa: E402,F401
