@@ -7,6 +7,7 @@ from .runtime import COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES
 from .runtime import COMPOSITION_ENGINE_EMITTED_EVENT_TYPES
 from .runtime import COMPOSITION_ENGINE_OWNED_TABLES
 from .runtime import COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
+from .runtime import COMPOSITION_ENGINE_RUNTIME_TABLES
 from .runtime import composition_engine_permissions_contract
 
 
@@ -54,7 +55,16 @@ def composition_engine_ui_contract() -> dict:
         ),
         "action_permissions": composition_engine_permissions_contract()["action_permissions"],
         "configuration_editor": {
-            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
+            "required_fields": (
+                "database_backend",
+                "event_topic",
+                "retry_limit",
+                "allowed_targets",
+                "allowed_layout_modes",
+                "publication_mode",
+                "default_timezone",
+                "workbench_limit",
+            ),
             "allowed_database_backends": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS,
             "required_event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
@@ -66,7 +76,7 @@ def composition_engine_ui_contract() -> dict:
         },
         "rule_editor": {
             "rule_types": ("workspace", "layout", "route", "permission", "release_gate"),
-            "required_fields": ("rule_id", "tenant", "scope", "required_fragments", "allowed_meshes", "route_policy", "severity", "status"),
+            "required_fields": ("rule_id", "tenant", "scope", "required_fragments", "allowed_meshes", "route_policy", "requires_approval", "severity", "status"),
         },
         "event_surfaces": {
             "emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES,
@@ -75,7 +85,13 @@ def composition_engine_ui_contract() -> dict:
             "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
-        "binding_evidence": {"owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "shared_table_access": False},
+        "binding_evidence": {
+            "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
+            "runtime_tables": COMPOSITION_ENGINE_RUNTIME_TABLES,
+            "required_event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
+            "event_contract": "AppGen-X",
+            "shared_table_access": False,
+        },
     }
 
 
@@ -116,8 +132,10 @@ def composition_engine_render_workbench(
         "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
         "binding_evidence": {
             "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
-            "outbox_table": "composition_engine_appgen_outbox_event",
-            "inbox_table": "composition_engine_appgen_inbox_event",
-            "dead_letter_table": "composition_engine_dead_letter_event",
+            "runtime_tables": COMPOSITION_ENGINE_RUNTIME_TABLES,
+            "outbox_table": COMPOSITION_ENGINE_RUNTIME_TABLES[0],
+            "inbox_table": COMPOSITION_ENGINE_RUNTIME_TABLES[1],
+            "dead_letter_table": COMPOSITION_ENGINE_RUNTIME_TABLES[2],
+            "shared_table_access": False,
         },
     }

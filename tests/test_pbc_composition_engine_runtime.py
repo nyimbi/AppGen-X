@@ -25,7 +25,12 @@ from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_CONSUMED_EVENT_T
 from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_EMITTED_EVENT_TYPES
 from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_OWNED_TABLES
 from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_RUNTIME_TABLES
 from pyAppGen.pbcs.composition_engine import composition_engine_build_api_contract
+from pyAppGen.pbcs.composition_engine import composition_engine_build_release_evidence
+from pyAppGen.pbcs.composition_engine import composition_engine_build_schema_contract
+from pyAppGen.pbcs.composition_engine import composition_engine_build_service_contract
+from pyAppGen.pbcs.composition_engine import implementation_contract as composition_engine_implementation_contract
 from pyAppGen.pbcs.composition_engine import composition_engine_permissions_contract
 from pyAppGen.pbcs.composition_engine import composition_engine_plan_package_registration
 from pyAppGen.pbcs.composition_engine import composition_engine_receive_event
@@ -55,11 +60,17 @@ def test_composition_engine_runtime_executes_standard_and_advanced_capabilities(
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["owned_tables"] == COMPOSITION_ENGINE_OWNED_TABLES
+    assert contract["source_package"]["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES
     assert contract["source_package"]["allowed_database_backends"] == COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["required_event_topic"] == COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "composition_engine.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "CompositionConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
+    assert contract["source_package"]["release_evidence_contract"]["ui"]["binding_evidence"]["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES
     assert set(contract["advanced_runtime"]["capabilities"]) == set(COMPOSITION_ENGINE_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("composition_engine",))["ok"] is True
     assert pbc_implemented_capability_audit(("composition_engine",))["ok"] is True
@@ -67,14 +78,27 @@ def test_composition_engine_runtime_executes_standard_and_advanced_capabilities(
     api = composition_engine_build_api_contract()
     permissions = composition_engine_permissions_contract()
     assert api["owned_tables"] == COMPOSITION_ENGINE_OWNED_TABLES
+    assert api["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES
     assert api["database_backends"] == COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS
     assert api["emits"] == COMPOSITION_ENGINE_EMITTED_EVENT_TYPES
     assert api["consumes"] == COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES
     assert api["shared_table_access"] is False
+    assert api["required_event_topic"] == COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
     assert api["stream_engine_picker_visible"] is False
-    assert {route["route"] for route in api["routes"]} >= {"POST /composition-workspaces", "POST /composition/events/inbox", "GET /composition-workbench"}
+    assert api["user_selectable_event_contract"] is False
+    assert {route["route"] for route in api["routes"]} >= {
+        "POST /composition-workspaces",
+        "POST /composition/events/inbox",
+        "GET /composition-workbench",
+        "GET /composition/schema-contract",
+        "GET /composition/service-contract",
+        "GET /composition/release-evidence",
+    }
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
     assert permissions["action_permissions"]["plan_package_registration"] == "composition_engine.publish"
+    assert permissions["action_permissions"]["build_schema_contract"] == "composition_engine.audit"
+    assert permissions["action_permissions"]["build_service_contract"] == "composition_engine.audit"
+    assert permissions["action_permissions"]["build_release_evidence"] == "composition_engine.audit"
 
 
 def test_composition_engine_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -170,6 +194,8 @@ def test_composition_engine_runtime_applies_rules_parameters_configuration_and_u
     assert package_plan["state"] is state
     assert package_plan["plan"]["side_effect_free"] is True
     assert package_plan["plan"]["writes_performed"] == ()
+    assert state["package_registration_plans"] == {}
+    assert state["package_index_entries"] == {}
     assert package_plan["plan"]["index_entries"] == (
         {"entry_type": "pbc", "key": "customer_360", "source": "workspace_selection"},
     )
@@ -208,9 +234,21 @@ def test_composition_engine_runtime_applies_rules_parameters_configuration_and_u
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS
     assert ui_contract["configuration_editor"]["required_event_topic"] == COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
+    assert ui_contract["configuration_editor"]["required_fields"] == (
+        "database_backend",
+        "event_topic",
+        "retry_limit",
+        "allowed_targets",
+        "allowed_layout_modes",
+        "publication_mode",
+        "default_timezone",
+        "workbench_limit",
+    )
     assert ui_contract["binding_evidence"]["owned_tables"] == COMPOSITION_ENGINE_OWNED_TABLES
+    assert ui_contract["binding_evidence"]["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES
     assert "max_fragments_per_page" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    assert "requires_approval" in ui_contract["rule_editor"]["required_fields"]
     rendered = composition_engine_render_workbench(
         state,
         tenant="tenant_ops",
@@ -230,6 +268,8 @@ def test_composition_engine_runtime_applies_rules_parameters_configuration_and_u
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == COMPOSITION_ENGINE_OWNED_TABLES
+    assert rendered["binding_evidence"]["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES
+    assert rendered["binding_evidence"]["shared_table_access"] is False
 
     boundary = composition_engine_verify_owned_table_boundary(
         ("composition_workspace", "SchemaAccepted", "gateway_composition_projection", "POST /audit/composition-events", "composition_engine_appgen_outbox_event")
@@ -239,6 +279,63 @@ def test_composition_engine_runtime_applies_rules_parameters_configuration_and_u
     violation_boundary = composition_engine_verify_owned_table_boundary(("gl_core_journal_entry",))
     assert violation_boundary["ok"] is False
     assert violation_boundary["violations"] == ("gl_core_journal_entry",)
+
+
+def test_composition_engine_package_contract_builders_publish_release_ui_and_boundary_evidence() -> None:
+    schema = composition_engine_build_schema_contract()
+    service = composition_engine_build_service_contract()
+    release = composition_engine_build_release_evidence()
+    package_contract = composition_engine_implementation_contract()
+
+    assert schema["ok"] is True
+    assert tuple(item["table"] for item in schema["runtime_tables"]) == COMPOSITION_ENGINE_RUNTIME_TABLES
+    assert schema["datastore_backends"] == COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS
+    assert schema["required_event_topic"] == COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
+    assert schema["event_contract"] == "AppGen-X"
+    assert schema["shared_table_access"] is False
+    assert len(schema["tables"]) == len(COMPOSITION_ENGINE_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(COMPOSITION_ENGINE_OWNED_TABLES)
+
+    assert service["ok"] is True
+    assert service["mutates_only"] == COMPOSITION_ENGINE_OWNED_TABLES
+    assert service["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES
+    assert service["eventing"] == {
+        "contract": "AppGen-X",
+        "topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+    }
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert service["side_effect_free_commands"] == ("plan_package_registration",)
+    assert service["retry_dead_letter_evidence"]["outbox_table"] == COMPOSITION_ENGINE_RUNTIME_TABLES[0]
+    assert service["retry_dead_letter_evidence"]["inbox_table"] == COMPOSITION_ENGINE_RUNTIME_TABLES[1]
+    assert service["retry_dead_letter_evidence"]["dead_letter_table"] == COMPOSITION_ENGINE_RUNTIME_TABLES[2]
+
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert release["schema"]["datastore_backends"] == COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS
+    assert release["api"]["required_event_topic"] == COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
+    assert release["api"]["event_contract"] == "AppGen-X"
+    assert release["ui"]["binding_evidence"]["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES
+    assert release["ui"]["binding_evidence"]["shared_table_access"] is False
+    assert release["workbench"]["binding_evidence"]["configuration"]["event_topic"] == COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
+    assert release["boundary"]["ok"] is True
+    assert release["boundary"]["declared_dependencies"]["shared_tables"] == ()
+    assert {check["id"] for check in release["checks"]} >= {
+        "owned_schema_depth",
+        "service_contract_depth",
+        "api_event_contract",
+        "ui_binding_evidence",
+        "boundary_contract",
+    }
+
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
+    assert package_contract["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES
+    assert package_contract["required_event_topic"] == COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
+    assert package_contract["consumes"] == COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES
+    assert package_contract["emits"] == COMPOSITION_ENGINE_EMITTED_EVENT_TYPES
 
 
 def test_composition_engine_rejects_unsupported_database_backends_eventing_and_boundaries() -> None:

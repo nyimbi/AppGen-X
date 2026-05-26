@@ -229,10 +229,44 @@ The package implementation contract exports package metadata for:
 - required event topic
 - emitted and consumed events
 - descriptor API contract
+- generated owned-schema contract
+- generated service contract
+- package release evidence contract
 - permissions contract
 - boundary contract
 - UI contract
 - advanced runtime capabilities
+
+## Generated Schema, Services, and Release Contract
+
+`customer_360_build_schema_contract()` emits the package-owned schema plan for
+profiles, identities, identity evidence, survivorship, households, consent,
+preferences, touchpoints, engagement, timelines, segments, value snapshots,
+health signals, churn forecasts, merge decisions, exception remediation,
+cross-domain projections, cryptographic proofs, policy screenings, controls,
+federation views, resilience drills, crypto epochs, carbon windows, optimization
+artifacts, anomaly signals, exposure forecasts, governed models, seed data, and
+AppGen-X inbox/outbox/dead-letter tables. Every table receives a deterministic
+package-local migration descriptor under `pbcs/customer_360/migrations/` and a
+generated model descriptor under `pbcs/customer_360/models/`.
+
+`customer_360_build_service_contract()` declares the command and query surface
+that generated applications can bind to without direct table sharing. It covers
+standard Customer 360 operations such as profile creation, identity linking,
+consent, preference, touchpoint, engagement ingestion, merge review, timeline
+queries, and event handling, plus advanced capabilities such as privacy proofs,
+policy screening, control testing, customer federation, decentralized identity
+verification, resilience drills, crypto rotation, carbon-aware processing,
+segment optimization, channel allocation, anomaly detection, stochastic
+exposure modeling, and governed model registration.
+
+`customer_360_build_release_evidence()` is the package release gate. It proves
+that the owned schema is deep enough for the domain, every owned table has a
+model and migration descriptor, the service contract is broad enough for table
+stakes plus advanced capabilities, eventing is AppGen-X-only, backend choices
+are limited to PostgreSQL/MySQL/MariaDB, schema/service/release queries are
+permissioned, runtime event tables are owned, and shared-table access remains
+disabled.
 
 Release evidence requires runtime smoke success, standard feature coverage,
 advanced capability coverage, package-local API and permissions contracts, UI

@@ -25,6 +25,11 @@ COMPOSITION_ENGINE_OWNED_TABLES = (
     "composition_parameter",
     "composition_configuration",
 )
+COMPOSITION_ENGINE_RUNTIME_TABLES = (
+    "composition_engine_appgen_outbox_event",
+    "composition_engine_appgen_inbox_event",
+    "composition_engine_dead_letter_event",
+)
 COMPOSITION_ENGINE_EMITTED_EVENT_TYPES = (
     "CompositionWorkspaceCreated",
     "PbcSelectedForComposition",
@@ -44,11 +49,7 @@ COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES = (
     "WorkflowCompleted",
     "PackageRegistrationRequested",
 )
-_COMPOSITION_ENGINE_RUNTIME_TABLES = (
-    "composition_engine_appgen_outbox_event",
-    "composition_engine_appgen_inbox_event",
-    "composition_engine_dead_letter_event",
-)
+_COMPOSITION_ENGINE_RUNTIME_TABLES = COMPOSITION_ENGINE_RUNTIME_TABLES
 _COMPOSITION_ENGINE_ALLOWED_DEPENDENCIES = (
     "identity_composition_projection",
     "gateway_composition_projection",
@@ -166,6 +167,9 @@ def composition_engine_runtime_capabilities() -> dict:
             "generate_composition_dsl",
             "publish_composition",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -680,6 +684,229 @@ def composition_engine_run_control_tests(state: dict) -> dict:
     return {"ok": all(checks.values()), "checks": checks, "hash_chain_valid": hash_chain_valid, "blocking_gaps": tuple(key for key, ok in checks.items() if not ok)}
 
 
+def composition_engine_build_schema_contract() -> dict:
+    table_fields = {
+        "composition_workspace": ("tenant", "workspace_id", "name", "owner", "target", "version", "status", "selected_pbcs"),
+        "component_registry": ("tenant", "component_id", "pbc", "fragment", "permissions", "schemas", "status", "compatibility"),
+        "ui_fragment": ("tenant", "fragment_id", "component_id", "route", "slots", "events", "status"),
+        "layout_binding": ("tenant", "binding_id", "workspace_id", "page", "slot", "fragment_id", "projection", "status"),
+        "dsl_artifact": ("tenant", "artifact_id", "workspace_id", "route_count", "checksum", "event_contract", "status"),
+        "composition_plan": ("tenant", "workspace_id", "selected_pbcs", "route_count", "bindings", "status"),
+        "composition_validation_run": ("tenant", "validation_id", "workspace_id", "decision", "blockers", "missing_fragments", "route_count"),
+        "package_registration_plan": ("tenant", "plan_id", "workspace_id", "requested_by", "status", "side_effect_free", "writes_performed"),
+        "package_index_entry": ("tenant", "workspace_id", "selected_pbcs", "status", "entry_source"),
+        "release_evidence": ("tenant", "workspace_id", "version", "route_count", "release_risk", "status", "package_registration_plan"),
+        "composition_rule": ("tenant", "rule_id", "scope", "required_fragments", "allowed_meshes", "route_policy", "requires_approval", "status"),
+        "composition_parameter": ("tenant", "parameter_id", "key", "value", "effective_at", "status"),
+        "composition_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_timezone", "status"),
+    }
+    runtime_tables = (
+        {
+            "table": COMPOSITION_ENGINE_RUNTIME_TABLES[0],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "status"),
+        },
+        {
+            "table": COMPOSITION_ENGINE_RUNTIME_TABLES[1],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts"),
+        },
+        {
+            "table": COMPOSITION_ENGINE_RUNTIME_TABLES[2],
+            "fields": ("tenant", "event_id", "event_type", "reason", "payload", "attempts"),
+        },
+    )
+    relationships = (
+        {"from_table": "ui_fragment", "from_field": "component_id", "to_table": "component_registry", "to_field": "component_id"},
+        {"from_table": "layout_binding", "from_field": "workspace_id", "to_table": "composition_workspace", "to_field": "workspace_id"},
+        {"from_table": "layout_binding", "from_field": "fragment_id", "to_table": "ui_fragment", "to_field": "fragment_id"},
+        {"from_table": "dsl_artifact", "from_field": "workspace_id", "to_table": "composition_workspace", "to_field": "workspace_id"},
+        {"from_table": "composition_plan", "from_field": "workspace_id", "to_table": "composition_workspace", "to_field": "workspace_id"},
+        {"from_table": "composition_validation_run", "from_field": "workspace_id", "to_table": "composition_workspace", "to_field": "workspace_id"},
+        {"from_table": "package_registration_plan", "from_field": "workspace_id", "to_table": "composition_workspace", "to_field": "workspace_id"},
+        {"from_table": "package_index_entry", "from_field": "workspace_id", "to_table": "composition_workspace", "to_field": "workspace_id"},
+        {"from_table": "release_evidence", "from_field": "workspace_id", "to_table": "composition_workspace", "to_field": "workspace_id"},
+    )
+    allowed_prefixes = ("composition_", "component_", "ui_", "layout_", "dsl_", "package_", "release_")
+    invalid_prefixes = tuple(table for table in COMPOSITION_ENGINE_OWNED_TABLES if not table.startswith(allowed_prefixes))
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": table_fields[table][1],
+            "owned_by": "composition_engine",
+        }
+        for table in COMPOSITION_ENGINE_OWNED_TABLES
+    )
+    migrations = tuple(
+        {
+            "path": f"pbcs/composition_engine/migrations/{position + 1:03d}_{table}.sql",
+            "table": table,
+            "operation": "create_owned_table",
+            "backend_allowlist": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        }
+        for position, table in enumerate(COMPOSITION_ENGINE_OWNED_TABLES)
+    )
+    models = tuple(
+        {
+            "path": f"pbcs/composition_engine/models/{table}.py",
+            "table": table,
+            "class_name": _class_name(table),
+        }
+        for table in COMPOSITION_ENGINE_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.composition-engine-owned-schema-contract.v1",
+        "ok": not invalid_prefixes and len(tables) == len(COMPOSITION_ENGINE_OWNED_TABLES) and len(migrations) == len(COMPOSITION_ENGINE_OWNED_TABLES),
+        "tables": tables,
+        "runtime_tables": runtime_tables,
+        "relationships": relationships,
+        "migrations": migrations,
+        "models": models,
+        "allowed_prefixes": allowed_prefixes,
+        "datastore_backends": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "shared_table_access": False,
+        "invalid_prefixes": invalid_prefixes,
+    }
+
+
+def composition_engine_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "create_workspace",
+        "select_pbc",
+        "register_component",
+        "register_ui_fragment",
+        "bind_layout",
+        "validate_composition_plan",
+        "plan_package_registration",
+        "generate_composition_dsl",
+        "publish_composition",
+        "run_control_tests",
+        "verify_owned_table_boundary",
+        "register_governed_model",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "simulate_layout",
+        "forecast_release_readiness",
+        "parse_composition_intent",
+        "score_composition_risk",
+        "recommend_layout_remediation",
+        "select_publication_route",
+        "generate_publication_proof",
+        "screen_policy",
+        "build_api_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+        "federate_composition_view",
+        "verify_publisher_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_build",
+        "optimize_layout",
+        "allocate_fragment_slots",
+        "detect_composition_anomaly",
+        "model_stochastic_release_exposure",
+    )
+    return {
+        "format": "appgen.composition-engine-service-contract.v1",
+        "ok": len(command_methods) >= 16 and len(query_methods) >= 20 and not composition_engine_verify_owned_table_boundary(COMPOSITION_ENGINE_OWNED_TABLES)["violations"],
+        "transaction_boundary": "composition_engine_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": COMPOSITION_ENGINE_OWNED_TABLES,
+        "runtime_tables": COMPOSITION_ENGINE_RUNTIME_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _COMPOSITION_ENGINE_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _COMPOSITION_ENGINE_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+        "idempotent_handlers": ("receive_event", "plan_package_registration", "publish_composition"),
+        "side_effect_free_commands": ("plan_package_registration",),
+        "retry_dead_letter_evidence": {
+            "outbox_table": COMPOSITION_ENGINE_RUNTIME_TABLES[0],
+            "inbox_table": COMPOSITION_ENGINE_RUNTIME_TABLES[1],
+            "dead_letter_table": COMPOSITION_ENGINE_RUNTIME_TABLES[2],
+            "idempotency_prefix": "composition_engine:",
+        },
+        "eventing": {
+            "contract": "AppGen-X",
+            "topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
+        },
+        "rules_parameters_configuration": ("register_rule", "set_parameter", "configure_runtime"),
+    }
+
+
+def composition_engine_build_release_evidence() -> dict:
+    from .ui import composition_engine_ui_contract
+
+    schema = composition_engine_build_schema_contract()
+    service = composition_engine_build_service_contract()
+    api = composition_engine_build_api_contract()
+    permissions = composition_engine_permissions_contract()
+    configured = composition_engine_configure_runtime(
+        composition_engine_empty_state(),
+        {
+            "database_backend": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS[0],
+            "event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "allowed_targets": ("web", "admin"),
+            "allowed_layout_modes": ("grid", "flow"),
+            "publication_mode": "side_effect_free_plan",
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    workbench = composition_engine_build_workbench_view(configured, tenant="tenant_release")
+    ui = composition_engine_ui_contract()
+    boundary = composition_engine_verify_owned_table_boundary(
+        (
+            "composition_workspace",
+            COMPOSITION_ENGINE_RUNTIME_TABLES[0],
+            "SchemaAccepted",
+            "gateway_composition_projection",
+            "POST /audit/composition-events",
+        )
+    )
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) == len(COMPOSITION_ENGINE_OWNED_TABLES)},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(COMPOSITION_ENGINE_OWNED_TABLES)},
+        {"id": "runtime_tables_declared", "ok": tuple(item["table"] for item in schema["runtime_tables"]) == COMPOSITION_ENGINE_RUNTIME_TABLES},
+        {"id": "service_contract_depth", "ok": service["ok"] and "receive_event" in service["idempotent_handlers"] and "plan_package_registration" in service["side_effect_free_commands"]},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and api["required_event_topic"] == COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC},
+        {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
+        {"id": "ui_binding_evidence", "ok": ui["ok"] and ui["binding_evidence"]["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES},
+        {"id": "workbench_binding_evidence", "ok": workbench["binding_evidence"]["outbox_table"] == COMPOSITION_ENGINE_RUNTIME_TABLES[0]},
+        {"id": "boundary_contract", "ok": boundary["ok"] and boundary["declared_dependencies"]["shared_tables"] == ()},
+        {"id": "database_allowlist", "ok": schema["datastore_backends"] == COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS},
+    )
+    blocking_gaps = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.composition-engine-release-evidence.v1",
+        "ok": not blocking_gaps,
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "ui": ui,
+        "workbench": workbench,
+        "boundary": boundary,
+        "blocking_gaps": blocking_gaps,
+    }
+
+
 def composition_engine_build_api_contract() -> dict:
     return {
         "ok": True,
@@ -696,6 +923,9 @@ def composition_engine_build_api_contract() -> dict:
             {"route": "POST /composition-publications", "command": "publish_composition", "owned_tables": ("release_evidence", "package_registration_plan", "package_index_entry"), "emits": ("CompositionPublished", "PbcDeployed"), "requires_permission": "composition_engine.publish", "idempotency_key": "workspace_id:version"},
             {"route": "POST /composition/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES, "requires_permission": "composition_engine.event", "idempotency_key": "event_id"},
             {"route": "GET /composition-workbench", "query": "build_workbench_view", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
+            {"route": "GET /composition/schema-contract", "query": "build_schema_contract", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
+            {"route": "GET /composition/service-contract", "query": "build_service_contract", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
+            {"route": "GET /composition/release-evidence", "query": "build_release_evidence", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
         ),
         "declared_catalog_routes": ("POST /composition-workspaces", "POST /component-registry", "POST /ui-fragments", "POST /layout-bindings", "POST /composition-dsl", "POST /composition-publications", "GET /composition-workbench"),
         "events": {"emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES, "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES},
@@ -704,9 +934,12 @@ def composition_engine_build_api_contract() -> dict:
         "permissions": tuple(sorted(composition_engine_permissions_contract()["permissions"])),
         "database_backends": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS,
         "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
+        "runtime_tables": COMPOSITION_ENGINE_RUNTIME_TABLES,
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "required_event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
         "configuration": ("COMPOSITION_ENGINE_DATABASE_URL", "COMPOSITION_ENGINE_EVENT_TOPIC", "COMPOSITION_ENGINE_RETRY_LIMIT", "COMPOSITION_ENGINE_DEFAULT_TIMEZONE"),
     }
 
@@ -741,6 +974,9 @@ def composition_engine_permissions_contract() -> dict:
             "configure_runtime": "composition_engine.configure",
             "run_control_tests": "composition_engine.audit",
             "build_workbench_view": "composition_engine.audit",
+            "build_schema_contract": "composition_engine.audit",
+            "build_service_contract": "composition_engine.audit",
+            "build_release_evidence": "composition_engine.audit",
         },
     }
 
@@ -875,6 +1111,10 @@ def _event_hash(event: dict) -> str:
 
 def _hash_payload(payload: dict) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def _class_name(table: str) -> str:
+    return "".join(part.capitalize() for part in table.split("_"))
 
 
 def _require(payload: dict, fields: set[str]) -> None:

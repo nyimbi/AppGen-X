@@ -8,6 +8,9 @@ from pyAppGen.pbcs.customer_360 import CUSTOMER_360_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.customer_360 import CUSTOMER_360_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.customer_360 import CUSTOMER_360_STANDARD_FEATURE_KEYS
 from pyAppGen.pbcs.customer_360 import customer_360_build_api_contract
+from pyAppGen.pbcs.customer_360 import customer_360_build_release_evidence
+from pyAppGen.pbcs.customer_360 import customer_360_build_schema_contract
+from pyAppGen.pbcs.customer_360 import customer_360_build_service_contract
 from pyAppGen.pbcs.customer_360 import customer_360_build_timeline
 from pyAppGen.pbcs.customer_360 import customer_360_build_workbench_view
 from pyAppGen.pbcs.customer_360 import customer_360_capture_touchpoint
@@ -40,12 +43,14 @@ def test_customer_360_runtime_executes_standard_and_advanced_capabilities() -> N
     assert runtime["format"] == "appgen.customer-360-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/customer_360"
-    assert len(runtime["standard_features"]) >= 30
+    assert len(runtime["standard_features"]) >= 55
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
     assert "appgen_event_contract" in runtime["standard_features"]
     assert "owned_datastore_boundary" in runtime["standard_features"]
+    assert "cryptographic_profile_proofs" in runtime["standard_features"]
+    assert "governed_model_registry" in runtime["standard_features"]
     assert set(runtime["standard_features"]) == set(CUSTOMER_360_STANDARD_FEATURE_KEYS)
     assert smoke["ok"] is True
     assert set(CUSTOMER_360_RUNTIME_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
@@ -61,6 +66,14 @@ def test_customer_360_runtime_executes_standard_and_advanced_capabilities() -> N
     assert contract["allowed_database_backends"] == CUSTOMER_360_ALLOWED_DATABASE_BACKENDS
     assert contract["required_event_topic"] == CUSTOMER_360_REQUIRED_EVENT_TOPIC
     assert contract["api_contract"]["shared_table_access"] is False
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["schema_contract"]["shared_table_access"] is False
+    assert len(contract["schema_contract"]["owned_tables"]) >= 45
+    assert contract["service_contract"]["ok"] is True
+    assert contract["service_contract"]["shared_table_access"] is False
+    assert "build_release_evidence" in contract["service_contract"]["command_methods"]
+    assert contract["release_evidence_contract"]["ok"] is True
+    assert not contract["release_evidence_contract"]["blocking_gaps"]
     assert contract["permissions_contract"]["action_permissions"]["receive_event"] == "customer_360.event"
     assert contract["boundary_contract"]["ok"] is True
 
@@ -244,6 +257,8 @@ def test_customer_360_runtime_applies_rules_parameters_configuration_and_ui() ->
     assert "identity_match_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     assert ui_contract["rule_editor"]["compiled_evidence_fields"] == ("compiled_hash", "compiled_evidence")
+    assert "CustomerReleaseEvidencePanel" in ui_contract["fragments"]
+    assert any(panel["key"] == "release_evidence" for panel in ui_contract["panels"])
     rendered = customer_360_render_workbench(
         state,
         tenant="tenant_ops",
@@ -432,11 +447,39 @@ def test_customer_360_package_contract_handles_events_schema_api_permissions_and
     assert api["shared_table_access"] is False
     assert api["stream_engine_picker_visible"] is False
     assert any(route["command"] == "receive_event" for route in api["routes"])
+    assert any(route.get("query") == "build_release_evidence" for route in api["routes"])
+
+    schema = customer_360_build_schema_contract()
+    assert schema["format"] == "appgen.customer-360-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert schema["shared_table_access"] is False
+    assert "customer_proof" in schema["owned_tables"]
+    assert "customer_360_dead_letter_event" in schema["owned_tables"]
+    assert len(schema["tables"]) == len(CUSTOMER_360_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(CUSTOMER_360_OWNED_TABLES)
+    assert all(path.startswith("pbcs/customer_360/migrations/") for path in schema["migrations"])
+
+    service = customer_360_build_service_contract()
+    assert service["format"] == "appgen.customer-360-service-contract.v1"
+    assert service["ok"] is True
+    assert service["mutates_only_owned_tables"] is True
+    assert service["shared_table_access"] is False
+    assert service["event_contract"]["contract"] == "AppGen-X"
+    assert service["event_contract"]["required_topic"] == CUSTOMER_360_REQUIRED_EVENT_TOPIC
+    assert "register_governed_model" in service["command_methods"]
+    assert "build_schema_contract" in service["query_methods"]
+
+    release = customer_360_build_release_evidence()
+    assert release["format"] == "appgen.customer-360-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert all(check["ok"] for check in release["checks"])
 
     permissions = customer_360_permissions_contract()
     assert permissions["action_permissions"]["receive_event"] == "customer_360.event"
     assert permissions["action_permissions"]["register_schema_extension"] == "customer_360.configure"
     assert permissions["action_permissions"]["verify_owned_table_boundary"] == "customer_360.audit"
+    assert permissions["action_permissions"]["build_release_evidence"] == "customer_360.audit"
 
     valid_boundary = customer_360_verify_owned_table_boundary(
         (

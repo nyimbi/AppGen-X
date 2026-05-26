@@ -15,6 +15,9 @@ from .runtime import product_catalog_pim_add_price_metadata
 from .runtime import product_catalog_pim_attach_product_media
 from .runtime import product_catalog_pim_binding_evidence
 from .runtime import product_catalog_pim_build_api_contract
+from .runtime import product_catalog_pim_build_release_evidence
+from .runtime import product_catalog_pim_build_schema_contract
+from .runtime import product_catalog_pim_build_service_contract
 from .runtime import product_catalog_pim_build_workbench_view
 from .runtime import product_catalog_pim_configure_runtime
 from .runtime import product_catalog_pim_create_product_family
@@ -47,9 +50,14 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": product_catalog_pim_ui_contract(),
         "api_contract": product_catalog_pim_build_api_contract(),
+        "schema_contract": product_catalog_pim_build_schema_contract(),
+        "service_contract": product_catalog_pim_build_service_contract(),
+        "release_evidence_contract": product_catalog_pim_build_release_evidence(),
         "permissions_contract": product_catalog_pim_permissions_contract(),
         "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
         "allowed_database_backends": PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS,
         "runtime_tables": PRODUCT_CATALOG_PIM_RUNTIME_TABLES,
         "required_event_topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+        "consumes": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
+        "emits": PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES,
     }

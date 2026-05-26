@@ -25,6 +25,9 @@ CUSTOMER_360_UI_FRAGMENT_KEYS = (
     "CustomerRuleStudio",
     "CustomerParameterConsole",
     "CustomerConfigurationPanel",
+    "CustomerSchemaContractExplorer",
+    "CustomerServiceContractExplorer",
+    "CustomerReleaseEvidencePanel",
 )
 
 
@@ -49,6 +52,9 @@ def customer_360_ui_contract() -> dict:
             "/workbench/pbcs/customer_360/rules",
             "/workbench/pbcs/customer_360/parameters",
             "/workbench/pbcs/customer_360/configuration",
+            "/workbench/pbcs/customer_360/schema-contract",
+            "/workbench/pbcs/customer_360/service-contract",
+            "/workbench/pbcs/customer_360/release-evidence",
         ),
         "panels": (
             {
@@ -74,6 +80,12 @@ def customer_360_ui_contract() -> dict:
                 "fragment": "CustomerRuleStudio",
                 "binds_to": ("rule", "parameter", "configuration"),
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
+            },
+            {
+                "key": "release_evidence",
+                "fragment": "CustomerReleaseEvidencePanel",
+                "binds_to": ("customer_control_assertion", "customer_360_appgen_outbox_event", "customer_360_dead_letter_event"),
+                "commands": ("build_schema_contract", "build_service_contract", "build_release_evidence"),
             },
         ),
         "action_permissions": customer_360_permissions_contract()["action_permissions"],

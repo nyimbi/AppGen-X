@@ -6,9 +6,13 @@ from .runtime import COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES
 from .runtime import COMPOSITION_ENGINE_EMITTED_EVENT_TYPES
 from .runtime import COMPOSITION_ENGINE_OWNED_TABLES
 from .runtime import COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
+from .runtime import COMPOSITION_ENGINE_RUNTIME_TABLES
 from .runtime import COMPOSITION_ENGINE_RUNTIME_CAPABILITY_KEYS
 from .runtime import COMPOSITION_ENGINE_STANDARD_FEATURE_KEYS
 from .runtime import composition_engine_build_api_contract
+from .runtime import composition_engine_build_release_evidence
+from .runtime import composition_engine_build_schema_contract
+from .runtime import composition_engine_build_service_contract
 from .runtime import composition_engine_bind_layout
 from .runtime import composition_engine_build_workbench_view
 from .runtime import composition_engine_configure_runtime
@@ -45,7 +49,14 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": composition_engine_ui_contract(),
         "api_contract": composition_engine_build_api_contract(),
+        "schema_contract": composition_engine_build_schema_contract(),
+        "service_contract": composition_engine_build_service_contract(),
+        "release_evidence_contract": composition_engine_build_release_evidence(),
         "permissions_contract": composition_engine_permissions_contract(),
         "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
+        "runtime_tables": COMPOSITION_ENGINE_RUNTIME_TABLES,
         "allowed_database_backends": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
+        "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES,
+        "emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES,
     }

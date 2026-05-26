@@ -107,6 +107,9 @@ The PBC does not share customer, workforce, service-account, gateway, schema reg
 - `grant_token` owns token grants, token hashes, TTL, and gateway/audit/session handoffs.
 - `approve_privileged_access` owns privileged access state, risk thresholding, TTL, and approval evidence.
 - `build_api_contract` emits descriptor-level route, permission, idempotency, event, dependency, and owned-table evidence.
+- `build_schema_contract` emits package-local owned-table, runtime-table, migration, relationship, and backend evidence.
+- `build_service_contract` emits command/query boundaries, AppGen-X eventing rules, rules/parameters/configuration support, idempotent handler evidence, and no-shared-table dependencies.
+- `build_release_evidence` emits package-local release checks for schema depth, runtime-table evidence, AppGen-X-only eventing, backend allowlist, permissions, UI/workbench bindings, and owned-boundary validation.
 - `permissions_contract` maps runtime commands to RBAC permissions.
 - `verify_owned_table_boundary` accepts owned tables and declared API/event/projection dependencies, then reports direct foreign-table violations.
 - `build_workbench_view` exposes operational and release evidence.
@@ -122,8 +125,14 @@ The PBC does not share customer, workforce, service-account, gateway, schema reg
 - `POST /policy-decisions` maps to `evaluate_policy`.
 - `POST /token-grants` maps to `grant_token`.
 - `POST /privileged-access-requests` maps to `approve_privileged_access`.
+- `PUT /iam/configuration` maps to `configure_runtime`.
+- `POST /iam/parameters` maps to `set_parameter`.
+- `POST /iam/rules` maps to `register_rule`.
 - `POST /iam/events/inbox` maps to `receive_event`.
 - `GET /iam-workbench` maps to `build_workbench_view`.
+- `GET /iam/schema-contract` maps to `build_schema_contract`.
+- `GET /iam/service-contract` maps to `build_service_contract`.
+- `GET /iam/release-evidence` maps to `build_release_evidence`.
 
 Every route descriptor includes owned tables, command or query binding, idempotency key where applicable, required permission, emitted events, consumed events, fixed AppGen-X eventing evidence, and dependency evidence.
 
@@ -187,12 +196,20 @@ UI fragments:
 
 The workbench exposes principal, provider, identity, active role, policy-decision, allowed-decision, token, privileged-access, inbox, outbox, dead-letter, configuration, rule, parameter, and owned-boundary evidence. Visible actions are RBAC-filtered by tenant, principal, policy, token, privileged access, event, configuration, and audit permissions.
 
+UI and workbench binding evidence must include:
+
+- owned tables plus runtime tables for outbox, inbox, and dead-letter evidence
+- fixed AppGen-X event contract and required event topic
+- rule, parameter, and configuration fragments
+- RBAC mapping for runtime actions
+
 ## Release Evidence
 
 The focused test suite proves:
 
 - Runtime smoke covers every declared standard and advanced capability key.
 - The package declares owned tables, allowed relational backends, fixed AppGen-X eventing, descriptor APIs, and action-level RBAC.
+- The package-local `implementation_contract()` exposes `schema_contract`, `service_contract`, `release_evidence_contract`, runtime tables, required event topic, emitted events, and consumed events.
 - Configuration, parameters, rules, schema extensions, event handling, tenant provisioning, principal/provider registration, identity linking, credential verification, role assignment, policy decisions, token grants, privileged access, UI, and workbench evidence execute.
 - Boundary validation accepts owned tables and declared API/event/projection dependencies, then rejects direct foreign-table references.
 - Invalid backend, stream-picker configuration, unsupported parameters, non-owned schema extensions, idempotent duplicates, retries, and dead letters are verified.

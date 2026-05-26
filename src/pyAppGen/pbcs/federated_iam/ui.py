@@ -7,6 +7,7 @@ from .runtime import FEDERATED_IAM_CONSUMED_EVENT_TYPES
 from .runtime import FEDERATED_IAM_EMITTED_EVENT_TYPES
 from .runtime import FEDERATED_IAM_OWNED_TABLES
 from .runtime import FEDERATED_IAM_REQUIRED_EVENT_TOPIC
+from .runtime import FEDERATED_IAM_RUNTIME_TABLES
 from .runtime import federated_iam_permissions_contract
 
 
@@ -104,8 +105,20 @@ def federated_iam_ui_contract() -> dict:
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
+            "event_contract": "AppGen-X",
+            "required_event_topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
         },
-        "binding_evidence": {"owned_tables": FEDERATED_IAM_OWNED_TABLES, "shared_table_access": False},
+        "binding_evidence": {
+            "owned_tables": FEDERATED_IAM_OWNED_TABLES,
+            "runtime_tables": FEDERATED_IAM_RUNTIME_TABLES,
+            "outbox_table": FEDERATED_IAM_RUNTIME_TABLES[0],
+            "inbox_table": FEDERATED_IAM_RUNTIME_TABLES[1],
+            "dead_letter_table": FEDERATED_IAM_RUNTIME_TABLES[2],
+            "required_event_topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
+            "event_contract": "AppGen-X",
+            "shared_table_access": False,
+        },
     }
 
 
@@ -149,8 +162,26 @@ def federated_iam_render_workbench(
         "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": {
             "owned_tables": FEDERATED_IAM_OWNED_TABLES,
-            "outbox_table": "federated_iam_appgen_outbox_event",
-            "inbox_table": "federated_iam_appgen_inbox_event",
-            "dead_letter_table": "federated_iam_dead_letter_event",
+            "runtime_tables": FEDERATED_IAM_RUNTIME_TABLES,
+            "outbox_table": FEDERATED_IAM_RUNTIME_TABLES[0],
+            "inbox_table": FEDERATED_IAM_RUNTIME_TABLES[1],
+            "dead_letter_table": FEDERATED_IAM_RUNTIME_TABLES[2],
+            "rules": tuple(sorted(state["rules"])),
+            "parameters": tuple(sorted(state["parameters"])),
+            "configuration": {
+                "event_contract": state["configuration"].get("event_contract"),
+                "event_topic": state["configuration"].get("event_topic"),
+                "stream_engine_picker_visible": state["configuration"].get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state["configuration"].get("user_selectable_event_contract"),
+            },
+            "ui_bindings": {
+                "configuration_fragment": "IamConfigurationPanel",
+                "rule_fragment": "IamRuleStudio",
+                "parameter_fragment": "IamParameterConsole",
+                "outbox_table": FEDERATED_IAM_RUNTIME_TABLES[0],
+                "inbox_table": FEDERATED_IAM_RUNTIME_TABLES[1],
+                "dead_letter_table": FEDERATED_IAM_RUNTIME_TABLES[2],
+                "rbac": contract["action_permissions"],
+            },
         },
     }

@@ -8,20 +8,58 @@ import math
 import re
 
 
+PRODUCT_CATALOG_PIM_EVENT_CONTRACT = "AppGen-X"
 PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC = "appgen.product.events"
 PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 PRODUCT_CATALOG_PIM_OWNED_TABLES = (
     "product",
     "product_family",
     "product_variant",
+    "product_variant_option",
+    "product_variant_member",
+    "product_taxonomy",
+    "taxonomy_node",
+    "taxonomy_relationship",
+    "product_category",
+    "category_assignment",
     "product_attribute_schema",
     "product_attribute",
+    "product_attribute_validation_rule",
+    "product_attribute_value_option",
     "product_price",
+    "product_channel_price",
     "product_media",
     "product_locale_content",
+    "product_localization_memory",
+    "product_seo_metadata",
     "product_compliance_claim",
+    "product_lifecycle_stage",
+    "product_approval_workflow",
+    "product_approval_decision",
+    "product_assortment",
+    "product_assortment_assignment",
     "catalog_publication",
     "catalog_channel_projection",
+    "catalog_channel_policy",
+    "catalog_syndication_feed",
+    "catalog_syndication_delivery",
+    "product_enrichment_task",
+    "product_data_quality_score",
+    "product_data_quality_issue",
+    "product_bundle_definition",
+    "product_relationship",
+    "product_identity_credential",
+    "product_graph_projection",
+    "product_semantic_embedding",
+    "product_readiness_forecast",
+    "product_risk_model",
+    "product_policy_screening",
+    "product_publication_proof",
+    "product_audit_trace",
+    "product_schema_extension",
+    "product_control_assertion",
+    "product_governed_model",
+    "product_seed_data",
     "product_rule",
     "product_parameter",
     "product_configuration",
@@ -148,21 +186,36 @@ PRODUCT_CATALOG_PIM_STANDARD_FEATURE_KEYS = (
     "product_master",
     "product_family",
     "variant_model",
+    "variant_options",
     "sku_governance",
     "taxonomy_assignment",
+    "taxonomy_hierarchy",
+    "category_management",
     "attribute_schema",
     "attribute_validation",
+    "attribute_value_options",
     "enrichment_completeness",
+    "enrichment_tasking",
     "localized_content",
+    "localization_memory",
     "seo_metadata",
     "media_reference",
     "media_rights",
     "price_metadata",
+    "channel_pricebooks",
     "channel_projection",
+    "channel_policy",
+    "assortment_management",
     "catalog_publication",
+    "catalog_syndication",
+    "product_lifecycle",
+    "approval_workflow",
     "sellability_rules",
     "compliance_claims",
     "restricted_region_screening",
+    "data_quality_scores",
+    "product_relationships",
+    "bundle_definitions",
     "search_index_signal",
     "forecast_signal",
     "appgen_x_outbox_inbox_eventing",
@@ -186,6 +239,9 @@ def product_catalog_pim_runtime_capabilities() -> dict:
         "pbc": "product_catalog_pim",
         "implementation_directory": "src/pyAppGen/pbcs/product_catalog_pim",
         "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        "runtime_tables": PRODUCT_CATALOG_PIM_RUNTIME_TABLES,
+        "required_event_topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+        "allowed_database_backends": PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS,
         "capabilities": PRODUCT_CATALOG_PIM_RUNTIME_CAPABILITY_KEYS,
         "standard_features": PRODUCT_CATALOG_PIM_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -204,9 +260,13 @@ def product_catalog_pim_runtime_capabilities() -> dict:
             "add_compliance_claim",
             "publish_product",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
+            "register_governed_model",
         ),
         "smoke": smoke,
     }
@@ -517,7 +577,7 @@ def product_catalog_pim_configure_runtime(state: dict, configuration: dict) -> d
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "AppGen-X",
+        "event_contract": PRODUCT_CATALOG_PIM_EVENT_CONTRACT,
         "allowed_database_backends": PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS,
         "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
         "supported_fields": PRODUCT_CATALOG_PIM_SUPPORTED_CONFIGURATION_FIELDS,
@@ -788,7 +848,7 @@ def product_catalog_pim_run_control_tests(state: dict) -> dict:
         gaps.append("invalid_configuration")
     if configuration.get("database_backend") not in PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS:
         gaps.append("invalid_database_backend")
-    if configuration.get("event_contract") != "AppGen-X":
+    if configuration.get("event_contract") != PRODUCT_CATALOG_PIM_EVENT_CONTRACT:
         gaps.append("invalid_event_contract")
     if configuration.get("stream_engine_picker_visible"):
         gaps.append("stream_engine_picker_exposed")
@@ -806,12 +866,239 @@ def product_catalog_pim_run_control_tests(state: dict) -> dict:
     return {"ok": not gaps, "blocking_gaps": tuple(gaps), "hash_chain_valid": hash_chain_valid}
 
 
+def product_catalog_pim_build_schema_contract() -> dict:
+    table_fields = {
+        "product": ("tenant", "product_id", "family_id", "sku", "name", "lifecycle_state", "owner", "taxonomy", "completeness", "audit_hash"),
+        "product_family": ("tenant", "family_id", "name", "taxonomy", "variant_axes", "status", "audit_hash"),
+        "product_variant": ("tenant", "variant_id", "product_id", "family_id", "sku", "status", "audit_hash"),
+        "product_variant_option": ("tenant", "variant_option_id", "variant_id", "axis", "value", "status", "audit_hash"),
+        "product_variant_member": ("tenant", "variant_member_id", "variant_id", "product_id", "option_signature", "status", "audit_hash"),
+        "product_taxonomy": ("tenant", "taxonomy_id", "code", "name", "parent_taxonomy_id", "status", "audit_hash"),
+        "taxonomy_node": ("tenant", "node_id", "taxonomy_id", "parent_node_id", "code", "depth", "status", "audit_hash"),
+        "taxonomy_relationship": ("tenant", "relationship_id", "from_taxonomy_id", "to_taxonomy_id", "relationship_type", "status", "audit_hash"),
+        "product_category": ("tenant", "category_id", "taxonomy_id", "code", "name", "channel_scope", "status", "audit_hash"),
+        "category_assignment": ("tenant", "assignment_id", "product_id", "category_id", "channel", "status", "audit_hash"),
+        "product_attribute_schema": ("tenant", "schema_id", "family_id", "attributes", "version", "compiled_hash", "status", "audit_hash"),
+        "product_attribute": ("tenant", "attribute_id", "product_id", "attribute_name", "attribute_value", "schema_version", "status", "audit_hash"),
+        "product_attribute_validation_rule": ("tenant", "validation_rule_id", "schema_id", "attribute_name", "data_type", "required", "status", "audit_hash"),
+        "product_attribute_value_option": ("tenant", "value_option_id", "schema_id", "attribute_name", "option_value", "sort_order", "status", "audit_hash"),
+        "product_price": ("tenant", "price_id", "product_id", "currency", "list_price", "cost", "margin", "status", "audit_hash"),
+        "product_channel_price": ("tenant", "channel_price_id", "product_id", "channel", "currency", "list_price", "status", "audit_hash"),
+        "product_media": ("tenant", "media_id", "product_id", "role", "asset_ref", "rights_status", "status", "audit_hash"),
+        "product_locale_content": ("tenant", "content_id", "product_id", "locale", "title", "description", "seo_slug", "status", "audit_hash"),
+        "product_localization_memory": ("tenant", "translation_id", "product_id", "source_locale", "target_locale", "quality_score", "audit_hash"),
+        "product_seo_metadata": ("tenant", "seo_id", "product_id", "locale", "title_tag", "meta_description", "canonical_url", "audit_hash"),
+        "product_compliance_claim": ("tenant", "claim_id", "product_id", "region", "claim_type", "screening_status", "status", "audit_hash"),
+        "product_lifecycle_stage": ("tenant", "lifecycle_id", "product_id", "stage", "approved_by", "effective_at", "status", "audit_hash"),
+        "product_approval_workflow": ("tenant", "workflow_id", "product_id", "workflow_type", "required_approvers", "status", "audit_hash"),
+        "product_approval_decision": ("tenant", "decision_id", "workflow_id", "approver", "decision", "decided_at", "audit_hash"),
+        "product_assortment": ("tenant", "assortment_id", "name", "channel", "season", "status", "audit_hash"),
+        "product_assortment_assignment": ("tenant", "assignment_id", "assortment_id", "product_id", "channel", "status", "audit_hash"),
+        "catalog_publication": ("tenant", "publication_id", "product_id", "channels", "locales", "readiness_score", "status", "audit_hash"),
+        "catalog_channel_projection": ("tenant", "projection_id", "product_id", "channel", "locale", "projection_hash", "status", "audit_hash"),
+        "catalog_channel_policy": ("tenant", "policy_id", "channel", "required_attributes", "required_media_roles", "status", "audit_hash"),
+        "catalog_syndication_feed": ("tenant", "feed_id", "channel", "format", "cadence", "status", "audit_hash"),
+        "catalog_syndication_delivery": ("tenant", "delivery_id", "feed_id", "product_id", "channel", "delivery_status", "audit_hash"),
+        "product_enrichment_task": ("tenant", "task_id", "product_id", "task_type", "assignee", "priority", "status", "audit_hash"),
+        "product_data_quality_score": ("tenant", "quality_score_id", "product_id", "completeness_score", "content_score", "quality_score", "status", "audit_hash"),
+        "product_data_quality_issue": ("tenant", "issue_id", "product_id", "issue_type", "severity", "status", "audit_hash"),
+        "product_bundle_definition": ("tenant", "bundle_id", "product_id", "component_product_ids", "bundle_type", "status", "audit_hash"),
+        "product_relationship": ("tenant", "relationship_id", "source_product_id", "target_product_id", "relationship_type", "status", "audit_hash"),
+        "product_identity_credential": ("tenant", "credential_id", "product_id", "did", "issuer", "status", "audit_hash"),
+        "product_graph_projection": ("tenant", "projection_id", "product_id", "node_count", "edge_count", "projection_hash", "audit_hash"),
+        "product_semantic_embedding": ("tenant", "embedding_id", "product_id", "embedding_model", "vector_ref", "status", "audit_hash"),
+        "product_readiness_forecast": ("tenant", "forecast_id", "product_id", "forecast_readiness", "ready_date", "status", "audit_hash"),
+        "product_risk_model": ("tenant", "risk_model_id", "product_id", "risk_score", "decision", "status", "audit_hash"),
+        "product_policy_screening": ("tenant", "screening_id", "product_id", "policy_scope", "decision", "status", "audit_hash"),
+        "product_publication_proof": ("tenant", "proof_id", "product_id", "proof_type", "proof_hash", "channel_scope", "audit_hash"),
+        "product_audit_trace": ("tenant", "trace_id", "product_id", "event_id", "trace_type", "trace_hash", "audit_hash"),
+        "product_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "status", "audit_hash"),
+        "product_control_assertion": ("tenant", "control_id", "assertion_type", "subject_id", "status", "tested_at", "audit_hash"),
+        "product_governed_model": ("tenant", "model_id", "model_name", "feature_lineage", "drift_score", "status", "audit_hash"),
+        "product_seed_data": ("tenant", "seed_id", "seed_type", "seed_ref", "status", "loaded_at", "audit_hash"),
+        "product_rule": ("tenant", "rule_id", "rule_type", "allowed_channels", "allowed_locales", "status", "compiled_hash", "audit_hash"),
+        "product_parameter": ("tenant", "parameter_id", "parameter_name", "parameter_value", "effective_at", "audit_hash"),
+        "product_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_timezone", "audit_hash"),
+    }
+    runtime_tables = (
+        {
+            "table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[0],
+            "fields": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "payload_hash", "status", "published_at", "audit_hash"),
+        },
+        {
+            "table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[1],
+            "fields": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status", "received_at", "audit_hash"),
+        },
+        {
+            "table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[2],
+            "fields": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason", "dead_lettered_at", "audit_hash"),
+        },
+    )
+    relationships = (
+        {"from": "product.family_id", "to": "product_family.family_id", "type": "owned_parent"},
+        {"from": "product_variant.product_id", "to": "product.product_id", "type": "owned_child"},
+        {"from": "product_variant_option.variant_id", "to": "product_variant.variant_id", "type": "owned_child"},
+        {"from": "product_variant_member.variant_id", "to": "product_variant.variant_id", "type": "owned_membership"},
+        {"from": "product_variant_member.product_id", "to": "product.product_id", "type": "owned_membership"},
+        {"from": "product_attribute_schema.family_id", "to": "product_family.family_id", "type": "owned_reference"},
+        {"from": "product_attribute.product_id", "to": "product.product_id", "type": "owned_reference"},
+        {"from": "product_attribute_validation_rule.schema_id", "to": "product_attribute_schema.schema_id", "type": "owned_validation"},
+        {"from": "product_attribute_value_option.schema_id", "to": "product_attribute_schema.schema_id", "type": "owned_option"},
+        {"from": "product_locale_content.product_id", "to": "product.product_id", "type": "owned_localization"},
+        {"from": "product_media.product_id", "to": "product.product_id", "type": "owned_media"},
+        {"from": "product_price.product_id", "to": "product.product_id", "type": "owned_pricing"},
+        {"from": "product_channel_price.product_id", "to": "product.product_id", "type": "owned_channel_pricing"},
+        {"from": "product_compliance_claim.product_id", "to": "product.product_id", "type": "owned_compliance"},
+        {"from": "category_assignment.product_id", "to": "product.product_id", "type": "owned_classification"},
+        {"from": "category_assignment.category_id", "to": "product_category.category_id", "type": "owned_classification"},
+        {"from": "catalog_publication.product_id", "to": "product.product_id", "type": "owned_publication"},
+        {"from": "catalog_channel_projection.product_id", "to": "product.product_id", "type": "owned_projection"},
+        {"from": "catalog_syndication_delivery.feed_id", "to": "catalog_syndication_feed.feed_id", "type": "owned_syndication"},
+        {"from": "catalog_syndication_delivery.product_id", "to": "product.product_id", "type": "owned_syndication"},
+        {"from": "product_assortment_assignment.assortment_id", "to": "product_assortment.assortment_id", "type": "owned_assortment"},
+        {"from": "product_assortment_assignment.product_id", "to": "product.product_id", "type": "owned_assortment"},
+        {"from": "product_approval_decision.workflow_id", "to": "product_approval_workflow.workflow_id", "type": "owned_approval"},
+        {"from": "product_lifecycle_stage.product_id", "to": "product.product_id", "type": "owned_lifecycle"},
+    )
+    allowed_prefixes = (
+        "product",
+        "catalog_",
+        "taxonomy_",
+        "category_",
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id"))[:2] or ("tenant",),
+            "owned_by": "product_catalog_pim",
+        }
+        for table in PRODUCT_CATALOG_PIM_OWNED_TABLES
+    )
+    migrations = tuple(
+        {
+            "path": f"pbcs/product_catalog_pim/migrations/{position + 1:03d}_{table}.sql",
+            "operation": "create_owned_table",
+            "table": table,
+            "backend_allowlist": PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS,
+        }
+        for position, table in enumerate(PRODUCT_CATALOG_PIM_OWNED_TABLES)
+    )
+    models = tuple(
+        {
+            "path": f"pbcs/product_catalog_pim/models/{table}.py",
+            "table": table,
+            "class_name": _class_name(table),
+            "fields": table_fields[table],
+        }
+        for table in PRODUCT_CATALOG_PIM_OWNED_TABLES
+    )
+    invalid_prefixes = tuple(table for table in PRODUCT_CATALOG_PIM_OWNED_TABLES if not table.startswith(allowed_prefixes))
+    return {
+        "format": "appgen.product-catalog-pim-owned-schema-contract.v1",
+        "ok": not invalid_prefixes
+        and len(tables) == len(PRODUCT_CATALOG_PIM_OWNED_TABLES)
+        and len(migrations) == len(PRODUCT_CATALOG_PIM_OWNED_TABLES),
+        "tables": tables,
+        "runtime_tables": runtime_tables,
+        "relationships": relationships,
+        "migrations": migrations,
+        "models": models,
+        "allowed_prefixes": allowed_prefixes,
+        "datastore_backends": PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+        "shared_table_access": False,
+        "invalid_prefixes": invalid_prefixes,
+    }
+
+
+def product_catalog_pim_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "create_product_family",
+        "register_product",
+        "define_attribute_schema",
+        "set_product_attribute",
+        "add_localized_content",
+        "attach_product_media",
+        "add_price_metadata",
+        "add_compliance_claim",
+        "publish_product",
+        "route_publication",
+        "generate_publication_proof",
+        "screen_policy",
+        "run_control_tests",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_publication",
+        "optimize_catalog",
+        "allocate_channels",
+        "register_governed_model",
+        "verify_owned_table_boundary",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "simulate_publication",
+        "forecast_sellability",
+        "parse_product_instruction",
+        "score_readiness_risk",
+        "recommend_exception_resolution",
+        "build_api_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+        "permissions_contract",
+        "binding_evidence",
+        "federate_product_view",
+        "verify_product_identity",
+        "detect_content_anomaly",
+        "model_stochastic_sellability_exposure",
+    )
+    return {
+        "format": "appgen.product-catalog-pim-service-contract.v1",
+        "ok": len(command_methods) >= 20 and len(query_methods) >= 12,
+        "transaction_boundary": "product_catalog_pim_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": (*PRODUCT_CATALOG_PIM_OWNED_TABLES, *PRODUCT_CATALOG_PIM_RUNTIME_TABLES),
+        "external_dependencies": {
+            "apis": tuple(item for item in PRODUCT_CATALOG_PIM_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in PRODUCT_CATALOG_PIM_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+        "idempotent_handlers": ("receive_event",),
+        "retry_dead_letter_evidence": {
+            "outbox_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[0],
+            "inbox_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[1],
+            "dead_letter_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[2],
+            "retry_limit_source": "product_configuration.retry_limit",
+        },
+        "rules_parameters_configuration": ("register_rule", "set_parameter", "configure_runtime"),
+        "eventing": {
+            "contract": PRODUCT_CATALOG_PIM_EVENT_CONTRACT,
+            "topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_eventing_choice_visible": False,
+        },
+        "advanced_capabilities": PRODUCT_CATALOG_PIM_RUNTIME_CAPABILITY_KEYS,
+    }
+
+
 def product_catalog_pim_build_api_contract() -> dict:
     permissions = product_catalog_pim_permissions_contract()
     return {
         "ok": True,
         "format": "appgen.product-catalog-pim-api-contract.v1",
         "routes": (
+            {"route": "PUT /product-catalog/configuration", "command": "configure_runtime", "owned_tables": ("product_configuration",), "emits": (), "requires_permission": "product_catalog_pim.configure", "idempotency_key": "tenant:event_topic"},
+            {"route": "POST /product-catalog/rules", "command": "register_rule", "owned_tables": ("product_rule",), "emits": (), "requires_permission": "product_catalog_pim.configure", "idempotency_key": "rule_id"},
+            {"route": "POST /product-catalog/parameters", "command": "set_parameter", "owned_tables": ("product_parameter",), "emits": (), "requires_permission": "product_catalog_pim.configure", "idempotency_key": "parameter_name"},
+            {"route": "POST /product-catalog/schema-extensions", "command": "register_schema_extension", "owned_tables": ("product_schema_extension",), "emits": (), "requires_permission": "product_catalog_pim.configure", "idempotency_key": "table_name:field_name"},
             {"route": "POST /product-families", "command": "create_product_family", "owned_tables": ("product_family",), "emits": ("ProductClassified",), "requires_permission": "product_catalog_pim.product", "idempotency_key": "family_id"},
             {"route": "POST /products", "command": "register_product", "owned_tables": ("product",), "emits": ("ProductRegistered",), "requires_permission": "product_catalog_pim.product", "idempotency_key": "product_id"},
             {"route": "POST /attribute-schemas", "command": "define_attribute_schema", "owned_tables": ("product_attribute_schema",), "emits": ("AttributeSchemaDefined",), "requires_permission": "product_catalog_pim.product", "idempotency_key": "schema_id"},
@@ -823,20 +1110,66 @@ def product_catalog_pim_build_api_contract() -> dict:
             {"route": "POST /catalog-publications", "command": "publish_product", "owned_tables": ("catalog_publication", "catalog_channel_projection"), "emits": ("ProductPublished",), "requires_permission": "product_catalog_pim.publish", "idempotency_key": "product_id:channels:locales"},
             {"route": "POST /product-catalog/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES, "requires_permission": "product_catalog_pim.event", "idempotency_key": "event_id"},
             {"route": "GET /product-catalog/workbench", "query": "build_workbench_view", "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES, "requires_permission": "product_catalog_pim.audit"},
+            {"route": "GET /product-catalog/schema-contract", "query": "build_schema_contract", "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES, "requires_permission": "product_catalog_pim.audit"},
+            {"route": "GET /product-catalog/service-contract", "query": "build_service_contract", "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES, "requires_permission": "product_catalog_pim.audit"},
+            {"route": "GET /product-catalog/release-evidence", "query": "build_release_evidence", "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES, "requires_permission": "product_catalog_pim.audit"},
         ),
         "declared_catalog_routes": (
+            "PUT /product-catalog/configuration",
+            "POST /product-catalog/rules",
+            "POST /product-catalog/parameters",
+            "POST /product-catalog/schema-extensions",
             "POST /products",
             "POST /product-families",
             "POST /attribute-schemas",
             "POST /catalog-publications",
             "GET /product-catalog/workbench",
+            "GET /product-catalog/schema-contract",
+            "GET /product-catalog/service-contract",
+            "GET /product-catalog/release-evidence",
         ),
-        "events": {"emits": PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES, "consumes": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES},
+        "events": {
+            "emits": PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES,
+            "consumes": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
+            "topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+            "contract": PRODUCT_CATALOG_PIM_EVENT_CONTRACT,
+        },
         "emits": PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES,
         "consumes": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
+        "event_descriptors": {
+            "emitted": tuple(
+                {
+                    "event_type": event_type,
+                    "topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+                    "contract": PRODUCT_CATALOG_PIM_EVENT_CONTRACT,
+                    "producer": "product_catalog_pim",
+                    "outbox_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[0],
+                }
+                for event_type in PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES
+            ),
+            "consumed": tuple(
+                {
+                    "event_type": event_type,
+                    "topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+                    "contract": PRODUCT_CATALOG_PIM_EVENT_CONTRACT,
+                    "consumer": "product_catalog_pim.receive_event",
+                    "inbox_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[1],
+                    "dead_letter_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[2],
+                }
+                for event_type in PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES
+            ),
+        },
         "permissions": tuple(sorted(permissions["permissions"])),
         "database_backends": PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS,
         "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        "runtime_tables": PRODUCT_CATALOG_PIM_RUNTIME_TABLES,
+        "required_event_topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+        "dependencies": {
+            "apis": tuple(item for item in PRODUCT_CATALOG_PIM_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in PRODUCT_CATALOG_PIM_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
         "shared_table_access": False,
         "configuration": (
             "PRODUCT_CATALOG_PIM_DATABASE_URL",
@@ -844,9 +1177,122 @@ def product_catalog_pim_build_api_contract() -> dict:
             "PRODUCT_CATALOG_PIM_RETRY_LIMIT",
             "PRODUCT_CATALOG_PIM_DEFAULT_TIMEZONE",
         ),
-        "event_contract": "AppGen-X",
+        "event_contract": PRODUCT_CATALOG_PIM_EVENT_CONTRACT,
         "stream_engine_picker_visible": False,
         "user_eventing_choice": False,
+    }
+
+
+def product_catalog_pim_build_release_evidence() -> dict:
+    schema = product_catalog_pim_build_schema_contract()
+    service = product_catalog_pim_build_service_contract()
+    api = product_catalog_pim_build_api_contract()
+    permissions = product_catalog_pim_permissions_contract()
+    state = product_catalog_pim_empty_state()
+    state = product_catalog_pim_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "allowed_channels": ("web", "marketplace"),
+            "allowed_locales": ("en-US",),
+            "allowed_media_roles": ("hero",),
+            "allowed_regions": ("US",),
+            "default_timezone": "UTC",
+            "workbench_limit": 25,
+        },
+    )["state"]
+    state = product_catalog_pim_set_parameter(state, "minimum_completeness", 0.8)["state"]
+    state = product_catalog_pim_register_rule(
+        state,
+        {
+            "rule_id": "rule_release",
+            "tenant": "tenant_release",
+            "rule_type": "sellability",
+            "allowed_channels": ("web", "marketplace"),
+            "allowed_locales": ("en-US",),
+            "required_attributes": ("color",),
+            "required_media_roles": ("hero",),
+            "restricted_regions": ("restricted",),
+            "status": "active",
+        },
+    )["state"]
+    state = product_catalog_pim_create_product_family(
+        state,
+        {
+            "family_id": "fam_release",
+            "tenant": "tenant_release",
+            "name": "Release Catalog",
+            "taxonomy": "industrial/release",
+            "variant_axes": ("color",),
+        },
+    )["state"]
+    processed = product_catalog_pim_receive_event(
+        state,
+        {
+            "event_id": "evt_release_ok",
+            "event_type": "MediaAssetApproved",
+            "idempotency_key": "release:media:v1",
+            "payload": {"tenant": "tenant_release", "product_id": "prod_release", "asset_ref": "dam://release"},
+        },
+    )
+    state = processed["state"]
+    for _ in range(3):
+        failed = product_catalog_pim_receive_event(
+            state,
+            {
+                "event_id": "evt_release_bad",
+                "event_type": "UnsupportedCatalogEvent",
+                "idempotency_key": "release:bad:v1",
+                "payload": {"tenant": "tenant_release"},
+            },
+            simulate_failure=True,
+        )
+        state = failed["state"]
+    workbench = product_catalog_pim_build_workbench_view(state, tenant="tenant_release")
+    ui = {
+        "ok": True,
+        "fragments": ("ProductCatalogWorkbench", "ProductConfigurationPanel", "ProductRuleStudio", "ProductParameterConsole"),
+        "binding_evidence": workbench["binding_evidence"],
+    }
+    boundary = product_catalog_pim_verify_owned_table_boundary(
+        (
+            "product",
+            PRODUCT_CATALOG_PIM_RUNTIME_TABLES[0],
+            "pricing_readiness_projection",
+            "MediaAssetApproved",
+        )
+    )
+    smoke = product_catalog_pim_runtime_smoke()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) == len(PRODUCT_CATALOG_PIM_OWNED_TABLES)},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(PRODUCT_CATALOG_PIM_OWNED_TABLES)},
+        {"id": "runtime_tables_declared", "ok": tuple(item["table"] for item in schema["runtime_tables"]) == PRODUCT_CATALOG_PIM_RUNTIME_TABLES},
+        {"id": "service_contract_depth", "ok": service["ok"] and "receive_event" in service["idempotent_handlers"] and "build_release_evidence" in service["query_methods"]},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == PRODUCT_CATALOG_PIM_EVENT_CONTRACT and api["required_event_topic"] == PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC},
+        {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
+        {"id": "ui_binding_evidence", "ok": ui["ok"] and workbench["binding_evidence"]["eventing"]["event_contract"] == PRODUCT_CATALOG_PIM_EVENT_CONTRACT},
+        {"id": "workbench_binding_evidence", "ok": workbench["binding_evidence"]["outbox_table"] == PRODUCT_CATALOG_PIM_RUNTIME_TABLES[0]},
+        {"id": "event_idempotency_evidence", "ok": processed["handler"]["status"] == "processed" and len(state["retry_evidence"]) == 3 and workbench["dead_letter_count"] == 1},
+        {"id": "boundary_contract", "ok": boundary["ok"] and boundary["declared_dependencies"]["shared_tables"] == ()},
+        {"id": "database_allowlist", "ok": schema["datastore_backends"] == PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS},
+        {"id": "runtime_smoke", "ok": smoke["ok"]},
+    )
+    blocking_gaps = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.product-catalog-pim-release-evidence.v1",
+        "ok": not blocking_gaps,
+        "checks": checks,
+        "blocking_gaps": blocking_gaps,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "ui_binding": ui,
+        "workbench": workbench,
+        "boundary": boundary,
+        "runtime_smoke": smoke,
     }
 
 
@@ -878,8 +1324,13 @@ def product_catalog_pim_permissions_contract() -> dict:
             "register_schema_extension": "product_catalog_pim.configure",
             "set_parameter": "product_catalog_pim.configure",
             "configure_runtime": "product_catalog_pim.configure",
+            "build_api_contract": "product_catalog_pim.audit",
+            "build_schema_contract": "product_catalog_pim.audit",
+            "build_service_contract": "product_catalog_pim.audit",
+            "build_release_evidence": "product_catalog_pim.audit",
             "run_control_tests": "product_catalog_pim.audit",
             "build_workbench_view": "product_catalog_pim.audit",
+            "render_workbench": "product_catalog_pim.audit",
             "verify_owned_table_boundary": "product_catalog_pim.audit",
         },
     }
@@ -888,6 +1339,7 @@ def product_catalog_pim_permissions_contract() -> dict:
 def product_catalog_pim_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
     allowed = (
         *PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        *PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES,
         *PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
         *PRODUCT_CATALOG_PIM_RUNTIME_TABLES,
         *PRODUCT_CATALOG_PIM_ALLOWED_DEPENDENCIES,
@@ -933,11 +1385,19 @@ def product_catalog_pim_binding_evidence(state: dict) -> dict:
             "inbox": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[1],
             "dead_letter": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[2],
         },
+        "outbox_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[0],
+        "inbox_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[1],
+        "dead_letter_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[2],
         "eventing": {
             "event_contract": state.get("configuration", {}).get("event_contract"),
             "event_topic": state.get("configuration", {}).get("event_topic"),
             "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
             "user_eventing_choice": state.get("configuration", {}).get("user_eventing_choice"),
+        },
+        "api_descriptors": {
+            "schema_contract_route": "GET /product-catalog/schema-contract",
+            "service_contract_route": "GET /product-catalog/service-contract",
+            "release_evidence_route": "GET /product-catalog/release-evidence",
         },
         "rbac": permissions["action_permissions"],
         "shared_table_access": False,
@@ -1016,6 +1476,7 @@ def product_catalog_pim_build_workbench_view(state: dict, *, tenant: str) -> dic
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "outbox_count": len(state.get("outbox", ())),
         "inbox_count": len(state.get("inbox", ())),
         "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
         "binding_evidence": product_catalog_pim_binding_evidence(state),
@@ -1037,3 +1498,7 @@ def _append_event(state: dict, event_type: str, payload: dict) -> dict:
 
 def _digest(value: object) -> str:
     return hashlib.sha3_256(json.dumps(value, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def _class_name(table: str) -> str:
+    return "".join(part.capitalize() for part in table.split("_"))

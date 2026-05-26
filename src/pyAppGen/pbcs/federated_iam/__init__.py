@@ -7,10 +7,14 @@ from .runtime import FEDERATED_IAM_EMITTED_EVENT_TYPES
 from .runtime import FEDERATED_IAM_OWNED_TABLES
 from .runtime import FEDERATED_IAM_REQUIRED_EVENT_TOPIC
 from .runtime import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS
+from .runtime import FEDERATED_IAM_RUNTIME_TABLES
 from .runtime import FEDERATED_IAM_STANDARD_FEATURE_KEYS
 from .runtime import federated_iam_approve_privileged_access
 from .runtime import federated_iam_assign_role
 from .runtime import federated_iam_build_api_contract
+from .runtime import federated_iam_build_release_evidence
+from .runtime import federated_iam_build_schema_contract
+from .runtime import federated_iam_build_service_contract
 from .runtime import federated_iam_build_workbench_view
 from .runtime import federated_iam_configure_runtime
 from .runtime import federated_iam_empty_state
@@ -45,7 +49,14 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": federated_iam_ui_contract(),
         "api_contract": federated_iam_build_api_contract(),
+        "schema_contract": federated_iam_build_schema_contract(),
+        "service_contract": federated_iam_build_service_contract(),
+        "release_evidence_contract": federated_iam_build_release_evidence(),
         "permissions_contract": federated_iam_permissions_contract(),
         "owned_tables": FEDERATED_IAM_OWNED_TABLES,
+        "runtime_tables": FEDERATED_IAM_RUNTIME_TABLES,
         "allowed_database_backends": FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
+        "consumes": FEDERATED_IAM_CONSUMED_EVENT_TYPES,
+        "emits": FEDERATED_IAM_EMITTED_EVENT_TYPES,
     }

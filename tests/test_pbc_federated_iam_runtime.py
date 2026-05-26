@@ -1,21 +1,27 @@
 import pytest
 
+from pyAppGen.pbcs.federated_iam import FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.federated_iam import FEDERATED_IAM_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.federated_iam import FEDERATED_IAM_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.federated_iam import FEDERATED_IAM_OWNED_TABLES
+from pyAppGen.pbcs.federated_iam import FEDERATED_IAM_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.federated_iam import FEDERATED_IAM_RUNTIME_TABLES
+from pyAppGen.pbcs.federated_iam import federated_iam_build_api_contract
+from pyAppGen.pbcs.federated_iam import federated_iam_build_release_evidence
+from pyAppGen.pbcs.federated_iam import federated_iam_build_schema_contract
+from pyAppGen.pbcs.federated_iam import federated_iam_build_service_contract
+from pyAppGen.pbcs.federated_iam import federated_iam_permissions_contract
+from pyAppGen.pbcs.federated_iam import federated_iam_ui_contract
+from pyAppGen.pbcs.federated_iam import implementation_contract as package_implementation_contract
 from pyAppGen.pbc import FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS
-from pyAppGen.pbc import FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS
-from pyAppGen.pbc import FEDERATED_IAM_CONSUMED_EVENT_TYPES
-from pyAppGen.pbc import FEDERATED_IAM_EMITTED_EVENT_TYPES
-from pyAppGen.pbc import FEDERATED_IAM_OWNED_TABLES
-from pyAppGen.pbc import FEDERATED_IAM_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbc import federated_iam_approve_privileged_access
 from pyAppGen.pbc import federated_iam_assign_role
-from pyAppGen.pbc import federated_iam_build_api_contract
 from pyAppGen.pbc import federated_iam_build_workbench_view
 from pyAppGen.pbc import federated_iam_configure_runtime
 from pyAppGen.pbc import federated_iam_empty_state
 from pyAppGen.pbc import federated_iam_evaluate_policy
 from pyAppGen.pbc import federated_iam_grant_token
 from pyAppGen.pbc import federated_iam_link_identity
-from pyAppGen.pbc import federated_iam_permissions_contract
 from pyAppGen.pbc import federated_iam_provision_tenant
 from pyAppGen.pbc import federated_iam_receive_event
 from pyAppGen.pbc import federated_iam_register_identity_provider
@@ -26,7 +32,6 @@ from pyAppGen.pbc import federated_iam_render_workbench
 from pyAppGen.pbc import federated_iam_runtime_capabilities
 from pyAppGen.pbc import federated_iam_runtime_smoke
 from pyAppGen.pbc import federated_iam_set_parameter
-from pyAppGen.pbc import federated_iam_ui_contract
 from pyAppGen.pbc import federated_iam_verify_owned_table_boundary
 from pyAppGen.pbc import federated_iam_verify_credential
 from pyAppGen.pbc import pbc_implemented_capability_audit
@@ -42,11 +47,15 @@ def test_federated_iam_runtime_executes_standard_and_advanced_capabilities() -> 
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/federated_iam"
     assert runtime["owned_tables"] == FEDERATED_IAM_OWNED_TABLES
+    assert runtime["runtime_tables"] == FEDERATED_IAM_RUNTIME_TABLES
+    assert runtime["required_event_topic"] == FEDERATED_IAM_REQUIRED_EVENT_TOPIC
+    assert runtime["allowed_database_backends"] == FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS
     assert len(runtime["standard_features"]) >= 25
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
+    assert {"build_schema_contract", "build_service_contract", "build_release_evidence", "run_control_tests"} <= set(runtime["operations"])
     assert smoke["ok"] is True
     assert set(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
     assert not smoke["blocking_gaps"]
@@ -56,26 +65,105 @@ def test_federated_iam_runtime_executes_standard_and_advanced_capabilities() -> 
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["owned_tables"] == FEDERATED_IAM_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["runtime_tables"] == FEDERATED_IAM_RUNTIME_TABLES
+    assert contract["source_package"]["required_event_topic"] == FEDERATED_IAM_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == FEDERATED_IAM_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == FEDERATED_IAM_EMITTED_EVENT_TYPES
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "federated_iam.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "IamConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("federated_iam",))["ok"] is True
     assert pbc_implemented_capability_audit(("federated_iam",))["ok"] is True
+    package_contract = package_implementation_contract()
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
 
     api = federated_iam_build_api_contract()
     permissions = federated_iam_permissions_contract()
     assert api["format"] == "appgen.federated-iam-api-contract.v1"
     assert api["owned_tables"] == FEDERATED_IAM_OWNED_TABLES
+    assert api["runtime_tables"] == FEDERATED_IAM_RUNTIME_TABLES
     assert api["database_backends"] == FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS
     assert api["emits"] == FEDERATED_IAM_EMITTED_EVENT_TYPES
     assert api["consumes"] == FEDERATED_IAM_CONSUMED_EVENT_TYPES
     assert api["shared_table_access"] is False
     assert api["stream_engine_picker_visible"] is False
-    assert {route["route"] for route in api["routes"]} >= {"POST /principals", "POST /iam/events/inbox", "GET /iam-workbench"}
+    assert api["required_event_topic"] == FEDERATED_IAM_REQUIRED_EVENT_TOPIC
+    assert api["dependencies"]["shared_tables"] == ()
+    assert api["rules_parameters_configuration"] == ("register_rule", "set_parameter", "configure_runtime")
+    assert {route["route"] for route in api["routes"]} >= {
+        "PUT /iam/configuration",
+        "POST /iam/parameters",
+        "POST /iam/rules",
+        "POST /principals",
+        "POST /iam/events/inbox",
+        "GET /iam-workbench",
+        "GET /iam/schema-contract",
+        "GET /iam/service-contract",
+        "GET /iam/release-evidence",
+    }
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
     assert permissions["action_permissions"]["grant_token"] == "federated_iam.token"
+    assert permissions["action_permissions"]["build_schema_contract"] == "federated_iam.audit"
+    assert permissions["action_permissions"]["build_service_contract"] == "federated_iam.audit"
+    assert permissions["action_permissions"]["build_release_evidence"] == "federated_iam.audit"
+
+
+def test_federated_iam_package_schema_service_release_and_ui_contracts() -> None:
+    schema = federated_iam_build_schema_contract()
+    service = federated_iam_build_service_contract()
+    release = federated_iam_build_release_evidence()
+    api = federated_iam_build_api_contract()
+    ui = federated_iam_ui_contract()
+
+    assert schema["format"] == "appgen.federated-iam-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(FEDERATED_IAM_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(FEDERATED_IAM_OWNED_TABLES)
+    assert tuple(item["table"] for item in schema["runtime_tables"]) == FEDERATED_IAM_RUNTIME_TABLES
+    assert schema["datastore_backends"] == FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS
+    assert schema["required_event_topic"] == FEDERATED_IAM_REQUIRED_EVENT_TOPIC
+    assert schema["shared_table_access"] is False
+
+    assert service["format"] == "appgen.federated-iam-service-contract.v1"
+    assert service["ok"] is True
+    assert service["transaction_boundary"] == "federated_iam_owned_datastore_plus_appgen_outbox"
+    assert "receive_event" in service["idempotent_handlers"]
+    assert service["retry_dead_letter_evidence"]["dead_letter_table"] == FEDERATED_IAM_RUNTIME_TABLES[2]
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert service["rules_parameters_configuration"] == ("register_rule", "set_parameter", "configure_runtime")
+
+    assert ui["binding_evidence"]["runtime_tables"] == FEDERATED_IAM_RUNTIME_TABLES
+    assert ui["binding_evidence"]["event_contract"] == "AppGen-X"
+    assert ui["binding_evidence"]["required_event_topic"] == FEDERATED_IAM_REQUIRED_EVENT_TOPIC
+    assert ui["binding_evidence"]["shared_table_access"] is False
+
+    assert any(route["command"] == "configure_runtime" for route in api["routes"])
+    assert any(route["command"] == "set_parameter" for route in api["routes"])
+    assert any(route["command"] == "register_rule" for route in api["routes"])
+    assert any(route["command"] == "receive_event" for route in api["routes"])
+    assert any(route.get("query") == "build_schema_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_service_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_release_evidence" for route in api["routes"])
+    assert all(route["event_contract"] == "AppGen-X" for route in api["routes"])
+    assert all(route["shared_table_access"] is False for route in api["routes"])
+
+    assert release["format"] == "appgen.federated-iam-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert release["schema"]["format"] == schema["format"]
+    assert release["service"]["format"] == service["format"]
+    assert release["api"]["required_event_topic"] == FEDERATED_IAM_REQUIRED_EVENT_TOPIC
+    assert release["ui"]["binding_evidence"]["runtime_tables"] == FEDERATED_IAM_RUNTIME_TABLES
+    assert release["workbench"]["binding_evidence"]["outbox_table"] == FEDERATED_IAM_RUNTIME_TABLES[0]
+    assert release["boundary"]["declared_dependencies"]["shared_tables"] == ()
 
 
 def test_federated_iam_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -203,15 +291,29 @@ def test_federated_iam_runtime_applies_rules_parameters_configuration_and_ui() -
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 5
+    assert workbench["outbox_count"] == 9
     assert workbench["inbox_count"] == 1
+    assert workbench["retry_evidence_count"] == 0
     assert workbench["binding_evidence"]["owned_tables"] == FEDERATED_IAM_OWNED_TABLES
+    assert workbench["binding_evidence"]["runtime_tables"] == FEDERATED_IAM_RUNTIME_TABLES
     assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
+    assert workbench["binding_evidence"]["ui_bindings"]["rbac"]["receive_event"] == "federated_iam.event"
+    assert workbench["binding_evidence"]["rules"] == ("rule_ops",)
+    assert workbench["binding_evidence"]["parameters"] == (
+        "minimum_trust_score",
+        "privileged_access_ttl_minutes",
+        "session_risk_threshold",
+        "step_up_threshold",
+        "token_ttl_minutes",
+    )
 
     ui_contract = federated_iam_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS
     assert ui_contract["configuration_editor"]["required_event_topic"] == FEDERATED_IAM_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["binding_evidence"]["owned_tables"] == FEDERATED_IAM_OWNED_TABLES
+    assert ui_contract["binding_evidence"]["runtime_tables"] == FEDERATED_IAM_RUNTIME_TABLES
+    assert ui_contract["binding_evidence"]["event_contract"] == "AppGen-X"
     assert "minimum_trust_score" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     rendered = federated_iam_render_workbench(
@@ -235,9 +337,21 @@ def test_federated_iam_runtime_applies_rules_parameters_configuration_and_ui() -
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == FEDERATED_IAM_OWNED_TABLES
+    assert rendered["binding_evidence"]["configuration"] == workbench["binding_evidence"]["configuration"]
+    assert rendered["binding_evidence"]["rules"] == workbench["binding_evidence"]["rules"]
+    assert rendered["binding_evidence"]["parameters"] == workbench["binding_evidence"]["parameters"]
+    assert rendered["binding_evidence"]["ui_bindings"] == {
+        "configuration_fragment": "IamConfigurationPanel",
+        "rule_fragment": "IamRuleStudio",
+        "parameter_fragment": "IamParameterConsole",
+        "outbox_table": FEDERATED_IAM_RUNTIME_TABLES[0],
+        "inbox_table": FEDERATED_IAM_RUNTIME_TABLES[1],
+        "dead_letter_table": FEDERATED_IAM_RUNTIME_TABLES[2],
+        "rbac": ui_contract["action_permissions"],
+    }
 
     boundary = federated_iam_verify_owned_table_boundary(
-        ("principal", "RoleChanged", "gateway_token_projection", "POST /audit/access-events", "federated_iam_appgen_outbox_event")
+        ("principal", "RoleChanged", "gateway_token_projection", "POST /audit/access-events", FEDERATED_IAM_RUNTIME_TABLES[0])
     )
     assert boundary["ok"] is True
     assert boundary["declared_dependencies"]["shared_tables"] == ()
@@ -305,3 +419,4 @@ def test_federated_iam_rejects_unsupported_database_backends_eventing_and_bounda
     assert retrying["handler"]["status"] == "retrying"
     assert dead_letter["handler"]["status"] == "dead_letter"
     assert len(dead_letter["state"]["dead_letter"]) == 1
+    assert len(dead_letter["state"]["retry_evidence"]) == 2

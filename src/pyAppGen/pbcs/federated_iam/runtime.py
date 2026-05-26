@@ -41,11 +41,12 @@ FEDERATED_IAM_CONSUMED_EVENT_TYPES = (
     "EmployeeProvisioned",
     "ServiceAccountRequested",
 )
-_FEDERATED_IAM_RUNTIME_TABLES = (
+FEDERATED_IAM_RUNTIME_TABLES = (
     "federated_iam_appgen_outbox_event",
     "federated_iam_appgen_inbox_event",
     "federated_iam_dead_letter_event",
 )
+_FEDERATED_IAM_RUNTIME_TABLES = FEDERATED_IAM_RUNTIME_TABLES
 _FEDERATED_IAM_ALLOWED_DEPENDENCIES = (
     "gateway_token_projection",
     "audit_access_projection",
@@ -141,6 +142,9 @@ def federated_iam_runtime_capabilities() -> dict:
         "pbc": "federated_iam",
         "implementation_directory": "src/pyAppGen/pbcs/federated_iam",
         "owned_tables": FEDERATED_IAM_OWNED_TABLES,
+        "runtime_tables": FEDERATED_IAM_RUNTIME_TABLES,
+        "required_event_topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
+        "allowed_database_backends": FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS,
         "capabilities": FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS,
         "standard_features": FEDERATED_IAM_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -159,8 +163,12 @@ def federated_iam_runtime_capabilities() -> dict:
             "grant_token",
             "approve_privileged_access",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
+            "run_control_tests",
             "verify_owned_table_boundary",
         ),
         "smoke": smoke,
@@ -264,6 +272,9 @@ def federated_iam_runtime_smoke() -> dict:
     allocation = federated_iam_allocate_privileged_access(({"approver": "security", "priority": 0.9, "capacity": 5}, {"approver": "platform", "priority": 0.5, "capacity": 3}), requests=4)
     anomaly = federated_iam_detect_access_anomaly(state)
     stochastic = federated_iam_model_stochastic_access_exposure(risk_path=(0.2, 0.4, 0.6), volatility=0.1)
+    schema = federated_iam_build_schema_contract()
+    service = federated_iam_build_service_contract()
+    release = federated_iam_build_release_evidence()
     workbench = federated_iam_build_workbench_view(state, tenant="tenant_alpha")
     model = federated_iam_register_governed_model("access_risk", {"features": ("session", "identity", "privilege"), "auc": 0.9, "drift_score": 0.04})
     checks = (
@@ -283,7 +294,7 @@ def federated_iam_runtime_smoke() -> dict:
         {"id": "immutable_identity_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_access_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_identity_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "PrincipalVerified" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and "PrincipalVerified" in api["events"]["emits"] and release["ok"] and schema["ok"] and service["ok"]},
         {"id": "cross_system_identity_federation", "ok": federation["ok"] and "audit" in federation["systems"]},
         {"id": "workforce_customer_service_account_integration", "ok": token["handoffs"] == ("gateway_token_projection", "audit_access_projection", "principal_session_projection")},
         {"id": "decentralized_principal_identity", "ok": decentralized_identity["ok"] and decentralized_identity["issuer"] == "trusted_registry"},
@@ -573,32 +584,190 @@ def federated_iam_run_control_tests(state: dict) -> dict:
 
 
 def federated_iam_build_api_contract() -> dict:
+    dependencies = {
+        "apis": tuple(item for item in _FEDERATED_IAM_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+        "events": FEDERATED_IAM_CONSUMED_EVENT_TYPES,
+        "api_projections": tuple(item for item in _FEDERATED_IAM_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+        "shared_tables": (),
+    }
     return {
         "format": "appgen.federated-iam-api-contract.v1",
         "ok": True,
         "routes": (
-            {"route": "POST /tenants", "command": "provision_tenant", "owned_tables": ("tenant",), "emits": ("TenantProvisioned",), "requires_permission": "federated_iam.tenant", "idempotency_key": "tenant_id"},
-            {"route": "POST /principals", "command": "register_principal", "owned_tables": ("principal",), "emits": (), "requires_permission": "federated_iam.principal", "idempotency_key": "principal_id"},
-            {"route": "POST /identity-providers", "command": "register_identity_provider", "owned_tables": ("identity_provider",), "emits": (), "requires_permission": "federated_iam.principal", "idempotency_key": "provider_id"},
-            {"route": "POST /identity-links", "command": "link_identity", "owned_tables": ("principal_identity",), "emits": ("PrincipalVerified",), "requires_permission": "federated_iam.principal", "idempotency_key": "identity_id"},
-            {"route": "POST /credential-verifications", "command": "verify_credential", "owned_tables": ("credential_verification",), "emits": (), "requires_permission": "federated_iam.principal", "idempotency_key": "verification_id"},
-            {"route": "POST /role-assignments", "command": "assign_role", "owned_tables": ("role_assignment", "access_policy"), "emits": ("AccessPolicyChanged",), "requires_permission": "federated_iam.policy", "idempotency_key": "assignment_id"},
-            {"route": "POST /policy-decisions", "command": "evaluate_policy", "owned_tables": ("policy_decision",), "emits": ("PolicyDecisionRecorded",), "requires_permission": "federated_iam.policy", "idempotency_key": "decision_id"},
-            {"route": "POST /token-grants", "command": "grant_token", "owned_tables": ("token_grant", "session"), "emits": ("TokenGranted",), "requires_permission": "federated_iam.token", "idempotency_key": "grant_id"},
-            {"route": "POST /privileged-access-requests", "command": "approve_privileged_access", "owned_tables": ("privileged_access_request",), "emits": ("PrivilegedAccessApproved",), "requires_permission": "federated_iam.privileged", "idempotency_key": "request_id"},
-            {"route": "POST /iam/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": FEDERATED_IAM_CONSUMED_EVENT_TYPES, "requires_permission": "federated_iam.event", "idempotency_key": "event_id"},
-            {"route": "GET /iam-workbench", "query": "build_workbench_view", "owned_tables": FEDERATED_IAM_OWNED_TABLES, "requires_permission": "federated_iam.audit"},
+            _federated_iam_route_descriptor(
+                "PUT /iam/configuration",
+                command="configure_runtime",
+                owned_tables=("iam_configuration",),
+                requires_permission="federated_iam.configure",
+                idempotency_key="database_backend:event_topic",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /iam/parameters",
+                command="set_parameter",
+                owned_tables=("iam_parameter",),
+                requires_permission="federated_iam.configure",
+                idempotency_key="name",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /iam/rules",
+                command="register_rule",
+                owned_tables=("iam_rule",),
+                requires_permission="federated_iam.configure",
+                idempotency_key="rule_id",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /iam/schema-extensions",
+                command="register_schema_extension",
+                owned_tables=FEDERATED_IAM_OWNED_TABLES,
+                requires_permission="federated_iam.configure",
+                idempotency_key="table",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /tenants",
+                command="provision_tenant",
+                owned_tables=("tenant",),
+                emits=("TenantProvisioned",),
+                requires_permission="federated_iam.tenant",
+                idempotency_key="tenant_id",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /principals",
+                command="register_principal",
+                owned_tables=("principal",),
+                requires_permission="federated_iam.principal",
+                idempotency_key="principal_id",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /identity-providers",
+                command="register_identity_provider",
+                owned_tables=("identity_provider",),
+                requires_permission="federated_iam.principal",
+                idempotency_key="provider_id",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /identity-links",
+                command="link_identity",
+                owned_tables=("principal_identity",),
+                emits=("PrincipalVerified",),
+                requires_permission="federated_iam.principal",
+                idempotency_key="identity_id",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /credential-verifications",
+                command="verify_credential",
+                owned_tables=("credential_verification",),
+                requires_permission="federated_iam.principal",
+                idempotency_key="verification_id",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /role-assignments",
+                command="assign_role",
+                owned_tables=("role_assignment", "access_policy"),
+                emits=("AccessPolicyChanged",),
+                requires_permission="federated_iam.policy",
+                idempotency_key="assignment_id",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /policy-decisions",
+                command="evaluate_policy",
+                owned_tables=("policy_decision",),
+                emits=("PolicyDecisionRecorded",),
+                requires_permission="federated_iam.policy",
+                idempotency_key="decision_id",
+            ),
+            _federated_iam_route_descriptor(
+                "POST /token-grants",
+                command="grant_token",
+                owned_tables=("token_grant", "session"),
+                emits=("TokenGranted",),
+                requires_permission="federated_iam.token",
+                idempotency_key="grant_id",
+                dependency_apis=("POST /audit/access-events", "POST /gateway/token-projections"),
+                dependency_projections=("gateway_token_projection", "audit_access_projection", "principal_session_projection"),
+            ),
+            _federated_iam_route_descriptor(
+                "POST /privileged-access-requests",
+                command="approve_privileged_access",
+                owned_tables=("privileged_access_request",),
+                emits=("PrivilegedAccessApproved",),
+                requires_permission="federated_iam.privileged",
+                idempotency_key="request_id",
+                dependency_apis=("POST /audit/access-events",),
+                dependency_projections=("audit_access_projection",),
+            ),
+            _federated_iam_route_descriptor(
+                "POST /iam/events/inbox",
+                command="receive_event",
+                owned_tables=(FEDERATED_IAM_RUNTIME_TABLES[1], FEDERATED_IAM_RUNTIME_TABLES[2]),
+                consumes=FEDERATED_IAM_CONSUMED_EVENT_TYPES,
+                requires_permission="federated_iam.event",
+                idempotency_key="event_id",
+                dependency_apis=("GET /schemas/identity-events",),
+                dependency_projections=(
+                    "tenant_lifecycle_projection",
+                    "customer_identity_projection",
+                    "employee_identity_projection",
+                    "service_account_request_projection",
+                ),
+            ),
+            _federated_iam_route_descriptor(
+                "GET /iam-workbench",
+                query="build_workbench_view",
+                owned_tables=FEDERATED_IAM_OWNED_TABLES,
+                requires_permission="federated_iam.audit",
+            ),
+            _federated_iam_route_descriptor(
+                "GET /iam/schema-contract",
+                query="build_schema_contract",
+                owned_tables=FEDERATED_IAM_OWNED_TABLES,
+                requires_permission="federated_iam.audit",
+            ),
+            _federated_iam_route_descriptor(
+                "GET /iam/service-contract",
+                query="build_service_contract",
+                owned_tables=FEDERATED_IAM_OWNED_TABLES,
+                requires_permission="federated_iam.audit",
+            ),
+            _federated_iam_route_descriptor(
+                "GET /iam/release-evidence",
+                query="build_release_evidence",
+                owned_tables=FEDERATED_IAM_OWNED_TABLES,
+                requires_permission="federated_iam.audit",
+            ),
         ),
-        "declared_catalog_routes": ("POST /tenants", "POST /principals", "POST /identity-providers", "POST /identity-links", "POST /credential-verifications", "POST /role-assignments", "POST /policy-decisions", "POST /token-grants", "POST /sessions/revoke", "POST /privileged-access-requests", "POST /iam-rules", "POST /iam-parameters", "POST /iam-configuration"),
+        "declared_catalog_routes": (
+            "PUT /iam/configuration",
+            "POST /iam/parameters",
+            "POST /iam/rules",
+            "POST /tenants",
+            "POST /principals",
+            "POST /identity-providers",
+            "POST /identity-links",
+            "POST /credential-verifications",
+            "POST /role-assignments",
+            "POST /policy-decisions",
+            "POST /token-grants",
+            "POST /sessions/revoke",
+            "POST /privileged-access-requests",
+            "POST /iam/events/inbox",
+            "GET /iam-workbench",
+            "GET /iam/schema-contract",
+            "GET /iam/service-contract",
+            "GET /iam/release-evidence",
+        ),
         "events": {"emits": FEDERATED_IAM_EMITTED_EVENT_TYPES, "consumes": FEDERATED_IAM_CONSUMED_EVENT_TYPES},
         "emits": FEDERATED_IAM_EMITTED_EVENT_TYPES,
         "consumes": FEDERATED_IAM_CONSUMED_EVENT_TYPES,
         "permissions": tuple(sorted(federated_iam_permissions_contract()["permissions"])),
         "database_backends": FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS,
         "owned_tables": FEDERATED_IAM_OWNED_TABLES,
+        "runtime_tables": FEDERATED_IAM_RUNTIME_TABLES,
         "shared_table_access": False,
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
+        "required_event_topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
+        "dependencies": dependencies,
+        "rules_parameters_configuration": ("register_rule", "set_parameter", "configure_runtime"),
         "configuration": ("FEDERATED_IAM_DATABASE_URL", "FEDERATED_IAM_EVENT_TOPIC", "FEDERATED_IAM_RETRY_LIMIT", "FEDERATED_IAM_DEFAULT_TIMEZONE"),
     }
 
@@ -623,8 +792,250 @@ def federated_iam_permissions_contract() -> dict:
             "register_schema_extension": "federated_iam.configure",
             "set_parameter": "federated_iam.configure",
             "configure_runtime": "federated_iam.configure",
+            "build_api_contract": "federated_iam.audit",
+            "build_schema_contract": "federated_iam.audit",
+            "build_service_contract": "federated_iam.audit",
+            "build_release_evidence": "federated_iam.audit",
             "build_workbench_view": "federated_iam.audit",
+            "run_control_tests": "federated_iam.audit",
         },
+    }
+
+
+def federated_iam_build_schema_contract() -> dict:
+    default_fields = ("tenant", "record_id", "source_id", "status", "effective_at", "audit_hash")
+    table_fields = {
+        "tenant": ("tenant_id", "name", "region", "status", "audit_hash"),
+        "principal": ("tenant", "principal_id", "principal_type", "display_name", "status", "graph_degree", "audit_hash"),
+        "identity_provider": ("tenant", "provider_id", "provider_type", "issuer", "status", "audit_hash"),
+        "principal_identity": ("tenant", "identity_id", "principal_id", "provider_id", "subject", "claims", "trust_score", "status", "audit_hash"),
+        "role_assignment": ("tenant", "assignment_id", "principal_id", "role", "scope", "status", "audit_hash"),
+        "access_policy": ("tenant", "policy_id", "principal_id", "role", "decision_basis", "status", "audit_hash"),
+        "policy_decision": ("tenant", "decision_id", "principal_id", "action", "resource", "decision", "risk_score", "audit_hash"),
+        "token_grant": ("tenant", "grant_id", "principal_id", "grant_type", "audience", "scopes", "ttl_minutes", "token_hash", "status", "audit_hash"),
+        "session": ("tenant", "session_id", "principal_id", "token_grant_id", "status", "expires_at", "audit_hash"),
+        "credential_verification": ("tenant", "verification_id", "principal_id", "credential_type", "issuer", "confidence", "verified", "audit_hash"),
+        "privileged_access_request": ("tenant", "request_id", "principal_id", "action", "resource", "risk", "approved_by", "ttl_minutes", "status", "audit_hash"),
+        "iam_rule": ("tenant", "rule_id", "scope", "rule_type", "compiled_hash", "allowed_regions", "allowed_roles", "status", "audit_hash"),
+        "iam_parameter": ("tenant", "parameter_name", "parameter_value", "effective_at", "status", "audit_hash"),
+        "iam_configuration": ("configuration_id", "database_backend", "event_topic", "event_contract", "retry_limit", "default_timezone", "workbench_limit", "audit_hash"),
+    }
+    runtime_tables = (
+        {
+            "table": FEDERATED_IAM_RUNTIME_TABLES[0],
+            "fields": ("tenant", "event_id", "event_type", "payload", "topic", "hash", "idempotency_key"),
+        },
+        {
+            "table": FEDERATED_IAM_RUNTIME_TABLES[1],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts"),
+        },
+        {
+            "table": FEDERATED_IAM_RUNTIME_TABLES[2],
+            "fields": ("tenant", "event_id", "event_type", "payload", "reason", "attempts", "idempotency_key"),
+        },
+    )
+    relationships = (
+        {"from_table": "principal_identity", "from_field": "principal_id", "to_table": "principal", "to_field": "principal_id"},
+        {"from_table": "principal_identity", "from_field": "provider_id", "to_table": "identity_provider", "to_field": "provider_id"},
+        {"from_table": "role_assignment", "from_field": "principal_id", "to_table": "principal", "to_field": "principal_id"},
+        {"from_table": "policy_decision", "from_field": "principal_id", "to_table": "principal", "to_field": "principal_id"},
+        {"from_table": "token_grant", "from_field": "principal_id", "to_table": "principal", "to_field": "principal_id"},
+        {"from_table": "credential_verification", "from_field": "principal_id", "to_table": "principal", "to_field": "principal_id"},
+        {"from_table": "privileged_access_request", "from_field": "principal_id", "to_table": "principal", "to_field": "principal_id"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields.get(table, default_fields),
+            "owner": "federated_iam",
+            "primary_key": table_fields.get(table, default_fields)[0],
+        }
+        for table in FEDERATED_IAM_OWNED_TABLES
+    )
+    migrations = tuple(
+        {
+            "path": f"pbcs/federated_iam/migrations/{position + 1:03d}_{table}.sql",
+            "operation": "create_owned_table",
+            "table": table,
+            "backend_allowlist": FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS,
+        }
+        for position, table in enumerate(FEDERATED_IAM_OWNED_TABLES)
+    )
+    runtime_migrations = tuple(
+        {
+            "path": f"pbcs/federated_iam/migrations/runtime_{position + 1:03d}_{table}.sql",
+            "operation": "create_runtime_table",
+            "table": table,
+            "backend_allowlist": FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS,
+        }
+        for position, table in enumerate(FEDERATED_IAM_RUNTIME_TABLES)
+    )
+    models = tuple(
+        {
+            "class_name": _class_name(table),
+            "table": table,
+            "fields": table_fields.get(table, default_fields),
+        }
+        for table in FEDERATED_IAM_OWNED_TABLES
+    )
+    invalid_prefixes = tuple(
+        table
+        for table in FEDERATED_IAM_OWNED_TABLES
+        if table != "tenant" and not table.startswith(("principal", "identity_", "role_", "access_", "policy_", "token_", "session", "credential_", "privileged_", "iam_"))
+    )
+    return {
+        "format": "appgen.federated-iam-owned-schema-contract.v1",
+        "ok": not invalid_prefixes and len(tables) == len(FEDERATED_IAM_OWNED_TABLES) and len(migrations) == len(FEDERATED_IAM_OWNED_TABLES),
+        "tables": tables,
+        "runtime_tables": runtime_tables,
+        "relationships": relationships,
+        "migrations": migrations,
+        "runtime_migrations": runtime_migrations,
+        "models": models,
+        "datastore_backends": FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
+        "shared_table_access": False,
+        "invalid_prefixes": invalid_prefixes,
+    }
+
+
+def federated_iam_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "provision_tenant",
+        "register_principal",
+        "register_identity_provider",
+        "link_identity",
+        "verify_credential",
+        "assign_role",
+        "evaluate_policy",
+        "grant_token",
+        "approve_privileged_access",
+        "run_control_tests",
+        "verify_owned_table_boundary",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "simulate_policy_change",
+        "forecast_access_risk",
+        "parse_access_request",
+        "score_access_risk",
+        "recommend_exception_resolution",
+        "route_authorization",
+        "generate_policy_proof",
+        "screen_access_policy",
+        "build_api_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    return {
+        "format": "appgen.federated-iam-service-contract.v1",
+        "ok": len(command_methods) >= 15 and len(query_methods) >= 12 and not federated_iam_verify_owned_table_boundary(FEDERATED_IAM_OWNED_TABLES)["violations"],
+        "transaction_boundary": "federated_iam_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "idempotent_handlers": ("receive_event",),
+        "retry_dead_letter_evidence": {
+            "outbox_table": FEDERATED_IAM_RUNTIME_TABLES[0],
+            "inbox_table": FEDERATED_IAM_RUNTIME_TABLES[1],
+            "dead_letter_table": FEDERATED_IAM_RUNTIME_TABLES[2],
+            "retry_limit_source": "iam_configuration.retry_limit",
+        },
+        "eventing": {
+            "contract": "AppGen-X",
+            "topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
+        },
+        "mutates_only": FEDERATED_IAM_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _FEDERATED_IAM_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": FEDERATED_IAM_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _FEDERATED_IAM_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+        "rules_parameters_configuration": ("register_rule", "set_parameter", "configure_runtime"),
+    }
+
+
+def federated_iam_build_release_evidence() -> dict:
+    from .ui import federated_iam_ui_contract
+
+    schema = federated_iam_build_schema_contract()
+    service = federated_iam_build_service_contract()
+    api = federated_iam_build_api_contract()
+    permissions = federated_iam_permissions_contract()
+    ui = federated_iam_ui_contract()
+    release_state = federated_iam_empty_state()
+    release_state = federated_iam_configure_runtime(
+        release_state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "allowed_regions": ("US",),
+            "allowed_provider_types": ("oidc",),
+            "allowed_principal_types": ("user",),
+            "allowed_grant_types": ("authorization_code",),
+            "default_timezone": "UTC",
+            "workbench_limit": 25,
+        },
+    )["state"]
+    release_state = federated_iam_set_parameter(release_state, "minimum_trust_score", 0.8)["state"]
+    release_state = federated_iam_register_rule(
+        release_state,
+        {
+            "rule_id": "rule_release",
+            "tenant": "tenant_release",
+            "rule_type": "access",
+            "allowed_regions": ("US",),
+            "allowed_roles": ("auditor",),
+            "required_claims": ("email", "tenant"),
+            "deny_actions": ("delete_tenant",),
+            "privileged_actions": ("rotate_key",),
+            "status": "active",
+        },
+    )["state"]
+    workbench = federated_iam_build_workbench_view(release_state, tenant="tenant_release")
+    boundary = federated_iam_verify_owned_table_boundary(
+        (
+            "principal",
+            FEDERATED_IAM_RUNTIME_TABLES[0],
+            "RoleChanged",
+            "GET /schemas/identity-events",
+            "gateway_token_projection",
+        )
+    )
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) == len(FEDERATED_IAM_OWNED_TABLES)},
+        {"id": "runtime_tables_declared", "ok": tuple(item["table"] for item in schema["runtime_tables"]) == FEDERATED_IAM_RUNTIME_TABLES},
+        {"id": "service_contract_depth", "ok": service["ok"] and "receive_event" in service["idempotent_handlers"]},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and api["required_event_topic"] == FEDERATED_IAM_REQUIRED_EVENT_TOPIC},
+        {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": schema["shared_table_access"] is False and api["shared_table_access"] is False and service["external_dependencies"]["shared_tables"] == ()},
+        {"id": "ui_binding_evidence", "ok": ui["binding_evidence"]["runtime_tables"] == FEDERATED_IAM_RUNTIME_TABLES and ui["binding_evidence"]["shared_table_access"] is False},
+        {"id": "workbench_binding_evidence", "ok": workbench["binding_evidence"]["outbox_table"] == FEDERATED_IAM_RUNTIME_TABLES[0] and workbench["binding_evidence"]["ui_bindings"]["rbac"]["receive_event"] == "federated_iam.event"},
+        {"id": "boundary_contract", "ok": boundary["ok"] and boundary["declared_dependencies"]["shared_tables"] == ()},
+    )
+    blocking_gaps = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.federated-iam-release-evidence.v1",
+        "ok": not blocking_gaps,
+        "checks": checks,
+        "blocking_gaps": blocking_gaps,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "ui": ui,
+        "workbench": workbench,
+        "boundary": boundary,
     }
 
 
@@ -707,7 +1118,9 @@ def federated_iam_build_workbench_view(state: dict, *, tenant: str) -> dict:
     decisions = tuple(item for item in state["decisions"].values() if item["tenant"] == tenant)
     tokens = tuple(item for item in state["tokens"].values() if item["tenant"] == tenant)
     privileged = tuple(item for item in state["privileged"].values() if item["tenant"] == tenant)
+    action_permissions = federated_iam_permissions_contract()["action_permissions"]
     return {
+        "format": "appgen.federated-iam-workbench-view.v1",
         "ok": True,
         "tenant": tenant,
         "principal_count": len(principals),
@@ -721,18 +1134,33 @@ def federated_iam_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "outbox_count": len(state.get("outbox", ())),
         "inbox_count": len(state.get("inbox", ())),
+        "retry_evidence_count": len(state.get("retry_evidence", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": {
             "owned_tables": FEDERATED_IAM_OWNED_TABLES,
-            "outbox_table": "federated_iam_appgen_outbox_event",
-            "inbox_table": "federated_iam_appgen_inbox_event",
-            "dead_letter_table": "federated_iam_dead_letter_event",
+            "runtime_tables": FEDERATED_IAM_RUNTIME_TABLES,
+            "outbox_table": FEDERATED_IAM_RUNTIME_TABLES[0],
+            "inbox_table": FEDERATED_IAM_RUNTIME_TABLES[1],
+            "dead_letter_table": FEDERATED_IAM_RUNTIME_TABLES[2],
+            "shared_table_access": False,
+            "rules": tuple(sorted(state.get("rules", {}))),
+            "parameters": tuple(sorted(state.get("parameters", {}))),
             "configuration": {
                 "event_contract": state.get("configuration", {}).get("event_contract"),
                 "event_topic": state.get("configuration", {}).get("event_topic"),
                 "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
                 "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+            "ui_bindings": {
+                "configuration_fragment": "IamConfigurationPanel",
+                "rule_fragment": "IamRuleStudio",
+                "parameter_fragment": "IamParameterConsole",
+                "outbox_table": FEDERATED_IAM_RUNTIME_TABLES[0],
+                "inbox_table": FEDERATED_IAM_RUNTIME_TABLES[1],
+                "dead_letter_table": FEDERATED_IAM_RUNTIME_TABLES[2],
+                "rbac": action_permissions,
             },
         },
     }
@@ -747,9 +1175,54 @@ def _append_event(state: dict, event_type: str, payload: dict) -> dict:
     sequence = len(state["events"]) + 1
     event = {"event_id": f"iam_evt_{sequence:06d}", "event_type": event_type, "payload": payload, "previous_hash": previous_hash}
     event = {**event, "hash": _digest(event)}
-    outbox_event = {"event_type": event_type, "payload": payload, "idempotency_key": f"federated_iam:{event_type}:{event['event_id']}"}
+    outbox_event = {
+        "event_id": event["event_id"],
+        "event_type": event_type,
+        "payload": payload,
+        "topic": state.get("configuration", {}).get("event_topic", FEDERATED_IAM_REQUIRED_EVENT_TOPIC),
+        "hash": event["hash"],
+        "idempotency_key": f"federated_iam:{event_type}:{event['event_id']}",
+    }
     return {**state, "events": (*state["events"], event), "outbox": (*state["outbox"], outbox_event)}
 
 
 def _digest(value: object) -> str:
     return hashlib.sha3_256(json.dumps(value, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def _class_name(table: str) -> str:
+    return "".join(part.capitalize() for part in table.split("_"))
+
+
+def _federated_iam_route_descriptor(
+    route: str,
+    *,
+    command: str | None = None,
+    query: str | None = None,
+    owned_tables: tuple[str, ...] = (),
+    emits: tuple[str, ...] = (),
+    consumes: tuple[str, ...] = (),
+    requires_permission: str,
+    idempotency_key: str | None = None,
+    dependency_apis: tuple[str, ...] = (),
+    dependency_projections: tuple[str, ...] = (),
+) -> dict:
+    descriptor = {
+        "route": route,
+        "owned_tables": owned_tables,
+        "requires_permission": requires_permission,
+        "emits": emits,
+        "consumes": consumes,
+        "event_contract": "AppGen-X",
+        "event_topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
+        "dependency_apis": dependency_apis,
+        "dependency_projections": dependency_projections,
+        "shared_table_access": False,
+    }
+    if command:
+        descriptor["command"] = command
+    if query:
+        descriptor["query"] = query
+    if idempotency_key:
+        descriptor["idempotency_key"] = idempotency_key
+    return descriptor

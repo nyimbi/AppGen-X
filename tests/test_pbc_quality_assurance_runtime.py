@@ -5,10 +5,16 @@ from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_CONSUMED_EVENT_TYP
 from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
 from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_OWNED_TABLES
 from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_RUNTIME_TABLES
+from pyAppGen.pbcs.quality_assurance import implementation_contract as package_implementation_contract
 from pyAppGen.pbcs.quality_assurance import quality_assurance_build_api_contract
+from pyAppGen.pbcs.quality_assurance import quality_assurance_build_release_evidence
+from pyAppGen.pbcs.quality_assurance import quality_assurance_build_schema_contract
+from pyAppGen.pbcs.quality_assurance import quality_assurance_build_service_contract
 from pyAppGen.pbcs.quality_assurance import quality_assurance_permissions_contract
 from pyAppGen.pbcs.quality_assurance import quality_assurance_receive_event
 from pyAppGen.pbcs.quality_assurance import quality_assurance_register_schema_extension
+from pyAppGen.pbcs.quality_assurance import quality_assurance_ui_binding_contract
 from pyAppGen.pbcs.quality_assurance import quality_assurance_verify_owned_table_boundary
 from pyAppGen.pbc import QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
@@ -39,11 +45,15 @@ def test_quality_assurance_runtime_executes_standard_and_advanced_capabilities()
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/quality_assurance"
     assert runtime["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 22
+    assert runtime["runtime_tables"] == QUALITY_ASSURANCE_RUNTIME_TABLES
+    assert runtime["required_event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
+    assert runtime["allowed_database_backends"] == QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
+    assert len(runtime["standard_features"]) >= 30
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
+    assert {"build_schema_contract", "build_service_contract", "build_release_evidence", "ui_binding_contract"} <= set(runtime["operations"])
     assert smoke["ok"] is True
     assert set(QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
     assert not smoke["blocking_gaps"]
@@ -60,25 +70,113 @@ def test_quality_assurance_runtime_executes_standard_and_advanced_capabilities()
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "quality_assurance.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
+    assert contract["source_package"]["ui_binding_contract"]["ok"] is True
     assert contract["source_package"]["boundary_contract"]["ok"] is True
     assert "QualityConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("quality_assurance",))["ok"] is True
     assert pbc_implemented_capability_audit(("quality_assurance",))["ok"] is True
+    package_contract = package_implementation_contract()
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
+    assert package_contract["ui_binding_contract"]["ok"] is True
 
     api = quality_assurance_build_api_contract()
     permissions = quality_assurance_permissions_contract()
     assert api["format"] == "appgen.quality-assurance-api-contract.v1"
     assert api["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
+    assert api["runtime_tables"] == QUALITY_ASSURANCE_RUNTIME_TABLES
     assert api["database_backends"] == QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
     assert api["required_event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
     assert api["emits"] == QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
     assert api["consumes"] == QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
     assert api["shared_table_access"] is False
     assert api["stream_engine_picker_visible"] is False
-    assert {route["route"] for route in api["routes"]} >= {"POST /quality/events/inbox", "GET /quality/workbench"}
+    assert api["dependencies"]["shared_tables"] == ()
+    assert {route["route"] for route in api["routes"]} >= {
+        "PUT /quality/configuration",
+        "POST /quality/parameters",
+        "POST /quality/rules",
+        "POST /quality/events/inbox",
+        "GET /quality/workbench",
+        "GET /quality/schema-contract",
+        "GET /quality/service-contract",
+        "GET /quality/release-evidence",
+        "GET /quality/ui-binding",
+    }
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
     assert permissions["action_permissions"]["receive_event"] == "quality_assurance.event"
+    assert permissions["action_permissions"]["build_schema_contract"] == "quality_assurance.audit"
+    assert permissions["action_permissions"]["build_service_contract"] == "quality_assurance.audit"
+    assert permissions["action_permissions"]["build_release_evidence"] == "quality_assurance.audit"
+
+
+def test_quality_assurance_package_schema_service_release_and_ui_binding_contracts() -> None:
+    schema = quality_assurance_build_schema_contract()
+    service = quality_assurance_build_service_contract()
+    release = quality_assurance_build_release_evidence()
+    ui_binding = quality_assurance_ui_binding_contract()
+    api = quality_assurance_build_api_contract()
+
+    assert schema["format"] == "appgen.quality-assurance-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(QUALITY_ASSURANCE_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(QUALITY_ASSURANCE_OWNED_TABLES)
+    assert schema["datastore_backends"] == QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
+    assert schema["shared_table_access"] is False
+    assert {"calibration_schedule", "procedure_revision", "supplier_quality_profile", "customer_quality_case", "audit_evidence_packet"} <= {
+        table["table"] for table in schema["tables"]
+    }
+    assert schema["runtime_tables"] == (
+        {
+            "table": QUALITY_ASSURANCE_RUNTIME_TABLES[0],
+            "fields": ("tenant", "event_id", "event_type", "topic", "payload", "idempotency_key", "published_at", "audit_hash"),
+        },
+        {
+            "table": QUALITY_ASSURANCE_RUNTIME_TABLES[1],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "status", "audit_hash"),
+        },
+        {
+            "table": QUALITY_ASSURANCE_RUNTIME_TABLES[2],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "reason", "audit_hash"),
+        },
+    )
+
+    assert service["format"] == "appgen.quality-assurance-service-contract.v1"
+    assert service["ok"] is True
+    assert service["transaction_boundary"] == "quality_assurance_owned_datastore_plus_appgen_outbox"
+    assert service["idempotent_handlers"] == ("receive_event",)
+    assert "build_release_evidence" in service["query_methods"]
+    assert service["retry_dead_letter_evidence"]["dead_letter_table"] == QUALITY_ASSURANCE_RUNTIME_TABLES[2]
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert service["external_dependencies"]["shared_tables"] == ()
+
+    assert ui_binding["format"] == "appgen.quality-assurance-ui-binding-contract.v1"
+    assert ui_binding["ok"] is True
+    assert ui_binding["binding_evidence"]["runtime_tables"] == QUALITY_ASSURANCE_RUNTIME_TABLES
+
+    assert any(route["command"] == "register_rule" for route in api["routes"])
+    assert any(route["command"] == "set_parameter" for route in api["routes"])
+    assert any(route["command"] == "configure_runtime" for route in api["routes"])
+    assert any(route.get("query") == "build_schema_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_service_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_release_evidence" for route in api["routes"])
+    assert any(route.get("query") == "ui_binding_contract" for route in api["routes"])
+
+    assert release["format"] == "appgen.quality-assurance-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert release["schema"]["format"] == schema["format"]
+    assert release["service"]["format"] == service["format"]
+    assert release["api"]["required_event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
+    assert release["ui_binding"]["binding_evidence"]["outbox_table"] == QUALITY_ASSURANCE_RUNTIME_TABLES[0]
+    assert release["control"]["summary"]["duplicate_status"] == "duplicate"
+    assert release["control"]["summary"]["retry_status"] == "retrying"
+    assert release["control"]["summary"]["dead_letter_status"] == "dead_letter"
 
 
 def test_quality_assurance_runtime_rejects_unsupported_backends_and_unknown_parameters() -> None:
@@ -284,15 +382,17 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
     assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
     assert workbench["binding_evidence"]["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
     assert workbench["binding_evidence"]["runtime_tables"] == {
-        "outbox": "quality_assurance_appgen_outbox_event",
-        "inbox": "quality_assurance_appgen_inbox_event",
-        "dead_letter": "quality_assurance_dead_letter_event",
+        "outbox": QUALITY_ASSURANCE_RUNTIME_TABLES[0],
+        "inbox": QUALITY_ASSURANCE_RUNTIME_TABLES[1],
+        "dead_letter": QUALITY_ASSURANCE_RUNTIME_TABLES[2],
     }
     assert workbench["binding_evidence"]["event_counts"]["inbox"] == 4
     assert workbench["binding_evidence"]["event_counts"]["dead_letter"] == 1
     assert workbench["binding_evidence"]["rbac"]["receive_event"] == "quality_assurance.event"
     assert workbench["binding_evidence"]["configuration"]["stream_engine_picker_visible"] is False
     assert workbench["binding_evidence"]["configuration"]["user_eventing_choice"] is False
+    assert workbench["binding_evidence"]["ui_binding"]["runtime_tables"] == QUALITY_ASSURANCE_RUNTIME_TABLES
+    assert workbench["binding_evidence"]["workbench_route"] == "/workbench/pbcs/quality_assurance"
     assert workbench["binding_evidence"]["rules"] == (
         {
             "rule_id": "rule_ops",
@@ -312,7 +412,7 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
 
     ui_contract = quality_assurance_ui_contract()
     assert ui_contract["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
-    assert ui_contract["runtime_tables"]["inbox"] == "quality_assurance_appgen_inbox_event"
+    assert ui_contract["runtime_tables"]["inbox"] == QUALITY_ASSURANCE_RUNTIME_TABLES[1]
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
     assert ui_contract["configuration_editor"]["required_event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
@@ -329,14 +429,19 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
     assert ui_contract["rule_editor"]["compiled_evidence_fields"] == ("compiled_hash", "compile_evidence")
     assert ui_contract["event_surfaces"]["emits"] == QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
     assert ui_contract["event_surfaces"]["consumes"] == QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
+    assert ui_contract["event_surfaces"]["required_event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
     assert ui_contract["event_surfaces"]["stream_engine_picker_visible"] is False
     assert ui_contract["binding_evidence"] == {
         "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
-        "outbox_table": "quality_assurance_appgen_outbox_event",
-        "inbox_table": "quality_assurance_appgen_inbox_event",
-        "dead_letter_table": "quality_assurance_dead_letter_event",
+        "runtime_tables": QUALITY_ASSURANCE_RUNTIME_TABLES,
+        "workbench_route": "/workbench/pbcs/quality_assurance",
+        "outbox_table": QUALITY_ASSURANCE_RUNTIME_TABLES[0],
+        "inbox_table": QUALITY_ASSURANCE_RUNTIME_TABLES[1],
+        "dead_letter_table": QUALITY_ASSURANCE_RUNTIME_TABLES[2],
         "shared_table_access": False,
     }
+    assert "CalibrationConsole" in ui_contract["fragments"]
+    assert "AuditEvidenceViewer" in ui_contract["fragments"]
     rendered = quality_assurance_render_workbench(
         state,
         tenant="tenant_ops",
@@ -374,8 +479,10 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
         "configuration_fragment": "QualityConfigurationPanel",
         "rule_fragment": "QualityRuleStudio",
         "parameter_fragment": "QualityParameterConsole",
-        "outbox_table": "quality_assurance_appgen_outbox_event",
-        "inbox_table": "quality_assurance_appgen_inbox_event",
-        "dead_letter_table": "quality_assurance_dead_letter_event",
+        "audit_fragment": "AuditEvidenceViewer",
+        "release_fragment": "ReleaseEvidencePanel",
+        "outbox_table": QUALITY_ASSURANCE_RUNTIME_TABLES[0],
+        "inbox_table": QUALITY_ASSURANCE_RUNTIME_TABLES[1],
+        "dead_letter_table": QUALITY_ASSURANCE_RUNTIME_TABLES[2],
         "rbac": ui_contract["action_permissions"],
     }

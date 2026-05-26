@@ -9,6 +9,9 @@ from .runtime import CUSTOMER_360_REQUIRED_EVENT_TOPIC
 from .runtime import CUSTOMER_360_RUNTIME_CAPABILITY_KEYS
 from .runtime import CUSTOMER_360_STANDARD_FEATURE_KEYS
 from .runtime import customer_360_build_api_contract
+from .runtime import customer_360_build_release_evidence
+from .runtime import customer_360_build_schema_contract
+from .runtime import customer_360_build_service_contract
 from .runtime import customer_360_build_timeline
 from .runtime import customer_360_build_workbench_view
 from .runtime import customer_360_capture_touchpoint
@@ -50,6 +53,9 @@ def implementation_contract() -> dict:
         "emitted_events": CUSTOMER_360_EMITTED_EVENT_TYPES,
         "consumed_events": CUSTOMER_360_CONSUMED_EVENT_TYPES,
         "api_contract": customer_360_build_api_contract(),
+        "schema_contract": customer_360_build_schema_contract(),
+        "service_contract": customer_360_build_service_contract(),
+        "release_evidence_contract": customer_360_build_release_evidence(),
         "permissions_contract": customer_360_permissions_contract(),
         "boundary_contract": customer_360_verify_owned_table_boundary(CUSTOMER_360_OWNED_TABLES),
     }

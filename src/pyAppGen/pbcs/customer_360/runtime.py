@@ -12,18 +12,61 @@ CUSTOMER_360_REQUIRED_EVENT_TOPIC = "appgen.customer.events"
 CUSTOMER_360_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 CUSTOMER_360_OWNED_TABLES = (
     "customer_profile",
+    "customer_profile_version",
+    "customer_profile_attribute",
     "customer_identity",
+    "customer_identity_evidence",
+    "identity_match_candidate",
+    "identity_survivorship_rule",
     "customer_relationship",
+    "household",
+    "household_member",
     "engagement_event",
+    "engagement_score",
     "communication_preference",
+    "preference_history",
     "touchpoint",
+    "channel_interaction",
     "consent_record",
+    "consent_policy",
+    "privacy_request",
     "customer_timeline",
+    "customer_timeline_event",
     "customer_segment_projection",
+    "customer_segment_membership",
+    "customer_value_snapshot",
+    "customer_health_signal",
+    "customer_churn_forecast",
     "profile_merge_case",
+    "profile_merge_decision",
+    "customer_exception_case",
+    "customer_remediation_task",
+    "commerce_customer_projection",
+    "billing_account_projection",
+    "service_timeline_projection",
+    "loyalty_profile_projection",
+    "notification_projection",
+    "customer_api_projection",
+    "customer_proof",
+    "customer_policy_screening",
+    "customer_control_assertion",
+    "customer_federation_view",
+    "customer_resilience_drill",
+    "customer_crypto_epoch",
+    "carbon_customer_window",
+    "customer_segment_optimization",
+    "customer_channel_allocation",
+    "customer_anomaly_signal",
+    "customer_exposure_forecast",
+    "customer_identity_attestation",
+    "customer_governed_model",
+    "customer_seed_data",
     "customer_rule",
     "customer_parameter",
     "customer_configuration",
+    "customer_360_appgen_outbox_event",
+    "customer_360_appgen_inbox_event",
+    "customer_360_dead_letter_event",
 )
 CUSTOMER_360_EMITTED_EVENT_TYPES = (
     "CustomerUpdated",
@@ -145,26 +188,58 @@ CUSTOMER_360_RUNTIME_CAPABILITY_KEYS = (
 )
 CUSTOMER_360_STANDARD_FEATURE_KEYS = (
     "customer_profile",
+    "profile_versioning",
+    "profile_attribute_management",
     "identity_resolution",
-    "relationship_graph",
-    "profile_merge_case",
+    "identity_evidence",
+    "identity_match_review",
     "survivorship_rules",
+    "relationship_graph",
+    "households",
+    "profile_merge_case",
+    "merge_decisions",
+    "customer_exception_management",
+    "remediation_tasks",
     "consent_management",
+    "consent_policy_management",
+    "privacy_request_management",
     "communication_preferences",
+    "preference_history",
     "privacy_policy_screening",
     "touchpoint_capture",
+    "channel_interactions",
     "engagement_event_ingestion",
+    "engagement_scoring",
     "timeline_projection",
+    "timeline_event_materialization",
     "channel_history",
     "rfm_metrics",
     "sentiment_signal",
     "churn_signal",
+    "customer_value_snapshots",
+    "customer_health_signals",
+    "churn_forecasting",
     "segment_projection",
+    "segment_membership",
     "customer_read_model",
     "commerce_projection",
+    "billing_projection",
     "service_projection",
     "loyalty_projection",
     "notification_projection",
+    "api_projection",
+    "cryptographic_profile_proofs",
+    "control_assertions",
+    "federation_views",
+    "resilience_drills",
+    "crypto_epoch_rotation",
+    "carbon_aware_processing",
+    "segment_optimization",
+    "channel_allocation",
+    "anomaly_signals",
+    "exposure_forecasts",
+    "identity_attestation",
+    "governed_model_registry",
     "event_outbox",
     "event_inbox",
     "idempotent_handlers",
@@ -207,6 +282,9 @@ def customer_360_runtime_capabilities() -> dict:
             "resolve_merge_case",
             "build_timeline",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "verify_owned_table_boundary",
             "build_workbench_view",
@@ -409,6 +487,9 @@ def customer_360_runtime_smoke() -> dict:
     screening = customer_360_screen_privacy_policy(state, "cust_100", restricted_regions=("restricted",))
     controls = customer_360_run_control_tests(state)
     api = customer_360_build_api_contract()
+    schema = customer_360_build_schema_contract()
+    service = customer_360_build_service_contract()
+    release = customer_360_build_release_evidence()
     permissions = customer_360_permissions_contract()
     boundary = customer_360_verify_owned_table_boundary(
         (
@@ -466,7 +547,15 @@ def customer_360_runtime_smoke() -> dict:
         {"id": "immutable_customer_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_customer_privacy_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_customer_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and api["shared_table_access"] is False},
+        {
+            "id": "universal_api_async_streaming",
+            "ok": api["ok"]
+            and schema["ok"]
+            and service["ok"]
+            and release["ok"]
+            and api["event_contract"] == "AppGen-X"
+            and api["shared_table_access"] is False,
+        },
         {"id": "cross_system_customer_federation", "ok": federation["ok"] and "service" in federation["systems"]},
         {
             "id": "commerce_billing_service_loyalty_integration",
@@ -909,6 +998,9 @@ def customer_360_build_api_contract() -> dict:
         {"route": "POST /customer/events/inbox", "command": "receive_event", "owned_table": "customer_360_appgen_inbox_event", "permission": "customer_360.event"},
         {"route": "GET /customer-timeline", "query": "build_timeline", "owned_table": "customer_timeline", "permission": "customer_360.read"},
         {"route": "GET /customer-read-models", "query": "customer_read_model", "owned_table": "customer_segment_projection", "permission": "customer_360.read"},
+        {"route": "GET /customers/schema-contract", "query": "build_schema_contract", "owned_table": "customer_api_projection", "permission": "customer_360.audit"},
+        {"route": "GET /customers/service-contract", "query": "build_service_contract", "owned_table": "customer_api_projection", "permission": "customer_360.audit"},
+        {"route": "GET /customers/release-evidence", "query": "build_release_evidence", "owned_table": "customer_control_assertion", "permission": "customer_360.audit"},
     )
     return {
         "format": "appgen.customer-360-api-contract.v1",
@@ -934,6 +1026,150 @@ def customer_360_build_api_contract() -> dict:
     }
 
 
+def customer_360_build_schema_contract() -> dict:
+    tables = tuple(
+        {
+            "table": table,
+            "pbc": "customer_360",
+            "schema": "customer_360",
+            "owned": True,
+            "migration": f"pbcs/customer_360/migrations/{index:03d}_{table}.sql",
+            "model": f"pbcs/customer_360/models/{_class_name(table)}.py",
+            "fields": _customer_360_table_fields(table),
+            "relationships": _customer_360_table_relationships(table),
+        }
+        for index, table in enumerate(CUSTOMER_360_OWNED_TABLES, start=1)
+    )
+    return {
+        "format": "appgen.customer-360-owned-schema-contract.v1",
+        "ok": True,
+        "pbc": "customer_360",
+        "owned_tables": CUSTOMER_360_OWNED_TABLES,
+        "tables": tables,
+        "migrations": tuple(table["migration"] for table in tables),
+        "models": tuple(table["model"] for table in tables),
+        "database_backends": CUSTOMER_360_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+        "tenant_isolation": {"field": "tenant", "required": True},
+        "schema_extensions": {
+            "allowed": True,
+            "owned_tables_only": True,
+            "field_name_pattern": r"[a-z][a-z0-9_]*",
+        },
+        "declared_dependencies": customer_360_verify_owned_table_boundary(())["declared_dependencies"],
+    }
+
+
+def customer_360_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "create_profile",
+        "link_identity",
+        "record_consent",
+        "set_preference",
+        "capture_touchpoint",
+        "ingest_engagement_event",
+        "open_merge_case",
+        "resolve_merge_case",
+        "simulate_preference_change",
+        "forecast_customer_value",
+        "parse_customer_instruction",
+        "score_customer_health",
+        "recommend_exception_resolution",
+        "route_customer_event",
+        "generate_profile_proof",
+        "screen_privacy_policy",
+        "run_control_tests",
+        "federate_customer_view",
+        "verify_customer_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_processing",
+        "optimize_segments",
+        "allocate_channels",
+        "detect_engagement_anomaly",
+        "model_stochastic_customer_exposure",
+        "register_governed_model",
+        "build_timeline",
+        "build_workbench_view",
+        "verify_owned_table_boundary",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    query_methods = (
+        "build_timeline",
+        "build_workbench_view",
+        "build_api_contract",
+        "permissions_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    return {
+        "format": "appgen.customer-360-service-contract.v1",
+        "ok": True,
+        "pbc": "customer_360",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "transaction_boundary": "customer_360_owned_datastore",
+        "mutates_only_owned_tables": True,
+        "owned_tables": CUSTOMER_360_OWNED_TABLES,
+        "runtime_tables": _CUSTOMER_360_RUNTIME_TABLES,
+        "event_contract": {
+            "contract": "AppGen-X",
+            "required_topic": CUSTOMER_360_REQUIRED_EVENT_TOPIC,
+            "emits": CUSTOMER_360_EMITTED_EVENT_TYPES,
+            "consumes": CUSTOMER_360_CONSUMED_EVENT_TYPES,
+            "outbox_table": "customer_360_appgen_outbox_event",
+            "inbox_table": "customer_360_appgen_inbox_event",
+            "dead_letter_table": "customer_360_dead_letter_event",
+            "idempotency_key": "event_type:event_id",
+        },
+        "retry_policy": {
+            "configured_by": "retry_limit",
+            "dead_letter_after_retry_limit": True,
+            "dead_letter_table": "customer_360_dead_letter_event",
+        },
+        "external_dependencies": customer_360_verify_owned_table_boundary(())["declared_dependencies"],
+        "shared_table_access": False,
+    }
+
+
+def customer_360_build_release_evidence() -> dict:
+    schema = customer_360_build_schema_contract()
+    service = customer_360_build_service_contract()
+    api = customer_360_build_api_contract()
+    permissions = customer_360_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": len(schema["owned_tables"]) >= 45},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(schema["owned_tables"])},
+        {"id": "model_per_owned_table", "ok": len(schema["models"]) == len(schema["owned_tables"])},
+        {"id": "service_command_depth", "ok": len(service["command_methods"]) >= 30},
+        {"id": "appgen_event_contract_only", "ok": api["event_contract"] == "AppGen-X" and api["stream_engine_picker_visible"] is False},
+        {"id": "backend_allowlist", "ok": set(api["database_backends"]) <= {"postgresql", "mysql", "mariadb"}},
+        {"id": "permissions_cover_contracts", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
+        {"id": "no_shared_table_access", "ok": schema["shared_table_access"] is False and service["shared_table_access"] is False and api["shared_table_access"] is False},
+        {"id": "runtime_event_tables_owned", "ok": set(_CUSTOMER_360_RUNTIME_TABLES) <= set(schema["owned_tables"])},
+    )
+    blocking = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.customer-360-release-evidence.v1",
+        "ok": not blocking,
+        "pbc": "customer_360",
+        "checks": checks,
+        "blocking_gaps": blocking,
+        "schema_contract": schema,
+        "service_contract": service,
+        "api_contract": api,
+        "permissions_contract": permissions,
+    }
+
+
 def customer_360_permissions_contract() -> dict:
     action_permissions = {
         "configure_runtime": "customer_360.configure",
@@ -954,6 +1190,9 @@ def customer_360_permissions_contract() -> dict:
         "generate_profile_proof": "customer_360.audit",
         "run_control_tests": "customer_360.audit",
         "verify_owned_table_boundary": "customer_360.audit",
+        "build_schema_contract": "customer_360.audit",
+        "build_service_contract": "customer_360.audit",
+        "build_release_evidence": "customer_360.audit",
     }
     return {
         "format": "appgen.customer-360-permissions-contract.v1",
@@ -1175,6 +1414,109 @@ def _append_event(state: dict, event_type: str, payload: dict) -> dict:
         "events": (*state["events"], event),
         "outbox": (*state["outbox"], outbox_event),
     }
+
+
+def _customer_360_table_fields(table: str) -> tuple[dict, ...]:
+    base = [
+        {"name": "id", "type": "uuid", "required": True},
+        {"name": "tenant", "type": "text", "required": True},
+        {"name": "created_at", "type": "timestamp", "required": True},
+        {"name": "updated_at", "type": "timestamp", "required": True},
+    ]
+    table_specific = {
+        "customer_profile": (
+            {"name": "profile_id", "type": "text", "required": True},
+            {"name": "display_name", "type": "text", "required": True},
+            {"name": "region", "type": "text", "required": True},
+            {"name": "lifecycle_state", "type": "text", "required": True},
+        ),
+        "customer_identity": (
+            {"name": "profile_id", "type": "text", "required": True},
+            {"name": "identity_type", "type": "text", "required": True},
+            {"name": "identity_value_hash", "type": "text", "required": True},
+            {"name": "confidence", "type": "numeric", "required": True},
+        ),
+        "consent_record": (
+            {"name": "profile_id", "type": "text", "required": True},
+            {"name": "purpose", "type": "text", "required": True},
+            {"name": "status", "type": "text", "required": True},
+            {"name": "confidence", "type": "numeric", "required": True},
+        ),
+        "engagement_event": (
+            {"name": "profile_id", "type": "text", "required": True},
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "channel", "type": "text", "required": True},
+            {"name": "value", "type": "numeric", "required": False},
+        ),
+        "customer_360_appgen_outbox_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "idempotency_key", "type": "text", "required": True},
+        ),
+        "customer_360_appgen_inbox_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "attempts", "type": "integer", "required": True},
+        ),
+        "customer_360_dead_letter_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "reason", "type": "text", "required": True},
+        ),
+    }
+    default_fields = (
+        {"name": "profile_id", "type": "text", "required": False},
+        {"name": "status", "type": "text", "required": False},
+        {"name": "attributes", "type": "jsonb", "required": False},
+    )
+    return tuple(base + list(table_specific.get(table, default_fields)))
+
+
+def _customer_360_table_relationships(table: str) -> tuple[dict, ...]:
+    profile_owned_tables = {
+        "customer_profile_version",
+        "customer_profile_attribute",
+        "customer_identity",
+        "customer_identity_evidence",
+        "identity_match_candidate",
+        "customer_relationship",
+        "household_member",
+        "engagement_event",
+        "engagement_score",
+        "communication_preference",
+        "preference_history",
+        "touchpoint",
+        "channel_interaction",
+        "consent_record",
+        "privacy_request",
+        "customer_timeline",
+        "customer_timeline_event",
+        "customer_segment_membership",
+        "customer_value_snapshot",
+        "customer_health_signal",
+        "customer_churn_forecast",
+        "profile_merge_case",
+        "profile_merge_decision",
+        "customer_exception_case",
+        "customer_remediation_task",
+        "customer_proof",
+        "customer_policy_screening",
+        "customer_identity_attestation",
+    }
+    relationships = []
+    if table in profile_owned_tables:
+        relationships.append({"type": "owned_reference", "to": "customer_profile", "on": "profile_id"})
+    if table in {"household_member"}:
+        relationships.append({"type": "owned_reference", "to": "household", "on": "household_id"})
+    if table in {"customer_segment_membership"}:
+        relationships.append({"type": "owned_reference", "to": "customer_segment_projection", "on": "segment_id"})
+    if table in _CUSTOMER_360_RUNTIME_TABLES:
+        relationships.append({"type": "event_contract", "to": "AppGen-X", "topic": CUSTOMER_360_REQUIRED_EVENT_TOPIC})
+    return tuple(relationships)
+
+
+def _class_name(table: str) -> str:
+    return "".join(part.capitalize() for part in table.split("_"))
 
 
 def _digest(value: object) -> str:

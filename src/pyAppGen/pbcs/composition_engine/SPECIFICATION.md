@@ -52,6 +52,13 @@ PostgreSQL, MySQL, and MariaDB. Runtime configuration rejects any user-facing
 stream-engine or event-transport picker and requires the fixed
 `appgen.composition.events` AppGen-X topic.
 
+Package-local schema descriptors enumerate every owned table, the three runtime
+event tables, relationships, generated migration paths under
+`pbcs/composition_engine/migrations/{sequence}_{table}.sql`, and model
+descriptors under `pbcs/composition_engine/models/{table}.py`. Schema metadata
+proves `shared_table_access: false`, the relational backend allowlist, the
+fixed AppGen-X topic, and hidden event-contract selection.
+
 ## Standard Capabilities
 
 The package implements standard composition table stakes:
@@ -182,7 +189,16 @@ The runtime exposes descriptor routes for:
 Every descriptor declares command or query handler, owned tables, emitted or
 consumed events, required permission, and idempotency key. The contract also
 publishes allowed database backends, owned tables, emitted and consumed events,
-configuration variables, and `shared_table_access: false`.
+runtime event tables, configuration variables, the fixed AppGen-X topic,
+hidden event-contract selectors, and `shared_table_access: false`.
+
+Package-local service descriptors enumerate runtime commands and read models:
+configuration, parameter, rule, schema-extension, inbox intake, workspace
+creation, PBC selection, component registration, fragment registration, layout
+binding, plan validation, side-effect-free package planning, DSL generation,
+publication, control tests, and boundary verification. The service contract
+also declares idempotent handlers, side-effect-free commands, retry/dead-letter
+evidence, external API and projection dependencies, and AppGen-X-only eventing.
 
 ## UI and Workbench
 
@@ -220,11 +236,21 @@ Package release evidence is executable:
   path.
 - `composition_engine_build_api_contract()` proves API, event, permission,
   table, backend, and configuration descriptors.
+- `composition_engine_build_schema_contract()` proves owned schema depth,
+  runtime event tables, migration descriptors, model descriptors, backend
+  allowlist compliance, and no shared table access.
+- `composition_engine_build_service_contract()` proves command/query depth,
+  AppGen-X-only eventing, side-effect-free package planning, retry/dead-letter
+  evidence, and declared dependency boundaries.
+- `composition_engine_build_release_evidence()` is the package-local release
+  gate. It proves schema, service, API, permission, UI, workbench, backend, and
+  owned-boundary evidence without relying on shared modules.
 - `composition_engine_permissions_contract()` proves action-level RBAC.
 - `composition_engine_ui_contract()` and
   `composition_engine_render_workbench()` prove UI fragments and workbench
   binding.
 - Focused tests in `tests/test_pbc_composition_engine_runtime.py` verify
   configuration rejection, event handling, side-effect-free package planning,
-  schema extension ownership, boundary validation, API descriptors, RBAC, UI
-  evidence, runtime smoke, and release audit behavior.
+  schema extension ownership, generated DSL validity, boundary validation, API
+  descriptors, schema/service/release contracts, RBAC, UI/workbench evidence,
+  runtime smoke, and release audit behavior.

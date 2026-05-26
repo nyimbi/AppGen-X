@@ -8,23 +8,32 @@ from .runtime import QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
 from .runtime import QUALITY_ASSURANCE_OWNED_TABLES
 from .runtime import QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS
 from .runtime import QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
+from .runtime import QUALITY_ASSURANCE_RUNTIME_TABLES
 from .runtime import QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS
 from .runtime import QUALITY_ASSURANCE_SUPPORTED_PARAMETER_NAMES
 from .runtime import QUALITY_ASSURANCE_SUPPORTED_RULE_TYPES
 from .runtime import quality_assurance_binding_evidence
 from .runtime import quality_assurance_permissions_contract
+from .runtime import quality_assurance_ui_binding_contract
 
 QUALITY_ASSURANCE_UI_FRAGMENT_KEYS = (
     "QualityAssuranceWorkbench",
     "InspectionPlanConsole",
     "InspectionResultCapture",
+    "SamplingWorkbench",
     "SpcDashboard",
     "QualityHoldBoard",
     "NonConformanceBoard",
     "CapaConsole",
+    "CalibrationConsole",
+    "ProcedureLibrary",
+    "SupplierQualityDesk",
+    "CustomerQualityDesk",
+    "AuditEvidenceViewer",
     "QualityRuleStudio",
     "QualityParameterConsole",
     "QualityConfigurationPanel",
+    "ReleaseEvidencePanel",
 )
 
 
@@ -40,19 +49,26 @@ def quality_assurance_ui_contract() -> dict:
             "/workbench/pbcs/quality_assurance",
             "/workbench/pbcs/quality_assurance/plans",
             "/workbench/pbcs/quality_assurance/results",
+            "/workbench/pbcs/quality_assurance/sampling",
             "/workbench/pbcs/quality_assurance/spc",
             "/workbench/pbcs/quality_assurance/holds",
             "/workbench/pbcs/quality_assurance/non-conformances",
             "/workbench/pbcs/quality_assurance/capa",
+            "/workbench/pbcs/quality_assurance/calibration",
+            "/workbench/pbcs/quality_assurance/procedures",
+            "/workbench/pbcs/quality_assurance/supplier-quality",
+            "/workbench/pbcs/quality_assurance/customer-quality",
+            "/workbench/pbcs/quality_assurance/audit-evidence",
             "/workbench/pbcs/quality_assurance/rules",
             "/workbench/pbcs/quality_assurance/parameters",
             "/workbench/pbcs/quality_assurance/configuration",
+            "/workbench/pbcs/quality_assurance/release-evidence",
         ),
         "panels": (
             {
                 "key": "inspection_plans",
                 "fragment": "InspectionPlanConsole",
-                "binds_to": ("inspection_plan", "inspection_result", "production_completion_projection", "goods_receipt_projection"),
+                "binds_to": ("inspection_plan", "sampling_scheme", "lot_batch_profile", "inspection_test_definition", "inspection_result", "production_completion_projection", "goods_receipt_projection"),
                 "commands": ("create_inspection_plan", "record_inspection_result"),
             },
             {
@@ -64,21 +80,33 @@ def quality_assurance_ui_contract() -> dict:
             {
                 "key": "nonconformances",
                 "fragment": "NonConformanceBoard",
-                "binds_to": ("non_conformance", "inspection_result"),
+                "binds_to": ("non_conformance", "quality_capa", "quality_release", "inspection_result"),
                 "commands": ("raise_nonconformance", "disposition_nonconformance"),
+            },
+            {
+                "key": "metrology",
+                "fragment": "CalibrationConsole",
+                "binds_to": ("calibration_asset", "calibration_schedule", "procedure_revision"),
+                "commands": ("run_control_tests",),
+            },
+            {
+                "key": "partner_quality",
+                "fragment": "SupplierQualityDesk",
+                "binds_to": ("supplier_quality_profile", "supplier_quality_incident", "customer_quality_case", "audit_evidence_packet"),
+                "commands": ("build_release_evidence",),
             },
             {
                 "key": "governance_studio",
                 "fragment": "QualityRuleStudio",
-                "binds_to": ("quality_rule", "quality_parameter", "quality_configuration"),
-                "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
+                "binds_to": ("quality_rule", "quality_parameter", "quality_configuration", "quality_schema_extension", "quality_governed_model", "quality_control_assertion"),
+                "commands": ("register_rule", "set_parameter", "configure_runtime", "build_schema_contract", "build_service_contract", "build_release_evidence", "run_control_tests"),
             },
         ),
         "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
         "runtime_tables": {
-            "outbox": "quality_assurance_appgen_outbox_event",
-            "inbox": "quality_assurance_appgen_inbox_event",
-            "dead_letter": "quality_assurance_dead_letter_event",
+            "outbox": QUALITY_ASSURANCE_RUNTIME_TABLES[0],
+            "inbox": QUALITY_ASSURANCE_RUNTIME_TABLES[1],
+            "dead_letter": QUALITY_ASSURANCE_RUNTIME_TABLES[2],
         },
         "action_permissions": permissions,
         "configuration_editor": {
@@ -105,18 +133,13 @@ def quality_assurance_ui_contract() -> dict:
         "event_surfaces": {
             "emits": QUALITY_ASSURANCE_EMITTED_EVENT_TYPES,
             "consumes": QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES,
+            "required_event_topic": QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC,
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
             "stream_engine_picker_visible": False,
         },
-        "binding_evidence": {
-            "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
-            "outbox_table": "quality_assurance_appgen_outbox_event",
-            "inbox_table": "quality_assurance_appgen_inbox_event",
-            "dead_letter_table": "quality_assurance_dead_letter_event",
-            "shared_table_access": False,
-        },
+        "binding_evidence": quality_assurance_ui_binding_contract()["binding_evidence"],
     }
 
 
@@ -141,6 +164,7 @@ def quality_assurance_render_workbench(
         {"key": "quality_holds", "value": len(holds), "fragment": "QualityHoldBoard"},
         {"key": "released_holds", "value": len(tuple(hold for hold in holds if hold["status"] == "released")), "fragment": "QualityHoldBoard"},
         {"key": "nonconformances", "value": len(ncs), "fragment": "NonConformanceBoard"},
+        {"key": "dead_letters", "value": len(state.get("dead_letters", ())), "fragment": "AuditEvidenceViewer"},
     )
     binding_evidence = quality_assurance_binding_evidence(state)
     return {
@@ -165,9 +189,11 @@ def quality_assurance_render_workbench(
                 "configuration_fragment": "QualityConfigurationPanel",
                 "rule_fragment": "QualityRuleStudio",
                 "parameter_fragment": "QualityParameterConsole",
-                "outbox_table": "quality_assurance_appgen_outbox_event",
-                "inbox_table": "quality_assurance_appgen_inbox_event",
-                "dead_letter_table": "quality_assurance_dead_letter_event",
+                "audit_fragment": "AuditEvidenceViewer",
+                "release_fragment": "ReleaseEvidencePanel",
+                "outbox_table": QUALITY_ASSURANCE_RUNTIME_TABLES[0],
+                "inbox_table": QUALITY_ASSURANCE_RUNTIME_TABLES[1],
+                "dead_letter_table": QUALITY_ASSURANCE_RUNTIME_TABLES[2],
                 "rbac": contract["action_permissions"],
             },
         },
