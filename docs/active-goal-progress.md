@@ -968,6 +968,18 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   implemented-capability audit, implementation release audit,
   `pbc_release_audit()`, five-PBC generation smoke audit, and the restricted
   legacy-name diff scan.
+- `e93d02f` implements three formerly skeletal order-flow PBC packages:
+  `global_inventory_visibility`, `order_routing_optimization`, and
+  `checkout_processing`. Each now has a package-local specification, executable
+  runtime, UI/workbench contract, exported implementation contract, focused
+  tests, and central audit wiring. The packages enforce PostgreSQL/MySQL/MariaDB
+  datastore boundaries, AppGen-X eventing without user-facing stream-engine
+  selection, bounded rules and parameters, idempotent event handling,
+  retry/dead-letter evidence, advanced runtime smoke evidence, and workbench
+  binding evidence. Verification passed for three-package py-compile, focused
+  runtime tests, the 87-test PBC regression slice, implemented-capability audit,
+  implementation release audit, `pbc_release_audit()`, three-PBC generation
+  smoke audit, and the restricted legacy-name scan.
 
 ## Open Completion Areas
 
