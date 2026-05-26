@@ -13803,6 +13803,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert devtools_module_files["ok"] is True
     assert devtools_module_tests["format"] == "appgen.devtools-module-test-file-manifest.v1"
     assert devtools_module_tests["ok"] is True
+    assert {"operation_steps_declared", "validation_steps_declared"} <= set(devtools_module_files["guards"])
+    assert "step_contract_tests_exported" in devtools_module_tests["guards"]
     assert {
         "tool_catalog",
         "vscode_profile",
@@ -13818,6 +13820,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         assert module.module_contract()["ok"] is True
         assert module.devtools_manifest_contract()["ok"] is True
         assert module.run_devtools_operation()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
+        assert "side_effects_disallowed" in module.validation_steps()["steps"]
         assert module.release_context()["ok"] is True
         assert module.smoke_test()["ok"] is True
     for item in devtools_module_tests["tests"]:
@@ -13825,6 +13830,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_devtools_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
+        assert "test_devtools_module_step_contracts" in module.smoke_test()["tests"]
+    devtools_replay = devtools.devtools_module_replay_matrix()
+    assert devtools_replay["format"] == "appgen.devtools-module-replay-matrix.v1"
+    assert devtools_replay["ok"] is True
+    assert len(devtools_replay["module_replays"]) == 6
+    assert {
+        "devtools_modules_replay",
+        "devtools_surface_coverage",
+        "devtools_operation_step_coverage",
+        "devtools_validation_step_coverage",
+        "devtools_replays_side_effect_free",
+    } <= {check["id"] for check in devtools_replay["checks"] if check["ok"]}
+    assert all(item["operation_steps"] for item in devtools_replay["module_replays"])
+    assert all("side_effects_disallowed" in item["validation_steps"] for item in devtools_replay["module_replays"])
     assert studio.editable_files()
     assert {"web", "mobile", "desktop"} <= set(studio.ide_workspace()["generation"]["targets"])
     assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}

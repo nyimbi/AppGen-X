@@ -1408,6 +1408,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   operation-step coverage, validation-step coverage, surface coverage, and
   side-effect-free module execution before generated wizard readiness is
   trusted. Commit: `5e97eaa`.
+- Current generated developer-tool adapter pass hardens generated IDE adapter
+  modules so tool catalog, editor launch/run profiles, source maps, and
+  release workbench surfaces prove reusable operation-step and validation-step
+  contracts through an aggregate replay matrix before developer-tool readiness
+  is trusted. Commit: `e0225f3`.
 
 ## Open Completion Areas
 

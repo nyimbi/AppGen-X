@@ -44,6 +44,11 @@ Final verification cleanup:
 - Final post-push cache scan regenerated ignored cache folders.
 - Regenerated cache artifacts moved to `post-final-cache`.
 
+Developer-tool adapter verification cleanup:
+
+- Focused generated-app verification regenerated Python import/test caches.
+- Regenerated cache artifacts moved to `post-devtools-cache`.
+
 ## Rationale
 
 These files are generated interpreter/test-run artifacts. They are not source
