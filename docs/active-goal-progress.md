@@ -1780,7 +1780,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   evidence for source and generated apps. Binding readiness now fails unless
   the generated runtime exposes registry, observer hooks, update queue,
   validation/converter pipelines, runtime triggers, and executable pipeline
-  stages before release claims. Commit: `pending`.
+  stages before release claims. Commit: `f06fe83`.
 
 ## Open Completion Areas
 
