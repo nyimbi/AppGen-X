@@ -26,6 +26,9 @@ from pyAppGen.pbcs.mrp_engine import MRP_ENGINE_EMITTED_EVENT_TYPES
 from pyAppGen.pbcs.mrp_engine import MRP_ENGINE_OWNED_TABLES
 from pyAppGen.pbcs.mrp_engine import MRP_ENGINE_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.mrp_engine import mrp_engine_build_api_contract
+from pyAppGen.pbcs.mrp_engine import mrp_engine_build_release_evidence
+from pyAppGen.pbcs.mrp_engine import mrp_engine_build_schema_contract
+from pyAppGen.pbcs.mrp_engine import mrp_engine_build_service_contract
 from pyAppGen.pbcs.mrp_engine import mrp_engine_permissions_contract
 from pyAppGen.pbcs.mrp_engine import mrp_engine_receive_event
 from pyAppGen.pbcs.mrp_engine import mrp_engine_register_schema_extension
@@ -39,10 +42,15 @@ def test_mrp_engine_runtime_executes_standard_and_advanced_capabilities() -> Non
     assert runtime["format"] == "appgen.mrp-engine-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/mrp_engine"
-    assert len(runtime["standard_features"]) >= 24
+    assert runtime["owned_tables"] == MRP_ENGINE_OWNED_TABLES
+    assert len(runtime["owned_tables"]) >= 40
+    assert len(runtime["standard_features"]) >= 40
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
+    assert "appgen_x_outbox" in runtime["standard_features"]
+    assert "appgen_x_inbox" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert set(MRP_ENGINE_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
@@ -56,9 +64,31 @@ def test_mrp_engine_runtime_executes_standard_and_advanced_capabilities() -> Non
     assert set(contract["advanced_runtime"]["capabilities"]) == set(MRP_ENGINE_ADVANCED_CAPABILITY_KEYS)
     assert contract["source_package"]["api_contract"]["shared_table_access"] is False
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "mrp_engine.event"
     assert contract["source_package"]["owned_tables"] == MRP_ENGINE_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == MRP_ENGINE_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["required_event_topic"] == MRP_ENGINE_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == MRP_ENGINE_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == MRP_ENGINE_EMITTED_EVENT_TYPES
+    schema = mrp_engine_build_schema_contract()
+    service = mrp_engine_build_service_contract()
+    release = mrp_engine_build_release_evidence()
+    assert schema["format"] == "appgen.mrp-engine-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(MRP_ENGINE_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(MRP_ENGINE_OWNED_TABLES)
+    assert {"bom_component", "item_planning_profile", "mrp_run_item", "planned_purchase_suggestion", "mrp_governed_model"} <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.mrp-engine-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.mrp-engine-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert pbc_implementation_release_audit(("mrp_engine",))["ok"] is True
     assert pbc_implemented_capability_audit(("mrp_engine",))["ok"] is True
 

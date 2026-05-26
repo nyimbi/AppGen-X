@@ -9,6 +9,9 @@ from .runtime import MRP_ENGINE_REQUIRED_EVENT_TOPIC
 from .runtime import MRP_ENGINE_RUNTIME_CAPABILITY_KEYS
 from .runtime import MRP_ENGINE_STANDARD_FEATURE_KEYS
 from .runtime import mrp_engine_build_api_contract
+from .runtime import mrp_engine_build_release_evidence
+from .runtime import mrp_engine_build_schema_contract
+from .runtime import mrp_engine_build_service_contract
 from .runtime import mrp_engine_build_workbench_view
 from .runtime import mrp_engine_calculate_material_plan
 from .runtime import mrp_engine_configure_runtime
@@ -43,7 +46,13 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": mrp_engine_ui_contract(),
         "api_contract": mrp_engine_build_api_contract(),
+        "schema_contract": mrp_engine_build_schema_contract(),
+        "service_contract": mrp_engine_build_service_contract(),
+        "release_evidence_contract": mrp_engine_build_release_evidence(),
         "permissions_contract": mrp_engine_permissions_contract(),
         "owned_tables": MRP_ENGINE_OWNED_TABLES,
         "allowed_database_backends": MRP_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": MRP_ENGINE_REQUIRED_EVENT_TOPIC,
+        "consumes": MRP_ENGINE_CONSUMED_EVENT_TYPES,
+        "emits": MRP_ENGINE_EMITTED_EVENT_TYPES,
     }

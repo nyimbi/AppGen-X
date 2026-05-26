@@ -21,16 +21,62 @@ Owned tables are:
 
 - `bill_of_material`
 - `bom_revision`
+- `bom_component`
+- `bom_alternate`
+- `bom_substitution_rule`
+- `item_planning_profile`
+- `item_source_rule`
 - `material_demand`
+- `demand_projection_line`
+- `demand_forecast_snapshot`
+- `sales_order_demand_projection`
+- `safety_stock_policy`
 - `inventory_projection`
+- `inventory_lot_projection`
+- `inventory_reservation_projection`
+- `quality_hold_projection`
 - `capacity_projection`
+- `capacity_bucket`
+- `work_center_capacity_projection`
+- `supplier_lead_time_projection`
+- `production_capacity_projection`
 - `mrp_run`
+- `mrp_run_item`
+- `mrp_run_bucket`
+- `mrp_scenario`
+- `mrp_plan_version`
 - `planned_order`
+- `planned_order_component`
+- `planned_purchase_suggestion`
+- `planned_production_order`
+- `planned_transfer_order`
 - `material_shortage`
+- `shortage_pegging`
+- `supply_demand_pegging`
 - `planning_exception`
+- `exception_resolution_plan`
+- `release_route`
+- `planning_policy_screening`
+- `planning_audit_trace`
+- `supply_availability_proof`
+- `mrp_federation_projection`
+- `carbon_planning_window`
+- `material_allocation_optimization`
+- `capacity_allocation`
+- `shortage_anomaly_signal`
+- `material_risk_model`
+- `shortage_forecast`
+- `planning_parsed_instruction`
+- `mrp_seed_data`
+- `mrp_schema_extension`
+- `mrp_control_assertion`
+- `mrp_governed_model`
 - `mrp_rule`
 - `mrp_parameter`
 - `mrp_configuration`
+- `mrp_engine_appgen_outbox_event`
+- `mrp_engine_appgen_inbox_event`
+- `mrp_engine_dead_letter_event`
 
 Allowed dependency projections are inventory release, verified order, forecast, production capacity, quality hold, and supplier lead-time projections. These are MRP-owned representations sourced from declared APIs or events, not foreign tables.
 
@@ -148,6 +194,14 @@ Consumed events:
 - owned tables and event contracts from package constants
 
 `mrp_engine_permissions_contract` defines read, master, plan, release, event, configure, and audit permissions. Every command exposed by the API contract and workbench has a corresponding action-permission mapping.
+
+## Generated Schema, Services, And Release Evidence
+
+`mrp_engine_build_schema_contract` produces executable generation descriptors for every owned table. The descriptor includes table fields, primary keys, parent-child relationships, package-local model paths, and migration paths in `pbcs/mrp_engine/migrations/{sequence}_{table}.sql`. The schema contract rejects shared-table access and limits MRP schema names to the package-owned prefixes used by the runtime.
+
+`mrp_engine_build_service_contract` exposes command methods for configuration, rules, parameters, schema extension, inbox handling, BOM registration, demand and inventory projection ingestion, MRP runs, BOM explosion, material plan calculation, planned-order release, supply routing, proofs, screening, federation, identity checks, resilience drills, crypto epoch rotation, carbon-aware batching, allocation optimization, control tests, governed models, and boundary verification. Query methods cover workbench views, simulations, forecasts, parsing, risk scoring, exception recommendations, anomaly detection, stochastic exposure modeling, and descriptor builders.
+
+`mrp_engine_build_release_evidence` is the package-local release gate. It proves schema depth, one migration descriptor per owned table, service command depth, AppGen-X-only API/eventing, permission coverage for core commands, backend allowlist compliance, and no shared table access.
 
 ## UI And Workbench Contract
 

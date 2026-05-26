@@ -2870,11 +2870,53 @@ PBC_CATALOG: dict[str, dict] = {
     "mrp_engine": {
         "label": "Material Requirements Planning Engine",
         "mesh": "opsmfg",
-        "description": "BOM graph analysis, inventory demand, production plans, and procurement schedules.",
-        "tables": ("bill_of_material", "material_demand", "mrp_run", "planned_order"),
-        "apis": ("POST /mrp-runs", "GET /planned-orders", "GET /shortages"),
-        "emits": ("MaterialShortageDetected", "PlannedOrderReleased"),
-        "consumes": ("InventoryReleased", "OrderVerified", "ForecastUpdated"),
+        "description": "BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.",
+        "tables": (
+            "bill_of_material",
+            "bom_revision",
+            "bom_component",
+            "item_planning_profile",
+            "material_demand",
+            "inventory_projection",
+            "capacity_projection",
+            "mrp_run",
+            "mrp_run_item",
+            "planned_order",
+            "planned_purchase_suggestion",
+            "planned_production_order",
+            "material_shortage",
+            "shortage_pegging",
+            "planning_exception",
+            "mrp_rule",
+            "mrp_parameter",
+            "mrp_configuration",
+        ),
+        "apis": (
+            "POST /mrp/boms",
+            "POST /mrp/demand-projections",
+            "POST /mrp/inventory-projections",
+            "POST /mrp/runs",
+            "POST /mrp/runs/{id}/calculate",
+            "POST /mrp/planned-orders/{id}/release",
+            "POST /mrp/events/inbox",
+            "GET /mrp/workbench",
+        ),
+        "emits": (
+            "BomRegistered",
+            "DemandProjectionIngested",
+            "InventoryProjectionIngested",
+            "MrpRunStarted",
+            "MaterialShortageDetected",
+            "PlannedOrderReleased",
+        ),
+        "consumes": (
+            "InventoryReleased",
+            "OrderVerified",
+            "ForecastUpdated",
+            "ProductionCapacityChanged",
+            "QualityHoldReleased",
+            "SupplierLeadTimeUpdated",
+        ),
         "template": "manufacturing",
     },
     "production_control": {
@@ -6413,6 +6455,9 @@ from .pbcs.mrp_engine import MRP_ENGINE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F4
 from .pbcs.mrp_engine import MRP_ENGINE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.mrp_engine import MRP_ENGINE_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.mrp_engine import mrp_engine_build_api_contract  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_build_release_evidence  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_build_schema_contract  # noqa: E402,F401
+from .pbcs.mrp_engine import mrp_engine_build_service_contract  # noqa: E402,F401
 from .pbcs.mrp_engine import mrp_engine_build_workbench_view  # noqa: E402,F401
 from .pbcs.mrp_engine import mrp_engine_calculate_material_plan  # noqa: E402,F401
 from .pbcs.mrp_engine import mrp_engine_configure_runtime  # noqa: E402,F401
