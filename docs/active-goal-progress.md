@@ -1836,6 +1836,19 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   all package-local PBC tests pass (`396 passed`), and the full PBC audit
   stack including all built-in generation smoke and `pbc_release_audit()`
   returns true. Commit: `2683b21`.
+- Current PBC governance contract pass strengthens every built-in PBC
+  `config.py` with manifest-derived domain parameters and business rules in
+  addition to platform configuration. Each PBC now compiles and evaluates
+  domain capability, advanced capability, declared workflow, and owned-table
+  boundary rules; applies bounded domain/workflow/data parameters; keeps
+  AppGen-X eventing fixed; and rejects stream-engine picker inputs. Focused
+  governance plus package-local assurance tests pass (`5 passed`). Commit:
+  `pending`.
+- Current mobile/device target readiness pass adds full API-by-runtime-target
+  scenario matrix replay for source and generated apps. Readiness now requires
+  supported targets to replay, unsupported targets to block with a visible
+  fallback, target-matrix ordering before designer claims, and final-state
+  target/fallback counts before release claims. Commit: `pending`.
 
 ## Open Completion Areas
 
