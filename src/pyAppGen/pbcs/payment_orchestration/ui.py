@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from .runtime import PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import PAYMENT_ORCHESTRATION_OWNED_TABLES
+from .runtime import PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC
+from .runtime import payment_orchestration_build_workbench_view
+from .runtime import payment_orchestration_permissions_contract
+
 
 PAYMENT_ORCHESTRATION_UI_FRAGMENT_KEYS = (
     "PaymentOrchestrationWorkbench",
@@ -15,6 +21,7 @@ PAYMENT_ORCHESTRATION_UI_FRAGMENT_KEYS = (
     "PaymentParameterConsole",
     "PaymentConfigurationPanel",
     "PaymentEventOutbox",
+    "PaymentInboxMonitor",
     "PaymentDeadLetterQueue",
 )
 
@@ -36,31 +43,77 @@ def payment_orchestration_ui_contract() -> dict:
             "/workbench/pbcs/payment_orchestration/rules",
             "/workbench/pbcs/payment_orchestration/parameters",
             "/workbench/pbcs/payment_orchestration/configuration",
+            "/workbench/pbcs/payment_orchestration/events",
         ),
         "panels": (
-            {"key": "intents", "fragment": "PaymentIntentConsole", "binds_to": ("payment_intent", "payment_token"), "commands": ("create_payment_intent", "capture_payment", "refund_payment", "void_payment")},
-            {"key": "routing", "fragment": "GatewayRoutingBoard", "binds_to": ("payment_gateway", "gateway_route"), "commands": ("register_gateway", "route_gateway")},
-            {"key": "risk", "fragment": "FraudCheckQueue", "binds_to": ("fraud_check", "inbox", "outbox"), "commands": ("request_fraud_check", "receive_event")},
-            {"key": "governance", "fragment": "PaymentRuleStudio", "binds_to": ("rule", "parameter", "configuration"), "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests")},
+            {
+                "key": "intent_console",
+                "fragment": "PaymentIntentConsole",
+                "binds_to": ("payment_intent", "payment_token"),
+                "commands": (
+                    "create_payment_intent",
+                    "capture_payment",
+                    "refund_payment",
+                    "void_payment",
+                ),
+            },
+            {
+                "key": "routing",
+                "fragment": "GatewayRoutingBoard",
+                "binds_to": ("payment_gateway", "gateway_route"),
+                "commands": ("register_gateway", "route_gateway", "simulate_gateway_route"),
+            },
+            {
+                "key": "risk",
+                "fragment": "FraudCheckQueue",
+                "binds_to": (
+                    "fraud_check",
+                    "payment_orchestration_appgen_inbox_event",
+                    "payment_orchestration_appgen_outbox_event",
+                ),
+                "commands": ("request_fraud_check", "receive_event", "score_payment_risk"),
+            },
+            {
+                "key": "settlement",
+                "fragment": "SettlementEvidencePanel",
+                "binds_to": (
+                    "payment_capture",
+                    "payment_refund",
+                    "payment_settlement",
+                    "payment_reconciliation_handoff",
+                ),
+                "commands": (
+                    "capture_payment",
+                    "refund_payment",
+                    "generate_payment_proof",
+                ),
+            },
+            {
+                "key": "governance",
+                "fragment": "PaymentRuleStudio",
+                "binds_to": ("payment_rule", "payment_parameter", "payment_configuration"),
+                "commands": (
+                    "register_rule",
+                    "set_parameter",
+                    "configure_runtime",
+                    "run_control_tests",
+                ),
+            },
         ),
-        "action_permissions": {
-            "create_payment_intent": "payment_orchestration.intent",
-            "route_gateway": "payment_orchestration.intent",
-            "request_fraud_check": "payment_orchestration.intent",
-            "capture_payment": "payment_orchestration.capture",
-            "refund_payment": "payment_orchestration.refund",
-            "void_payment": "payment_orchestration.refund",
-            "register_gateway": "payment_orchestration.configure",
-            "register_rule": "payment_orchestration.configure",
-            "set_parameter": "payment_orchestration.configure",
-            "configure_runtime": "payment_orchestration.configure",
-            "run_control_tests": "payment_orchestration.audit",
-        },
+        "action_permissions": payment_orchestration_permissions_contract()["action_permissions"],
         "configuration_editor": {
-            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "required_fields": (
+                "database_backend",
+                "event_topic",
+                "retry_limit",
+                "default_currency",
+                "default_timezone",
+            ),
+            "allowed_database_backends": PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
             "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -78,30 +131,85 @@ def payment_orchestration_ui_contract() -> dict:
         },
         "rule_editor": {
             "rule_types": ("gateway_routing", "capture", "refund", "fraud", "settlement"),
-            "required_fields": ("rule_id", "tenant", "rule_type", "allowed_gateways", "allowed_currencies", "allowed_regions", "risk_ceiling", "capture_policy", "status"),
+            "required_fields": (
+                "rule_id",
+                "tenant",
+                "rule_type",
+                "allowed_gateways",
+                "allowed_currencies",
+                "allowed_regions",
+                "risk_ceiling",
+                "capture_policy",
+                "status",
+            ),
         },
         "event_surfaces": {
-            "emits": ("PaymentCaptured", "PaymentFailed", "FraudCheckRequested"),
+            "emits": (
+                "PaymentIntentCreated",
+                "PaymentCaptured",
+                "PaymentRefunded",
+                "PaymentVoided",
+                "PaymentFailed",
+                "FraudCheckRequested",
+            ),
             "consumes": ("CheckoutCompleted", "FraudRiskScored"),
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": PAYMENT_ORCHESTRATION_OWNED_TABLES,
+            "shared_table_access": False,
         },
     }
 
 
-def payment_orchestration_render_workbench(state: dict, *, tenant: str, principal_permissions: tuple[str, ...]) -> dict:
+def payment_orchestration_render_workbench(
+    state: dict,
+    *,
+    tenant: str,
+    principal_permissions: tuple[str, ...],
+) -> dict:
     contract = payment_orchestration_ui_contract()
     permissions = set(principal_permissions)
     action_permissions = contract["action_permissions"]
-    visible_actions = tuple(action for action, permission in action_permissions.items() if permission in permissions)
-    view = _view_counts(state, tenant)
+    visible_actions = tuple(
+        action
+        for action, required_permission in action_permissions.items()
+        if required_permission in permissions
+    )
+    view = payment_orchestration_build_workbench_view(state, tenant=tenant)
     cards = (
-        {"key": "intents", "value": view["intent_count"], "fragment": "PaymentIntentConsole"},
-        {"key": "captured", "value": view["captured_count"], "fragment": "CaptureRefundConsole"},
-        {"key": "gateways", "value": view["gateway_count"], "fragment": "GatewayRoutingBoard"},
-        {"key": "fraud_checks", "value": view["fraud_check_count"], "fragment": "FraudCheckQueue"},
-        {"key": "outbox", "value": view["outbox_count"], "fragment": "PaymentEventOutbox"},
-        {"key": "dead_letter", "value": view["dead_letter_count"], "fragment": "PaymentDeadLetterQueue"},
+        {
+            "key": "intents",
+            "value": view["intent_count"],
+            "fragment": "PaymentIntentConsole",
+        },
+        {
+            "key": "gateways",
+            "value": view["gateway_count"],
+            "fragment": "GatewayRoutingBoard",
+        },
+        {
+            "key": "tokens",
+            "value": view["token_count"],
+            "fragment": "PaymentTokenVault",
+        },
+        {
+            "key": "captures",
+            "value": view["captured_count"],
+            "fragment": "CaptureRefundConsole",
+        },
+        {
+            "key": "settlements",
+            "value": view["settlement_count"],
+            "fragment": "SettlementEvidencePanel",
+        },
+        {
+            "key": "dead_letter",
+            "value": view["dead_letter_count"],
+            "fragment": "PaymentDeadLetterQueue",
+        },
     )
     return {
         "format": "appgen.payment-orchestration-workbench-render.v1",
@@ -111,30 +219,19 @@ def payment_orchestration_render_workbench(state: dict, *, tenant: str, principa
         "fragments": contract["fragments"],
         "cards": cards,
         "visible_actions": visible_actions,
-        "locked_actions": tuple(action for action in action_permissions if action not in visible_actions),
-        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "locked_actions": tuple(
+            action for action in action_permissions if action not in visible_actions
+        ),
+        "configuration_bound": view["configuration_bound"],
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
-        "dead_letter_count": len(state.get("dead_letter", ())),
-        "binding_evidence": view["binding_evidence"],
-    }
-
-
-def _view_counts(state: dict, tenant: str) -> dict:
-    intents = tuple(intent for intent in state.get("intents", {}).values() if intent["tenant"] == tenant)
-    gateways = tuple(gateway for gateway in state.get("gateways", {}).values() if gateway["tenant"] == tenant)
-    fraud = tuple(check for check in state.get("fraud_checks", {}).values() if check.get("tenant") == tenant)
-    return {
-        "intent_count": len(intents),
-        "captured_count": len(tuple(intent for intent in intents if intent["status"] in {"captured", "partially_refunded"})),
-        "gateway_count": len(gateways),
-        "fraud_check_count": len(fraud),
-        "outbox_count": len(state.get("outbox", ())),
-        "dead_letter_count": len(state.get("dead_letter", ())),
+        "inbox_count": view["inbox_count"],
+        "dead_letter_count": view["dead_letter_count"],
         "binding_evidence": {
-            "configuration": bool(state.get("configuration", {}).get("ok")),
-            "rules": tuple(sorted(state.get("rules", {}))),
-            "parameters": tuple(sorted(state.get("parameters", {}))),
+            "owned_tables": PAYMENT_ORCHESTRATION_OWNED_TABLES,
+            "outbox_table": "payment_orchestration_appgen_outbox_event",
+            "inbox_table": "payment_orchestration_appgen_inbox_event",
+            "dead_letter_table": "payment_orchestration_dead_letter_event",
         },
     }

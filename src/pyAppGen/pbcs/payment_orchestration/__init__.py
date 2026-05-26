@@ -9,6 +9,9 @@ from .runtime import PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC
 from .runtime import PAYMENT_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import PAYMENT_ORCHESTRATION_STANDARD_FEATURE_KEYS
 from .runtime import payment_orchestration_build_api_contract
+from .runtime import payment_orchestration_build_release_evidence
+from .runtime import payment_orchestration_build_schema_contract
+from .runtime import payment_orchestration_build_service_contract
 from .runtime import payment_orchestration_build_workbench_view
 from .runtime import payment_orchestration_capture_payment
 from .runtime import payment_orchestration_configure_runtime
@@ -44,6 +47,9 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": payment_orchestration_ui_contract(),
         "api_contract": payment_orchestration_build_api_contract(),
+        "schema_contract": payment_orchestration_build_schema_contract(),
+        "service_contract": payment_orchestration_build_service_contract(),
+        "release_evidence_contract": payment_orchestration_build_release_evidence(),
         "permissions_contract": payment_orchestration_permissions_contract(),
         "owned_tables": PAYMENT_ORCHESTRATION_OWNED_TABLES,
         "allowed_database_backends": PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,

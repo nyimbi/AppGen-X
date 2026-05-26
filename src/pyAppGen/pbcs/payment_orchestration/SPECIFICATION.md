@@ -1,134 +1,240 @@
-# Payment Orchestration PBC Specification
+# Payment Orchestration
 
-## Scope
+Package-local implementation contract for the Payment Orchestration PBC. The
+package owns payment intent lifecycle, provider routing, payment-token custody,
+fraud handoff, capture/refund/void execution, settlement and reconciliation
+evidence, release validation, UI fragments, and AppGen-X event handling.
 
-`payment_orchestration` owns payment intent lifecycle, gateway routing, payment
-token governance, fraud handoff, settlement evidence, refund/void commands, and
-payment workbench operations for AppGen-X composable applications.
+## Stable Identity
 
-The PBC composes with checkout, subscription billing, fraud, treasury, general
-ledger, and customer PBCs through APIs, AppGen-X events, and read-model
-projections only. It does not share tables with other PBCs.
+- PBC key: `payment_orchestration`.
+- Mesh: commerce.
+- Implementation directory: `src/pyAppGen/pbcs/payment_orchestration`.
+- Runtime module: `runtime.py`.
+- UI module: `ui.py`.
+- Test module: `tests/test_pbc_payment_orchestration_runtime.py`.
+- Event topic: `appgen.payment.events`.
+- Event contract: AppGen-X.
+- Supported relational backends: PostgreSQL, MySQL, and MariaDB.
+- User-facing stream-engine selection is not exposed.
 
 ## Owned Boundary
 
-Owned tables:
+Owned tables and generated model artifacts:
 
 - `payment_gateway`
-- `payment_intent`
 - `payment_token`
+- `payment_intent`
+- `gateway_route`
 - `fraud_check`
-- `payment_event`
-- `payment_outbox`
-- `payment_inbox`
-- `payment_dead_letter`
+- `payment_capture`
+- `payment_refund`
+- `payment_void`
+- `payment_settlement`
+- `payment_reconciliation_handoff`
+- `payment_exception`
+- `payment_audit_trace`
+- `payment_proof`
+- `payment_federation_projection`
+- `payment_carbon_window`
+- `payment_gateway_optimization`
+- `payment_provider_allocation`
+- `payment_anomaly_signal`
+- `payment_risk_model`
+- `payment_exposure_forecast`
+- `payment_instruction_parse`
+- `payment_schema_extension`
+- `payment_control_assertion`
+- `payment_governed_model`
 - `payment_rule`
 - `payment_parameter`
 - `payment_configuration`
+- `payment_orchestration_appgen_outbox_event`
+- `payment_orchestration_appgen_inbox_event`
+- `payment_orchestration_dead_letter_event`
 
-Allowed datastore backends are PostgreSQL, MySQL, and MariaDB. Runtime
-configuration requires an AppGen-X event topic and never exposes user-facing
-stream-engine or alternate event-contract selection.
+The PBC does not share checkout, billing, fraud, ledger, treasury, customer, or
+audit tables. Cross-PBC integration is declared only through APIs, AppGen-X
+events, or projections:
+
+- Consumed events: `CheckoutCompleted`, `FraudRiskScored`.
+- API dependencies: `GET /checkout/sessions/{id}`, `GET /fraud/cases/{id}`,
+  `GET /billing/invoices/{id}`, `POST /ledger/payment-events`,
+  `POST /audit/payment-events`.
+- Projections and handoffs: `checkout_completion_projection`,
+  `fraud_risk_projection`, `ledger_cash_projection`,
+  `billing_invoice_projection`.
+- Emitted events: `PaymentIntentCreated`, `FraudCheckRequested`,
+  `PaymentCaptured`, `PaymentRefunded`, `PaymentVoided`, `PaymentFailed`.
 
 ## Standard Capabilities
 
-- Gateway registry, health, routing priority, settlement currency, and region
-  eligibility.
-- Tokenized payment methods with issuer, network, wallet, and vault metadata.
-- Payment intents for authorization, capture, refund, void, failure, and
-  settlement handoff.
-- Fraud checks, risk outcomes, challenge/deny decisions, and retry evidence.
-- Provider routing with cost, latency, authorization-rate, risk, and capacity
-  scoring.
-- Checkout and fraud consumed-event handling with idempotent inbox state.
-- AppGen-X outbox events for payment capture, payment failure, and fraud-check
-  requests.
-- Retry/dead-letter evidence, tenant isolation, permissions, seed/config/rules,
-  bounded parameters, and workbench UI fragments.
+- Gateway registration with latency, fee, authorization, settlement-risk,
+  region, currency, and method evidence.
+- Tokenized payment methods with wallet/network metadata and vault references.
+- Payment intent creation from checkout evidence with tenant isolation.
+- Provider routing with deterministic weight-based objective scoring.
+- Fraud handoff, consumed-event inbox evidence, and duplicate-event suppression.
+- Capture, refund, and void commands with settlement/reconciliation evidence.
+- AppGen-X outbox, inbox, retry, idempotency, and dead-letter evidence.
+- Rules, parameters, runtime configuration, schema extensions, control
+  assertions, governed model metadata, and package-local workbench UI.
+
+## Generated Schema, Services, And Release Evidence
+
+`build_schema_contract` emits field definitions, relationships, migration paths
+under `pbcs/payment_orchestration/migrations/`, generated model names, backend
+allowlists, and `shared_table_access: false` for every owned table.
+
+`build_service_contract` declares the transaction boundary as the Payment
+Orchestration owned datastore plus the AppGen-X outbox. Command methods cover
+runtime configuration, parameters, rules, schema extensions, event intake,
+gateway and token registration, intent creation, routing, fraud requests,
+capture/refund/void execution, payment proof generation, policy screening,
+resilience drills, crypto rotation, carbon-aware settlement, gateway mix
+optimization, provider allocation, governed-model registration, control tests,
+and owned-boundary verification. Query methods cover workbench views, route
+simulation, authorization forecasting, semantic instruction parsing, payment
+risk scoring, exception resolution, anomaly detection, stochastic exposure, and
+generated API/schema/release contracts.
+
+`build_release_evidence` combines schema, service, API, workbench, and RBAC
+evidence into release checks for owned schema depth, migration coverage,
+command depth, fixed AppGen-X eventing, permission coverage, backend allowlist,
+and no shared-table access.
 
 ## Advanced Capabilities
 
-- Event-sourced payment lifecycle with hash-chained payment events.
-- Graph-relational topology across gateways, tokens, intents, fraud checks,
-  settlement handoffs, customers, checkout sessions, and ledger projections.
+- Event-sourced payment lifecycle with immutable hash-chain evidence.
+- Graph-relational topology across gateway, token, intent, route, fraud, and
+  settlement artifacts.
 - Probabilistic authorization, fraud, and settlement scoring.
 - Counterfactual provider-routing simulation.
-- Temporal authorization-rate and settlement-risk forecasting.
-- Autonomous payment exception resolution.
+- Temporal authorization and settlement forecasting.
+- Autonomous exception resolution for declines, reviews, settlement delay, and
+  token refresh.
 - Semantic payment instruction parsing.
-- Predictive payment risk scoring and self-healing gateway route selection.
-- Cryptographic payment proof and immutable audit trail.
-- Dynamic payment policy screening and continuous control testing.
-- Cross-system checkout, billing, ledger, treasury, and fraud federation.
+- Predictive payment risk scoring and self-healing route selection.
+- Cryptographic payment proof generation.
+- Dynamic policy screening and automated control testing.
+- Cross-system checkout, billing, ledger, and fraud federation.
 - Chaos-tolerant AppGen-X eventing, crypto agility, carbon-aware settlement
-  windows, mathematical provider optimization, provider allocation mechanisms,
-  anomaly detection, stochastic exposure modeling, governed ML evidence,
-  universal API/async contracts, and distributed-systems evidence.
+  windows, mathematical gateway optimization, provider allocation mechanisms,
+  anomaly detection, stochastic exposure modeling, and governed ML evidence.
 
-## APIs and Events
+## Runtime Services
 
-APIs:
+- `configure_runtime` validates backend, exact AppGen-X topic, retry limits,
+  currency/region/method scope, workbench limit, and stream-picker absence.
+- `set_parameter` accepts only supported numeric payment parameters.
+- `register_rule` validates rule identity, tenant, routing scope, and stores
+  deterministic compiled evidence.
+- `register_schema_extension` accepts only owned-table schema extensions.
+- `receive_event` idempotently handles `CheckoutCompleted` and
+  `FraudRiskScored`, records inbox evidence, schedules retries, and
+  dead-letters exhausted failures.
+- `register_gateway` owns gateway registry evidence.
+- `tokenize_payment_method` owns token/vault metadata.
+- `create_payment_intent` owns payment intent creation from checkout evidence.
+- `route_gateway` selects provider routes from owned rules and parameters.
+- `request_fraud_check` emits AppGen-X fraud-request evidence.
+- `capture_payment`, `refund_payment`, and `void_payment` mutate only owned
+  payment tables and emit owned events.
+- `build_api_contract`, `build_schema_contract`, `build_service_contract`, and
+  `build_release_evidence` emit package-local contract evidence.
+- `build_workbench_view` exposes operational and release evidence.
 
-- `POST /payment-intents`
-- `POST /gateway-routes`
-- `POST /tokens`
-- `POST /payment-captures`
-- `POST /payment-refunds`
-- `GET /payment-workbench`
+## API Contract
+
+- `POST /gateways` maps to `register_gateway`.
+- `POST /tokens` maps to `tokenize_payment_method`.
+- `POST /payment-intents` maps to `create_payment_intent`.
+- `POST /payment-intents/{id}/route` maps to `route_gateway`.
+- `POST /payment-intents/{id}/fraud-checks` maps to `request_fraud_check`.
+- `POST /payment-intents/{id}/captures` maps to `capture_payment`.
+- `POST /payment-intents/{id}/refunds` maps to `refund_payment`.
+- `POST /payment-intents/{id}/void` maps to `void_payment`.
+- `POST /payment/events/inbox` maps to `receive_event`.
+- `GET /payment-workbench` maps to `build_workbench_view`.
+
+Every route descriptor includes owned tables, command/query binding,
+idempotency or event evidence, required permission, and API/projection
+dependencies.
+
+## Events And Handlers
 
 Emitted events:
 
-- `PaymentCaptured`
-- `PaymentFailed`
+- `PaymentIntentCreated`
 - `FraudCheckRequested`
+- `PaymentCaptured`
+- `PaymentRefunded`
+- `PaymentVoided`
+- `PaymentFailed`
 
 Consumed events:
 
 - `CheckoutCompleted`
 - `FraudRiskScored`
 
-Handlers are idempotent through `payment_orchestration:<EventType>:<event_id>`
-keys, retry through the AppGen-X event contract, and route exhausted failures to
-`payment_orchestration.dead_letter`.
+Handlers are idempotent by `payment_orchestration:<EventType>:<event_id>` keys.
+Duplicate processed events do not create duplicate state changes. Failed events
+record retry evidence until the configured retry limit and then produce
+dead-letter records in `payment_orchestration_dead_letter_event`.
 
-## Rules, Parameters, and Configuration
+## Rules, Parameters, And Configuration
 
-Rules require tenant, status, scope, gateway, risk, currency, region, and
-capture-policy evidence. Rules compile into deterministic SHA3 hashes with
-normalized inputs. Parameters are bounded to authorization, risk, settlement,
-retry, routing, fee, latency, and workbench controls.
+Rules cover gateway eligibility, currencies, regions, capture policy, risk
+ceiling, tenant, and lifecycle status. Parameters include authorization
+thresholds, fraud-review thresholds, capture tolerance, retry limits, route
+weights, settlement-risk weight, capture-attempt limits, and workbench limits.
 
-Configuration rejects backends outside PostgreSQL, MySQL, and MariaDB, requires
-an AppGen-X event topic, and records that stream-engine selection is not
-user-facing. Workbench views surface configuration, rule, parameter, outbox,
-inbox, and dead-letter bindings.
+Configuration includes database backend, event topic, retry limit, default
+currency, supported currencies, supported regions, supported methods,
+settlement windows, default timezone, and workbench limit. Runtime
+configuration records `event_contract: AppGen-X`, the relational-backend
+allowlist, hidden stream-engine picker evidence, non-selectable event-contract
+evidence, and owned tables.
 
-## UI Contract
+## UI And Workbench
 
-The package exports a workbench UI contract with fragments for payment intents,
-gateway routing, token vault state, fraud checks, capture/refund actions,
-settlement evidence, rules, parameters, configuration, outbox, inbox, and
-dead-letter evidence.
+UI fragments:
+
+- `PaymentOrchestrationWorkbench`
+- `PaymentIntentConsole`
+- `GatewayRoutingBoard`
+- `PaymentTokenVault`
+- `FraudCheckQueue`
+- `CaptureRefundConsole`
+- `SettlementEvidencePanel`
+- `PaymentRuleStudio`
+- `PaymentParameterConsole`
+- `PaymentConfigurationPanel`
+- `PaymentEventOutbox`
+- `PaymentInboxMonitor`
+- `PaymentDeadLetterQueue`
+
+The workbench exposes intent, gateway, token, route, fraud, capture, refund,
+void, settlement, inbox, outbox, dead-letter, configuration, rule, parameter,
+and owned-boundary evidence. Visible actions are RBAC-filtered by payment
+intent, capture, refund, event, configuration, and audit permissions.
 
 ## Release Evidence
 
-Release is acceptable only when the package-local evidence and central PBC
-audits prove all of the following:
+Release is acceptable only when package-local evidence and central PBC audits
+prove all of the following:
 
 - `payment_orchestration_runtime_smoke()` returns `ok: True` and covers every
-  documented advanced payment capability key.
-- `implementation_contract()` exposes standard features, advanced runtime,
-  UI contract, API contract, permissions contract, owned tables, allowed
-  PostgreSQL/MySQL/MariaDB backends, consumed/emitted event types, and the fixed
-  AppGen-X event topic.
-- Focused runtime tests prove gateway registration, tokenization, payment intent
-  creation, gateway routing, fraud handoff, capture, refund/void behavior where
-  applicable, idempotent consumed events, retry/dead-letter behavior,
-  schema-extension ownership, API and permissions contracts, workbench binding
-  evidence, and foreign-table rejection.
-- `pbc_implementation_release_audit(("payment_orchestration",))`,
-  `pbc_generation_smoke_audit(...)`, `pbc_implemented_capability_audit(...)`,
-  full `pbc_implementation_release_audit(...)`, and `pbc_release_audit()` all
-  return `ok: True`.
-- Restricted-name scans over the package and tests are clean, and ordinary users
-  cannot choose stream engines or non-AppGen-X event contracts.
+  advanced payment capability key.
+- `implementation_contract()` exposes standard features, advanced runtime, UI
+  contract, API contract, schema contract, service contract, release evidence
+  contract, permissions contract, owned tables, PostgreSQL/MySQL/MariaDB
+  backends, consumed/emitted event types, and the fixed AppGen-X event topic.
+- Focused runtime tests prove gateway registration, tokenization, payment
+  intent creation, routing, fraud handoff, capture, refund, void, idempotent
+  consumed events, retry/dead-letter behavior, schema-extension ownership, API
+  and permissions contracts, release evidence, workbench binding evidence, and
+  foreign-table rejection.
+- `pbc_implementation_release_audit(("payment_orchestration",))` returns
+  `ok: True`.
+- Ordinary users cannot choose stream engines or non-AppGen-X event contracts.
