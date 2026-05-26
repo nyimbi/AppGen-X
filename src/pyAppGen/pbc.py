@@ -728,6 +728,40 @@ EAM_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "maintenance_mlops_governance",
 )
+PRODUCT_CATALOG_PIM_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_product_lifecycle",
+    "graph_relational_product_topology",
+    "multi_tenant_catalog_isolation",
+    "schema_evolution_resilient_attribute_schema",
+    "probabilistic_sellability_compliance_scoring",
+    "real_time_catalog_readiness_analytics",
+    "counterfactual_publication_simulation",
+    "temporal_content_sellability_forecasting",
+    "autonomous_enrichment_exception_resolution",
+    "semantic_product_instruction_parsing",
+    "predictive_product_readiness_risk",
+    "self_healing_publication_route_selection",
+    "zero_knowledge_catalog_publication_proof",
+    "immutable_catalog_audit_trail",
+    "dynamic_product_policy_screening",
+    "automated_catalog_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_product_federation",
+    "commerce_inventory_tax_content_integration",
+    "decentralized_product_identity",
+    "chaos_engineered_catalog_tolerance",
+    "quantum_resistant_product_authorization",
+    "carbon_aware_catalog_publication",
+    "algebraic_catalog_optimization",
+    "mechanism_design_channel_allocation",
+    "information_theoretic_content_anomaly_detection",
+    "temporal_sellability_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_product_readiness",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "product_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -748,6 +782,7 @@ IMPLEMENTED_PBC_KEYS = (
     "production_control",
     "quality_assurance",
     "eam",
+    "product_catalog_pim",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2999,6 +3034,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = quality_assurance_runtime_capabilities()
     elif key == "eam":
         advanced_runtime = eam_runtime_capabilities()
+    elif key == "product_catalog_pim":
+        advanced_runtime = product_catalog_pim_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3294,6 +3331,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "production_control": len(PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS),
         "quality_assurance": len(QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS),
         "eam": len(EAM_ADVANCED_CAPABILITY_KEYS),
+        "product_catalog_pim": len(PRODUCT_CATALOG_PIM_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -5078,3 +5116,24 @@ from .pbcs.eam import eam_runtime_smoke  # noqa: E402,F401
 from .pbcs.eam import eam_schedule_work_order  # noqa: E402,F401
 from .pbcs.eam import eam_set_parameter  # noqa: E402,F401
 from .pbcs.eam import eam_ui_contract  # noqa: E402,F401
+from .pbcs.product_catalog_pim import PRODUCT_CATALOG_PIM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.product_catalog_pim import PRODUCT_CATALOG_PIM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.product_catalog_pim import PRODUCT_CATALOG_PIM_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_add_compliance_claim  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_add_localized_content  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_add_price_metadata  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_attach_product_media  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_build_workbench_view  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_configure_runtime  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_create_product_family  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_define_attribute_schema  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_empty_state  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_publish_product  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_register_product  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_register_rule  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_render_workbench  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_runtime_capabilities  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_runtime_smoke  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_set_parameter  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_set_product_attribute  # noqa: E402,F401
+from .pbcs.product_catalog_pim import product_catalog_pim_ui_contract  # noqa: E402,F401
