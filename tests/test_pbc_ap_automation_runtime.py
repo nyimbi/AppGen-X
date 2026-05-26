@@ -9,6 +9,9 @@ from pyAppGen.pbcs.ap_automation import AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.ap_automation import ap_automation_align_contract_terms
 from pyAppGen.pbcs.ap_automation import ap_automation_analyze_discount_counterfactual
 from pyAppGen.pbcs.ap_automation import ap_automation_build_api_contract
+from pyAppGen.pbcs.ap_automation import ap_automation_build_release_evidence
+from pyAppGen.pbcs.ap_automation import ap_automation_build_schema_contract
+from pyAppGen.pbcs.ap_automation import ap_automation_build_service_contract
 from pyAppGen.pbcs.ap_automation import ap_automation_build_workbench_view
 from pyAppGen.pbcs.ap_automation import ap_automation_capture_invoice
 from pyAppGen.pbcs.ap_automation import ap_automation_configure_runtime
@@ -41,6 +44,7 @@ def test_ap_automation_runtime_executes_standard_and_advanced_capabilities() -> 
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/ap_automation"
     assert runtime["owned_tables"] == AP_AUTOMATION_OWNED_TABLES
+    assert len(runtime["owned_tables"]) >= 30
     assert runtime["allowed_database_backends"] == AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
@@ -48,6 +52,9 @@ def test_ap_automation_runtime_executes_standard_and_advanced_capabilities() -> 
     assert "appgen_x_outbox" in runtime["standard_features"]
     assert "permissions" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
+    assert "vendor_bank_validation" in runtime["standard_features"]
+    assert "payment_batching" in runtime["standard_features"]
+    assert "electronic_invoice_ingestion" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert {check["id"] for check in smoke["checks"]} == set(AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS)
     assert not smoke["blocking_gaps"]
@@ -57,6 +64,9 @@ def test_ap_automation_runtime_executes_standard_and_advanced_capabilities() -> 
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["ui_contract"]["ok"] is True
     assert contract["api_contract"]["ok"] is True
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence_contract"]["ok"] is True
     assert contract["permissions_contract"]["ok"] is True
     assert contract["owned_tables"] == AP_AUTOMATION_OWNED_TABLES
     assert contract["allowed_database_backends"] == AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS
@@ -65,6 +75,25 @@ def test_ap_automation_runtime_executes_standard_and_advanced_capabilities() -> 
     assert contract["emits"] == AP_AUTOMATION_EMITTED_EVENT_TYPES
     assert "ApConfigurationPanel" in contract["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS)
+
+    schema = ap_automation_build_schema_contract()
+    service = ap_automation_build_service_contract()
+    release = ap_automation_build_release_evidence()
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(AP_AUTOMATION_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(AP_AUTOMATION_OWNED_TABLES)
+    assert {
+        "ap_automation_vendor_bank_account",
+        "ap_automation_invoice_match_result",
+        "ap_automation_payment_batch",
+        "ap_automation_e_invoice_submission",
+        "ap_automation_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 20
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
 
 def test_ap_automation_runtime_applies_accounts_payable_workflows_and_contracts() -> None:

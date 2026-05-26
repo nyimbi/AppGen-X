@@ -11,6 +11,9 @@ from .runtime import AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import ap_automation_align_contract_terms
 from .runtime import ap_automation_analyze_discount_counterfactual
 from .runtime import ap_automation_build_api_contract
+from .runtime import ap_automation_build_release_evidence
+from .runtime import ap_automation_build_schema_contract
+from .runtime import ap_automation_build_service_contract
 from .runtime import ap_automation_build_workbench_view
 from .runtime import ap_automation_capture_invoice
 from .runtime import ap_automation_configure_runtime
@@ -65,6 +68,9 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": ap_automation_ui_contract(),
         "api_contract": ap_automation_build_api_contract(),
+        "schema_contract": ap_automation_build_schema_contract(),
+        "service_contract": ap_automation_build_service_contract(),
+        "release_evidence_contract": ap_automation_build_release_evidence(),
         "permissions_contract": ap_automation_permissions_contract(),
         "owned_tables": AP_AUTOMATION_OWNED_TABLES,
         "allowed_database_backends": AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS,

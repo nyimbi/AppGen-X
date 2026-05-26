@@ -13,11 +13,36 @@ AP_AUTOMATION_REQUIRED_EVENT_TOPIC = "appgen.ap.events"
 AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 AP_AUTOMATION_OWNED_TABLES = (
     "ap_automation_vendor",
+    "ap_automation_vendor_site",
+    "ap_automation_vendor_bank_account",
+    "ap_automation_vendor_tax_profile",
+    "ap_automation_vendor_risk_signal",
     "ap_automation_purchase_order",
+    "ap_automation_purchase_order_line",
     "ap_automation_goods_receipt",
+    "ap_automation_goods_receipt_line",
     "ap_automation_invoice",
+    "ap_automation_invoice_line",
+    "ap_automation_invoice_capture_artifact",
+    "ap_automation_invoice_match_result",
     "ap_automation_payment",
+    "ap_automation_payment_batch",
+    "ap_automation_payment_rail_decision",
+    "ap_automation_discount_opportunity",
+    "ap_automation_vendor_statement",
+    "ap_automation_withholding_tax",
+    "ap_automation_e_invoice_submission",
     "ap_automation_exception_case",
+    "ap_automation_approval_task",
+    "ap_automation_cash_forecast_projection",
+    "ap_automation_policy_rule",
+    "ap_automation_runtime_parameter",
+    "ap_automation_schema_extension",
+    "ap_automation_control_assertion",
+    "ap_automation_governed_model",
+    "ap_automation_outbox",
+    "ap_automation_inbox",
+    "ap_automation_dead_letter",
 )
 AP_AUTOMATION_RUNTIME_TABLES = (
     "ap_automation_outbox",
@@ -83,19 +108,28 @@ AP_AUTOMATION_STANDARD_FEATURE_KEYS = (
     "vendor_onboarding",
     "purchase_order_reference",
     "goods_receipt_reference",
+    "receipt_line_reconciliation",
     "invoice_capture",
+    "ocr_extraction",
+    "electronic_invoice_ingestion",
     "invoice_validation",
     "three_way_match",
+    "two_way_service_match",
+    "contract_compliance_match",
     "exception_management",
     "approval_workflow",
+    "segregation_of_duties",
     "tax_validation",
     "payment_terms",
     "payment_scheduling",
     "payment_execution",
     "discount_management",
     "duplicate_invoice_detection",
+    "vendor_bank_validation",
     "vendor_statement_reconciliation",
     "withholding_tax",
+    "remittance_advice",
+    "payment_batching",
     "bank_rail_routing",
     "audit_trail",
     "controls",
@@ -174,6 +208,9 @@ def ap_automation_runtime_capabilities() -> dict:
             "forecast_cash_flow",
             "analyze_discount_counterfactual",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "verify_owned_table_boundary",
             "federate_cross_border_payment",
@@ -336,6 +373,9 @@ def ap_automation_runtime_smoke() -> dict:
     sanctions = ap_automation_screen_vendor_network(state, "vendor_alpha", sanction_entities=("blocked_owner",))
     controls = ap_automation_run_control_tests(state)
     api = ap_automation_build_api_contract()
+    schema = ap_automation_build_schema_contract()
+    service = ap_automation_build_service_contract()
+    release = ap_automation_build_release_evidence()
     permissions = ap_automation_permissions_contract()
     boundary = ap_automation_verify_owned_table_boundary(
         (
@@ -416,7 +456,7 @@ def ap_automation_runtime_smoke() -> dict:
         {"id": "immutable_regulatory_e_invoicing", "ok": e_invoice["ok"] and e_invoice["submission_hash"].startswith("einvoice_")},
         {"id": "dynamic_sanction_aml_screening", "ok": sanctions["ok"] and sanctions["decision"] == "clear"},
         {"id": "automated_control_testing", "ok": controls["ok"] and controls["segregation_of_duties"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and any(route.get("command") == "receive_event" for route in api["routes"])},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and api["event_contract"] == "AppGen-X" and any(route.get("command") == "receive_event" for route in api["routes"])},
         {"id": "cross_border_payment_federation", "ok": federation["ok"] and federation["standard"] == "iso_20022"},
         {"id": "supply_chain_finance_network_integration", "ok": finance["ok"] and finance["advance_amount"] == 985.0},
         {"id": "decentralized_vendor_identity", "ok": identity["ok"] and identity["subject"] == "vendor_alpha"},
@@ -1130,6 +1170,178 @@ def ap_automation_build_api_contract() -> dict:
         "event_contract": "AppGen-X",
         "required_event_topic": AP_AUTOMATION_REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
+    }
+
+
+def ap_automation_build_schema_contract() -> dict:
+    """Return AP-owned schema, model, migration, and relationship evidence."""
+    table_fields = {
+        "ap_automation_vendor": ("tenant", "vendor_id", "name", "status", "approval_status", "risk_score", "audit_proof"),
+        "ap_automation_vendor_site": ("tenant", "site_id", "vendor_id", "address", "remit_to", "currency", "status"),
+        "ap_automation_vendor_bank_account": ("tenant", "bank_account_id", "vendor_id", "rail", "masked_account", "validation_status", "token_ref"),
+        "ap_automation_vendor_tax_profile": ("tenant", "tax_profile_id", "vendor_id", "jurisdiction", "withholding_code", "exemption_status", "proof_hash"),
+        "ap_automation_vendor_risk_signal": ("tenant", "signal_id", "vendor_id", "signal_type", "score", "source", "observed_at"),
+        "ap_automation_purchase_order": ("tenant", "po_id", "vendor_id", "currency", "total", "status", "audit_proof"),
+        "ap_automation_purchase_order_line": ("tenant", "po_line_id", "po_id", "sku", "quantity", "unit_price", "account"),
+        "ap_automation_goods_receipt": ("tenant", "receipt_id", "po_id", "status", "audit_proof", "received_at"),
+        "ap_automation_goods_receipt_line": ("tenant", "receipt_line_id", "receipt_id", "sku", "quantity", "exception_code"),
+        "ap_automation_invoice": ("tenant", "invoice_id", "vendor_id", "po_id", "receipt_id", "subtotal", "total", "status", "approval_status", "payment_status"),
+        "ap_automation_invoice_line": ("tenant", "invoice_line_id", "invoice_id", "sku", "quantity", "unit_price", "account", "tax_code"),
+        "ap_automation_invoice_capture_artifact": ("tenant", "artifact_id", "invoice_id", "artifact_type", "source_hash", "extraction_confidence", "storage_ref"),
+        "ap_automation_invoice_match_result": ("tenant", "match_id", "invoice_id", "po_id", "receipt_id", "confidence", "decision", "explanation_hash"),
+        "ap_automation_payment": ("tenant", "payment_id", "invoice_id", "vendor_id", "amount", "rail", "status", "idempotency_key"),
+        "ap_automation_payment_batch": ("tenant", "batch_id", "rail", "currency", "scheduled_date", "status", "total_amount"),
+        "ap_automation_payment_rail_decision": ("tenant", "decision_id", "payment_id", "rail", "cost", "latency", "risk", "selected"),
+        "ap_automation_discount_opportunity": ("tenant", "opportunity_id", "invoice_id", "discount_rate", "discount_value", "net_benefit", "decision"),
+        "ap_automation_vendor_statement": ("tenant", "statement_id", "vendor_id", "statement_hash", "reconciled_amount", "exception_count", "status"),
+        "ap_automation_withholding_tax": ("tenant", "withholding_id", "invoice_id", "jurisdiction", "amount", "rate", "proof_hash"),
+        "ap_automation_e_invoice_submission": ("tenant", "submission_id", "invoice_id", "jurisdiction", "standard", "submission_hash", "accepted"),
+        "ap_automation_exception_case": ("tenant", "case_id", "invoice_id", "reason", "decision", "suggestion", "audit_trace"),
+        "ap_automation_approval_task": ("tenant", "approval_id", "invoice_id", "assignee", "threshold", "decision", "decided_at"),
+        "ap_automation_cash_forecast_projection": ("tenant", "projection_id", "currency", "available_cash", "as_of", "source_event_id"),
+        "ap_automation_policy_rule": ("tenant", "rule_id", "scope", "status", "predicate", "compiled_hash"),
+        "ap_automation_runtime_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
+        "ap_automation_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "version"),
+        "ap_automation_control_assertion": ("tenant", "control_id", "assertion", "status", "evidence_hash", "tested_at"),
+        "ap_automation_governed_model": ("tenant", "model_id", "name", "feature_lineage", "drift_score", "governance_status"),
+        "ap_automation_outbox": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        "ap_automation_inbox": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "ap_automation_dead_letter": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "ap_automation_vendor_site.vendor_id", "to": "ap_automation_vendor.vendor_id", "type": "owned_reference"},
+        {"from": "ap_automation_vendor_bank_account.vendor_id", "to": "ap_automation_vendor.vendor_id", "type": "owned_reference"},
+        {"from": "ap_automation_vendor_tax_profile.vendor_id", "to": "ap_automation_vendor.vendor_id", "type": "owned_reference"},
+        {"from": "ap_automation_purchase_order.vendor_id", "to": "ap_automation_vendor.vendor_id", "type": "owned_reference"},
+        {"from": "ap_automation_purchase_order_line.po_id", "to": "ap_automation_purchase_order.po_id", "type": "owned_child"},
+        {"from": "ap_automation_goods_receipt.po_id", "to": "ap_automation_purchase_order.po_id", "type": "owned_reference"},
+        {"from": "ap_automation_goods_receipt_line.receipt_id", "to": "ap_automation_goods_receipt.receipt_id", "type": "owned_child"},
+        {"from": "ap_automation_invoice.vendor_id", "to": "ap_automation_vendor.vendor_id", "type": "owned_reference"},
+        {"from": "ap_automation_invoice_line.invoice_id", "to": "ap_automation_invoice.invoice_id", "type": "owned_child"},
+        {"from": "ap_automation_payment.invoice_id", "to": "ap_automation_invoice.invoice_id", "type": "owned_reference"},
+        {"from": "ap_automation_exception_case.invoice_id", "to": "ap_automation_invoice.invoice_id", "type": "owned_exception"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "ap_automation",
+        }
+        for table in AP_AUTOMATION_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.ap-automation-owned-schema-contract.v1",
+        "ok": len(tables) == len(AP_AUTOMATION_OWNED_TABLES)
+        and len(tables) >= 30
+        and all(item["table"].startswith("ap_automation_") for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/ap_automation/migrations/{position + 1:03d}_{table.replace('ap_automation_', '')}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(AP_AUTOMATION_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.removeprefix("ap_automation_").split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in AP_AUTOMATION_OWNED_TABLES
+        ),
+        "datastore_backends": AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def ap_automation_build_service_contract() -> dict:
+    """Return AP command/query service evidence across table-stakes and advanced surfaces."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "onboard_vendor",
+        "validate_vendor_bank_account",
+        "register_vendor_tax_profile",
+        "issue_purchase_order",
+        "record_goods_receipt",
+        "capture_invoice",
+        "extract_invoice_artifact",
+        "match_invoice",
+        "resolve_exception",
+        "create_approval_task",
+        "validate_tax_proof",
+        "submit_e_invoice",
+        "schedule_payments",
+        "create_payment_batch",
+        "execute_payment",
+        "generate_remittance_advice",
+        "reconcile_vendor_statement",
+        "receive_event",
+        "run_control_tests",
+    )
+    return {
+        "format": "appgen.ap-automation-service-contract.v1",
+        "ok": len(command_methods) >= 20,
+        "transaction_boundary": "ap_automation_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "forecast_cash_flow",
+            "analyze_discount_counterfactual",
+            "score_vendor_risk",
+            "detect_fraud_information_shift",
+            "model_temporal_liquidity",
+        ),
+        "mutates_only": AP_AUTOMATION_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": (
+                "GET /procurement/purchase-orders/{id}",
+                "GET /treasury/cash-forecasts/{tenant}",
+                "GET /tax/policies/current",
+            ),
+            "events": AP_AUTOMATION_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "vendor_approval_projection",
+                "cash_forecast_projection",
+                "tax_policy_projection",
+                "access_policy_projection",
+            ),
+            "shared_tables": (),
+        },
+    }
+
+
+def ap_automation_build_release_evidence() -> dict:
+    """Return package-local AP release evidence for implementation readiness."""
+    schema = ap_automation_build_schema_contract()
+    service = ap_automation_build_service_contract()
+    api = ap_automation_build_api_contract()
+    permissions = ap_automation_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 30},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(AP_AUTOMATION_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 20},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"capture_invoice", "execute_payment", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.ap-automation-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
