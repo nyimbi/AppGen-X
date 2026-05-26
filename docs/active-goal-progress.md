@@ -1774,7 +1774,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   commerce/intelligence tests pass (`144 passed`), all package-local PBC tests
   pass (`396 passed`), source/generated package evidence tests pass
   (`8 passed`), and the full PBC audit stack including all built-in generation
-  smoke and `pbc_release_audit()` returns true. Commit: `pending`.
+  smoke and `pbc_release_audit()` returns true. Commit: `ae015be`.
 
 ## Open Completion Areas
 
