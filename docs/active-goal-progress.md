@@ -1850,6 +1850,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   supported targets to replay, unsupported targets to block with a visible
   fallback, target-matrix ordering before designer claims, and final-state
   target/fallback counts before release claims. Commit: `bd0ca49`.
+- Current PBC service operation semantics pass separates command and query
+  execution in every built-in PBC service facade and in the generated PBC
+  package template. Command operations now require owned-table mutation scope
+  and emitted AppGen-X outbox events, while query operations are read-only,
+  have read-table scope, and emit no synthetic outbox events. Focused service
+  semantics tests pass (`3 passed`), generated/package assurance tests pass
+  (`5 passed`), generated service-template probes pass for `gl_core` and
+  `ap_automation`, and `pbc_release_audit()` returns true with zero blocking
+  gaps. Commit: `ad166b8`.
 
 ## Open Completion Areas
 
