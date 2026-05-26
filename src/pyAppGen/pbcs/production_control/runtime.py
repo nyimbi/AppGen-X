@@ -8,6 +8,57 @@ import math
 import re
 
 
+PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC = "appgen.production.events"
+PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+PRODUCTION_CONTROL_OWNED_TABLES = (
+    "work_center",
+    "production_order",
+    "routing_step",
+    "downtime_event",
+    "production_rule",
+    "production_parameter",
+    "production_configuration",
+)
+PRODUCTION_CONTROL_EMITTED_EVENT_TYPES = (
+    "ProductionCompleted",
+    "AssetPlacedInService",
+    "DowntimeCaptured",
+)
+PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES = (
+    "PlannedOrderReleased",
+    "MaintenanceCompleted",
+)
+_PRODUCTION_CONTROL_RUNTIME_TABLES = (
+    "production_control_appgen_outbox_event",
+    "production_control_appgen_inbox_event",
+    "production_control_dead_letter_event",
+)
+_PRODUCTION_CONTROL_ALLOWED_DEPENDENCIES = (
+    "mrp_planned_order_projection",
+    "inventory_material_readiness_projection",
+    "quality_gate_projection",
+    "maintenance_completion_projection",
+    "asset_commissioning_projection",
+    "audit_ledger_projection",
+    "GET /planned-orders",
+    "GET /material-readiness",
+    "GET /quality-gates",
+    "GET /maintenance-completions",
+    "POST /inventory-receipts",
+    "POST /quality-completions",
+    "POST /asset-commissioning",
+)
+_PRODUCTION_CONTROL_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 PRODUCTION_CONTROL_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_production_lifecycle",
     "graph_relational_routing_work_center_topology",
@@ -70,7 +121,6 @@ PRODUCTION_CONTROL_STANDARD_FEATURE_KEYS = (
     "seed_data",
     "workbench",
 )
-PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS = (
     "database_backend",
     "event_topic",
@@ -122,12 +172,15 @@ def production_control_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "production_control",
         "implementation_directory": "src/pyAppGen/pbcs/production_control",
+        "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES,
         "capabilities": PRODUCTION_CONTROL_RUNTIME_CAPABILITY_KEYS,
         "standard_features": PRODUCTION_CONTROL_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_work_center",
             "create_production_order",
             "define_routing_step",
@@ -136,7 +189,10 @@ def production_control_runtime_capabilities() -> dict:
             "record_downtime",
             "confirm_operation",
             "complete_production_order",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -148,7 +204,7 @@ def production_control_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.production.events",
+            "event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_sites": ("factory_east", "factory_west"),
             "allowed_work_center_types": ("assembly", "test"),
@@ -180,6 +236,36 @@ def production_control_runtime_smoke() -> dict:
         },
     )["state"]
     state = production_control_register_schema_extension(state, "production_order", {"digital_thread_payload": "jsonb"})["state"]
+    state = production_control_receive_event(
+        state,
+        {
+            "event_id": "mrp_evt_100",
+            "event_type": "PlannedOrderReleased",
+            "payload": {
+                "planned_order_id": "po_100",
+                "tenant": "tenant_alpha",
+                "site": "factory_east",
+                "item": "machine_kit",
+                "quantity": 10,
+                "route": "make",
+                "priority": "standard",
+            },
+        },
+    )["state"]
+    state = production_control_receive_event(
+        state,
+        {
+            "event_id": "maint_evt_100",
+            "event_type": "MaintenanceCompleted",
+            "payload": {
+                "maintenance_order_id": "mo_100",
+                "tenant": "tenant_alpha",
+                "work_center_id": "wc_100",
+                "asset_id": "asset_100",
+                "released_capacity_hours": 8,
+            },
+        },
+    )["state"]
     state = production_control_register_work_center(
         state,
         {"work_center_id": "wc_100", "tenant": "tenant_alpha", "site": "factory_east", "name": "Assembly Cell 1", "work_center_type": "assembly", "capacity_hours": 8, "efficiency": 0.9, "status": "available", "identity": {"did": "did:appgen:wc-100", "issuer": "trusted_registry", "status": "active"}},
@@ -240,9 +326,9 @@ def production_control_runtime_smoke() -> dict:
         {"id": "immutable_production_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_production_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_production_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "ProductionCompleted" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and "ProductionCompleted" in api["events"]["emits"] and api["shared_table_access"] is False},
         {"id": "cross_system_production_federation", "ok": federation["ok"] and "quality" in federation["systems"]},
-        {"id": "mrp_inventory_quality_asset_integration", "ok": completed["handoffs"] == ("inventory_receipt_projection", "quality_completion_projection", "asset_commissioning_projection")},
+        {"id": "mrp_inventory_quality_asset_integration", "ok": completed["handoffs"] == ("inventory_receipt_projection", "quality_completion_projection", "asset_commissioning_projection") and "po_100" in state["planned_order_projections"]},
         {"id": "decentralized_work_center_asset_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
         {"id": "chaos_engineered_shop_floor_tolerance", "ok": resilience["ok"] and resilience["mode"] == "degraded_execution_route"},
         {"id": "quantum_resistant_production_authorization", "ok": crypto["ok"] and crypto["algorithm"] == "dilithium3_simulated"},
@@ -262,10 +348,33 @@ def production_control_runtime_smoke() -> dict:
 
 
 def production_control_empty_state() -> dict:
-    return {"events": (), "outbox": (), "work_centers": {}, "orders": {}, "routing_steps": {}, "downtime_events": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "planned_order_projections": {},
+        "maintenance_projections": {},
+        "material_readiness_projections": {},
+        "quality_gate_projections": {},
+        "work_centers": {},
+        "orders": {},
+        "routing_steps": {},
+        "downtime_events": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def production_control_configure_runtime(state: dict, configuration: dict) -> dict:
+    forbidden = tuple(sorted(field for field in _PRODUCTION_CONTROL_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Production Control uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
     unknown = tuple(sorted(field for field in configuration if field not in PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS))
     if unknown:
         raise ValueError(f"Unsupported Production Control configuration fields: {unknown}")
@@ -274,17 +383,19 @@ def production_control_configure_runtime(state: dict, configuration: dict) -> di
         raise ValueError(f"Missing required Production Control configuration fields: {missing}")
     if configuration.get("database_backend") not in PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("Production Control supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Production Control requires an AppGen-X event topic")
+    if configuration.get("event_topic") != PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Production Control requires AppGen-X event topic {PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC}")
     configured = {
         **_normalize_fields(configuration, _PRODUCTION_CONTROL_CONFIGURATION_SEQUENCE_FIELDS),
         "ok": True,
-        "event_contract": "appgen_event_contract",
+        "event_contract": "AppGen-X",
+        "required_event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
         "allowed_database_backends": PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS,
         "supported_configuration_fields": PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS,
-        "visible_event_contracts": ("appgen_event_contract",),
+        "visible_event_contracts": ("AppGen-X",),
         "stream_engine_picker_visible": False,
         "user_selectable_event_contract": False,
+        "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -317,10 +428,82 @@ def production_control_register_rule(state: dict, rule: dict) -> dict:
 
 
 def production_control_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in PRODUCTION_CONTROL_OWNED_TABLES:
+        raise ValueError(f"Production Control schema extensions must target owned tables: {PRODUCTION_CONTROL_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    extensions = {**state["schema_extensions"], table: {**state["schema_extensions"].get(table, {}), **dict(fields)}}
+    return {"ok": True, "state": {**state, "schema_extensions": extensions}, "schema_extension": {"table": table, "fields": dict(fields)}}
+
+
+def production_control_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    if key in state["handled_events"] and state["handled_events"][key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
+    attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {**state, "inbox": (*state["inbox"], inbox_entry)}
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state = {
+            **next_state,
+            "handled_events": {**next_state["handled_events"], key: handler},
+            "retry_evidence": (*next_state["retry_evidence"], evidence),
+        }
+        if status == "dead_letter":
+            dead_letter = {**inbox_entry, "reason": "unsupported_or_failed_production_control_event"}
+            next_state = {**next_state, "dead_letter": (*next_state["dead_letter"], dead_letter)}
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "PlannedOrderReleased":
+        projection = {
+            "planned_order_id": payload["planned_order_id"],
+            "tenant": payload["tenant"],
+            "site": payload["site"],
+            "item": payload["item"],
+            "quantity": payload["quantity"],
+            "route": payload.get("route", "make"),
+            "priority": payload.get("priority", "standard"),
+            "status": payload.get("status", "released"),
+        }
+        next_state = {
+            **next_state,
+            "planned_order_projections": {
+                **next_state["planned_order_projections"],
+                projection["planned_order_id"]: projection,
+            },
+        }
+    elif event_type == "MaintenanceCompleted":
+        projection = {
+            "maintenance_order_id": payload["maintenance_order_id"],
+            "tenant": payload["tenant"],
+            "work_center_id": payload["work_center_id"],
+            "asset_id": payload.get("asset_id"),
+            "released_capacity_hours": payload.get("released_capacity_hours", 0),
+            "status": payload.get("status", "completed"),
+        }
+        next_state = {
+            **next_state,
+            "maintenance_projections": {
+                **next_state["maintenance_projections"],
+                projection["maintenance_order_id"]: projection,
+            },
+        }
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}}
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def production_control_register_work_center(state: dict, work_center: dict) -> dict:
@@ -466,7 +649,104 @@ def production_control_run_control_tests(state: dict) -> dict:
 
 
 def production_control_build_api_contract() -> dict:
-    return {"ok": True, "contract": "appgen_event_contract", "routes": ("POST /production-orders", "POST /downtime", "GET /schedule", "POST /production-rules", "POST /production-parameters", "POST /production-configuration"), "events": {"emits": ("ProductionCompleted", "AssetPlacedInService", "DowntimeCaptured"), "consumes": ("PlannedOrderReleased", "MaintenanceCompleted")}, "permissions": ("production_control.read", "production_control.schedule", "production_control.operate", "production_control.complete", "production_control.configure", "production_control.audit"), "configuration": ("PRODUCTION_CONTROL_DATABASE_URL", "PRODUCTION_CONTROL_EVENT_TOPIC", "PRODUCTION_CONTROL_RETRY_LIMIT", "PRODUCTION_CONTROL_DEFAULT_TIMEZONE")}
+    return {
+        "format": "appgen.production-control-api-contract.v1",
+        "ok": True,
+        "contract": "AppGen-X",
+        "routes": (
+            {"route": "POST /production/work-centers", "command": "register_work_center", "owned_tables": ("work_center",), "emits": (), "requires_permission": "production_control.schedule", "idempotency_key": "work_center_id"},
+            {"route": "POST /production/orders", "command": "create_production_order", "owned_tables": ("production_order",), "emits": (), "requires_permission": "production_control.schedule", "idempotency_key": "order_id"},
+            {"route": "POST /production/routing-steps", "command": "define_routing_step", "owned_tables": ("routing_step",), "emits": (), "requires_permission": "production_control.schedule", "idempotency_key": "step_id"},
+            {"route": "POST /production/orders/{id}/schedule", "command": "schedule_order", "owned_tables": ("production_order",), "emits": (), "requires_permission": "production_control.schedule", "idempotency_key": "order_id:scheduled_by"},
+            {"route": "POST /production/operations/{id}/start", "command": "start_operation", "owned_tables": ("routing_step",), "emits": (), "requires_permission": "production_control.operate", "idempotency_key": "step_id:started_by"},
+            {"route": "POST /production/downtime", "command": "record_downtime", "owned_tables": ("downtime_event",), "emits": ("DowntimeCaptured",), "requires_permission": "production_control.operate", "idempotency_key": "downtime_id"},
+            {"route": "POST /production/operations/{id}/confirm", "command": "confirm_operation", "owned_tables": ("routing_step", "production_order"), "emits": (), "requires_permission": "production_control.operate", "idempotency_key": "step_id:confirmed_by"},
+            {"route": "POST /production/orders/{id}/complete", "command": "complete_production_order", "owned_tables": ("production_order",), "emits": ("AssetPlacedInService", "ProductionCompleted"), "requires_permission": "production_control.complete", "idempotency_key": "order_id:completed_by"},
+            {"route": "POST /production/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES, "requires_permission": "production_control.event", "idempotency_key": "event_id"},
+            {"route": "GET /production/workbench", "query": "build_workbench_view", "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES, "requires_permission": "production_control.audit"},
+        ),
+        "declared_catalog_routes": ("POST /production-orders", "POST /downtime", "GET /schedule", "POST /production-rules", "POST /production-parameters", "POST /production-configuration"),
+        "events": {"emits": PRODUCTION_CONTROL_EMITTED_EVENT_TYPES, "consumes": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES},
+        "emits": PRODUCTION_CONTROL_EMITTED_EVENT_TYPES,
+        "consumes": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(production_control_permissions_contract()["permissions"])),
+        "database_backends": PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "required_event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
+        "stream_engine_picker_visible": False,
+        "configuration": ("PRODUCTION_CONTROL_DATABASE_URL", "PRODUCTION_CONTROL_EVENT_TOPIC", "PRODUCTION_CONTROL_RETRY_LIMIT", "PRODUCTION_CONTROL_DEFAULT_TIMEZONE"),
+    }
+
+
+def production_control_permissions_contract() -> dict:
+    return {
+        "format": "appgen.production-control-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "production_control.read",
+            "production_control.schedule",
+            "production_control.operate",
+            "production_control.complete",
+            "production_control.event",
+            "production_control.configure",
+            "production_control.audit",
+        ),
+        "action_permissions": {
+            "register_work_center": "production_control.schedule",
+            "create_production_order": "production_control.schedule",
+            "define_routing_step": "production_control.schedule",
+            "schedule_order": "production_control.schedule",
+            "start_operation": "production_control.operate",
+            "record_downtime": "production_control.operate",
+            "confirm_operation": "production_control.operate",
+            "complete_production_order": "production_control.complete",
+            "receive_event": "production_control.event",
+            "register_rule": "production_control.configure",
+            "register_schema_extension": "production_control.configure",
+            "set_parameter": "production_control.configure",
+            "configure_runtime": "production_control.configure",
+            "build_workbench_view": "production_control.audit",
+            "run_control_tests": "production_control.audit",
+        },
+    }
+
+
+def production_control_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *PRODUCTION_CONTROL_OWNED_TABLES,
+        *PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES,
+        *_PRODUCTION_CONTROL_RUNTIME_TABLES,
+        *_PRODUCTION_CONTROL_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in allowed_set
+        and not str(reference).startswith("production_control_")
+    )
+    return {
+        "format": "appgen.production-control-boundary.v1",
+        "ok": not violations,
+        "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /planned-orders", "GET /material-readiness", "GET /quality-gates", "GET /maintenance-completions", "POST /inventory-receipts", "POST /quality-completions", "POST /asset-commissioning"),
+            "events": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "mrp_planned_order_projection",
+                "inventory_material_readiness_projection",
+                "quality_gate_projection",
+                "maintenance_completion_projection",
+                "asset_commissioning_projection",
+                "audit_ledger_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def production_control_federate_execution_view(state: dict, order_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -551,11 +831,18 @@ def production_control_build_workbench_view(state: dict, *, tenant: str) -> dict
         "configuration_bound": bool(configuration.get("ok")),
         "rule_count": len(rule_ids),
         "parameter_count": len(parameter_names),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": {
+            "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES,
+            "outbox_table": "production_control_appgen_outbox_event",
+            "inbox_table": "production_control_appgen_inbox_event",
+            "dead_letter_table": "production_control_dead_letter_event",
             "configuration": {
                 "bound": bool(configuration.get("ok")),
                 "database_backend": configuration.get("database_backend"),
                 "event_contract": configuration.get("event_contract"),
+                "event_topic": configuration.get("event_topic"),
                 "visible_event_contracts": configuration.get("visible_event_contracts", ()),
                 "stream_engine_picker_visible": configuration.get("stream_engine_picker_visible"),
                 "user_selectable_event_contract": configuration.get("user_selectable_event_contract"),

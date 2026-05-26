@@ -8,6 +8,47 @@ import math
 import re
 
 
+QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC = "appgen.quality.events"
+QUALITY_ASSURANCE_OWNED_TABLES = (
+    "inspection_plan",
+    "inspection_result",
+    "quality_hold",
+    "non_conformance",
+    "quality_rule",
+    "quality_parameter",
+    "quality_configuration",
+    "quality_capa",
+    "quality_compliance_package",
+)
+QUALITY_ASSURANCE_EMITTED_EVENT_TYPES = (
+    "InspectionPlanCreated",
+    "InspectionResultRecorded",
+    "QualityHoldCreated",
+    "NonConformanceRaised",
+    "NonConformanceDispositioned",
+    "QualityHoldReleased",
+)
+QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES = (
+    "ProductionCompleted",
+    "GoodsReceiptPosted",
+    "InventoryLotMoved",
+    "SupplierScoreChanged",
+)
+_QUALITY_ASSURANCE_RUNTIME_TABLES = (
+    "quality_assurance_appgen_outbox_event",
+    "quality_assurance_appgen_inbox_event",
+    "quality_assurance_dead_letter_event",
+)
+_QUALITY_ASSURANCE_ALLOWED_DEPENDENCIES = (
+    "production_completion_projection",
+    "goods_receipt_projection",
+    "inventory_lot_projection",
+    "supplier_score_projection",
+    "GET /production/orders/{id}",
+    "GET /inventory/lots/{id}",
+    "GET /procurement/suppliers/{id}/quality-score",
+    "POST /audit/quality-events",
+)
 QUALITY_ASSURANCE_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_quality_lifecycle",
     "graph_relational_quality_topology",
@@ -129,12 +170,15 @@ def quality_assurance_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "quality_assurance",
         "implementation_directory": "src/pyAppGen/pbcs/quality_assurance",
+        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
         "capabilities": QUALITY_ASSURANCE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": QUALITY_ASSURANCE_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "create_inspection_plan",
             "record_inspection_result",
             "create_quality_hold",
@@ -142,6 +186,9 @@ def quality_assurance_runtime_capabilities() -> dict:
             "disposition_nonconformance",
             "release_quality_hold",
             "build_workbench_view",
+            "build_api_contract",
+            "permissions_contract",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -184,6 +231,27 @@ def quality_assurance_runtime_smoke() -> dict:
         },
     )["state"]
     state = quality_assurance_register_schema_extension(state, "inspection_result", {"vision_payload": "jsonb"})["state"]
+    consumed = quality_assurance_receive_event(
+        state,
+        {
+            "event_id": "evt_prod_100",
+            "event_type": "ProductionCompleted",
+            "payload": {"tenant": "tenant_alpha", "order_id": "order_100", "item": "machine_kit", "quantity": 10},
+        },
+    )
+    state = consumed["state"]
+    duplicate = quality_assurance_receive_event(
+        state,
+        {
+            "event_id": "evt_prod_100",
+            "event_type": "ProductionCompleted",
+            "payload": {"tenant": "tenant_alpha", "order_id": "order_100", "item": "machine_kit", "quantity": 10},
+        },
+    )
+    failed = quality_assurance_receive_event(state, {"event_id": "evt_bad_100", "event_type": "UnsupportedQualitySignal", "payload": {"tenant": "tenant_alpha"}}, simulate_failure=True)
+    failed = quality_assurance_receive_event(failed["state"], {"event_id": "evt_bad_100", "event_type": "UnsupportedQualitySignal", "payload": {"tenant": "tenant_alpha"}}, simulate_failure=True)
+    failed = quality_assurance_receive_event(failed["state"], {"event_id": "evt_bad_100", "event_type": "UnsupportedQualitySignal", "payload": {"tenant": "tenant_alpha"}}, simulate_failure=True)
+    state = failed["state"]
     plan = quality_assurance_create_inspection_plan(
         state,
         {"plan_id": "plan_100", "tenant": "tenant_alpha", "item": "machine_kit", "site": "factory_east", "source": "production", "sampling_method": "fixed", "sample_size": 5, "revision": "A", "status": "released"},
@@ -212,6 +280,8 @@ def quality_assurance_runtime_smoke() -> dict:
     screening = quality_assurance_screen_policy(state, "result_100", restricted_sites=("restricted_site",))
     controls = quality_assurance_run_control_tests(state)
     api = quality_assurance_build_api_contract()
+    permissions = quality_assurance_permissions_contract()
+    boundary = quality_assurance_verify_owned_table_boundary(("inspection_result", "ProductionCompleted", "production_completion_projection", "quality_assurance_appgen_inbox_event"))
     federation = quality_assurance_federate_quality_view(state, "result_100", systems=("production", "inventory", "procurement", "audit"))
     identity = quality_assurance_verify_lot_identity({"did": "did:appgen:lot-100", "issuer": "trusted_registry", "status": "active"})
     resilience = quality_assurance_run_resilience_drill(state, "inventory_release_timeout")
@@ -262,7 +332,28 @@ def quality_assurance_runtime_smoke() -> dict:
 
 
 def quality_assurance_empty_state() -> dict:
-    return {"events": (), "outbox": (), "plans": {}, "results": {}, "holds": {}, "nonconformances": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "production_completion_projections": {},
+        "goods_receipt_projections": {},
+        "inventory_lot_projections": {},
+        "supplier_score_projections": {},
+        "plans": {},
+        "results": {},
+        "holds": {},
+        "nonconformances": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def quality_assurance_configure_runtime(state: dict, configuration: dict) -> dict:
@@ -277,13 +368,14 @@ def quality_assurance_configure_runtime(state: dict, configuration: dict) -> dic
         raise ValueError(f"Missing required Quality Assurance configuration fields: {missing}")
     if configuration.get("database_backend") not in QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("Quality Assurance supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Quality Assurance requires an AppGen-X event topic")
+    if configuration.get("event_topic") != QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Quality Assurance event topic is fixed to {QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
         "event_contract": "AppGen-X",
         "allowed_database_backends": QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
         "supported_fields": QUALITY_ASSURANCE_SUPPORTED_CONFIGURATION_FIELDS,
         "stream_engine_picker_visible": False,
         "user_eventing_choice": False,
@@ -327,10 +419,73 @@ def quality_assurance_register_rule(state: dict, rule: dict) -> dict:
 
 
 def quality_assurance_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in QUALITY_ASSURANCE_OWNED_TABLES:
+        raise ValueError(f"Quality Assurance schema extensions must target owned tables: {QUALITY_ASSURANCE_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    existing = dict(state.get("schema_extensions", {}).get(table, {}))
+    merged = {**existing, **fields}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}},
+        "schema_extension": {"table": table, "fields": dict(fields)},
+        "target": table,
+        "fields": merged,
+    }
+
+
+def quality_assurance_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {
+        **state,
+        "inbox": (*state.get("inbox", ()), inbox_entry),
+        "handled_events": dict(handled),
+        "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "dead_letters": tuple(state.get("dead_letters", ())),
+        "dead_letter": tuple(state.get("dead_letter", ())),
+        "production_completion_projections": dict(state.get("production_completion_projections", {})),
+        "goods_receipt_projections": dict(state.get("goods_receipt_projections", {})),
+        "inventory_lot_projections": dict(state.get("inventory_lot_projections", {})),
+        "supplier_score_projections": dict(state.get("supplier_score_projections", {})),
+    }
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state["retry_evidence"], evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_quality_event"}
+            next_state["dead_letters"] = (*next_state["dead_letters"], dead)
+            next_state["dead_letter"] = (*next_state["dead_letter"], dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "ProductionCompleted":
+        next_state["production_completion_projections"][payload.get("order_id", event_id)] = payload
+    elif event_type == "GoodsReceiptPosted":
+        next_state["goods_receipt_projections"][payload.get("receipt_id", event_id)] = payload
+    elif event_type == "InventoryLotMoved":
+        next_state["inventory_lot_projections"][payload.get("lot_id", event_id)] = payload
+    elif event_type == "SupplierScoreChanged":
+        next_state["supplier_score_projections"][payload.get("supplier_id", event_id)] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def quality_assurance_create_inspection_plan(state: dict, plan: dict) -> dict:
@@ -469,12 +624,90 @@ def quality_assurance_run_control_tests(state: dict) -> dict:
 def quality_assurance_build_api_contract() -> dict:
     return {
         "ok": True,
-        "routes": ("POST /inspections", "POST /non-conformances", "POST /quality-holds", "POST /quality-rules", "POST /quality-parameters", "POST /quality-configuration"),
-        "events": {"emits": ("QualityHoldReleased", "NonConformanceRaised"), "consumes": ("ProductionCompleted", "GoodsReceiptPosted")},
-        "permissions": ("quality_assurance.read", "quality_assurance.inspect", "quality_assurance.hold", "quality_assurance.disposition", "quality_assurance.configure", "quality_assurance.audit"),
+        "format": "appgen.quality-assurance-api-contract.v1",
+        "routes": (
+            {"route": "POST /quality/inspection-plans", "command": "create_inspection_plan", "owned_tables": ("inspection_plan",), "emits": ("InspectionPlanCreated",), "requires_permission": "quality_assurance.inspect", "idempotency_key": "plan_id"},
+            {"route": "POST /quality/inspection-results", "command": "record_inspection_result", "owned_tables": ("inspection_result",), "emits": ("InspectionResultRecorded",), "requires_permission": "quality_assurance.inspect", "idempotency_key": "result_id"},
+            {"route": "POST /quality/holds", "command": "create_quality_hold", "owned_tables": ("quality_hold",), "emits": ("QualityHoldCreated",), "requires_permission": "quality_assurance.hold", "idempotency_key": "hold_id"},
+            {"route": "POST /quality/non-conformances", "command": "raise_nonconformance", "owned_tables": ("non_conformance",), "emits": ("NonConformanceRaised",), "requires_permission": "quality_assurance.disposition", "idempotency_key": "nonconformance_id"},
+            {"route": "POST /quality/non-conformances/{id}/disposition", "command": "disposition_nonconformance", "owned_tables": ("non_conformance",), "emits": ("NonConformanceDispositioned",), "requires_permission": "quality_assurance.disposition", "idempotency_key": "nonconformance_id:disposition"},
+            {"route": "POST /quality/holds/{id}/release", "command": "release_quality_hold", "owned_tables": ("quality_hold",), "emits": ("QualityHoldReleased",), "requires_permission": "quality_assurance.hold", "idempotency_key": "hold_id:release"},
+            {"route": "POST /quality/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES, "requires_permission": "quality_assurance.event", "idempotency_key": "event_id"},
+            {"route": "GET /quality/workbench", "query": "build_workbench_view", "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES, "requires_permission": "quality_assurance.audit"},
+        ),
+        "declared_catalog_routes": ("POST /inspections", "POST /non-conformances", "POST /quality-holds", "POST /quality-rules", "POST /quality-parameters", "POST /quality-configuration"),
+        "events": {"emits": QUALITY_ASSURANCE_EMITTED_EVENT_TYPES, "consumes": QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES},
+        "emits": QUALITY_ASSURANCE_EMITTED_EVENT_TYPES,
+        "consumes": QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(quality_assurance_permissions_contract()["permissions"])),
+        "database_backends": QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
+        "shared_table_access": False,
         "configuration": ("QUALITY_ASSURANCE_DATABASE_URL", "QUALITY_ASSURANCE_EVENT_TOPIC", "QUALITY_ASSURANCE_RETRY_LIMIT", "QUALITY_ASSURANCE_DEFAULT_TIMEZONE"),
         "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
         "user_eventing_choice": False,
+    }
+
+
+def quality_assurance_permissions_contract() -> dict:
+    return {
+        "format": "appgen.quality-assurance-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "quality_assurance.read",
+            "quality_assurance.inspect",
+            "quality_assurance.hold",
+            "quality_assurance.disposition",
+            "quality_assurance.configure",
+            "quality_assurance.audit",
+            "quality_assurance.event",
+        ),
+        "action_permissions": {
+            "create_inspection_plan": "quality_assurance.inspect",
+            "record_inspection_result": "quality_assurance.inspect",
+            "create_quality_hold": "quality_assurance.hold",
+            "release_quality_hold": "quality_assurance.hold",
+            "raise_nonconformance": "quality_assurance.disposition",
+            "disposition_nonconformance": "quality_assurance.disposition",
+            "receive_event": "quality_assurance.event",
+            "register_schema_extension": "quality_assurance.configure",
+            "register_rule": "quality_assurance.configure",
+            "set_parameter": "quality_assurance.configure",
+            "configure_runtime": "quality_assurance.configure",
+            "run_control_tests": "quality_assurance.audit",
+            "build_workbench_view": "quality_assurance.audit",
+            "verify_owned_table_boundary": "quality_assurance.audit",
+        },
+    }
+
+
+def quality_assurance_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *QUALITY_ASSURANCE_OWNED_TABLES,
+        *QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES,
+        *_QUALITY_ASSURANCE_RUNTIME_TABLES,
+        *_QUALITY_ASSURANCE_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(reference for reference in references if reference not in allowed_set and not str(reference).startswith("quality_assurance_"))
+    return {
+        "format": "appgen.quality-assurance-boundary.v1",
+        "ok": not violations,
+        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /production/orders/{id}", "GET /inventory/lots/{id}", "GET /procurement/suppliers/{id}/quality-score", "POST /audit/quality-events"),
+            "events": QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "production_completion_projection",
+                "goods_receipt_projection",
+                "inventory_lot_projection",
+                "supplier_score_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -575,6 +808,7 @@ def quality_assurance_binding_evidence(state: dict) -> dict:
             "bound": bool(configuration.get("ok")),
             "database_backend": configuration.get("database_backend"),
             "event_contract": configuration.get("event_contract"),
+            "event_topic": configuration.get("event_topic"),
             "supported_fields": configuration.get("supported_fields", QUALITY_ASSURANCE_SUPPORTED_CONFIGURATION_FIELDS),
             "allowed_database_backends": configuration.get("allowed_database_backends", QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS),
             "stream_engine_picker_visible": bool(configuration.get("stream_engine_picker_visible", False)),
@@ -582,6 +816,18 @@ def quality_assurance_binding_evidence(state: dict) -> dict:
         },
         "rules": rules,
         "parameters": parameters,
+        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
+        "runtime_tables": {
+            "outbox": "quality_assurance_appgen_outbox_event",
+            "inbox": "quality_assurance_appgen_inbox_event",
+            "dead_letter": "quality_assurance_dead_letter_event",
+        },
+        "event_counts": {
+            "outbox": len(state.get("outbox", ())),
+            "inbox": len(state.get("inbox", ())),
+            "dead_letter": len(state.get("dead_letters", ())),
+        },
+        "rbac": quality_assurance_permissions_contract()["action_permissions"],
     }
     return {**evidence, "binding_hash": _digest(evidence)}
 

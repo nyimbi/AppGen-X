@@ -21,6 +21,16 @@ from pyAppGen.pbc import production_control_schedule_order
 from pyAppGen.pbc import production_control_set_parameter
 from pyAppGen.pbc import production_control_start_operation
 from pyAppGen.pbc import production_control_ui_contract
+from pyAppGen.pbcs.production_control import PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.production_control import PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.production_control import PRODUCTION_CONTROL_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.production_control import PRODUCTION_CONTROL_OWNED_TABLES
+from pyAppGen.pbcs.production_control import PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.production_control import production_control_build_api_contract
+from pyAppGen.pbcs.production_control import production_control_permissions_contract
+from pyAppGen.pbcs.production_control import production_control_receive_event
+from pyAppGen.pbcs.production_control import production_control_register_schema_extension
+from pyAppGen.pbcs.production_control import production_control_verify_owned_table_boundary
 
 
 def test_production_control_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -45,6 +55,11 @@ def test_production_control_runtime_executes_standard_and_advanced_capabilities(
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "ProductionConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS)
+    assert contract["source_package"]["owned_tables"] == PRODUCTION_CONTROL_OWNED_TABLES
+    assert contract["source_package"]["allowed_database_backends"] == PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["required_event_topic"] == PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["api_contract"]["shared_table_access"] is False
+    assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "production_control.event"
     assert pbc_implementation_release_audit(("production_control",))["ok"] is True
     assert pbc_implemented_capability_audit(("production_control",))["ok"] is True
 
@@ -55,7 +70,7 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.production.events",
+            "event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_sites": ("factory_ops",),
             "allowed_work_center_types": ("assembly",),
@@ -185,8 +200,9 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
     assert workbench["binding_evidence"]["configuration"] == {
         "bound": True,
         "database_backend": "postgresql",
-        "event_contract": "appgen_event_contract",
-        "visible_event_contracts": ("appgen_event_contract",),
+        "event_contract": "AppGen-X",
+        "event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
+        "visible_event_contracts": ("AppGen-X",),
         "stream_engine_picker_visible": False,
         "user_selectable_event_contract": False,
         "supported_fields": (
@@ -230,9 +246,14 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
 
     ui_contract = production_control_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
-    assert ui_contract["configuration_editor"]["visible_event_contracts"] == ("appgen_event_contract",)
+    assert ui_contract["configuration_editor"]["required_event_topic"] == PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
+    assert ui_contract["configuration_editor"]["visible_event_contracts"] == ("AppGen-X",)
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["configuration_editor"]["user_selectable_event_contract"] is False
+    assert ui_contract["event_surfaces"]["emits"] == PRODUCTION_CONTROL_EMITTED_EVENT_TYPES
+    assert ui_contract["event_surfaces"]["consumes"] == PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES
+    assert ui_contract["binding_evidence"]["owned_tables"] == PRODUCTION_CONTROL_OWNED_TABLES
+    assert ui_contract["binding_evidence"]["shared_table_access"] is False
     assert "capacity_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     assert "allowed_routes" in ui_contract["rule_editor"]["required_fields"]
@@ -244,6 +265,7 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
             "production_control.schedule",
             "production_control.operate",
             "production_control.complete",
+            "production_control.event",
             "production_control.configure",
             "production_control.audit",
         ),
@@ -251,6 +273,8 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert rendered["event_outbox_count"] == 9
+    assert rendered["inbox_count"] == 0
+    assert rendered["dead_letter_count"] == 0
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["rules_bound"] == ("rule_ops",)
@@ -281,7 +305,7 @@ def test_production_control_rejects_unsupported_backends_unknown_parameters_and_
             state,
             {
                 "database_backend": "stream_store",
-                "event_topic": "appgen.production.events",
+                "event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "allowed_sites": ("factory_ops",),
                 "allowed_work_center_types": ("assembly",),
@@ -292,12 +316,12 @@ def test_production_control_rejects_unsupported_backends_unknown_parameters_and_
             },
         )
 
-    with pytest.raises(ValueError, match="Unsupported Production Control configuration fields"):
+    with pytest.raises(ValueError, match="AppGen-X event contract"):
         production_control_configure_runtime(
             state,
             {
                 "database_backend": "postgresql",
-                "event_topic": "appgen.production.events",
+                "event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "allowed_sites": ("factory_ops",),
                 "allowed_work_center_types": ("assembly",),
@@ -311,3 +335,148 @@ def test_production_control_rejects_unsupported_backends_unknown_parameters_and_
 
     with pytest.raises(ValueError, match="Unsupported Production Control parameter"):
         production_control_set_parameter(state, "stream_engine", "hidden_picker")
+
+    with pytest.raises(ValueError, match="requires AppGen-X event topic"):
+        production_control_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": "custom.topic",
+                "retry_limit": 3,
+                "allowed_sites": ("factory_ops",),
+                "allowed_work_center_types": ("assembly",),
+                "allowed_downtime_reasons": ("maintenance",),
+                "allowed_production_routes": ("make",),
+                "default_timezone": "UTC",
+                "workbench_limit": 50,
+            },
+        )
+
+
+def test_production_control_package_contract_handles_events_schema_api_permissions_and_boundaries() -> None:
+    state = production_control_empty_state()
+    state = production_control_configure_runtime(
+        state,
+        {
+            "database_backend": "mariadb",
+            "event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "allowed_sites": ("factory_ops",),
+            "allowed_work_center_types": ("assembly",),
+            "allowed_downtime_reasons": ("maintenance",),
+            "allowed_production_routes": ("make",),
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+
+    extension = production_control_register_schema_extension(
+        state,
+        "production_order",
+        {"digital_thread_payload": "jsonb"},
+    )
+    state = extension["state"]
+    assert extension["schema_extension"] == {
+        "table": "production_order",
+        "fields": {"digital_thread_payload": "jsonb"},
+    }
+    assert state["schema_extensions"]["production_order"]["digital_thread_payload"] == "jsonb"
+
+    with pytest.raises(ValueError, match="owned tables"):
+        production_control_register_schema_extension(state, "inventory_balance", {"foreign_payload": "jsonb"})
+
+    bad_field = production_control_register_schema_extension(state, "routing_step", {"BadName": "text"})
+    assert bad_field["ok"] is False
+    assert bad_field["error"] == "invalid_extension_field"
+
+    planned = production_control_receive_event(
+        state,
+        {
+            "event_id": "mrp_evt_ops",
+            "event_type": "PlannedOrderReleased",
+            "payload": {
+                "planned_order_id": "po_ops",
+                "tenant": "tenant_ops",
+                "site": "factory_ops",
+                "item": "machine_kit",
+                "quantity": 12,
+                "route": "make",
+                "priority": "expedite",
+            },
+        },
+    )
+    state = planned["state"]
+    assert planned["ok"] is True
+    assert state["planned_order_projections"]["po_ops"]["quantity"] == 12
+    duplicate = production_control_receive_event(
+        state,
+        {
+            "event_id": "mrp_evt_ops",
+            "event_type": "PlannedOrderReleased",
+            "payload": {
+                "planned_order_id": "po_ops",
+                "tenant": "tenant_ops",
+                "site": "factory_ops",
+                "item": "machine_kit",
+                "quantity": 12,
+            },
+        },
+    )
+    assert duplicate["duplicate"] is True
+    assert duplicate["state"] is state
+
+    failed_once = production_control_receive_event(
+        state,
+        {
+            "event_id": "quality_evt_ops",
+            "event_type": "QualityGateReleased",
+            "payload": {"tenant": "tenant_ops"},
+        },
+        simulate_failure=True,
+    )
+    assert failed_once["ok"] is False
+    assert failed_once["handler"]["status"] == "retrying"
+    failed_twice = production_control_receive_event(
+        failed_once["state"],
+        {
+            "event_id": "quality_evt_ops",
+            "event_type": "QualityGateReleased",
+            "payload": {"tenant": "tenant_ops"},
+        },
+        simulate_failure=True,
+    )
+    assert failed_twice["handler"]["status"] == "dead_letter"
+    assert failed_twice["state"]["dead_letter"][-1]["reason"] == "unsupported_or_failed_production_control_event"
+
+    api = production_control_build_api_contract()
+    assert api["format"] == "appgen.production-control-api-contract.v1"
+    assert api["event_contract"] == "AppGen-X"
+    assert api["required_event_topic"] == PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
+    assert api["database_backends"] == PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS
+    assert api["owned_tables"] == PRODUCTION_CONTROL_OWNED_TABLES
+    assert api["events"] == {
+        "emits": PRODUCTION_CONTROL_EMITTED_EVENT_TYPES,
+        "consumes": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES,
+    }
+    assert api["shared_table_access"] is False
+    assert any(route["command"] == "receive_event" for route in api["routes"])
+
+    permissions = production_control_permissions_contract()
+    assert permissions["action_permissions"]["receive_event"] == "production_control.event"
+    assert permissions["action_permissions"]["register_schema_extension"] == "production_control.configure"
+
+    valid_boundary = production_control_verify_owned_table_boundary(
+        (
+            "production_order",
+            "production_control_appgen_inbox_event",
+            "PlannedOrderReleased",
+            "mrp_planned_order_projection",
+            "POST /inventory-receipts",
+        )
+    )
+    assert valid_boundary["ok"] is True
+    assert valid_boundary["declared_dependencies"]["shared_tables"] == ()
+
+    invalid_boundary = production_control_verify_owned_table_boundary(("inventory_balance", "quality_result"))
+    assert invalid_boundary["ok"] is False
+    assert invalid_boundary["violations"] == ("inventory_balance", "quality_result")

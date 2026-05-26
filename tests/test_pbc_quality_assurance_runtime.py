@@ -1,5 +1,15 @@
 import pytest
 
+from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_OWNED_TABLES
+from pyAppGen.pbcs.quality_assurance import QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.quality_assurance import quality_assurance_build_api_contract
+from pyAppGen.pbcs.quality_assurance import quality_assurance_permissions_contract
+from pyAppGen.pbcs.quality_assurance import quality_assurance_receive_event
+from pyAppGen.pbcs.quality_assurance import quality_assurance_register_schema_extension
+from pyAppGen.pbcs.quality_assurance import quality_assurance_verify_owned_table_boundary
 from pyAppGen.pbc import QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
@@ -28,6 +38,7 @@ def test_quality_assurance_runtime_executes_standard_and_advanced_capabilities()
     assert runtime["format"] == "appgen.quality-assurance-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/quality_assurance"
+    assert runtime["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
     assert len(runtime["standard_features"]) >= 22
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
@@ -40,11 +51,29 @@ def test_quality_assurance_runtime_executes_standard_and_advanced_capabilities()
     contract = pbc_implementation_contract("quality_assurance")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
+    assert contract["source_package"]["allowed_database_backends"] == QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["api_contract"]["shared_table_access"] is False
+    assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "quality_assurance.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "QualityConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("quality_assurance",))["ok"] is True
     assert pbc_implemented_capability_audit(("quality_assurance",))["ok"] is True
+
+    api = quality_assurance_build_api_contract()
+    permissions = quality_assurance_permissions_contract()
+    assert api["format"] == "appgen.quality-assurance-api-contract.v1"
+    assert api["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
+    assert api["database_backends"] == QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
+    assert api["emits"] == QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
+    assert api["consumes"] == QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False
+    assert {route["route"] for route in api["routes"]} >= {"POST /quality/events/inbox", "GET /quality/workbench"}
+    assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert permissions["action_permissions"]["receive_event"] == "quality_assurance.event"
 
 
 def test_quality_assurance_runtime_rejects_unsupported_backends_and_unknown_parameters() -> None:
@@ -66,6 +95,9 @@ def test_quality_assurance_runtime_rejects_unsupported_backends_and_unknown_para
     with pytest.raises(ValueError, match="does not allow stream-engine or user-selectable eventing fields"):
         quality_assurance_configure_runtime(quality_assurance_empty_state(), {**configuration, "database_backend": "postgresql", "stream_engine": "kafka"})
 
+    with pytest.raises(ValueError, match="event topic is fixed"):
+        quality_assurance_configure_runtime(quality_assurance_empty_state(), {**configuration, "database_backend": "postgresql", "event_topic": "custom.quality.events"})
+
     with pytest.raises(ValueError, match="Unsupported Quality Assurance parameter"):
         quality_assurance_set_parameter(quality_assurance_empty_state(), "unexpected_parameter", 3)
 
@@ -76,7 +108,7 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.quality.events",
+            "event_topic": QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_sites": ("factory_ops",),
             "allowed_inspection_sources": ("production",),
@@ -87,6 +119,8 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
         },
     )["state"]
     assert state["configuration"]["event_contract"] == "AppGen-X"
+    assert state["configuration"]["event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
+    assert state["configuration"]["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
     assert state["configuration"]["stream_engine_picker_visible"] is False
     assert state["configuration"]["user_eventing_choice"] is False
     state = quality_assurance_set_parameter(state, "default_sample_size", 5)["state"]
@@ -111,6 +145,37 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
         rule_definition,
     )
     state = rule["state"]
+    extension = quality_assurance_register_schema_extension(state, "inspection_result", {"camera_payload": "jsonb"})
+    state = extension["state"]
+    assert extension["fields"]["camera_payload"] == "jsonb"
+    with pytest.raises(ValueError, match="schema extensions must target owned tables"):
+        quality_assurance_register_schema_extension(state, "production_order", {"external_payload": "jsonb"})
+    consumed = quality_assurance_receive_event(
+        state,
+        {
+            "event_id": "evt_prod_ops",
+            "event_type": "ProductionCompleted",
+            "payload": {"tenant": "tenant_ops", "order_id": "order_ops", "item": "machine_kit", "quantity": 10},
+        },
+    )
+    state = consumed["state"]
+    assert consumed["handler"]["status"] == "processed"
+    assert state["production_completion_projections"]["order_ops"]["quantity"] == 10
+    duplicate = quality_assurance_receive_event(
+        state,
+        {
+            "event_id": "evt_prod_ops",
+            "event_type": "ProductionCompleted",
+            "payload": {"tenant": "tenant_ops", "order_id": "order_ops", "item": "machine_kit", "quantity": 10},
+        },
+    )
+    assert duplicate["duplicate"] is True
+    failed = quality_assurance_receive_event(state, {"event_id": "evt_bad_ops", "event_type": "UnsupportedQualitySignal", "payload": {"tenant": "tenant_ops"}}, simulate_failure=True)
+    failed = quality_assurance_receive_event(failed["state"], {"event_id": "evt_bad_ops", "event_type": "UnsupportedQualitySignal", "payload": {"tenant": "tenant_ops"}}, simulate_failure=True)
+    failed = quality_assurance_receive_event(failed["state"], {"event_id": "evt_bad_ops", "event_type": "UnsupportedQualitySignal", "payload": {"tenant": "tenant_ops"}}, simulate_failure=True)
+    state = failed["state"]
+    assert failed["handler"]["status"] == "dead_letter"
+    assert state["dead_letters"][-1]["reason"] == "unsupported_or_failed_quality_event"
     assert rule["rule"]["compiled_hash"] == rule["rule"]["compile_evidence"]["compiled_hash"]
     assert rule["rule"]["compile_evidence"]["rule_id"] == "rule_ops"
     assert rule["rule"]["compile_evidence"]["required_fields"] == (
@@ -212,6 +277,15 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
     assert workbench["rules_bound"] == ("rule_ops",)
     assert "default_sample_size" in workbench["parameters_bound"]
     assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
+    assert workbench["binding_evidence"]["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
+    assert workbench["binding_evidence"]["runtime_tables"] == {
+        "outbox": "quality_assurance_appgen_outbox_event",
+        "inbox": "quality_assurance_appgen_inbox_event",
+        "dead_letter": "quality_assurance_dead_letter_event",
+    }
+    assert workbench["binding_evidence"]["event_counts"]["inbox"] == 4
+    assert workbench["binding_evidence"]["event_counts"]["dead_letter"] == 1
+    assert workbench["binding_evidence"]["rbac"]["receive_event"] == "quality_assurance.event"
     assert workbench["binding_evidence"]["configuration"]["stream_engine_picker_visible"] is False
     assert workbench["binding_evidence"]["configuration"]["user_eventing_choice"] is False
     assert workbench["binding_evidence"]["rules"] == (
@@ -232,7 +306,10 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
     assert workbench["binding_evidence"]["binding_hash"]
 
     ui_contract = quality_assurance_ui_contract()
+    assert ui_contract["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
+    assert ui_contract["runtime_tables"]["inbox"] == "quality_assurance_appgen_inbox_event"
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["configuration_editor"]["user_eventing_choice_visible"] is False
     assert "default_sample_size" in ui_contract["parameter_editor"]["numeric_parameters"]
@@ -241,6 +318,9 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
     assert "required_measurements" in ui_contract["rule_editor"]["required_fields"]
     assert "quality" not in ui_contract["rule_editor"]["rule_types"]
     assert ui_contract["rule_editor"]["legacy_rule_type_aliases"] == ("quality",)
+    assert ui_contract["event_surfaces"]["emits"] == QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
+    assert ui_contract["event_surfaces"]["consumes"] == QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
+    assert ui_contract["event_surfaces"]["stream_engine_picker_visible"] is False
     rendered = quality_assurance_render_workbench(
         state,
         tenant="tenant_ops",
@@ -250,18 +330,36 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
             "quality_assurance.disposition",
             "quality_assurance.configure",
             "quality_assurance.audit",
+            "quality_assurance.event",
         ),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert rendered["event_outbox_count"] == 6
+    assert rendered["event_inbox_count"] == 4
+    assert rendered["dead_letter_count"] == 1
+    assert rendered["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["configuration"] == workbench["binding_evidence"]["configuration"]
+    assert rendered["binding_evidence"]["ui_bindings"]["rbac"]["receive_event"] == "quality_assurance.event"
+
+    boundary = quality_assurance_verify_owned_table_boundary(
+        ("inspection_result", "ProductionCompleted", "production_completion_projection", "quality_assurance_appgen_inbox_event")
+    )
+    assert boundary["ok"] is True
+    assert boundary["declared_dependencies"]["shared_tables"] == ()
+    violation = quality_assurance_verify_owned_table_boundary(("production_order", "inventory_balance"))
+    assert violation["ok"] is False
+    assert violation["violations"] == ("production_order", "inventory_balance")
     assert rendered["binding_evidence"]["rules"] == workbench["binding_evidence"]["rules"]
     assert rendered["binding_evidence"]["parameters"] == workbench["binding_evidence"]["parameters"]
     assert rendered["binding_evidence"]["ui_bindings"] == {
         "configuration_fragment": "QualityConfigurationPanel",
         "rule_fragment": "QualityRuleStudio",
         "parameter_fragment": "QualityParameterConsole",
+        "outbox_table": "quality_assurance_appgen_outbox_event",
+        "inbox_table": "quality_assurance_appgen_inbox_event",
+        "dead_letter_table": "quality_assurance_dead_letter_event",
+        "rbac": ui_contract["action_permissions"],
     }

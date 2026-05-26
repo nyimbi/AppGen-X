@@ -82,11 +82,60 @@ Rules are compiled into deterministic hashes, parameters are stored in owned run
 
 The runtime must prove that:
 
-- Configuration rejects unsupported backends, rejects unsupported configuration fields, and exposes only the AppGen-X event contract without any user-facing stream-engine picker or event-contract choice.
+- Configuration rejects unsupported backends, rejects unsupported configuration fields, requires the fixed `appgen.production.events` AppGen-X topic, and exposes only the AppGen-X event contract without any user-facing stream-engine picker or event-contract choice.
 - Parameter support is bounded to the package-local production-control parameter set and rejects unknown parameters.
 - Rules require production-control binding fields, compile into deterministic hashes, and retain deterministic compilation evidence for workbench and release audits.
+- Schema extensions may target only owned Production Control tables. The PBC can evolve `work_center`, `production_order`, `routing_step`, `downtime_event`, `production_rule`, `production_parameter`, and `production_configuration`; it must reject inventory, planning, maintenance, quality, asset, audit, identity, or shared platform tables.
+- `receive_event` is the only consumed-event entry point. It accepts `PlannedOrderReleased` and `MaintenanceCompleted`, writes immutable inbox evidence, derives package-local projections, handles duplicates by idempotency key, records retry attempts, and moves unsupported or failed events to a package-local dead-letter evidence surface after the configured retry limit.
 - Package-local workbench and UI surfaces expose evidence for configuration, rule, and parameter bindings without crossing the `production_control` package boundary.
+- `build_api_contract` returns descriptor routes with owned-table, command/query, permission, event, and idempotency metadata. The descriptor must say `shared_table_access: false`, list only PostgreSQL/MySQL/MariaDB backends, and keep stream-engine selection hidden.
+- `permissions_contract` binds every command, event handler, configuration action, and audit surface to explicit Production Control permissions.
+- `verify_owned_table_boundary` accepts only owned tables, AppGen-X runtime tables, consumed events, declared API dependencies, declared projections, or `production_control_` runtime names. Foreign table references are violations.
 - Standard and advanced capability claims remain testable through package-local runtime, UI, and release evidence.
+
+## Event Handling Contract
+
+Production Control emits `ProductionCompleted`, `AssetPlacedInService`, and
+`DowntimeCaptured`. These events are written through the AppGen-X outbox with
+deterministic idempotency keys derived from the PBC key, event type, and event
+sequence. Consumers use those events to create inventory receipt, quality
+completion, asset commissioning, analytics, and audit projections.
+
+Production Control consumes `PlannedOrderReleased` and `MaintenanceCompleted`.
+The consumed event handler never reaches into upstream tables. A planned-order
+release becomes a `planned_order_projections` record that can seed production
+orders and scheduling decisions. A maintenance completion becomes a
+`maintenance_projections` record that can release work-center capacity or
+support downtime explanations. Unsupported events and simulated handler
+failures produce retry evidence first and dead-letter evidence when attempts
+reach the configured limit. Duplicate event delivery returns the previous
+handler evidence without mutating state.
+
+## API, RBAC, And Boundary Contract
+
+API descriptors are executable package metadata, not catalog prose. They cover
+work-center registration, order creation, routing, scheduling, operation start,
+downtime capture, operation confirmation, completion, event inbox handling, and
+workbench reads. Each descriptor identifies the owned table or consumed event
+surface it touches and the permission required to invoke it. Production
+Control grants no shared-table capability; cross-PBC interaction is through
+declared AppGen-X events, declared APIs, and projections only.
+
+RBAC separates scheduling, operation, completion, event handling,
+configuration, and audit responsibilities. Operators can start and confirm
+operations and record downtime. Schedulers can create work centers, orders,
+routings, and schedules. Completion users can finish orders and emit handoff
+events. Event handlers require `production_control.event`. Configuration users
+can manage rules, parameters, runtime settings, and schema extensions. Auditors
+can read workbench and control evidence.
+
+Boundary validation is part of release evidence. Generated code, hand-authored
+runtime paths, and future package registrations can call
+`verify_owned_table_boundary` with their table/API/event references. The check
+allows owned tables, AppGen-X outbox/inbox/dead-letter tables, consumed event
+types, declared integration APIs, declared projection names, and
+`production_control_` runtime names. References such as external inventory,
+quality, planning, maintenance, identity, or finance tables are rejected.
 
 ## UI Contract
 
@@ -104,6 +153,10 @@ The runtime must prove that:
 - Runtime configuration panel.
 
 UI actions are RBAC-gated and bind only to owned tables, projections, and AppGen-X event surfaces.
+The workbench must also show owned table binding evidence, outbox, inbox,
+dead-letter surfaces, fixed AppGen-X configuration, hidden event-engine
+selection, and permission descriptors so generated applications can expose a
+complete Production Control console without adding package-specific glue.
 
 ## Release Evidence
 

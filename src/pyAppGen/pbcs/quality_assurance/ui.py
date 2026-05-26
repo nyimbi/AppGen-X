@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from .runtime import QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
+from .runtime import QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
+from .runtime import QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
+from .runtime import QUALITY_ASSURANCE_OWNED_TABLES
 from .runtime import QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS
+from .runtime import QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
 from .runtime import QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS
 from .runtime import QUALITY_ASSURANCE_SUPPORTED_PARAMETER_NAMES
 from .runtime import QUALITY_ASSURANCE_SUPPORTED_RULE_TYPES
 from .runtime import quality_assurance_binding_evidence
+from .runtime import quality_assurance_permissions_contract
 
 QUALITY_ASSURANCE_UI_FRAGMENT_KEYS = (
     "QualityAssuranceWorkbench",
@@ -24,6 +29,7 @@ QUALITY_ASSURANCE_UI_FRAGMENT_KEYS = (
 
 
 def quality_assurance_ui_contract() -> dict:
+    permissions = quality_assurance_permissions_contract()["action_permissions"]
     return {
         "format": "appgen.quality-assurance-ui-contract.v1",
         "ok": True,
@@ -46,7 +52,7 @@ def quality_assurance_ui_contract() -> dict:
             {
                 "key": "inspection_plans",
                 "fragment": "InspectionPlanConsole",
-                "binds_to": ("inspection_plan", "inspection_result"),
+                "binds_to": ("inspection_plan", "inspection_result", "production_completion_projection", "goods_receipt_projection"),
                 "commands": ("create_inspection_plan", "record_inspection_result"),
             },
             {
@@ -64,27 +70,23 @@ def quality_assurance_ui_contract() -> dict:
             {
                 "key": "governance_studio",
                 "fragment": "QualityRuleStudio",
-                "binds_to": ("rule", "parameter", "configuration"),
+                "binds_to": ("quality_rule", "quality_parameter", "quality_configuration"),
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "create_inspection_plan": "quality_assurance.inspect",
-            "record_inspection_result": "quality_assurance.inspect",
-            "create_quality_hold": "quality_assurance.hold",
-            "release_quality_hold": "quality_assurance.hold",
-            "raise_nonconformance": "quality_assurance.disposition",
-            "disposition_nonconformance": "quality_assurance.disposition",
-            "register_rule": "quality_assurance.configure",
-            "set_parameter": "quality_assurance.configure",
-            "configure_runtime": "quality_assurance.configure",
-            "run_control_tests": "quality_assurance.audit",
+        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
+        "runtime_tables": {
+            "outbox": "quality_assurance_appgen_outbox_event",
+            "inbox": "quality_assurance_appgen_inbox_event",
+            "dead_letter": "quality_assurance_dead_letter_event",
         },
+        "action_permissions": permissions,
         "configuration_editor": {
             "required_fields": QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS,
             "supported_fields": QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS,
             "allowed_database_backends": QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "event_topic": QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker_visible": False,
             "user_eventing_choice_visible": False,
         },
@@ -97,10 +99,12 @@ def quality_assurance_ui_contract() -> dict:
             "required_fields": QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS,
         },
         "event_surfaces": {
-            "emits": ("QualityHoldReleased", "NonConformanceRaised"),
-            "consumes": ("ProductionCompleted", "GoodsReceiptPosted"),
+            "emits": QUALITY_ASSURANCE_EMITTED_EVENT_TYPES,
+            "consumes": QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+            "stream_engine_picker_visible": False,
         },
     }
 
@@ -141,12 +145,19 @@ def quality_assurance_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "event_inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letters", ())),
+        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
         "binding_evidence": {
             **binding_evidence,
             "ui_bindings": {
                 "configuration_fragment": "QualityConfigurationPanel",
                 "rule_fragment": "QualityRuleStudio",
                 "parameter_fragment": "QualityParameterConsole",
+                "outbox_table": "quality_assurance_appgen_outbox_event",
+                "inbox_table": "quality_assurance_appgen_inbox_event",
+                "dead_letter_table": "quality_assurance_dead_letter_event",
+                "rbac": contract["action_permissions"],
             },
         },
     }

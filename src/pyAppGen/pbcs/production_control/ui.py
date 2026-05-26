@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from .runtime import PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS
+from .runtime import PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES
+from .runtime import PRODUCTION_CONTROL_EMITTED_EVENT_TYPES
+from .runtime import PRODUCTION_CONTROL_OWNED_TABLES
 from .runtime import PRODUCTION_CONTROL_REQUIRED_RULE_FIELDS
+from .runtime import PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
 from .runtime import PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS
 from .runtime import PRODUCTION_CONTROL_SUPPORTED_PARAMETER_KEYS
+from .runtime import production_control_permissions_contract
 
 PRODUCTION_CONTROL_UI_FRAGMENT_KEYS = (
     "ProductionControlWorkbench",
@@ -66,25 +71,13 @@ def production_control_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "register_work_center": "production_control.schedule",
-            "create_production_order": "production_control.schedule",
-            "define_routing_step": "production_control.schedule",
-            "schedule_order": "production_control.schedule",
-            "start_operation": "production_control.operate",
-            "record_downtime": "production_control.operate",
-            "confirm_operation": "production_control.operate",
-            "complete_production_order": "production_control.complete",
-            "register_rule": "production_control.configure",
-            "set_parameter": "production_control.configure",
-            "configure_runtime": "production_control.configure",
-            "run_control_tests": "production_control.audit",
-        },
+        "action_permissions": production_control_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS,
             "allowed_database_backends": PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
-            "visible_event_contracts": ("appgen_event_contract",),
+            "required_event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
+            "visible_event_contracts": ("AppGen-X",),
             "stream_engine_picker_visible": False,
             "user_selectable_event_contract": False,
         },
@@ -98,10 +91,18 @@ def production_control_ui_contract() -> dict:
             "compiled_evidence_fields": ("compiled_hash", "compiled_evidence"),
         },
         "event_surfaces": {
-            "emits": ("ProductionCompleted", "AssetPlacedInService", "DowntimeCaptured"),
-            "consumes": ("PlannedOrderReleased", "MaintenanceCompleted"),
+            "emits": PRODUCTION_CONTROL_EMITTED_EVENT_TYPES,
+            "consumes": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES,
+            "outbox_table": "production_control_appgen_outbox_event",
+            "inbox_table": "production_control_appgen_inbox_event",
+            "dead_letter_table": "production_control_dead_letter_event",
+            "shared_table_access": False,
         },
     }
 
@@ -147,11 +148,18 @@ def production_control_render_workbench(
         "configuration_bound": bool(configuration.get("ok")),
         "rules_bound": rule_ids,
         "parameters_bound": parameter_names,
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": {
+            "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES,
+            "outbox_table": "production_control_appgen_outbox_event",
+            "inbox_table": "production_control_appgen_inbox_event",
+            "dead_letter_table": "production_control_dead_letter_event",
             "configuration": {
                 "bound": bool(configuration.get("ok")),
                 "database_backend": configuration.get("database_backend"),
                 "event_contract": configuration.get("event_contract"),
+                "event_topic": configuration.get("event_topic"),
                 "visible_event_contracts": configuration.get("visible_event_contracts", ()),
                 "stream_engine_picker_visible": configuration.get("stream_engine_picker_visible"),
                 "user_selectable_event_contract": configuration.get("user_selectable_event_contract"),

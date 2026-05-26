@@ -9,11 +9,22 @@
 - PBC key: `quality_assurance`
 - Mesh: `opsmfg`
 - Owned datastore backends: PostgreSQL, MySQL, or MariaDB
-- Owned tables: `inspection_plan`, `inspection_result`, `quality_hold`, `non_conformance`
+- Owned tables: `inspection_plan`, `inspection_result`, `quality_hold`, `non_conformance`, `quality_rule`, `quality_parameter`, `quality_configuration`, `quality_capa`, `quality_compliance_package`
 - Owned event tables: `quality_assurance_outbox`, `quality_assurance_inbox`, `quality_assurance_dead_letter`
-- Consumed events: `ProductionCompleted`, `GoodsReceiptPosted`
-- Emitted events: `QualityHoldReleased`, `NonConformanceRaised`
+- Fixed AppGen-X event topic: `appgen.quality.events`
+- Consumed events: `ProductionCompleted`, `GoodsReceiptPosted`, `InventoryLotMoved`, `SupplierScoreChanged`
+- Emitted events: `InspectionPlanCreated`, `InspectionResultRecorded`, `QualityHoldCreated`, `NonConformanceRaised`, `NonConformanceDispositioned`, `QualityHoldReleased`
 - External access rule: no shared production, inventory, procurement, returns, maintenance, or audit tables; use projections, APIs, and events only.
+
+## Package-Local Runtime Contract
+
+`runtime.py` is the executable source of truth for the package-local contract. It exports stable constants for owned tables, allowed database backends, the required AppGen-X event topic, emitted events, and consumed events. `quality_assurance_configure_runtime` accepts only the ordinary relational backends: PostgreSQL, MySQL, and MariaDB. The function rejects any user-provided stream engine, transport selector, eventing mode, or alternate event topic. Eventing is always the AppGen-X contract and is never exposed as a user picker.
+
+Schema extension is package-local. `quality_assurance_register_schema_extension` may add fields only to Quality Assurance owned tables. Foreign tables such as production order, inventory balance, supplier master, maintenance order, or audit ledger tables are not valid extension targets. This keeps cross-PBC composition at the API, event, and projection layer instead of creating hidden shared-table coupling.
+
+Inbound AppGen-X events are handled through `quality_assurance_receive_event`. The handler writes inbox evidence, uses an idempotency key, detects duplicates without replaying side effects, projects supported consumed events into package-local projection stores, records retry evidence for failed or unsupported events, and moves exhausted events into dead-letter evidence. Production completions are projected by order, goods receipts by receipt, inventory movements by lot, and supplier score updates by supplier. These projections are read models owned by the Quality Assurance PBC; they are not shared source tables.
+
+The descriptor API contract returned by `quality_assurance_build_api_contract` exposes command/query route descriptors with owned-table write surfaces, emitted/consumed event metadata, permission requirements, and idempotency keys. `quality_assurance_permissions_contract` describes the action-level RBAC surface for inspectors, quality engineers, hold/release users, disposition approvers, configuration administrators, auditors, and event consumers. `quality_assurance_verify_owned_table_boundary` proves that generated code and workbench bindings reference only owned tables, runtime event tables, declared dependency APIs, declared projections, or consumed event names.
 
 ## Standard Table-Stakes Capabilities
 
@@ -101,6 +112,7 @@ Rules are compiled into deterministic hashes and evidence, parameters are stored
 
 UI actions are RBAC-gated and bind only to owned tables, projections, and AppGen-X event surfaces.
 The UI must keep AppGen-X eventing fixed and surface explicit configuration/rule/parameter binding evidence on the package-local workbench.
+The workbench also surfaces owned table names, AppGen-X outbox/inbox/dead-letter tables, inbox/dead-letter counts, and the active RBAC action map so a generated application can prove UI fragments are wired to the package-local runtime contract.
 
 ## Release Evidence
 
