@@ -1037,6 +1037,7 @@ IMPLEMENTED_PBC_KEYS = (
     "audit_ledger",
     "composition_engine",
     "dam_core",
+    "price_promotion_engine",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3310,6 +3311,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = cross_border_trade_runtime_capabilities()
     elif key == "dam_core":
         advanced_runtime = dam_core_runtime_capabilities()
+    elif key == "price_promotion_engine":
+        advanced_runtime = price_promotion_engine_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
@@ -3628,6 +3631,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "returns_reverse_logistics": len(RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS),
         "cross_border_trade": len(CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS),
         "dam_core": len(DAM_CORE_RUNTIME_CAPABILITY_KEYS),
+        "price_promotion_engine": len(PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
@@ -5688,6 +5692,27 @@ from .pbcs.dam_core import dam_core_runtime_smoke  # noqa: E402,F401
 from .pbcs.dam_core import dam_core_set_parameter  # noqa: E402,F401
 from .pbcs.dam_core import dam_core_ui_contract  # noqa: E402,F401
 from .pbcs.dam_core import dam_core_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.price_promotion_engine import PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.price_promotion_engine import PRICE_PROMOTION_ENGINE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.price_promotion_engine import PRICE_PROMOTION_ENGINE_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_apply_promotion  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_build_api_contract  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_build_workbench_view  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_configure_runtime  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_empty_state  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_permissions_contract  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_quote_price  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_receive_event  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_register_loyalty_tier  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_register_price_rule  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_register_promotion  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_register_rule  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_render_workbench  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_runtime_capabilities  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_runtime_smoke  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_set_parameter  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_ui_contract  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_verify_owned_table_boundary  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
