@@ -4586,6 +4586,7 @@ def pbc_source_artifact_contract(key: str) -> dict:
             "id": "ui_workbench_surface_materialized",
             "ok": f"def {key}_ui_contract(" in ui_text
             and f"def {key}_render_workbench(" in ui_text
+            and "def smoke_test(" in ui_text
             and "configuration_editor" in ui_text
             and "stream_engine_picker_visible" in ui_text
             and "action_permissions" in ui_text,
