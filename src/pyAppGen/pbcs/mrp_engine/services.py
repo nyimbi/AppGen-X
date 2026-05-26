@@ -9,12 +9,20 @@ OPERATION_CONTRACTS = ({'operation': 'command_mrp_boms', 'operation_kind': 'comm
 def service_operation_contracts():
     """Return route-bound service operation contracts for this PBC."""
     operations = tuple(item['operation'] for item in OPERATION_CONTRACTS)
+    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'command')
+    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'query')
     return {
         'ok': bool(OPERATION_CONTRACTS)
         and all(item['event_contract'] == 'AppGen-X' for item in OPERATION_CONTRACTS)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in OPERATION_CONTRACTS),
+        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in OPERATION_CONTRACTS)
+        and all(item['emitted_event'] for item in command_contracts)
+        and all(item['owned_tables'] and not item['read_tables'] for item in command_contracts)
+        and all(item['emitted_event'] is None for item in query_contracts)
+        and all(item['read_tables'] and not item['owned_tables'] for item in query_contracts),
         'pbc': 'mrp_engine',
         'operations': operations,
+        'command_operations': tuple(item['operation'] for item in command_contracts),
+        'query_operations': tuple(item['operation'] for item in query_contracts),
         'contracts': OPERATION_CONTRACTS,
         'side_effects': (),
     }
@@ -47,20 +55,41 @@ def operation_plan(operation_name, payload=None):
 class MrpEngineService:
     """Side-effect-free generated command facade."""
 
-    def _command(self, command_name, payload):
-        plan = operation_plan(command_name, payload)
-        event_type = plan.get('emitted_event') or (EVENT_CONTRACT['emitted'][0]['event_type'] if EVENT_CONTRACT['emitted'] else 'CommandAccepted')
-        return {
+    def _execute(self, operation_name, payload):
+        plan = operation_plan(operation_name, payload)
+        operation_kind = plan.get('operation_kind')
+        result = {
             'ok': plan['ok'],
             'pbc': 'mrp_engine',
-            'command': command_name,
+            'operation': operation_name,
+            'operation_kind': operation_kind,
             'payload': dict(payload),
             'operation_contract': plan,
             'transaction_boundary': plan.get('transaction_boundary'),
-            'outbox_table': EVENT_CONTRACT['outbox_table'],
-            'emits': (event_type,),
             'side_effects': (),
         }
+        if operation_kind == 'command':
+            event_type = plan.get('emitted_event')
+            result.update({
+                'command': operation_name,
+                'read_only': False,
+                'outbox_table': EVENT_CONTRACT['outbox_table'],
+                'emits': (event_type,) if event_type else (),
+            })
+        elif operation_kind == 'query':
+            result.update({
+                'query': operation_name,
+                'read_only': True,
+                'outbox_table': None,
+                'emits': (),
+            })
+        return result
+
+    def _command(self, command_name, payload):
+        return self._execute(command_name, payload)
+
+    def _query(self, query_name, payload):
+        return self._execute(query_name, payload)
 
     def command_mrp_boms(self, payload=None):
         return self._command('command_mrp_boms', payload or {})
@@ -84,7 +113,7 @@ class MrpEngineService:
         return self._command('command_mrp_events_inbox', payload or {})
 
     def query_mrp_workbench(self, payload=None):
-        return self._command('query_mrp_workbench', payload or {})
+        return self._query('query_mrp_workbench', payload or {})
 
 
 def service_operation_manifest():
@@ -101,6 +130,8 @@ def service_operation_manifest():
         'pbc': 'mrp_engine',
         'service_class': service.__class__.__name__,
         'operations': operations,
+        'command_operations': service_operation_contracts()['command_operations'],
+        'query_operations': service_operation_contracts()['query_operations'],
         'operation_contracts': service_operation_contracts()['contracts'],
         'transaction_boundary': 'owned_datastore_plus_outbox',
         'outbox_table': EVENT_CONTRACT['outbox_table'],
