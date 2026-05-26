@@ -1022,17 +1022,21 @@ IMPLEMENTED_PBC_KEYS = (
     "eam",
     "product_catalog_pim",
     "customer_360",
+    "enterprise_pim",
     "global_inventory_visibility",
     "order_routing_optimization",
     "checkout_processing",
     "payment_orchestration",
+    "subscription_billing",
     "returns_reverse_logistics",
+    "cross_border_trade",
     "federated_iam",
     "api_gateway_mesh",
     "schema_registry",
     "workflow_orchestration",
     "audit_ledger",
     "composition_engine",
+    "dam_core",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3288,6 +3292,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = product_catalog_pim_runtime_capabilities()
     elif key == "customer_360":
         advanced_runtime = customer_360_runtime_capabilities()
+    elif key == "enterprise_pim":
+        advanced_runtime = enterprise_pim_runtime_capabilities()
     elif key == "global_inventory_visibility":
         advanced_runtime = global_inventory_visibility_runtime_capabilities()
     elif key == "order_routing_optimization":
@@ -3296,8 +3302,14 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = checkout_processing_runtime_capabilities()
     elif key == "payment_orchestration":
         advanced_runtime = payment_orchestration_runtime_capabilities()
+    elif key == "subscription_billing":
+        advanced_runtime = subscription_billing_runtime_capabilities()
     elif key == "returns_reverse_logistics":
         advanced_runtime = returns_reverse_logistics_runtime_capabilities()
+    elif key == "cross_border_trade":
+        advanced_runtime = cross_border_trade_runtime_capabilities()
+    elif key == "dam_core":
+        advanced_runtime = dam_core_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
@@ -3607,11 +3619,15 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "eam": len(EAM_ADVANCED_CAPABILITY_KEYS),
         "product_catalog_pim": len(PRODUCT_CATALOG_PIM_ADVANCED_CAPABILITY_KEYS),
         "customer_360": len(CUSTOMER_360_ADVANCED_CAPABILITY_KEYS),
+        "enterprise_pim": len(ENTERPRISE_PIM_RUNTIME_CAPABILITY_KEYS),
         "global_inventory_visibility": len(GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS),
         "order_routing_optimization": len(ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS),
         "checkout_processing": len(CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS),
         "payment_orchestration": len(PAYMENT_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS),
+        "subscription_billing": len(SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS),
         "returns_reverse_logistics": len(RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS),
+        "cross_border_trade": len(CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS),
+        "dam_core": len(DAM_CORE_RUNTIME_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
@@ -5576,6 +5592,44 @@ from .pbcs.payment_orchestration import payment_orchestration_set_parameter  # n
 from .pbcs.payment_orchestration import payment_orchestration_tokenize_payment_method  # noqa: E402,F401
 from .pbcs.payment_orchestration import payment_orchestration_ui_contract  # noqa: E402,F401
 from .pbcs.payment_orchestration import payment_orchestration_void_payment  # noqa: E402,F401
+from .pbcs.subscription_billing import SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.subscription_billing import SUBSCRIPTION_BILLING_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.subscription_billing import SUBSCRIPTION_BILLING_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_build_workbench_view  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_configure_runtime  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_create_dunning_notice  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_create_subscription  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_empty_state  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_generate_invoice  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_receive_event  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_record_usage  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_register_plan  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_register_rule  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_render_workbench  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_renew_subscription  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_runtime_capabilities  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_runtime_smoke  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_set_parameter  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_ui_contract  # noqa: E402,F401
+from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_build_api_contract  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_build_workbench_view  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_classify_product  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_configure_runtime  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_empty_state  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_file_customs_declaration  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_permissions_contract  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_quote_landed_cost  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_receive_event  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_register_rule  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_render_workbench  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_runtime_capabilities  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_runtime_smoke  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_screen_export_control  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_set_parameter  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_ui_contract  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_UI_FRAGMENT_KEYS  # noqa: E402,F401
@@ -5593,6 +5647,47 @@ from .pbcs.returns_reverse_logistics import returns_reverse_logistics_runtime_ca
 from .pbcs.returns_reverse_logistics import returns_reverse_logistics_runtime_smoke  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import returns_reverse_logistics_set_parameter  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import returns_reverse_logistics_ui_contract  # noqa: E402,F401
+from .pbcs.enterprise_pim import ENTERPRISE_PIM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.enterprise_pim import ENTERPRISE_PIM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.enterprise_pim import ENTERPRISE_PIM_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_accept_dependency_schema  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_approve_validation_workflow  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_build_workbench_view  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_configure_runtime  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_create_taxonomy  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_define_attribute  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_empty_state  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_receive_event  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_register_rule  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_render_workbench  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_runtime_capabilities  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_runtime_smoke  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_set_parameter  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_start_validation_workflow  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_ui_contract  # noqa: E402,F401
+from .pbcs.enterprise_pim import enterprise_pim_upsert_localized_content  # noqa: E402,F401
+from .pbcs.dam_core import DAM_CORE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.dam_core import DAM_CORE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.dam_core import DAM_CORE_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_add_metadata_tag  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_attach_rights_policy  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_build_api_contract  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_build_workbench_view  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_complete_rendition  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_configure_runtime  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_empty_state  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_enforce_rights  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_receive_event  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_register_asset  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_register_rule  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_register_schema_extension  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_render_workbench  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_request_rendition  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_runtime_capabilities  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_runtime_smoke  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_set_parameter  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_ui_contract  # noqa: E402,F401
+from .pbcs.dam_core import dam_core_verify_owned_table_boundary  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
