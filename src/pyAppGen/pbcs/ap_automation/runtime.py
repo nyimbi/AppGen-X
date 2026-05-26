@@ -43,6 +43,9 @@ AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS = (
     "financial_mlops_governance",
 )
 AP_AUTOMATION_STANDARD_FEATURE_KEYS = (
+    "configuration_schema",
+    "rule_engine",
+    "parameter_engine",
     "vendor_master",
     "vendor_onboarding",
     "purchase_order_reference",
@@ -77,6 +80,9 @@ def ap_automation_runtime_capabilities() -> dict:
         "capabilities": AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS,
         "standard_features": AP_AUTOMATION_STANDARD_FEATURE_KEYS,
         "operations": (
+            "configure_runtime",
+            "set_parameter",
+            "register_rule",
             "onboard_vendor",
             "issue_purchase_order",
             "record_goods_receipt",
@@ -113,6 +119,31 @@ def ap_automation_runtime_capabilities() -> dict:
 
 def ap_automation_runtime_smoke() -> dict:
     state = ap_automation_empty_state()
+    state = ap_automation_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.ap.events",
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "allowed_payment_rails": ("ach", "wire", "instant_bank_api"),
+            "workbench_limit": 100,
+        },
+    )["state"]
+    state = ap_automation_set_parameter(state, "auto_match_threshold", 0.95)["state"]
+    state = ap_automation_set_parameter(state, "payment_approval_limit", 5000)["state"]
+    state = ap_automation_register_rule(
+        state,
+        {
+            "rule_id": "rule_ap",
+            "tenant": "tenant_alpha",
+            "scope": "invoice_match",
+            "requires_three_way_match": True,
+            "auto_match_threshold": 0.95,
+            "status": "active",
+        },
+    )["state"]
     state = ap_automation_register_schema_extension(
         state,
         "invoice",
@@ -272,6 +303,9 @@ def ap_automation_runtime_smoke() -> dict:
 
 def ap_automation_empty_state() -> dict:
     return {
+        "configuration": {},
+        "parameters": {},
+        "rules": {},
         "events": (),
         "outbox": (),
         "vendors": {},
@@ -284,6 +318,44 @@ def ap_automation_empty_state() -> dict:
         "schema_extensions": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
     }
+
+
+def ap_automation_configure_runtime(state: dict, configuration: dict) -> dict:
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("AP Automation supports only PostgreSQL, MySQL, or MariaDB backends")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
+
+
+def ap_automation_set_parameter(state: dict, key: str, value: int | float | str) -> dict:
+    allowed = {
+        "auto_match_threshold",
+        "payment_approval_limit",
+        "discount_capture_floor",
+        "vendor_risk_threshold",
+        "liquidity_buffer",
+        "workbench_limit",
+    }
+    if key not in allowed:
+        raise ValueError(f"Unsupported AP Automation parameter: {key}")
+    parameters = {**state.get("parameters", {}), key: value}
+    return {"ok": True, "state": {**state, "parameters": parameters}, "parameter": {"key": key, "value": value}}
+
+
+def ap_automation_register_rule(state: dict, rule: dict) -> dict:
+    required = {"rule_id", "tenant", "scope", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required AP rule fields: {missing}")
+    stored = {**rule, "enabled": rule["status"] == "active"}
+    rules = {**state.get("rules", {}), rule["rule_id"]: stored}
+    return {"ok": True, "state": {**state, "rules": rules}, "rule": stored}
 
 
 def ap_automation_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
@@ -474,6 +546,27 @@ def ap_automation_schedule_payments(state: dict, *, tenant: str, liquidity_forec
     next_state = {**state, "payment_pools": {**state["payment_pools"], tenant: pool}}
     next_state = _append_event(next_state, "PaymentScheduled", {"tenant": tenant, "count": len(payments)})
     return {"ok": True, "state": next_state, "pool": pool, "payments": tuple(payments)}
+
+
+def ap_automation_build_workbench_view(state: dict, *, tenant: str) -> dict:
+    vendors = tuple(vendor for vendor in state["vendors"].values() if vendor["tenant"] == tenant)
+    invoices = tuple(invoice for invoice in state["invoices"].values() if invoice["tenant"] == tenant)
+    payments = tuple(payment for payment in state["payments"].values() if payment["tenant"] == tenant)
+    scheduled = tuple(payment for payment in payments if payment["status"] == "scheduled")
+    executed = tuple(payment for payment in payments if payment["status"] == "executed")
+    return {
+        "format": "appgen.ap-automation-workbench-view.v1",
+        "tenant": tenant,
+        "vendor_count": len(vendors),
+        "invoice_count": len(invoices),
+        "open_invoice_total": round(sum(invoice["total"] for invoice in invoices if invoice["status"] != "paid"), 2),
+        "scheduled_payment_count": len(scheduled),
+        "executed_payment_count": len(executed),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "outbox_count": len(state.get("outbox", ())),
+    }
 
 
 def ap_automation_execute_payment(state: dict, payment_id: str, *, rails: tuple[dict, ...]) -> dict:

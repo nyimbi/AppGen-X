@@ -6,7 +6,9 @@ from .runtime import AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import ap_automation_align_contract_terms
 from .runtime import ap_automation_analyze_discount_counterfactual
 from .runtime import ap_automation_build_api_contract
+from .runtime import ap_automation_build_workbench_view
 from .runtime import ap_automation_capture_invoice
+from .runtime import ap_automation_configure_runtime
 from .runtime import ap_automation_detect_fraud_information_shift
 from .runtime import ap_automation_empty_state
 from .runtime import ap_automation_execute_payment
@@ -22,6 +24,7 @@ from .runtime import ap_automation_optimize_algebraic_routing
 from .runtime import ap_automation_optimize_payment_route
 from .runtime import ap_automation_record_goods_receipt
 from .runtime import ap_automation_register_governed_model
+from .runtime import ap_automation_register_rule
 from .runtime import ap_automation_register_schema_extension
 from .runtime import ap_automation_resolve_exception
 from .runtime import ap_automation_rotate_crypto_epoch
@@ -33,10 +36,14 @@ from .runtime import ap_automation_schedule_carbon_aware_settlement
 from .runtime import ap_automation_schedule_payments
 from .runtime import ap_automation_score_vendor_risk
 from .runtime import ap_automation_screen_vendor_network
+from .runtime import ap_automation_set_parameter
 from .runtime import ap_automation_submit_e_invoice
 from .runtime import ap_automation_validate_tax_proof
 from .runtime import ap_automation_verify_formal_invariants
 from .runtime import ap_automation_verify_vendor_identity
+from .ui import AP_AUTOMATION_UI_FRAGMENT_KEYS
+from .ui import ap_automation_render_workbench
+from .ui import ap_automation_ui_contract
 
 PBC_KEY = "ap_automation"
 
@@ -48,4 +55,5 @@ def implementation_contract() -> dict:
         **contract,
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
+        "ui_contract": ap_automation_ui_contract(),
     }
