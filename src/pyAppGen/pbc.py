@@ -2626,10 +2626,32 @@ PBC_CATALOG: dict[str, dict] = {
         "label": "Distributed Order Management",
         "mesh": "cx",
         "description": "Order verification, fraud screening, allocation, and fulfillment orchestration.",
-        "tables": ("sales_order", "order_line", "fulfillment_plan", "fraud_screen"),
-        "apis": ("POST /orders", "POST /allocation", "GET /fulfillment-plans"),
-        "emits": ("OrderVerified", "OrderPriced", "OrderShipped"),
-        "consumes": ("InventoryAllocated", "TaxCalculated", "CustomerUpdated"),
+        "tables": (
+            "sales_order",
+            "order_line",
+            "order_status",
+            "order_promise",
+            "customer_projection",
+            "tax_projection",
+            "fraud_screen",
+            "order_verification",
+            "order_price_component",
+            "inventory_allocation_projection",
+            "payment_authorization_projection",
+            "fulfillment_plan",
+            "fulfillment_plan_line",
+            "fulfillment_node_candidate",
+            "split_shipment",
+            "backorder",
+            "substitution",
+            "shipment_projection",
+            "dom_appgen_outbox_event",
+            "dom_appgen_inbox_event",
+            "dom_dead_letter_event",
+        ),
+        "apis": ("POST /dom/orders", "POST /dom/orders/{id}/verify", "POST /dom/orders/{id}/price", "POST /dom/orders/{id}/allocation", "POST /dom/fulfillment-plans", "POST /dom/shipments", "GET /dom/workbench"),
+        "emits": ("OrderCaptured", "TaxProjectionApplied", "FraudScreened", "OrderVerified", "OrderPriced", "InventoryAllocationProjected", "FulfillmentPlanCreated", "OrderShipped"),
+        "consumes": ("InventoryAllocated", "TaxCalculated", "CustomerUpdated", "PaymentAuthorized", "ShipmentDelivered"),
         "template": "sales",
     },
     "product_catalog_pim": {
@@ -5945,6 +5967,9 @@ from .pbcs.dom import DOM_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.dom import dom_apply_inventory_allocation  # noqa: E402,F401
 from .pbcs.dom import dom_apply_tax_projection  # noqa: E402,F401
 from .pbcs.dom import dom_build_api_contract  # noqa: E402,F401
+from .pbcs.dom import dom_build_release_evidence  # noqa: E402,F401
+from .pbcs.dom import dom_build_schema_contract  # noqa: E402,F401
+from .pbcs.dom import dom_build_service_contract  # noqa: E402,F401
 from .pbcs.dom import dom_build_workbench_view  # noqa: E402,F401
 from .pbcs.dom import dom_capture_order  # noqa: E402,F401
 from .pbcs.dom import dom_configure_runtime  # noqa: E402,F401

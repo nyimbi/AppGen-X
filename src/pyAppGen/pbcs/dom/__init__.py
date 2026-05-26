@@ -11,6 +11,9 @@ from .runtime import DOM_REQUIRED_EVENT_TOPIC
 from .runtime import dom_apply_inventory_allocation
 from .runtime import dom_apply_tax_projection
 from .runtime import dom_build_api_contract
+from .runtime import dom_build_release_evidence
+from .runtime import dom_build_schema_contract
+from .runtime import dom_build_service_contract
 from .runtime import dom_build_workbench_view
 from .runtime import dom_capture_order
 from .runtime import dom_configure_runtime
@@ -42,10 +45,16 @@ def implementation_contract() -> dict:
     return {
         **contract,
         "standard_features": runtime["standard_features"],
-        "advanced_runtime": runtime,
-        "ui_contract": dom_ui_contract(),
-        "api_contract": dom_build_api_contract(),
-        "permissions_contract": dom_permissions_contract(),
         "owned_tables": DOM_OWNED_TABLES,
         "allowed_database_backends": DOM_ALLOWED_DATABASE_BACKENDS,
+        "api_contract": dom_build_api_contract(),
+        "schema_contract": dom_build_schema_contract(),
+        "service_contract": dom_build_service_contract(),
+        "release_evidence_contract": dom_build_release_evidence(),
+        "permissions_contract": dom_permissions_contract(),
+        "required_event_topic": DOM_REQUIRED_EVENT_TOPIC,
+        "consumes": DOM_CONSUMED_EVENT_TYPES,
+        "emits": DOM_EMITTED_EVENT_TYPES,
+        "advanced_runtime": runtime,
+        "ui_contract": dom_ui_contract(),
     }

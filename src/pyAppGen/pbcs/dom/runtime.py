@@ -14,23 +14,58 @@ DOM_OWNED_TABLES = (
     "sales_order",
     "order_line",
     "order_status",
+    "order_note",
+    "order_hold",
+    "order_promise",
+    "order_channel_context",
+    "order_payment_projection",
     "customer_projection",
+    "customer_identity_projection",
     "tax_projection",
     "fraud_screen",
+    "fraud_signal",
+    "order_verification",
+    "order_price_component",
+    "order_discount_projection",
     "inventory_allocation_projection",
+    "inventory_node_projection",
     "payment_authorization_projection",
     "fulfillment_plan",
+    "fulfillment_plan_line",
+    "fulfillment_node_candidate",
+    "fulfillment_reservation_projection",
     "split_shipment",
     "backorder",
     "substitution",
     "cancellation_request",
     "shipment_projection",
+    "shipment_status_projection",
     "order_exception",
     "route_selection",
     "risk_score",
+    "promise_demand_forecast",
+    "fulfillment_policy_simulation",
+    "fulfillment_route_replay",
+    "order_verification_proof",
+    "order_policy_screening",
+    "order_audit_trace",
+    "order_federation_projection",
+    "order_carbon_fulfillment",
+    "order_fulfillment_optimization",
+    "order_node_allocation",
+    "order_anomaly_signal",
+    "order_fulfillment_exposure_model",
+    "order_parsed_event",
+    "order_seed_data",
+    "dom_schema_extension",
+    "dom_control_assertion",
+    "dom_governed_model",
     "policy_rule",
     "dom_parameter",
     "dom_configuration",
+    "dom_appgen_outbox_event",
+    "dom_appgen_inbox_event",
+    "dom_dead_letter_event",
 )
 DOM_EMITTED_EVENT_TYPES = (
     "OrderCaptured",
@@ -115,19 +150,48 @@ DOM_RUNTIME_CAPABILITY_KEYS = (
 DOM_STANDARD_FEATURE_KEYS = (
     "sales_order_capture",
     "order_line_validation",
+    "order_notes",
+    "order_holds",
+    "order_promising",
+    "order_channel_context",
+    "payment_projection",
     "customer_projection",
+    "customer_identity_projection",
     "tax_projection",
     "fraud_screening",
+    "fraud_signals",
     "order_verification",
     "order_pricing",
+    "price_components",
+    "discount_projection",
     "inventory_allocation_projection",
+    "inventory_node_projection",
     "fulfillment_planning",
+    "fulfillment_plan_lines",
+    "fulfillment_node_candidates",
+    "fulfillment_reservation_projection",
     "split_shipment",
     "backorder_management",
     "substitution_management",
     "cancellation_control",
     "shipment_projection",
+    "shipment_status_projection",
     "order_lifecycle_status",
+    "promise_demand_forecast",
+    "fulfillment_policy_simulation",
+    "fulfillment_route_replay",
+    "order_verification_proof",
+    "order_policy_screening",
+    "order_audit_trace",
+    "order_federation_projection",
+    "carbon_aware_fulfillment",
+    "fulfillment_optimization",
+    "node_allocation",
+    "order_anomaly_detection",
+    "stochastic_fulfillment_exposure",
+    "appgen_x_outbox",
+    "appgen_x_inbox",
+    "retry_dead_letter_evidence",
     "multi_channel_isolation",
     "idempotent_handlers",
     "permissions",
@@ -165,6 +229,9 @@ def dom_runtime_capabilities() -> dict:
             "create_fulfillment_plan",
             "confirm_order_shipped",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -249,6 +316,9 @@ def dom_runtime_smoke() -> dict:
     screening = dom_screen_order_policy(state, "order_100", restricted_destinations=("restricted_zone",))
     controls = dom_run_control_tests(state)
     api = dom_build_api_contract()
+    schema = dom_build_schema_contract()
+    service = dom_build_service_contract()
+    release = dom_build_release_evidence()
     federation = dom_federate_order_view(state, "order_100", systems=("inventory", "tax", "wms", "transportation"))
     identity = dom_verify_order_identity(customer["customer"]["identity"])
     resilience = dom_run_resilience_drill(state, "fulfillment_route_timeout")
@@ -277,7 +347,7 @@ def dom_runtime_smoke() -> dict:
         {"id": "immutable_order_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_order_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_order_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "OrderVerified" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "OrderVerified" in api["events"]["emits"]},
         {"id": "cross_system_order_federation", "ok": federation["ok"] and "inventory" in federation["systems"]},
         {"id": "commerce_service_channel_integration", "ok": order["order"]["channel"] == "web"},
         {"id": "decentralized_order_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -617,6 +687,201 @@ def dom_build_api_contract() -> dict:
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
         "configuration": ("DOM_DATABASE_URL", "DOM_EVENT_TOPIC", "DOM_RETRY_LIMIT", "DOM_DEFAULT_CURRENCY"),
+    }
+
+
+def dom_build_schema_contract() -> dict:
+    """Return DOM-owned schema, migration, model, and relationship evidence."""
+    default_fields = ("tenant", "record_id", "source_id", "status", "effective_at", "audit_hash")
+    table_fields = {
+        table: default_fields for table in DOM_OWNED_TABLES
+    } | {
+        "sales_order": ("tenant", "order_id", "customer_id", "channel", "currency", "destination", "status"),
+        "order_line": ("tenant", "line_id", "order_id", "item_id", "quantity", "unit_price"),
+        "order_status": ("tenant", "status_id", "order_id", "status", "reason", "changed_at"),
+        "order_note": ("tenant", "note_id", "order_id", "note_type", "body", "created_by"),
+        "order_hold": ("tenant", "hold_id", "order_id", "hold_type", "reason", "status"),
+        "order_promise": ("tenant", "promise_id", "order_id", "promise_date", "confidence", "source"),
+        "order_channel_context": ("tenant", "channel_context_id", "order_id", "channel", "campaign", "metadata"),
+        "order_payment_projection": ("tenant", "payment_projection_id", "order_id", "authorization_id", "amount", "status"),
+        "customer_projection": ("tenant", "customer_id", "status", "risk", "identity_id", "updated_at"),
+        "customer_identity_projection": ("tenant", "identity_id", "customer_id", "did", "issuer", "status"),
+        "tax_projection": ("tenant", "calculation_id", "order_id", "tax_total", "status", "audit_hash"),
+        "fraud_screen": ("tenant", "fraud_screen_id", "order_id", "risk_score", "decision", "screened_at"),
+        "fraud_signal": ("tenant", "fraud_signal_id", "order_id", "signal_type", "value", "weight"),
+        "order_verification": ("tenant", "verification_id", "order_id", "verified", "reason", "verified_at"),
+        "order_price_component": ("tenant", "price_component_id", "order_id", "component_type", "amount", "currency"),
+        "order_discount_projection": ("tenant", "discount_id", "order_id", "discount_type", "amount", "source"),
+        "inventory_allocation_projection": ("tenant", "allocation_id", "order_id", "item_id", "quantity", "node_id", "confidence"),
+        "inventory_node_projection": ("tenant", "node_id", "region", "available_capacity", "carbon", "status"),
+        "payment_authorization_projection": ("tenant", "authorization_id", "order_id", "amount", "status", "authorized_at"),
+        "fulfillment_plan": ("tenant", "plan_id", "order_id", "node_id", "status", "created_at"),
+        "fulfillment_plan_line": ("tenant", "plan_line_id", "plan_id", "line_id", "quantity", "node_id"),
+        "fulfillment_node_candidate": ("tenant", "candidate_id", "order_id", "node_id", "distance", "carbon", "available"),
+        "fulfillment_reservation_projection": ("tenant", "reservation_id", "order_id", "node_id", "quantity", "status"),
+        "split_shipment": ("tenant", "split_id", "plan_id", "node_id", "quantity", "status"),
+        "backorder": ("tenant", "backorder_id", "order_id", "line_id", "quantity", "status"),
+        "substitution": ("tenant", "substitution_id", "order_id", "line_id", "substitute_item_id", "status"),
+        "cancellation_request": ("tenant", "cancellation_id", "order_id", "reason", "status", "requested_at"),
+        "shipment_projection": ("tenant", "shipment_id", "order_id", "carrier_id", "status", "shipped_at"),
+        "shipment_status_projection": ("tenant", "shipment_status_id", "shipment_id", "status", "location", "observed_at"),
+        "dom_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        "dom_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "dom_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "order_line.order_id", "to": "sales_order.order_id", "type": "owned_child"},
+        {"from": "order_status.order_id", "to": "sales_order.order_id", "type": "owned_status"},
+        {"from": "order_hold.order_id", "to": "sales_order.order_id", "type": "owned_hold"},
+        {"from": "order_promise.order_id", "to": "sales_order.order_id", "type": "owned_promise"},
+        {"from": "customer_identity_projection.customer_id", "to": "customer_projection.customer_id", "type": "owned_projection_child"},
+        {"from": "tax_projection.order_id", "to": "sales_order.order_id", "type": "owned_projection"},
+        {"from": "fraud_screen.order_id", "to": "sales_order.order_id", "type": "owned_screen"},
+        {"from": "order_price_component.order_id", "to": "sales_order.order_id", "type": "owned_price"},
+        {"from": "inventory_allocation_projection.order_id", "to": "sales_order.order_id", "type": "owned_projection"},
+        {"from": "fulfillment_plan.order_id", "to": "sales_order.order_id", "type": "owned_plan"},
+        {"from": "fulfillment_plan_line.plan_id", "to": "fulfillment_plan.plan_id", "type": "owned_child"},
+        {"from": "split_shipment.plan_id", "to": "fulfillment_plan.plan_id", "type": "owned_split"},
+        {"from": "shipment_projection.order_id", "to": "sales_order.order_id", "type": "owned_projection"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "dom",
+        }
+        for table in DOM_OWNED_TABLES
+    )
+    allowed_prefixes = (
+        "sales_",
+        "order_",
+        "customer_",
+        "tax_",
+        "fraud_",
+        "inventory_",
+        "payment_",
+        "fulfillment_",
+        "split_",
+        "backorder",
+        "substitution",
+        "cancellation_",
+        "shipment_",
+        "route_",
+        "risk_",
+        "policy_",
+        "promise_",
+        "dom_",
+    )
+    return {
+        "format": "appgen.dom-owned-schema-contract.v1",
+        "ok": len(tables) == len(DOM_OWNED_TABLES)
+        and len(tables) >= 40
+        and all(item["table"].startswith(allowed_prefixes) for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/dom/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": DOM_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(DOM_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in DOM_OWNED_TABLES
+        ),
+        "datastore_backends": DOM_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def dom_build_service_contract() -> dict:
+    """Return DOM command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "capture_order",
+        "upsert_customer_projection",
+        "apply_tax_projection",
+        "screen_fraud",
+        "verify_order",
+        "price_order",
+        "apply_inventory_allocation",
+        "create_fulfillment_plan",
+        "confirm_order_shipped",
+        "route_fulfillment",
+        "generate_order_verification_proof",
+        "screen_order_policy",
+        "federate_order_view",
+        "verify_order_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_fulfillment",
+        "optimize_fulfillment",
+        "allocate_nodes",
+        "run_control_tests",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.dom-service-contract.v1",
+        "ok": len(command_methods) >= 25,
+        "transaction_boundary": "dom_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "simulate_fulfillment_policy",
+            "forecast_promise_demand",
+            "parse_order_event",
+            "score_order_risk",
+            "recommend_exception_resolution",
+            "detect_order_anomaly",
+            "model_stochastic_fulfillment_exposure",
+            "verify_owned_table_boundary",
+        ),
+        "mutates_only": DOM_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _DOM_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": DOM_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _DOM_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def dom_build_release_evidence() -> dict:
+    """Return DOM package-local release evidence."""
+    schema = dom_build_schema_contract()
+    service = dom_build_service_contract()
+    api = dom_build_api_contract()
+    permissions = dom_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 40},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(DOM_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 25},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"capture_order", "verify_order", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == DOM_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.dom-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 

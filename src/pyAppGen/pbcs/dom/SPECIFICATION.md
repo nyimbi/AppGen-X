@@ -12,12 +12,28 @@ lifecycle visibility. The implementation is owned under
 - **PBC key:** `dom`
 - **Mesh:** `cx`
 - **Owned tables:** `sales_order`, `order_line`, `order_status`,
-  `customer_projection`, `tax_projection`, `fraud_screen`,
-  `inventory_allocation_projection`, `payment_authorization_projection`,
-  `fulfillment_plan`, `split_shipment`, `backorder`, `substitution`,
-  `cancellation_request`, `shipment_projection`, `order_exception`,
-  `route_selection`, `risk_score`, `policy_rule`, `dom_parameter`,
-  `dom_configuration`
+  `order_note`, `order_hold`, `order_promise`, `order_channel_context`,
+  `order_payment_projection`, `customer_projection`,
+  `customer_identity_projection`, `tax_projection`, `fraud_screen`,
+  `fraud_signal`, `order_verification`, `order_price_component`,
+  `order_discount_projection`, `inventory_allocation_projection`,
+  `inventory_node_projection`, `payment_authorization_projection`,
+  `fulfillment_plan`, `fulfillment_plan_line`,
+  `fulfillment_node_candidate`, `fulfillment_reservation_projection`,
+  `split_shipment`, `backorder`, `substitution`,
+  `cancellation_request`, `shipment_projection`,
+  `shipment_status_projection`, `order_exception`, `route_selection`,
+  `risk_score`, `promise_demand_forecast`,
+  `fulfillment_policy_simulation`, `fulfillment_route_replay`,
+  `order_verification_proof`, `order_policy_screening`,
+  `order_audit_trace`, `order_federation_projection`,
+  `order_carbon_fulfillment`, `order_fulfillment_optimization`,
+  `order_node_allocation`, `order_anomaly_signal`,
+  `order_fulfillment_exposure_model`, `order_parsed_event`,
+  `order_seed_data`, `dom_schema_extension`, `dom_control_assertion`,
+  `dom_governed_model`, `policy_rule`, `dom_parameter`,
+  `dom_configuration`, `dom_appgen_outbox_event`, `dom_appgen_inbox_event`,
+  and `dom_dead_letter_event`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
 - **Event contract:** AppGen-X outbox/inbox event contract only
 - **Fixed event topic:** `appgen.dom.events`
@@ -26,8 +42,12 @@ lifecycle visibility. The implementation is owned under
   `FulfillmentPlanCreated`, `OrderShipped`
 - **Consumes:** `InventoryAllocated`, `TaxCalculated`, `CustomerUpdated`,
   `PaymentAuthorized`, `ShipmentDelivered`
-- **Primary APIs:** `POST /orders`, `POST /allocation`,
-  `GET /fulfillment-plans`
+- **Primary APIs:** `POST /dom/orders`,
+  `POST /dom/orders/{id}/tax-projection`,
+  `POST /dom/orders/{id}/fraud-screen`, `POST /dom/orders/{id}/verify`,
+  `POST /dom/orders/{id}/price`, `POST /dom/orders/{id}/allocation`,
+  `POST /dom/fulfillment-plans`, `POST /dom/shipments`,
+  `POST /dom/events/inbox`, and `GET /dom/workbench`
 - **UI artifacts:** order orchestration workbench, verification queue,
   fulfillment-plan board, fraud review queue, exception console, policy editor
 
@@ -82,31 +102,45 @@ must be modeled as consumed events, read APIs, or local projections.
 
 1. Sales order capture with customer, channel, currency, lines, requested
    service level, destination, and source references.
-2. Order validation for required fields, supported channel, active customer,
+2. Order notes, holds, promise dates, channel context, and payment projection
+   evidence.
+3. Order validation for required fields, supported channel, active customer,
    tax readiness, payment hold, and line integrity.
-3. Fraud screening with score, reason codes, threshold policy, review decision,
+4. Fraud screening with signals, score, reason codes, threshold policy, review
+   decision,
    and explainable evidence.
-4. Customer projection handling from `CustomerUpdated`.
-5. Tax projection handling from `TaxCalculated`.
-6. Price and charge summary with `OrderPriced` event emission.
-7. Inventory allocation handoff and consumed allocation projection from
+5. Customer and customer identity projection handling from `CustomerUpdated`.
+6. Tax projection handling from `TaxCalculated`.
+7. Price component, discount projection, and charge summary with `OrderPriced`
+   event emission.
+8. Inventory allocation and inventory node handoff projection from
    `InventoryAllocated`.
-8. Fulfillment plan creation with node choice, split shipment, source priority,
-   promise date, and route references.
-9. Backorder, partial fulfillment, cancellation, substitution, and exception
+9. Fulfillment plan creation with plan lines, node candidates, reservations,
+   split shipment, source priority, promise date, and route references.
+10. Backorder, partial fulfillment, cancellation, substitution, and exception
    handling.
-10. Shipment projection and `OrderShipped` event emission.
-11. Order lifecycle status transitions and idempotent event history.
-12. Multi-channel, multi-tenant, and multi-entity order isolation.
-13. Order orchestration workbench with open orders, fraud reviews, allocation
+11. Shipment and shipment-status projection and `OrderShipped` event emission.
+12. Order lifecycle status transitions and idempotent event history.
+13. Promise-demand forecasting, fulfillment simulation, route replay, and
+    order policy screening.
+14. Order verification proof, audit trail, federation projection, carbon-aware
+    fulfillment, optimization, node allocation, anomaly detection, and
+    stochastic fulfillment exposure.
+15. AppGen-X outbox, inbox, retry, and dead-letter tables.
+16. Multi-channel, multi-tenant, and multi-entity order isolation.
+17. Order orchestration workbench with open orders, fraud reviews, allocation
    gaps, fulfillment plans, exceptions, and shipped orders.
-14. Retry, dead-letter, and idempotency evidence for consumed customer, tax, and
+18. Retry, dead-letter, and idempotency evidence for consumed customer, tax, and
    inventory events.
-15. Permissions and ABAC descriptors for create, verify, price, allocate, plan,
+19. Permissions and ABAC descriptors for create, verify, price, allocate, plan,
    cancel, ship, configure, and audit operations.
-16. Configuration schema and seed data for channels, statuses, service levels,
+20. Configuration schema and seed data for channels, statuses, service levels,
    fulfillment policies, and default parameters.
-17. Release-audit evidence for package ownership, manifests, schema, migrations,
+21. Schema-contract evidence for every owned table, including generated
+    migration paths and model descriptors.
+22. Service-contract evidence proving commands mutate only DOM-owned tables and
+    external state enters through declared APIs, events, or projections.
+23. Release-audit evidence for package ownership, manifests, schema, migrations,
    models, services, routes, events, handlers, UI, permissions, configuration,
    tests, registration metadata, and generation smoke.
 
@@ -188,6 +222,14 @@ The executable contract has the following package-local functions:
 - `dom_build_api_contract` returns descriptor-level routes rather than opaque
   strings. Each route declares its command/query, owned tables, emitted or
   consumed events, required permission, and idempotency key.
+- `dom_build_schema_contract` returns generated schema evidence for every
+  owned table, including fields, relationships, generated migration paths,
+  generated model descriptors, backend allowlists, and no shared-table access.
+- `dom_build_service_contract` returns service command/query evidence,
+  transaction boundary, mutates-only table set, declared API dependencies,
+  consumed events, package-local projections, and no shared-table dependencies.
+- `dom_build_release_evidence` combines schema, service, API, permission,
+  backend, and shared-table checks into a blocking release gate.
 - `dom_permissions_contract` returns package-local permissions plus the
   action-to-permission map used by generated routes and UI fragments.
 - `dom_verify_owned_table_boundary` proves that references are either owned
