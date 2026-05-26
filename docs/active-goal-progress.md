@@ -817,6 +817,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   modules, binding module tests, designer family modules, and designer family
   tests are loaded and replayed as required evidence for binding runtime
   validation.
+- `2eac7a8` normalizes `ar_credit` into the complete package surface used by
+  implemented PBC slices: package-local `SPECIFICATION.md`, UI/workbench
+  contract, executable configuration/rule/parameter operations, central PBC
+  exports, focused AR tests, and release-audit evidence. Verification passed
+  for AR focused tests, the 60-test PBC regression slice, central enterprise
+  composition selection, implemented-capability audit, implementation release
+  audit, `pbc_release_audit()`, all-46-PBC generation smoke audit, and the
+  restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
