@@ -11308,6 +11308,14 @@ def run_package_operation(package_ids=()):
         "update": designer.component_package_update_operation(package_id),
         "rollback": designer.component_package_uninstall_operation(package_id),
     }}[kind]
+    operation_steps = {{
+        "install": ("read_package_manifest", "validate_metadata", "resolve_dependency_graph", "prepare_lockfile_entry"),
+        "preview": ("validate_load_request", "create_sandbox_loader", "instantiate_preview_adapter", "run_adapter_smoke", "unload_preview"),
+        "registry": ("load_adapter", "register_palette_entries", "register_inspector_editors", "register_binding_adapters", "commit_project_manifest", "refresh_palette"),
+        "lifecycle": ("trust_validation", "install", "update", "uninstall", "verify_registry_clean"),
+        "update": ("snapshot_lockfile", "download_to_sandbox", "run_adapter_smoke", "refresh_palette", "commit_lockfile"),
+        "rollback": ("find_palette_references", "disable_adapters", "remove_palette_entries", "restore_lockfile", "record_audit", "restore_registry"),
+    }}[kind]
     operation_ok = operation["ok"] if isinstance(operation, dict) and "ok" in operation else bool(operation)
     side_effects = operation.get("side_effects", ()) if isinstance(operation, dict) else ()
     return {{
@@ -11315,6 +11323,7 @@ def run_package_operation(package_ids=()):
         "module": MODULE,
         "kind": kind,
         "ok": operation_ok and not side_effects and replay["ok"],
+        "operation_steps": operation_steps,
         "operation": operation,
         "replay": replay,
         "side_effects": (),
@@ -18343,6 +18352,7 @@ def package_manager_module_runtime_replay_matrix(package_ids=()):
             {
                 "module": item["module"],
                 "kind": operation.get("kind", smoke.get("kind", "")) if isinstance(operation, dict) else "",
+                "operation_steps": tuple(operation.get("operation_steps", ())) if isinstance(operation, dict) else (),
                 "operation_name": operation_by_kind.get(operation.get("kind", smoke.get("kind", "")), "")
                 if isinstance(operation, dict)
                 else "",
@@ -18367,6 +18377,29 @@ def package_manager_module_runtime_replay_matrix(package_ids=()):
         "versioned_update",
         "uninstall_cleanup",
     }
+    required_operation_steps = {
+        "read_package_manifest",
+        "validate_metadata",
+        "resolve_dependency_graph",
+        "validate_load_request",
+        "create_sandbox_loader",
+        "instantiate_preview_adapter",
+        "register_palette_entries",
+        "register_inspector_editors",
+        "register_binding_adapters",
+        "commit_project_manifest",
+        "trust_validation",
+        "install",
+        "update",
+        "uninstall",
+        "snapshot_lockfile",
+        "download_to_sandbox",
+        "find_palette_references",
+        "disable_adapters",
+        "remove_palette_entries",
+        "restore_registry",
+        "verify_registry_clean",
+    }
     checks = (
         {
             "id": "generated_package_manager_modules_replay",
@@ -18377,6 +18410,12 @@ def package_manager_module_runtime_replay_matrix(package_ids=()):
             "id": "generated_package_manager_operations_replay",
             "ok": required_operations <= {item["operation_name"] for item in replays if item["ok"]},
             "evidence": tuple(sorted(item["operation_name"] for item in replays if item["operation_name"])),
+        },
+        {
+            "id": "generated_package_manager_operation_step_coverage",
+            "ok": required_operation_steps
+            <= {step for item in replays if item["ok"] for step in item["operation_steps"]},
+            "evidence": tuple(sorted({step for item in replays for step in item["operation_steps"]})),
         },
         {
             "id": "generated_package_manager_replays_side_effect_free",

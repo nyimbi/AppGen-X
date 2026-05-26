@@ -16446,6 +16446,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert package_manager_module_runtime_matrix["ok"] is True
     assert len(package_manager_module_runtime_matrix["module_replays"]) == 6
+    assert {
+        "generated_package_manager_modules_replay",
+        "generated_package_manager_operations_replay",
+        "generated_package_manager_operation_step_coverage",
+        "generated_package_manager_replays_side_effect_free",
+    } <= {check["id"] for check in package_manager_module_runtime_matrix["checks"] if check["ok"]}
     assert {item["module"] for item in package_manager_module_files["modules"]} == {
         "package_install_module",
         "package_preview_module",
@@ -16478,6 +16484,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= set(
         package_manager_replay["operation_names"]
     )
+    assert {
+        "read_package_manifest",
+        "validate_load_request",
+        "register_palette_entries",
+        "trust_validation",
+        "download_to_sandbox",
+        "restore_registry",
+    } <= {
+        step
+        for item in package_manager_module_runtime_matrix["module_replays"]
+        for step in item["operation_steps"]
+    }
+    assert all(item["operation_steps"] for item in package_manager_module_runtime_matrix["module_replays"])
     assert package_manager_replay["side_effects"] == ()
     runtime_operations_file = output_dir / "runtime_operations.py"
     assert runtime_operations_file.exists()

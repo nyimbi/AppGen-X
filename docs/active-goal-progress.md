@@ -1092,6 +1092,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   designer-family operation-step coverage, or side-effect-free replay evidence
   is missing. Verification passed for py-compile, staged diff hygiene,
   generated app regression, and the source audit gate.
+- Current package-manager runtime pass adds operation-step evidence to every
+  generated design-time package module replay. The package-manager replay
+  matrix now fails unless install, preview, registry, lifecycle, update, and
+  rollback modules prove concrete side-effect-free steps instead of only
+  proving module names and operation names.
 - Current cleanup pass archives inactive tracked workspace folders into
   `archive/tracked-unused-2026-05-26/` with a manifest. The archived folders
   were excluded from package builds and had no active source, test, README, or
