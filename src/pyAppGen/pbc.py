@@ -150,6 +150,53 @@ PBC_ADVANCED_RUNTIME_REQUIRED_OPERATION_GROUPS = (
     ("build_service_contract",),
     ("build_release_evidence",),
 )
+PBC_LIFECYCLE_DOCUMENTATION_FILES = (
+    "README.md",
+    "docs/pbc-specification.md",
+    "docs/composable-pbc-apps.md",
+    "docs/kafka-alternatives.md",
+)
+PBC_LIFECYCLE_DOCUMENTATION_TOPICS = (
+    "build",
+    "test",
+    "package",
+    "register",
+    "compose",
+)
+PBC_LIFECYCLE_DOCUMENTATION_APIS = (
+    "pbc_manifest_schema",
+    "validate_pbc_manifest",
+    "register_pbc_manifest",
+    "pbc_package_contract",
+    "load_pbc_package",
+    "discover_pbc_packages",
+    "pbc_package_index_schema",
+    "discover_pbc_package_index",
+    "pbc_selection_from_prompt",
+    "pbc_composition_plan",
+    "pbc_composition_dsl",
+    "pbc_generation_smoke_audit",
+    "pbc_release_audit",
+)
+PBC_LIFECYCLE_DOCUMENTATION_ARTIFACTS = (
+    "SPECIFICATION.md",
+    "manifest.py",
+    "models.py",
+    "services.py",
+    "routes.py",
+    "events.py",
+    "handlers.py",
+    "schema_contract.py",
+    "service_contract.py",
+    "release_evidence.py",
+    "ui.py",
+    "permissions.py",
+    "config.py",
+    "seed_data.py",
+    "migrations/001_initial.sql",
+    "tests/test_contract.py",
+    "RELEASE_EVIDENCE.md",
+)
 PBC_ADVANCED_DOMAIN_REQUIRED_AREAS = (
     "foundational_architecture",
     "computational_analytics",
@@ -4112,6 +4159,112 @@ def pbc_package_loading_smoke_audit() -> dict:
     }
 
 
+def pbc_lifecycle_documentation_audit() -> dict:
+    """Verify PBC docs explain build, test, package, registration, and composition flows."""
+    repo_root = Path(__file__).resolve().parents[2]
+    documents = []
+    for relative in PBC_LIFECYCLE_DOCUMENTATION_FILES:
+        path = repo_root / relative
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            documents.append(
+                {
+                    "path": relative,
+                    "ok": False,
+                    "error": str(exc),
+                    "text": "",
+                }
+            )
+        else:
+            documents.append(
+                {
+                    "path": relative,
+                    "ok": True,
+                    "word_count": len(re.findall(r"\b[\w-]+\b", text)),
+                    "text": text,
+                }
+            )
+    combined = "\n".join(document["text"] for document in documents).lower()
+    missing_topics = tuple(
+        topic for topic in PBC_LIFECYCLE_DOCUMENTATION_TOPICS if topic not in combined
+    )
+    missing_apis = tuple(
+        api for api in PBC_LIFECYCLE_DOCUMENTATION_APIS if api.lower() not in combined
+    )
+    missing_artifacts = tuple(
+        artifact for artifact in PBC_LIFECYCLE_DOCUMENTATION_ARTIFACTS if artifact.lower() not in combined
+    )
+    required_policy_terms = (
+        "postgresql",
+        "mysql",
+        "mariadb",
+        "appgen-x event",
+        "stream-engine",
+        "side-effect-free",
+        "owned datastore",
+        "dead-letter",
+    )
+    missing_policy_terms = tuple(term for term in required_policy_terms if term not in combined)
+    checks = (
+        {
+            "id": "documents_present",
+            "ok": all(document["ok"] for document in documents),
+            "documents": tuple(
+                {
+                    "path": document["path"],
+                    "ok": document["ok"],
+                    "word_count": document.get("word_count", 0),
+                    "error": document.get("error"),
+                }
+                for document in documents
+            ),
+        },
+        {
+            "id": "lifecycle_topics",
+            "ok": not missing_topics,
+            "missing": missing_topics,
+            "required": PBC_LIFECYCLE_DOCUMENTATION_TOPICS,
+        },
+        {
+            "id": "package_and_composition_apis",
+            "ok": not missing_apis,
+            "missing": missing_apis,
+            "required": PBC_LIFECYCLE_DOCUMENTATION_APIS,
+        },
+        {
+            "id": "generated_artifacts",
+            "ok": not missing_artifacts,
+            "missing": missing_artifacts,
+            "required": PBC_LIFECYCLE_DOCUMENTATION_ARTIFACTS,
+        },
+        {
+            "id": "policy_constraints",
+            "ok": not missing_policy_terms,
+            "missing": missing_policy_terms,
+            "required": required_policy_terms,
+        },
+    )
+    return {
+        "format": "appgen.pbc-lifecycle-documentation-audit.v1",
+        "ok": all(check["ok"] for check in checks),
+        "documents": tuple(
+            {
+                "path": document["path"],
+                "ok": document["ok"],
+                "word_count": document.get("word_count", 0),
+                "error": document.get("error"),
+            }
+            for document in documents
+        ),
+        "required_topics": PBC_LIFECYCLE_DOCUMENTATION_TOPICS,
+        "required_apis": PBC_LIFECYCLE_DOCUMENTATION_APIS,
+        "required_artifacts": PBC_LIFECYCLE_DOCUMENTATION_ARTIFACTS,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def _pbc_source_package_contract(key: str) -> dict:
     try:
         module = importlib.import_module(f"pyAppGen.pbcs.{key}")
@@ -5270,6 +5423,7 @@ def pbc_release_audit() -> dict:
         generated_imports=("faust_streaming",),
     )
     package_loading = pbc_package_loading_smoke_audit()
+    lifecycle_docs = pbc_lifecycle_documentation_audit()
     specification_audit = pbc_specification_release_audit()
     implementation_audit = pbc_implementation_release_audit()
     nl_selection = pbc_selection_from_prompt(
@@ -5335,8 +5489,9 @@ def pbc_release_audit() -> dict:
         },
         {
             "id": "pbc_package_loader",
-            "ok": package_loading["ok"],
+            "ok": package_loading["ok"] and lifecycle_docs["ok"],
             "checks": package_loading["checks"],
+            "lifecycle_docs": lifecycle_docs,
         },
         {
             "id": "open_source_datastore_backends",
@@ -5426,6 +5581,7 @@ def pbc_release_audit() -> dict:
         "manifest_schema": pbc_manifest_schema(),
         "example_registration": register_pbc_manifest(example_pbc_manifest()),
         "package_loading": package_loading,
+        "lifecycle_documentation": lifecycle_docs,
         "specification_audit": specification_audit,
         "implementation_audit": implementation_audit,
         "sample_composition": composition,

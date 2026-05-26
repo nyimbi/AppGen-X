@@ -52,6 +52,9 @@ my_pbc/
   permissions.py
   migrations/
     001_initial.sql
+  schema_contract.py
+  service_contract.py
+  release_evidence.py
   seed/
     sample_data.json
   tests/
@@ -269,6 +272,9 @@ app/
       routes.py
       events.py
       handlers.py
+      schema_contract.py
+      service_contract.py
+      release_evidence.py
       ui.py
       permissions.py
       config.py
@@ -292,6 +298,13 @@ before writing files, and `pbc_implementation_release_audit()` to verify all
 built-in PBCs have the required directory artifacts, ownership boundaries,
 service/API/event surfaces, idempotent handlers, retry/dead-letter evidence,
 and self-registration metadata.
+
+Use `pbc_generation_smoke_audit()` after composition changes to generate an
+application, compile the generated PBC packages, load `app/pbc_runtime.py`, and
+execute each generated package's contract tests. The package release audit runs
+this smoke for every built-in PBC, so the generated `schema_contract.py`,
+`service_contract.py`, and `release_evidence.py` files must stay valid for each
+PBC directory.
 
 ## Domain Depth Contract
 
