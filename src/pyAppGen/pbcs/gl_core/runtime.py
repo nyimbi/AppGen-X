@@ -186,6 +186,7 @@ def gl_core_runtime_capabilities() -> dict:
             "build_schema_contract",
             "build_service_contract",
             "build_release_evidence",
+            "build_workbench_view",
             "permissions_contract",
             "verify_owned_table_boundary",
             "query_temporal_ledger",

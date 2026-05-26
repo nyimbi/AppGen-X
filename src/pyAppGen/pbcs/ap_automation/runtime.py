@@ -211,6 +211,7 @@ def ap_automation_runtime_capabilities() -> dict:
             "build_schema_contract",
             "build_service_contract",
             "build_release_evidence",
+            "build_workbench_view",
             "permissions_contract",
             "verify_owned_table_boundary",
             "federate_cross_border_payment",

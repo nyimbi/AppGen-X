@@ -140,6 +140,16 @@ PBC_TABLE_STAKES_REQUIRED_EVIDENCE = (
     "parameter_engine",
     "seed_data",
 )
+PBC_ADVANCED_RUNTIME_REQUIRED_OPERATION_GROUPS = (
+    ("configure_runtime",),
+    ("set_parameter",),
+    ("register_rule",),
+    ("receive_event", "handle_event", "ingest_event"),
+    ("build_workbench_view",),
+    ("build_schema_contract",),
+    ("build_service_contract",),
+    ("build_release_evidence",),
+)
 PBC_ADVANCED_DOMAIN_REQUIRED_AREAS = (
     "foundational_architecture",
     "computational_analytics",
@@ -4617,6 +4627,65 @@ def _pbc_table_stakes_evidence(contract: dict) -> dict:
     }
 
 
+def _pbc_advanced_runtime_evidence(contract: dict, *, minimum_capabilities: int = 1) -> dict:
+    runtime = contract.get("advanced_runtime", {})
+    smoke = runtime.get("smoke", {})
+    operations = tuple(runtime.get("operations", ()))
+    operation_set = set(operations)
+    capabilities = tuple(runtime.get("capabilities", ()))
+    smoke_checks = tuple(smoke.get("checks", ()))
+    missing_operation_groups = tuple(
+        group
+        for group in PBC_ADVANCED_RUNTIME_REQUIRED_OPERATION_GROUPS
+        if not any(operation in operation_set for operation in group)
+    )
+    checks = (
+        {
+            "id": "runtime_identity",
+            "ok": runtime.get("ok") is True
+            and runtime.get("pbc") == contract["pbc"]
+            and runtime.get("implementation_directory") == f"src/pyAppGen/pbcs/{contract['pbc']}",
+        },
+        {
+            "id": "advanced_capability_depth",
+            "ok": len(capabilities) >= minimum_capabilities
+            and len(set(capabilities)) == len(capabilities),
+            "capability_count": len(capabilities),
+            "minimum_capabilities": minimum_capabilities,
+        },
+        {
+            "id": "advanced_operation_surface",
+            "ok": len(operations) >= len(PBC_ADVANCED_RUNTIME_REQUIRED_OPERATION_GROUPS)
+            and not missing_operation_groups,
+            "operation_count": len(operations),
+            "missing_operation_groups": missing_operation_groups,
+        },
+        {
+            "id": "advanced_smoke_execution",
+            "ok": smoke.get("ok") is True
+            and bool(smoke_checks)
+            and all(bool(check.get("ok")) for check in smoke_checks)
+            and not tuple(smoke.get("blocking_gaps", ())),
+            "smoke_check_count": len(smoke_checks),
+        },
+        {
+            "id": "runtime_schema_service_release_linkage",
+            "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"}
+            <= operation_set,
+        },
+    )
+    return {
+        "format": "appgen.pbc-advanced-runtime-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "pbc": contract["pbc"],
+        "required_operation_groups": PBC_ADVANCED_RUNTIME_REQUIRED_OPERATION_GROUPS,
+        "operations": operations,
+        "capabilities": capabilities,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] | None = None) -> dict:
     """Verify every requested PBC has concrete generated implementation evidence."""
     contracts = pbc_implementation_contracts(selected_pbcs)
@@ -4642,6 +4711,7 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
         }
         specification = pbc_specification_contract(contract["pbc"])
         table_stakes = _pbc_table_stakes_evidence(contract)
+        advanced_runtime = _pbc_advanced_runtime_evidence(contract)
         source_package = contract["source_package"]
         source_schema = source_package.get("schema_contract", {})
         source_service = source_package.get("service_contract", {})
@@ -4734,13 +4804,10 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                 {
                     "id": f"{contract['pbc']}:advanced_runtime",
                     "ok": (
-                        not contract["advanced_runtime"]
-                        or (
-                            contract["advanced_runtime"]["ok"]
-                            and contract["advanced_runtime"]["implementation_directory"]
-                            == f"src/pyAppGen/pbcs/{contract['pbc']}"
-                        )
+                        contract["advanced_runtime"]
+                        and advanced_runtime["ok"]
                     ),
+                    "advanced_runtime": advanced_runtime,
                 },
                 {
                     "id": f"{contract['pbc']}:package_metadata",
@@ -4826,6 +4893,10 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         table_stakes = _pbc_table_stakes_evidence(contract)
         standard_features = tuple(runtime.get("standard_features") or source.get("standard_features") or ())
         advanced_capabilities = tuple(runtime.get("capabilities", ()))
+        advanced_runtime = _pbc_advanced_runtime_evidence(
+            contract,
+            minimum_capabilities=minimum_advanced_capabilities.get(key, 1),
+        )
         checks.extend(
             (
                 {
@@ -4842,11 +4913,9 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
                 },
                 {
                     "id": f"{key}:advanced_runtime_complete",
-                    "ok": runtime.get("ok") is True
-                    and len(advanced_capabilities) >= minimum_advanced_capabilities.get(key, 1)
-                    and len(set(advanced_capabilities)) == len(advanced_capabilities)
-                    and not runtime.get("smoke", {}).get("blocking_gaps"),
+                    "ok": advanced_runtime["ok"],
                     "advanced_capability_count": len(advanced_capabilities),
+                    "advanced_runtime": advanced_runtime,
                 },
                 {
                     "id": f"{key}:table_stakes_evidence",

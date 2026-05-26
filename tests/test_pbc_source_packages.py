@@ -47,6 +47,11 @@ def test_release_audit_requires_builtin_pbc_source_packages():
         if check["id"].endswith(":table_stakes_evidence"):
             assert check["ok"] is True
             assert not check["table_stakes"]["blocking_gaps"]
+        if check["id"].endswith(":advanced_runtime"):
+            assert check["ok"] is True
+            assert not check["advanced_runtime"]["blocking_gaps"]
+            assert check["advanced_runtime"]["operations"]
+            assert check["advanced_runtime"]["capabilities"]
 
 
 def test_every_builtin_pbc_has_comprehensive_package_specification():
