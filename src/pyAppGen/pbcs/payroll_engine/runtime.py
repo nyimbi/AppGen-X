@@ -8,6 +8,51 @@ import math
 import re
 
 
+PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC = "appgen.payroll.events"
+PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+PAYROLL_ENGINE_OWNED_TABLES = (
+    "payroll_calendar",
+    "payroll_run",
+    "worker_projection",
+    "labor_hours",
+    "payslip",
+    "deduction",
+    "benefit_allocation",
+    "payroll_filing",
+    "payroll_rule",
+    "payroll_parameter",
+    "payroll_configuration",
+)
+PAYROLL_ENGINE_CONSUMED_EVENT_TYPES = ("LaborHoursApproved", "TaxCalculated")
+PAYROLL_ENGINE_EMITTED_EVENT_TYPES = ("PayrollPosted", "PayrollFilingPrepared")
+_PAYROLL_ENGINE_RUNTIME_TABLES = (
+    "payroll_engine_appgen_outbox_event",
+    "payroll_engine_appgen_inbox_event",
+    "payroll_engine_dead_letter_event",
+)
+_PAYROLL_ENGINE_ALLOWED_DEPENDENCIES = (
+    "personnel_identity_projection",
+    "time_labor_projection",
+    "tax_wage_base_projection",
+    "treasury_payment_batch",
+    "ledger_journal_request",
+    "audit_ledger_projection",
+    "GET /workers",
+    "GET /labor-hours",
+    "GET /tax-rates",
+    "POST /payment-batches",
+    "POST /journal-requests",
+)
+_PAYROLL_ENGINE_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
 PAYROLL_ENGINE_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_payroll_lifecycle",
     "graph_relational_compensation_topology",
@@ -79,12 +124,15 @@ def payroll_engine_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "payroll_engine",
         "implementation_directory": "src/pyAppGen/pbcs/payroll_engine",
+        "owned_tables": PAYROLL_ENGINE_OWNED_TABLES,
         "capabilities": PAYROLL_ENGINE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": PAYROLL_ENGINE_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "upsert_worker_projection",
             "create_payroll_run",
             "ingest_labor_hours",
@@ -93,7 +141,10 @@ def payroll_engine_runtime_capabilities() -> dict:
             "allocate_benefit",
             "post_payroll_run",
             "prepare_payroll_filing",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -105,7 +156,7 @@ def payroll_engine_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.payroll.events",
+            "event_topic": PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "allowed_countries": ("US", "CA"),
@@ -239,8 +290,13 @@ def payroll_engine_empty_state() -> dict:
     return {
         "events": (),
         "outbox": (),
+        "inbox": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
         "workers": {},
         "labor_hours": {},
+        "tax_projections": {},
         "payroll_runs": {},
         "payslips": {},
         "deductions": {},
@@ -255,16 +311,22 @@ def payroll_engine_empty_state() -> dict:
 
 
 def payroll_engine_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    forbidden = tuple(sorted(field for field in _PAYROLL_ENGINE_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Payroll Engine uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    allowed_databases = set(PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS)
     if configuration.get("database_backend") not in allowed_databases:
         raise ValueError("Payroll Engine supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Payroll Engine requires an AppGen-X event topic")
+    if configuration.get("event_topic") != PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Payroll Engine requires AppGen-X event topic {PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": PAYROLL_ENGINE_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -300,10 +362,50 @@ def payroll_engine_register_rule(state: dict, rule: dict) -> dict:
 
 
 def payroll_engine_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in PAYROLL_ENGINE_OWNED_TABLES:
+        raise ValueError(f"Payroll Engine schema extensions must target owned tables: {PAYROLL_ENGINE_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    extensions = {**state["schema_extensions"], table: {**state["schema_extensions"].get(table, {}), **dict(fields)}}
+    return {"ok": True, "state": {**state, "schema_extensions": extensions}, "schema_extension": {"table": table, "fields": dict(fields)}}
+
+
+def payroll_engine_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    if key in state["handled_events"] and state["handled_events"][key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
+    attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {"event_id": event_id, "event_type": event_type, "tenant": payload.get("tenant"), "attempts": attempts, "idempotency_key": key}
+    next_state = {**state, "inbox": (*state["inbox"], inbox_entry)}
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in PAYROLL_ENGINE_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}, "retry_evidence": (*next_state["retry_evidence"], evidence)}
+        if status == "dead_letter":
+            dead_letter = {**inbox_entry, "reason": "unsupported_or_failed_payroll_event"}
+            next_state = {**next_state, "dead_letter": (*next_state["dead_letter"], dead_letter)}
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "LaborHoursApproved":
+        labor = {
+            "labor_event_id": payload.get("labor_event_id", event_id),
+            "tenant": payload["tenant"],
+            "employee_id": payload["employee_id"],
+            "period": payload["period"],
+            "approved_hours": payload["approved_hours"],
+            "overtime_hours": payload.get("overtime_hours", 0),
+        }
+        next_state = {**next_state, "labor_hours": {**next_state["labor_hours"], f"{labor['employee_id']}:{labor['period']}": labor}}
+    elif event_type == "TaxCalculated":
+        next_state = {**next_state, "tax_projections": {**next_state["tax_projections"], payload["employee_id"]: payload}}
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}}
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def payroll_engine_upsert_worker_projection(state: dict, worker: dict) -> dict:
@@ -453,7 +555,78 @@ def payroll_engine_run_control_tests(state: dict) -> dict:
 
 
 def payroll_engine_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /payroll-runs", "GET /payslips", "POST /payroll-filings", "POST /payroll-rules", "POST /payroll-parameters", "POST /payroll-configuration"), "events": {"emits": ("PayrollPosted", "PayrollFilingPrepared"), "consumes": ("LaborHoursApproved", "TaxCalculated")}, "permissions": ("payroll_engine.read", "payroll_engine.run", "payroll_engine.approve", "payroll_engine.file", "payroll_engine.configure", "payroll_engine.audit"), "configuration": ("PAYROLL_ENGINE_DATABASE_URL", "PAYROLL_ENGINE_EVENT_TOPIC", "PAYROLL_ENGINE_RETRY_LIMIT", "PAYROLL_ENGINE_DEFAULT_CURRENCY")}
+    return {
+        "format": "appgen.payroll-engine-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {"route": "POST /payroll-runs", "command": "create_payroll_run", "owned_tables": ("payroll_run",), "emits": (), "requires_permission": "payroll_engine.run", "idempotency_key": "run_id"},
+            {"route": "POST /payroll-runs/{id}/payslips", "command": "calculate_payslip", "owned_tables": ("payslip",), "emits": (), "requires_permission": "payroll_engine.run", "idempotency_key": "run_id:employee_id"},
+            {"route": "POST /payslips/{id}/deductions", "command": "apply_deduction", "owned_tables": ("deduction", "payslip"), "emits": (), "requires_permission": "payroll_engine.run", "idempotency_key": "deduction_id"},
+            {"route": "POST /payslips/{id}/benefits", "command": "allocate_benefit", "owned_tables": ("benefit_allocation", "payslip"), "emits": (), "requires_permission": "payroll_engine.run", "idempotency_key": "benefit_id"},
+            {"route": "POST /payroll-runs/{id}/post", "command": "post_payroll_run", "owned_tables": ("payroll_run",), "emits": ("PayrollPosted",), "requires_permission": "payroll_engine.approve", "idempotency_key": "run_id:approved_by"},
+            {"route": "POST /payroll-filings", "command": "prepare_payroll_filing", "owned_tables": ("payroll_filing",), "emits": ("PayrollFilingPrepared",), "requires_permission": "payroll_engine.file", "idempotency_key": "filing_id"},
+            {"route": "POST /payroll/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": PAYROLL_ENGINE_CONSUMED_EVENT_TYPES, "requires_permission": "payroll_engine.event", "idempotency_key": "event_id"},
+            {"route": "GET /payslips", "query": "build_workbench_view", "owned_tables": ("payslip",), "requires_permission": "payroll_engine.read"},
+            {"route": "GET /payroll-workbench", "query": "build_workbench_view", "owned_tables": PAYROLL_ENGINE_OWNED_TABLES, "requires_permission": "payroll_engine.audit"},
+        ),
+        "declared_catalog_routes": ("POST /payroll-runs", "GET /payslips", "POST /payroll-filings", "POST /payroll-rules", "POST /payroll-parameters", "POST /payroll-configuration"),
+        "events": {"emits": PAYROLL_ENGINE_EMITTED_EVENT_TYPES, "consumes": PAYROLL_ENGINE_CONSUMED_EVENT_TYPES},
+        "emits": PAYROLL_ENGINE_EMITTED_EVENT_TYPES,
+        "consumes": PAYROLL_ENGINE_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(payroll_engine_permissions_contract()["permissions"])),
+        "database_backends": PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": PAYROLL_ENGINE_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("PAYROLL_ENGINE_DATABASE_URL", "PAYROLL_ENGINE_EVENT_TOPIC", "PAYROLL_ENGINE_RETRY_LIMIT", "PAYROLL_ENGINE_DEFAULT_CURRENCY"),
+    }
+
+
+def payroll_engine_permissions_contract() -> dict:
+    return {
+        "format": "appgen.payroll-engine-permissions.v1",
+        "ok": True,
+        "permissions": ("payroll_engine.read", "payroll_engine.run", "payroll_engine.approve", "payroll_engine.file", "payroll_engine.event", "payroll_engine.configure", "payroll_engine.audit"),
+        "action_permissions": {
+            "create_payroll_run": "payroll_engine.run",
+            "ingest_labor_hours": "payroll_engine.run",
+            "calculate_payslip": "payroll_engine.run",
+            "apply_deduction": "payroll_engine.run",
+            "allocate_benefit": "payroll_engine.run",
+            "post_payroll_run": "payroll_engine.approve",
+            "prepare_payroll_filing": "payroll_engine.file",
+            "receive_event": "payroll_engine.event",
+            "register_rule": "payroll_engine.configure",
+            "register_schema_extension": "payroll_engine.configure",
+            "set_parameter": "payroll_engine.configure",
+            "configure_runtime": "payroll_engine.configure",
+            "build_workbench_view": "payroll_engine.audit",
+        },
+    }
+
+
+def payroll_engine_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*PAYROLL_ENGINE_OWNED_TABLES, *PAYROLL_ENGINE_CONSUMED_EVENT_TYPES, *_PAYROLL_ENGINE_RUNTIME_TABLES, *_PAYROLL_ENGINE_ALLOWED_DEPENDENCIES)
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(allowed)
+        and not str(reference).startswith("payroll_engine_")
+    )
+    return {
+        "format": "appgen.payroll-engine-boundary.v1",
+        "ok": not violations,
+        "owned_tables": PAYROLL_ENGINE_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /workers", "GET /labor-hours", "GET /tax-rates", "POST /payment-batches", "POST /journal-requests"),
+            "events": PAYROLL_ENGINE_CONSUMED_EVENT_TYPES,
+            "api_projections": ("personnel_identity_projection", "time_labor_projection", "tax_wage_base_projection", "treasury_payment_batch", "ledger_journal_request", "audit_ledger_projection"),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def payroll_engine_federate_payroll_view(state: dict, payslip_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -527,6 +700,20 @@ def payroll_engine_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": PAYROLL_ENGINE_OWNED_TABLES,
+            "outbox_table": "payroll_engine_appgen_outbox_event",
+            "inbox_table": "payroll_engine_appgen_inbox_event",
+            "dead_letter_table": "payroll_engine_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+        },
     }
 
 

@@ -1,10 +1,16 @@
 """Payroll Engine PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS
+from .runtime import PAYROLL_ENGINE_CONSUMED_EVENT_TYPES
+from .runtime import PAYROLL_ENGINE_EMITTED_EVENT_TYPES
+from .runtime import PAYROLL_ENGINE_OWNED_TABLES
+from .runtime import PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC
 from .runtime import PAYROLL_ENGINE_RUNTIME_CAPABILITY_KEYS
 from .runtime import PAYROLL_ENGINE_STANDARD_FEATURE_KEYS
 from .runtime import payroll_engine_allocate_benefit
 from .runtime import payroll_engine_apply_deduction
+from .runtime import payroll_engine_build_api_contract
 from .runtime import payroll_engine_build_workbench_view
 from .runtime import payroll_engine_calculate_payslip
 from .runtime import payroll_engine_configure_runtime
@@ -13,11 +19,15 @@ from .runtime import payroll_engine_empty_state
 from .runtime import payroll_engine_ingest_labor_hours
 from .runtime import payroll_engine_post_payroll_run
 from .runtime import payroll_engine_prepare_payroll_filing
+from .runtime import payroll_engine_permissions_contract
+from .runtime import payroll_engine_receive_event
 from .runtime import payroll_engine_register_rule
+from .runtime import payroll_engine_register_schema_extension
 from .runtime import payroll_engine_runtime_capabilities
 from .runtime import payroll_engine_runtime_smoke
 from .runtime import payroll_engine_set_parameter
 from .runtime import payroll_engine_upsert_worker_projection
+from .runtime import payroll_engine_verify_owned_table_boundary
 from .ui import PAYROLL_ENGINE_UI_FRAGMENT_KEYS
 from .ui import payroll_engine_render_workbench
 from .ui import payroll_engine_ui_contract
@@ -33,4 +43,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": payroll_engine_ui_contract(),
+        "api_contract": payroll_engine_build_api_contract(),
+        "permissions_contract": payroll_engine_permissions_contract(),
+        "owned_tables": PAYROLL_ENGINE_OWNED_TABLES,
+        "allowed_database_backends": PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS,
     }

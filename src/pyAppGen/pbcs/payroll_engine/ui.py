@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from .runtime import PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS
+from .runtime import PAYROLL_ENGINE_OWNED_TABLES
+from .runtime import PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC
+from .runtime import payroll_engine_permissions_contract
+
 
 PAYROLL_ENGINE_UI_FRAGMENT_KEYS = (
     "PayrollEngineWorkbench",
@@ -60,22 +65,14 @@ def payroll_engine_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "create_payroll_run": "payroll_engine.run",
-            "calculate_payslip": "payroll_engine.run",
-            "apply_deduction": "payroll_engine.run",
-            "allocate_benefit": "payroll_engine.run",
-            "post_payroll_run": "payroll_engine.approve",
-            "prepare_payroll_filing": "payroll_engine.file",
-            "register_rule": "payroll_engine.configure",
-            "set_parameter": "payroll_engine.configure",
-            "configure_runtime": "payroll_engine.configure",
-            "run_control_tests": "payroll_engine.audit",
-        },
+        "action_permissions": payroll_engine_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -94,8 +91,10 @@ def payroll_engine_ui_contract() -> dict:
             "emits": ("PayrollPosted", "PayrollFilingPrepared"),
             "consumes": ("LaborHoursApproved", "TaxCalculated"),
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": PAYROLL_ENGINE_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -139,4 +138,12 @@ def payroll_engine_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": PAYROLL_ENGINE_OWNED_TABLES,
+            "outbox_table": "payroll_engine_appgen_outbox_event",
+            "inbox_table": "payroll_engine_appgen_inbox_event",
+            "dead_letter_table": "payroll_engine_dead_letter_event",
+        },
     }
