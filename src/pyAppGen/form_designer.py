@@ -15717,6 +15717,8 @@ def cross_target_visual_depth_workbench() -> dict:
                 "visual_design_ide_modules_replay",
                 "visual_design_ide_surface_coverage",
                 "visual_design_ide_runtime_alignment",
+                "visual_design_ide_operation_step_coverage",
+                "visual_design_ide_validation_step_coverage",
                 "visual_design_ide_replays_side_effect_free",
             }
             <= {check["id"] for check in visual_design_replay["checks"] if check["ok"]}
@@ -22744,6 +22746,8 @@ def visual_design_ide_module_file_manifest() -> tuple[dict, ...]:
         "visual_surface_manifest",
         "run_visual_operation",
         "runtime_context",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -22804,8 +22808,17 @@ def visual_design_ide_replay_matrix() -> dict:
             "module": item["module"],
             "surface": item["surface"],
             "pipeline": tuple(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
+            "operation_steps": tuple(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
+            "validation_steps": (
+                "visual_surface_manifest_ok",
+                "operation_ok",
+                "runtime_context_ok",
+                "side_effects_disallowed",
+            ),
             "ok": item["ok"]
             and "run_visual_operation" in item["exports"]
+            and "operation_steps" in item["exports"]
+            and "validation_steps" in item["exports"]
             and item["module"] in tests_by_module
             and tests_by_module[item["module"]]["ok"]
             and "test_visual_design_ide_module_smoke" in tests_by_module[item["module"]]["exports"]
@@ -22850,6 +22863,23 @@ def visual_design_ide_replay_matrix() -> dict:
             "evidence": {"designer_transaction": designer_transaction, "lifecycle_replay": lifecycle_replay},
         },
         {
+            "id": "visual_design_ide_operation_step_coverage",
+            "ok": all(
+                required_pipeline_by_surface[item["surface"]] <= set(item["operation_steps"])
+                for item in design_replays
+            ),
+            "evidence": tuple((item["surface"], item["operation_steps"]) for item in design_replays),
+        },
+        {
+            "id": "visual_design_ide_validation_step_coverage",
+            "ok": all(
+                {"visual_surface_manifest_ok", "operation_ok", "runtime_context_ok", "side_effects_disallowed"}
+                <= set(item["validation_steps"])
+                for item in design_replays
+            ),
+            "evidence": tuple((item["surface"], item["validation_steps"]) for item in design_replays),
+        },
+        {
             "id": "visual_design_ide_replays_side_effect_free",
             "ok": all(not operation.get("side_effects", ()) for operation in operations_by_surface.values())
             and not designer_transaction["side_effects"]
@@ -22872,6 +22902,8 @@ def visual_design_ide_replay_matrix() -> dict:
         "guards": (
             "design_modules_before_runtime_claim",
             "design_tests_before_release_claim",
+            "operation_steps_required_before_release",
+            "validation_steps_required_before_release",
             "designer_transaction_aligned",
             "side_effect_free_authoring",
         ),

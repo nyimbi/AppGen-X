@@ -14530,6 +14530,8 @@ EXPECTED_EXPORTS = (
     "visual_surface_manifest",
     "run_visual_operation",
     "runtime_context",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -14615,12 +14617,53 @@ def runtime_context():
     }}
 
 
+def operation_steps():
+    """Return concrete authoring steps this visual IDE module must replay."""
+    operation = run_visual_operation()
+    return {{
+        "format": "appgen.visual-design-ide-operation-steps.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "steps": tuple(operation["pipeline"]),
+        "ok": operation["ok"] and bool(operation["pipeline"]),
+        "side_effects": operation["side_effects"],
+    }}
+
+
+def validation_steps():
+    """Return validation steps proving this visual IDE surface is usable."""
+    manifest = visual_surface_manifest()
+    operation = run_visual_operation()
+    context = runtime_context()
+    steps = (
+        "visual_surface_manifest_ok",
+        "operation_ok",
+        "runtime_context_ok",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.visual-design-ide-validation-steps.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "steps": steps,
+        "ok": manifest["ok"]
+        and operation["ok"]
+        and context["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not context["side_effects"],
+        "side_effects": (),
+    }}
+
+
 def smoke_test():
     """Run side-effect-free checks for this generated visual design IDE module."""
     contract = module_contract()
     manifest = visual_surface_manifest()
     operation = run_visual_operation()
     context = runtime_context()
+    operations = operation_steps()
+    validations = validation_steps()
     return {{
         "format": "appgen.visual-design-ide-module-smoke-test.v1",
         "module": MODULE,
@@ -14629,6 +14672,8 @@ def smoke_test():
         and manifest["ok"]
         and operation["ok"]
         and context["ok"]
+        and operations["ok"]
+        and validations["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"]
         and not context["side_effects"],
@@ -14641,8 +14686,12 @@ def smoke_test():
             "visual_surface_manifest_ok",
             "operation_ok",
             "runtime_context_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -14679,6 +14728,8 @@ def test_visual_design_ide_module_contract():
     assert contract["surface"] == SURFACE
     assert contract["ok"] is True
     assert all(hasattr(module, name) for name in contract["expected_exports"])
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
 
 
 def test_visual_design_ide_module_smoke():
@@ -14689,6 +14740,8 @@ def test_visual_design_ide_module_smoke():
     assert result["module"] == MODULE
     assert result["surface"] == SURFACE
     assert result["checks"]
+    assert "operation_steps_declared" in result["checks"]
+    assert "validation_steps_declared" in result["checks"]
 
 
 def smoke_test():
@@ -16274,6 +16327,8 @@ def visual_design_ide_module_manifest():
         "visual_surface_manifest",
         "run_visual_operation",
         "runtime_context",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     entries = []
@@ -16386,15 +16441,21 @@ def visual_design_ide_runtime_replay_matrix():
         module_path = module_dir / f"{item['module']}.py"
         smoke = {"ok": False, "side_effects": (), "error": "missing_module"}
         operation = {"ok": False, "side_effects": (), "error": "missing_module", "pipeline": ()}
+        operation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
+        validation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_visual_design_ide_replay_{item['module']}")
             smoke = module.smoke_test()
             operation = module.run_visual_operation()
+            operation_steps = module.operation_steps()
+            validation_steps = module.validation_steps()
         replays.append(
             {
                 "module": item["module"],
                 "surface": item["surface"],
                 "pipeline": tuple(operation.get("pipeline", ())) if isinstance(operation, dict) else (),
+                "operation_steps": tuple(operation_steps.get("steps", ())) if isinstance(operation_steps, dict) else (),
+                "validation_steps": tuple(validation_steps.get("steps", ())) if isinstance(validation_steps, dict) else (),
                 "required_pipeline": tuple(sorted(required_pipeline_by_surface[item["surface"]])),
                 "ok": item["exists"]
                 and item["contract_ok"]
@@ -16402,12 +16463,20 @@ def visual_design_ide_runtime_replay_matrix():
                 and tests_by_module.get(item["module"], {}).get("smoke_ok", False)
                 and bool(smoke.get("ok"))
                 and bool(operation.get("ok"))
+                and bool(operation_steps.get("ok"))
+                and bool(validation_steps.get("ok"))
                 and required_pipeline_by_surface[item["surface"]]
                 <= set(operation.get("pipeline", ()) if isinstance(operation, dict) else ())
+                and required_pipeline_by_surface[item["surface"]]
+                <= set(operation_steps.get("steps", ()) if isinstance(operation_steps, dict) else ())
+                and {"visual_surface_manifest_ok", "operation_ok", "runtime_context_ok", "side_effects_disallowed"}
+                <= set(validation_steps.get("steps", ()) if isinstance(validation_steps, dict) else ())
                 and not tuple(smoke.get("side_effects", ()))
                 and not tuple(operation.get("side_effects", ())),
                 "smoke": smoke,
                 "operation": operation,
+                "operation_step_contract": operation_steps,
+                "validation_step_contract": validation_steps,
                 "test": tests_by_module.get(item["module"], {}),
             }
         )
@@ -16436,10 +16505,39 @@ def visual_design_ide_runtime_replay_matrix():
             ),
         },
         {
+            "id": "generated_visual_design_ide_operation_step_coverage",
+            "ok": all(set(item["required_pipeline"]) <= set(item["operation_steps"]) for item in replays),
+            "evidence": tuple(
+                {
+                    "surface": item["surface"],
+                    "required_pipeline": item["required_pipeline"],
+                    "operation_steps": item["operation_steps"],
+                }
+                for item in replays
+            ),
+        },
+        {
+            "id": "generated_visual_design_ide_validation_step_coverage",
+            "ok": all(
+                {"visual_surface_manifest_ok", "operation_ok", "runtime_context_ok", "side_effects_disallowed"}
+                <= set(item["validation_steps"])
+                for item in replays
+            ),
+            "evidence": tuple(
+                {
+                    "surface": item["surface"],
+                    "validation_steps": item["validation_steps"],
+                }
+                for item in replays
+            ),
+        },
+        {
             "id": "generated_visual_design_ide_replays_side_effect_free",
             "ok": all(
                 not tuple(item["smoke"].get("side_effects", ()))
                 and not tuple(item["operation"].get("side_effects", ()))
+                and not tuple(item["operation_step_contract"].get("side_effects", ()))
+                and not tuple(item["validation_step_contract"].get("side_effects", ()))
                 for item in replays
             ),
             "evidence": (),
@@ -16454,6 +16552,8 @@ def visual_design_ide_runtime_replay_matrix():
             "generated_design_modules_before_runtime_claim",
             "generated_design_tests_before_release_claim",
             "generated_design_operation_pipeline_contracts",
+            "generated_design_operation_steps_required",
+            "generated_design_validation_steps_required",
             "generated_design_operations_side_effect_free",
         ),
         "side_effects": (),
@@ -61674,12 +61774,12 @@ def cross_target_visual_readiness_contract():
 def visual_design_ide_replay_matrix():
     """Replay generated visual design IDE modules as one authoring release gate."""
     visual_design_module_artifacts = (
-        {{"module": "style_author_module", "surface": "style_authoring", "path": "app/visual_design_ide_modules/style_author_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
-        {{"module": "timeline_author_module", "surface": "timeline_authoring", "path": "app/visual_design_ide_modules/timeline_author_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
-        {{"module": "effect_stack_module", "surface": "effect_stack", "path": "app/visual_design_ide_modules/effect_stack_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
-        {{"module": "scene_author_module", "surface": "scene_authoring", "path": "app/visual_design_ide_modules/scene_author_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
-        {{"module": "asset_import_module", "surface": "asset_import", "path": "app/visual_design_ide_modules/asset_import_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
-        {{"module": "runtime_package_module", "surface": "runtime_package", "path": "app/visual_design_ide_modules/runtime_package_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
+        {{"module": "style_author_module", "surface": "style_authoring", "path": "app/visual_design_ide_modules/style_author_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "operation_steps", "validation_steps", "smoke_test"), "ok": True}},
+        {{"module": "timeline_author_module", "surface": "timeline_authoring", "path": "app/visual_design_ide_modules/timeline_author_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "operation_steps", "validation_steps", "smoke_test"), "ok": True}},
+        {{"module": "effect_stack_module", "surface": "effect_stack", "path": "app/visual_design_ide_modules/effect_stack_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "operation_steps", "validation_steps", "smoke_test"), "ok": True}},
+        {{"module": "scene_author_module", "surface": "scene_authoring", "path": "app/visual_design_ide_modules/scene_author_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "operation_steps", "validation_steps", "smoke_test"), "ok": True}},
+        {{"module": "asset_import_module", "surface": "asset_import", "path": "app/visual_design_ide_modules/asset_import_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "operation_steps", "validation_steps", "smoke_test"), "ok": True}},
+        {{"module": "runtime_package_module", "surface": "runtime_package", "path": "app/visual_design_ide_modules/runtime_package_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "operation_steps", "validation_steps", "smoke_test"), "ok": True}},
     )
     visual_design_test_artifacts = tuple(
         {{"module": item["module"], "surface": item["surface"], "path": item["path"].replace("app/visual_design_ide_modules/", "app/visual_design_ide_module_tests/test_"), "exports": ("load_visual_design_ide_module", "test_visual_design_ide_module_contract", "test_visual_design_ide_module_smoke", "smoke_test"), "ok": item["ok"]}}
@@ -61707,7 +61807,14 @@ def visual_design_ide_replay_matrix():
             "module": item["module"],
             "surface": item["surface"],
             "pipeline": tuple(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
-            "ok": item["ok"] and "run_visual_operation" in item["exports"] and item["module"] in tests_by_module and tests_by_module[item["module"]]["ok"] and "test_visual_design_ide_module_smoke" in tests_by_module[item["module"]]["exports"] and operations_by_surface[item["surface"]]["ok"] and required_pipeline_by_surface[item["surface"]] <= set(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
+            "operation_steps": tuple(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
+            "validation_steps": (
+                "visual_surface_manifest_ok",
+                "operation_ok",
+                "runtime_context_ok",
+                "side_effects_disallowed",
+            ),
+            "ok": item["ok"] and "run_visual_operation" in item["exports"] and "operation_steps" in item["exports"] and "validation_steps" in item["exports"] and item["module"] in tests_by_module and tests_by_module[item["module"]]["ok"] and "test_visual_design_ide_module_smoke" in tests_by_module[item["module"]]["exports"] and operations_by_surface[item["surface"]]["ok"] and required_pipeline_by_surface[item["surface"]] <= set(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
             "exports": item["exports"],
             "test_exports": tests_by_module[item["module"]]["exports"],
         }}
@@ -61719,6 +61826,8 @@ def visual_design_ide_replay_matrix():
         {{"id": "visual_design_ide_modules_replay", "ok": len(design_replays) == 6 and all(item["ok"] for item in design_replays), "evidence": design_replays}},
         {{"id": "visual_design_ide_surface_coverage", "ok": {{"style_authoring", "timeline_authoring", "effect_stack", "scene_authoring", "asset_import", "runtime_package"}} == {{item["surface"] for item in design_replays}} and all(item["pipeline"] for item in design_replays), "evidence": tuple((item["surface"], item["pipeline"]) for item in design_replays)}},
         {{"id": "visual_design_ide_runtime_alignment", "ok": designer_transaction["ok"] and lifecycle_replay["ok"] and {{"author_style_override", "author_timeline", "validate_effect_stack", "author_scene_graph", "import_assets_and_preview", "hit_test_and_transform", "runtime_replay"}} <= {{item["phase"] for item in designer_transaction["replay"]}} and {{"validate_style_tokens", "export_timeline_runtime", "assign_effect_fallbacks", "validate_scene_materials", "import_assets_and_diff_preview", "runtime_and_designer_replay"}} <= {{item["phase"] for item in lifecycle_replay["replay"]}}, "evidence": {{"designer_transaction": designer_transaction, "lifecycle_replay": lifecycle_replay}}}},
+        {{"id": "visual_design_ide_operation_step_coverage", "ok": all(required_pipeline_by_surface[item["surface"]] <= set(item["operation_steps"]) for item in design_replays), "evidence": tuple((item["surface"], item["operation_steps"]) for item in design_replays)}},
+        {{"id": "visual_design_ide_validation_step_coverage", "ok": all({{"visual_surface_manifest_ok", "operation_ok", "runtime_context_ok", "side_effects_disallowed"}} <= set(item["validation_steps"]) for item in design_replays), "evidence": tuple((item["surface"], item["validation_steps"]) for item in design_replays)}},
         {{"id": "visual_design_ide_replays_side_effect_free", "ok": all(not operation.get("side_effects", ()) for operation in operations_by_surface.values()) and not designer_transaction["side_effects"] and not lifecycle_replay["side_effects"], "evidence": {{"operations": tuple(operation.get("side_effects", ()) for operation in operations_by_surface.values()), "designer_transaction": designer_transaction["side_effects"], "lifecycle_replay": lifecycle_replay["side_effects"]}}}},
     )
     return {{
@@ -61728,7 +61837,7 @@ def visual_design_ide_replay_matrix():
         "designer_transaction": designer_transaction,
         "lifecycle_replay": lifecycle_replay,
         "checks": checks,
-        "guards": ("design_modules_before_runtime_claim", "design_tests_before_release_claim", "designer_transaction_aligned", "side_effect_free_authoring"),
+        "guards": ("design_modules_before_runtime_claim", "design_tests_before_release_claim", "operation_steps_required_before_release", "validation_steps_required_before_release", "designer_transaction_aligned", "side_effect_free_authoring"),
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -61889,7 +61998,7 @@ def cross_target_visual_depth_workbench():
         {{"id": "visual_component_module_tests", "ok": len(visual_component_test_artifacts) == len(visual_component_specs["specs"]) and {{item["component"] for item in visual_component_test_artifacts}} == {{spec["component"] for spec in visual_component_specs["specs"]}} and all("test_visual_component_smoke" in item["exports"] for item in visual_component_test_artifacts), "evidence": visual_component_test_artifacts}},
         {{"id": "visual_design_modules", "ok": len(visual_design_module_artifacts) >= 6 and {{"style_authoring", "timeline_authoring", "effect_stack", "scene_authoring", "asset_import", "runtime_package"}} <= {{item["surface"] for item in visual_design_module_artifacts}} and all(item["ok"] and "run_visual_operation" in item["exports"] for item in visual_design_module_artifacts), "evidence": visual_design_module_artifacts}},
         {{"id": "visual_design_module_tests", "ok": len(visual_design_test_artifacts) == len(visual_design_module_artifacts) and {{item["surface"] for item in visual_design_test_artifacts}} == {{item["surface"] for item in visual_design_module_artifacts}} and all("test_visual_design_ide_module_smoke" in item["exports"] for item in visual_design_test_artifacts), "evidence": visual_design_test_artifacts}},
-        {{"id": "visual_design_ide_replay_matrix", "ok": visual_design_replay["ok"] and {{"visual_design_ide_modules_replay", "visual_design_ide_surface_coverage", "visual_design_ide_runtime_alignment", "visual_design_ide_replays_side_effect_free"}} <= {{check["id"] for check in visual_design_replay["checks"] if check["ok"]}} and not visual_design_replay["side_effects"], "evidence": visual_design_replay}},
+        {{"id": "visual_design_ide_replay_matrix", "ok": visual_design_replay["ok"] and {{"visual_design_ide_modules_replay", "visual_design_ide_surface_coverage", "visual_design_ide_runtime_alignment", "visual_design_ide_operation_step_coverage", "visual_design_ide_validation_step_coverage", "visual_design_ide_replays_side_effect_free"}} <= {{check["id"] for check in visual_design_replay["checks"] if check["ok"]}} and not visual_design_replay["side_effects"], "evidence": visual_design_replay}},
         {{"id": "visual_runtime_pipeline_modules", "ok": len(visual_runtime_pipeline_artifacts) == 5 and {{"style_resolution", "timeline_playback", "effect_fallback", "scene_rendering", "asset_resolution"}} <= {{item["surface"] for item in visual_runtime_pipeline_artifacts}} and all(item["ok"] and "run_runtime_pipeline" in item["exports"] for item in visual_runtime_pipeline_artifacts), "evidence": visual_runtime_pipeline_artifacts}},
         {{"id": "visual_runtime_pipeline_module_tests", "ok": len(visual_runtime_pipeline_test_artifacts) == len(visual_runtime_pipeline_artifacts) and {{item["surface"] for item in visual_runtime_pipeline_test_artifacts}} == {{item["surface"] for item in visual_runtime_pipeline_artifacts}} and all("test_visual_runtime_pipeline_module_smoke" in item["exports"] for item in visual_runtime_pipeline_test_artifacts), "evidence": visual_runtime_pipeline_test_artifacts}},
         {{"id": "visual_runtime_pipeline_replay_matrix", "ok": visual_runtime_pipeline_replay["ok"] and {{"visual_runtime_pipeline_modules_replay", "visual_runtime_pipeline_surface_coverage", "visual_runtime_pipeline_runtime_alignment", "visual_runtime_pipeline_replays_side_effect_free"}} <= {{check["id"] for check in visual_runtime_pipeline_replay["checks"] if check["ok"]}} and not visual_runtime_pipeline_replay["side_effects"], "evidence": visual_runtime_pipeline_replay}},

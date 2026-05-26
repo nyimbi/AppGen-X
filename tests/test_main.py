@@ -3020,8 +3020,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_design_ide_modules_replay",
         "visual_design_ide_surface_coverage",
         "visual_design_ide_runtime_alignment",
+        "visual_design_ide_operation_step_coverage",
+        "visual_design_ide_validation_step_coverage",
         "visual_design_ide_replays_side_effect_free",
     } <= {check["id"] for check in visual_depth["visual_design_replay"]["checks"] if check["ok"]}
+    assert all(item["operation_steps"] for item in visual_design_replay["design_replays"])
+    assert all(
+        {"visual_surface_manifest_ok", "operation_ok", "runtime_context_ok", "side_effects_disallowed"}
+        <= set(item["validation_steps"])
+        for item in visual_design_replay["design_replays"]
+    )
     assert len(visual_depth["visual_runtime_pipeline_artifacts"]) == 5
     assert {
         "style_resolution",
@@ -17170,6 +17178,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_visual_design_replay["ok"] is True
     assert len(generated_visual_design_replay["design_replays"]) == 6
     assert generated_visual_depth["visual_design_replay"]["ok"] is True
+    assert {
+        "visual_design_ide_operation_step_coverage",
+        "visual_design_ide_validation_step_coverage",
+        "visual_design_ide_replays_side_effect_free",
+    } <= {check["id"] for check in generated_visual_design_replay["checks"] if check["ok"]}
+    assert all(
+        set(item["pipeline"]) <= set(item["operation_steps"])
+        for item in generated_visual_design_replay["design_replays"]
+    )
+    assert all(
+        {"visual_surface_manifest_ok", "operation_ok", "runtime_context_ok", "side_effects_disallowed"}
+        <= set(item["validation_steps"])
+        for item in generated_visual_design_replay["design_replays"]
+    )
     assert len(generated_visual_depth["visual_runtime_pipeline_artifacts"]) == 5
     generated_visual_pipeline_replay = form_designer.visual_runtime_pipeline_replay_matrix()
     assert generated_visual_pipeline_replay["format"] == (
@@ -17263,12 +17285,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert visual_design_runtime_matrix["ok"] is True
     assert len(visual_design_runtime_matrix["design_replays"]) == 6
     assert "generated_design_operation_pipeline_contracts" in visual_design_runtime_matrix["guards"]
+    assert "generated_design_operation_steps_required" in visual_design_runtime_matrix["guards"]
+    assert "generated_design_validation_steps_required" in visual_design_runtime_matrix["guards"]
     assert {
         "generated_visual_design_ide_operation_pipeline_coverage",
+        "generated_visual_design_ide_operation_step_coverage",
+        "generated_visual_design_ide_validation_step_coverage",
         "generated_visual_design_ide_replays_side_effect_free",
     } <= {check["id"] for check in visual_design_runtime_matrix["checks"] if check["ok"]}
     assert all(
         set(item["required_pipeline"]) <= set(item["pipeline"])
+        for item in visual_design_runtime_matrix["design_replays"]
+    )
+    assert all(
+        set(item["required_pipeline"]) <= set(item["operation_steps"])
+        for item in visual_design_runtime_matrix["design_replays"]
+    )
+    assert all(
+        {"visual_surface_manifest_ok", "operation_ok", "runtime_context_ok", "side_effects_disallowed"}
+        <= set(item["validation_steps"])
         for item in visual_design_runtime_matrix["design_replays"]
     )
     assert visual_runtime_pipeline_manifest["ok"] is True
@@ -17364,6 +17399,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         assert module.visual_surface_manifest()["ok"] is True
         assert module.run_visual_operation()["ok"] is True
         assert module.runtime_context()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
         assert module.smoke_test()["ok"] is True
     for item in visual_design_test_manifest["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")
