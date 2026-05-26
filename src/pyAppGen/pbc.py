@@ -966,6 +966,40 @@ AUDIT_LEDGER_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "audit_mlops_governance",
 )
+COMPOSITION_ENGINE_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_composition_lifecycle",
+    "graph_relational_component_topology",
+    "multi_tenant_workspace_isolation",
+    "schema_on_read_layout_extension",
+    "probabilistic_release_risk_scoring",
+    "real_time_composition_analytics",
+    "counterfactual_layout_simulation",
+    "temporal_release_readiness_forecasting",
+    "autonomous_layout_remediation",
+    "semantic_composition_intent_parsing",
+    "predictive_composition_risk_scoring",
+    "self_healing_publication_route_selection",
+    "zero_knowledge_publication_proof",
+    "immutable_composition_audit_trail",
+    "dynamic_composition_policy_screening",
+    "automated_composition_control_testing",
+    "universal_api_async_composition_surface",
+    "cross_system_composition_federation",
+    "identity_gateway_schema_workflow_audit_integration",
+    "decentralized_publisher_identity",
+    "chaos_engineered_composition_tolerance",
+    "quantum_resistant_publication_signing",
+    "carbon_aware_composition_build",
+    "algebraic_layout_optimization",
+    "mechanism_design_fragment_slot_allocation",
+    "information_theoretic_composition_anomaly_detection",
+    "temporal_release_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_composition_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "composition_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -993,6 +1027,7 @@ IMPLEMENTED_PBC_KEYS = (
     "schema_registry",
     "workflow_orchestration",
     "audit_ledger",
+    "composition_engine",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3258,6 +3293,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = workflow_orchestration_runtime_capabilities()
     elif key == "audit_ledger":
         advanced_runtime = audit_ledger_runtime_capabilities()
+    elif key == "composition_engine":
+        advanced_runtime = composition_engine_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3560,6 +3597,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
         "workflow_orchestration": len(WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS),
         "audit_ledger": len(AUDIT_LEDGER_ADVANCED_CAPABILITY_KEYS),
+        "composition_engine": len(COMPOSITION_ENGINE_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -5485,3 +5523,22 @@ from .pbcs.audit_ledger import audit_ledger_runtime_smoke  # noqa: E402,F401
 from .pbcs.audit_ledger import audit_ledger_set_parameter  # noqa: E402,F401
 from .pbcs.audit_ledger import audit_ledger_ui_contract  # noqa: E402,F401
 from .pbcs.audit_ledger import audit_ledger_verify_signature_chain  # noqa: E402,F401
+from .pbcs.composition_engine import COMPOSITION_ENGINE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.composition_engine import COMPOSITION_ENGINE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.composition_engine import COMPOSITION_ENGINE_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_bind_layout  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_build_workbench_view  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_configure_runtime  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_create_workspace  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_empty_state  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_generate_composition_dsl  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_publish_composition  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_register_component  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_register_rule  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_register_ui_fragment  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_render_workbench  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_runtime_capabilities  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_runtime_smoke  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_select_pbc  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_set_parameter  # noqa: E402,F401
+from .pbcs.composition_engine import composition_engine_ui_contract  # noqa: E402,F401
