@@ -1022,6 +1022,9 @@ IMPLEMENTED_PBC_KEYS = (
     "eam",
     "product_catalog_pim",
     "customer_360",
+    "global_inventory_visibility",
+    "order_routing_optimization",
+    "checkout_processing",
     "federated_iam",
     "api_gateway_mesh",
     "schema_registry",
@@ -3283,6 +3286,12 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = product_catalog_pim_runtime_capabilities()
     elif key == "customer_360":
         advanced_runtime = customer_360_runtime_capabilities()
+    elif key == "global_inventory_visibility":
+        advanced_runtime = global_inventory_visibility_runtime_capabilities()
+    elif key == "order_routing_optimization":
+        advanced_runtime = order_routing_optimization_runtime_capabilities()
+    elif key == "checkout_processing":
+        advanced_runtime = checkout_processing_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
@@ -3592,6 +3601,9 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "eam": len(EAM_ADVANCED_CAPABILITY_KEYS),
         "product_catalog_pim": len(PRODUCT_CATALOG_PIM_ADVANCED_CAPABILITY_KEYS),
         "customer_360": len(CUSTOMER_360_ADVANCED_CAPABILITY_KEYS),
+        "global_inventory_visibility": len(GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS),
+        "order_routing_optimization": len(ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS),
+        "checkout_processing": len(CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
@@ -5482,6 +5494,59 @@ from .pbcs.customer_360 import customer_360_runtime_smoke  # noqa: E402,F401
 from .pbcs.customer_360 import customer_360_set_parameter  # noqa: E402,F401
 from .pbcs.customer_360 import customer_360_set_preference  # noqa: E402,F401
 from .pbcs.customer_360 import customer_360_ui_contract  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import GLOBAL_INVENTORY_VISIBILITY_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_build_workbench_view  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_configure_runtime  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_empty_state  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_get_global_availability  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_ingest_event  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_project_availability  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_record_availability_snapshot  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_register_inventory_pool  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_register_rule  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_register_supply_node  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_render_workbench  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_reserve_inventory  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_runtime_capabilities  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_runtime_smoke  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_set_parameter  # noqa: E402,F401
+from .pbcs.global_inventory_visibility import global_inventory_visibility_ui_contract  # noqa: E402,F401
+from .pbcs.order_routing_optimization import ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.order_routing_optimization import ORDER_ROUTING_OPTIMIZATION_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.order_routing_optimization import ORDER_ROUTING_OPTIMIZATION_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_build_workbench_view  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_configure_runtime  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_empty_state  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_handle_event  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_ingest_capacity_snapshot  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_register_rule  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_render_workbench  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_route_orders  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_runtime_capabilities  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_runtime_smoke  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_set_parameter  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_ui_contract  # noqa: E402,F401
+from .pbcs.order_routing_optimization import order_routing_optimization_upsert_route_candidate  # noqa: E402,F401
+from .pbcs.checkout_processing import CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.checkout_processing import CHECKOUT_PROCESSING_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.checkout_processing import CHECKOUT_PROCESSING_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_add_cart_line  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_apply_coupon  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_build_workbench_view  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_complete_checkout  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_configure_runtime  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_create_cart  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_empty_state  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_open_checkout_session  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_receive_event  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_register_rule  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_render_workbench  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_runtime_capabilities  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_runtime_smoke  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_set_parameter  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_ui_contract  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
