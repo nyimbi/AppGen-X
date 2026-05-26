@@ -1113,6 +1113,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   matrix now fails unless each generated API module proves permission,
   simulator, adapter, event dispatch, property validation, manifest binding,
   design-tool, and event-trace steps in side-effect-free execution.
+- Current native data/service tooling pass adds operation-step and
+  validation-step evidence to standard, deep, and enterprise data-tooling module
+  replay matrices. The workbench now fails unless generated data modules prove
+  read-only probes, runtime context loading, no-write operation execution, and
+  side-effect-free validation steps before release.
 
 ## Open Completion Areas
 

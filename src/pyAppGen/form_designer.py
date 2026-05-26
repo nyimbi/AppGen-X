@@ -10920,6 +10920,13 @@ def data_tooling_module_replay_matrix() -> dict:
             and {"import_module", "run_read_only_probe", "verify_no_side_effects"} <= set(smoke_by_module[item["module"]]["smoke"]),
             "exports": item["exports"],
             "smoke": smoke_by_module.get(item["module"], {}),
+            "operation_steps": tuple(smoke_by_module.get(item["module"], {}).get("smoke", ())),
+            "validation_steps": (
+                "exports_declared",
+                "read_only_probe_required",
+                "runtime_manifest_required",
+                "side_effects_disallowed",
+            ),
         }
         for item in data_modules
     )
@@ -10929,6 +10936,18 @@ def data_tooling_module_replay_matrix() -> dict:
             "surface": item["surface"],
             "ok": item["ok"] and "run_data_operation" in item["exports"] and "smoke_test" in item["exports"],
             "exports": item["exports"],
+            "operation_steps": (
+                "load_operation_manifest",
+                "run_data_operation",
+                "load_runtime_context",
+                "run_surface_checks",
+                "verify_no_side_effects",
+            ),
+            "validation_steps": (
+                "operation_manifest_ok",
+                "narrow_runtime_context_ok",
+                "surface_specific_checks_ok",
+            ),
         }
         for item in deep_modules
     )
@@ -10938,6 +10957,18 @@ def data_tooling_module_replay_matrix() -> dict:
             "surface": item["surface"],
             "ok": item["ok"] and "run_ide_operation" in item["exports"] and "smoke_test" in item["exports"],
             "exports": item["exports"],
+            "operation_steps": (
+                "load_ide_surface_manifest",
+                "run_ide_operation",
+                "load_runtime_context",
+                "verify_no_persisted_writes",
+                "verify_no_side_effects",
+            ),
+            "validation_steps": (
+                "ide_surface_manifest_ok",
+                "operation_ok",
+                "runtime_context_ok",
+            ),
         }
         for item in enterprise_modules
     )
@@ -10945,6 +10976,46 @@ def data_tooling_module_replay_matrix() -> dict:
         {"id": "data_tooling_modules_replay", "ok": len(standard_replays) == 4 and all(item["ok"] for item in standard_replays)},
         {"id": "deep_data_tooling_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)},
         {"id": "enterprise_data_ide_modules_replay", "ok": len(enterprise_replays) == 6 and all(item["ok"] for item in enterprise_replays)},
+        {
+            "id": "data_tooling_module_operation_step_coverage",
+            "ok": all(
+                {"import_module", "run_read_only_probe", "verify_no_side_effects"} <= set(item["operation_steps"])
+                for item in standard_replays
+            )
+            and all(
+                {"run_data_operation", "load_runtime_context", "verify_no_side_effects"} <= set(item["operation_steps"])
+                for item in deep_replays
+            )
+            and all(
+                {"run_ide_operation", "load_runtime_context", "verify_no_side_effects"} <= set(item["operation_steps"])
+                for item in enterprise_replays
+            ),
+            "evidence": {
+                "standard": tuple((item["module"], item["operation_steps"]) for item in standard_replays),
+                "deep": tuple((item["module"], item["operation_steps"]) for item in deep_replays),
+                "enterprise": tuple((item["module"], item["operation_steps"]) for item in enterprise_replays),
+            },
+        },
+        {
+            "id": "data_tooling_module_validation_step_coverage",
+            "ok": all(
+                {"exports_declared", "runtime_manifest_required", "side_effects_disallowed"} <= set(item["validation_steps"])
+                for item in standard_replays
+            )
+            and all(
+                {"operation_manifest_ok", "narrow_runtime_context_ok", "surface_specific_checks_ok"} <= set(item["validation_steps"])
+                for item in deep_replays
+            )
+            and all(
+                {"ide_surface_manifest_ok", "operation_ok", "runtime_context_ok"} <= set(item["validation_steps"])
+                for item in enterprise_replays
+            ),
+            "evidence": {
+                "standard": tuple((item["module"], item["validation_steps"]) for item in standard_replays),
+                "deep": tuple((item["module"], item["validation_steps"]) for item in deep_replays),
+                "enterprise": tuple((item["module"], item["validation_steps"]) for item in enterprise_replays),
+            },
+        },
         {"id": "module_replays_side_effect_free", "ok": data_module_smoke["ok"] and not data_module_smoke["side_effects"]},
     )
     return {
@@ -10958,6 +11029,8 @@ def data_tooling_module_replay_matrix() -> dict:
             "standard_data_modules_replay_read_only_probe",
             "deep_data_tooling_modules_replay_operations",
             "enterprise_data_ide_modules_replay_operations",
+            "operation_steps_required_before_release",
+            "validation_steps_required_before_release",
             "module_replays_are_side_effect_free",
         ),
         "side_effects": (),
@@ -12070,6 +12143,8 @@ def rad_data_tooling_workbench() -> dict:
                 "data_tooling_modules_replay",
                 "deep_data_tooling_modules_replay",
                 "enterprise_data_ide_modules_replay",
+                "data_tooling_module_operation_step_coverage",
+                "data_tooling_module_validation_step_coverage",
                 "module_replays_side_effect_free",
             }
             <= {check["id"] for check in module_replay_matrix["checks"] if check["ok"]},

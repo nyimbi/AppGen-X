@@ -2539,6 +2539,22 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert len(module_replay_matrix["data_module_replays"]) == 4
     assert len(module_replay_matrix["deep_data_tooling_replays"]) == 8
     assert len(module_replay_matrix["enterprise_data_ide_replays"]) == 6
+    assert {
+        "data_tooling_module_operation_step_coverage",
+        "data_tooling_module_validation_step_coverage",
+    } <= {check["id"] for check in module_replay_matrix["checks"] if check["ok"]}
+    assert all(
+        {"import_module", "run_read_only_probe", "verify_no_side_effects"} <= set(item["operation_steps"])
+        for item in module_replay_matrix["data_module_replays"]
+    )
+    assert all(
+        {"run_data_operation", "load_runtime_context", "verify_no_side_effects"} <= set(item["operation_steps"])
+        for item in module_replay_matrix["deep_data_tooling_replays"]
+    )
+    assert all(
+        {"run_ide_operation", "load_runtime_context", "verify_no_side_effects"} <= set(item["operation_steps"])
+        for item in module_replay_matrix["enterprise_data_ide_replays"]
+    )
     assert data_workbench["module_replay_matrix"]["ok"] is True
     assert {
         "connection_probe",
