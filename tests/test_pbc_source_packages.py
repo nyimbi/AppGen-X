@@ -19,6 +19,13 @@ def test_every_builtin_pbc_has_its_own_source_package_directory():
         assert contract["implementation_directory"] == f"src/pyAppGen/pbcs/{key}"
         assert contract["owns_code"] is True
         assert contract["side_effect_free"] is True
+        assert module.register_pbc()["pbc"] == key
+        catalog_snapshot = dict(PBC_CATALOG)
+        registration = module.registration_plan()
+        assert registration["ok"] is True
+        assert registration["decision"] == "approved"
+        assert key in registration["catalog_patch"]
+        assert PBC_CATALOG == catalog_snapshot
 
 
 def test_release_audit_requires_builtin_pbc_source_packages():
@@ -49,6 +56,8 @@ def test_release_audit_requires_builtin_pbc_source_packages():
         if check["id"].endswith(":source_artifacts_materialized"):
             assert check["ok"] is True
             assert not check["source_artifacts"]["blocking_gaps"]
+        if check["id"].endswith(":source_package_directory"):
+            assert check["ok"] is True
         if check["id"].endswith(":table_stakes_evidence"):
             assert check["ok"] is True
             assert not check["table_stakes"]["blocking_gaps"]

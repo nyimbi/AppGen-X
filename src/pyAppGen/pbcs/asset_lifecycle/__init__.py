@@ -1,6 +1,9 @@
 """Asset Lifecycle PBC implementation package."""
 
+from .manifest import PBC_MANIFEST
+
 from ..source_contract import source_pbc_package_contract
+from ..source_contract import source_registration_plan
 from .runtime import ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS
 from .runtime import ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES
 from .runtime import ASSET_LIFECYCLE_EMITTED_EVENT_TYPES
@@ -55,3 +58,17 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": asset_lifecycle_ui_contract(),
     }
+
+
+def register_pbc() -> dict:
+    """Return this PBC manifest without mutating global catalog state."""
+    return dict(PBC_MANIFEST)
+
+
+def registration_plan(existing_catalog: dict | None = None) -> dict:
+    """Return a side-effect-free registration plan for this PBC package."""
+    return source_registration_plan(
+        PBC_KEY,
+        register_pbc(),
+        existing_catalog=existing_catalog,
+    )

@@ -1,6 +1,9 @@
 """General Ledger Core PBC implementation package."""
 
+from .manifest import PBC_MANIFEST
+
 from ..source_contract import source_pbc_package_contract
+from ..source_contract import source_registration_plan
 from .runtime import GL_CORE_ALLOWED_DATABASE_BACKENDS
 from .runtime import GL_CORE_CONSUMED_EVENT_TYPES
 from .runtime import GL_CORE_EMITTED_EVENT_TYPES
@@ -72,3 +75,17 @@ def implementation_contract() -> dict:
         "emitted_event_types": GL_CORE_EMITTED_EVENT_TYPES,
         "consumed_event_types": GL_CORE_CONSUMED_EVENT_TYPES,
     }
+
+
+def register_pbc() -> dict:
+    """Return this PBC manifest without mutating global catalog state."""
+    return dict(PBC_MANIFEST)
+
+
+def registration_plan(existing_catalog: dict | None = None) -> dict:
+    """Return a side-effect-free registration plan for this PBC package."""
+    return source_registration_plan(
+        PBC_KEY,
+        register_pbc(),
+        existing_catalog=existing_catalog,
+    )

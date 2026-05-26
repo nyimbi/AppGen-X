@@ -1,6 +1,9 @@
 """Global Inventory Visibility PBC implementation package."""
 
+from .manifest import PBC_MANIFEST
+
 from ..source_contract import source_pbc_package_contract
+from ..source_contract import source_registration_plan
 from .runtime import GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
 from .runtime import GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES
 from .runtime import GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES
@@ -133,3 +136,17 @@ __all__ = (
     "global_inventory_visibility_verify_supply_identity",
     "implementation_contract",
 )
+
+
+def register_pbc() -> dict:
+    """Return this PBC manifest without mutating global catalog state."""
+    return dict(PBC_MANIFEST)
+
+
+def registration_plan(existing_catalog: dict | None = None) -> dict:
+    """Return a side-effect-free registration plan for this PBC package."""
+    return source_registration_plan(
+        PBC_KEY,
+        register_pbc(),
+        existing_catalog=existing_catalog,
+    )

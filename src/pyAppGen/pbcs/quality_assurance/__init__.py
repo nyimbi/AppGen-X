@@ -1,6 +1,9 @@
 """Quality Assurance PBC implementation package."""
 
+from .manifest import PBC_MANIFEST
+
 from ..source_contract import source_pbc_package_contract
+from ..source_contract import source_registration_plan
 from .runtime import QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
 from .runtime import QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
 from .runtime import QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
@@ -64,3 +67,17 @@ def implementation_contract() -> dict:
         "permissions_contract": quality_assurance_permissions_contract(),
         "boundary_contract": quality_assurance_verify_owned_table_boundary(QUALITY_ASSURANCE_OWNED_TABLES),
     }
+
+
+def register_pbc() -> dict:
+    """Return this PBC manifest without mutating global catalog state."""
+    return dict(PBC_MANIFEST)
+
+
+def registration_plan(existing_catalog: dict | None = None) -> dict:
+    """Return a side-effect-free registration plan for this PBC package."""
+    return source_registration_plan(
+        PBC_KEY,
+        register_pbc(),
+        existing_catalog=existing_catalog,
+    )

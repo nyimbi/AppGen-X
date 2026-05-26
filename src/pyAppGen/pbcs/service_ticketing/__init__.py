@@ -1,6 +1,9 @@
 """Service Ticketing PBC implementation package."""
 
+from .manifest import PBC_MANIFEST
+
 from ..source_contract import source_pbc_package_contract
+from ..source_contract import source_registration_plan
 from .runtime import SERVICE_TICKETING_ALLOWED_DATABASE_BACKENDS
 from .runtime import SERVICE_TICKETING_CONSUMED_EVENT_TYPES
 from .runtime import SERVICE_TICKETING_EMITTED_EVENT_TYPES
@@ -60,3 +63,17 @@ def implementation_contract() -> dict:
         "ui_binding_contract": service_ticketing_ui_binding_contract(),
         "boundary_contract": service_ticketing_verify_owned_table_boundary(SERVICE_TICKETING_OWNED_TABLES),
     }
+
+
+def register_pbc() -> dict:
+    """Return this PBC manifest without mutating global catalog state."""
+    return dict(PBC_MANIFEST)
+
+
+def registration_plan(existing_catalog: dict | None = None) -> dict:
+    """Return a side-effect-free registration plan for this PBC package."""
+    return source_registration_plan(
+        PBC_KEY,
+        register_pbc(),
+        existing_catalog=existing_catalog,
+    )

@@ -23,3 +23,12 @@ def test_manifest_and_event_contract():
     assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'
     assert EVENT_CONTRACT['outbox_table'].startswith('service_ticketing_')
     assert EVENT_CONTRACT['inbox_table'].startswith('service_ticketing_')
+
+def test_registration_plan_is_side_effect_free():
+    from .. import register_pbc, registration_plan
+
+    assert register_pbc()['pbc'] == PBC_MANIFEST['pbc']
+    plan = registration_plan()
+    assert plan['ok'] is True
+    assert plan['catalog_patch']
+

@@ -1,6 +1,9 @@
 """Distributed Order Management PBC implementation package."""
 
+from .manifest import PBC_MANIFEST
+
 from ..source_contract import source_pbc_package_contract
+from ..source_contract import source_registration_plan
 from .runtime import DOM_RUNTIME_CAPABILITY_KEYS
 from .runtime import DOM_STANDARD_FEATURE_KEYS
 from .runtime import DOM_ALLOWED_DATABASE_BACKENDS
@@ -58,3 +61,17 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": dom_ui_contract(),
     }
+
+
+def register_pbc() -> dict:
+    """Return this PBC manifest without mutating global catalog state."""
+    return dict(PBC_MANIFEST)
+
+
+def registration_plan(existing_catalog: dict | None = None) -> dict:
+    """Return a side-effect-free registration plan for this PBC package."""
+    return source_registration_plan(
+        PBC_KEY,
+        register_pbc(),
+        existing_catalog=existing_catalog,
+    )
