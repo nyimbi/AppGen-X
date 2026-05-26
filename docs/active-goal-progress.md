@@ -1347,7 +1347,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   whitespace checks pass, the diff-only restricted-name scan has no hits, and
   implementation release, generation smoke, capability, full implementation
   release, and catalog release audits all return true for the implemented PBC
-  set. Commit: pending.
+  set. Commit: `7987197`.
 
 ## Open Completion Areas
 
