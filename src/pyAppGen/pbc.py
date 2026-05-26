@@ -796,6 +796,40 @@ CUSTOMER_360_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "customer_mlops_governance",
 )
+FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_identity_lifecycle",
+    "graph_relational_trust_topology",
+    "multi_tenant_access_isolation",
+    "schema_evolution_resilient_claim_schema",
+    "probabilistic_identity_session_policy_scoring",
+    "real_time_access_analytics",
+    "counterfactual_policy_simulation",
+    "temporal_access_risk_forecasting",
+    "autonomous_identity_exception_resolution",
+    "semantic_access_request_parsing",
+    "predictive_access_risk_scoring",
+    "self_healing_authorization_route_selection",
+    "zero_knowledge_policy_decision_proof",
+    "immutable_identity_audit_trail",
+    "dynamic_access_policy_screening",
+    "automated_identity_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_identity_federation",
+    "workforce_customer_service_account_integration",
+    "decentralized_principal_identity",
+    "chaos_engineered_identity_tolerance",
+    "quantum_resistant_token_authorization",
+    "carbon_aware_access_processing",
+    "algebraic_role_optimization",
+    "mechanism_design_privileged_access_allocation",
+    "information_theoretic_access_anomaly_detection",
+    "temporal_access_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_access_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "identity_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -818,6 +852,7 @@ IMPLEMENTED_PBC_KEYS = (
     "eam",
     "product_catalog_pim",
     "customer_360",
+    "federated_iam",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3073,6 +3108,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = product_catalog_pim_runtime_capabilities()
     elif key == "customer_360":
         advanced_runtime = customer_360_runtime_capabilities()
+    elif key == "federated_iam":
+        advanced_runtime = federated_iam_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3370,6 +3407,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "eam": len(EAM_ADVANCED_CAPABILITY_KEYS),
         "product_catalog_pim": len(PRODUCT_CATALOG_PIM_ADVANCED_CAPABILITY_KEYS),
         "customer_360": len(CUSTOMER_360_ADVANCED_CAPABILITY_KEYS),
+        "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -5196,3 +5234,24 @@ from .pbcs.customer_360 import customer_360_runtime_smoke  # noqa: E402,F401
 from .pbcs.customer_360 import customer_360_set_parameter  # noqa: E402,F401
 from .pbcs.customer_360 import customer_360_set_preference  # noqa: E402,F401
 from .pbcs.customer_360 import customer_360_ui_contract  # noqa: E402,F401
+from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_approve_privileged_access  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_assign_role  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_build_workbench_view  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_configure_runtime  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_empty_state  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_evaluate_policy  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_grant_token  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_link_identity  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_provision_tenant  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_register_identity_provider  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_register_principal  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_register_rule  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_render_workbench  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_runtime_capabilities  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_runtime_smoke  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_set_parameter  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_ui_contract  # noqa: E402,F401
+from .pbcs.federated_iam import federated_iam_verify_credential  # noqa: E402,F401
