@@ -1728,6 +1728,31 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   pass (`8 passed`), all package-local PBC tests pass (`322 passed`), and the
   full PBC audit stack including all built-in generation smoke and
   `pbc_release_audit()` returns true. Commit: `cbe8c93`.
+- Current platform-fabric runtime capability proof pass adds package-local
+  runtime capability tests for `federated_iam`, `api_gateway_mesh`,
+  `schema_registry`, `workflow_orchestration`, `audit_ledger`, and
+  `composition_engine`. The tests prove standard table-stakes and advanced
+  runtime smoke coverage, configuration/rule/parameter execution, UI workbench
+  evidence, AppGen-X-only eventing, backend allowlists, owned-boundary
+  rejection, release/API/service/schema evidence, retry/dead-letter evidence,
+  and idempotent handler evidence where exposed. Focused platform tests pass
+  (`60 passed`). Commit: `847bd0b`.
+- Current financial-core and supply-chain/order runtime assurance pass adds
+  executable capability assurance for `gl_core`, `ap_automation`, `ar_credit`,
+  `treasury_cash`, `asset_lifecycle`, and `tax_localization`, plus
+  package-local runtime capability proof tests for `inventory_positioning`,
+  `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`,
+  `global_inventory_visibility`, `order_routing_optimization`, and
+  `returns_reverse_logistics`. The new evidence proves table-stakes feature
+  coverage, advanced capability coverage, configuration/rules/parameters,
+  UI/workbench binding, AppGen-X eventing, retry/dead-letter/idempotency,
+  backend allowlists, release/API/service/schema evidence, and owned-boundary
+  rejection. Syntax checks pass, financial-core focused tests pass
+  (`48 passed`), supply-chain/order focused tests pass (`24 passed`), all
+  package-local PBC tests pass (`370 passed`), source/generated package
+  evidence tests pass (`8 passed`), and the full PBC audit stack including all
+  built-in generation smoke and `pbc_release_audit()` returns true. Commit:
+  `pending`.
 
 ## Open Completion Areas
 
