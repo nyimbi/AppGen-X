@@ -1043,6 +1043,7 @@ IMPLEMENTED_PBC_KEYS = (
     "notifications",
     "cdp_segmentation",
     "loyalty_rewards",
+    "streaming_analytics",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3328,6 +3329,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = cdp_segmentation_runtime_capabilities()
     elif key == "loyalty_rewards":
         advanced_runtime = loyalty_rewards_runtime_capabilities()
+    elif key == "streaming_analytics":
+        advanced_runtime = streaming_analytics_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
@@ -3652,6 +3655,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "notifications": len(NOTIFICATIONS_RUNTIME_CAPABILITY_KEYS),
         "cdp_segmentation": len(CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS),
         "loyalty_rewards": len(LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS),
+        "streaming_analytics": len(STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
@@ -5842,6 +5846,27 @@ from .pbcs.loyalty_rewards import loyalty_rewards_runtime_smoke  # noqa: E402,F4
 from .pbcs.loyalty_rewards import loyalty_rewards_set_parameter  # noqa: E402,F401
 from .pbcs.loyalty_rewards import loyalty_rewards_ui_contract  # noqa: E402,F401
 from .pbcs.loyalty_rewards import loyalty_rewards_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.streaming_analytics import STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.streaming_analytics import STREAMING_ANALYTICS_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.streaming_analytics import STREAMING_ANALYTICS_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_build_api_contract  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_build_workbench_view  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_configure_runtime  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_create_dashboard_projection  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_define_window  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_empty_state  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_ingest_metric_event  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_permissions_contract  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_receive_event  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_register_metric_stream  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_register_rule  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_register_schema_extension  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_render_workbench  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_runtime_capabilities  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_runtime_smoke  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_set_parameter  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_ui_contract  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_verify_owned_table_boundary  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
