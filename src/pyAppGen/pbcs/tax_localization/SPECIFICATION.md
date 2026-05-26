@@ -11,20 +11,37 @@ configuration, permissions, workbench views, and release evidence under
 
 - **PBC key:** `tax_localization`
 - **Mesh:** `finops`
-- **Owned tables:** `tax_jurisdiction`, `tax_rule`, `tax_calculation`,
-  `tax_filing`
+- **Owned tables:** `tax_jurisdiction`, `tax_authority_channel`,
+  `tax_filing_calendar`, `tax_rule`, `tax_rule_version`,
+  `product_taxability`, `counterparty_tax_profile`, `tax_calculation`,
+  `invoice_tax_record`, `exemption_certificate`, `cross_border_duty`,
+  `tax_filing`, `tax_reconciliation`, `digital_tax_document`,
+  `tax_policy_rule`, `tax_parameter`, and `tax_configuration`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
 - **Event contract:** AppGen-X outbox/inbox event contract only
-- **Emits:** `TaxCalculated`, `TaxFilingPrepared`
-- **Consumes:** `ProductClassified`, `InvoiceIssued`, `OrderPriced`
-- **Primary APIs:** `POST /tax-quotes`, `POST /filings`,
-  `GET /jurisdictions`
+- **Required event topic:** `appgen.tax.events`
+- **Emits:** `TaxJurisdictionRegistered`, `TaxRuleActivated`,
+  `TaxCalculated`, `InvoiceTaxRecorded`, and `TaxFilingPrepared`
+- **Consumes:** `ProductClassified`, `InvoiceIssued`, `OrderPriced`,
+  `PaymentCollected`, and `AccessPolicyChanged`
+- **Primary APIs:** `POST /tax/jurisdictions`, `POST /tax/rules`,
+  `POST /tax/quotes`, `POST /tax/invoices/{id}/tax-records`,
+  `POST /tax/filings`, `POST /tax/events/inbox`, and
+  `GET /tax/workbench`
 - **UI artifacts:** tax workbench, jurisdiction rule editor, filing monitor,
-  calculation trace viewer, exemption review queue
+  calculation trace viewer, exemption review queue, configuration editor,
+  parameter console, inbox monitor, outbox monitor, and dead-letter panel
 
 The PBC does not share tables with other packages. Cross-PBC interaction is
 through APIs, event payloads, and projection-friendly references such as
 `invoice_id`, `product_id`, `customer_id`, and `order_id`.
+Dependency data is stored only as package-owned projections:
+`product_taxability_projection`, `invoice_tax_projection`,
+`order_price_projection`, `payment_collection_projection`,
+`access_policy_projection`, and `authority_acknowledgement_projection`.
+The runtime boundary checker rejects undeclared foreign tables, and accepts only
+owned tables, AppGen-X runtime event tables, consumed event types, declared
+projection names, and declared dependency APIs.
 
 ## Standard Table-Stakes Capabilities
 
@@ -157,8 +174,24 @@ The runtime must prove:
 - Tax calculations are idempotent and produce AppGen-X outbox evidence.
 - Filings are prepared from owned calculation state and emit
   `TaxFilingPrepared`.
-- Runtime configuration rejects unsupported backends and exposes only the
-  AppGen-X event contract.
+- Runtime configuration rejects unsupported backends, rejects wrong event
+  topics, rejects stream-engine picker fields, and exposes only the AppGen-X
+  event contract.
+- Database backends are limited to PostgreSQL, MySQL, and MariaDB.
+- AppGen-X eventing is fixed to `appgen.tax.events`; users cannot select stream
+  engines or alternate event contracts.
+- `register_schema_extension` accepts only owned Tax Localization tables and
+  validates extension field names before merging jurisdiction-specific fields.
+- `receive_event` records inbox evidence, uses idempotency keys, projects
+  consumed events into package-owned projections, retries unsupported or failed
+  messages, and moves exhausted messages to the dead-letter table.
+- The API contract is descriptor-level evidence: each route declares command or
+  query handler, owned tables, emitted or consumed events, permission, and
+  idempotency key.
+- The permissions contract maps every command, handler, configuration action,
+  and audit surface to package-scoped RBAC actions.
+- The workbench and UI contract bind to owned tables, configuration metadata,
+  outbox, inbox, dead-letter evidence, event surfaces, and action permissions.
 - Executable policy rules are distinct from jurisdictional tax rules and cover
   filing, quote, exemption, cross-border, withholding, authority-route, and
   release-gate behavior.
@@ -173,3 +206,25 @@ The runtime must prove:
   `tax_localization` owned package boundary.
 - Release audits and generation smoke audits pass before the PBC is considered
   implemented.
+
+## Package-Local Hardening Evidence
+
+The package exports constants for the required event topic, allowed database
+backends, owned tables, emitted events, and consumed events. These constants are
+used by runtime configuration, API descriptors, UI descriptors, package metadata,
+and focused tests so the contract cannot drift silently. The executable state
+contains the ordinary tax domain projections plus `inbox`, `outbox`,
+`dead_letter`, `dead_letters`, `handled_events`, and `retry_evidence` surfaces.
+Handlers are side-effect-free in the AppGen-X generator context: they return a
+new state object with projected evidence rather than reaching into external
+systems or shared tables.
+
+The package-local API surface includes command routes for jurisdiction
+registration, rule activation, tax quotes, invoice tax recording, filing
+preparation, and event inbox handling. The workbench query exposes counts,
+configuration binding, RBAC-driven visible actions, owned-table binding
+evidence, and runtime event table binding evidence. The UI contract keeps the
+stream-engine picker hidden and declares the AppGen-X event contract explicitly.
+This means generated applications can render Tax Localization workbench
+fragments, route commands through package-owned services, and validate package
+composition without exposing infrastructure choices to users.

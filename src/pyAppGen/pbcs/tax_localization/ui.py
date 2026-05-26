@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import TAX_LOCALIZATION_CONSUMED_EVENT_TYPES
+from .runtime import TAX_LOCALIZATION_EMITTED_EVENT_TYPES
+from .runtime import TAX_LOCALIZATION_OWNED_TABLES
+from .runtime import TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC
+from .runtime import tax_localization_permissions_contract
+
 
 TAX_LOCALIZATION_UI_FRAGMENT_KEYS = (
     "TaxLocalizationWorkbench",
@@ -80,26 +87,14 @@ def tax_localization_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": {
-            "register_jurisdiction": "tax_localization.jurisdiction",
-            "register_tax_rule": "tax_localization.rule_admin",
-            "classify_product": "tax_localization.calculate",
-            "calculate_tax_quote": "tax_localization.calculate",
-            "record_invoice_tax": "tax_localization.invoice",
-            "prepare_tax_filing": "tax_localization.file",
-            "validate_exemption_certificate": "tax_localization.exemption",
-            "reconcile_tax_collected": "tax_localization.reconcile",
-            "route_tax_filing": "tax_localization.file",
-            "generate_tax_audit_proof": "tax_localization.audit",
-            "register_rule": "tax_localization.configure",
-            "set_parameter": "tax_localization.configure",
-            "configure_runtime": "tax_localization.configure",
-            "run_control_tests": "tax_localization.audit",
-        },
+        "action_permissions": tax_localization_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -116,11 +111,13 @@ def tax_localization_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": ("TaxJurisdictionRegistered", "TaxRuleActivated", "TaxCalculated", "InvoiceTaxRecorded", "TaxFilingPrepared"),
-            "consumes": ("ProductClassified", "InvoiceIssued", "OrderPriced", "PaymentCollected", "AccessPolicyChanged"),
+            "emits": TAX_LOCALIZATION_EMITTED_EVENT_TYPES,
+            "consumes": TAX_LOCALIZATION_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": TAX_LOCALIZATION_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -158,4 +155,12 @@ def tax_localization_render_workbench(
         "rules_bound": tuple(sorted(state.get("policy_rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": TAX_LOCALIZATION_OWNED_TABLES,
+            "outbox_table": "tax_localization_appgen_outbox_event",
+            "inbox_table": "tax_localization_appgen_inbox_event",
+            "dead_letter_table": "tax_localization_dead_letter_event",
+        },
     }

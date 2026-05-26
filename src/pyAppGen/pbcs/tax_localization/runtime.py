@@ -8,6 +8,70 @@ import math
 import re
 
 
+TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC = "appgen.tax.events"
+TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+TAX_LOCALIZATION_OWNED_TABLES = (
+    "tax_jurisdiction",
+    "tax_authority_channel",
+    "tax_filing_calendar",
+    "tax_rule",
+    "tax_rule_version",
+    "product_taxability",
+    "counterparty_tax_profile",
+    "tax_calculation",
+    "invoice_tax_record",
+    "exemption_certificate",
+    "cross_border_duty",
+    "tax_filing",
+    "tax_reconciliation",
+    "digital_tax_document",
+    "tax_policy_rule",
+    "tax_parameter",
+    "tax_configuration",
+)
+TAX_LOCALIZATION_EMITTED_EVENT_TYPES = (
+    "TaxJurisdictionRegistered",
+    "TaxRuleActivated",
+    "TaxCalculated",
+    "InvoiceTaxRecorded",
+    "TaxFilingPrepared",
+)
+TAX_LOCALIZATION_CONSUMED_EVENT_TYPES = (
+    "ProductClassified",
+    "InvoiceIssued",
+    "OrderPriced",
+    "PaymentCollected",
+    "AccessPolicyChanged",
+)
+_TAX_LOCALIZATION_RUNTIME_TABLES = (
+    "tax_localization_appgen_outbox_event",
+    "tax_localization_appgen_inbox_event",
+    "tax_localization_dead_letter_event",
+)
+_TAX_LOCALIZATION_ALLOWED_DEPENDENCIES = (
+    "product_taxability_projection",
+    "invoice_tax_projection",
+    "order_price_projection",
+    "payment_collection_projection",
+    "access_policy_projection",
+    "authority_acknowledgement_projection",
+    "GET /products/taxability",
+    "GET /invoices/{id}",
+    "GET /orders/{id}/pricing",
+    "GET /identity/policies",
+    "POST /audit/tax-events",
+)
+_TAX_LOCALIZATION_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 TAX_LOCALIZATION_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_tax_lifecycle",
     "graph_relational_jurisdiction_topology",
@@ -79,12 +143,15 @@ def tax_localization_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "tax_localization",
         "implementation_directory": "src/pyAppGen/pbcs/tax_localization",
+        "owned_tables": TAX_LOCALIZATION_OWNED_TABLES,
         "capabilities": TAX_LOCALIZATION_RUNTIME_CAPABILITY_KEYS,
         "standard_features": TAX_LOCALIZATION_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_jurisdiction",
             "register_tax_rule",
             "classify_product",
@@ -103,6 +170,7 @@ def tax_localization_runtime_capabilities() -> dict:
             "screen_tax_policy",
             "run_control_tests",
             "build_api_contract",
+            "permissions_contract",
             "federate_tax_view",
             "integrate_digital_document_network",
             "verify_tax_identity",
@@ -115,6 +183,7 @@ def tax_localization_runtime_capabilities() -> dict:
             "model_stochastic_tax_exposure",
             "verify_formal_invariants",
             "build_workbench_view",
+            "verify_owned_table_boundary",
             "register_governed_model",
         ),
         "smoke": smoke,
@@ -127,7 +196,7 @@ def tax_localization_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.tax.events",
+            "event_topic": TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "default_timezone": "UTC",
@@ -152,6 +221,14 @@ def tax_localization_runtime_smoke() -> dict:
         state,
         "tax_rule",
         {"local_authority_payload": "jsonb", "clearance_metadata": "jsonb"},
+    )["state"]
+    state = tax_localization_receive_event(
+        state,
+        {
+            "event_id": "evt_product_1",
+            "event_type": "ProductClassified",
+            "payload": {"tenant": "tenant_alpha", "product_id": "sku_1", "product_class": "standard_goods", "confidence": 0.92},
+        },
     )["state"]
     jurisdiction = tax_localization_register_jurisdiction(
         state,
@@ -268,7 +345,7 @@ def tax_localization_runtime_smoke() -> dict:
         {"id": "mechanism_design_tax_allocation", "ok": allocation["ok"] and allocation["allocations"][0]["amount"] > allocation["allocations"][1]["amount"]},
         {"id": "information_theoretic_tax_anomaly_detection", "ok": anomaly["ok"] and anomaly["entropy"] >= 0},
         {"id": "temporal_tax_exposure_stochastic_modeling", "ok": stochastic["ok"] and stochastic["tail_risk"] > 0},
-        {"id": "distributed_systems_engineering", "ok": state["outbox"][-1]["idempotency_key"].startswith("tax_localization:TaxFilingPrepared")},
+        {"id": "distributed_systems_engineering", "ok": state["outbox"][-1]["idempotency_key"].startswith("tax_localization:TaxFilingPrepared") and state["handled_events"]["ProductClassified:evt_product_1"]["status"] == "processed"},
         {"id": "probabilistic_ml_tax_risk", "ok": model["ok"] and model["metadata"]["auc"] >= 0.9},
         {"id": "cryptographic_engineering", "ok": proof["hash"] and crypto["epoch"] == 2},
         {"id": "mathematical_optimization", "ok": optimization["objective_score"] > 0 and allocation["clearing_bid"] > 0},
@@ -290,6 +367,16 @@ def tax_localization_empty_state() -> dict:
         "policy_rules": {},
         "events": (),
         "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "product_taxability_projections": {},
+        "invoice_projections": {},
+        "order_price_projections": {},
+        "payment_collection_projections": {},
+        "access_policy_projections": {},
         "jurisdictions": {},
         "rules": {},
         "calculations": {},
@@ -302,14 +389,21 @@ def tax_localization_empty_state() -> dict:
 
 
 def tax_localization_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _TAX_LOCALIZATION_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Tax Localization uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS):
         raise ValueError("Tax Localization supports only PostgreSQL, MySQL, or MariaDB backends")
+    if configuration.get("event_topic") != TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Tax Localization requires AppGen-X event topic {TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": TAX_LOCALIZATION_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -340,10 +434,77 @@ def tax_localization_register_rule(state: dict, rule: dict) -> dict:
 
 
 def tax_localization_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in TAX_LOCALIZATION_OWNED_TABLES:
+        raise ValueError(f"Tax Localization schema extensions must target owned tables: {TAX_LOCALIZATION_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    existing = dict(state.get("schema_extensions", {}).get(table, {}))
+    merged = {**existing, **fields}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}},
+        "schema_extension": {"table": table, "fields": dict(fields)},
+        "target": table,
+        "fields": merged,
+    }
+
+
+def tax_localization_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {
+        **state,
+        "inbox": (*state.get("inbox", ()), inbox_entry),
+        "handled_events": dict(handled),
+        "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "dead_letters": tuple(state.get("dead_letters", ())),
+        "dead_letter": tuple(state.get("dead_letter", ())),
+        "product_taxability_projections": dict(state.get("product_taxability_projections", {})),
+        "invoice_projections": dict(state.get("invoice_projections", {})),
+        "order_price_projections": dict(state.get("order_price_projections", {})),
+        "payment_collection_projections": dict(state.get("payment_collection_projections", {})),
+        "access_policy_projections": dict(state.get("access_policy_projections", {})),
+    }
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in TAX_LOCALIZATION_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state["retry_evidence"], evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_tax_event"}
+            next_state["dead_letters"] = (*next_state["dead_letters"], dead)
+            next_state["dead_letter"] = (*next_state["dead_letter"], dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "ProductClassified":
+        projection_id = payload.get("product_id") or payload.get("classification_id") or event_id
+        next_state["product_taxability_projections"][projection_id] = payload
+    elif event_type == "InvoiceIssued":
+        next_state["invoice_projections"][payload.get("invoice_id", event_id)] = payload
+    elif event_type == "OrderPriced":
+        next_state["order_price_projections"][payload.get("order_id", event_id)] = payload
+    elif event_type == "PaymentCollected":
+        next_state["payment_collection_projections"][payload.get("payment_id", event_id)] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload.get("policy_id", event_id)] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def tax_localization_register_jurisdiction(state: dict, jurisdiction: dict) -> dict:
@@ -511,10 +672,97 @@ def tax_localization_run_control_tests(state: dict) -> dict:
 def tax_localization_build_api_contract() -> dict:
     return {
         "ok": True,
-        "routes": ("POST /tax-quotes", "POST /filings", "GET /jurisdictions", "GET /tax-calculations/{id}"),
-        "events": {"emits": ("TaxCalculated", "TaxFilingPrepared"), "consumes": ("ProductClassified", "InvoiceIssued", "OrderPriced")},
-        "permissions": ("tax_localization.read", "tax_localization.calculate", "tax_localization.rule_admin", "tax_localization.file", "tax_localization.audit"),
+        "format": "appgen.tax-localization-api-contract.v1",
+        "routes": (
+            {"route": "POST /tax/jurisdictions", "command": "register_jurisdiction", "owned_tables": ("tax_jurisdiction", "tax_authority_channel", "tax_filing_calendar"), "emits": ("TaxJurisdictionRegistered",), "requires_permission": "tax_localization.jurisdiction", "idempotency_key": "jurisdiction_id"},
+            {"route": "POST /tax/rules", "command": "register_tax_rule", "owned_tables": ("tax_rule", "tax_rule_version"), "emits": ("TaxRuleActivated",), "requires_permission": "tax_localization.rule_admin", "idempotency_key": "rule_id:version"},
+            {"route": "POST /tax/quotes", "command": "calculate_tax_quote", "owned_tables": ("tax_calculation",), "emits": ("TaxCalculated",), "requires_permission": "tax_localization.calculate", "idempotency_key": "quote_id"},
+            {"route": "POST /tax/invoices/{id}/tax-records", "command": "record_invoice_tax", "owned_tables": ("invoice_tax_record",), "emits": ("InvoiceTaxRecorded",), "requires_permission": "tax_localization.invoice", "idempotency_key": "invoice_id"},
+            {"route": "POST /tax/filings", "command": "prepare_tax_filing", "owned_tables": ("tax_filing",), "emits": ("TaxFilingPrepared",), "requires_permission": "tax_localization.file", "idempotency_key": "filing_id"},
+            {"route": "POST /tax/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": TAX_LOCALIZATION_CONSUMED_EVENT_TYPES, "requires_permission": "tax_localization.event", "idempotency_key": "event_id"},
+            {"route": "GET /tax/workbench", "query": "build_workbench_view", "owned_tables": TAX_LOCALIZATION_OWNED_TABLES, "requires_permission": "tax_localization.audit"},
+        ),
+        "declared_catalog_routes": ("POST /tax-quotes", "POST /filings", "GET /jurisdictions", "GET /tax-calculations/{id}"),
+        "events": {"emits": TAX_LOCALIZATION_EMITTED_EVENT_TYPES, "consumes": TAX_LOCALIZATION_CONSUMED_EVENT_TYPES},
+        "emits": TAX_LOCALIZATION_EMITTED_EVENT_TYPES,
+        "consumes": TAX_LOCALIZATION_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(tax_localization_permissions_contract()["permissions"])),
+        "database_backends": TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": TAX_LOCALIZATION_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
         "configuration": ("TAX_LOCALIZATION_DATABASE_URL", "TAX_LOCALIZATION_EVENT_TOPIC", "TAX_LOCALIZATION_RETRY_LIMIT", "TAX_LOCALIZATION_AUTHORITY_CHANNELS"),
+    }
+
+
+def tax_localization_permissions_contract() -> dict:
+    return {
+        "format": "appgen.tax-localization-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "tax_localization.read",
+            "tax_localization.jurisdiction",
+            "tax_localization.rule_admin",
+            "tax_localization.calculate",
+            "tax_localization.invoice",
+            "tax_localization.file",
+            "tax_localization.exemption",
+            "tax_localization.reconcile",
+            "tax_localization.event",
+            "tax_localization.configure",
+            "tax_localization.audit",
+        ),
+        "action_permissions": {
+            "register_jurisdiction": "tax_localization.jurisdiction",
+            "register_tax_rule": "tax_localization.rule_admin",
+            "classify_product": "tax_localization.calculate",
+            "calculate_tax_quote": "tax_localization.calculate",
+            "record_invoice_tax": "tax_localization.invoice",
+            "prepare_tax_filing": "tax_localization.file",
+            "validate_exemption_certificate": "tax_localization.exemption",
+            "reconcile_tax_collected": "tax_localization.reconcile",
+            "route_tax_filing": "tax_localization.file",
+            "generate_tax_audit_proof": "tax_localization.audit",
+            "receive_event": "tax_localization.event",
+            "register_rule": "tax_localization.configure",
+            "register_schema_extension": "tax_localization.configure",
+            "set_parameter": "tax_localization.configure",
+            "configure_runtime": "tax_localization.configure",
+            "run_control_tests": "tax_localization.audit",
+            "build_workbench_view": "tax_localization.audit",
+        },
+    }
+
+
+def tax_localization_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *TAX_LOCALIZATION_OWNED_TABLES,
+        *TAX_LOCALIZATION_CONSUMED_EVENT_TYPES,
+        *_TAX_LOCALIZATION_RUNTIME_TABLES,
+        *_TAX_LOCALIZATION_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(reference for reference in references if reference not in allowed_set and not str(reference).startswith("tax_localization_"))
+    return {
+        "format": "appgen.tax-localization-boundary.v1",
+        "ok": not violations,
+        "owned_tables": TAX_LOCALIZATION_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /products/taxability", "GET /invoices/{id}", "GET /orders/{id}/pricing", "GET /identity/policies", "POST /audit/tax-events"),
+            "events": TAX_LOCALIZATION_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "product_taxability_projection",
+                "invoice_tax_projection",
+                "order_price_projection",
+                "payment_collection_projection",
+                "access_policy_projection",
+                "authority_acknowledgement_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -619,6 +867,20 @@ def tax_localization_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("policy_rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": TAX_LOCALIZATION_OWNED_TABLES,
+            "outbox_table": "tax_localization_appgen_outbox_event",
+            "inbox_table": "tax_localization_appgen_inbox_event",
+            "dead_letter_table": "tax_localization_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+        },
     }
 
 
