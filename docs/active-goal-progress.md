@@ -1023,6 +1023,20 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   runtime regression slice. Full `tests/test_main.py` is still blocked by the
   existing `ideas_release_audit` / `palette_breadth` gate mismatch outside this
   batch.
+- `751e520` implements the formerly skeletal `price_promotion_engine` package:
+  package-local specification, executable price-rule, promotion, loyalty-tier,
+  decision, segment-event, forecast-event, and quote runtime, UI/workbench
+  contract, central audit wiring, and focused tests. The package enforces
+  PostgreSQL/MySQL/MariaDB datastore boundaries, AppGen-X eventing without
+  user-facing stream-engine selection, bounded rules and parameters, idempotent
+  consumed-event handling, retry/dead-letter evidence, advanced runtime smoke
+  evidence, owned-table boundary evidence, and workbench binding evidence.
+  Verification passed for price promotion py-compile, focused runtime tests,
+  implemented-capability audit, implementation release audit,
+  `pbc_release_audit()`, generation smoke audit, the restricted legacy-name
+  scan, and the 104-test PBC runtime regression slice. Full `tests/test_main.py`
+  remains blocked by the existing `ideas_release_audit` / `palette_breadth`
+  gate mismatch outside this slice.
 
 ## Open Completion Areas
 
