@@ -74,7 +74,7 @@ def validate_source_package_metadata(metadata: dict) -> dict:
     )
     missing_publish_artifacts = tuple(
         artifact
-        for artifact in ("__init__.py", "manifest.py", "capability_assurance.py", "tests/test_contract.py", "RELEASE_EVIDENCE.md")
+        for artifact in ("__init__.py", "manifest.py", "capability_assurance.py", "agent.py", "tests/test_contract.py", "RELEASE_EVIDENCE.md")
         if artifact not in tuple(metadata.get("artifacts", ()))
     )
     missing_capability_evidence = tuple(

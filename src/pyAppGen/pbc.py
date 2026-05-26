@@ -71,6 +71,7 @@ PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS = (
 PBC_SOURCE_PACKAGE_REQUIRED_ARTIFACTS = (
     *PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
     "capability_assurance.py",
+    "agent.py",
 )
 PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS = (
     "capability_modules",
@@ -4536,6 +4537,11 @@ def pbc_source_artifact_contract(key: str) -> dict:
         if (source_dir / "capability_assurance.py").is_file()
         else ""
     )
+    agent_text = (
+        (source_dir / "agent.py").read_text(encoding="utf-8")
+        if (source_dir / "agent.py").is_file()
+        else ""
+    )
     checks = (
         {
             "id": "required_source_artifacts_exist",
@@ -4574,6 +4580,18 @@ def pbc_source_artifact_contract(key: str) -> dict:
             and "stream_picker_visible" in capability_assurance_text
             and "invalid_backends" in capability_assurance_text,
             "path": f"{relative_dir}/capability_assurance.py",
+        },
+        {
+            "id": "agent_chatbot_skills_materialized",
+            "ok": "def agent_skill_manifest(" in agent_text
+            and "def chatbot_interface_contract(" in agent_text
+            and "def document_instruction_plan(" in agent_text
+            and "def datastore_crud_plan(" in agent_text
+            and "def composed_agent_contribution(" in agent_text
+            and "def smoke_test(" in agent_text
+            and "stream_engine_picker_visible" in agent_text
+            and "single_agent_skill_namespace" in agent_text,
+            "path": f"{relative_dir}/agent.py",
         },
         {
             "id": "self_registration_entrypoints_materialized",
@@ -5992,6 +6010,24 @@ def pbc_composition_dsl(
     if not plan["ok"]:
         raise ValueError(f"Invalid PBC composition: {plan['missing_pbcs'] or plan['shared_datastores']}")
     lines = [f"app {app_name} {{ targets: {', '.join(targets)} }}"]
+    lines.extend(
+        (
+            "",
+            "llm AppGenXLocalModel {",
+            "  provider: local",
+            "  mode: governed",
+            "  model: appgen-x-composed-assistant",
+            "}",
+            "",
+            f"agent {app_name}Assistant {{",
+            "  provider: AppGenXLocalModel",
+            '  goal: "Guide users through selected PBC tasks, documents, and governed datastore changes"',
+            "  tools: " + ", ".join(f"{service['pbc']}_skills" for service in plan["services"]),
+            "  memory: tenant_session",
+            "  max_steps: 12",
+            "}",
+        )
+    )
     for service in plan["services"]:
         for table in service["tables"][:3]:
             table_name = f"{service['pbc']}_{table}"

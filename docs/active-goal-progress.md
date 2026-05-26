@@ -1873,6 +1873,18 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`22 passed`), and source/package/specification/implementation/capability,
   all built-in generation smoke, and `pbc_release_audit()` return true with
   zero blocking gaps. Commit: `c5f7a8a`.
+- Current PBC AI agent/chatbot pass adds first-class `agent.py` artifacts to
+  every built-in PBC. Each package now contributes scoped skills to the
+  composed application assistant, exposes a professional chatbot contract,
+  plans document/instruction intake, and plans governed create/read/update/delete
+  actions only against owned tables with confirmation for mutations. Source
+  package audits now require the agent artifact, and PBC composition DSL emits
+  one single application assistant wired to the selected PBC skill namespaces.
+  Focused agent plus source-package tests pass (`9 passed`), package-local PBC
+  tests pass (`396 passed`), targeted PBC evidence tests pass (`25 passed`),
+  and source/package/specification/implementation/capability, all built-in
+  generation smoke, and `pbc_release_audit()` return true with zero blocking
+  gaps. Commit: `pending`.
 
 ## Open Completion Areas
 
