@@ -2,11 +2,18 @@
 
 from ..source_contract import source_pbc_package_contract
 from .runtime import SERVICE_TICKETING_ALLOWED_DATABASE_BACKENDS
+from .runtime import SERVICE_TICKETING_CONSUMED_EVENT_TYPES
+from .runtime import SERVICE_TICKETING_EMITTED_EVENT_TYPES
 from .runtime import SERVICE_TICKETING_OWNED_TABLES
+from .runtime import SERVICE_TICKETING_REQUIRED_EVENT_TOPIC
 from .runtime import SERVICE_TICKETING_RUNTIME_CAPABILITY_KEYS
+from .runtime import SERVICE_TICKETING_RUNTIME_TABLES
 from .runtime import SERVICE_TICKETING_STANDARD_FEATURE_KEYS
 from .runtime import service_ticketing_assign_ticket
 from .runtime import service_ticketing_build_api_contract
+from .runtime import service_ticketing_build_release_evidence
+from .runtime import service_ticketing_build_schema_contract
+from .runtime import service_ticketing_build_service_contract
 from .runtime import service_ticketing_build_workbench_view
 from .runtime import service_ticketing_configure_runtime
 from .runtime import service_ticketing_create_sla_policy
@@ -18,9 +25,11 @@ from .runtime import service_ticketing_record_escalation
 from .runtime import service_ticketing_register_rule
 from .runtime import service_ticketing_register_schema_extension
 from .runtime import service_ticketing_resolve_ticket
+from .runtime import service_ticketing_run_control_tests
 from .runtime import service_ticketing_runtime_capabilities
 from .runtime import service_ticketing_runtime_smoke
 from .runtime import service_ticketing_set_parameter
+from .runtime import service_ticketing_ui_binding_contract
 from .runtime import service_ticketing_verify_owned_table_boundary
 from .ui import SERVICE_TICKETING_UI_FRAGMENT_KEYS
 from .ui import service_ticketing_render_workbench
@@ -37,8 +46,17 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": service_ticketing_ui_contract(),
-        "api_contract": service_ticketing_build_api_contract(),
-        "permissions_contract": service_ticketing_permissions_contract(),
         "owned_tables": SERVICE_TICKETING_OWNED_TABLES,
+        "runtime_tables": SERVICE_TICKETING_RUNTIME_TABLES,
         "allowed_database_backends": SERVICE_TICKETING_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": SERVICE_TICKETING_REQUIRED_EVENT_TOPIC,
+        "emitted_events": SERVICE_TICKETING_EMITTED_EVENT_TYPES,
+        "consumed_events": SERVICE_TICKETING_CONSUMED_EVENT_TYPES,
+        "api_contract": service_ticketing_build_api_contract(),
+        "schema_contract": service_ticketing_build_schema_contract(),
+        "service_contract": service_ticketing_build_service_contract(),
+        "release_evidence_contract": service_ticketing_build_release_evidence(),
+        "permissions_contract": service_ticketing_permissions_contract(),
+        "ui_binding_contract": service_ticketing_ui_binding_contract(),
+        "boundary_contract": service_ticketing_verify_owned_table_boundary(SERVICE_TICKETING_OWNED_TABLES),
     }

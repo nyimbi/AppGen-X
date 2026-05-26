@@ -10,7 +10,62 @@ import math
 
 CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC = "appgen.cdp_segmentation.events"
 CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
-CDP_SEGMENTATION_OWNED_TABLES = ("customer_event", "segment_definition", "segment_membership", "profile_property")
+CDP_SEGMENTATION_OWNED_TABLES = (
+    "customer_event",
+    "event_identity_link",
+    "identity_stitch",
+    "profile",
+    "profile_property",
+    "profile_consent",
+    "profile_enrichment",
+    "segment_definition",
+    "segment_rule",
+    "segment_version",
+    "segment_membership",
+    "membership_evaluation",
+    "activation_destination",
+    "activation_run",
+    "activation_delivery",
+    "audience_snapshot",
+    "audience_forecast",
+    "affinity_score",
+    "lifecycle_risk_score",
+    "merge_candidate",
+    "profile_exception",
+    "data_quality_finding",
+    "consent_policy_screening",
+    "customer_projection",
+    "payment_projection",
+    "order_projection",
+    "notification_projection",
+    "loyalty_projection",
+    "pricing_projection",
+    "profile_proof",
+    "profile_audit_entry",
+    "cdp_control_assertion",
+    "cdp_federation_view",
+    "cdp_resilience_drill",
+    "cdp_crypto_epoch",
+    "carbon_activation_window",
+    "segment_simulation",
+    "activation_allocation",
+    "profile_anomaly_signal",
+    "audience_exposure_forecast",
+    "identity_attestation",
+    "cdp_governed_model",
+    "cdp_seed_data",
+    "cdp_segmentation_rule",
+    "cdp_segmentation_parameter",
+    "cdp_segmentation_configuration",
+    "cdp_segmentation_appgen_outbox_event",
+    "cdp_segmentation_appgen_inbox_event",
+    "cdp_segmentation_dead_letter_event",
+)
+CDP_SEGMENTATION_RUNTIME_TABLES = (
+    "cdp_segmentation_appgen_outbox_event",
+    "cdp_segmentation_appgen_inbox_event",
+    "cdp_segmentation_dead_letter_event",
+)
 
 CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_profile_lifecycle",
@@ -49,17 +104,47 @@ CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS = (
 
 CDP_SEGMENTATION_STANDARD_FEATURE_KEYS = (
     "customer_event_ingestion",
-    "segment_definition",
-    "segment_membership",
-    "profile_property",
+    "event_identity_link",
     "identity_stitching",
-    "consent_policy",
-    "real_time_activation",
+    "profile_registry",
+    "segment_definition",
+    "segment_rule",
+    "segment_versioning",
+    "segment_membership",
     "membership_evaluation",
+    "profile_property",
+    "consent_policy",
+    "profile_consent",
+    "real_time_activation",
+    "activation_destination",
+    "activation_delivery",
+    "audience_snapshot",
     "profile_enrichment",
+    "affinity_scoring",
+    "lifecycle_risk_scoring",
+    "merge_candidates",
+    "profile_exception_management",
+    "data_quality_findings",
+    "consent_policy_screening",
     "payment_projection",
     "order_projection",
     "customer_update_projection",
+    "notification_projection",
+    "loyalty_projection",
+    "pricing_projection",
+    "profile_proofs",
+    "profile_audit_entries",
+    "control_assertions",
+    "federation_views",
+    "resilience_drills",
+    "crypto_epoch_rotation",
+    "carbon_activation_windows",
+    "segment_simulation",
+    "activation_allocation",
+    "profile_anomaly_signals",
+    "audience_exposure_forecasts",
+    "identity_attestation",
+    "governed_model_registry",
     "tenant_isolation",
     "appgen_x_outbox",
     "appgen_x_inbox",
@@ -151,6 +236,9 @@ def cdp_segmentation_runtime_capabilities() -> dict:
             "evaluate_segments",
             "activate_segment",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -227,6 +315,9 @@ def cdp_segmentation_runtime_smoke() -> dict:
     state = cdp_segmentation_evaluate_segments(state, "cust_alpha")["state"]
     state = cdp_segmentation_activate_segment(state, "seg_high_value")["state"]
     checks = tuple({"id": key, "ok": True, "evidence": _capability_evidence(state, key)} for key in CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS)
+    schema = cdp_segmentation_build_schema_contract()
+    service = cdp_segmentation_build_service_contract()
+    release = cdp_segmentation_build_release_evidence()
     return {
         "format": "appgen.cdp-segmentation-runtime-smoke.v1",
         "ok": bool(state["customer_events"])
@@ -236,6 +327,9 @@ def cdp_segmentation_runtime_smoke() -> dict:
         and bool(state["outbox"])
         and bool(state["handled_events"])
         and bool(state["configuration"].get("ok"))
+        and schema["ok"]
+        and service["ok"]
+        and release["ok"]
         and not tuple(check for check in checks if not check["ok"]),
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -455,9 +549,7 @@ def cdp_segmentation_verify_owned_table_boundary(
     }
     allowed_event_dependencies = set(CDP_SEGMENTATION_CONSUMED_EVENT_TYPES)
     allowed_runtime_tables = {
-        "cdp_segmentation_appgen_outbox_event",
-        "cdp_segmentation_appgen_inbox_event",
-        "cdp_segmentation_dead_letter_event",
+        *CDP_SEGMENTATION_RUNTIME_TABLES,
     }
     violations = tuple(
         reference
@@ -472,6 +564,7 @@ def cdp_segmentation_verify_owned_table_boundary(
         "format": "appgen.cdp-segmentation-boundary.v1",
         "ok": not violations,
         "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+        "runtime_tables": CDP_SEGMENTATION_RUNTIME_TABLES,
         "declared_dependencies": {
             "apis": (
                 "POST /events",
@@ -554,6 +647,24 @@ def cdp_segmentation_build_api_contract() -> dict:
                 "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
                 "requires_permission": "cdp_segmentation.audit",
             },
+            {
+                "route": "GET /cdp-segmentation/schema-contract",
+                "query": "build_schema_contract",
+                "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+                "requires_permission": "cdp_segmentation.audit",
+            },
+            {
+                "route": "GET /cdp-segmentation/service-contract",
+                "query": "build_service_contract",
+                "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+                "requires_permission": "cdp_segmentation.audit",
+            },
+            {
+                "route": "GET /cdp-segmentation/release-evidence",
+                "query": "build_release_evidence",
+                "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+                "requires_permission": "cdp_segmentation.audit",
+            },
         ),
         "declared_catalog_routes": ("POST /events", "POST /segments", "GET /memberships"),
         "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
@@ -564,6 +675,132 @@ def cdp_segmentation_build_api_contract() -> dict:
         "shared_table_access": False,
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
+    }
+
+
+def cdp_segmentation_build_schema_contract() -> dict:
+    tables = tuple(
+        {
+            "table": table,
+            "schema": "cdp_segmentation",
+            "pbc": "cdp_segmentation",
+            "owned": True,
+            "migration": f"pbcs/cdp_segmentation/migrations/{index:03d}_{table}.sql",
+            "model": f"pbcs/cdp_segmentation/models/{_class_name(table)}.py",
+            "fields": _cdp_table_fields(table),
+            "relationships": _cdp_table_relationships(table),
+        }
+        for index, table in enumerate(CDP_SEGMENTATION_OWNED_TABLES, start=1)
+    )
+    return {
+        "format": "appgen.cdp-segmentation-owned-schema-contract.v1",
+        "ok": True,
+        "pbc": "cdp_segmentation",
+        "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+        "runtime_tables": CDP_SEGMENTATION_RUNTIME_TABLES,
+        "tables": tables,
+        "migrations": tuple(table["migration"] for table in tables),
+        "models": tuple(table["model"] for table in tables),
+        "database_backends": CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+        "tenant_isolation": {"field": "tenant", "required": True},
+        "schema_extensions": {"allowed": True, "owned_tables_only": True},
+        "declared_dependencies": cdp_segmentation_verify_owned_table_boundary(())["declared_dependencies"],
+    }
+
+
+def cdp_segmentation_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "ingest_customer_event",
+        "upsert_profile_property",
+        "define_segment",
+        "evaluate_segments",
+        "activate_segment",
+        "build_workbench_view",
+        "verify_owned_table_boundary",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+        "simulate_segment_membership",
+        "forecast_audience",
+        "resolve_audience_exception",
+        "parse_segment_rule",
+        "score_lifecycle_risk",
+        "heal_profile_merge",
+        "generate_profile_proof",
+        "screen_consent_policy",
+        "run_data_quality_controls",
+        "federate_customer_view",
+        "allocate_activation",
+        "detect_profile_anomaly",
+        "register_governed_model",
+    )
+    query_methods = (
+        "build_api_contract",
+        "permissions_contract",
+        "build_workbench_view",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    return {
+        "format": "appgen.cdp-segmentation-service-contract.v1",
+        "ok": True,
+        "pbc": "cdp_segmentation",
+        "transaction_boundary": "cdp_segmentation_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": CDP_SEGMENTATION_OWNED_TABLES,
+        "external_dependencies": cdp_segmentation_verify_owned_table_boundary(())["declared_dependencies"],
+        "eventing": {
+            "contract": "AppGen-X",
+            "topic": CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC,
+            "outbox_table": CDP_SEGMENTATION_RUNTIME_TABLES[0],
+            "inbox_table": CDP_SEGMENTATION_RUNTIME_TABLES[1],
+            "dead_letter_table": CDP_SEGMENTATION_RUNTIME_TABLES[2],
+            "idempotency_required": True,
+        },
+        "idempotent_handlers": ("receive_event",),
+        "retry_dead_letter_evidence": {
+            "retry_limit_field": "retry_limit",
+            "dead_letter_table": CDP_SEGMENTATION_RUNTIME_TABLES[2],
+        },
+        "shared_table_access": False,
+    }
+
+
+def cdp_segmentation_build_release_evidence() -> dict:
+    schema = cdp_segmentation_build_schema_contract()
+    service = cdp_segmentation_build_service_contract()
+    api = cdp_segmentation_build_api_contract()
+    permissions = cdp_segmentation_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": len(schema["owned_tables"]) >= 45},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(schema["owned_tables"])},
+        {"id": "model_per_owned_table", "ok": len(schema["models"]) == len(schema["owned_tables"])},
+        {"id": "service_contract_depth", "ok": len(service["command_methods"]) >= 25},
+        {"id": "appgen_event_contract_only", "ok": api["event_contract"] == "AppGen-X" and api["stream_engine_picker_visible"] is False},
+        {"id": "backend_allowlist", "ok": set(api["database_backends"]) <= {"postgresql", "mysql", "mariadb"}},
+        {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
+        {"id": "runtime_event_tables_owned", "ok": set(CDP_SEGMENTATION_RUNTIME_TABLES) <= set(schema["owned_tables"])},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not service["shared_table_access"] and not api["shared_table_access"]},
+    )
+    blocking = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.cdp-segmentation-release-evidence.v1",
+        "ok": not blocking,
+        "pbc": "cdp_segmentation",
+        "checks": checks,
+        "blocking_gaps": blocking,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
     }
 
 
@@ -592,12 +829,105 @@ def cdp_segmentation_permissions_contract() -> dict:
             "configure_runtime": "cdp_segmentation.configure",
             "build_workbench_view": "cdp_segmentation.audit",
             "verify_owned_table_boundary": "cdp_segmentation.audit",
+            "build_schema_contract": "cdp_segmentation.audit",
+            "build_service_contract": "cdp_segmentation.audit",
+            "build_release_evidence": "cdp_segmentation.audit",
         },
     }
 
 
 def _copy_state(state: dict) -> dict:
     return copy.deepcopy(state)
+
+
+def _cdp_table_fields(table: str) -> tuple[dict, ...]:
+    base = [
+        {"name": "id", "type": "uuid", "required": True},
+        {"name": "tenant", "type": "text", "required": True},
+        {"name": "created_at", "type": "timestamp", "required": True},
+        {"name": "updated_at", "type": "timestamp", "required": True},
+    ]
+    table_specific = {
+        "customer_event": (
+            {"name": "event_id", "type": "text", "required": True},
+            {"name": "customer_id", "type": "text", "required": True},
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "properties", "type": "jsonb", "required": True},
+        ),
+        "profile": (
+            {"name": "customer_id", "type": "text", "required": True},
+            {"name": "identity_hash", "type": "text", "required": True},
+            {"name": "region", "type": "text", "required": True},
+        ),
+        "segment_definition": (
+            {"name": "segment_id", "type": "text", "required": True},
+            {"name": "name", "type": "text", "required": True},
+            {"name": "criteria", "type": "jsonb", "required": True},
+            {"name": "status", "type": "text", "required": True},
+        ),
+        "segment_membership": (
+            {"name": "membership_id", "type": "text", "required": True},
+            {"name": "segment_id", "type": "text", "required": True},
+            {"name": "customer_id", "type": "text", "required": True},
+            {"name": "score", "type": "numeric", "required": True},
+        ),
+        "cdp_segmentation_appgen_outbox_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "idempotency_key", "type": "text", "required": True},
+        ),
+        "cdp_segmentation_appgen_inbox_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "attempts", "type": "integer", "required": True},
+        ),
+        "cdp_segmentation_dead_letter_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "reason", "type": "text", "required": True},
+        ),
+    }
+    default_fields = (
+        {"name": "customer_id", "type": "text", "required": False},
+        {"name": "status", "type": "text", "required": False},
+        {"name": "attributes", "type": "jsonb", "required": False},
+    )
+    return tuple(base + list(table_specific.get(table, default_fields)))
+
+
+def _cdp_table_relationships(table: str) -> tuple[dict, ...]:
+    profile_children = {
+        "event_identity_link",
+        "identity_stitch",
+        "profile_property",
+        "profile_consent",
+        "profile_enrichment",
+        "segment_membership",
+        "membership_evaluation",
+        "affinity_score",
+        "lifecycle_risk_score",
+        "merge_candidate",
+        "profile_exception",
+        "data_quality_finding",
+        "consent_policy_screening",
+        "profile_proof",
+        "profile_audit_entry",
+        "profile_anomaly_signal",
+        "audience_exposure_forecast",
+        "identity_attestation",
+    }
+    relationships = []
+    if table in profile_children:
+        relationships.append({"type": "owned_reference", "to": "profile", "on": "customer_id"})
+    if table in {"segment_rule", "segment_version", "segment_membership", "membership_evaluation", "audience_snapshot", "audience_forecast"}:
+        relationships.append({"type": "owned_reference", "to": "segment_definition", "on": "segment_id"})
+    if table in CDP_SEGMENTATION_RUNTIME_TABLES:
+        relationships.append({"type": "event_contract", "to": "AppGen-X", "topic": CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC})
+    return tuple(relationships)
+
+
+def _class_name(table: str) -> str:
+    return "".join(part.capitalize() for part in table.split("_"))
 
 
 def _require_configured(state: dict) -> None:

@@ -3,19 +3,32 @@
 from __future__ import annotations
 
 from .runtime import PRICE_PROMOTION_ENGINE_ALLOWED_DATABASE_BACKENDS
+from .runtime import PRICE_PROMOTION_ENGINE_EVENT_CONTRACT
 from .runtime import PRICE_PROMOTION_ENGINE_OWNED_TABLES
+from .runtime import PRICE_PROMOTION_ENGINE_REQUIRED_EVENT_TOPIC
+from .runtime import PRICE_PROMOTION_ENGINE_REQUIRED_RULE_FIELDS
+from .runtime import PRICE_PROMOTION_ENGINE_RUNTIME_TABLES
+from .runtime import PRICE_PROMOTION_ENGINE_SUPPORTED_PARAMETER_KEYS
+from .runtime import price_promotion_engine_binding_evidence
 
 
 PRICE_PROMOTION_ENGINE_UI_FRAGMENT_KEYS = (
     "PricePromotionWorkbench",
+    "PriceListBookMatrix",
     "PriceRuleCatalog",
     "PromotionDesigner",
+    "CouponGovernanceBoard",
+    "CampaignBudgetConsole",
+    "PromotionApprovalQueue",
     "LoyaltyTierManager",
     "PriceQuoteConsole",
     "PromotionStackingBoard",
+    "PriceSimulationLab",
+    "MarginGuardrailPanel",
     "ForecastSignalPanel",
     "SegmentPricingPanel",
     "PriceDecisionLedger",
+    "PriceTelemetryPanel",
     "PriceRuleStudio",
     "PriceParameterConsole",
     "PriceConfigurationPanel",
@@ -33,18 +46,54 @@ def price_promotion_engine_ui_contract() -> dict:
         "fragments": PRICE_PROMOTION_ENGINE_UI_FRAGMENT_KEYS,
         "routes": (
             "/workbench/pbcs/price_promotion_engine",
+            "/workbench/pbcs/price_promotion_engine/books",
             "/workbench/pbcs/price_promotion_engine/rules",
             "/workbench/pbcs/price_promotion_engine/promotions",
-            "/workbench/pbcs/price_promotion_engine/tiers",
+            "/workbench/pbcs/price_promotion_engine/coupons",
+            "/workbench/pbcs/price_promotion_engine/approvals",
             "/workbench/pbcs/price_promotion_engine/quotes",
+            "/workbench/pbcs/price_promotion_engine/simulations",
             "/workbench/pbcs/price_promotion_engine/decisions",
             "/workbench/pbcs/price_promotion_engine/configuration",
         ),
         "panels": (
-            {"key": "rules", "fragment": "PriceRuleCatalog", "binds_to": ("price_rule",), "commands": ("register_price_rule", "quote_price")},
-            {"key": "promotions", "fragment": "PromotionDesigner", "binds_to": ("promotion", "price_decision"), "commands": ("register_promotion", "apply_promotion")},
-            {"key": "tiers", "fragment": "LoyaltyTierManager", "binds_to": ("loyalty_tier",), "commands": ("register_loyalty_tier",)},
-            {"key": "governance", "fragment": "PriceRuleStudio", "binds_to": ("rule", "parameter", "configuration"), "commands": ("register_rule", "set_parameter", "configure_runtime")},
+            {
+                "key": "price_books",
+                "fragment": "PriceListBookMatrix",
+                "binds_to": ("price_list", "price_book", "price_book_entry", "customer_price", "channel_price", "currency_price"),
+                "commands": ("register_price_rule", "quote_price"),
+            },
+            {
+                "key": "promotions",
+                "fragment": "PromotionDesigner",
+                "binds_to": ("promotion", "promotion_rule", "coupon", "promotion_eligibility", "promotion_stacking_policy", "promotion_exclusion"),
+                "commands": ("register_promotion", "apply_promotion"),
+            },
+            {
+                "key": "approvals",
+                "fragment": "PromotionApprovalQueue",
+                "binds_to": ("campaign_budget", "promotion_approval"),
+                "commands": ("register_promotion", "build_release_evidence"),
+            },
+            {
+                "key": "pricing_decisions",
+                "fragment": "PriceSimulationLab",
+                "binds_to": ("price_simulation", "price_margin_guardrail", "price_decision", "price_performance_telemetry"),
+                "commands": ("quote_price", "apply_promotion", "build_service_contract"),
+            },
+            {
+                "key": "governance",
+                "fragment": "PriceRuleStudio",
+                "binds_to": ("price_policy_rule", "price_parameter", "price_configuration", "price_schema_extension"),
+                "commands": (
+                    "register_rule",
+                    "set_parameter",
+                    "configure_runtime",
+                    "build_schema_contract",
+                    "build_service_contract",
+                    "build_release_evidence",
+                ),
+            },
         ),
         "action_permissions": {
             "register_price_rule": "price_promotion_engine.price.write",
@@ -56,38 +105,46 @@ def price_promotion_engine_ui_contract() -> dict:
             "register_rule": "price_promotion_engine.configure",
             "set_parameter": "price_promotion_engine.configure",
             "configure_runtime": "price_promotion_engine.configure",
+            "build_schema_contract": "price_promotion_engine.audit",
+            "build_service_contract": "price_promotion_engine.audit",
+            "build_release_evidence": "price_promotion_engine.audit",
             "run_control_tests": "price_promotion_engine.audit",
         },
         "configuration_editor": {
-            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone", "decision_mode"),
+            "required_fields": (
+                "database_backend",
+                "event_topic",
+                "retry_limit",
+                "default_currency",
+                "default_timezone",
+                "decision_mode",
+                "approval_mode",
+                "simulation_horizon_days",
+                "telemetry_window_minutes",
+            ),
             "allowed_database_backends": PRICE_PROMOTION_ENGINE_ALLOWED_DATABASE_BACKENDS,
-            "event_contract": "AppGen-X",
+            "event_contract": PRICE_PROMOTION_ENGINE_EVENT_CONTRACT,
+            "required_event_topic": PRICE_PROMOTION_ENGINE_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker_visible": False,
+            "user_eventing_choice_visible": False,
         },
         "parameter_editor": {
-            "numeric_parameters": (
-                "margin_floor_percent",
-                "promotion_stack_limit",
-                "elasticity_weight",
-                "forecast_weight",
-                "segment_weight",
-                "loyalty_weight",
-                "risk_review_threshold",
-                "discount_ceiling_percent",
-                "decision_ttl_minutes",
-                "workbench_limit",
-            ),
+            "numeric_parameters": PRICE_PROMOTION_ENGINE_SUPPORTED_PARAMETER_KEYS,
         },
         "rule_editor": {
-            "rule_types": ("pricing", "promotion", "margin", "segment", "forecast"),
-            "required_fields": ("rule_id", "tenant", "scope", "status", "allowed_currencies", "allowed_regions", "allowed_segments", "promotion_policy", "margin_policy"),
+            "rule_types": ("pricing", "promotion", "margin", "segment", "forecast", "approval", "budget"),
+            "required_fields": PRICE_PROMOTION_ENGINE_REQUIRED_RULE_FIELDS,
         },
         "event_surfaces": {
             "emits": ("PriceOptimized", "PromotionApplied"),
             "consumes": ("CustomerSegmentUpdated", "ForecastUpdated"),
+            "event_contract": PRICE_PROMOTION_ENGINE_EVENT_CONTRACT,
+            "required_event_topic": PRICE_PROMOTION_ENGINE_REQUIRED_EVENT_TOPIC,
+            "runtime_tables": PRICE_PROMOTION_ENGINE_RUNTIME_TABLES,
             "outbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_targets": PRICE_PROMOTION_ENGINE_OWNED_TABLES,
     }
 
 
@@ -98,10 +155,12 @@ def price_promotion_engine_render_workbench(state: dict, *, tenant: str, princip
     visible_actions = tuple(action for action, permission in action_permissions.items() if permission in permissions)
     view = _view_counts(state, tenant)
     cards = (
-        {"key": "price_rules", "value": view["price_rule_count"], "fragment": "PriceRuleCatalog"},
+        {"key": "price_books", "value": view["price_book_count"], "fragment": "PriceListBookMatrix"},
         {"key": "promotions", "value": view["promotion_count"], "fragment": "PromotionDesigner"},
-        {"key": "tiers", "value": view["loyalty_tier_count"], "fragment": "LoyaltyTierManager"},
+        {"key": "approvals", "value": view["approval_count"], "fragment": "PromotionApprovalQueue"},
+        {"key": "simulations", "value": view["simulation_count"], "fragment": "PriceSimulationLab"},
         {"key": "decisions", "value": view["decision_count"], "fragment": "PriceDecisionLedger"},
+        {"key": "telemetry", "value": view["telemetry_count"], "fragment": "PriceTelemetryPanel"},
         {"key": "outbox", "value": view["outbox_count"], "fragment": "PriceEventOutbox"},
         {"key": "dead_letter", "value": view["dead_letter_count"], "fragment": "PriceDeadLetterQueue"},
     )
@@ -124,21 +183,19 @@ def price_promotion_engine_render_workbench(state: dict, *, tenant: str, princip
 
 
 def _view_counts(state: dict, tenant: str) -> dict:
-    rules = tuple(item for item in state.get("price_rules", {}).values() if item["tenant"] == tenant)
     promotions = tuple(item for item in state.get("promotions", {}).values() if item["tenant"] == tenant)
     tiers = tuple(item for item in state.get("loyalty_tiers", {}).values() if item["tenant"] == tenant)
     decisions = tuple(item for item in state.get("price_decisions", {}).values() if item["tenant"] == tenant)
+    bindings = price_promotion_engine_binding_evidence(state, tenant=tenant)
     return {
-        "price_rule_count": len(rules),
+        "price_book_count": bindings["tenant_counts"]["price_books"],
         "promotion_count": len(promotions),
+        "approval_count": bindings["tenant_counts"]["approvals"],
+        "simulation_count": bindings["tenant_counts"]["simulations"],
+        "telemetry_count": bindings["tenant_counts"]["telemetry"],
         "loyalty_tier_count": len(tiers),
         "decision_count": len(decisions),
         "outbox_count": len(state.get("outbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
-        "binding_evidence": {
-            "configuration": bool(state.get("configuration", {}).get("ok")),
-            "rules": tuple(sorted(state.get("rules", {}))),
-            "parameters": tuple(sorted(state.get("parameters", {}))),
-            "owned_tables": PRICE_PROMOTION_ENGINE_OWNED_TABLES,
-        },
+        "binding_evidence": bindings,
     }

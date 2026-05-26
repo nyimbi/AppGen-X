@@ -1,230 +1,253 @@
 # Notifications PBC
 
-`notifications` is the AppGen-X packaged business capability for omnichannel
-communication orchestration, consent-aware delivery routing, template
-management, preference snapshots, delivery evidence, and notification workbench
-operations. It is a complete package-local implementation with owned schema,
-runtime services, API descriptors, AppGen-X events, idempotent handlers, rules,
-parameters, configuration, UI fragments, package metadata, focused tests, and
-release evidence.
+Package-local implementation contract for the Notifications PBC. The package
+owns templates, localization variants, channels, recipients, preferences,
+consent evidence, schedules, throttling, provider routing, deliveries, retries,
+receipts, bounces, campaigns, transactional notifications, audit evidence, and
+deliverability analytics. It is a hardened complete-PBC package with executable
+schema, service, API, UI, and release-evidence contracts.
 
 ## Stable Identity
 
 - PBC key: `notifications`.
 - Mesh: relationship.
-- Package directory: `src/pyAppGen/pbcs/notifications`.
-- Runtime entrypoint: `notifications_runtime_capabilities()`.
-- UI entrypoint: `notifications_ui_contract()`.
+- Implementation directory: `src/pyAppGen/pbcs/notifications`.
+- Runtime module: `runtime.py`.
+- UI module: `ui.py`.
+- Test module: `tests/test_pbc_notifications_runtime.py`.
 - Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X event contract on
-  `appgen.notifications.events`.
-- User-facing stream-engine selector: forbidden and hidden.
+- Supported relational backends: PostgreSQL, MySQL, and MariaDB.
+- Event contract: AppGen-X.
+- Fixed event topic: `appgen.notifications.events`.
+- User-facing stream-engine selection is not exposed.
 
-## Owned Datastore Boundary
+## Owned Boundary
 
-The package owns exactly these operational tables:
+Owned tables:
 
-- `notification_template`: tenant-scoped message templates, locale, message
-  type, required variables, rendered subject/body definitions, status, and
-  audit proof.
-- `delivery_channel`: tenant channel registry, provider identity, channel type,
-  health score, cost score, availability status, and audit proof.
-- `message_delivery`: queued and attempted deliveries, rendered payload,
-  selected channel, urgency, risk score, provider status, retry evidence, and
-  audit proof.
-- `preference_snapshot`: customer communication consent, preferred channels,
-  locale, and immutable snapshot evidence.
+- `notification_template`
+- `template_locale_variant`
+- `delivery_channel`
+- `notification_recipient`
+- `preference_snapshot`
+- `consent_ledger`
+- `delivery_schedule`
+- `throttle_window`
+- `provider_route`
+- `message_delivery`
+- `delivery_attempt`
+- `retry_evidence`
+- `delivery_receipt`
+- `bounce_event`
+- `notification_campaign`
+- `campaign_dispatch`
+- `transactional_notification`
+- `notification_audit_log`
+- `deliverability_analytics`
+- `notification_rule`
+- `notification_parameter`
+- `notification_configuration`
 
-No customer, workflow, SLA, campaign, or profile tables are shared or directly
-accessed. External context arrives through declared AppGen-X events and API
-projections only:
+Runtime event tables:
 
-- Consumed events: `PreferenceChanged`, `SlaBreached`, and
-  `WorkflowCompleted`.
-- API projections: `preference_projection`, `sla_projection`, and
-  `workflow_projection`.
-- Runtime event tables are PBC-local:
-  `notifications_appgen_outbox_event`,
-  `notifications_appgen_inbox_event`, and
-  `notifications_dead_letter_event`.
+- `notifications_appgen_outbox_event`
+- `notifications_appgen_inbox_event`
+- `notifications_dead_letter_event`
 
-The boundary verifier accepts only owned tables, declared APIs/events,
-declared projections, and PBC-local event tables. It rejects direct foreign
-references such as `customer_profile`.
+The package does not share customer, workflow, SLA, or profile tables. Cross-PBC
+integration is represented only by declared APIs, events, or projections:
 
-## Standard Table-Stakes Capabilities
+- Consumed events: `PreferenceChanged`, `ConsentUpdated`,
+  `CampaignScheduled`, `DeliveryReceiptImported`, `BounceRegistered`,
+  `SlaBreached`, `WorkflowCompleted`, and
+  `TransactionalNotificationRequested`.
+- Emitted events: `MessageQueued`, `MessageDelivered`, `MessageFailed`,
+  `DeliveryReceiptRecorded`, `BounceRecorded`, `CampaignDispatched`, and
+  `TransactionalNotificationDispatched`.
+- API dependencies: `GET /recipient-profiles/{recipient_id}`,
+  `GET /workflow-events/{workflow_id}`, and `GET /sla-breaches/{breach_id}`.
+- Projections: `recipient_projection`, `preference_projection`,
+  `consent_projection`, `sla_projection`, `workflow_projection`, and
+  `campaign_projection`.
 
-The implementation covers the ordinary notification capabilities expected from
-a production communication package:
+`notifications_verify_owned_table_boundary()` accepts only owned tables, the
+runtime event tables, declared AppGen-X events, and the declared API/projection
+dependencies above. Direct foreign references such as `customer_profile` are
+rejected.
 
-- Runtime configuration for database backend, event topic, retry limit, default
-  locale, supported locales, supported channels, timezone, delivery mode, quiet
-  hours, and workbench limit.
-- Parameter engine for delivery success threshold, fatigue threshold, channel
-  health weighting, preference weighting, urgency weighting, cost weighting,
-  daily-recipient limits, retry limit, message TTL, and workbench limit.
-- Rule engine for tenant, scope, channel/locale/message-type constraints,
-  consent policy, delivery policy, status, compiled hash, and policy-engine
-  evidence.
-- Schema extension for owned notification tables only, with versioned migration
-  evidence.
-- Template registration with required variable validation, localization, and
-  audit proof.
-- Delivery channel registration for email, SMS, push, and chat with provider
-  health and cost evidence.
-- Preference snapshot projection from `PreferenceChanged`.
-- Trigger event intake for `SlaBreached` and `WorkflowCompleted`.
-- Consent-aware message routing with template rendering and preferred-channel
+## Standard Capabilities
+
+- Template authoring with required variables, localization variants, and audit
+  proof.
+- Channel registration for email, SMS, push, and chat with provider health and
+  cost evidence.
+- Recipient projection, preference snapshots, and consent-ledger evidence from
+  inbound AppGen-X events.
+- Runtime configuration with fixed AppGen-X topic, database allowlist, retry
+  limit, locale set, channel set, timezone, quiet hours, and workbench limit.
+- Parameter support for fatigue limits, routing weights, retry limit, TTL,
+  campaign batch size, scheduling horizon, and bounce retry window.
+- Rule support for consent, delivery, throttling, routing, scheduling, locale,
+  and message-type policy.
+- Delivery scheduling, quiet-hour enforcement evidence, and provider-route
   selection.
-- Delivery attempt recording with terminal `MessageDelivered` or
-  `MessageFailed` AppGen-X outbox evidence.
-- Retry/dead-letter evidence for failed consumed-event handling.
-- Workbench views for templates, channels, deliveries, preferences, rules,
-  parameters, configuration, outbox, and dead letters.
-- UI fragments for template designer, channel console, message composer,
-  preference snapshots, delivery status board, routing board, consent policy,
-  rule studio, parameter console, configuration, outbox, and dead-letter
-  queue.
-- Permission/RBAC descriptors for template, channel, send, event, configure,
-  and audit actions.
-- Seed data for default channels and message types.
+- Message dispatch for campaign and transactional notifications.
+- Delivery-attempt, retry, dead-letter, receipt, and bounce evidence.
+- Deliverability analytics rollup for deliveries, success rate, failures, and
+  bounce totals.
+- Audit log evidence for configuration, policy, template, channel, event, send,
+  and delivery operations.
+- Workbench UI with templates, localization, recipients, preferences, delivery,
+  campaigns, transactional flows, analytics, outbox, inbox, and dead letters.
 
 ## Advanced Capabilities
 
-The executable runtime proves the advanced notification capabilities needed for
-a modern relationship PBC:
+- Event-sourced message lifecycle with immutable state-event digests.
+- Multi-tenant delivery isolation across templates, channels, recipients,
+  preferences, campaigns, deliveries, analytics, and UI.
+- Schema-evolution-safe owned-table extensions with package-local migration and
+  model descriptors.
+- Counterfactual routing, recipient-fatigue scoring, and predictive delivery
+  risk evidence.
+- Autonomous exception handling through retry and dead-letter evidence.
+- Dynamic consent policy screening and self-healing provider routing.
+- Deliverability analytics for receipt and bounce evidence.
+- AppGen-X outbox/inbox eventing with idempotent handlers and fixed topic.
+- Governed model evidence and package-local release auditing.
 
-- Event-sourced message lifecycle with immutable state-event hashes.
-- Owned notification schema boundary enforcement with explicit violation
-  evidence.
-- Multi-tenant delivery isolation across templates, channels, deliveries,
-  preferences, and UI views.
-- Schema-evolution-safe template and delivery extensions.
-- Probabilistic delivery risk, recipient fatigue, urgency, and channel-health
-  evidence.
-- Counterfactual channel selection support through deterministic routing-score
-  recomputation.
-- Temporal delivery-window forecasting evidence through quiet hours and TTL
-  parameters.
-- Autonomous delivery exception resolution through channel failover and
-  retry/dead-letter evidence.
-- Semantic template rendering and required-variable validation.
-- Dynamic consent policy screening.
-- Automated communication control testing via smoke checks and release audits.
-- Self-healing route selection through rule- and parameter-driven channel
-  choice.
-- Cryptographic delivery proofs.
-- Immutable delivery audit trail.
-- Cross-system preference, workflow, and SLA federation through declared
-  APIs/events only.
-- AppGen-X outbox/inbox eventing with idempotent handlers.
-- Retry/dead-letter evidence.
-- Permissions governance evidence.
-- Configuration, rule, parameter, seed-data, and workbench evidence.
-- Governed model evidence.
+## Runtime Services
 
-## Commands And Services
+Implemented commands:
 
-The service layer exposes these package-local commands:
+- `configure_runtime`
+- `set_parameter`
+- `register_rule`
+- `register_schema_extension`
+- `register_template`
+- `register_channel`
+- `receive_event`
+- `send_message`
+- `record_delivery_attempt`
+- `build_api_contract`
+- `build_schema_contract`
+- `build_service_contract`
+- `build_release_evidence`
+- `permissions_contract`
+- `build_workbench_view`
+- `verify_owned_table_boundary`
 
-- `configure_runtime(configuration)`.
-- `set_parameter(name, value)`.
-- `register_rule(rule)`.
-- `register_schema_extension(table, fields)`.
-- `register_template(command)`.
-- `register_channel(command)`.
-- `receive_event(event, simulate_failure=False)`.
-- `send_message(command)`.
-- `record_delivery_attempt(delivery_id, provider_status=...)`.
-- `build_api_contract()`.
-- `permissions_contract()`.
-- `build_workbench_view(tenant=...)`.
-- `verify_owned_table_boundary(references=...)`.
+`build_service_contract()` additionally declares the broader orchestration
+surface used by generated apps:
 
-All commands are deterministic and side-effect-free: they accept explicit state
-and return new state plus evidence payloads suitable for generated apps and
-release smoke audits.
+- campaign creation and dispatch
+- transactional notification creation
+- provider routing
+- delivery receipt and bounce recording
+- audit publication
+- deliverability analytics publication
+- scheduling and simulation queries
 
-## APIs
+## API Contract
 
-The package-local API contract exposes route descriptors:
+Package-local descriptors include:
 
-- `POST /templates` runs `register_template`, writes
-  `notification_template`, requires `notifications.template.write`, and is
-  idempotent by `template_id`.
-- `POST /delivery-channels` runs `register_channel`, writes
-  `delivery_channel`, requires `notifications.channel.write`, and is
-  idempotent by `channel_id`.
-- `POST /messages` runs `send_message`, writes `message_delivery`, requires
-  `notifications.message.send`, and is idempotent by `delivery_id`.
-- `POST /delivery-attempts` runs `record_delivery_attempt`, updates
-  `message_delivery`, requires `notifications.message.send`, emits delivery
-  events, and is idempotent by `delivery_id:provider_status`.
-- `POST /notifications/events/inbox` runs `receive_event`, consumes declared
-  AppGen-X events, requires `notifications.event.consume`, and is idempotent
-  by `event_id`.
-- `GET /delivery-status` queries `build_workbench_view`, reads only owned
-  Notifications state, and requires `notifications.audit`.
+- `POST /templates`
+- `POST /delivery-channels`
+- `POST /notifications/rules`
+- `POST /notifications/parameters`
+- `POST /notifications/configuration`
+- `POST /messages`
+- `POST /delivery-attempts`
+- `POST /notifications/events/inbox`
+- `GET /notifications/contracts/schema`
+- `GET /notifications/contracts/service`
+- `GET /notifications/release-evidence`
+- `GET /notifications-workbench`
 
-The catalog-facing route set remains `POST /messages`, `POST /templates`, and
-`GET /delivery-status`.
+Every route descriptor includes owned tables, permission binding, AppGen-X
+event-contract evidence, fixed event topic evidence, idempotency evidence where
+applicable, and dependency evidence for external projections.
 
-## Events And Handlers
+## Schema, Service, And Release Contracts
 
-Consumed events:
+`notifications_build_schema_contract()` emits:
 
-- `PreferenceChanged`.
-- `SlaBreached`.
-- `WorkflowCompleted`.
+- generation-ready descriptors for every owned table
+- package-local migration paths under `pbcs/notifications/migrations/`
+- package-local model descriptors under `pbcs/notifications/models/`
+- relationship metadata across templates, recipients, schedules, deliveries,
+  campaigns, transactional notifications, receipts, retries, and bounces
+- runtime event-table descriptors for outbox, inbox, and dead letters
+- backend allowlist evidence, fixed AppGen-X topic evidence, and
+  `shared_table_access: False`
 
-Emitted events:
+`notifications_build_service_contract()` emits:
 
-- `MessageDelivered`.
-- `MessageFailed`.
+- standard orchestration for templates, recipients, consent, localization,
+  scheduling, routing, throttling, retry/dead-letter handling, receipts,
+  bounces, campaigns, transactional notifications, and analytics
+- advanced-capability evidence aligned with the runtime capability keys
+- idempotent handler evidence
+- retry/dead-letter table evidence
+- rules/parameters/configuration support evidence
+- dependency declarations with no shared-table access
 
-Handlers require event IDs, deduplicate already handled events, record inbox
-evidence, project preference snapshots and trigger payloads into package-local
-state, and send simulated failures to the dead-letter evidence queue. Runtime
-configuration requires the AppGen-X notifications event topic, records the
-AppGen-X event contract, and never exposes a stream-engine picker or alternate
-event-contract selector.
+`notifications_build_release_evidence()` is the package-local release gate. It
+proves:
+
+- owned-schema depth
+- one migration descriptor per owned table
+- runtime table declaration for outbox/inbox/dead-letter
+- service-contract depth
+- fixed AppGen-X API/eventing evidence
+- permission coverage for schema/service/release queries
+- UI and workbench binding evidence
+- boundary validation with zero shared-table access
+- backend allowlist compliance
 
 ## UI And Workbench
 
-The UI contract exposes:
+Fragments include:
 
-- Notifications workbench.
-- Template designer.
-- Delivery channel console.
-- Message composer.
-- Preference snapshot panel.
-- Delivery status board.
-- Channel routing board.
-- Consent policy panel.
-- Notification rule studio.
-- Notification parameter console.
-- Notification configuration panel.
-- Notification event outbox.
-- Notification dead-letter queue.
+- `NotificationsWorkbench`
+- `TemplateDesigner`
+- `LocalizationStudio`
+- `DeliveryChannelConsole`
+- `RecipientDirectory`
+- `PreferenceSnapshotPanel`
+- `ConsentLedgerPanel`
+- `ScheduleBoard`
+- `ThrottlePolicyBoard`
+- `ProviderRoutingConsole`
+- `MessageComposer`
+- `DeliveryStatusBoard`
+- `DeliveryReceiptPanel`
+- `BounceQueuePanel`
+- `CampaignPlanner`
+- `TransactionalNotificationConsole`
+- `NotificationRuleStudio`
+- `NotificationParameterConsole`
+- `NotificationConfigurationPanel`
+- `NotificationEventOutbox`
+- `NotificationDeadLetterQueue`
+- `NotificationAuditTrail`
+- `DeliverabilityAnalyticsBoard`
 
-Rendered workbench output includes tenant-filtered template, channel, delivery,
-preference, outbox, and dead-letter counts; visible and locked actions from
-RBAC permissions; and owned-table binding evidence.
+Workbench binding evidence includes owned tables, runtime event tables,
+permission bindings, fixed AppGen-X configuration evidence, and
+deliverability-analytics ownership.
 
-## Release Evidence
+## Verification Targets
 
-Focused tests prove:
+Focused runtime tests prove:
 
-- Runtime capability and smoke checks cover every advanced capability key.
-- Configuration, rule, parameter, schema-extension, template, channel, event
-  handling, message sending, delivery status emission, UI rendering, API
-  descriptors, RBAC descriptors, and workbench evidence execute.
-- AppGen-X eventing is fixed and stream-engine picker exposure is false.
-- Backends remain limited to PostgreSQL, MySQL, and MariaDB.
-- Boundary validation accepts owned tables and declared dependencies and
-  rejects direct foreign table references.
-- Invalid database backends, invalid event topics, forbidden eventing fields,
-  invalid parameters, non-owned schema extensions, and simulated handler
-  failures are rejected or dead-lettered.
-- The package participates in all-PBC implementation release audits.
+- runtime capability coverage for all advanced capability keys
+- package `implementation_contract()` exposes schema, service, release,
+  required-event-topic, emitted-event, and consumed-event contracts
+- schema contract depth, migration/model descriptors, and runtime tables
+- service contract depth, idempotent handlers, and orchestration coverage
+- API descriptors, permission coverage, and fixed AppGen-X topic evidence
+- UI/workbench binding evidence
+- configuration, rule, parameter, schema-extension, template, channel, event,
+  send, delivery, receipt, bounce, analytics, and dead-letter execution
+- boundary enforcement and backend allowlist compliance

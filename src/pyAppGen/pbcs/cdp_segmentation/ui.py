@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from .runtime import CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS
 from .runtime import CDP_SEGMENTATION_OWNED_TABLES
+from .runtime import CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC
+from .runtime import CDP_SEGMENTATION_RUNTIME_TABLES
 
 
 CDP_SEGMENTATION_UI_FRAGMENT_KEYS = (
@@ -20,6 +22,9 @@ CDP_SEGMENTATION_UI_FRAGMENT_KEYS = (
     "CdpConfigurationPanel",
     "CdpEventOutbox",
     "CdpDeadLetterQueue",
+    "CdpSchemaContractExplorer",
+    "CdpServiceContractExplorer",
+    "CdpReleaseEvidencePanel",
 )
 
 
@@ -37,6 +42,9 @@ def cdp_segmentation_ui_contract() -> dict:
             "/workbench/pbcs/cdp_segmentation/segments",
             "/workbench/pbcs/cdp_segmentation/memberships",
             "/workbench/pbcs/cdp_segmentation/configuration",
+            "/workbench/pbcs/cdp_segmentation/schema-contract",
+            "/workbench/pbcs/cdp_segmentation/service-contract",
+            "/workbench/pbcs/cdp_segmentation/release-evidence",
         ),
         "action_permissions": {
             "ingest_customer_event": "cdp_segmentation.event.write",
@@ -49,11 +57,15 @@ def cdp_segmentation_ui_contract() -> dict:
             "set_parameter": "cdp_segmentation.configure",
             "configure_runtime": "cdp_segmentation.configure",
             "run_control_tests": "cdp_segmentation.audit",
+            "build_schema_contract": "cdp_segmentation.audit",
+            "build_service_contract": "cdp_segmentation.audit",
+            "build_release_evidence": "cdp_segmentation.audit",
         },
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_region", "default_timezone", "activation_mode"),
             "allowed_database_backends": CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "required_event_topic": CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker_visible": False,
         },
         "parameter_editor": {
@@ -75,6 +87,13 @@ def cdp_segmentation_ui_contract() -> dict:
             "consumes": ("CustomerUpdated", "PaymentCaptured", "OrderShipped"),
             "outbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+            "runtime_tables": CDP_SEGMENTATION_RUNTIME_TABLES,
+            "shared_table_access": False,
+            "event_contract": "AppGen-X",
+            "required_event_topic": CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC,
         },
     }
 
@@ -127,5 +146,7 @@ def _view_counts(state: dict, tenant: str) -> dict:
             "rules": tuple(sorted(state.get("rules", {}))),
             "parameters": tuple(sorted(state.get("parameters", {}))),
             "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+            "runtime_tables": CDP_SEGMENTATION_RUNTIME_TABLES,
+            "shared_table_access": False,
         },
     }

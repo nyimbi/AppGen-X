@@ -2,11 +2,18 @@
 
 from ..source_contract import source_pbc_package_contract
 from .runtime import LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS
+from .runtime import LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES
+from .runtime import LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES
 from .runtime import LEAD_OPPORTUNITY_OWNED_TABLES
+from .runtime import LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC
+from .runtime import LEAD_OPPORTUNITY_RUNTIME_TABLES
 from .runtime import LEAD_OPPORTUNITY_RUNTIME_CAPABILITY_KEYS
 from .runtime import LEAD_OPPORTUNITY_STANDARD_FEATURE_KEYS
 from .runtime import lead_opportunity_advance_opportunity
 from .runtime import lead_opportunity_build_api_contract
+from .runtime import lead_opportunity_build_release_evidence
+from .runtime import lead_opportunity_build_schema_contract
+from .runtime import lead_opportunity_build_service_contract
 from .runtime import lead_opportunity_build_workbench_view
 from .runtime import lead_opportunity_configure_runtime
 from .runtime import lead_opportunity_create_account_hierarchy
@@ -40,7 +47,15 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": lead_opportunity_ui_contract(),
         "api_contract": lead_opportunity_build_api_contract(),
+        "schema_contract": lead_opportunity_build_schema_contract(),
+        "service_contract": lead_opportunity_build_service_contract(),
+        "release_evidence_contract": lead_opportunity_build_release_evidence(),
         "permissions_contract": lead_opportunity_permissions_contract(),
         "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+        "runtime_tables": LEAD_OPPORTUNITY_RUNTIME_TABLES,
         "allowed_database_backends": LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC,
+        "consumes": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES,
+        "emits": LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES,
+        "boundary_contract": lead_opportunity_verify_owned_table_boundary(LEAD_OPPORTUNITY_OWNED_TABLES),
     }

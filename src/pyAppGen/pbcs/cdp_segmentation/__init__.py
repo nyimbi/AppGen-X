@@ -3,10 +3,14 @@
 from ..source_contract import source_pbc_package_contract
 from .runtime import CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS
 from .runtime import CDP_SEGMENTATION_OWNED_TABLES
+from .runtime import CDP_SEGMENTATION_RUNTIME_TABLES
 from .runtime import CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import CDP_SEGMENTATION_STANDARD_FEATURE_KEYS
 from .runtime import cdp_segmentation_activate_segment
 from .runtime import cdp_segmentation_build_api_contract
+from .runtime import cdp_segmentation_build_release_evidence
+from .runtime import cdp_segmentation_build_schema_contract
+from .runtime import cdp_segmentation_build_service_contract
 from .runtime import cdp_segmentation_build_workbench_view
 from .runtime import cdp_segmentation_configure_runtime
 from .runtime import cdp_segmentation_define_segment
@@ -38,7 +42,11 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": cdp_segmentation_ui_contract(),
         "api_contract": cdp_segmentation_build_api_contract(),
+        "schema_contract": cdp_segmentation_build_schema_contract(),
+        "service_contract": cdp_segmentation_build_service_contract(),
+        "release_evidence_contract": cdp_segmentation_build_release_evidence(),
         "permissions_contract": cdp_segmentation_permissions_contract(),
         "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+        "runtime_tables": CDP_SEGMENTATION_RUNTIME_TABLES,
         "allowed_database_backends": CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS,
     }

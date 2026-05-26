@@ -28,12 +28,25 @@ The package owns exactly these operational tables:
 - `lead`: tenant, account, customer, contact data, source, region, currency,
   engagement score, estimated value, qualification score, assigned owner,
   status, and audit proof.
+- `lead_enrichment_snapshot`, `lead_dedup_case`, `lead_score_snapshot`, and
+  `lead_assignment`: enrichment, duplicate review, scoring, assignment, and
+  qualification evidence for captured leads.
+- `qualification_decision`: deterministic threshold, score, and decision
+  evidence for lead qualification.
 - `opportunity`: tenant, lead, account, name, amount, currency, stage, close
   date, win probability, forecast amount, risk score, status, and audit proof.
+- `opportunity_stage_history`, `pipeline_forecast_snapshot`,
+  `quote_proposal_handoff`, and `opportunity_outcome`: stage transitions,
+  forecast rollups, quote/proposal handoffs, and win/loss evidence.
 - `account_hierarchy`: tenant, account identity, parent account, customer
   projection key, region, owner, status, and audit proof.
 - `sales_activity`: tenant, opportunity, activity type, subject, sentiment,
   timestamp, owner, next-best action, and immutable activity proof.
+- `sales_coaching_insight`, `lead_opportunity_audit_event`,
+  `lead_opportunity_rule`, `lead_opportunity_parameter`,
+  `lead_opportunity_configuration`, `lead_opportunity_governed_model`, and
+  `lead_opportunity_seed_data`: coaching, audit, governance, configuration,
+  parameter, rule, and seed-data evidence owned by the package.
 
 No customer, segment, billing, territory, marketing, product, or finance tables
 are shared or directly accessed. External context arrives through declared
@@ -60,6 +73,8 @@ from a production relationship package:
   customer projection key, region validation, status, and audit proof.
 - Lead capture with source, contact, region, currency, engagement, estimated
   value, duplicate detection by tenant/email, assignment owner, and score.
+- Lead enrichment, dedupe review, owner assignment, and qualification-decision
+  evidence carried as owned metadata descriptors.
 - Runtime configuration for database backend, event topic, retry limit,
   default currency, supported currencies, supported regions, pipeline stages,
   timezone, assignment mode, and workbench limit.
@@ -77,6 +92,8 @@ from a production relationship package:
   emits `LeadQualified` when accepted.
 - Opportunity creation from qualified leads with stage validation, open
   opportunity limits, win probability, forecast amount, and slippage risk.
+- Opportunity stage history, forecast snapshots, quote/proposal handoff
+  descriptors, win/loss evidence, audit events, and coaching insight metadata.
 - Sales activity timeline with sentiment, owner, timestamp, next-best action,
   and activity proof.
 - Opportunity stage advancement and won-opportunity capture.
@@ -143,6 +160,9 @@ The service layer exposes these package-local commands:
 - `advance_opportunity(opportunity_id, stage)`.
 - `win_opportunity(opportunity_id)`.
 - `build_api_contract()`.
+- `build_schema_contract()`.
+- `build_service_contract()`.
+- `build_release_evidence()`.
 - `permissions_contract()`.
 - `build_workbench_view(tenant=...)`.
 - `verify_owned_table_boundary(references=...)`.
@@ -180,6 +200,15 @@ The package-local API contract exposes route descriptors:
   idempotent by `event_id`.
 - `GET /pipeline` queries `build_workbench_view`, reads only owned Lead
   Opportunity state, and requires `lead_opportunity.audit`.
+- `GET /lead-opportunity/schema-contract` queries
+  `build_schema_contract`, reads only owned metadata, and requires
+  `lead_opportunity.audit`.
+- `GET /lead-opportunity/service-contract` queries
+  `build_service_contract`, reads only owned metadata, and requires
+  `lead_opportunity.audit`.
+- `GET /lead-opportunity/release-evidence` queries
+  `build_release_evidence`, reads only owned metadata/evidence, and requires
+  `lead_opportunity.audit`.
 
 The catalog-facing route set remains `POST /leads`, `POST /opportunities`, and
 `GET /pipeline`.
@@ -220,10 +249,10 @@ The UI contract exposes:
 - Revenue dead-letter queue.
 
 Rendered workbench output includes tenant-filtered lead, qualified-lead,
-opportunity, won-deal, account, activity, pipeline value, forecast amount,
-outbox, and dead-letter counts; visible and locked actions from RBAC
-permissions; configuration/rule/parameter state; and owned-table binding
-evidence.
+opportunity, won-deal, account, activity, forecast amount, inbox, outbox, and
+dead-letter counts; visible and locked actions from RBAC permissions;
+configuration/rule/parameter state; runtime-table bindings; and owned-table
+binding evidence.
 
 ## Release Evidence
 
@@ -240,5 +269,8 @@ Focused tests prove:
   rejects direct foreign table references.
 - Invalid database backends, invalid parameters, non-owned schema extensions,
   and simulated handler failures are rejected or dead-lettered.
+- `implementation_contract()` exposes package-local schema, service, release,
+  permissions, event-topic, emitted/consumed-event, runtime-table, and
+  boundary evidence without relying on shared-file edits.
 - The package participates in all-PBC implementation release and generation
   smoke audits.

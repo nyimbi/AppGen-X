@@ -6,11 +6,38 @@ import copy
 import hashlib
 import json
 import math
+import re
 
 
 LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC = "appgen.lead_opportunity.events"
 LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
-LEAD_OPPORTUNITY_OWNED_TABLES = ("lead", "opportunity", "account_hierarchy", "sales_activity")
+LEAD_OPPORTUNITY_OWNED_TABLES = (
+    "lead",
+    "lead_enrichment_snapshot",
+    "lead_dedup_case",
+    "lead_score_snapshot",
+    "lead_assignment",
+    "qualification_decision",
+    "opportunity",
+    "opportunity_stage_history",
+    "pipeline_forecast_snapshot",
+    "quote_proposal_handoff",
+    "opportunity_outcome",
+    "account_hierarchy",
+    "sales_activity",
+    "sales_coaching_insight",
+    "lead_opportunity_audit_event",
+    "lead_opportunity_rule",
+    "lead_opportunity_parameter",
+    "lead_opportunity_configuration",
+    "lead_opportunity_governed_model",
+    "lead_opportunity_seed_data",
+)
+LEAD_OPPORTUNITY_RUNTIME_TABLES = (
+    "lead_opportunity_appgen_outbox_event",
+    "lead_opportunity_appgen_inbox_event",
+    "lead_opportunity_dead_letter_event",
+)
 
 LEAD_OPPORTUNITY_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_revenue_lifecycle",
@@ -46,22 +73,35 @@ LEAD_OPPORTUNITY_RUNTIME_CAPABILITY_KEYS = (
     "seed_data",
     "workbench_ui",
     "governed_model_evidence",
+    "owned_schema_contract_generation",
+    "service_contract_generation",
+    "release_evidence_contract_generation",
 )
 
 LEAD_OPPORTUNITY_STANDARD_FEATURE_KEYS = (
     "lead_capture",
+    "lead_enrichment",
     "lead_deduplication",
+    "lead_assignment",
     "lead_scoring",
     "lead_qualification",
     "opportunity_creation",
     "pipeline_stage_management",
+    "opportunity_stage_history",
+    "pipeline_management",
     "account_hierarchy",
     "sales_activity_history",
     "forecast_amount_rollup",
+    "forecast_snapshots",
+    "quote_proposal_handoff",
+    "win_loss_management",
+    "audit_evidence",
+    "coaching_insights",
     "next_best_action",
     "customer_segment_projection",
     "customer_update_handoff",
     "tenant_isolation",
+    "appgen_event_contract",
     "appgen_x_outbox",
     "appgen_x_inbox",
     "idempotent_handlers",
@@ -70,6 +110,9 @@ LEAD_OPPORTUNITY_STANDARD_FEATURE_KEYS = (
     "configuration_schema",
     "rule_engine",
     "parameter_engine",
+    "owned_datastore_boundary",
+    "release_gate",
+    "governed_model_registry",
     "seed_data",
     "workbench",
 )
@@ -114,8 +157,20 @@ LEAD_OPPORTUNITY_REQUIRED_RULE_FIELDS = (
 
 LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES = ("CustomerSegmentUpdated",)
 LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES = ("OpportunityWon", "CustomerUpdated", "LeadQualified")
+_LEAD_OPPORTUNITY_ALLOWED_DEPENDENCIES = (
+    "customer_segment_projection",
+    "customer_projection",
+    "billing_projection",
+    "territory_projection",
+    "quote_proposal_projection",
+    "GET /customers/{id}",
+    "GET /billing/accounts/{id}",
+    "GET /territories/{id}",
+    "POST /quotes/proposals",
+)
 _CONFIG_SEQUENCE_FIELDS = {"supported_currencies", "supported_regions", "pipeline_stages"}
 _RULE_SEQUENCE_FIELDS = {"allowed_regions", "allowed_currencies", "allowed_segments"}
+_LEAD_OPPORTUNITY_FIELD_NAME_PATTERN = re.compile(r"[a-z][a-z0-9_]*$")
 _PARAMETER_BOUNDS = {
     "qualification_score_threshold": (0.0, 1.0),
     "win_probability_threshold": (0.0, 1.0),
@@ -138,6 +193,7 @@ def lead_opportunity_runtime_capabilities() -> dict:
         "pbc": "lead_opportunity",
         "implementation_directory": "src/pyAppGen/pbcs/lead_opportunity",
         "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+        "runtime_tables": LEAD_OPPORTUNITY_RUNTIME_TABLES,
         "capabilities": LEAD_OPPORTUNITY_RUNTIME_CAPABILITY_KEYS,
         "standard_features": LEAD_OPPORTUNITY_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -154,6 +210,9 @@ def lead_opportunity_runtime_capabilities() -> dict:
             "advance_opportunity",
             "win_opportunity",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -331,7 +390,11 @@ def lead_opportunity_configure_runtime(state: dict, configuration: dict) -> dict
     normalized["database_backend"] = backend
     normalized["ok"] = True
     normalized["event_contract"] = "AppGen-X"
+    normalized["required_event_topic"] = LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC
+    normalized["visible_event_contracts"] = ("AppGen-X",)
     normalized["stream_engine_picker_visible"] = False
+    normalized["user_selectable_event_contract"] = False
+    normalized["supported_fields"] = LEAD_OPPORTUNITY_SUPPORTED_CONFIGURATION_FIELDS
     runtime["configuration"] = normalized
     runtime["events"].append(_state_event("RuntimeConfigured", "runtime", normalized))
     return {"ok": True, "state": runtime, "configuration": normalized}
@@ -362,6 +425,12 @@ def lead_opportunity_register_rule(state: dict, rule: dict) -> dict:
     }
     normalized["compiled_hash"] = _digest(normalized)
     normalized["policy_engine"] = "appgen_dynamic_policy"
+    normalized["compiled_evidence"] = {
+        "rule_id": normalized["rule_id"],
+        "scope": normalized["scope"],
+        "required_fields": LEAD_OPPORTUNITY_REQUIRED_RULE_FIELDS,
+        "tenant": normalized["tenant"],
+    }
     runtime["rules"][normalized["rule_id"]] = normalized
     runtime["events"].append(_state_event("RuleRegistered", normalized["rule_id"], normalized))
     return {"ok": True, "state": runtime, "rule": normalized}
@@ -370,8 +439,18 @@ def lead_opportunity_register_rule(state: dict, rule: dict) -> dict:
 def lead_opportunity_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
     if table not in LEAD_OPPORTUNITY_OWNED_TABLES:
         raise ValueError(f"Lead Opportunity cannot extend non-owned table: {table}")
+    invalid_fields = tuple(sorted(name for name in fields if not _LEAD_OPPORTUNITY_FIELD_NAME_PATTERN.fullmatch(str(name))))
+    if invalid_fields:
+        raise ValueError(f"Lead Opportunity schema extension fields must match [a-z][a-z0-9_]*: {invalid_fields}")
     runtime = _copy_state(state)
-    extension = {"table": table, "fields": dict(fields), "version": len(runtime["schema_extensions"].get(table, ())) + 1}
+    version = len(runtime["schema_extensions"].get(table, ())) + 1
+    extension = {
+        "table": table,
+        "fields": dict(fields),
+        "version": version,
+        "migration_descriptor": f"pbcs/lead_opportunity/migrations/extensions/{version:03d}_{table}.sql",
+        "model_descriptor": f"pbcs/lead_opportunity/models/{_class_name(table)}ExtensionV{version}.py",
+    }
     runtime["schema_extensions"].setdefault(table, []).append(extension)
     runtime["events"].append(_state_event("SchemaExtensionRegistered", table, extension))
     return {"ok": True, "state": runtime, "extension": extension}
@@ -385,19 +464,33 @@ def lead_opportunity_receive_event(state: dict, event: dict, *, simulate_failure
         raise ValueError("Lead Opportunity consumed events require event_id")
     runtime = _copy_state(state)
     if event_id in runtime["handled_events"]:
-        return {"ok": True, "state": runtime, "handler": {"status": "duplicate", "event_id": event_id}}
+        return {
+            "ok": True,
+            "state": runtime,
+            "duplicate": True,
+            "handler": {
+                "status": "duplicate",
+                "event_id": event_id,
+                "runtime_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[1],
+                "idempotency_key": f"lead_opportunity:{event['event_type']}:{event_id}",
+            },
+        }
     handler = {
         "event_id": event_id,
         "event_type": event["event_type"],
         "idempotency_key": f"lead_opportunity:{event['event_type']}:{event_id}",
-        "attempts": int(runtime.get("configuration", {}).get("retry_limit", 3) or 3),
+        "attempts": 1,
+        "max_attempts": int(runtime.get("configuration", {}).get("retry_limit", 3) or 3),
+        "contract": "AppGen-X",
     }
     if simulate_failure:
         handler["status"] = "dead_letter"
+        handler["runtime_table"] = LEAD_OPPORTUNITY_RUNTIME_TABLES[2]
         runtime["dead_letter"].append({**event, "handler": handler})
         return {"ok": False, "state": runtime, "handler": handler}
     payload = dict(event.get("payload", {}))
     handler["status"] = "handled"
+    handler["runtime_table"] = LEAD_OPPORTUNITY_RUNTIME_TABLES[1]
     runtime["inbox"].append({**event, "handler": handler})
     runtime["handled_events"].add(event_id)
     runtime["customer_segments"][payload["customer_id"]] = payload
@@ -536,6 +629,7 @@ def lead_opportunity_build_workbench_view(state: dict, *, tenant: str) -> dict:
     opportunities = tuple(item for item in state.get("opportunities", {}).values() if item["tenant"] == tenant)
     accounts = tuple(item for item in state.get("account_hierarchies", {}).values() if item["tenant"] == tenant)
     activities = tuple(item for item in state.get("sales_activities", {}).values() if item["tenant"] == tenant)
+    configuration = state.get("configuration", {})
     return {
         "format": "appgen.lead-opportunity-workbench-view.v1",
         "tenant": tenant,
@@ -547,16 +641,41 @@ def lead_opportunity_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "activity_count": len(activities),
         "pipeline_value": round(sum(item["amount"] for item in opportunities), 2),
         "forecast_amount": round(sum(item["forecast_amount"] for item in opportunities), 2),
+        "inbox_count": len(state.get("inbox", ())),
         "outbox_count": len(state.get("outbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
-        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "configuration_bound": bool(configuration.get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
         "binding_evidence": {
             "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
-            "outbox_table": "lead_opportunity_appgen_outbox_event",
-            "inbox_table": "lead_opportunity_appgen_inbox_event",
-            "dead_letter_table": "lead_opportunity_dead_letter_event",
+            "runtime_tables": LEAD_OPPORTUNITY_RUNTIME_TABLES,
+            "outbox_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[0],
+            "inbox_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[1],
+            "dead_letter_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[2],
+            "configuration": {
+                "bound": bool(configuration.get("ok")),
+                "database_backend": configuration.get("database_backend"),
+                "event_contract": configuration.get("event_contract"),
+                "event_topic": configuration.get("required_event_topic"),
+                "visible_event_contracts": configuration.get("visible_event_contracts", ()),
+                "stream_engine_picker_visible": configuration.get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": configuration.get("user_selectable_event_contract"),
+                "supported_fields": configuration.get("supported_fields", ()),
+            },
+            "rules": tuple(
+                {
+                    "rule_id": rule["rule_id"],
+                    "scope": rule["scope"],
+                    "compiled_hash": rule["compiled_hash"],
+                    "required_fields": rule["compiled_evidence"]["required_fields"],
+                }
+                for rule in sorted(state.get("rules", {}).values(), key=lambda item: item["rule_id"])
+            ),
+            "parameters": {
+                "supported": LEAD_OPPORTUNITY_SUPPORTED_PARAMETER_KEYS,
+                "active": tuple(sorted(state.get("parameters", {}))),
+            },
         },
     }
 
@@ -572,17 +691,13 @@ def lead_opportunity_verify_owned_table_boundary(
         "POST /opportunity-stage",
         "POST /opportunity-wins",
         "GET /pipeline",
-        "customer_segment_projection",
-        "customer_projection",
-        "billing_projection",
-        "territory_projection",
+        "GET /lead-opportunity/schema-contract",
+        "GET /lead-opportunity/service-contract",
+        "GET /lead-opportunity/release-evidence",
+        *tuple(item for item in _LEAD_OPPORTUNITY_ALLOWED_DEPENDENCIES if not str(item).startswith(("GET ", "POST "))),
     }
     allowed_event_dependencies = set(LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES)
-    allowed_runtime_tables = {
-        "lead_opportunity_appgen_outbox_event",
-        "lead_opportunity_appgen_inbox_event",
-        "lead_opportunity_dead_letter_event",
-    }
+    allowed_runtime_tables = set(LEAD_OPPORTUNITY_RUNTIME_TABLES)
     violations = tuple(
         reference
         for reference in references
@@ -596,6 +711,7 @@ def lead_opportunity_verify_owned_table_boundary(
         "format": "appgen.lead-opportunity-boundary.v1",
         "ok": not violations,
         "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+        "runtime_tables": LEAD_OPPORTUNITY_RUNTIME_TABLES,
         "declared_dependencies": {
             "apis": (
                 "POST /accounts",
@@ -605,13 +721,13 @@ def lead_opportunity_verify_owned_table_boundary(
                 "POST /opportunity-stage",
                 "POST /opportunity-wins",
                 "GET /pipeline",
+                "GET /lead-opportunity/schema-contract",
+                "GET /lead-opportunity/service-contract",
+                "GET /lead-opportunity/release-evidence",
             ),
             "events": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES,
-            "api_projections": (
-                "customer_segment_projection",
-                "customer_projection",
-                "billing_projection",
-                "territory_projection",
+            "api_projections": tuple(
+                item for item in _LEAD_OPPORTUNITY_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")
             ),
             "shared_tables": (),
         },
@@ -695,16 +811,214 @@ def lead_opportunity_build_api_contract() -> dict:
                 "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
                 "requires_permission": "lead_opportunity.audit",
             },
+            {
+                "route": "GET /lead-opportunity/schema-contract",
+                "query": "build_schema_contract",
+                "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+                "requires_permission": "lead_opportunity.audit",
+            },
+            {
+                "route": "GET /lead-opportunity/service-contract",
+                "query": "build_service_contract",
+                "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+                "requires_permission": "lead_opportunity.audit",
+            },
+            {
+                "route": "GET /lead-opportunity/release-evidence",
+                "query": "build_release_evidence",
+                "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+                "requires_permission": "lead_opportunity.audit",
+            },
         ),
         "declared_catalog_routes": ("POST /leads", "POST /opportunities", "GET /pipeline"),
         "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+        "runtime_tables": LEAD_OPPORTUNITY_RUNTIME_TABLES,
+        "events": {"emits": LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES, "consumes": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES},
         "emits": LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES,
         "consumes": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES,
         "database_backends": LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS,
         "permissions": tuple(sorted(lead_opportunity_permissions_contract()["permissions"])),
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "required_event_topic": LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+    }
+
+
+def lead_opportunity_build_schema_contract() -> dict:
+    tables = tuple(
+        {
+            "table": table,
+            "pbc": "lead_opportunity",
+            "schema": "lead_opportunity",
+            "owned": True,
+            "migration": f"pbcs/lead_opportunity/migrations/{index:03d}_{table}.sql",
+            "model": f"pbcs/lead_opportunity/models/{_class_name(table)}.py",
+            "fields": _lead_opportunity_table_fields(table),
+            "relationships": _lead_opportunity_table_relationships(table),
+        }
+        for index, table in enumerate(LEAD_OPPORTUNITY_OWNED_TABLES, start=1)
+    )
+    runtime_tables = tuple(
+        {
+            "table": table,
+            "fields": _lead_opportunity_table_fields(table),
+            "primary_key": _lead_opportunity_table_fields(table)[1],
+        }
+        for table in LEAD_OPPORTUNITY_RUNTIME_TABLES
+    )
+    return {
+        "format": "appgen.lead-opportunity-owned-schema-contract.v1",
+        "ok": len(tables) == len(LEAD_OPPORTUNITY_OWNED_TABLES) and len(runtime_tables) == len(LEAD_OPPORTUNITY_RUNTIME_TABLES),
+        "pbc": "lead_opportunity",
+        "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+        "runtime_tables": runtime_tables,
+        "tables": tables,
+        "migrations": tuple(
+            {
+                "path": table["migration"],
+                "table": table["table"],
+                "operation": "create_owned_table",
+                "backend_allowlist": LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS,
+            }
+            for table in tables
+        ),
+        "models": tuple(
+            {
+                "path": table["model"],
+                "table": table["table"],
+                "class_name": _class_name(table["table"]),
+                "fields": table["fields"],
+            }
+            for table in tables
+        ),
+        "database_backends": LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS,
+        "datastore_backends": LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC,
+        "event_contract": "AppGen-X",
+        "shared_table_access": False,
+        "tenant_isolation": {"field": "tenant", "required": True},
+        "schema_extensions": {
+            "allowed": True,
+            "owned_tables_only": True,
+            "field_name_pattern": _LEAD_OPPORTUNITY_FIELD_NAME_PATTERN.pattern,
+        },
+        "declared_dependencies": lead_opportunity_verify_owned_table_boundary(())["declared_dependencies"],
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+    }
+
+
+def lead_opportunity_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "create_account_hierarchy",
+        "create_lead",
+        "qualify_lead",
+        "create_opportunity",
+        "record_sales_activity",
+        "advance_opportunity",
+        "win_opportunity",
+        "build_workbench_view",
+        "verify_owned_table_boundary",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "build_api_contract",
+        "permissions_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    return {
+        "format": "appgen.lead-opportunity-service-contract.v1",
+        "ok": True,
+        "pbc": "lead_opportunity",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "transaction_boundary": "lead_opportunity_owned_datastore_plus_appgen_outbox",
+        "mutates_only_owned_tables": True,
+        "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+        "runtime_tables": LEAD_OPPORTUNITY_RUNTIME_TABLES,
+        "event_contract": {
+            "contract": "AppGen-X",
+            "required_topic": LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC,
+            "emits": LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES,
+            "consumes": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES,
+            "outbox_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[0],
+            "inbox_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[1],
+            "dead_letter_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[2],
+            "idempotency_key": "event_type:event_id",
+        },
+        "retry_policy": {
+            "configured_by": "retry_limit",
+            "dead_letter_after_retry_limit": True,
+            "dead_letter_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[2],
+        },
+        "external_dependencies": {
+            "apis": tuple(item for item in _LEAD_OPPORTUNITY_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _LEAD_OPPORTUNITY_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+        "shared_table_access": False,
+    }
+
+
+def lead_opportunity_build_release_evidence() -> dict:
+    from .ui import lead_opportunity_ui_contract
+
+    schema = lead_opportunity_build_schema_contract()
+    service = lead_opportunity_build_service_contract()
+    api = lead_opportunity_build_api_contract()
+    permissions = lead_opportunity_permissions_contract()
+    ui = lead_opportunity_ui_contract()
+    state = _build_release_state()
+    workbench = lead_opportunity_build_workbench_view(state, tenant="tenant_release")
+    boundary = lead_opportunity_verify_owned_table_boundary(
+        (
+            "lead",
+            LEAD_OPPORTUNITY_RUNTIME_TABLES[0],
+            "CustomerSegmentUpdated",
+            "customer_segment_projection",
+            "quote_proposal_projection",
+        )
+    )
+    checks = (
+        {"id": "owned_schema_depth", "ok": len(schema["owned_tables"]) >= 18},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(schema["owned_tables"])},
+        {"id": "model_per_owned_table", "ok": len(schema["models"]) == len(schema["owned_tables"])},
+        {"id": "runtime_tables_declared", "ok": tuple(item["table"] for item in schema["runtime_tables"]) == LEAD_OPPORTUNITY_RUNTIME_TABLES},
+        {"id": "service_contract_depth", "ok": service["ok"] and "receive_event" in service["command_methods"] and "build_release_evidence" in service["query_methods"]},
+        {"id": "api_event_contract", "ok": api["event_contract"] == "AppGen-X" and api["required_event_topic"] == LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC},
+        {"id": "permissions_cover_contracts", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
+        {"id": "ui_binding_evidence", "ok": ui["ok"] and ui["configuration_editor"]["stream_engine_picker_visible"] is False},
+        {"id": "workbench_binding_evidence", "ok": workbench["binding_evidence"]["runtime_tables"] == LEAD_OPPORTUNITY_RUNTIME_TABLES and workbench["inbox_count"] >= 1},
+        {"id": "boundary_contract", "ok": boundary["ok"] and boundary["declared_dependencies"]["shared_tables"] == ()},
+        {"id": "database_allowlist", "ok": schema["database_backends"] == LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS},
+    )
+    blocking_gaps = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.lead-opportunity-release-evidence.v1",
+        "ok": not blocking_gaps,
+        "pbc": "lead_opportunity",
+        "checks": checks,
+        "blocking_gaps": blocking_gaps,
+        "schema_contract": schema,
+        "service_contract": service,
+        "api_contract": api,
+        "permissions_contract": permissions,
+        "ui_contract": ui,
+        "workbench": workbench,
+        "boundary_contract": boundary,
     }
 
 
@@ -735,8 +1049,213 @@ def lead_opportunity_permissions_contract() -> dict:
             "configure_runtime": "lead_opportunity.configure",
             "build_workbench_view": "lead_opportunity.audit",
             "verify_owned_table_boundary": "lead_opportunity.audit",
+            "build_schema_contract": "lead_opportunity.audit",
+            "build_service_contract": "lead_opportunity.audit",
+            "build_release_evidence": "lead_opportunity.audit",
         },
     }
+
+
+def _build_release_state() -> dict:
+    state = lead_opportunity_empty_state()
+    state = lead_opportunity_configure_runtime(
+        state,
+        {
+            "database_backend": LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS[0],
+            "event_topic": LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "supported_currencies": ("USD", "EUR"),
+            "supported_regions": ("US", "EU"),
+            "pipeline_stages": ("prospect", "qualified", "proposal", "negotiation", "won", "lost"),
+            "default_timezone": "UTC",
+            "assignment_mode": "policy",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    for name, value in (
+        ("qualification_score_threshold", 0.65),
+        ("win_probability_threshold", 0.72),
+        ("stale_activity_days", 21),
+        ("forecast_confidence_floor", 0.7),
+        ("deal_slippage_threshold", 0.55),
+        ("lead_source_weight", 0.3),
+        ("segment_fit_weight", 0.4),
+        ("engagement_weight", 0.3),
+        ("max_open_opportunities_per_account", 10),
+        ("workbench_limit", 50),
+    ):
+        state = lead_opportunity_set_parameter(state, name, value)["state"]
+    state = lead_opportunity_register_rule(
+        state,
+        {
+            "rule_id": "rule_release",
+            "tenant": "tenant_release",
+            "scope": "lead_opportunity",
+            "status": "active",
+            "allowed_regions": ("US",),
+            "allowed_currencies": ("USD",),
+            "allowed_segments": ("growth", "enterprise"),
+            "qualification_policy": {"minimum_score": 0.65, "required_fields": ("email", "company")},
+            "assignment_policy": {"mode": "territory", "default_owner": "seller_release"},
+        },
+    )["state"]
+    state = lead_opportunity_register_schema_extension(
+        state,
+        "opportunity",
+        {"mutual_action_plan": "jsonb", "quote_handoff_status": "text"},
+    )["state"]
+    state = lead_opportunity_receive_event(
+        state,
+        {
+            "event_id": "segment_release",
+            "event_type": "CustomerSegmentUpdated",
+            "payload": {
+                "tenant": "tenant_release",
+                "customer_id": "cust_release",
+                "segment": "enterprise",
+                "fit_score": 0.91,
+            },
+        },
+    )["state"]
+    state = lead_opportunity_create_account_hierarchy(
+        state,
+        {
+            "account_id": "acct_release",
+            "tenant": "tenant_release",
+            "name": "Release Holdings",
+            "region": "US",
+            "parent_account_id": None,
+            "customer_id": "cust_release",
+            "owner": "seller_release",
+        },
+    )["state"]
+    state = lead_opportunity_create_lead(
+        state,
+        {
+            "lead_id": "lead_release",
+            "tenant": "tenant_release",
+            "account_id": "acct_release",
+            "customer_id": "cust_release",
+            "email": "release@example.com",
+            "company": "Release Holdings",
+            "source": "partner",
+            "region": "US",
+            "currency": "USD",
+            "engagement_score": 0.88,
+            "estimated_value": 150000.0,
+        },
+    )["state"]
+    state = lead_opportunity_qualify_lead(state, "lead_release")["state"]
+    state = lead_opportunity_create_opportunity(
+        state,
+        {
+            "opportunity_id": "opp_release",
+            "tenant": "tenant_release",
+            "lead_id": "lead_release",
+            "account_id": "acct_release",
+            "name": "Release Expansion",
+            "amount": 150000.0,
+            "currency": "USD",
+            "stage": "qualified",
+            "close_date": "2026-07-31",
+        },
+    )["state"]
+    state = lead_opportunity_record_sales_activity(
+        state,
+        {
+            "activity_id": "act_release",
+            "tenant": "tenant_release",
+            "opportunity_id": "opp_release",
+            "activity_type": "meeting",
+            "subject": "Proposal review",
+            "sentiment": 0.86,
+            "occurred_at": "2026-05-26T00:00:00Z",
+            "owner": "seller_release",
+        },
+    )["state"]
+    state = lead_opportunity_advance_opportunity(state, "opp_release", "proposal")["state"]
+    return lead_opportunity_win_opportunity(state, "opp_release")["state"]
+
+
+def _lead_opportunity_table_fields(table: str) -> tuple[str, ...]:
+    table_fields = {
+        "lead": ("tenant", "lead_id", "account_id", "customer_id", "email", "company", "source", "region", "currency", "engagement_score", "estimated_value", "score", "status", "assigned_owner", "audit_proof"),
+        "lead_enrichment_snapshot": ("tenant", "snapshot_id", "lead_id", "segment_fit_score", "firmographic_fit", "intent_summary", "enriched_at"),
+        "lead_dedup_case": ("tenant", "case_id", "lead_id", "duplicate_lead_id", "match_hash", "resolution_status", "resolved_at"),
+        "lead_score_snapshot": ("tenant", "snapshot_id", "lead_id", "qualification_score", "lead_source_weight", "segment_fit_weight", "engagement_weight", "recorded_at"),
+        "lead_assignment": ("tenant", "assignment_id", "lead_id", "owner", "assignment_mode", "territory_key", "assigned_at"),
+        "qualification_decision": ("tenant", "decision_id", "lead_id", "minimum_score", "actual_score", "decision", "qualified_at"),
+        "opportunity": ("tenant", "opportunity_id", "lead_id", "account_id", "name", "amount", "currency", "stage", "close_date", "win_probability", "forecast_amount", "risk_score", "status", "audit_proof"),
+        "opportunity_stage_history": ("tenant", "history_id", "opportunity_id", "from_stage", "to_stage", "changed_at", "audit_proof"),
+        "pipeline_forecast_snapshot": ("tenant", "snapshot_id", "opportunity_id", "forecast_amount", "confidence_floor", "slippage_risk", "captured_at"),
+        "quote_proposal_handoff": ("tenant", "handoff_id", "opportunity_id", "proposal_reference", "handoff_status", "handoff_owner", "handed_off_at"),
+        "opportunity_outcome": ("tenant", "outcome_id", "opportunity_id", "outcome", "reason", "competitor_context", "recorded_at"),
+        "account_hierarchy": ("tenant", "account_id", "name", "parent_account_id", "customer_id", "region", "owner", "status", "audit_proof"),
+        "sales_activity": ("tenant", "activity_id", "opportunity_id", "activity_type", "subject", "sentiment", "occurred_at", "owner", "next_best_action", "audit_proof"),
+        "sales_coaching_insight": ("tenant", "insight_id", "opportunity_id", "activity_id", "coaching_signal", "recommended_action", "confidence", "recorded_at"),
+        "lead_opportunity_audit_event": ("tenant", "audit_id", "entity_type", "entity_id", "event_type", "event_hash", "recorded_at"),
+        "lead_opportunity_rule": ("tenant", "rule_id", "scope", "status", "compiled_hash", "compiled_evidence", "recorded_at"),
+        "lead_opportunity_parameter": ("tenant", "parameter_id", "parameter_name", "parameter_value", "bounds", "recorded_at"),
+        "lead_opportunity_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone", "recorded_at"),
+        "lead_opportunity_governed_model": ("tenant", "model_id", "model_name", "model_scope", "feature_lineage", "governance_status", "recorded_at"),
+        "lead_opportunity_seed_data": ("tenant", "seed_id", "seed_type", "seed_values", "version", "recorded_at"),
+        LEAD_OPPORTUNITY_RUNTIME_TABLES[0]: ("tenant", "event_id", "event_type", "payload", "idempotency_key", "status", "audit_hash"),
+        LEAD_OPPORTUNITY_RUNTIME_TABLES[1]: ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "status", "received_at"),
+        LEAD_OPPORTUNITY_RUNTIME_TABLES[2]: ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "reason", "recorded_at"),
+    }
+    return table_fields[table]
+
+
+def _lead_opportunity_table_relationships(table: str) -> tuple[dict[str, str], ...]:
+    relationships = {
+        "lead": (
+            {"from": "lead.account_id", "to": "account_hierarchy.account_id", "type": "owned_account_reference"},
+            {"from": "lead.customer_id", "to": "customer_projection.customer_id", "type": "projection_reference"},
+        ),
+        "lead_enrichment_snapshot": (
+            {"from": "lead_enrichment_snapshot.lead_id", "to": "lead.lead_id", "type": "owned_enrichment"},
+        ),
+        "lead_dedup_case": (
+            {"from": "lead_dedup_case.lead_id", "to": "lead.lead_id", "type": "owned_duplicate_case"},
+        ),
+        "lead_score_snapshot": (
+            {"from": "lead_score_snapshot.lead_id", "to": "lead.lead_id", "type": "owned_scoring"},
+        ),
+        "lead_assignment": (
+            {"from": "lead_assignment.lead_id", "to": "lead.lead_id", "type": "owned_assignment"},
+        ),
+        "qualification_decision": (
+            {"from": "qualification_decision.lead_id", "to": "lead.lead_id", "type": "owned_qualification"},
+        ),
+        "opportunity": (
+            {"from": "opportunity.lead_id", "to": "lead.lead_id", "type": "owned_conversion"},
+            {"from": "opportunity.account_id", "to": "account_hierarchy.account_id", "type": "owned_account_reference"},
+        ),
+        "opportunity_stage_history": (
+            {"from": "opportunity_stage_history.opportunity_id", "to": "opportunity.opportunity_id", "type": "owned_stage_history"},
+        ),
+        "pipeline_forecast_snapshot": (
+            {"from": "pipeline_forecast_snapshot.opportunity_id", "to": "opportunity.opportunity_id", "type": "owned_forecast"},
+        ),
+        "quote_proposal_handoff": (
+            {"from": "quote_proposal_handoff.opportunity_id", "to": "opportunity.opportunity_id", "type": "owned_handoff"},
+        ),
+        "opportunity_outcome": (
+            {"from": "opportunity_outcome.opportunity_id", "to": "opportunity.opportunity_id", "type": "owned_outcome"},
+        ),
+        "sales_activity": (
+            {"from": "sales_activity.opportunity_id", "to": "opportunity.opportunity_id", "type": "owned_activity"},
+        ),
+        "sales_coaching_insight": (
+            {"from": "sales_coaching_insight.activity_id", "to": "sales_activity.activity_id", "type": "owned_coaching"},
+        ),
+    }
+    return relationships.get(table, ())
+
+
+def _class_name(table: str) -> str:
+    return "".join(part.capitalize() for part in table.split("_"))
 
 
 def _copy_state(state: dict) -> dict:
@@ -821,9 +1340,10 @@ def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> None:
         "event_type": event_type,
         "tenant": tenant,
         "payload": payload,
-        "contract": "appgen_event_contract",
+        "contract": "AppGen-X",
+        "runtime_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[0],
         "idempotency_key": f"lead_opportunity:{event_type}:{payload.get('opportunity_id') or payload.get('lead_id') or payload.get('customer_id') or len(state['outbox']) + 1}",
-        "retry_policy": {"max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)), "dead_letter": "lead_opportunity_dead_letter_event"},
+        "retry_policy": {"max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)), "dead_letter": LEAD_OPPORTUNITY_RUNTIME_TABLES[2]},
         "audit_hash": _digest({"event_type": event_type, "tenant": tenant, "payload": payload}),
     }
     state["outbox"].append(event)
@@ -840,9 +1360,11 @@ def _capability_evidence(state: dict, capability: str) -> dict:
         "events": len(state["events"]),
         "outbox": len(state["outbox"]),
         "inbox": len(state["inbox"]),
+        "dead_letter": len(state["dead_letter"]),
         "rules": len(state["rules"]),
         "parameters": len(state["parameters"]),
         "configuration": bool(state["configuration"].get("ok")),
+        "runtime_tables": LEAD_OPPORTUNITY_RUNTIME_TABLES,
         "runtime_digest": _digest({"capability": capability, "leads": len(state["leads"]), "opportunities": len(state["opportunities"])}),
     }
 

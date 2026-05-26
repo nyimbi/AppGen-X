@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from .runtime import LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS
+from .runtime import LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC
 from .runtime import LEAD_OPPORTUNITY_OWNED_TABLES
+from .runtime import LEAD_OPPORTUNITY_RUNTIME_TABLES
 
 
 LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS = (
@@ -64,7 +66,9 @@ def lead_opportunity_ui_contract() -> dict:
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone", "assignment_mode"),
             "allowed_database_backends": LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "required_event_topic": LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -143,5 +147,6 @@ def _view_counts(state: dict, tenant: str) -> dict:
             "rules": tuple(sorted(state.get("rules", {}))),
             "parameters": tuple(sorted(state.get("parameters", {}))),
             "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+            "runtime_tables": LEAD_OPPORTUNITY_RUNTIME_TABLES,
         },
     }

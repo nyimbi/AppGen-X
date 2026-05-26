@@ -2,12 +2,21 @@
 
 from ..source_contract import source_pbc_package_contract
 from .runtime import PRICE_PROMOTION_ENGINE_ALLOWED_DATABASE_BACKENDS
+from .runtime import PRICE_PROMOTION_ENGINE_CONSUMED_EVENT_TYPES
+from .runtime import PRICE_PROMOTION_ENGINE_EMITTED_EVENT_TYPES
+from .runtime import PRICE_PROMOTION_ENGINE_EVENT_CONTRACT
 from .runtime import PRICE_PROMOTION_ENGINE_OWNED_TABLES
+from .runtime import PRICE_PROMOTION_ENGINE_REQUIRED_EVENT_TOPIC
 from .runtime import PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS
+from .runtime import PRICE_PROMOTION_ENGINE_RUNTIME_TABLES
 from .runtime import PRICE_PROMOTION_ENGINE_STANDARD_FEATURE_KEYS
 from .runtime import price_promotion_engine_apply_promotion
 from .runtime import price_promotion_engine_build_api_contract
+from .runtime import price_promotion_engine_build_release_evidence
+from .runtime import price_promotion_engine_build_schema_contract
+from .runtime import price_promotion_engine_build_service_contract
 from .runtime import price_promotion_engine_build_workbench_view
+from .runtime import price_promotion_engine_binding_evidence
 from .runtime import price_promotion_engine_configure_runtime
 from .runtime import price_promotion_engine_empty_state
 from .runtime import price_promotion_engine_permissions_contract
@@ -38,7 +47,15 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": price_promotion_engine_ui_contract(),
         "api_contract": price_promotion_engine_build_api_contract(),
+        "schema_contract": price_promotion_engine_build_schema_contract(),
+        "service_contract": price_promotion_engine_build_service_contract(),
+        "release_evidence_contract": price_promotion_engine_build_release_evidence(),
         "permissions_contract": price_promotion_engine_permissions_contract(),
         "owned_tables": PRICE_PROMOTION_ENGINE_OWNED_TABLES,
         "allowed_database_backends": PRICE_PROMOTION_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "runtime_tables": PRICE_PROMOTION_ENGINE_RUNTIME_TABLES,
+        "required_event_topic": PRICE_PROMOTION_ENGINE_REQUIRED_EVENT_TOPIC,
+        "event_contract": PRICE_PROMOTION_ENGINE_EVENT_CONTRACT,
+        "consumes": PRICE_PROMOTION_ENGINE_CONSUMED_EVENT_TYPES,
+        "emits": PRICE_PROMOTION_ENGINE_EMITTED_EVENT_TYPES,
     }

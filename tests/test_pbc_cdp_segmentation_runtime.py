@@ -23,6 +23,9 @@ from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbcs.cdp_segmentation import CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.cdp_segmentation import CDP_SEGMENTATION_OWNED_TABLES
 from pyAppGen.pbcs.cdp_segmentation import CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.cdp_segmentation import cdp_segmentation_build_release_evidence
+from pyAppGen.pbcs.cdp_segmentation import cdp_segmentation_build_schema_contract
+from pyAppGen.pbcs.cdp_segmentation import cdp_segmentation_build_service_contract
 
 
 def test_cdp_segmentation_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -33,7 +36,7 @@ def test_cdp_segmentation_runtime_executes_standard_and_advanced_capabilities() 
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/cdp_segmentation"
     assert runtime["owned_tables"] == CDP_SEGMENTATION_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 18
+    assert len(runtime["standard_features"]) >= 45
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
@@ -45,6 +48,10 @@ def test_cdp_segmentation_runtime_executes_standard_and_advanced_capabilities() 
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["api_contract"]["ok"] is True
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
+    assert len(contract["source_package"]["schema_contract"]["owned_tables"]) >= 45
     assert (
         contract["source_package"]["permissions_contract"]["action_permissions"]["evaluate_segments"]
         == "cdp_segmentation.membership.evaluate"
@@ -116,6 +123,7 @@ def test_cdp_segmentation_runtime_applies_rules_parameters_configuration_events_
     assert api_contract["event_contract"] == "AppGen-X"
     assert api_contract["stream_engine_picker_visible"] is False
     assert api_contract["shared_table_access"] is False
+    assert any(route.get("query") == "build_release_evidence" for route in api_contract["routes"])
     assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
         "ingest_customer_event",
         "upsert_profile_property",
@@ -126,6 +134,23 @@ def test_cdp_segmentation_runtime_applies_rules_parameters_configuration_events_
     }
     permissions = cdp_segmentation_permissions_contract()
     assert permissions["action_permissions"]["verify_owned_table_boundary"] == "cdp_segmentation.audit"
+    assert permissions["action_permissions"]["build_release_evidence"] == "cdp_segmentation.audit"
+
+    schema = cdp_segmentation_build_schema_contract()
+    service = cdp_segmentation_build_service_contract()
+    release = cdp_segmentation_build_release_evidence()
+    assert schema["format"] == "appgen.cdp-segmentation-owned-schema-contract.v1"
+    assert schema["shared_table_access"] is False
+    assert "profile_consent" in schema["owned_tables"]
+    assert "cdp_segmentation_dead_letter_event" in schema["owned_tables"]
+    assert len(schema["migrations"]) == len(CDP_SEGMENTATION_OWNED_TABLES)
+    assert all(path.startswith("pbcs/cdp_segmentation/migrations/") for path in schema["migrations"])
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert service["shared_table_access"] is False
+    assert "build_schema_contract" in service["query_methods"]
+    assert "register_governed_model" in service["command_methods"]
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
 
 def test_cdp_segmentation_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
@@ -172,7 +197,7 @@ def test_cdp_segmentation_rejects_invalid_inputs_and_proves_boundary_and_dead_le
         )
     )
     assert boundary["ok"] is True
-    assert boundary["owned_tables"] == ("customer_event", "segment_definition", "segment_membership", "profile_property")
+    assert boundary["owned_tables"] == CDP_SEGMENTATION_OWNED_TABLES
     assert boundary["declared_dependencies"]["shared_tables"] == ()
     assert "payment_projection" in boundary["declared_dependencies"]["api_projections"]
     violated = cdp_segmentation_verify_owned_table_boundary(("customer",))

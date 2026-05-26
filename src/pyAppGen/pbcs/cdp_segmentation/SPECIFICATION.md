@@ -215,9 +215,38 @@ owned-table binding evidence.
 
 ## Release Evidence
 
+`cdp_segmentation_build_schema_contract()` emits the generated CDP-owned schema
+plan for customer events, identity links, stitched profiles, profile
+properties, consent, enrichment, segment definitions/rules/versions,
+memberships, evaluations, activation destinations and runs, audience snapshots
+and forecasts, affinity and lifecycle risk scores, merge candidates, profile
+exceptions, data-quality findings, consent policy screenings, customer/payment
+order/notification/loyalty/pricing projections, profile proofs, audit entries,
+control assertions, federation views, resilience drills, crypto epochs, carbon
+activation windows, segment simulations, activation allocations, anomaly and
+exposure forecasts, identity attestations, governed models, seed data,
+configuration/rule/parameter tables, and AppGen-X inbox/outbox/dead-letter
+tables. Every table receives deterministic migration and generated model
+descriptors under `pbcs/cdp_segmentation/`.
+
+`cdp_segmentation_build_service_contract()` declares the generated app service
+surface for configuration, parameters, rules, schema extension, AppGen-X inbox
+handling, event ingestion, profile property upsert, segment definition,
+membership evaluation, activation, workbench queries, boundary validation,
+audience simulation and forecasting, exception resolution, semantic rule
+parsing, lifecycle risk, profile merge healing, profile proof generation,
+consent screening, data quality controls, customer federation, activation
+allocation, anomaly detection, and governed model registration.
+
+`cdp_segmentation_build_release_evidence()` proves owned-schema depth, one
+model/migration descriptor per owned table, broad service coverage, AppGen-X
+eventing only, relational backend allowlist compliance, permission coverage for
+descriptor queries, owned runtime event tables, and no shared-table access.
+
 Focused tests prove:
 
 - Runtime capability and smoke checks cover every advanced capability key.
+- Schema, service, and release-evidence descriptors pass.
 - Configuration, rule, parameter, schema-extension, event ingestion, consumed
   event handling, segment definition, segment evaluation, activation, outbox
   emission, UI rendering, API descriptors, RBAC descriptors, and workbench

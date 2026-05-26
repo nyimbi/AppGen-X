@@ -1,231 +1,314 @@
 # Service Ticketing PBC
 
-`service_ticketing` is the AppGen-X packaged business capability for
-omnichannel support intake, SLA policy management, assignment, escalation,
-resolution evidence, customer-context projection handling, and preference-aware
-service orchestration. It is a complete package-local implementation with owned
-schema, runtime services, API descriptors, AppGen-X events, idempotent
-handlers, rules, parameters, configuration, UI fragments, package metadata,
-tests, and release evidence.
+`service_ticketing` is the AppGen-X packaged business capability for service
+operations, ticket lifecycle management, SLA governance, assignment and
+handoff orchestration, customer update delivery, resolution evidence, CSAT
+readiness, auditability, and automation insights. The package owns its
+runtime, schema contract, service contract, release evidence, API descriptors,
+permission descriptors, UI workbench bindings, and focused tests.
 
 ## Stable Identity
 
 - PBC key: `service_ticketing`.
-- Mesh: relationship.
 - Package directory: `src/pyAppGen/pbcs/service_ticketing`.
 - Runtime entrypoint: `service_ticketing_runtime_capabilities()`.
 - UI entrypoint: `service_ticketing_ui_contract()`.
 - Source registration entrypoint: `implementation_contract()`.
 - Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X event contract on
+- Event contract: fixed AppGen-X contract on
   `appgen.service_ticketing.events`.
-- User-facing stream-engine selector: forbidden and hidden.
+- User-selectable event contracts: not allowed.
+- Stream-engine selector exposure: forbidden and hidden.
 
 ## Owned Datastore Boundary
 
-The package owns exactly these operational tables:
+The package owns these operational tables and no foreign business tables:
 
-- `support_ticket`: tenant, customer, subject, description, channel, priority,
-  region, SLA policy, assignment, next-best response, breach risk, status, and
-  audit proof.
-- `sla_policy`: tenant, policy name, priority, first-response target,
-  resolution target, status, and audit proof.
-- `case_assignment`: tenant, ticket, owner, queue, skill evidence, assignment
-  score, status, and audit proof.
-- `escalation_event`: tenant, ticket, reason, breach risk, status, and audit
-  proof.
+- `support_ticket`
+- `service_queue`
+- `sla_policy`
+- `service_priority`
+- `case_assignment`
+- `escalation_event`
+- `ticket_interaction`
+- `knowledge_suggestion`
+- `entitlement_snapshot`
+- `case_lifecycle_state`
+- `field_service_handoff`
+- `customer_update`
+- `resolution_record`
+- `csat_response`
+- `ticket_audit_log`
+- `automation_insight`
+- `service_rule`
+- `service_parameter`
+- `service_configuration`
 
-No customer, preference, identity, messaging, workflow, or analytics tables are
-shared or directly accessed. External information enters through declared
-AppGen-X events and API projections only:
+Package-local runtime event tables provide idempotent event evidence:
 
-- Consumed events: `CustomerUpdated` and `PreferenceChanged`.
-- API projections: `customer_context_projection` and
-  `preference_projection`.
-- Runtime event tables are PBC-local:
-  `service_ticketing_appgen_outbox_event`,
-  `service_ticketing_appgen_inbox_event`, and
-  `service_ticketing_dead_letter_event`.
+- `service_ticketing_appgen_outbox_event`
+- `service_ticketing_appgen_inbox_event`
+- `service_ticketing_dead_letter_event`
 
-The boundary verifier accepts only owned tables, declared APIs/events,
-declared projections, and PBC-local event tables. It rejects direct foreign
-references such as `customer_profile`.
+The boundary verifier accepts only:
 
-## Standard Table-Stakes Capabilities
+- owned tables
+- package-local runtime event tables
+- declared consumed events
+- declared API dependencies
+- declared read-only projections
 
-The implementation covers the ordinary service capabilities expected from a
-production ticketing package:
+It rejects undeclared foreign references such as `customer_profile`.
 
-- Runtime configuration for database backend, event topic, retry limit,
-  default region, supported regions, channels, priorities, timezone,
-  assignment mode, and workbench limit.
-- Parameter engine for SLA breach risk, auto-escalation threshold, sentiment,
-  priority, customer-tier, queue-load weighting, first-response target,
-  resolution target, owner load, and workbench limit.
-- Rule engine for tenant, scope, region/channel/priority constraints,
-  assignment policy, escalation policy, status, compiled hash, and
-  policy-engine evidence.
-- Schema extension for owned service tables only, with versioned migration
-  evidence.
-- Customer-context and preference projection handling through idempotent
-  AppGen-X inbox events.
-- SLA policy creation with response and resolution targets.
-- Ticket opening with region/channel/priority validation, rule screening,
-  breach-risk scoring, next-best-response evidence, and outbox publication.
-- Assignment with queue, owner, skill evidence, open-case load scoring, and
-  ticket-state update.
-- Escalation evidence with breach reason capture, audit proof, and emitted SLA
-  events.
-- Resolution tracking with customer update handoff through the AppGen-X outbox.
-- Retry/dead-letter evidence for failed consumed-event handling.
-- Workbench views for tickets, resolved tickets, SLA policies, assignments,
-  escalations, rules, parameters, configuration, outbox, and dead letters.
-- UI fragments for ticket inbox, customer context, SLA designer, assignment
-  board, escalation center, resolution console, next-best-response panel,
-  preference projection panel, rule studio, parameter console, configuration,
-  outbox, and dead-letter queue.
-- Permission/RBAC descriptors for ticket, assignment, escalation, event,
-  configuration, and audit actions.
-- Seed data for supported intake channels and service queues.
+## Declared External Dependencies
 
-## Advanced Capabilities
+The package consumes only declared integrations, not shared tables:
 
-The executable runtime proves the advanced capabilities needed for a modern
-service PBC:
+- APIs:
+  `GET /customer-context/{customer_id}`,
+  `GET /knowledge/suggestions`,
+  `GET /entitlements/{customer_id}`,
+  `POST /customer-updates`,
+  `POST /field-service/handoffs`
+- API projections:
+  `customer_context_projection`,
+  `preference_projection`,
+  `entitlement_projection`,
+  `knowledge_projection`
+- Consumed events:
+  `CustomerUpdated`,
+  `PreferenceChanged`,
+  `EntitlementUpdated`,
+  `KnowledgeSuggested`
 
-- Event-sourced case lifecycle with immutable state-event hashes.
-- Owned service schema boundary enforcement with explicit violation evidence.
-- Multi-tenant case isolation across tickets, policies, assignments,
-  escalations, and UI views.
-- Schema-evolution-safe case extensions.
-- Omnichannel case intake and service-policy screening.
-- Customer context and preference projection handling through declared
-  integrations only.
-- Probabilistic SLA breach, escalation, and queue-risk scoring evidence.
-- Counterfactual assignment simulation support through deterministic assignment
-  scoring inputs.
-- Temporal backlog forecasting support through workload and SLA parameters.
-- Autonomous next-best-response generation from priority and sentiment.
-- Semantic case understanding evidence through subject, description, channel,
-  and sentiment.
-- Predictive escalation risk and self-healing queue assignment evidence.
-- Cryptographic case proofs and immutable service audit trail.
-- Automated service control testing through smoke checks and release audits.
-- Cross-system customer and preference federation through declared APIs/events
-  only.
-- AppGen-X outbox/inbox eventing with idempotent handlers.
-- Retry/dead-letter evidence.
-- Permissions governance evidence.
-- Configuration, rule, parameter, seed-data, and workbench evidence.
-- Governed model evidence.
+## Standard Table-Stakes Coverage
 
-## Commands And Services
+The completeness slice covers the ordinary service-ticketing expectations:
 
-The service layer exposes these package-local commands:
+- tickets and case lifecycle
+- queues and priority catalogs
+- SLA policies
+- assignment scoring and ownership
+- escalations
+- ticket interactions
+- knowledge suggestions
+- entitlement snapshots
+- field/service handoffs
+- customer updates
+- resolution records
+- CSAT follow-up evidence
+- audit logs
+- automation insights
+- rule, parameter, and configuration governance
+- AppGen-X inbox, outbox, and dead-letter evidence
+- workbench and UI binding evidence
 
-- `configure_runtime(configuration)`.
-- `set_parameter(name, value)`.
-- `register_rule(rule)`.
-- `register_schema_extension(table, fields)`.
-- `receive_event(event, simulate_failure=False)`.
-- `create_sla_policy(command)`.
-- `open_ticket(command)`.
-- `assign_ticket(command)`.
-- `record_escalation(ticket_id, reason=...)`.
-- `resolve_ticket(ticket_id, resolution=...)`.
-- `build_api_contract()`.
-- `permissions_contract()`.
-- `build_workbench_view(tenant=...)`.
-- `verify_owned_table_boundary(references=...)`.
+## Runtime Configuration And Policy
 
-All commands are deterministic and side-effect-free: they accept explicit state
-and return new state plus evidence payloads suitable for generated apps and
-release smoke audits.
+Runtime configuration supports:
 
-## APIs
+- `database_backend`
+- `event_topic`
+- `retry_limit`
+- `default_region`
+- `supported_regions`
+- `channels`
+- `priority_levels`
+- `default_timezone`
+- `assignment_mode`
+- `workbench_limit`
 
-The package-local API contract exposes route descriptors:
+Parameter support includes:
 
-- `POST /sla-policies` runs `create_sla_policy`, writes `sla_policy`,
-  requires `service_ticketing.configure`, and is idempotent by
-  `sla_policy_id`.
-- `POST /tickets` runs `open_ticket`, writes `support_ticket`, requires
-  `service_ticketing.ticket.write`, emits `SupportCaseOpened` and optional
-  `SlaBreached`, and is idempotent by `ticket_id`.
-- `POST /assignments` runs `assign_ticket`, writes `case_assignment` and
-  updates `support_ticket`, requires `service_ticketing.assignment.write`, and
-  is idempotent by `assignment_id`.
-- `POST /escalations` runs `record_escalation`, writes `escalation_event` and
-  updates `support_ticket`, requires `service_ticketing.escalation.write`,
-  emits `SlaBreached`, and is idempotent by `ticket_id:reason`.
-- `POST /resolutions` runs `resolve_ticket`, updates `support_ticket`,
-  requires `service_ticketing.ticket.write`, emits `CustomerUpdated`, and is
-  idempotent by `ticket_id`.
-- `POST /service-ticketing/events/inbox` runs `receive_event`, consumes
-  declared AppGen-X events, requires `service_ticketing.event.consume`, and is
-  idempotent by `event_id`.
-- `GET /sla-status` queries `build_workbench_view`, reads only owned Service
-  Ticketing state, and requires `service_ticketing.audit`.
+- SLA breach threshold
+- auto-escalation threshold
+- sentiment weighting
+- priority weighting
+- customer-tier weighting
+- queue-load weighting
+- first-response minutes
+- resolution target hours
+- maximum open cases per owner
+- workbench limit
 
-The catalog-facing route set remains `POST /tickets`, `POST /assignments`, and
-`GET /sla-status`.
+Rule support includes:
 
-## Events And Handlers
+- tenant and scope
+- active status
+- allowed regions, channels, and priorities
+- assignment policy
+- escalation policy
+- compiled-hash evidence
+
+## Service Contract
+
+The package-local service contract is exposed by
+`service_ticketing_build_service_contract()` and included in
+`implementation_contract()`.
+
+Command methods:
+
+- `configure_runtime`
+- `set_parameter`
+- `register_rule`
+- `register_schema_extension`
+- `receive_event`
+- `create_sla_policy`
+- `open_ticket`
+- `assign_ticket`
+- `record_escalation`
+- `resolve_ticket`
+- `run_control_tests`
+- `verify_owned_table_boundary`
+
+Query and release methods:
+
+- `build_workbench_view`
+- `build_api_contract`
+- `permissions_contract`
+- `ui_binding_contract`
+- `build_schema_contract`
+- `build_service_contract`
+- `build_release_evidence`
+
+The service contract proves:
+
+- mutation stays inside owned tables
+- runtime event tables are package-local
+- event contract is fixed to AppGen-X
+- retry/dead-letter policy is defined
+- idempotent inbox handling uses `event_type:event_id`
+- no shared-table access exists
+
+## Schema Contract
+
+`service_ticketing_build_schema_contract()` emits generated descriptors for:
+
+- every owned table
+- migration path per owned table
+- model path per owned table
+- runtime event table descriptors
+- tenant isolation requirements
+- schema-extension rules for owned tables only
+- declared dependencies and relationships
+
+This contract is exposed through `implementation_contract()` as
+`schema_contract`.
+
+## API Contract
+
+`service_ticketing_build_api_contract()` emits route descriptors for:
+
+- `PUT /service-ticketing/configuration`
+- `POST /service-ticketing/parameters`
+- `POST /service-ticketing/rules`
+- `POST /sla-policies`
+- `POST /tickets`
+- `POST /assignments`
+- `POST /escalations`
+- `POST /resolutions`
+- `POST /service-ticketing/events/inbox`
+- `GET /service-ticketing/workbench`
+- `GET /service-ticketing/schema-contract`
+- `GET /service-ticketing/service-contract`
+- `GET /service-ticketing/release-evidence`
+
+The API contract declares:
+
+- required permissions
+- owned-table mutation scope
+- emitted and consumed events
+- idempotency keys
+- fixed required event topic
+- hidden stream-engine picker state
+
+## Events And Idempotency
 
 Consumed events:
 
-- `CustomerUpdated`.
-- `PreferenceChanged`.
+- `CustomerUpdated`
+- `PreferenceChanged`
+- `EntitlementUpdated`
+- `KnowledgeSuggested`
 
 Emitted events:
 
-- `SupportCaseOpened`.
-- `SlaBreached`.
-- `CustomerUpdated`.
+- `SupportCaseOpened`
+- `TicketAssigned`
+- `FieldServiceHandoffPrepared`
+- `SlaBreached`
+- `ResolutionRecorded`
+- `CsatSurveyRequested`
+- `CustomerUpdated`
 
-Handlers require event IDs, deduplicate already handled events, record inbox
-evidence, store customer-context and preference projections in package-local
-state, and send simulated failures to the dead-letter evidence queue. Users
-never choose a stream engine.
+Handlers require `event_id`, record inbox evidence, deduplicate already
+handled events, and push simulated failures to the package-local dead-letter
+table.
 
 ## UI And Workbench
 
-The UI contract exposes:
+UI surfaces include:
 
-- Service Ticketing workbench.
-- Ticket inbox.
-- Customer context panel.
-- SLA policy designer.
-- Assignment queue board.
-- Escalation command center.
-- Resolution console.
-- Next-best-response panel.
-- Preference projection panel.
-- Service rule studio.
-- Service parameter console.
-- Service configuration panel.
-- Service event outbox.
-- Service dead-letter queue.
+- workbench
+- ticket inbox
+- queue manager
+- SLA designer
+- priority matrix
+- assignment board
+- escalation center
+- interaction timeline
+- knowledge suggestion panel
+- entitlement snapshot panel
+- field-service handoff panel
+- customer update panel
+- resolution console
+- CSAT survey panel
+- audit trail
+- automation insight panel
+- governance panels for rules, parameters, and configuration
+- outbox, inbox, and dead-letter event panels
 
-Rendered workbench output includes tenant-filtered ticket, resolved-ticket,
-SLA-policy, assignment, escalation, outbox, and dead-letter counts; visible
-and locked actions from RBAC permissions; configuration/rule/parameter state;
-and owned-table binding evidence.
+Workbench evidence includes:
+
+- ticket, queue, priority, SLA, assignment, escalation, interaction,
+  knowledge, entitlement, handoff, customer-update, resolution, CSAT, audit,
+  and automation counts
+- runtime event table bindings
+- AppGen-X eventing metadata
+- permission-gated visible and locked actions
 
 ## Release Evidence
 
-Focused tests prove:
+`service_ticketing_build_release_evidence()` proves:
 
-- Runtime capability and smoke checks cover every advanced capability key.
-- Configuration, rule, parameter, schema-extension, customer-context and
-  preference event handling, SLA policy creation, ticket opening, assignment,
-  escalation, resolution, outbox emission, UI rendering, API descriptors, RBAC
-  descriptors, and workbench evidence execute.
-- AppGen-X eventing is fixed and stream-engine picker exposure is false.
-- Backends remain limited to PostgreSQL, MySQL, and MariaDB.
-- Boundary validation accepts owned tables and declared dependencies and
-  rejects direct foreign table references.
-- Invalid database backends, invalid parameters, non-owned schema extensions,
-  and simulated handler failures are rejected or dead-lettered.
-- The package participates in all-PBC implementation release and generation
-  smoke audits.
+- owned schema depth matches the expanded table set
+- every owned table has migration and model descriptors
+- runtime tables are declared
+- service contract includes release methods
+- AppGen-X event contract and topic are fixed
+- permissions cover schema/service/release builders
+- UI and workbench bindings point to package-local runtime tables
+- handled and dead-letter event evidence is present
+- boundary contract forbids shared tables
+- backend allowlist remains PostgreSQL, MySQL, and MariaDB
+- control tests pass
+- table-stakes records are populated across tickets, queues, SLAs,
+  priorities, assignments, escalations, interactions, knowledge suggestions,
+  entitlements, lifecycle, handoffs, customer updates, resolutions, CSAT,
+  audit, automation, rules, parameters, and configuration
+
+## Package Exposure
+
+`implementation_contract()` exposes:
+
+- `advanced_runtime`
+- `api_contract`
+- `schema_contract`
+- `service_contract`
+- `release_evidence_contract`
+- `permissions_contract`
+- `ui_contract`
+- `ui_binding_contract`
+- `boundary_contract`
+- required event topic, emitted events, consumed events, owned tables, runtime
+  tables, and backend allowlist

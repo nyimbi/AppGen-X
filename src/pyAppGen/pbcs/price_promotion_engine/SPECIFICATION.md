@@ -1,241 +1,307 @@
 # Price Promotion Engine PBC
 
 `price_promotion_engine` is the AppGen-X packaged business capability for
-dynamic price decisions, promotion design, loyalty-tier price effects, margin
-controls, customer-segment pricing, forecast-aware quote optimization, and
-promotion application evidence. It is a complete package-local implementation
-with owned schema, runtime services, API descriptors, AppGen-X events,
-idempotent handlers, rules, parameters, configuration, UI fragments, package
-metadata, tests, and release evidence.
+standard pricing, promotion governance, quote optimization, margin control, and
+release-evidence generation. The package is self-contained under
+`src/pyAppGen/pbcs/price_promotion_engine` and exposes executable runtime,
+schema, service, API, permission, UI, and release contracts through
+package-local functions and `implementation_contract()`.
 
 ## Stable Identity
 
-- PBC key: `price_promotion_engine`.
-- Mesh: commerce.
-- Package directory: `src/pyAppGen/pbcs/price_promotion_engine`.
-- Runtime entrypoint: `price_promotion_engine_runtime_capabilities()`.
-- UI entrypoint: `price_promotion_engine_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X event contract on
-  `appgen.price_promotion.events`.
-- User-facing stream-engine selector: forbidden and hidden.
+- PBC key: `price_promotion_engine`
+- Mesh: commerce
+- Package directory: `src/pyAppGen/pbcs/price_promotion_engine`
+- Runtime entrypoint: `price_promotion_engine_runtime_capabilities()`
+- UI entrypoint: `price_promotion_engine_ui_contract()`
+- Source registration entrypoint: `implementation_contract()`
+- Allowed database backends: PostgreSQL, MySQL, MariaDB
+- Event contract: fixed `AppGen-X`
+- Required event topic: `appgen.price_promotion.events`
+- User stream-engine choice: forbidden and hidden
+
+## Package-Local Builders
+
+The package exposes the hardened complete-PBC builder surface:
+
+- `price_promotion_engine_build_schema_contract()`
+- `price_promotion_engine_build_service_contract()`
+- `price_promotion_engine_build_release_evidence()`
+- `price_promotion_engine_build_api_contract()`
+- `price_promotion_engine_permissions_contract()`
+- `price_promotion_engine_binding_evidence()`
+
+`implementation_contract()` includes:
+
+- `advanced_runtime`
+- `ui_contract`
+- `api_contract`
+- `schema_contract`
+- `service_contract`
+- `release_evidence_contract`
+- `permissions_contract`
+- `owned_tables`
+- `runtime_tables`
+- `required_event_topic`
+- `event_contract`
+- `consumes`
+- `emits`
 
 ## Owned Datastore Boundary
 
-The package owns exactly these operational tables:
+The package owns these business tables:
 
-- `price_rule`: tenant, SKU, region, currency, base price, cost, eligible
-  segments, volume breaks, status, margin, and audit proof.
-- `promotion`: tenant, code, discount percent, segment/region/currency
-  eligibility, stackability, status, and audit proof.
-- `loyalty_tier`: tenant, tier identity, rank, discount percent, status, and
-  audit proof.
-- `price_decision`: quote decision, customer, SKU, region, currency, quantity,
-  selected promotions, loyalty tier, base and optimized price, extended price,
-  margin, risk score, counterfactuals, status, applied promotions, and audit
-  proof.
+- `price_configuration`
+- `price_parameter`
+- `price_policy_rule`
+- `price_schema_extension`
+- `price_list`
+- `price_book`
+- `price_book_entry`
+- `price_rule`
+- `customer_price`
+- `channel_price`
+- `currency_price`
+- `promotion`
+- `promotion_rule`
+- `coupon`
+- `promotion_eligibility`
+- `promotion_stacking_policy`
+- `promotion_exclusion`
+- `campaign_budget`
+- `promotion_approval`
+- `loyalty_tier`
+- `price_simulation`
+- `price_margin_guardrail`
+- `price_decision`
+- `price_audit_trace`
+- `price_performance_telemetry`
 
-No customer, forecast, checkout, order, product, inventory, or finance tables
-are shared or directly accessed. External context arrives through declared
-AppGen-X events and API projections only:
+The package also owns these AppGen-X runtime tables:
 
-- Consumed events: `CustomerSegmentUpdated` and `ForecastUpdated`.
-- API projections: `customer_segment_projection`, `forecast_projection`, and
-  `checkout_projection`.
-- Runtime event tables are PBC-local:
-  `price_promotion_engine_appgen_outbox_event`,
-  `price_promotion_engine_appgen_inbox_event`, and
-  `price_promotion_engine_dead_letter_event`.
+- `price_promotion_engine_appgen_outbox_event`
+- `price_promotion_engine_appgen_inbox_event`
+- `price_promotion_engine_dead_letter_event`
 
-The owned-boundary verifier accepts only owned tables, declared APIs/events,
-declared projections, and PBC-local event tables. It rejects direct foreign
-references such as `customer_segment`.
+No shared tables are accessed. External context is allowed only through
+declared APIs, projections, and consumed AppGen-X events:
 
-## Standard Table-Stakes Capabilities
+- APIs:
+  `POST /customer-segment-projections/resolve`,
+  `POST /forecast-projections/resolve`,
+  `POST /checkout-projections/price-context`,
+  `GET /currency-rate-projections/{currency}`
+- Projections:
+  `customer_segment_projection`,
+  `forecast_projection`,
+  `checkout_projection`,
+  `currency_rate_projection`
+- Consumed events:
+  `CustomerSegmentUpdated`,
+  `ForecastUpdated`
 
-The implementation covers the ordinary pricing and promotion capabilities
-expected from a production commerce package:
+`price_promotion_engine_verify_owned_table_boundary()` accepts only owned
+tables, runtime tables, declared events, and declared dependencies. Foreign
+references such as `customer_segment` are rejected.
 
-- Price-rule catalog with tenant, SKU, region, currency, base price, cost,
-  margin, eligible segments, volume breaks, status, and audit evidence.
-- Promotion lifecycle with code, discount, segment/region/currency eligibility,
-  stackability, status, exclusion-ready policy evidence, and audit proof.
-- Loyalty-tier price effects with rank, discount percent, status, and
-  tier-specific quote adjustments.
-- Runtime configuration for database backend, event topic, retry limit,
-  default currency, supported currencies, supported regions, pricing calendars,
-  timezone, decision mode, and workbench limit.
-- Parameter engine for margin floor, promotion stack limit, elasticity weight,
-  forecast weight, segment weight, loyalty weight, risk review threshold,
-  discount ceiling, decision TTL, and workbench limit.
-- Rule engine for tenant, scope, allowed currencies, allowed regions, allowed
-  segments, promotion policy, margin policy, status, compiled hash, and
-  policy-engine evidence.
-- Schema extension for owned price and promotion tables only, with versioned
-  migration evidence.
-- Idempotent AppGen-X handlers for `CustomerSegmentUpdated` and
-  `ForecastUpdated`.
-- Price quote service that selects active price rules, validates segment policy,
-  calculates volume, promotion, and loyalty discounts, applies forecast
-  adjustment, enforces discount ceilings, computes margin and risk, produces
-  counterfactuals, and stores an owned decision.
-- Promotion application service that validates eligibility and records applied
-  promotions on the owned decision.
-- `PriceOptimized` and `PromotionApplied` AppGen-X outbox emissions with retry
-  policy and audit hash.
-- Retry/dead-letter evidence for failed consumed-event handling.
-- Workbench views for price rules, promotions, loyalty tiers, decisions,
-  approved decisions, average margin, rules, parameters, configuration, outbox,
-  and dead letters.
-- UI fragments for price-rule catalog, promotion designer, loyalty-tier manager,
-  quote console, stacking board, forecast signals, segment pricing, decision
-  ledger, rule studio, parameter console, configuration, outbox, and dead
-  letters.
-- Permission/RBAC descriptors for price, promotion, quote, event,
-  configuration, and audit actions.
-- Seed data for pricing calendars and promotion types.
+## Standard Table-Stakes Coverage
 
-## Advanced Capabilities
+The complete package covers:
 
-The executable runtime proves the advanced capabilities needed for a modern
-pricing PBC:
+- price lists, price books, and price-book entries
+- customer-, channel-, and currency-specific price records
+- governed pricing rules with margin, stacking, exclusion, approval, and budget
+  policy evidence
+- promotion rules, coupons, eligibility, stacking, exclusions, budgets, and
+  approvals
+- loyalty-tier pricing
+- quote decisions with counterfactual simulations
+- margin guardrails and review routing
+- audit traces and performance telemetry
+- package-local configuration, parameter, and schema-extension support
+- AppGen-X outbox, inbox, idempotency, retry, and dead-letter evidence
+- workbench/UI binding evidence for pricing, promotion, approval, simulation,
+  telemetry, and governance surfaces
 
-- Event-sourced pricing lifecycle with immutable state-event hashes.
-- Owned pricing schema boundary enforcement with explicit violation evidence.
-- Multi-tenant pricing isolation across rules, promotions, tiers, decisions,
-  and UI views.
-- Schema-evolution-safe price decision extensions.
-- Dynamic price rule management with margin and volume-break controls.
-- Promotion design with stack limits and eligibility filtering.
-- Loyalty-tier price personalization.
-- Forecast-aware quote optimization.
-- Customer-segment pricing projections through declared events only.
-- Probabilistic margin and promotion risk scoring.
-- Counterfactual promotion margin simulation.
-- Temporal decision TTL and pricing-calendar configuration.
-- Dynamic price policy screening through compiled rules and parameters.
-- Automated promotion control testing via smoke checks and release audits.
-- Self-healing decision selection by deterministic active-rule choice and risk
-  review routing.
-- Cryptographic price decision proofs for rules, promotions, tiers, quotes, and
-  outbox events.
-- Immutable decision audit trail.
-- Cross-system customer, forecast, and checkout federation through declared
-  APIs/events only.
-- AppGen-X outbox/inbox eventing with idempotent handlers.
-- Retry/dead-letter evidence.
-- Permissions governance evidence.
-- Configuration, rule, parameter, seed-data, and workbench evidence.
-- Governed pricing-model evidence through schema extensions and decision
-  feature payloads.
+## Runtime Behavior
 
-## Commands And Services
+`price_promotion_engine_runtime_capabilities()` reports:
 
-The service layer exposes these package-local commands:
+- the full owned-table and runtime-table boundary
+- fixed AppGen-X topic and contract metadata
+- emitted and consumed event types
+- standard pricing/promotion features
+- advanced optimization and governance capability keys
+- executable smoke evidence from `price_promotion_engine_runtime_smoke()`
 
-- `configure_runtime(configuration)`.
-- `set_parameter(name, value)`.
-- `register_rule(rule)`.
-- `register_schema_extension(table, fields)`.
-- `register_price_rule(command)`.
-- `register_promotion(command)`.
-- `register_loyalty_tier(command)`.
-- `receive_event(event, simulate_failure=False)`.
-- `quote_price(command)`.
-- `apply_promotion(decision_id, promotion_id)`.
-- `build_api_contract()`.
-- `permissions_contract()`.
-- `build_workbench_view(tenant=...)`.
-- `verify_owned_table_boundary(references=...)`.
+The runtime supports these commands:
 
-All commands are deterministic and side-effect-free: they accept explicit state
-and return new state plus evidence payloads suitable for generated apps and
-release smoke audits.
+- `configure_runtime(configuration)`
+- `set_parameter(name, value)`
+- `register_rule(rule)`
+- `register_schema_extension(table, fields)`
+- `register_price_rule(command)`
+- `register_promotion(command)`
+- `register_loyalty_tier(command)`
+- `receive_event(event, simulate_failure=False)`
+- `quote_price(command)`
+- `apply_promotion(decision_id, promotion_id)`
 
-## APIs
+Quote generation performs:
 
-The package-local API contract exposes route descriptors:
+- tenant-aware rule selection
+- customer/channel/currency price resolution
+- volume-break evaluation
+- promotion eligibility checks
+- stacking and exclusion enforcement
+- budget and approval gating
+- loyalty-tier discounting
+- forecast adjustment
+- margin/risk scoring
+- decision, simulation, guardrail, audit-trace, telemetry, and outbox evidence
 
-- `POST /price-rules` runs `register_price_rule`, writes `price_rule`,
-  requires `price_promotion_engine.price.write`, and is idempotent by
-  `price_rule_id`.
-- `POST /promotions` runs `register_promotion`, writes `promotion`, requires
-  `price_promotion_engine.promotion.write`, and is idempotent by
-  `promotion_id`.
-- `POST /loyalty-tiers` runs `register_loyalty_tier`, writes `loyalty_tier`,
-  requires `price_promotion_engine.promotion.write`, and is idempotent by
-  `tier_id`.
-- `POST /price-quotes` runs `quote_price`, writes `price_decision`, requires
-  `price_promotion_engine.quote`, emits `PriceOptimized`, and is idempotent by
-  `decision_id`.
-- `POST /promotion-applications` runs `apply_promotion`, updates
-  `price_decision`, requires `price_promotion_engine.quote`, emits
-  `PromotionApplied`, and is idempotent by `decision_id:promotion_id`.
-- `POST /price-promotion/events/inbox` runs `receive_event`, consumes declared
-  AppGen-X events, requires `price_promotion_engine.event.consume`, and is
-  idempotent by `event_id`.
-- `GET /price-decisions` queries `build_workbench_view`, reads only owned Price
-  Promotion state, and requires `price_promotion_engine.audit`.
+Promotion application performs:
 
-The catalog-facing route set remains `POST /price-quotes`, `POST /promotions`,
-and `GET /price-decisions`.
+- eligibility verification against the stored decision
+- applied-promotion persistence on the owned decision
+- campaign-budget consumption updates
+- audit and telemetry evidence
+- `PromotionApplied` outbox emission
 
-## Events And Handlers
+## Schema Contract Expectations
 
-Consumed events:
+`price_promotion_engine_build_schema_contract()` returns:
 
-- `CustomerSegmentUpdated`.
-- `ForecastUpdated`.
+- one generated table descriptor per owned table
+- one generated migration descriptor per owned table
+- one generated model descriptor per owned table
+- runtime-table descriptors for outbox, inbox, and dead-letter evidence
+- explicit relationships between price books, price rules, promotions,
+  approvals, budgets, decisions, simulations, guardrails, audit traces, and
+  telemetry
+- backend allowlist evidence
+- fixed AppGen-X eventing evidence
+- declared dependency evidence with `shared_tables: ()`
 
-Emitted events:
+## Service Contract Expectations
 
-- `PriceOptimized`.
-- `PromotionApplied`.
+`price_promotion_engine_build_service_contract()` declares:
 
-Handlers require event IDs, deduplicate already handled events, record inbox
-evidence, store customer-segment and forecast projections in package-local
-state, and send simulated failures to the dead-letter evidence queue. Users
-never choose a stream engine.
+- command methods for pricing, promotion, configuration, event handling, and
+  boundary verification
+- query methods for workbench binding, API/schema/service/release evidence, and
+  permissions
+- transaction boundary:
+  `price_promotion_engine_owned_datastore_plus_appgen_outbox`
+- mutation scope limited to owned and runtime tables
+- idempotent handler evidence for `receive_event`
+- retry/dead-letter table evidence tied to `price_configuration.retry_limit`
+- fixed AppGen-X eventing with no stream-engine picker or user eventing choice
+
+## API Contract Expectations
+
+`price_promotion_engine_build_api_contract()` exposes descriptors for:
+
+- `PUT /price-promotion/configuration`
+- `POST /price-promotion/rules`
+- `POST /price-promotion/parameters`
+- `POST /price-promotion/schema-extensions`
+- `POST /price-rules`
+- `POST /promotions`
+- `POST /loyalty-tiers`
+- `POST /price-quotes`
+- `POST /promotion-applications`
+- `POST /price-promotion/events/inbox`
+- `GET /price-promotion/workbench`
+- `GET /price-promotion/schema-contract`
+- `GET /price-promotion/service-contract`
+- `GET /price-promotion/release-evidence`
+
+The API contract must also include:
+
+- emitted and consumed event descriptors
+- required event topic and AppGen-X contract
+- runtime table evidence for outbox/inbox/dead-letter processing
+- database backend allowlist
+- permission list
+- dependency evidence with `shared_table_access: False`
+
+## Permissions
+
+`price_promotion_engine_permissions_contract()` governs:
+
+- `price_promotion_engine.price.write`
+- `price_promotion_engine.promotion.write`
+- `price_promotion_engine.quote`
+- `price_promotion_engine.event.consume`
+- `price_promotion_engine.configure`
+- `price_promotion_engine.audit`
+
+Release/audit permissions must cover:
+
+- `build_api_contract`
+- `build_schema_contract`
+- `build_service_contract`
+- `build_release_evidence`
+- `build_workbench_view`
+- `render_workbench`
+- `verify_owned_table_boundary`
 
 ## UI And Workbench
 
-The UI contract exposes:
+The UI contract includes fragments for:
 
-- `PricePromotionWorkbench`.
-- `PriceRuleCatalog`.
-- `PromotionDesigner`.
-- `LoyaltyTierManager`.
-- `PriceQuoteConsole`.
-- `PromotionStackingBoard`.
-- `ForecastSignalPanel`.
-- `SegmentPricingPanel`.
-- `PriceDecisionLedger`.
-- `PriceRuleStudio`.
-- `PriceParameterConsole`.
-- `PriceConfigurationPanel`.
-- `PriceEventOutbox`.
-- `PriceDeadLetterQueue`.
+- price list/book management
+- price rules
+- promotions and coupons
+- campaign budgets and approvals
+- quote simulations
+- margin guardrails
+- forecast and segment inputs
+- decision ledger and telemetry
+- governance/configuration/parameters
+- AppGen-X outbox and dead-letter visibility
 
-Rendered workbench output includes tenant-filtered price-rule, promotion,
-loyalty-tier, decision, outbox, and dead-letter counts; visible and locked
-actions from RBAC permissions; configuration/rule/parameter state; and
-owned-table binding evidence.
+The rendered workbench must prove:
+
+- tenant-filtered counts for price books, promotions, approvals, simulations,
+  decisions, telemetry, outbox, and dead letters
+- configuration/rule/parameter binding
+- event contract and runtime-table binding evidence
+- permission-based visible and locked actions
 
 ## Release Evidence
 
-Focused tests prove:
+`price_promotion_engine_build_release_evidence()` combines:
 
-- Runtime capability and smoke checks cover every advanced capability key.
-- Configuration, rule, parameter, schema-extension, price-rule, promotion,
-  loyalty-tier, event handling, quote, promotion application, outbox emission,
-  UI rendering, API descriptors, RBAC descriptors, and workbench evidence
-  execute.
-- AppGen-X eventing is fixed and stream-engine picker exposure is false.
-- Backends remain limited to PostgreSQL, MySQL, and MariaDB.
-- Boundary validation accepts owned tables and declared dependencies and
-  rejects direct foreign table references.
-- Invalid database backends, invalid parameters, non-owned schema extensions,
-  and simulated handler failures are rejected or dead-lettered.
-- The package participates in all-PBC implementation release and generation
-  smoke audits.
+- schema contract
+- service contract
+- API contract
+- permissions contract
+- UI contract
+- rendered workbench evidence
+- boundary verification
+- runtime smoke evidence
+
+Release checks must prove:
+
+- owned schema depth equals the owned-table list
+- migration descriptors exist for every owned table
+- runtime tables are declared exactly
+- service queries include `build_release_evidence`
+- API event contract and topic remain fixed
+- permissions cover release queries
+- UI/workbench bindings include AppGen-X event evidence
+- inbox/outbox/dead-letter idempotency evidence exists
+- standard table-stakes counts exist for books, coupons, budgets, approvals,
+  simulations, and telemetry
+- database backends remain limited to PostgreSQL, MySQL, and MariaDB
+
+## Validation
+
+Focused validation for this completeness slice is expected to include:
+
+- `py_compile` over the package-local files and focused test file
+- focused `pytest` for `tests/test_pbc_price_promotion_engine_runtime.py`
+- assertions that `implementation_contract()` now exposes schema, service, and
+  release evidence contracts through the package-local registration surface
