@@ -96,9 +96,12 @@ Cross-PBC access is represented through declared APIs, events, or projections:
 - `apply_coupon` owns promotion redemption and discount evidence.
 - `validate_shipping_address` owns address and shipping validation evidence.
 - `open_checkout_session` creates checkout sessions and order handoff identifiers.
-- `apply_tax_handoff`, `reserve_inventory_handoff`, `screen_risk`, and `create_payment_intent` own checkout handoff records without sharing foreign tables.
+- `apply_pricing_handoff`, `apply_tax_handoff`, `reserve_inventory_handoff`, `screen_risk`, and `create_payment_intent` own checkout handoff records without sharing foreign tables.
 - `complete_checkout` emits a completion event after payment and risk readiness.
 - `build_api_contract` emits descriptor-level API metadata.
+- `build_schema_contract` emits owned schema, relationships, model, and migration evidence for every owned checkout table, including AppGen-X inbox/outbox/dead-letter tables.
+- `build_service_contract` emits command and query surface evidence for checkout orchestration and advanced analytics helpers.
+- `build_release_evidence` combines schema, service, API, permission, and UI/workbench binding evidence into one package-local release contract.
 - `permissions_contract` maps commands to action permissions.
 - `verify_owned_table_boundary` rejects undeclared foreign table references.
 
@@ -108,6 +111,7 @@ Cross-PBC access is represented through declared APIs, events, or projections:
 - `POST /cart-lines` maps to `add_cart_line`.
 - `POST /coupons` maps to `apply_coupon`.
 - `POST /checkout` maps to `open_checkout_session`.
+- `POST /checkout/pricing` maps to `apply_pricing_handoff`.
 - `POST /checkout/tax` maps to `apply_tax_handoff`.
 - `POST /checkout/reservations` maps to `reserve_inventory_handoff`.
 - `POST /checkout/risk` maps to `screen_risk`.
@@ -115,6 +119,9 @@ Cross-PBC access is represented through declared APIs, events, or projections:
 - `POST /checkout/completions` maps to `complete_checkout`.
 - `POST /checkout-processing/events/inbox` maps to `receive_event`.
 - `GET /checkout-workbench` maps to `build_workbench_view`.
+- `GET /checkout/schema-contract` maps to `build_schema_contract`.
+- `GET /checkout/service-contract` maps to `build_service_contract`.
+- `GET /checkout/release-evidence` maps to `build_release_evidence`.
 
 Every route descriptor states owned tables, required permission, idempotency key, emitted events, consumed events, and declared API or projection dependencies where applicable.
 
@@ -172,16 +179,17 @@ Workbench fragments include:
 - `CheckoutConfigurationPanel`
 - `InboxOutboxMonitor`
 
-The workbench exposes only actions permitted by the principal and binds to owned data, declared projections, outbox, inbox, dead-letter, rule, parameter, and configuration evidence.
+The workbench exposes only actions permitted by the principal and binds to owned data, declared projections, pricing/tax/inventory/payment handoff evidence, outbox, inbox, dead-letter, rule, parameter, configuration, and package-local contract evidence.
 
 ## Release Evidence
 
 The focused test suite proves:
 
 - Runtime smoke checks cover every standard and advanced capability key.
-- The package declares owned tables and descriptor-level APIs.
+- The package declares owned tables, descriptor-level APIs, owned schema contract, service contract, and release evidence contract.
 - Rules, parameters, configuration, schema extensions, and UI contracts are executable.
-- Checkout flow completes across cart, coupon, address, session, tax, inventory, risk, payment, completion, outbox, and workbench steps.
+- Checkout flow completes across cart, coupon, address, session, pricing, tax, inventory, risk, payment, completion, outbox, and workbench steps.
 - API contracts use fixed AppGen-X eventing and allowed relational backends only.
+- Retry-first inbox handling produces retry evidence before dead-letter evidence, and dead-letter records stay package-owned.
 - Boundary validation accepts owned tables and declared dependencies, then rejects direct foreign-table references.
 - Invalid backend, wrong event topic, stream picker fields, unsupported parameters, invalid rules, unsupported events, and non-owned schema extensions fail.

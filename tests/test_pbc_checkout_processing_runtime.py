@@ -7,8 +7,12 @@ from pyAppGen.pbcs.checkout_processing import CHECKOUT_PROCESSING_OWNED_TABLES
 from pyAppGen.pbcs.checkout_processing import CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.checkout_processing import CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.checkout_processing import checkout_processing_apply_coupon
+from pyAppGen.pbcs.checkout_processing import checkout_processing_apply_pricing_handoff
 from pyAppGen.pbcs.checkout_processing import checkout_processing_apply_tax_handoff
 from pyAppGen.pbcs.checkout_processing import checkout_processing_build_api_contract
+from pyAppGen.pbcs.checkout_processing import checkout_processing_build_release_evidence
+from pyAppGen.pbcs.checkout_processing import checkout_processing_build_schema_contract
+from pyAppGen.pbcs.checkout_processing import checkout_processing_build_service_contract
 from pyAppGen.pbcs.checkout_processing import checkout_processing_build_workbench_view
 from pyAppGen.pbcs.checkout_processing import checkout_processing_complete_checkout
 from pyAppGen.pbcs.checkout_processing import checkout_processing_configure_runtime
@@ -61,12 +65,18 @@ def test_checkout_processing_runtime_executes_standard_and_advanced_capabilities
     assert contract["emits"] == CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES
     assert contract["consumes"] == CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES
     assert contract["api_contract"]["shared_table_access"] is False
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence_contract"]["ok"] is True
     assert contract["permissions_contract"]["action_permissions"]["receive_event"] == "checkout_processing.event.consume"
     assert contract["boundary_contract"]["ok"] is True
     assert "CheckoutConfigurationPanel" in contract["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS)
 
     api = checkout_processing_build_api_contract()
+    schema = checkout_processing_build_schema_contract()
+    service = checkout_processing_build_service_contract()
+    release = checkout_processing_build_release_evidence()
     permissions = checkout_processing_permissions_contract()
     assert api["format"] == "appgen.checkout-processing-api-contract.v1"
     assert api["owned_tables"] == CHECKOUT_PROCESSING_OWNED_TABLES
@@ -80,11 +90,34 @@ def test_checkout_processing_runtime_executes_standard_and_advanced_capabilities
         "POST /carts",
         "POST /cart-lines",
         "POST /checkout",
+        "POST /checkout/pricing",
         "POST /checkout/completions",
         "POST /checkout-processing/events/inbox",
         "GET /checkout-workbench",
+        "GET /checkout/schema-contract",
+        "GET /checkout/service-contract",
+        "GET /checkout/release-evidence",
     }
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert schema["format"] == "appgen.checkout-processing-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(CHECKOUT_PROCESSING_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(CHECKOUT_PROCESSING_OWNED_TABLES)
+    assert {
+        "checkout_pricing_handoff",
+        "checkout_tax_handoff",
+        "checkout_inventory_reservation_handoff",
+        "checkout_payment_intent_handoff",
+        "checkout_processing_dead_letter_event",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.checkout-processing-service-contract.v1"
+    assert service["ok"] is True
+    assert "apply_pricing_handoff" in service["command_methods"]
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.checkout-processing-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert permissions["action_permissions"]["complete_checkout"] == "checkout_processing.checkout"
     assert permissions["action_permissions"]["receive_event"] == "checkout_processing.event.consume"
 
@@ -210,6 +243,14 @@ def test_checkout_processing_runtime_handles_checkout_flow_and_workbench_evidenc
     )
     state = session["state"]
     assert session["session"]["order_id"] == "order_chk_ops"
+    pricing = checkout_processing_apply_pricing_handoff(
+        state,
+        "chk_ops",
+        {"pricing_handoff_id": "price_ops", "tenant": "tenant_ops", "pricing_basis": "projected_catalog"},
+    )
+    state = pricing["state"]
+    assert pricing["pricing_handoff"]["status"] == "ready"
+    assert state["checkout_sessions"]["chk_ops"]["status"] == "ready"
 
     state = checkout_processing_apply_tax_handoff(state, "chk_ops", state["tax_quotes"]["tax_ops"])["state"]
     reservation = checkout_processing_reserve_inventory_handoff(
@@ -240,24 +281,32 @@ def test_checkout_processing_runtime_handles_checkout_flow_and_workbench_evidenc
     state = completed["state"]
     assert completed["ok"] is True
     assert completed["session"]["status"] == "completed"
-    assert state["outbox"][-1]["idempotency_key"] == "checkout_processing:CheckoutCompleted:checkout_evt_000011"
+    assert state["outbox"][-1]["idempotency_key"] == "checkout_processing:CheckoutCompleted:checkout_evt_000012"
 
     workbench = checkout_processing_build_workbench_view(state, tenant="tenant_ops")
     assert workbench["cart_count"] == 1
     assert workbench["completed_checkout_count"] == 1
+    assert workbench["pricing_handoff_count"] == 1
+    assert workbench["tax_handoff_count"] == 1
+    assert workbench["inventory_handoff_count"] == 1
+    assert workbench["payment_handoff_count"] == 1
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 3
     assert workbench["processed_event_count"] == 3
     assert workbench["rule_evidence"] == (rule["rule"]["compiled_hash"],)
     assert workbench["binding_evidence"]["owned_tables"] == CHECKOUT_PROCESSING_OWNED_TABLES
+    assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
 
     ui_contract = checkout_processing_ui_contract()
-    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS
     assert ui_contract["configuration_editor"]["required_event_topic"] == CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["user_eventing_choice"] is False
+    assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert "risk_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "payment_policy" in ui_contract["rule_editor"]["required_fields"]
+    assert ui_contract["workbench_binding_evidence"]["owned_tables"] == CHECKOUT_PROCESSING_OWNED_TABLES
+    assert ui_contract["workbench_binding_evidence"]["event_contract"] == "AppGen-X"
 
     rendered = checkout_processing_render_workbench(
         state,
@@ -270,14 +319,16 @@ def test_checkout_processing_runtime_handles_checkout_flow_and_workbench_evidenc
             "checkout_processing.inventory",
             "checkout_processing.payment",
             "checkout_processing.risk",
+            "checkout_processing.event.consume",
             "checkout_processing.configure",
             "checkout_processing.audit",
         ),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
-    assert rendered["event_outbox_count"] == 11
+    assert rendered["event_outbox_count"] == 12
     assert rendered["event_inbox_count"] == 3
+    assert rendered["binding_evidence"]["event_contract"] == "AppGen-X"
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
 
@@ -367,8 +418,24 @@ def test_checkout_processing_rejects_invalid_runtime_inputs_and_dead_letters_bad
             },
         )
 
-    bad_event = checkout_processing_receive_event(
+    retrying_event = checkout_processing_receive_event(
         state,
+        {
+            "event_id": "evt_bad",
+            "event_type": "UnsupportedEvent",
+            "idempotency_key": "bad:event",
+            "attempts": 1,
+            "payload": {"tenant": "tenant_ops"},
+        },
+    )
+    assert retrying_event["ok"] is False
+    assert retrying_event["retry_scheduled"] is True
+    assert retrying_event["dead_lettered"] is False
+    assert retrying_event["state"]["inbox"][0]["status"] == "retrying"
+    assert retrying_event["state"]["processed_event_keys"] == ()
+
+    bad_event = checkout_processing_receive_event(
+        retrying_event["state"],
         {
             "event_id": "evt_bad",
             "event_type": "UnsupportedEvent",
@@ -379,4 +446,6 @@ def test_checkout_processing_rejects_invalid_runtime_inputs_and_dead_letters_bad
     )
     assert bad_event["ok"] is False
     assert bad_event["dead_lettered"] is True
+    assert bad_event["retry_scheduled"] is False
     assert bad_event["state"]["dead_letter"][0]["reason"] == "unsupported_event"
+    assert bad_event["state"]["dead_letter"][0]["table"] == "checkout_processing_dead_letter_event"

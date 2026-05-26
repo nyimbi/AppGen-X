@@ -6,13 +6,18 @@ from .runtime import CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS
 from .runtime import CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES
 from .runtime import CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES
 from .runtime import CHECKOUT_PROCESSING_OWNED_TABLES
+from .runtime import CHECKOUT_PROCESSING_RUNTIME_TABLES
 from .runtime import CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS
 from .runtime import CHECKOUT_PROCESSING_STANDARD_FEATURE_KEYS
 from .runtime import checkout_processing_allocate_promotion_value
 from .runtime import checkout_processing_add_cart_line
 from .runtime import checkout_processing_apply_coupon
+from .runtime import checkout_processing_apply_pricing_handoff
 from .runtime import checkout_processing_apply_tax_handoff
 from .runtime import checkout_processing_build_api_contract
+from .runtime import checkout_processing_build_release_evidence
+from .runtime import checkout_processing_build_schema_contract
+from .runtime import checkout_processing_build_service_contract
 from .runtime import checkout_processing_build_workbench_view
 from .runtime import checkout_processing_complete_checkout
 from .runtime import checkout_processing_configure_runtime
@@ -66,8 +71,12 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": checkout_processing_ui_contract(),
         "api_contract": checkout_processing_build_api_contract(),
+        "schema_contract": checkout_processing_build_schema_contract(),
+        "service_contract": checkout_processing_build_service_contract(),
+        "release_evidence_contract": checkout_processing_build_release_evidence(),
         "permissions_contract": checkout_processing_permissions_contract(),
         "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
+        "runtime_tables": CHECKOUT_PROCESSING_RUNTIME_TABLES,
         "allowed_database_backends": CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS,
         "required_event_topic": CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC,
         "emits": CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES,
@@ -75,9 +84,6 @@ def implementation_contract() -> dict:
         "boundary_contract": checkout_processing_verify_owned_table_boundary(
             CHECKOUT_PROCESSING_OWNED_TABLES
             + (
-                "checkout_processing_appgen_outbox_event",
-                "checkout_processing_appgen_inbox_event",
-                "checkout_processing_dead_letter_event",
                 "ProductPublished",
                 "product_projection",
                 "POST /payment-intents",

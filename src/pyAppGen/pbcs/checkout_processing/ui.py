@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from .runtime import CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS
+from .runtime import CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES
+from .runtime import CHECKOUT_PROCESSING_OWNED_TABLES
 from .runtime import CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC
+from .runtime import CHECKOUT_PROCESSING_RUNTIME_TABLES
 
 
 CHECKOUT_PROCESSING_UI_FRAGMENT_KEYS = (
@@ -51,6 +55,7 @@ def checkout_processing_ui_contract() -> dict:
             "/workbench/pbcs/checkout_processing/parameters",
             "/workbench/pbcs/checkout_processing/configuration",
             "/workbench/pbcs/checkout_processing/eventing",
+            "/workbench/pbcs/checkout_processing/contracts",
         ),
         "panels": (
             {
@@ -60,10 +65,16 @@ def checkout_processing_ui_contract() -> dict:
                 "commands": ("create_cart", "add_cart_line", "apply_coupon"),
             },
             {
+                "key": "pricing",
+                "fragment": "PricingTaxHandoffPanel",
+                "binds_to": ("checkout_pricing_handoff", "checkout_tax_handoff", "price_projection", "tax_quote_projection"),
+                "commands": ("apply_pricing_handoff", "apply_tax_handoff"),
+            },
+            {
                 "key": "checkout",
                 "fragment": "CheckoutSessionConsole",
-                "binds_to": ("checkout_session", "tax_quote", "inventory_reservation", "payment_intent"),
-                "commands": ("open_checkout_session", "apply_tax_handoff", "reserve_inventory_handoff", "create_payment_intent", "complete_checkout"),
+                "binds_to": ("checkout_session", "checkout_inventory_reservation_handoff", "checkout_payment_intent_handoff"),
+                "commands": ("open_checkout_session", "reserve_inventory_handoff", "create_payment_intent", "complete_checkout"),
             },
             {
                 "key": "risk",
@@ -81,7 +92,7 @@ def checkout_processing_ui_contract() -> dict:
                 "key": "governance",
                 "fragment": "CheckoutRuleStudio",
                 "binds_to": ("configuration_evidence", "rule_evidence", "parameter_evidence"),
-                "commands": ("register_rule", "set_parameter", "configure_runtime"),
+                "commands": ("register_rule", "set_parameter", "configure_runtime", "build_schema_contract", "build_service_contract", "build_release_evidence"),
             },
         ),
         "action_permissions": {
@@ -89,6 +100,7 @@ def checkout_processing_ui_contract() -> dict:
             "add_cart_line": "checkout_processing.cart",
             "apply_coupon": "checkout_processing.promotion",
             "open_checkout_session": "checkout_processing.checkout",
+            "apply_pricing_handoff": "checkout_processing.pricing",
             "apply_tax_handoff": "checkout_processing.pricing",
             "reserve_inventory_handoff": "checkout_processing.inventory",
             "create_payment_intent": "checkout_processing.payment",
@@ -96,17 +108,21 @@ def checkout_processing_ui_contract() -> dict:
             "screen_risk": "checkout_processing.risk",
             "screen_checkout_policy": "checkout_processing.audit",
             "run_control_tests": "checkout_processing.audit",
-            "receive_event": "checkout_processing.audit",
+            "receive_event": "checkout_processing.event.consume",
             "register_rule": "checkout_processing.configure",
             "set_parameter": "checkout_processing.configure",
             "configure_runtime": "checkout_processing.configure",
+            "build_schema_contract": "checkout_processing.audit",
+            "build_service_contract": "checkout_processing.audit",
+            "build_release_evidence": "checkout_processing.audit",
         },
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "supported_shipping_options", "supported_payment_methods"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS,
             "required_event_topic": CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
             "user_eventing_choice": False,
+            "stream_engine_picker_visible": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -130,10 +146,17 @@ def checkout_processing_ui_contract() -> dict:
         },
         "event_surfaces": {
             "emits": ("OrderPriced", "CheckoutCompleted"),
-            "consumes": ("ProductPublished", "PriceOptimized", "TaxCalculated"),
+            "consumes": CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "workbench_binding_evidence": {
+            "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
+            "runtime_tables": CHECKOUT_PROCESSING_RUNTIME_TABLES,
+            "event_contract": "AppGen-X",
+            "required_event_topic": CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
         },
     }
 
@@ -172,4 +195,5 @@ def checkout_processing_render_workbench(
         "event_outbox_count": len(state.get("outbox", ())),
         "event_inbox_count": len(tuple(event for event in state.get("inbox", ()) if event.get("tenant") == tenant)),
         "dead_letter_count": len(tuple(event for event in state.get("dead_letter", ()) if event.get("tenant") == tenant)),
+        "binding_evidence": contract["workbench_binding_evidence"],
     }
