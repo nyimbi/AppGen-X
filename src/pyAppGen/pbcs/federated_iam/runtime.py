@@ -8,6 +8,66 @@ import math
 import re
 
 
+FEDERATED_IAM_REQUIRED_EVENT_TOPIC = "appgen.identity.events"
+FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+FEDERATED_IAM_OWNED_TABLES = (
+    "tenant",
+    "principal",
+    "identity_provider",
+    "principal_identity",
+    "role_assignment",
+    "access_policy",
+    "policy_decision",
+    "token_grant",
+    "session",
+    "credential_verification",
+    "privileged_access_request",
+    "iam_rule",
+    "iam_parameter",
+    "iam_configuration",
+)
+FEDERATED_IAM_EMITTED_EVENT_TYPES = (
+    "TenantProvisioned",
+    "PrincipalVerified",
+    "AccessPolicyChanged",
+    "PolicyDecisionRecorded",
+    "TokenGranted",
+    "PrivilegedAccessApproved",
+)
+FEDERATED_IAM_CONSUMED_EVENT_TYPES = (
+    "RoleChanged",
+    "TenantLifecycleChanged",
+    "CustomerUpdated",
+    "EmployeeProvisioned",
+    "ServiceAccountRequested",
+)
+_FEDERATED_IAM_RUNTIME_TABLES = (
+    "federated_iam_appgen_outbox_event",
+    "federated_iam_appgen_inbox_event",
+    "federated_iam_dead_letter_event",
+)
+_FEDERATED_IAM_ALLOWED_DEPENDENCIES = (
+    "gateway_token_projection",
+    "audit_access_projection",
+    "principal_session_projection",
+    "tenant_lifecycle_projection",
+    "customer_identity_projection",
+    "employee_identity_projection",
+    "service_account_request_projection",
+    "GET /schemas/identity-events",
+    "POST /audit/access-events",
+    "POST /gateway/token-projections",
+)
+_FEDERATED_IAM_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
 FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_identity_lifecycle",
     "graph_relational_trust_topology",
@@ -80,12 +140,15 @@ def federated_iam_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "federated_iam",
         "implementation_directory": "src/pyAppGen/pbcs/federated_iam",
+        "owned_tables": FEDERATED_IAM_OWNED_TABLES,
         "capabilities": FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS,
         "standard_features": FEDERATED_IAM_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "provision_tenant",
             "register_principal",
             "register_identity_provider",
@@ -95,7 +158,10 @@ def federated_iam_runtime_capabilities() -> dict:
             "evaluate_policy",
             "grant_token",
             "approve_privileged_access",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -107,7 +173,7 @@ def federated_iam_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.identity.events",
+            "event_topic": FEDERATED_IAM_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_regions": ("US", "EU"),
             "allowed_provider_types": ("oidc", "saml", "scim", "did_vc"),
@@ -239,28 +305,127 @@ def federated_iam_runtime_smoke() -> dict:
 
 
 def federated_iam_empty_state() -> dict:
-    return {"events": (), "outbox": (), "tenants": {}, "principals": {}, "providers": {}, "identities": {}, "credentials": {}, "roles": {}, "decisions": {}, "tokens": {}, "privileged": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "role_projections": {},
+        "tenant_projections": {},
+        "customer_projections": {},
+        "employee_projections": {},
+        "service_account_projections": {},
+        "tenants": {},
+        "principals": {},
+        "providers": {},
+        "identities": {},
+        "credentials": {},
+        "roles": {},
+        "decisions": {},
+        "tokens": {},
+        "privileged": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def federated_iam_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    forbidden = tuple(sorted(field for field in _FEDERATED_IAM_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Federated IAM uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS):
+        raise ValueError("Federated IAM supports only PostgreSQL, MySQL, or MariaDB backends")
+    if configuration.get("event_topic") != FEDERATED_IAM_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Federated IAM requires AppGen-X event topic {FEDERATED_IAM_REQUIRED_EVENT_TOPIC}")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": FEDERATED_IAM_OWNED_TABLES,
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def federated_iam_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "minimum_trust_score",
+        "session_risk_threshold",
+        "token_ttl_minutes",
+        "privileged_access_ttl_minutes",
+        "step_up_threshold",
+        "retention_days",
+        "maximum_failed_policy_checks",
+        "privileged_access_approval_count",
+        "credential_confidence_threshold",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported Federated IAM parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def federated_iam_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Federated IAM rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("Federated IAM rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
 def federated_iam_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in FEDERATED_IAM_OWNED_TABLES:
+        raise ValueError(f"Federated IAM schema extensions must target owned tables: {FEDERATED_IAM_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    extensions = {**state["schema_extensions"], table: {**state["schema_extensions"].get(table, {}), **dict(fields)}}
+    return {"ok": True, "state": {**state, "schema_extensions": extensions}, "schema_extension": {"table": table, "fields": dict(fields)}}
+
+
+def federated_iam_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    if key in state["handled_events"] and state["handled_events"][key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
+    attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {"event_id": event_id, "event_type": event_type, "tenant": payload.get("tenant"), "attempts": attempts, "idempotency_key": key}
+    next_state = {**state, "inbox": (*state["inbox"], inbox_entry)}
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in FEDERATED_IAM_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}, "retry_evidence": (*next_state["retry_evidence"], evidence)}
+        if status == "dead_letter":
+            next_state = {**next_state, "dead_letter": (*next_state["dead_letter"], {**inbox_entry, "reason": "unsupported_or_failed_identity_event"})}
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "RoleChanged":
+        next_state = {**next_state, "role_projections": {**next_state["role_projections"], payload["role_id"]: payload}}
+    elif event_type == "TenantLifecycleChanged":
+        next_state = {**next_state, "tenant_projections": {**next_state["tenant_projections"], payload["tenant_id"]: payload}}
+    elif event_type == "CustomerUpdated":
+        next_state = {**next_state, "customer_projections": {**next_state["customer_projections"], payload["customer_id"]: payload}}
+    elif event_type == "EmployeeProvisioned":
+        next_state = {**next_state, "employee_projections": {**next_state["employee_projections"], payload["employee_id"]: payload}}
+    elif event_type == "ServiceAccountRequested":
+        next_state = {**next_state, "service_account_projections": {**next_state["service_account_projections"], payload["request_id"]: payload}}
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}}
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def federated_iam_provision_tenant(state: dict, tenant: dict) -> dict:
@@ -408,7 +573,77 @@ def federated_iam_run_control_tests(state: dict) -> dict:
 
 
 def federated_iam_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /tenants", "POST /principals", "POST /identity-providers", "POST /identity-links", "POST /credential-verifications", "POST /role-assignments", "POST /policy-decisions", "POST /token-grants", "POST /sessions/revoke", "POST /privileged-access-requests", "POST /iam-rules", "POST /iam-parameters", "POST /iam-configuration"), "events": {"emits": ("TenantProvisioned", "PrincipalVerified", "AccessPolicyChanged", "PolicyDecisionRecorded", "TokenGranted", "PrivilegedAccessApproved"), "consumes": ("RoleChanged", "TenantProvisioned", "CustomerUpdated", "EmployeeProvisioned", "ServiceAccountRequested")}, "permissions": ("federated_iam.read", "federated_iam.tenant", "federated_iam.principal", "federated_iam.policy", "federated_iam.token", "federated_iam.privileged", "federated_iam.configure", "federated_iam.audit"), "configuration": ("FEDERATED_IAM_DATABASE_URL", "FEDERATED_IAM_EVENT_TOPIC", "FEDERATED_IAM_RETRY_LIMIT", "FEDERATED_IAM_DEFAULT_TIMEZONE")}
+    return {
+        "format": "appgen.federated-iam-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {"route": "POST /tenants", "command": "provision_tenant", "owned_tables": ("tenant",), "emits": ("TenantProvisioned",), "requires_permission": "federated_iam.tenant", "idempotency_key": "tenant_id"},
+            {"route": "POST /principals", "command": "register_principal", "owned_tables": ("principal",), "emits": (), "requires_permission": "federated_iam.principal", "idempotency_key": "principal_id"},
+            {"route": "POST /identity-providers", "command": "register_identity_provider", "owned_tables": ("identity_provider",), "emits": (), "requires_permission": "federated_iam.principal", "idempotency_key": "provider_id"},
+            {"route": "POST /identity-links", "command": "link_identity", "owned_tables": ("principal_identity",), "emits": ("PrincipalVerified",), "requires_permission": "federated_iam.principal", "idempotency_key": "identity_id"},
+            {"route": "POST /credential-verifications", "command": "verify_credential", "owned_tables": ("credential_verification",), "emits": (), "requires_permission": "federated_iam.principal", "idempotency_key": "verification_id"},
+            {"route": "POST /role-assignments", "command": "assign_role", "owned_tables": ("role_assignment", "access_policy"), "emits": ("AccessPolicyChanged",), "requires_permission": "federated_iam.policy", "idempotency_key": "assignment_id"},
+            {"route": "POST /policy-decisions", "command": "evaluate_policy", "owned_tables": ("policy_decision",), "emits": ("PolicyDecisionRecorded",), "requires_permission": "federated_iam.policy", "idempotency_key": "decision_id"},
+            {"route": "POST /token-grants", "command": "grant_token", "owned_tables": ("token_grant", "session"), "emits": ("TokenGranted",), "requires_permission": "federated_iam.token", "idempotency_key": "grant_id"},
+            {"route": "POST /privileged-access-requests", "command": "approve_privileged_access", "owned_tables": ("privileged_access_request",), "emits": ("PrivilegedAccessApproved",), "requires_permission": "federated_iam.privileged", "idempotency_key": "request_id"},
+            {"route": "POST /iam/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": FEDERATED_IAM_CONSUMED_EVENT_TYPES, "requires_permission": "federated_iam.event", "idempotency_key": "event_id"},
+            {"route": "GET /iam-workbench", "query": "build_workbench_view", "owned_tables": FEDERATED_IAM_OWNED_TABLES, "requires_permission": "federated_iam.audit"},
+        ),
+        "declared_catalog_routes": ("POST /tenants", "POST /principals", "POST /identity-providers", "POST /identity-links", "POST /credential-verifications", "POST /role-assignments", "POST /policy-decisions", "POST /token-grants", "POST /sessions/revoke", "POST /privileged-access-requests", "POST /iam-rules", "POST /iam-parameters", "POST /iam-configuration"),
+        "events": {"emits": FEDERATED_IAM_EMITTED_EVENT_TYPES, "consumes": FEDERATED_IAM_CONSUMED_EVENT_TYPES},
+        "emits": FEDERATED_IAM_EMITTED_EVENT_TYPES,
+        "consumes": FEDERATED_IAM_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(federated_iam_permissions_contract()["permissions"])),
+        "database_backends": FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": FEDERATED_IAM_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("FEDERATED_IAM_DATABASE_URL", "FEDERATED_IAM_EVENT_TOPIC", "FEDERATED_IAM_RETRY_LIMIT", "FEDERATED_IAM_DEFAULT_TIMEZONE"),
+    }
+
+
+def federated_iam_permissions_contract() -> dict:
+    return {
+        "format": "appgen.federated-iam-permissions.v1",
+        "ok": True,
+        "permissions": ("federated_iam.read", "federated_iam.tenant", "federated_iam.principal", "federated_iam.policy", "federated_iam.token", "federated_iam.privileged", "federated_iam.event", "federated_iam.configure", "federated_iam.audit"),
+        "action_permissions": {
+            "provision_tenant": "federated_iam.tenant",
+            "register_principal": "federated_iam.principal",
+            "register_identity_provider": "federated_iam.principal",
+            "link_identity": "federated_iam.principal",
+            "verify_credential": "federated_iam.principal",
+            "assign_role": "federated_iam.policy",
+            "evaluate_policy": "federated_iam.policy",
+            "grant_token": "federated_iam.token",
+            "approve_privileged_access": "federated_iam.privileged",
+            "receive_event": "federated_iam.event",
+            "register_rule": "federated_iam.configure",
+            "register_schema_extension": "federated_iam.configure",
+            "set_parameter": "federated_iam.configure",
+            "configure_runtime": "federated_iam.configure",
+            "build_workbench_view": "federated_iam.audit",
+        },
+    }
+
+
+def federated_iam_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*FEDERATED_IAM_OWNED_TABLES, *FEDERATED_IAM_CONSUMED_EVENT_TYPES, *_FEDERATED_IAM_RUNTIME_TABLES, *_FEDERATED_IAM_ALLOWED_DEPENDENCIES)
+    violations = tuple(reference for reference in references if reference not in set(allowed) and not str(reference).startswith("federated_iam_"))
+    return {
+        "format": "appgen.federated-iam-boundary.v1",
+        "ok": not violations,
+        "owned_tables": FEDERATED_IAM_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /schemas/identity-events", "POST /audit/access-events", "POST /gateway/token-projections"),
+            "events": FEDERATED_IAM_CONSUMED_EVENT_TYPES,
+            "api_projections": ("gateway_token_projection", "audit_access_projection", "principal_session_projection", "tenant_lifecycle_projection", "customer_identity_projection", "employee_identity_projection", "service_account_request_projection"),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def federated_iam_federate_identity_view(state: dict, principal_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -472,7 +707,35 @@ def federated_iam_build_workbench_view(state: dict, *, tenant: str) -> dict:
     decisions = tuple(item for item in state["decisions"].values() if item["tenant"] == tenant)
     tokens = tuple(item for item in state["tokens"].values() if item["tenant"] == tenant)
     privileged = tuple(item for item in state["privileged"].values() if item["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "principal_count": len(principals), "provider_count": len(providers), "identity_count": len(identities), "active_role_count": len(tuple(role for role in roles if role["status"] == "active")), "policy_decision_count": len(decisions), "allowed_decision_count": len(tuple(decision for decision in decisions if decision["decision"] == "allow")), "token_grant_count": len(tokens), "privileged_access_count": len(privileged)}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "principal_count": len(principals),
+        "provider_count": len(providers),
+        "identity_count": len(identities),
+        "active_role_count": len(tuple(role for role in roles if role["status"] == "active")),
+        "policy_decision_count": len(decisions),
+        "allowed_decision_count": len(tuple(decision for decision in decisions if decision["decision"] == "allow")),
+        "token_grant_count": len(tokens),
+        "privileged_access_count": len(privileged),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": FEDERATED_IAM_OWNED_TABLES,
+            "outbox_table": "federated_iam_appgen_outbox_event",
+            "inbox_table": "federated_iam_appgen_inbox_event",
+            "dead_letter_table": "federated_iam_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+        },
+    }
 
 
 def federated_iam_register_governed_model(name: str, metadata: dict) -> dict:

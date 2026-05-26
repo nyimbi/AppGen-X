@@ -1,21 +1,23 @@
-# Federated Identity and Access Management PBC Specification
+# Federated Identity and Access Management
 
-## Scope
+Package-local implementation contract for the Federated IAM PBC. The package owns tenant identity, principal registry, provider federation, credential verification, role and policy control, token/session grants, privileged access, AppGen-X event evidence, rules, parameters, configuration, UI fragments, and release validation for platform-wide identity and authorization.
 
-`federated_iam` owns platform identity, tenant access, trust federation, policy
-decisioning, token issuance, credential verification, role and attribute
-assignment, session governance, privileged access, audit evidence, rules,
-parameters, configuration, and UI workbench fragments for AppGen-X composable
-applications.
+## Stable Identity
 
-The PBC composes with all business PBCs through APIs, AppGen-X events, and
-read-model projections. It owns identity and authorization records; consuming
-PBCs reference principals, tenants, scopes, and policy decisions through
-contracts instead of shared tables.
+- PBC key: `federated_iam`.
+- Mesh: platform fabric.
+- Implementation directory: `src/pyAppGen/pbcs/federated_iam`.
+- Runtime module: `runtime.py`.
+- UI module: `ui.py`.
+- Test module: `tests/test_pbc_federated_iam_runtime.py`.
+- Event topic: `appgen.identity.events`.
+- Event contract: AppGen-X.
+- Supported relational backends: PostgreSQL, MySQL, and MariaDB.
+- User-facing stream-engine selection is not exposed.
 
 ## Owned Boundary
 
-Owned tables:
+Owned tables and generated model artifacts:
 
 - `tenant`
 - `principal`
@@ -31,75 +33,103 @@ Owned tables:
 - `iam_rule`
 - `iam_parameter`
 - `iam_configuration`
-- `iam_outbox`
-- `iam_inbox`
-- `iam_dead_letter`
+- `federated_iam_appgen_outbox_event`
+- `federated_iam_appgen_inbox_event`
+- `federated_iam_dead_letter_event`
 
-Allowed datastore backends are PostgreSQL, MySQL, and MariaDB. Ordinary eventing
-uses the AppGen-X outbox/inbox event contract.
+The PBC does not share customer, workforce, service-account, gateway, schema registry, audit, or business-domain tables. Cross-PBC integration is represented only by declared APIs, events, or projections:
+
+- Consumed events: `RoleChanged`, `TenantLifecycleChanged`, `CustomerUpdated`, `EmployeeProvisioned`, and `ServiceAccountRequested`.
+- API dependencies: `GET /schemas/identity-events`, `POST /audit/access-events`, and `POST /gateway/token-projections`.
+- Projections and handoffs: `gateway_token_projection`, `audit_access_projection`, `principal_session_projection`, `tenant_lifecycle_projection`, `customer_identity_projection`, `employee_identity_projection`, and `service_account_request_projection`.
+- Emitted events: `TenantProvisioned`, `PrincipalVerified`, `AccessPolicyChanged`, `PolicyDecisionRecorded`, `TokenGranted`, and `PrivilegedAccessApproved`.
 
 ## Standard Capabilities
 
-- Tenant registry, tenant lifecycle, isolation policy, encryption key metadata,
-  and region/compliance boundary descriptors.
-- Principal registry for users, service accounts, devices, agents, and external
-  workforce or customer identities.
-- Identity-provider registration for OIDC, SAML, LDAP, SCIM, passkeys, device
-  trust, and verifiable credential issuers.
-- Federated identity link, claim mapping, credential verification, risk scoring,
-  and trust-strength evidence.
-- RBAC, ABAC, relationship-based access, policy-as-code evaluation, scoped
-  grants, deny overrides, segregation-of-duties checks, and context-aware
-  decisions.
-- Token grants, refresh sessions, revocation, step-up authentication,
-  privileged access workflows, just-in-time access, and break-glass evidence.
-- Audit trail, outbox/inbox handlers, retry/dead-letter evidence, rules,
-  parameters, configuration schema, permissions, seed data, and workbench UI.
+- Tenant registry with lifecycle, region, compliance boundary, isolation, and active/blocked status.
+- Principal registry for users, service accounts, devices, external workforce identities, customer identities, and agents.
+- Identity-provider registry for OIDC, SAML, SCIM, DID/verifiable credential issuers, passkeys, and device-trust sources.
+- Federated identity linking with claim mapping, subject binding, trust scores, and required-claim enforcement.
+- Credential verification with issuer validation, confidence scoring, and credential-status evidence.
+- Role assignments with scoped resources, allowed-role policy, status, and active role analytics.
+- RBAC, ABAC, relationship policy, deny override, segregation-of-duties, and dynamic policy decisioning.
+- Token grants with grant-type validation, audience, scopes, TTL, token hash evidence, and gateway/audit/session handoffs.
+- Session governance, revocation route descriptors, step-up thresholds, and risk-based grant controls.
+- Privileged access approval with risk gating, TTL, approver evidence, and break-glass audit trail.
+- AppGen-X outbox/inbox idempotency, retry evidence, and dead-letter evidence.
+- Tenant, role, customer, employee, and service-account projections from declared AppGen-X events.
+- Identity and access analytics for principals, providers, identities, roles, decisions, tokens, and privileged access.
+- Multi-tenant isolation through tenant-scoped state, configuration, rules, parameters, and workbench views.
+- RBAC descriptors for tenant, principal, policy, token, privileged access, event, configuration, and audit actions.
+- Package-local workbench UI for tenant registry, principal registry, providers, credentials, roles, policy decisions, tokens, privileged access, audit, rules, parameters, configuration, and event evidence.
 
 ## Advanced Capabilities
 
-- Event-sourced identity lifecycle with immutable hash-chained events.
-- Graph-relational trust topology spanning tenants, principals, providers,
-  credentials, roles, policies, sessions, tokens, and grants.
-- Multi-tenant access isolation with independent configuration, rule sets,
-  parameters, and crypto epochs.
-- Schema evolution through governed claim and credential extension registration.
-- Probabilistic identity-risk, session-risk, trust-strength, and policy-risk
-  scoring.
-- Real-time access analytics over principals, roles, grants, decisions,
-  sessions, step-up requests, and privileged access.
-- Counterfactual policy simulation and blast-radius analysis.
-- Temporal access risk, stale-role, and privilege-exposure forecasting.
-- Autonomous identity exception recommendation with auditable rationale.
-- Semantic access request parsing for support, operations, and agent workflows.
+- Event-sourced identity lifecycle with immutable hash-chain audit trail.
+- Graph-relational trust topology across tenants, principals, providers, identities, credentials, roles, policies, sessions, tokens, and privileged access.
+- Multi-tenant access isolation and owned-table schema evolution.
+- Probabilistic identity, session, policy, and privilege risk scoring.
+- Real-time access analytics across policy decisions, token grants, privileged access, and event streams.
+- Counterfactual policy simulation and privilege-delta analysis.
+- Temporal access-risk and exposure forecasting.
+- Autonomous identity exception resolution for stale roles, risky sessions, and provider outages.
+- Semantic access request parsing for operational and agent-driven workflows.
 - Predictive access risk scoring and self-healing authorization route selection.
-- Cryptographic policy-decision proofs, immutable audit trails, dynamic policy
-  screening, and continuous control testing.
-- Universal API and AppGen-X event contracts, federation views, decentralized
-  identity verification, resilience drills, crypto agility, carbon-aware access
-  processing, mathematical role optimization, privileged-access allocation,
-  anomaly detection, stochastic access exposure modeling, and governed identity
-  risk models.
+- Zero-knowledge policy-decision proof generation.
+- Dynamic access-policy screening by restricted action and decision state.
+- Automated controls for configuration, rules, parameters, privileged-access review, and hash-chain integrity.
+- Universal descriptor API and AppGen-X event contracts.
+- Cross-system identity federation through workforce, customer, service-account, gateway, session, and audit projections.
+- Decentralized principal identity verification through DID-like evidence.
+- Chaos-engineered identity tolerance for policy API and provider discovery failures.
+- Quantum-resistant token authorization simulation through crypto-agile epoch rotation.
+- Carbon-aware access processing windows.
+- Algebraic least-privilege role optimization.
+- Mechanism-design privileged-access allocation.
+- Information-theoretic access anomaly detection.
+- Temporal access exposure stochastic modeling.
+- Governed identity-risk model registration with feature lineage, drift, and explainability controls.
 
-## APIs
+## Runtime Services
 
-- `POST /tenants`
-- `POST /principals`
-- `POST /identity-providers`
-- `POST /identity-links`
-- `POST /credential-verifications`
-- `POST /role-assignments`
-- `POST /policy-decisions`
-- `POST /token-grants`
-- `POST /sessions/revoke`
-- `POST /privileged-access-requests`
-- `POST /iam-rules`
-- `POST /iam-parameters`
-- `POST /iam-configuration`
+- `configure_runtime` validates backend, exact AppGen-X event topic, retry limit, regions, provider types, principal types, grant types, timezone, workbench limit, and stream-picker absence.
+- `set_parameter` accepts only supported identity and access parameters.
+- `register_rule` validates rule identity, tenant, status, and access scope, then stores deterministic compiled evidence.
+- `register_schema_extension` accepts only owned-table schema extensions.
+- `receive_event` idempotently handles role, tenant lifecycle, customer, employee, and service-account events; records inbox evidence; schedules retries; and dead-letters exhausted failures.
+- `provision_tenant` owns tenant lifecycle state and emits tenant provisioning evidence.
+- `register_principal` owns principal state and graph topology evidence.
+- `register_identity_provider` owns provider registry state.
+- `link_identity` owns federated identity state, claim compliance, and trust-score enforcement.
+- `verify_credential` owns credential verification state and issuer/confidence checks.
+- `assign_role` owns role assignment and access policy change evidence.
+- `evaluate_policy` owns policy decisions, deny override, risk scoring, and decision events.
+- `grant_token` owns token grants, token hashes, TTL, and gateway/audit/session handoffs.
+- `approve_privileged_access` owns privileged access state, risk thresholding, TTL, and approval evidence.
+- `build_api_contract` emits descriptor-level route, permission, idempotency, event, dependency, and owned-table evidence.
+- `permissions_contract` maps runtime commands to RBAC permissions.
+- `verify_owned_table_boundary` accepts owned tables and declared API/event/projection dependencies, then reports direct foreign-table violations.
+- `build_workbench_view` exposes operational and release evidence.
 
-## Events
+## API Contract
 
-Emitted:
+- `POST /tenants` maps to `provision_tenant`.
+- `POST /principals` maps to `register_principal`.
+- `POST /identity-providers` maps to `register_identity_provider`.
+- `POST /identity-links` maps to `link_identity`.
+- `POST /credential-verifications` maps to `verify_credential`.
+- `POST /role-assignments` maps to `assign_role`.
+- `POST /policy-decisions` maps to `evaluate_policy`.
+- `POST /token-grants` maps to `grant_token`.
+- `POST /privileged-access-requests` maps to `approve_privileged_access`.
+- `POST /iam/events/inbox` maps to `receive_event`.
+- `GET /iam-workbench` maps to `build_workbench_view`.
+
+Every route descriptor includes owned tables, command or query binding, idempotency key where applicable, required permission, emitted events, consumed events, fixed AppGen-X eventing evidence, and dependency evidence.
+
+## Events And Handlers
+
+Emitted events:
 
 - `TenantProvisioned`
 - `PrincipalVerified`
@@ -108,21 +138,61 @@ Emitted:
 - `TokenGranted`
 - `PrivilegedAccessApproved`
 
-Consumed:
+Consumed events:
 
 - `RoleChanged`
-- `TenantProvisioned`
+- `TenantLifecycleChanged`
 - `CustomerUpdated`
 - `EmployeeProvisioned`
 - `ServiceAccountRequested`
 
-Handlers are idempotent through `federated_iam:<EventType>:<event_id>` keys,
-retry through the AppGen-X outbox adapter, and route exhausted failures to
-`federated_iam.dead_letter`.
+Handlers are idempotent by idempotency key or event type and event id. Duplicate processed events do not create duplicate state changes. Failed events record retry evidence until the configured retry limit and then produce dead-letter records.
 
-## UI
+## Rules, Parameters, And Configuration
 
-The package exports a workbench UI contract with fragments for tenant registry,
-principal registry, identity providers, credential verification, role
-assignments, policy decisions, token grants, privileged access, audit controls,
-rules, parameters, and configuration.
+Rules cover access policy, tenant boundaries, identity-provider eligibility, required claims, allowed regions, allowed roles, denied actions, privileged actions, segregation-of-duties checks, session controls, token policy, revocation policy, and status.
+
+Parameters include:
+
+- `minimum_trust_score`
+- `session_risk_threshold`
+- `token_ttl_minutes`
+- `privileged_access_ttl_minutes`
+- `step_up_threshold`
+- `retention_days`
+- `maximum_failed_policy_checks`
+- `privileged_access_approval_count`
+- `credential_confidence_threshold`
+- `workbench_limit`
+
+Configuration includes database backend, event topic, retry limit, allowed regions, allowed provider types, allowed principal types, allowed grant types, default timezone, and workbench limit. Runtime configuration records `event_contract: AppGen-X`, allowed relational backends, hidden stream-engine picker evidence, non-selectable event-contract evidence, and owned tables.
+
+## UI And Workbench
+
+UI fragments:
+
+- `FederatedIamWorkbench`
+- `TenantRegistry`
+- `PrincipalRegistry`
+- `IdentityProviderConsole`
+- `CredentialVerificationPanel`
+- `RoleAssignmentBoard`
+- `PolicyDecisionWorkbench`
+- `TokenGrantConsole`
+- `PrivilegedAccessReview`
+- `IdentityAuditDashboard`
+- `IamRuleStudio`
+- `IamParameterConsole`
+- `IamConfigurationPanel`
+
+The workbench exposes principal, provider, identity, active role, policy-decision, allowed-decision, token, privileged-access, inbox, outbox, dead-letter, configuration, rule, parameter, and owned-boundary evidence. Visible actions are RBAC-filtered by tenant, principal, policy, token, privileged access, event, configuration, and audit permissions.
+
+## Release Evidence
+
+The focused test suite proves:
+
+- Runtime smoke covers every declared standard and advanced capability key.
+- The package declares owned tables, allowed relational backends, fixed AppGen-X eventing, descriptor APIs, and action-level RBAC.
+- Configuration, parameters, rules, schema extensions, event handling, tenant provisioning, principal/provider registration, identity linking, credential verification, role assignment, policy decisions, token grants, privileged access, UI, and workbench evidence execute.
+- Boundary validation accepts owned tables and declared API/event/projection dependencies, then rejects direct foreign-table references.
+- Invalid backend, stream-picker configuration, unsupported parameters, non-owned schema extensions, idempotent duplicates, retries, and dead letters are verified.

@@ -1,23 +1,33 @@
 """Federated Identity and Access PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS
+from .runtime import FEDERATED_IAM_CONSUMED_EVENT_TYPES
+from .runtime import FEDERATED_IAM_EMITTED_EVENT_TYPES
+from .runtime import FEDERATED_IAM_OWNED_TABLES
+from .runtime import FEDERATED_IAM_REQUIRED_EVENT_TOPIC
 from .runtime import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS
 from .runtime import FEDERATED_IAM_STANDARD_FEATURE_KEYS
 from .runtime import federated_iam_approve_privileged_access
 from .runtime import federated_iam_assign_role
+from .runtime import federated_iam_build_api_contract
 from .runtime import federated_iam_build_workbench_view
 from .runtime import federated_iam_configure_runtime
 from .runtime import federated_iam_empty_state
 from .runtime import federated_iam_evaluate_policy
 from .runtime import federated_iam_grant_token
 from .runtime import federated_iam_link_identity
+from .runtime import federated_iam_permissions_contract
 from .runtime import federated_iam_provision_tenant
+from .runtime import federated_iam_receive_event
 from .runtime import federated_iam_register_identity_provider
 from .runtime import federated_iam_register_principal
 from .runtime import federated_iam_register_rule
+from .runtime import federated_iam_register_schema_extension
 from .runtime import federated_iam_runtime_capabilities
 from .runtime import federated_iam_runtime_smoke
 from .runtime import federated_iam_set_parameter
+from .runtime import federated_iam_verify_owned_table_boundary
 from .runtime import federated_iam_verify_credential
 from .ui import FEDERATED_IAM_UI_FRAGMENT_KEYS
 from .ui import federated_iam_render_workbench
@@ -34,4 +44,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": federated_iam_ui_contract(),
+        "api_contract": federated_iam_build_api_contract(),
+        "permissions_contract": federated_iam_permissions_contract(),
+        "owned_tables": FEDERATED_IAM_OWNED_TABLES,
+        "allowed_database_backends": FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS,
     }
