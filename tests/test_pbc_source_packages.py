@@ -29,3 +29,15 @@ def test_release_audit_requires_builtin_pbc_source_packages():
         for check in audit["checks"]
         if check["id"].endswith(":source_package_schema_service_release")
     } == {f"{key}:source_package_schema_service_release" for key in PBC_CATALOG}
+
+
+def test_each_builtin_pbc_passes_release_audit_independently():
+    for key in PBC_CATALOG:
+        audit = pbc_implementation_release_audit((key,))
+
+        assert audit["ok"] is True, key
+        assert not audit["blocking_gaps"], key
+        assert {check["id"] for check in audit["checks"] if not check["ok"]} == set()
+        assert f"{key}:source_package_schema_service_release" in {
+            check["id"] for check in audit["checks"]
+        }
