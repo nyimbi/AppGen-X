@@ -1040,6 +1040,7 @@ IMPLEMENTED_PBC_KEYS = (
     "price_promotion_engine",
     "lead_opportunity",
     "service_ticketing",
+    "notifications",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3319,6 +3320,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = lead_opportunity_runtime_capabilities()
     elif key == "service_ticketing":
         advanced_runtime = service_ticketing_runtime_capabilities()
+    elif key == "notifications":
+        advanced_runtime = notifications_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
@@ -3640,6 +3643,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "price_promotion_engine": len(PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS),
         "lead_opportunity": len(LEAD_OPPORTUNITY_RUNTIME_CAPABILITY_KEYS),
         "service_ticketing": len(SERVICE_TICKETING_RUNTIME_CAPABILITY_KEYS),
+        "notifications": len(NOTIFICATIONS_RUNTIME_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
@@ -5765,6 +5769,26 @@ from .pbcs.service_ticketing import service_ticketing_runtime_smoke  # noqa: E40
 from .pbcs.service_ticketing import service_ticketing_set_parameter  # noqa: E402,F401
 from .pbcs.service_ticketing import service_ticketing_ui_contract  # noqa: E402,F401
 from .pbcs.service_ticketing import service_ticketing_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.notifications import NOTIFICATIONS_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.notifications import NOTIFICATIONS_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.notifications import NOTIFICATIONS_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.notifications import notifications_build_api_contract  # noqa: E402,F401
+from .pbcs.notifications import notifications_build_workbench_view  # noqa: E402,F401
+from .pbcs.notifications import notifications_configure_runtime  # noqa: E402,F401
+from .pbcs.notifications import notifications_empty_state  # noqa: E402,F401
+from .pbcs.notifications import notifications_permissions_contract  # noqa: E402,F401
+from .pbcs.notifications import notifications_receive_event  # noqa: E402,F401
+from .pbcs.notifications import notifications_record_delivery_attempt  # noqa: E402,F401
+from .pbcs.notifications import notifications_register_channel  # noqa: E402,F401
+from .pbcs.notifications import notifications_register_rule  # noqa: E402,F401
+from .pbcs.notifications import notifications_register_template  # noqa: E402,F401
+from .pbcs.notifications import notifications_render_workbench  # noqa: E402,F401
+from .pbcs.notifications import notifications_runtime_capabilities  # noqa: E402,F401
+from .pbcs.notifications import notifications_runtime_smoke  # noqa: E402,F401
+from .pbcs.notifications import notifications_send_message  # noqa: E402,F401
+from .pbcs.notifications import notifications_set_parameter  # noqa: E402,F401
+from .pbcs.notifications import notifications_ui_contract  # noqa: E402,F401
+from .pbcs.notifications import notifications_verify_owned_table_boundary  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
