@@ -1,8 +1,14 @@
 """Customer 360 PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import CUSTOMER_360_ALLOWED_DATABASE_BACKENDS
+from .runtime import CUSTOMER_360_CONSUMED_EVENT_TYPES
+from .runtime import CUSTOMER_360_EMITTED_EVENT_TYPES
+from .runtime import CUSTOMER_360_OWNED_TABLES
+from .runtime import CUSTOMER_360_REQUIRED_EVENT_TOPIC
 from .runtime import CUSTOMER_360_RUNTIME_CAPABILITY_KEYS
 from .runtime import CUSTOMER_360_STANDARD_FEATURE_KEYS
+from .runtime import customer_360_build_api_contract
 from .runtime import customer_360_build_timeline
 from .runtime import customer_360_build_workbench_view
 from .runtime import customer_360_capture_touchpoint
@@ -12,13 +18,17 @@ from .runtime import customer_360_empty_state
 from .runtime import customer_360_ingest_engagement_event
 from .runtime import customer_360_link_identity
 from .runtime import customer_360_open_merge_case
+from .runtime import customer_360_permissions_contract
+from .runtime import customer_360_receive_event
 from .runtime import customer_360_record_consent
 from .runtime import customer_360_register_rule
+from .runtime import customer_360_register_schema_extension
 from .runtime import customer_360_resolve_merge_case
 from .runtime import customer_360_runtime_capabilities
 from .runtime import customer_360_runtime_smoke
 from .runtime import customer_360_set_parameter
 from .runtime import customer_360_set_preference
+from .runtime import customer_360_verify_owned_table_boundary
 from .ui import CUSTOMER_360_UI_FRAGMENT_KEYS
 from .ui import customer_360_render_workbench
 from .ui import customer_360_ui_contract
@@ -34,4 +44,12 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": customer_360_ui_contract(),
+        "owned_tables": CUSTOMER_360_OWNED_TABLES,
+        "allowed_database_backends": CUSTOMER_360_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": CUSTOMER_360_REQUIRED_EVENT_TOPIC,
+        "emitted_events": CUSTOMER_360_EMITTED_EVENT_TYPES,
+        "consumed_events": CUSTOMER_360_CONSUMED_EVENT_TYPES,
+        "api_contract": customer_360_build_api_contract(),
+        "permissions_contract": customer_360_permissions_contract(),
+        "boundary_contract": customer_360_verify_owned_table_boundary(CUSTOMER_360_OWNED_TABLES),
     }

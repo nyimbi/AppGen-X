@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .runtime import RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
+from .runtime import RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
 from .runtime import RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
 from .runtime import returns_reverse_logistics_build_workbench_view
 from .runtime import returns_reverse_logistics_permissions_contract
@@ -27,6 +29,7 @@ RETURNS_REVERSE_LOGISTICS_UI_FRAGMENT_KEYS = (
 
 
 def returns_reverse_logistics_ui_contract() -> dict:
+    permissions = returns_reverse_logistics_permissions_contract()
     return {
         "format": "appgen.returns-reverse-logistics-ui-contract.v1",
         "ok": True,
@@ -82,7 +85,7 @@ def returns_reverse_logistics_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": returns_reverse_logistics_permissions_contract(),
+        "action_permissions": permissions["action_permissions"],
         "configuration_editor": {
             "required_fields": (
                 "database_backend",
@@ -92,9 +95,10 @@ def returns_reverse_logistics_ui_contract() -> dict:
                 "supported_carriers",
                 "supported_dispositions",
             ),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS,
             "required_event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
             "user_eventing_choice": False,
         },
         "parameter_editor": {
@@ -135,10 +139,14 @@ def returns_reverse_logistics_ui_contract() -> dict:
         "event_surfaces": {
             "emits": ("ReturnAuthorized", "CreditAdjustmentIssued"),
             "consumes": ("OrderShipped", "PaymentCaptured"),
+            "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+        "shared_table_access": False,
     }
 
 
@@ -207,4 +215,5 @@ def returns_reverse_logistics_render_workbench(
         "event_outbox_count": snapshot["outbox_count"],
         "event_inbox_count": snapshot["inbox_count"],
         "dead_letter_count": snapshot["dead_letter_count"],
+        "binding_evidence": snapshot["binding_evidence"],
     }

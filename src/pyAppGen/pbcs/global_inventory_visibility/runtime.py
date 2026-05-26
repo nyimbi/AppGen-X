@@ -69,7 +69,37 @@ GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS = (
     "cross_system_federation",
 )
 
-_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC = "appgen.global_inventory_visibility.events"
+GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES = (
+    "inventory_pool",
+    "supply_node",
+    "availability_snapshot",
+    "inventory_projection",
+    "inventory_reservation",
+    "inventory_adjustment",
+    "inventory_rule",
+    "inventory_parameter",
+    "inventory_configuration",
+    "inventory_governed_model",
+)
+GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES = ("GoodsReceiptPosted", "ShipmentDelivered", "InventoryAllocated")
+GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES = ("AvailabilityProjected", "InventoryPoolChanged")
+_ALLOWED_DATABASE_BACKENDS = GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
+_GIV_RUNTIME_TABLES = (
+    "global_inventory_visibility_appgen_outbox_event",
+    "global_inventory_visibility_appgen_inbox_event",
+    "global_inventory_visibility_dead_letter_event",
+)
+_GIV_ALLOWED_DEPENDENCIES = (
+    "wms_stock_projection",
+    "transportation_in_transit_projection",
+    "order_reservation_projection",
+    "GET /wms/stock/{item_id}",
+    "GET /transportation/shipments/{item_id}",
+    "GET /orders/reservations/{item_id}",
+    "POST /audit/inventory-visibility-events",
+)
 _ALLOWED_CRYPTO_ALGORITHMS = (
     "sha3_256",
     "blake2b",
@@ -89,8 +119,8 @@ _ALLOWED_PARAMETERS = {
     "workbench_limit": (1.0, 500.0),
 }
 _REQUIRED_RULE_FIELDS = ("rule_id", "tenant", "scope", "status", "rule_type")
-_CONSUMED_EVENTS = ("GoodsReceiptPosted", "ShipmentDelivered", "InventoryAllocated")
-_EMITTED_EVENTS = ("AvailabilityProjected", "InventoryPoolChanged")
+_CONSUMED_EVENTS = GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES
+_EMITTED_EVENTS = GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES
 
 
 def global_inventory_visibility_runtime_capabilities() -> dict:
@@ -100,6 +130,8 @@ def global_inventory_visibility_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "global_inventory_visibility",
         "implementation_directory": "src/pyAppGen/pbcs/global_inventory_visibility",
+        "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+        "allowed_database_backends": GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
         "capabilities": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS,
         "standard_features": GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -124,6 +156,8 @@ def global_inventory_visibility_runtime_capabilities() -> dict:
             "screen_allocation_policy",
             "run_control_tests",
             "build_api_contract",
+            "permissions_contract",
+            "verify_owned_table_boundary",
             "federate_inventory_view",
             "verify_supply_identity",
             "run_resilience_drill",
@@ -364,6 +398,15 @@ def global_inventory_visibility_runtime_smoke() -> dict:
     )
     controls = global_inventory_visibility_run_control_tests(state)
     api = global_inventory_visibility_build_api_contract()
+    permissions = global_inventory_visibility_permissions_contract()
+    boundary = global_inventory_visibility_verify_owned_table_boundary(
+        GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+        + _GIV_RUNTIME_TABLES
+        + (
+            "wms_stock_projection",
+            "GET /transportation/shipments/{item_id}",
+        )
+    )
     federation = global_inventory_visibility_federate_inventory_view(
         state,
         tenant="tenant_alpha",
@@ -478,7 +521,7 @@ def global_inventory_visibility_runtime_smoke() -> dict:
         },
         {
             "id": "universal_api_async_streaming",
-            "ok": api["ok"] and api["events"]["emits"] == _EMITTED_EVENTS,
+            "ok": api["ok"] and api["events"]["emits"] == _EMITTED_EVENTS and permissions["ok"],
         },
         {
             "id": "cross_system_inventory_federation",
@@ -522,7 +565,7 @@ def global_inventory_visibility_runtime_smoke() -> dict:
         },
         {
             "id": "distributed_systems_engineering",
-            "ok": len(state["inbox"]) == 3 and not state["dead_letters"],
+            "ok": len(state["inbox"]) == 3 and not state["dead_letters"] and boundary["ok"],
         },
         {
             "id": "governed_ml_availability_evidence",
@@ -578,8 +621,10 @@ def global_inventory_visibility_configure_runtime(state: dict, configuration: di
         raise ValueError(
             "Global Inventory Visibility supports only PostgreSQL, MySQL, or MariaDB backends"
         )
-    if not configuration.get("event_topic"):
-        raise ValueError("Global Inventory Visibility requires an AppGen-X event topic")
+    if configuration.get("event_topic") != GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC:
+        raise ValueError(
+            f"Global Inventory Visibility requires AppGen-X event topic {GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC}"
+        )
     forbidden = {"stream_engine", "stream_backend", "event_picker"} & set(configuration)
     if forbidden:
         raise ValueError(
@@ -590,6 +635,7 @@ def global_inventory_visibility_configure_runtime(state: dict, configuration: di
         "ok": True,
         "event_contract": "AppGen-X",
         "allowed_database_backends": _ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
         "user_facing_eventing_choice": False,
     }
     return {
@@ -1009,6 +1055,22 @@ def global_inventory_visibility_register_schema_extension(
     entity: str,
     extension: dict,
 ) -> dict:
+    if entity not in GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES:
+        return {
+            "ok": False,
+            "error": "table_not_owned",
+            "entity": entity,
+            "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+            "state": state,
+        }
+    invalid = tuple(name for name in extension if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
+    if invalid:
+        return {
+            "ok": False,
+            "error": "invalid_extension_field",
+            "invalid": invalid,
+            "state": state,
+        }
     existing = dict(state["schema_extensions"].get(entity, {}))
     existing.update(extension)
     return {
@@ -1239,6 +1301,13 @@ def global_inventory_visibility_build_api_contract() -> dict:
     return {
         "ok": True,
         "format": "appgen.global-inventory-visibility-api-contract.v1",
+        "pbc": "global_inventory_visibility",
+        "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+        "database_backends": GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
+        "event_contract": "AppGen-X",
+        "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
         "routes": (
             "GET /global-availability",
             "POST /pool-rules",
@@ -1262,6 +1331,53 @@ def global_inventory_visibility_build_api_contract() -> dict:
             "GLOBAL_INVENTORY_VISIBILITY_RETRY_LIMIT",
             "GLOBAL_INVENTORY_VISIBILITY_DEFAULT_CURRENCY",
         ),
+        "dependencies": {
+            "apis": _GIV_ALLOWED_DEPENDENCIES,
+            "projections": tuple(item for item in _GIV_ALLOWED_DEPENDENCIES if item.endswith("_projection")),
+        },
+    }
+
+
+def global_inventory_visibility_permissions_contract() -> dict:
+    return {
+        "format": "appgen.global-inventory-visibility-permissions.v1",
+        "ok": True,
+        "pbc": "global_inventory_visibility",
+        "permissions": (
+            "global_inventory_visibility.read",
+            "global_inventory_visibility.reserve",
+            "global_inventory_visibility.configure",
+            "global_inventory_visibility.audit",
+        ),
+        "action_permissions": {
+            "register_inventory_pool": "global_inventory_visibility.configure",
+            "register_supply_node": "global_inventory_visibility.configure",
+            "record_availability_snapshot": "global_inventory_visibility.configure",
+            "project_availability": "global_inventory_visibility.read",
+            "get_global_availability": "global_inventory_visibility.read",
+            "reserve_inventory": "global_inventory_visibility.reserve",
+            "ingest_event": "global_inventory_visibility.configure",
+            "register_rule": "global_inventory_visibility.configure",
+            "set_parameter": "global_inventory_visibility.configure",
+            "configure_runtime": "global_inventory_visibility.configure",
+            "run_control_tests": "global_inventory_visibility.audit",
+        },
+        "rbac_tables": ("inventory_rule", "inventory_parameter", "inventory_configuration"),
+    }
+
+
+def global_inventory_visibility_verify_owned_table_boundary(references: tuple[str, ...]) -> dict:
+    allowed = set(GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES) | set(_GIV_RUNTIME_TABLES) | set(_GIV_ALLOWED_DEPENDENCIES)
+    violations = tuple(sorted(reference for reference in references if reference not in allowed))
+    return {
+        "format": "appgen.global-inventory-visibility-owned-boundary.v1",
+        "ok": not violations,
+        "pbc": "global_inventory_visibility",
+        "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+        "runtime_tables": _GIV_RUNTIME_TABLES,
+        "allowed_dependencies": _GIV_ALLOWED_DEPENDENCIES,
+        "violations": violations,
+        "shared_table_access": False,
     }
 
 

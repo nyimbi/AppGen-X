@@ -69,7 +69,21 @@ RETURNS_REVERSE_LOGISTICS_STANDARD_FEATURE_KEYS = (
     "governed_model_evidence",
 )
 
-_SUPPORTED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+RETURNS_REVERSE_LOGISTICS_OWNED_TABLES = (
+    "return_authorization",
+    "return_label",
+    "inspection_grade",
+    "credit_adjustment",
+    "returns_reverse_logistics_outbox_event",
+    "returns_reverse_logistics_inbox_event",
+    "returns_reverse_logistics_dead_letter_event",
+)
+RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES = ("OrderShipped", "PaymentCaptured")
+RETURNS_REVERSE_LOGISTICS_EMITTED_EVENT_TYPES = ("ReturnAuthorized", "CreditAdjustmentIssued")
+RETURNS_REVERSE_LOGISTICS_API_SURFACES = ("POST /returns", "POST /labels", "POST /inspection-grades")
+
+_SUPPORTED_DATABASE_BACKENDS = RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
 _SUPPORTED_PARAMETERS = {
     "eligibility_window_days",
     "fraud_threshold",
@@ -106,9 +120,9 @@ _FORBIDDEN_EVENTING_FIELDS = {
     "stream_picker",
     "user_eventing_choice",
 }
-_CONSUMED_EVENT_TYPES = {"OrderShipped", "PaymentCaptured"}
-_API_SURFACES = ("POST /returns", "POST /labels", "POST /inspection-grades")
-_EMITTED_EVENT_TYPES = ("ReturnAuthorized", "CreditAdjustmentIssued")
+_CONSUMED_EVENT_TYPES = set(RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES)
+_API_SURFACES = RETURNS_REVERSE_LOGISTICS_API_SURFACES
+_EMITTED_EVENT_TYPES = RETURNS_REVERSE_LOGISTICS_EMITTED_EVENT_TYPES
 _DEFAULT_DISPOSITIONS = ("restock", "refurbish", "scrap")
 _DISPOSITION_FACTORS = {"restock": 0.9, "refurbish": 0.65, "scrap": 0.25}
 
@@ -126,12 +140,16 @@ def returns_reverse_logistics_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "receive_event",
             "authorize_return",
             "create_return_label",
             "record_inspection_grade",
             "issue_credit_adjustment",
             "build_workbench_view",
+            "build_api_contract",
+            "permissions_contract",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -404,7 +422,11 @@ def returns_reverse_logistics_runtime_smoke() -> dict:
         {"id": "return_anomaly_detection", "ok": anomaly["anomaly_detected"] is True},
         {"id": "stochastic_return_exposure_modeling", "ok": stochastic["expected_loss"] >= 0.0},
         {"id": "governed_ml_model_evidence", "ok": model["ok"] is True},
-        {"id": "permissions_governance_evidence", "ok": "configure_runtime" in returns_reverse_logistics_permissions_contract()},
+        {
+            "id": "permissions_governance_evidence",
+            "ok": "configure_runtime"
+            in returns_reverse_logistics_permissions_contract()["action_permissions"],
+        },
     )
     blocking_gaps = tuple(check["id"] for check in checks if not check["ok"])
     return {
@@ -470,7 +492,9 @@ def returns_reverse_logistics_configure_runtime(state: dict, configuration: dict
         "supported_dispositions": tuple(configuration["supported_dispositions"]),
         "workbench_limit": int(configuration.get("workbench_limit", 100)),
         "event_contract": "AppGen-X",
-        "allowed_database_backends": _SUPPORTED_DATABASE_BACKENDS,
+        "allowed_database_backends": RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+        "stream_engine_picker_visible": False,
         "user_eventing_choice": False,
         "ok": True,
     }
@@ -496,6 +520,9 @@ def returns_reverse_logistics_set_parameter(state: dict, parameter_name: str, va
 
 def returns_reverse_logistics_register_rule(state: dict, rule: dict) -> dict:
     _require_keys(rule, _REQUIRED_RULE_FIELDS, "Returns Reverse Logistics rule")
+    forbidden = sorted(key for key in rule if key in _FORBIDDEN_EVENTING_FIELDS)
+    if forbidden:
+        raise ValueError("Returns Reverse Logistics rules cannot declare stream-engine or user eventing fields.")
     compiled_hash = _hash_payload({key: rule[key] for key in sorted(rule)})
     new_state = _clone_state(state)
     record = {
@@ -514,54 +541,107 @@ def returns_reverse_logistics_register_rule(state: dict, rule: dict) -> dict:
 
 
 def returns_reverse_logistics_register_schema_extension(state: dict, entity: str, fields: dict) -> dict:
+    if entity not in RETURNS_REVERSE_LOGISTICS_OWNED_TABLES:
+        raise ValueError(
+            "Returns Reverse Logistics schema extensions must target owned tables: "
+            f"{RETURNS_REVERSE_LOGISTICS_OWNED_TABLES}"
+        )
+    invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
+    if invalid:
+        raise ValueError(
+            "Returns Reverse Logistics schema extension field names must be lowercase snake_case."
+        )
     new_state = _clone_state(state)
     record = {
-        "entity": entity,
-        "fields": fields,
-        "schema_hash": _hash_payload({"entity": entity, "fields": fields}),
+        "table": entity,
+        "fields": dict(fields),
+        "version": len(new_state["schema_extensions"].get(entity, ())) + 1,
+        "schema_hash": _hash_payload({"table": entity, "fields": fields}),
     }
-    new_state["schema_extensions"][entity] = record
+    new_state["schema_extensions"].setdefault(entity, []).append(record)
     return {"ok": True, "state": new_state, "schema_extension": record}
 
 
 def returns_reverse_logistics_receive_event(state: dict, envelope: dict) -> dict:
+    _require_appgen_x_event_contract(state)
     _require_keys(envelope, ("event_id", "event_type", "idempotency_key", "payload"), "Returns Reverse Logistics inbox event")
+    if envelope.get("event_contract") not in {None, "AppGen-X"}:
+        raise ValueError("Returns Reverse Logistics inbox events must use the AppGen-X event contract.")
+    if envelope.get("topic") not in {None, RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC}:
+        raise ValueError(
+            f"Returns Reverse Logistics inbox events must use topic {RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC}."
+        )
     tenant = envelope["payload"].get("tenant")
     if not tenant:
         raise ValueError("Returns Reverse Logistics inbox events require payload.tenant.")
     idempotency_key = envelope["idempotency_key"]
     if idempotency_key in state["handled_event_keys"]:
+        recorded = state["handled_event_keys"][idempotency_key]
         return {
-            "ok": True,
+            "ok": recorded["status"] == "handled",
             "state": state,
             "duplicate": True,
-            "event": state["handled_event_keys"][idempotency_key],
+            "dead_lettered": recorded["status"] == "dead_lettered",
+            "event": recorded,
+            "inbox_record": recorded,
+            "retry_evidence": state["retry_evidence"].get(idempotency_key),
+            "dead_letter_record": next(
+                (
+                    record
+                    for record in state["dead_letter"]
+                    if record.get("idempotency_key") == idempotency_key
+                ),
+                None,
+            ),
         }
 
     new_state = _clone_state(state)
+    attempts = int(envelope.get("attempts", 1))
     inbox_record = {
         "event_id": envelope["event_id"],
         "event_type": envelope["event_type"],
         "idempotency_key": idempotency_key,
         "tenant": tenant,
         "payload": envelope["payload"],
+        "attempts": attempts,
+        "topic": state["configuration"]["event_topic"],
+        "event_contract": "AppGen-X",
+        "status": "received",
     }
-    new_state["inbox"].append(inbox_record)
+    retry_limit = int(new_state.get("configuration", {}).get("retry_limit", 3))
 
     if envelope["event_type"] not in _CONSUMED_EVENT_TYPES:
         evidence = {
             "event_id": envelope["event_id"],
             "event_type": envelope["event_type"],
             "tenant": tenant,
-            "attempts": int(envelope.get("attempts", 1)),
+            "attempts": attempts,
             "reason": "unsupported_event_type",
+            "retry_limit": retry_limit,
+            "status": "dead_lettered" if attempts >= retry_limit else "retrying",
         }
         new_state["retry_evidence"][idempotency_key] = evidence
-        dead_lettered = False
-        if evidence["attempts"] >= int(new_state.get("configuration", {}).get("retry_limit", 3)):
-            new_state["dead_letter"].append(evidence)
-            dead_lettered = True
-        return {"ok": False, "state": new_state, "duplicate": False, "dead_lettered": dead_lettered, "event": evidence}
+        inbox_record["status"] = evidence["status"]
+        inbox_record["reason"] = evidence["reason"]
+        new_state["inbox"].append(inbox_record)
+        dead_letter_record = None
+        if attempts >= retry_limit:
+            dead_letter_record = {
+                **inbox_record,
+                "dead_letter_table": "returns_reverse_logistics_dead_letter_event",
+            }
+            new_state["dead_letter"].append(dead_letter_record)
+        new_state["handled_event_keys"][idempotency_key] = inbox_record
+        return {
+            "ok": False,
+            "state": new_state,
+            "duplicate": False,
+            "dead_lettered": attempts >= retry_limit,
+            "event": evidence,
+            "inbox_record": inbox_record,
+            "retry_evidence": evidence,
+            "dead_letter_record": dead_letter_record,
+        }
 
     if envelope["event_type"] == "OrderShipped":
         payload = envelope["payload"]
@@ -589,6 +669,8 @@ def returns_reverse_logistics_receive_event(state: dict, envelope: dict) -> dict
         }
         new_state["payment_captures"][record["payment_id"]] = record
 
+    inbox_record["status"] = "handled"
+    new_state["inbox"].append(inbox_record)
     new_state["handled_event_keys"][idempotency_key] = inbox_record
     new_state, domain_event = _append_domain_event(
         new_state,
@@ -597,7 +679,16 @@ def returns_reverse_logistics_receive_event(state: dict, envelope: dict) -> dict
         payload={"source_event_id": envelope["event_id"], "idempotency_key": idempotency_key},
         publish=False,
     )
-    return {"ok": True, "state": new_state, "duplicate": False, "dead_lettered": False, "event": domain_event}
+    return {
+        "ok": True,
+        "state": new_state,
+        "duplicate": False,
+        "dead_lettered": False,
+        "event": domain_event,
+        "inbox_record": inbox_record,
+        "retry_evidence": None,
+        "dead_letter_record": None,
+    }
 
 
 def returns_reverse_logistics_authorize_return(state: dict, payload: dict) -> dict:
@@ -1059,15 +1150,83 @@ def returns_reverse_logistics_run_control_tests(state: dict) -> dict:
 
 
 def returns_reverse_logistics_build_api_contract() -> dict:
+    permissions = returns_reverse_logistics_permissions_contract()
     return {
         "format": "appgen.returns-reverse-logistics-api-contract.v1",
+        "ok": True,
         "pbc": "returns_reverse_logistics",
         "apis": _API_SURFACES,
+        "operations": (
+            {
+                "route": "POST /returns",
+                "command": "authorize_return",
+                "owned_tables": ("return_authorization",),
+                "declared_event_dependencies": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+                "requires_permission": permissions["action_permissions"]["authorize_return"],
+                "idempotency_key": "return_id",
+            },
+            {
+                "route": "POST /labels",
+                "command": "create_return_label",
+                "owned_tables": ("return_label", "return_authorization"),
+                "requires_permission": permissions["action_permissions"]["create_return_label"],
+                "idempotency_key": "label_id",
+            },
+            {
+                "route": "POST /inspection-grades",
+                "command": "record_inspection_grade",
+                "owned_tables": ("inspection_grade", "return_authorization"),
+                "requires_permission": permissions["action_permissions"]["record_inspection_grade"],
+                "idempotency_key": "inspection_id",
+            },
+            {
+                "route": "POST /credit-adjustments",
+                "command": "issue_credit_adjustment",
+                "owned_tables": ("credit_adjustment", "return_authorization"),
+                "declared_api_dependencies": ("POST /refunds", "POST /ledger-adjustments"),
+                "requires_permission": permissions["action_permissions"]["issue_credit_adjustment"],
+                "idempotency_key": "adjustment_id",
+                "emits": ("CreditAdjustmentIssued",),
+            },
+            {
+                "route": "POST /returns-reverse-logistics/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (
+                    "returns_reverse_logistics_inbox_event",
+                    "returns_reverse_logistics_dead_letter_event",
+                ),
+                "consumes": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+                "requires_permission": permissions["action_permissions"]["receive_event"],
+                "idempotency_key": "idempotency_key",
+            },
+            {
+                "route": "GET /returns-reverse-logistics-workbench",
+                "query": "build_workbench_view",
+                "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+                "requires_permission": permissions["action_permissions"]["build_workbench_view"],
+            },
+        ),
+        "declared_catalog_routes": ("POST /returns", "POST /labels", "POST /inspection-grades"),
+        "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+        "events": {
+            "emits": RETURNS_REVERSE_LOGISTICS_EMITTED_EVENT_TYPES,
+            "consumes": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+        },
         "emits": _EMITTED_EVENT_TYPES,
         "consumes": tuple(sorted(_CONSUMED_EVENT_TYPES)),
         "async_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+        "database_backends": RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS,
+        "permissions": permissions["permissions"],
+        "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
         "user_eventing_choice": False,
+        "configuration": (
+            "RETURNS_REVERSE_LOGISTICS_DATABASE_URL",
+            "RETURNS_REVERSE_LOGISTICS_EVENT_TOPIC",
+            "RETURNS_REVERSE_LOGISTICS_RETRY_LIMIT",
+            "RETURNS_REVERSE_LOGISTICS_DEFAULT_CURRENCY",
+        ),
     }
 
 
@@ -1209,19 +1368,92 @@ def returns_reverse_logistics_build_workbench_view(state: dict, *, tenant: str) 
         "rule_evidence": tuple({"rule_id": rule_id, "compiled_hash": compiled_hash} for rule_id, compiled_hash in sorted(rules)),
         "parameter_count": len(state.get("parameters", {})),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
+        "binding_evidence": {
+            "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+            "outbox_table": "returns_reverse_logistics_outbox_event",
+            "inbox_table": "returns_reverse_logistics_inbox_event",
+            "dead_letter_table": "returns_reverse_logistics_dead_letter_event",
+            "shared_table_access": False,
+            "event_contract": state.get("configuration", {}).get("event_contract"),
+        },
     }
 
 
 def returns_reverse_logistics_permissions_contract() -> dict:
     return {
-        "authorize_return": "returns_reverse_logistics.authorize",
-        "create_return_label": "returns_reverse_logistics.label",
-        "record_inspection_grade": "returns_reverse_logistics.inspect",
-        "issue_credit_adjustment": "returns_reverse_logistics.adjust",
-        "receive_event": "returns_reverse_logistics.audit",
-        "register_rule": "returns_reverse_logistics.configure",
-        "set_parameter": "returns_reverse_logistics.configure",
-        "configure_runtime": "returns_reverse_logistics.configure",
+        "format": "appgen.returns-reverse-logistics-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "returns_reverse_logistics.authorize",
+            "returns_reverse_logistics.label",
+            "returns_reverse_logistics.inspect",
+            "returns_reverse_logistics.adjust",
+            "returns_reverse_logistics.event.consume",
+            "returns_reverse_logistics.configure",
+            "returns_reverse_logistics.audit",
+        ),
+        "action_permissions": {
+            "authorize_return": "returns_reverse_logistics.authorize",
+            "create_return_label": "returns_reverse_logistics.label",
+            "record_inspection_grade": "returns_reverse_logistics.inspect",
+            "issue_credit_adjustment": "returns_reverse_logistics.adjust",
+            "receive_event": "returns_reverse_logistics.event.consume",
+            "register_rule": "returns_reverse_logistics.configure",
+            "register_schema_extension": "returns_reverse_logistics.configure",
+            "set_parameter": "returns_reverse_logistics.configure",
+            "configure_runtime": "returns_reverse_logistics.configure",
+            "build_workbench_view": "returns_reverse_logistics.audit",
+            "verify_owned_table_boundary": "returns_reverse_logistics.audit",
+        },
+    }
+
+
+def returns_reverse_logistics_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "GET /orders/{order_id}",
+        "GET /payments/{payment_id}",
+        "POST /inventory-dispositions",
+        "POST /refunds",
+        "POST /ledger-adjustments",
+        "order_projection",
+        "payment_projection",
+        "inventory_projection",
+        "ledger_projection",
+    }
+    allowed_event_dependencies = set(RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES)
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(RETURNS_REVERSE_LOGISTICS_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and not str(reference).startswith("returns_reverse_logistics_")
+    )
+    return {
+        "format": "appgen.returns-reverse-logistics-boundary.v1",
+        "ok": not violations,
+        "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "GET /orders/{order_id}",
+                "GET /payments/{payment_id}",
+                "POST /inventory-dispositions",
+                "POST /refunds",
+                "POST /ledger-adjustments",
+            ),
+            "events": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "order_projection",
+                "payment_projection",
+                "inventory_projection",
+                "ledger_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -1256,6 +1488,18 @@ def _require_runtime_ready(state: dict) -> None:
         raise ValueError("Returns Reverse Logistics runtime must be configured before use.")
 
 
+def _require_appgen_x_event_contract(state: dict) -> None:
+    _require_runtime_ready(state)
+    configuration = state["configuration"]
+    if (
+        configuration.get("event_contract") != "AppGen-X"
+        or configuration.get("event_topic") != RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+    ):
+        raise ValueError(
+            "Returns Reverse Logistics runtime must remain bound to the AppGen-X returns event contract."
+        )
+
+
 def _append_domain_event(state: dict, *, event_type: str, tenant: str, payload: dict, publish: bool) -> tuple[dict, dict]:
     event_id = f"returns_evt_{state['event_sequence'] + 1:06d}"
     previous_hash = state["events"][-1]["hash"] if state["events"] else "returns_root"
@@ -1276,8 +1520,13 @@ def _append_domain_event(state: dict, *, event_type: str, tenant: str, payload: 
                 "event_type": event_type,
                 "tenant": tenant,
                 "topic": state["configuration"]["event_topic"],
+                "event_contract": "AppGen-X",
                 "payload": payload,
                 "idempotency_key": f"returns_reverse_logistics:{event_type}:{event_id}",
+                "retry_policy": {
+                    "max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)),
+                    "dead_letter": "returns_reverse_logistics_dead_letter_event",
+                },
                 "hash": record["hash"],
             }
         )

@@ -8,6 +8,108 @@ import math
 import re
 
 
+PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC = "appgen.product.events"
+PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+PRODUCT_CATALOG_PIM_OWNED_TABLES = (
+    "product",
+    "product_family",
+    "product_variant",
+    "product_attribute_schema",
+    "product_attribute",
+    "product_price",
+    "product_media",
+    "product_locale_content",
+    "product_compliance_claim",
+    "catalog_publication",
+    "catalog_channel_projection",
+    "product_rule",
+    "product_parameter",
+    "product_configuration",
+)
+PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES = (
+    "ProductClassified",
+    "ProductRegistered",
+    "AttributeSchemaDefined",
+    "ProductEnriched",
+    "ProductMediaAttached",
+    "ProductPriceReady",
+    "ProductComplianceClaimed",
+    "ProductPublished",
+)
+PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES = (
+    "TaxCalculated",
+    "MediaAssetApproved",
+    "InventoryPositionUpdated",
+    "PricePromotionApproved",
+    "SearchIndexRequested",
+)
+PRODUCT_CATALOG_PIM_RUNTIME_TABLES = (
+    "product_catalog_pim_appgen_outbox_event",
+    "product_catalog_pim_appgen_inbox_event",
+    "product_catalog_pim_dead_letter_event",
+)
+PRODUCT_CATALOG_PIM_ALLOWED_DEPENDENCIES = (
+    "commerce_catalog_projection",
+    "search_index_projection",
+    "forecast_signal_projection",
+    "pricing_readiness_projection",
+    "tax_calculation_projection",
+    "media_asset_projection",
+    "inventory_position_projection",
+    "price_promotion_projection",
+    "GET /commerce/catalog-products/{id}",
+    "GET /inventory/product-positions/{id}",
+    "GET /tax/product-compliance/{id}",
+    "POST /search/catalog-projections",
+    "POST /pricing/product-readiness",
+)
+PRODUCT_CATALOG_PIM_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+PRODUCT_CATALOG_PIM_REQUIRED_CONFIGURATION_FIELDS = (
+    "database_backend",
+    "event_topic",
+    "retry_limit",
+    "default_timezone",
+)
+PRODUCT_CATALOG_PIM_SUPPORTED_CONFIGURATION_FIELDS = (
+    "database_backend",
+    "event_topic",
+    "retry_limit",
+    "allowed_channels",
+    "allowed_locales",
+    "allowed_media_roles",
+    "allowed_regions",
+    "default_timezone",
+    "workbench_limit",
+)
+PRODUCT_CATALOG_PIM_SUPPORTED_PARAMETER_NAMES = (
+    "minimum_completeness",
+    "minimum_margin",
+    "max_missing_required_attributes",
+    "content_quality_threshold",
+    "publication_batch_size",
+    "retention_days",
+    "workbench_limit",
+)
+PRODUCT_CATALOG_PIM_REQUIRED_RULE_FIELDS = (
+    "rule_id",
+    "tenant",
+    "rule_type",
+    "allowed_channels",
+    "allowed_locales",
+    "required_attributes",
+    "required_media_roles",
+    "restricted_regions",
+    "status",
+)
+
 PRODUCT_CATALOG_PIM_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_product_lifecycle",
     "graph_relational_product_topology",
@@ -63,13 +165,16 @@ PRODUCT_CATALOG_PIM_STANDARD_FEATURE_KEYS = (
     "restricted_region_screening",
     "search_index_signal",
     "forecast_signal",
+    "appgen_x_outbox_inbox_eventing",
     "idempotent_handlers",
+    "retry_dead_letter_evidence",
     "permissions",
     "configuration_schema",
     "rule_engine",
     "parameter_engine",
     "seed_data",
     "workbench",
+    "owned_table_boundary",
 )
 
 
@@ -80,12 +185,15 @@ def product_catalog_pim_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "product_catalog_pim",
         "implementation_directory": "src/pyAppGen/pbcs/product_catalog_pim",
+        "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
         "capabilities": PRODUCT_CATALOG_PIM_RUNTIME_CAPABILITY_KEYS,
         "standard_features": PRODUCT_CATALOG_PIM_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "create_product_family",
             "register_product",
             "define_attribute_schema",
@@ -95,7 +203,10 @@ def product_catalog_pim_runtime_capabilities() -> dict:
             "add_price_metadata",
             "add_compliance_claim",
             "publish_product",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -107,7 +218,7 @@ def product_catalog_pim_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.product.events",
+            "event_topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_channels": ("web", "marketplace", "pos"),
             "allowed_locales": ("en-US", "fr-FR"),
@@ -139,17 +250,36 @@ def product_catalog_pim_runtime_smoke() -> dict:
     state = product_catalog_pim_register_schema_extension(state, "product", {"sustainability_payload": "jsonb"})["state"]
     family = product_catalog_pim_create_product_family(
         state,
-        {"family_id": "fam_100", "tenant": "tenant_alpha", "name": "Machine Kits", "taxonomy": "industrial/kits", "variant_axes": ("color", "size")},
+        {
+            "family_id": "fam_100",
+            "tenant": "tenant_alpha",
+            "name": "Machine Kits",
+            "taxonomy": "industrial/kits",
+            "variant_axes": ("color", "size"),
+        },
     )
     state = family["state"]
     product = product_catalog_pim_register_product(
         state,
-        {"product_id": "prod_100", "tenant": "tenant_alpha", "family_id": "fam_100", "sku": "KIT-100", "name": "Hydraulic Kit", "lifecycle_state": "draft", "owner": "catalog_ops"},
+        {
+            "product_id": "prod_100",
+            "tenant": "tenant_alpha",
+            "family_id": "fam_100",
+            "sku": "KIT-100",
+            "name": "Hydraulic Kit",
+            "lifecycle_state": "draft",
+            "owner": "catalog_ops",
+        },
     )
     state = product["state"]
     schema = product_catalog_pim_define_attribute_schema(
         state,
-        {"schema_id": "schema_100", "tenant": "tenant_alpha", "family_id": "fam_100", "attributes": {"color": "string", "material": "string", "weight": "number"}},
+        {
+            "schema_id": "schema_100",
+            "tenant": "tenant_alpha",
+            "family_id": "fam_100",
+            "attributes": {"color": "string", "material": "string", "weight": "number"},
+        },
     )
     state = schema["state"]
     state = product_catalog_pim_set_product_attribute(state, "prod_100", "color", "blue")["state"]
@@ -157,22 +287,53 @@ def product_catalog_pim_runtime_smoke() -> dict:
     state = product_catalog_pim_set_product_attribute(state, "prod_100", "weight", 12.5)["state"]
     content = product_catalog_pim_add_localized_content(
         state,
-        {"content_id": "content_100", "tenant": "tenant_alpha", "product_id": "prod_100", "locale": "en-US", "title": "Hydraulic Kit", "description": "Complete hydraulic maintenance kit", "seo_slug": "hydraulic-kit"},
+        {
+            "content_id": "content_100",
+            "tenant": "tenant_alpha",
+            "product_id": "prod_100",
+            "locale": "en-US",
+            "title": "Hydraulic Kit",
+            "description": "Complete hydraulic maintenance kit",
+            "seo_slug": "hydraulic-kit",
+        },
     )
     state = content["state"]
     media = product_catalog_pim_attach_product_media(
         state,
-        {"media_id": "media_100", "tenant": "tenant_alpha", "product_id": "prod_100", "role": "hero", "asset_ref": "dam://asset-100", "rights_status": "approved", "alt_text": "Hydraulic kit hero image"},
+        {
+            "media_id": "media_100",
+            "tenant": "tenant_alpha",
+            "product_id": "prod_100",
+            "role": "hero",
+            "asset_ref": "dam://asset-100",
+            "rights_status": "approved",
+            "alt_text": "Hydraulic kit hero image",
+        },
     )
     state = media["state"]
     price = product_catalog_pim_add_price_metadata(
         state,
-        {"price_id": "price_100", "tenant": "tenant_alpha", "product_id": "prod_100", "currency": "USD", "list_price": 250, "cost": 180, "effective_from": "2026-05-26"},
+        {
+            "price_id": "price_100",
+            "tenant": "tenant_alpha",
+            "product_id": "prod_100",
+            "currency": "USD",
+            "list_price": 250,
+            "cost": 180,
+            "effective_from": "2026-05-26",
+        },
     )
     state = price["state"]
     compliance = product_catalog_pim_add_compliance_claim(
         state,
-        {"claim_id": "claim_100", "tenant": "tenant_alpha", "product_id": "prod_100", "region": "US", "claim_type": "safety", "status": "approved"},
+        {
+            "claim_id": "claim_100",
+            "tenant": "tenant_alpha",
+            "product_id": "prod_100",
+            "region": "US",
+            "claim_type": "safety",
+            "status": "approved",
+        },
     )
     state = compliance["state"]
     publication = product_catalog_pim_publish_product(
@@ -183,16 +344,79 @@ def product_catalog_pim_runtime_smoke() -> dict:
         published_by="catalog_mgr",
     )
     state = publication["state"]
+    received = product_catalog_pim_receive_event(
+        state,
+        {
+            "event_id": "evt_media_100",
+            "event_type": "MediaAssetApproved",
+            "idempotency_key": "product-media:100",
+            "payload": {"tenant": "tenant_alpha", "product_id": "prod_100", "asset_ref": "dam://asset-100"},
+        },
+    )
+    state = received["state"]
+    duplicate = product_catalog_pim_receive_event(
+        state,
+        {
+            "event_id": "evt_media_100",
+            "event_type": "MediaAssetApproved",
+            "idempotency_key": "product-media:100",
+            "payload": {"tenant": "tenant_alpha", "product_id": "prod_100", "asset_ref": "dam://asset-100"},
+        },
+    )
+    failed = product_catalog_pim_receive_event(
+        state,
+        {
+            "event_id": "evt_unknown_100",
+            "event_type": "UnsupportedCatalogEvent",
+            "idempotency_key": "bad-catalog:100",
+            "payload": {"tenant": "tenant_alpha"},
+        },
+        simulate_failure=True,
+    )
+    failed = product_catalog_pim_receive_event(
+        failed["state"],
+        {
+            "event_id": "evt_unknown_100",
+            "event_type": "UnsupportedCatalogEvent",
+            "idempotency_key": "bad-catalog:100",
+            "payload": {"tenant": "tenant_alpha"},
+        },
+        simulate_failure=True,
+    )
+    failed = product_catalog_pim_receive_event(
+        failed["state"],
+        {
+            "event_id": "evt_unknown_100",
+            "event_type": "UnsupportedCatalogEvent",
+            "idempotency_key": "bad-catalog:100",
+            "payload": {"tenant": "tenant_alpha"},
+        },
+        simulate_failure=True,
+    )
+    state = failed["state"]
     simulation = product_catalog_pim_simulate_publication(state, "prod_100", proposed_channels=("web",))
     forecast = product_catalog_pim_forecast_sellability((0.6, 0.7, 0.85), catalog_size=100)
     parsed = product_catalog_pim_parse_product_instruction("product prod_777 channel web locale en-US action publish")
     risk = product_catalog_pim_score_readiness_risk({"completeness": 0.2, "compliance": 0.1, "content": 0.2, "price": 0.1})
     recommendation = product_catalog_pim_recommend_exception_resolution("missing_media")
-    route = product_catalog_pim_route_publication({"event_id": "pub_route"}, rails=({"route": "channel_api", "available": False, "latency": 2}, {"route": "outbox", "available": True, "latency": 4}))
+    route = product_catalog_pim_route_publication(
+        {"event_id": "pub_route"},
+        rails=({"route": "channel_api", "available": False, "latency": 2}, {"route": "outbox", "available": True, "latency": 4}),
+    )
     proof = product_catalog_pim_generate_publication_proof(state, "prod_100", disclosure=("product_id", "sku", "lifecycle_state"))
     screening = product_catalog_pim_screen_policy(state, "prod_100", restricted_regions=("restricted",))
     controls = product_catalog_pim_run_control_tests(state)
     api = product_catalog_pim_build_api_contract()
+    permissions = product_catalog_pim_permissions_contract()
+    boundary = product_catalog_pim_verify_owned_table_boundary(
+        (
+            "product",
+            "catalog_publication",
+            "MediaAssetApproved",
+            "product_catalog_pim_appgen_inbox_event",
+            "commerce_catalog_projection",
+        )
+    )
     federation = product_catalog_pim_federate_product_view(state, "prod_100", systems=("commerce", "inventory", "tax", "content", "search"))
     identity = product_catalog_pim_verify_product_identity({"did": "did:appgen:product-100", "issuer": "trusted_registry", "status": "active"})
     resilience = product_catalog_pim_run_resilience_drill(state, "channel_api_timeout")
@@ -221,7 +445,7 @@ def product_catalog_pim_runtime_smoke() -> dict:
         {"id": "immutable_catalog_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_product_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_catalog_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "ProductPublished" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and "ProductPublished" in api["events"]["emits"] and permissions["action_permissions"]["receive_event"] == "product_catalog_pim.event"},
         {"id": "cross_system_product_federation", "ok": federation["ok"] and "commerce" in federation["systems"]},
         {"id": "commerce_inventory_tax_content_integration", "ok": publication["handoffs"] == ("commerce_catalog_projection", "search_index_projection", "forecast_signal_projection", "pricing_readiness_projection")},
         {"id": "decentralized_product_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -232,7 +456,7 @@ def product_catalog_pim_runtime_smoke() -> dict:
         {"id": "mechanism_design_channel_allocation", "ok": allocation["ok"] and allocation["allocations"][0]["products"] > allocation["allocations"][1]["products"]},
         {"id": "information_theoretic_content_anomaly_detection", "ok": anomaly["ok"] and anomaly["entropy"] >= 0},
         {"id": "temporal_sellability_exposure_stochastic_modeling", "ok": stochastic["ok"] and stochastic["tail_risk"] > 0},
-        {"id": "distributed_systems_engineering", "ok": state["outbox"][-1]["idempotency_key"].startswith("product_catalog_pim:ProductPublished")},
+        {"id": "distributed_systems_engineering", "ok": duplicate["handler"]["status"] == "duplicate" and failed["handler"]["status"] == "dead_letter" and boundary["ok"]},
         {"id": "probabilistic_ml_product_readiness", "ok": model["ok"] and model["metadata"]["auc"] >= 0.9},
         {"id": "cryptographic_engineering", "ok": proof["hash"] and crypto["epoch"] == 2},
         {"id": "mathematical_optimization", "ok": optimization["objective_score"] > 0 and allocation["clearing_priority"] > 0},
@@ -246,6 +470,11 @@ def product_catalog_pim_empty_state() -> dict:
     return {
         "events": (),
         "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
         "families": {},
         "products": {},
         "schemas": {},
@@ -259,57 +488,148 @@ def product_catalog_pim_empty_state() -> dict:
         "parameters": {},
         "configuration": {},
         "schema_extensions": {},
+        "tax_calculation_projections": {},
+        "media_asset_projections": {},
+        "inventory_position_projections": {},
+        "price_promotion_projections": {},
+        "search_index_projections": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
     }
 
 
 def product_catalog_pim_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in PRODUCT_CATALOG_PIM_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError("Product Catalog PIM uses the AppGen-X event contract and does not allow stream-engine or user-selectable eventing fields")
+    unknown = tuple(sorted(field for field in configuration if field not in PRODUCT_CATALOG_PIM_SUPPORTED_CONFIGURATION_FIELDS))
+    if unknown:
+        raise ValueError(f"Unsupported Product Catalog PIM configuration fields: {unknown}")
+    missing = tuple(sorted(field for field in PRODUCT_CATALOG_PIM_REQUIRED_CONFIGURATION_FIELDS if field not in configuration))
+    if missing:
+        raise ValueError(f"Missing required Product Catalog PIM configuration fields: {missing}")
+    if configuration.get("database_backend") not in PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("Product Catalog PIM supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Product Catalog PIM requires an AppGen-X event topic")
+    if configuration.get("event_topic") != PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Product Catalog PIM event topic is fixed to {PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC}")
+    retry_limit = int(configuration.get("retry_limit", 0))
+    if retry_limit < 1:
+        raise ValueError("Product Catalog PIM retry_limit must be at least 1")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        "supported_fields": PRODUCT_CATALOG_PIM_SUPPORTED_CONFIGURATION_FIELDS,
+        "stream_engine_picker_visible": False,
+        "user_eventing_choice": False,
+        "user_selectable_event_contract": False,
+        "configuration_hash": _digest({field: configuration[field] for field in PRODUCT_CATALOG_PIM_SUPPORTED_CONFIGURATION_FIELDS if field in configuration}),
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def product_catalog_pim_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
-    allowed = {
-        "minimum_completeness",
-        "minimum_margin",
-        "max_missing_required_attributes",
-        "content_quality_threshold",
-        "publication_batch_size",
-        "retention_days",
-        "workbench_limit",
-    }
-    if name not in allowed:
+    if name not in PRODUCT_CATALOG_PIM_SUPPORTED_PARAMETER_NAMES:
         raise ValueError(f"Unsupported Product Catalog PIM parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def product_catalog_pim_register_rule(state: dict, rule: dict) -> dict:
-    required = {"rule_id", "tenant", "status"}
-    missing = tuple(sorted(field for field in required if field not in rule))
+    missing = tuple(sorted(field for field in PRODUCT_CATALOG_PIM_REQUIRED_RULE_FIELDS if field not in rule))
     if missing:
         raise ValueError(f"Missing required Product Catalog PIM rule fields: {missing}")
     scope = rule.get("scope") or rule.get("rule_type")
-    if not scope:
-        raise ValueError("Product Catalog PIM rule requires scope or rule_type")
-    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
+    compiled_hash = _digest(rule)
+    enriched = {
+        **rule,
+        "scope": scope,
+        "enabled": rule["status"] == "active",
+        "compiled_hash": compiled_hash,
+        "compile_evidence": {
+            "format": "appgen.product-catalog-pim-rule-compile-evidence.v1",
+            "rule_id": rule["rule_id"],
+            "scope": scope,
+            "compiled_hash": compiled_hash,
+            "required_fields": PRODUCT_CATALOG_PIM_REQUIRED_RULE_FIELDS,
+        },
+    }
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
 def product_catalog_pim_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in PRODUCT_CATALOG_PIM_OWNED_TABLES:
+        raise ValueError(f"Product Catalog PIM schema extensions must target owned tables: {PRODUCT_CATALOG_PIM_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    merged = {**state["schema_extensions"].get(table, {}), **dict(fields)}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}},
+        "schema_extension": {"table": table, "fields": dict(fields)},
+        "target": table,
+        "fields": merged,
+    }
+
+
+def product_catalog_pim_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    processed = handled.get(key)
+    if processed and processed.get("status") == "processed":
+        duplicate = {**processed, "status": "duplicate"}
+        return {"ok": True, "duplicate": True, "state": state, "handler": duplicate}
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {
+        **state,
+        "inbox": (*state.get("inbox", ()), inbox_entry),
+        "dead_letters": tuple(state.get("dead_letters", ())),
+        "dead_letter": tuple(state.get("dead_letter", ())),
+        "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "handled_events": dict(handled),
+        "tax_calculation_projections": dict(state.get("tax_calculation_projections", {})),
+        "media_asset_projections": dict(state.get("media_asset_projections", {})),
+        "inventory_position_projections": dict(state.get("inventory_position_projections", {})),
+        "price_promotion_projections": dict(state.get("price_promotion_projections", {})),
+        "search_index_projections": dict(state.get("search_index_projections", {})),
+    }
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state["retry_evidence"], evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_product_catalog_event"}
+            next_state["dead_letters"] = (*next_state["dead_letters"], dead)
+            next_state["dead_letter"] = (*next_state["dead_letter"], dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    projection = {"event_id": event_id, "event_type": event_type, **payload}
+    if event_type == "TaxCalculated":
+        next_state["tax_calculation_projections"][payload.get("product_id", event_id)] = projection
+    elif event_type == "MediaAssetApproved":
+        next_state["media_asset_projections"][payload.get("product_id", event_id)] = projection
+    elif event_type == "InventoryPositionUpdated":
+        next_state["inventory_position_projections"][payload.get("product_id", event_id)] = projection
+    elif event_type == "PricePromotionApproved":
+        next_state["price_promotion_projections"][payload.get("product_id", event_id)] = projection
+    elif event_type == "SearchIndexRequested":
+        next_state["search_index_projections"][payload.get("product_id", event_id)] = projection
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler, "projection": projection}
 
 
 def product_catalog_pim_create_product_family(state: dict, family: dict) -> dict:
@@ -321,7 +641,12 @@ def product_catalog_pim_create_product_family(state: dict, family: dict) -> dict
 
 def product_catalog_pim_register_product(state: dict, product: dict) -> dict:
     family = state["families"][product["family_id"]]
-    enriched = {**product, "taxonomy": family["taxonomy"], "lifecycle_state": product.get("lifecycle_state", "draft"), "graph_degree": len(tuple(value for value in (product["sku"], product["name"], product["family_id"], family["taxonomy"]) if value))}
+    enriched = {
+        **product,
+        "taxonomy": family["taxonomy"],
+        "lifecycle_state": product.get("lifecycle_state", "draft"),
+        "graph_degree": len(tuple(value for value in (product["sku"], product["name"], product["family_id"], family["taxonomy"]) if value)),
+    }
     next_state = {**state, "products": {**state["products"], product["product_id"]: enriched}}
     next_state = _append_event(next_state, "ProductRegistered", {"tenant": product["tenant"], "product_id": product["product_id"], "sku": product["sku"]})
     return {"ok": True, "state": next_state, "product": enriched}
@@ -336,7 +661,7 @@ def product_catalog_pim_define_attribute_schema(state: dict, schema: dict) -> di
 
 def product_catalog_pim_set_product_attribute(state: dict, product_id: str, name: str, value: object) -> dict:
     product = state["products"][product_id]
-    schema = next(schema for schema in state["schemas"].values() if schema["family_id"] == product["family_id"])
+    schema = next(schema_item for schema_item in state["schemas"].values() if schema_item["family_id"] == product["family_id"])
     ok = name in schema["attributes"]
     product_attributes = {**state["attributes"].get(product_id, {}), name: value}
     return {"ok": ok, "state": {**state, "attributes": {**state["attributes"], product_id: product_attributes}}, "attribute": {"product_id": product_id, "name": name, "value": value}}
@@ -386,9 +711,24 @@ def product_catalog_pim_publish_product(state: dict, product_id: str, *, channel
     compliance_clear = any(claim["product_id"] == product_id and claim["screening_status"] == "clear" for claim in state["compliance"].values())
     completeness = sum((required_attrs <= set(attrs), required_media <= media_roles, set(locales) <= content_locales, price_ready, compliance_clear)) / 5
     ok = completeness >= float(state["parameters"].get("minimum_completeness", 0.8)) and set(channels) <= set(rule["allowed_channels"])
-    updated = {**product, "lifecycle_state": "published" if ok else "blocked", "published_by": published_by, "channels": channels, "locales": locales, "completeness": completeness}
+    updated = {
+        **product,
+        "lifecycle_state": "published" if ok else "blocked",
+        "published_by": published_by,
+        "channels": channels,
+        "locales": locales,
+        "completeness": completeness,
+    }
     publication_id = f"publication_{len(state['publications']) + 1:06d}"
-    publication = {"publication_id": publication_id, "tenant": product["tenant"], "product_id": product_id, "channels": channels, "locales": locales, "readiness_score": round(completeness, 4), "status": "published" if ok else "blocked"}
+    publication = {
+        "publication_id": publication_id,
+        "tenant": product["tenant"],
+        "product_id": product_id,
+        "channels": channels,
+        "locales": locales,
+        "readiness_score": round(completeness, 4),
+        "status": "published" if ok else "blocked",
+    }
     handoffs = ("commerce_catalog_projection", "search_index_projection", "forecast_signal_projection", "pricing_readiness_projection")
     next_state = {**state, "products": {**state["products"], product_id: updated}, "publications": {**state["publications"], publication_id: publication}}
     next_state = _append_event(next_state, "ProductPublished", {"tenant": product["tenant"], "product_id": product_id, "channels": channels, "handoffs": handoffs})
@@ -443,8 +783,17 @@ def product_catalog_pim_screen_policy(state: dict, product_id: str, *, restricte
 
 def product_catalog_pim_run_control_tests(state: dict) -> dict:
     gaps = []
-    if not state["configuration"].get("ok"):
+    configuration = state["configuration"]
+    if not configuration.get("ok"):
         gaps.append("invalid_configuration")
+    if configuration.get("database_backend") not in PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS:
+        gaps.append("invalid_database_backend")
+    if configuration.get("event_contract") != "AppGen-X":
+        gaps.append("invalid_event_contract")
+    if configuration.get("stream_engine_picker_visible"):
+        gaps.append("stream_engine_picker_exposed")
+    if configuration.get("user_eventing_choice"):
+        gaps.append("user_eventing_choice_exposed")
     if not state["rules"]:
         gaps.append("missing_rules")
     if not state["parameters"]:
@@ -458,18 +807,146 @@ def product_catalog_pim_run_control_tests(state: dict) -> dict:
 
 
 def product_catalog_pim_build_api_contract() -> dict:
+    permissions = product_catalog_pim_permissions_contract()
     return {
         "ok": True,
-        "routes": ("POST /products", "POST /product-families", "POST /product-variants", "POST /attribute-schemas", "POST /product-attributes", "POST /product-media", "POST /product-locale-content", "POST /product-prices", "POST /product-compliance-claims", "POST /catalog-publications", "GET /product-read-models", "POST /product-rules", "POST /product-parameters", "POST /product-configuration"),
-        "events": {"emits": ("ProductClassified", "ProductEnriched", "ProductPublished", "ProductPriceReady", "ForecastUpdated"), "consumes": ("TaxCalculated", "MediaAssetApproved", "InventoryPositionUpdated", "PricePromotionApproved")},
-        "permissions": ("product_catalog_pim.read", "product_catalog_pim.product", "product_catalog_pim.enrich", "product_catalog_pim.publish", "product_catalog_pim.configure", "product_catalog_pim.audit"),
-        "configuration": ("PRODUCT_CATALOG_PIM_DATABASE_URL", "PRODUCT_CATALOG_PIM_EVENT_TOPIC", "PRODUCT_CATALOG_PIM_RETRY_LIMIT", "PRODUCT_CATALOG_PIM_DEFAULT_TIMEZONE"),
+        "format": "appgen.product-catalog-pim-api-contract.v1",
+        "routes": (
+            {"route": "POST /product-families", "command": "create_product_family", "owned_tables": ("product_family",), "emits": ("ProductClassified",), "requires_permission": "product_catalog_pim.product", "idempotency_key": "family_id"},
+            {"route": "POST /products", "command": "register_product", "owned_tables": ("product",), "emits": ("ProductRegistered",), "requires_permission": "product_catalog_pim.product", "idempotency_key": "product_id"},
+            {"route": "POST /attribute-schemas", "command": "define_attribute_schema", "owned_tables": ("product_attribute_schema",), "emits": ("AttributeSchemaDefined",), "requires_permission": "product_catalog_pim.product", "idempotency_key": "schema_id"},
+            {"route": "POST /product-attributes", "command": "set_product_attribute", "owned_tables": ("product_attribute",), "emits": (), "requires_permission": "product_catalog_pim.enrich", "idempotency_key": "product_id:name"},
+            {"route": "POST /product-media", "command": "attach_product_media", "owned_tables": ("product_media",), "emits": ("ProductMediaAttached",), "requires_permission": "product_catalog_pim.enrich", "idempotency_key": "media_id"},
+            {"route": "POST /product-locale-content", "command": "add_localized_content", "owned_tables": ("product_locale_content",), "emits": ("ProductEnriched",), "requires_permission": "product_catalog_pim.enrich", "idempotency_key": "content_id"},
+            {"route": "POST /product-prices", "command": "add_price_metadata", "owned_tables": ("product_price",), "emits": ("ProductPriceReady",), "requires_permission": "product_catalog_pim.publish", "idempotency_key": "price_id"},
+            {"route": "POST /product-compliance-claims", "command": "add_compliance_claim", "owned_tables": ("product_compliance_claim",), "emits": ("ProductComplianceClaimed",), "requires_permission": "product_catalog_pim.enrich", "idempotency_key": "claim_id"},
+            {"route": "POST /catalog-publications", "command": "publish_product", "owned_tables": ("catalog_publication", "catalog_channel_projection"), "emits": ("ProductPublished",), "requires_permission": "product_catalog_pim.publish", "idempotency_key": "product_id:channels:locales"},
+            {"route": "POST /product-catalog/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES, "requires_permission": "product_catalog_pim.event", "idempotency_key": "event_id"},
+            {"route": "GET /product-catalog/workbench", "query": "build_workbench_view", "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES, "requires_permission": "product_catalog_pim.audit"},
+        ),
+        "declared_catalog_routes": (
+            "POST /products",
+            "POST /product-families",
+            "POST /attribute-schemas",
+            "POST /catalog-publications",
+            "GET /product-catalog/workbench",
+        ),
+        "events": {"emits": PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES, "consumes": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES},
+        "emits": PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES,
+        "consumes": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(permissions["permissions"])),
+        "database_backends": PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        "shared_table_access": False,
+        "configuration": (
+            "PRODUCT_CATALOG_PIM_DATABASE_URL",
+            "PRODUCT_CATALOG_PIM_EVENT_TOPIC",
+            "PRODUCT_CATALOG_PIM_RETRY_LIMIT",
+            "PRODUCT_CATALOG_PIM_DEFAULT_TIMEZONE",
+        ),
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "user_eventing_choice": False,
+    }
+
+
+def product_catalog_pim_permissions_contract() -> dict:
+    return {
+        "format": "appgen.product-catalog-pim-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "product_catalog_pim.read",
+            "product_catalog_pim.product",
+            "product_catalog_pim.enrich",
+            "product_catalog_pim.publish",
+            "product_catalog_pim.configure",
+            "product_catalog_pim.event",
+            "product_catalog_pim.audit",
+        ),
+        "action_permissions": {
+            "create_product_family": "product_catalog_pim.product",
+            "register_product": "product_catalog_pim.product",
+            "define_attribute_schema": "product_catalog_pim.product",
+            "set_product_attribute": "product_catalog_pim.enrich",
+            "add_localized_content": "product_catalog_pim.enrich",
+            "attach_product_media": "product_catalog_pim.enrich",
+            "add_price_metadata": "product_catalog_pim.publish",
+            "add_compliance_claim": "product_catalog_pim.enrich",
+            "publish_product": "product_catalog_pim.publish",
+            "receive_event": "product_catalog_pim.event",
+            "register_rule": "product_catalog_pim.configure",
+            "register_schema_extension": "product_catalog_pim.configure",
+            "set_parameter": "product_catalog_pim.configure",
+            "configure_runtime": "product_catalog_pim.configure",
+            "run_control_tests": "product_catalog_pim.audit",
+            "build_workbench_view": "product_catalog_pim.audit",
+            "verify_owned_table_boundary": "product_catalog_pim.audit",
+        },
+    }
+
+
+def product_catalog_pim_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        *PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
+        *PRODUCT_CATALOG_PIM_RUNTIME_TABLES,
+        *PRODUCT_CATALOG_PIM_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(reference for reference in references if reference not in allowed_set and not str(reference).startswith("product_catalog_pim_"))
+    return {
+        "format": "appgen.product-catalog-pim-boundary.v1",
+        "ok": not violations,
+        "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "GET /commerce/catalog-products/{id}",
+                "GET /inventory/product-positions/{id}",
+                "GET /tax/product-compliance/{id}",
+                "POST /search/catalog-projections",
+                "POST /pricing/product-readiness",
+            ),
+            "events": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "commerce_catalog_projection",
+                "search_index_projection",
+                "forecast_signal_projection",
+                "pricing_readiness_projection",
+                "tax_calculation_projection",
+                "media_asset_projection",
+                "inventory_position_projection",
+                "price_promotion_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
+
+
+def product_catalog_pim_binding_evidence(state: dict) -> dict:
+    permissions = product_catalog_pim_permissions_contract()
+    return {
+        "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        "runtime_tables": {
+            "outbox": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[0],
+            "inbox": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[1],
+            "dead_letter": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[2],
+        },
+        "eventing": {
+            "event_contract": state.get("configuration", {}).get("event_contract"),
+            "event_topic": state.get("configuration", {}).get("event_topic"),
+            "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+            "user_eventing_choice": state.get("configuration", {}).get("user_eventing_choice"),
+        },
+        "rbac": permissions["action_permissions"],
+        "shared_table_access": False,
     }
 
 
 def product_catalog_pim_federate_product_view(state: dict, product_id: str, *, systems: tuple[str, ...]) -> dict:
     product = state["products"][product_id]
-    return {"ok": True, "product_id": product_id, "systems": systems, "projection": {"sku": product["sku"], "state": product["lifecycle_state"], "completeness": product.get("completeness", 0)}}
+    return {"ok": True, "product_id": product_id, "systems": systems, "projection": {"sku": product["sku"], "state": product["lifecycle_state"], "completeness": product.get("completeness", 0)}, "boundary": "read_only_projection"}
 
 
 def product_catalog_pim_verify_product_identity(identity: dict) -> dict:
@@ -527,6 +1004,7 @@ def product_catalog_pim_build_workbench_view(state: dict, *, tenant: str) -> dic
     media = tuple(item for item in state["media"].values() if item["tenant"] == tenant)
     completeness = tuple(product.get("completeness", 0) for product in products)
     return {
+        "format": "appgen.product-catalog-pim-workbench-view.v1",
         "ok": True,
         "tenant": tenant,
         "product_count": len(products),
@@ -538,6 +1016,9 @@ def product_catalog_pim_build_workbench_view(state: dict, *, tenant: str) -> dic
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": product_catalog_pim_binding_evidence(state),
     }
 
 
@@ -550,7 +1031,7 @@ def _append_event(state: dict, event_type: str, payload: dict) -> dict:
     sequence = len(state["events"]) + 1
     event = {"event_id": f"product_evt_{sequence:06d}", "event_type": event_type, "payload": payload, "previous_hash": previous_hash}
     event = {**event, "hash": _digest(event)}
-    outbox_event = {"event_type": event_type, "payload": payload, "idempotency_key": f"product_catalog_pim:{event_type}:{event['event_id']}"}
+    outbox_event = {"event_id": event["event_id"], "event_type": event_type, "payload": payload, "idempotency_key": f"product_catalog_pim:{event_type}:{event['event_id']}", "status": "pending"}
     return {**state, "events": (*state["events"], event), "outbox": (*state["outbox"], outbox_event)}
 
 

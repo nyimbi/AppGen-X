@@ -1227,6 +1227,18 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and tests now fail unless each module proves side-effect-free query,
   mutation, audit, export, and release steps before data-access readiness is
   trusted.
+- Current commerce and customer PBC boundary pass hardens `customer_360`,
+  `product_catalog_pim`, `global_inventory_visibility`,
+  `payment_orchestration`, and `returns_reverse_logistics` with
+  package-local specifications, AppGen-X-only event contracts, PostgreSQL/
+  MySQL/MariaDB backend limits, owned-table metadata, central contract exports,
+  schema-extension ownership gates, idempotent inbox handlers,
+  retry/dead-letter evidence, API and permissions contracts, UI binding
+  evidence, and own-table boundary tests. Focused tests pass together
+  (`19 passed`), all PBC packages now expose backend allowlists and
+  owned-table boundary verifiers, and implementation release, generation
+  smoke, capability, full implementation release, and catalog release audits
+  all return true for the implemented PBC set. Commit: pending this slice.
 
 ## Open Completion Areas
 

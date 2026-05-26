@@ -57,7 +57,28 @@ PAYMENT_ORCHESTRATION_STANDARD_FEATURE_KEYS = (
     "seed_data",
     "workbench",
 )
+PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC = "appgen.payment.events"
 PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+PAYMENT_ORCHESTRATION_OWNED_TABLES = (
+    "payment_gateway",
+    "payment_token",
+    "payment_intent",
+    "gateway_route",
+    "fraud_check",
+    "payment_capture",
+    "payment_refund",
+    "payment_rule",
+    "payment_parameter",
+    "payment_configuration",
+)
+PAYMENT_ORCHESTRATION_EMITTED_EVENT_TYPES = (
+    "PaymentIntentCreated",
+    "FraudCheckRequested",
+    "PaymentCaptured",
+    "PaymentRefunded",
+    "PaymentVoided",
+    "PaymentFailed",
+)
 PAYMENT_ORCHESTRATION_SUPPORTED_CONFIGURATION_FIELDS = (
     "database_backend",
     "event_topic",
@@ -94,6 +115,21 @@ PAYMENT_ORCHESTRATION_REQUIRED_RULE_FIELDS = (
     "status",
 )
 PAYMENT_ORCHESTRATION_CONSUMED_EVENT_TYPES = ("CheckoutCompleted", "FraudRiskScored")
+_PAYMENT_ORCHESTRATION_RUNTIME_TABLES = (
+    "payment_orchestration_appgen_outbox_event",
+    "payment_orchestration_appgen_inbox_event",
+    "payment_orchestration_dead_letter_event",
+)
+_PAYMENT_ORCHESTRATION_ALLOWED_DEPENDENCIES = (
+    "checkout_completion_projection",
+    "fraud_risk_projection",
+    "ledger_cash_projection",
+    "billing_invoice_projection",
+    "GET /checkout/sessions/{id}",
+    "GET /fraud/cases/{id}",
+    "POST /ledger/payment-events",
+    "POST /audit/payment-events",
+)
 _CONFIG_SEQUENCE_FIELDS = {
     "supported_currencies",
     "supported_regions",
@@ -126,6 +162,8 @@ def payment_orchestration_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "payment_orchestration",
         "implementation_directory": "src/pyAppGen/pbcs/payment_orchestration",
+        "owned_tables": PAYMENT_ORCHESTRATION_OWNED_TABLES,
+        "allowed_database_backends": PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,
         "capabilities": PAYMENT_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS,
         "standard_features": PAYMENT_ORCHESTRATION_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -141,6 +179,9 @@ def payment_orchestration_runtime_capabilities() -> dict:
             "refund_payment",
             "void_payment",
             "receive_event",
+            "build_api_contract",
+            "permissions_contract",
+            "verify_owned_table_boundary",
             "build_workbench_view",
         ),
         "smoke": smoke,
@@ -301,6 +342,15 @@ def payment_orchestration_runtime_smoke() -> dict:
     screening = payment_orchestration_screen_policy(state, "pi_100", blocked_gateways=("gateway_blocked",), risk_ceiling=0.8)
     controls = payment_orchestration_run_control_tests(state)
     api = payment_orchestration_build_api_contract()
+    permissions = payment_orchestration_permissions_contract()
+    boundary = payment_orchestration_verify_owned_table_boundary(
+        PAYMENT_ORCHESTRATION_OWNED_TABLES
+        + _PAYMENT_ORCHESTRATION_RUNTIME_TABLES
+        + (
+            "checkout_completion_projection",
+            "POST /ledger/payment-events",
+        )
+    )
     federation = payment_orchestration_federate_payment_view(state, "pi_100", systems=("checkout", "billing", "ledger", "fraud"))
     resilience = payment_orchestration_run_resilience_drill(state, "gateway_timeout")
     crypto = payment_orchestration_rotate_crypto_epoch(state, "dilithium3_simulated")
@@ -336,8 +386,8 @@ def payment_orchestration_runtime_smoke() -> dict:
         {"id": "payment_anomaly_detection", "ok": anomaly["ok"] and anomaly["entropy"] >= 0},
         {"id": "stochastic_payment_exposure_modeling", "ok": stochastic["ok"] and stochastic["tail_risk"] > 0},
         {"id": "governed_ml_model_evidence", "ok": model["governance"]["regulated"] and model["governance"]["explainability_required"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "PaymentCaptured" in api["events"]["emits"]},
-        {"id": "distributed_systems_engineering", "ok": state["outbox"][-1]["idempotency_key"].startswith("payment_orchestration:PaymentRefunded")},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and "PaymentCaptured" in api["events"]["emits"] and permissions["ok"]},
+        {"id": "distributed_systems_engineering", "ok": state["outbox"][-1]["idempotency_key"].startswith("payment_orchestration:PaymentRefunded") and boundary["ok"]},
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
     return {"format": "appgen.payment-orchestration-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "blocking_gaps": blocking_gaps}
@@ -376,13 +426,14 @@ def payment_orchestration_configure_runtime(state: dict, configuration: dict) ->
     if configuration["database_backend"] not in PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("Payment Orchestration supports only PostgreSQL, MySQL, or MariaDB backends")
     event_topic = str(configuration.get("event_topic", "")).strip()
-    if not event_topic or not event_topic.startswith("appgen."):
-        raise ValueError("Payment Orchestration requires an AppGen-X event topic")
+    if event_topic != PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Payment Orchestration requires AppGen-X event topic {PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC}")
     configured = {
         **_normalize_fields(configuration, _CONFIG_SEQUENCE_FIELDS),
         "ok": True,
         "event_contract": "appgen_event_contract",
         "allowed_database_backends": PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": PAYMENT_ORCHESTRATION_OWNED_TABLES,
         "supported_configuration_fields": PAYMENT_ORCHESTRATION_SUPPORTED_CONFIGURATION_FIELDS,
         "stream_engine_picker_visible": False,
         "user_selectable_event_contract": False,
@@ -429,6 +480,8 @@ def payment_orchestration_register_rule(state: dict, rule: dict) -> dict:
 
 
 def payment_orchestration_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in PAYMENT_ORCHESTRATION_OWNED_TABLES:
+        return {"ok": False, "error": "table_not_owned", "table": table, "owned_tables": PAYMENT_ORCHESTRATION_OWNED_TABLES, "state": state}
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
@@ -663,7 +716,63 @@ def payment_orchestration_run_control_tests(state: dict) -> dict:
 
 
 def payment_orchestration_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /payment-intents", "POST /gateway-routes", "POST /tokens", "POST /payment-captures", "POST /payment-refunds", "GET /payment-workbench"), "events": {"emits": ("PaymentCaptured", "PaymentFailed", "FraudCheckRequested"), "consumes": PAYMENT_ORCHESTRATION_CONSUMED_EVENT_TYPES}, "permissions": ("payment_orchestration.read", "payment_orchestration.intent", "payment_orchestration.capture", "payment_orchestration.refund", "payment_orchestration.configure", "payment_orchestration.audit")}
+    return {
+        "format": "appgen.payment-orchestration-api-contract.v1",
+        "ok": True,
+        "pbc": "payment_orchestration",
+        "owned_tables": PAYMENT_ORCHESTRATION_OWNED_TABLES,
+        "database_backends": PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,
+        "event_contract": "AppGen-X",
+        "required_event_topic": PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC,
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
+        "routes": ("POST /payment-intents", "POST /gateway-routes", "POST /tokens", "POST /payment-captures", "POST /payment-refunds", "GET /payment-workbench"),
+        "events": {"emits": PAYMENT_ORCHESTRATION_EMITTED_EVENT_TYPES, "consumes": PAYMENT_ORCHESTRATION_CONSUMED_EVENT_TYPES},
+        "permissions": ("payment_orchestration.read", "payment_orchestration.intent", "payment_orchestration.capture", "payment_orchestration.refund", "payment_orchestration.configure", "payment_orchestration.audit"),
+        "dependencies": {
+            "apis": _PAYMENT_ORCHESTRATION_ALLOWED_DEPENDENCIES,
+            "projections": tuple(item for item in _PAYMENT_ORCHESTRATION_ALLOWED_DEPENDENCIES if item.endswith("_projection")),
+        },
+    }
+
+
+def payment_orchestration_permissions_contract() -> dict:
+    return {
+        "format": "appgen.payment-orchestration-permissions.v1",
+        "ok": True,
+        "pbc": "payment_orchestration",
+        "permissions": ("payment_orchestration.read", "payment_orchestration.intent", "payment_orchestration.capture", "payment_orchestration.refund", "payment_orchestration.configure", "payment_orchestration.audit"),
+        "action_permissions": {
+            "create_payment_intent": "payment_orchestration.intent",
+            "route_gateway": "payment_orchestration.intent",
+            "request_fraud_check": "payment_orchestration.intent",
+            "receive_event": "payment_orchestration.intent",
+            "capture_payment": "payment_orchestration.capture",
+            "refund_payment": "payment_orchestration.refund",
+            "void_payment": "payment_orchestration.refund",
+            "register_gateway": "payment_orchestration.configure",
+            "register_rule": "payment_orchestration.configure",
+            "set_parameter": "payment_orchestration.configure",
+            "configure_runtime": "payment_orchestration.configure",
+            "run_control_tests": "payment_orchestration.audit",
+        },
+        "rbac_tables": ("payment_rule", "payment_parameter", "payment_configuration"),
+    }
+
+
+def payment_orchestration_verify_owned_table_boundary(references: tuple[str, ...]) -> dict:
+    allowed = set(PAYMENT_ORCHESTRATION_OWNED_TABLES) | set(_PAYMENT_ORCHESTRATION_RUNTIME_TABLES) | set(_PAYMENT_ORCHESTRATION_ALLOWED_DEPENDENCIES)
+    violations = tuple(sorted(reference for reference in references if reference not in allowed))
+    return {
+        "format": "appgen.payment-orchestration-owned-boundary.v1",
+        "ok": not violations,
+        "pbc": "payment_orchestration",
+        "owned_tables": PAYMENT_ORCHESTRATION_OWNED_TABLES,
+        "runtime_tables": _PAYMENT_ORCHESTRATION_RUNTIME_TABLES,
+        "allowed_dependencies": _PAYMENT_ORCHESTRATION_ALLOWED_DEPENDENCIES,
+        "violations": violations,
+        "shared_table_access": False,
+    }
 
 
 def payment_orchestration_federate_payment_view(state: dict, intent_id: str, *, systems: tuple[str, ...]) -> dict:

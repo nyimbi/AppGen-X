@@ -10,6 +10,8 @@ evidence, and the returns workbench. It integrates with order, payment,
 inventory, ledger, identity, and platform event infrastructure through APIs,
 AppGen-X events, and read-only federated projections.
 
+Implementation entrypoint: `implementation_contract()`.
+
 ## Owned Datastore Boundary
 
 The PBC owns:
@@ -22,11 +24,19 @@ The PBC owns:
   recovery estimate, and inspection notes.
 - `credit_adjustment`: refund/credit amount, disposition-adjusted recovery,
   refund handoff, ledger handoff, and immutable issuance evidence.
-- `returns_reverse_logistics_outbox`, `returns_reverse_logistics_inbox`, and
-  `returns_reverse_logistics_dead_letter`: AppGen-X event contract tables for
+- `returns_reverse_logistics_outbox_event`,
+  `returns_reverse_logistics_inbox_event`, and
+  `returns_reverse_logistics_dead_letter_event`: AppGen-X event contract tables for
   idempotent handlers, retry evidence, and dead-letter triage.
 
 Supported backing stores are PostgreSQL, MySQL, and MariaDB only.
+Schema extensions are accepted only for owned tables and reject non-owned or
+invalid field names.
+
+Boundary validation is package-local and executable through
+`returns_reverse_logistics_verify_owned_table_boundary(references)`. It accepts
+only owned tables plus declared API/event dependencies and rejects shared-table
+access.
 
 ## Standard Table-Stakes Capabilities
 
@@ -79,11 +89,43 @@ Runtime requires the AppGen-X topic `appgen.returns.events`, rejects stream
 engine pickers or user-facing eventing choices, and accepts only PostgreSQL,
 MySQL, or MariaDB backends.
 
+Implementation metadata exports:
+
+- `allowed_database_backends`
+- `owned_tables`
+- `api_contract`
+- `permissions_contract`
+- `shared_table_access = false`
+
 ## Public APIs
 
 - `POST /returns`
 - `POST /labels`
 - `POST /inspection-grades`
+- `POST /credit-adjustments`
+- `POST /returns-reverse-logistics/events/inbox`
+- `GET /returns-reverse-logistics-workbench`
+
+The package-local API contract records owned tables touched per command,
+declared upstream dependencies, required permissions, idempotency keys, fixed
+AppGen-X eventing, and the absence of any stream-engine picker.
+
+## Permissions Contract
+
+Declared permissions:
+
+- `returns_reverse_logistics.authorize`
+- `returns_reverse_logistics.label`
+- `returns_reverse_logistics.inspect`
+- `returns_reverse_logistics.adjust`
+- `returns_reverse_logistics.event.consume`
+- `returns_reverse_logistics.configure`
+- `returns_reverse_logistics.audit`
+
+The action-permission mapping covers runtime configuration, rule and schema
+registration, event consumption, return authorization, label generation,
+inspection capture, credit adjustment, workbench rendering, and boundary
+verification.
 
 ## Events
 
@@ -99,8 +141,8 @@ Consumed events:
 
 Handlers are idempotent by
 `returns_reverse_logistics:{event_type}:{event_id}`, retry at least three
-times, and write exhausted failures to
-`returns_reverse_logistics_dead_letter`.
+times, write retry evidence into package-owned runtime state, and write
+exhausted failures to `returns_reverse_logistics_dead_letter_event`.
 
 ## UI and Workbench
 
@@ -110,7 +152,8 @@ disposition workbench, credit adjustment console, refund/ledger handoff panel,
 fraud signal panel, topology graph, return exception board, rule studio,
 parameter console, configuration panel, and AppGen-X eventing monitor. The
 workbench renders configuration/rule/parameter binding evidence directly from
-package-owned runtime state.
+package-owned runtime state, including owned-table binding evidence for inbox,
+outbox, and dead-letter surfaces.
 
 ## Release Evidence
 

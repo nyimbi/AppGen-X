@@ -2,12 +2,20 @@ import pytest
 
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
+from pyAppGen.pbc import PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbc import PAYMENT_ORCHESTRATION_CONSUMED_EVENT_TYPES
+from pyAppGen.pbc import PAYMENT_ORCHESTRATION_EMITTED_EVENT_TYPES
+from pyAppGen.pbc import PAYMENT_ORCHESTRATION_OWNED_TABLES
+from pyAppGen.pbc import PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbc import payment_orchestration_build_api_contract
 from pyAppGen.pbc import payment_orchestration_build_workbench_view
 from pyAppGen.pbc import payment_orchestration_capture_payment
 from pyAppGen.pbc import payment_orchestration_configure_runtime
 from pyAppGen.pbc import payment_orchestration_create_payment_intent
 from pyAppGen.pbc import payment_orchestration_empty_state
+from pyAppGen.pbc import payment_orchestration_permissions_contract
 from pyAppGen.pbc import payment_orchestration_receive_event
+from pyAppGen.pbc import payment_orchestration_register_schema_extension
 from pyAppGen.pbc import payment_orchestration_register_gateway
 from pyAppGen.pbc import payment_orchestration_register_rule
 from pyAppGen.pbc import payment_orchestration_render_workbench
@@ -18,6 +26,7 @@ from pyAppGen.pbc import payment_orchestration_runtime_smoke
 from pyAppGen.pbc import payment_orchestration_set_parameter
 from pyAppGen.pbc import payment_orchestration_tokenize_payment_method
 from pyAppGen.pbc import payment_orchestration_ui_contract
+from pyAppGen.pbc import payment_orchestration_verify_owned_table_boundary
 from pyAppGen.pbcs.payment_orchestration import PAYMENT_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS
 
 
@@ -38,6 +47,10 @@ def test_payment_orchestration_runtime_executes_standard_and_advanced_capabiliti
 
     contract = pbc_implementation_contract("payment_orchestration")
     assert contract["source_package"]["ok"] is True
+    assert contract["source_package"]["owned_tables"] == PAYMENT_ORCHESTRATION_OWNED_TABLES
+    assert contract["source_package"]["allowed_database_backends"] == PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["api_contract"]["shared_table_access"] is False
+    assert contract["source_package"]["permissions_contract"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "PaymentConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
@@ -206,3 +219,64 @@ def test_payment_orchestration_rejects_invalid_runtime_inputs_and_records_dead_l
     assert failed["ok"] is False
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
+
+
+def test_payment_orchestration_proves_owned_boundary_contracts() -> None:
+    state = payment_orchestration_empty_state()
+    state = payment_orchestration_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "supported_currencies": ("USD",),
+            "supported_regions": ("US",),
+            "supported_methods": ("card",),
+            "settlement_windows": ("day",),
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+
+    assert payment_orchestration_register_schema_extension(
+        state,
+        "payment_intent",
+        {"network_payload": "jsonb"},
+    )["ok"] is True
+    assert payment_orchestration_register_schema_extension(
+        state,
+        "checkout_session",
+        {"checkout_payload": "jsonb"},
+    )["error"] == "table_not_owned"
+    assert payment_orchestration_register_schema_extension(
+        state,
+        "payment_intent",
+        {"InvalidField": "jsonb"},
+    )["error"] == "invalid_extension_field"
+
+    api = payment_orchestration_build_api_contract()
+    assert api["owned_tables"] == PAYMENT_ORCHESTRATION_OWNED_TABLES
+    assert api["database_backends"] == PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
+    assert api["required_event_topic"] == PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC
+    assert api["events"]["emits"] == PAYMENT_ORCHESTRATION_EMITTED_EVENT_TYPES
+    assert api["events"]["consumes"] == PAYMENT_ORCHESTRATION_CONSUMED_EVENT_TYPES
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False
+
+    permissions = payment_orchestration_permissions_contract()
+    assert permissions["action_permissions"]["receive_event"] == "payment_orchestration.intent"
+
+    allowed = payment_orchestration_verify_owned_table_boundary(
+        (
+            "payment_gateway",
+            "payment_intent",
+            "payment_orchestration_appgen_inbox_event",
+            "checkout_completion_projection",
+            "POST /ledger/payment-events",
+        )
+    )
+    assert allowed["ok"] is True
+    rejected = payment_orchestration_verify_owned_table_boundary(("checkout_session", "fraud_case"))
+    assert rejected["ok"] is False
+    assert rejected["violations"] == ("checkout_session", "fraud_case")

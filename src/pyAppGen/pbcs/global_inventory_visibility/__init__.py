@@ -1,6 +1,11 @@
 """Global Inventory Visibility PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
 from .runtime import GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS
 from .runtime import GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS
 from .runtime import global_inventory_visibility_allocate_competing_pools
@@ -16,6 +21,7 @@ from .runtime import global_inventory_visibility_get_global_availability
 from .runtime import global_inventory_visibility_ingest_event
 from .runtime import global_inventory_visibility_optimize_allocation
 from .runtime import global_inventory_visibility_parse_semantic_query
+from .runtime import global_inventory_visibility_permissions_contract
 from .runtime import global_inventory_visibility_project_availability
 from .runtime import global_inventory_visibility_record_availability_snapshot
 from .runtime import global_inventory_visibility_register_governed_model
@@ -37,6 +43,7 @@ from .runtime import global_inventory_visibility_screen_allocation_policy
 from .runtime import global_inventory_visibility_set_parameter
 from .runtime import global_inventory_visibility_simulate_counterfactual_allocation
 from .runtime import global_inventory_visibility_verify_formal_invariants
+from .runtime import global_inventory_visibility_verify_owned_table_boundary
 from .runtime import global_inventory_visibility_verify_supply_identity
 from .ui import GLOBAL_INVENTORY_VISIBILITY_UI_FRAGMENT_KEYS
 from .ui import global_inventory_visibility_render_workbench
@@ -53,11 +60,23 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": global_inventory_visibility_ui_contract(),
+        "api_contract": global_inventory_visibility_build_api_contract(),
+        "permissions_contract": global_inventory_visibility_permissions_contract(),
+        "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+        "allowed_database_backends": GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+        "consumes": GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES,
+        "emits": GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES,
     }
 
 
 __all__ = (
     "GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS",
+    "GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS",
+    "GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES",
+    "GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES",
+    "GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES",
+    "GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC",
     "GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS",
     "GLOBAL_INVENTORY_VISIBILITY_UI_FRAGMENT_KEYS",
     "PBC_KEY",
@@ -74,6 +93,7 @@ __all__ = (
     "global_inventory_visibility_ingest_event",
     "global_inventory_visibility_optimize_allocation",
     "global_inventory_visibility_parse_semantic_query",
+    "global_inventory_visibility_permissions_contract",
     "global_inventory_visibility_project_availability",
     "global_inventory_visibility_record_availability_snapshot",
     "global_inventory_visibility_register_governed_model",
@@ -97,6 +117,7 @@ __all__ = (
     "global_inventory_visibility_simulate_counterfactual_allocation",
     "global_inventory_visibility_ui_contract",
     "global_inventory_visibility_verify_formal_invariants",
+    "global_inventory_visibility_verify_owned_table_boundary",
     "global_inventory_visibility_verify_supply_identity",
     "implementation_contract",
 )

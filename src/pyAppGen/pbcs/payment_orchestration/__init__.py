@@ -1,23 +1,32 @@
 """Payment Orchestration PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import PAYMENT_ORCHESTRATION_CONSUMED_EVENT_TYPES
+from .runtime import PAYMENT_ORCHESTRATION_EMITTED_EVENT_TYPES
+from .runtime import PAYMENT_ORCHESTRATION_OWNED_TABLES
+from .runtime import PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC
 from .runtime import PAYMENT_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import PAYMENT_ORCHESTRATION_STANDARD_FEATURE_KEYS
+from .runtime import payment_orchestration_build_api_contract
 from .runtime import payment_orchestration_build_workbench_view
 from .runtime import payment_orchestration_capture_payment
 from .runtime import payment_orchestration_configure_runtime
 from .runtime import payment_orchestration_create_payment_intent
 from .runtime import payment_orchestration_empty_state
+from .runtime import payment_orchestration_permissions_contract
 from .runtime import payment_orchestration_receive_event
 from .runtime import payment_orchestration_refund_payment
 from .runtime import payment_orchestration_register_gateway
 from .runtime import payment_orchestration_register_rule
+from .runtime import payment_orchestration_register_schema_extension
 from .runtime import payment_orchestration_request_fraud_check
 from .runtime import payment_orchestration_route_gateway
 from .runtime import payment_orchestration_runtime_capabilities
 from .runtime import payment_orchestration_runtime_smoke
 from .runtime import payment_orchestration_set_parameter
 from .runtime import payment_orchestration_tokenize_payment_method
+from .runtime import payment_orchestration_verify_owned_table_boundary
 from .runtime import payment_orchestration_void_payment
 from .ui import PAYMENT_ORCHESTRATION_UI_FRAGMENT_KEYS
 from .ui import payment_orchestration_render_workbench
@@ -34,4 +43,11 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": payment_orchestration_ui_contract(),
+        "api_contract": payment_orchestration_build_api_contract(),
+        "permissions_contract": payment_orchestration_permissions_contract(),
+        "owned_tables": PAYMENT_ORCHESTRATION_OWNED_TABLES,
+        "allowed_database_backends": PAYMENT_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC,
+        "consumes": PAYMENT_ORCHESTRATION_CONSUMED_EVENT_TYPES,
+        "emits": PAYMENT_ORCHESTRATION_EMITTED_EVENT_TYPES,
     }

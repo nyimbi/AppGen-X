@@ -1,22 +1,27 @@
 import pytest
 
-from pyAppGen.pbc import pbc_implementation_contract
-from pyAppGen.pbc import pbc_implementation_release_audit
-from pyAppGen.pbc import returns_reverse_logistics_authorize_return
-from pyAppGen.pbc import returns_reverse_logistics_build_workbench_view
-from pyAppGen.pbc import returns_reverse_logistics_configure_runtime
-from pyAppGen.pbc import returns_reverse_logistics_create_return_label
-from pyAppGen.pbc import returns_reverse_logistics_empty_state
-from pyAppGen.pbc import returns_reverse_logistics_issue_credit_adjustment
-from pyAppGen.pbc import returns_reverse_logistics_receive_event
-from pyAppGen.pbc import returns_reverse_logistics_record_inspection_grade
-from pyAppGen.pbc import returns_reverse_logistics_register_rule
-from pyAppGen.pbc import returns_reverse_logistics_render_workbench
-from pyAppGen.pbc import returns_reverse_logistics_runtime_capabilities
-from pyAppGen.pbc import returns_reverse_logistics_runtime_smoke
-from pyAppGen.pbc import returns_reverse_logistics_set_parameter
-from pyAppGen.pbc import returns_reverse_logistics_ui_contract
+from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
 from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.returns_reverse_logistics import implementation_contract as package_implementation_contract
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_authorize_return
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_build_api_contract
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_build_workbench_view
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_configure_runtime
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_create_return_label
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_empty_state
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_issue_credit_adjustment
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_permissions_contract
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_receive_event
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_record_inspection_grade
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_register_rule
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_register_schema_extension
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_render_workbench
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_runtime_capabilities
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_runtime_smoke
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_set_parameter
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_ui_contract
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_verify_owned_table_boundary
 
 
 def test_returns_reverse_logistics_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -34,12 +39,23 @@ def test_returns_reverse_logistics_runtime_executes_standard_and_advanced_capabi
     assert {check["id"] for check in smoke["checks"]} == set(RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS)
     assert not smoke["blocking_gaps"]
 
-    contract = pbc_implementation_contract("returns_reverse_logistics")
-    assert contract["source_package"]["ok"] is True
-    assert contract["advanced_runtime"]["ok"] is True
-    assert contract["source_package"]["ui_contract"]["ok"] is True
-    assert "ReturnConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
-    assert pbc_implementation_release_audit(("returns_reverse_logistics",))["ok"] is True
+    package_contract = package_implementation_contract()
+    assert package_contract["format"] == "appgen.pbc-source-package.v1"
+    assert package_contract["pbc"] == "returns_reverse_logistics"
+    assert package_contract["advanced_runtime"]["ok"] is True
+    assert package_contract["ui_contract"]["ok"] is True
+    assert "ReturnConfigurationPanel" in package_contract["ui_contract"]["fragments"]
+    assert package_contract["api_contract"]["ok"] is True
+    assert package_contract["permissions_contract"]["ok"] is True
+    assert package_contract["owned_tables"] == RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+    assert package_contract["allowed_database_backends"] == (
+        RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
+    )
+    assert package_contract["shared_table_access"] is False
+    assert package_contract["api_contract"]["event_contract"] == "AppGen-X"
+    assert package_contract["permissions_contract"]["action_permissions"]["receive_event"] == (
+        "returns_reverse_logistics.event.consume"
+    )
 
 
 def test_returns_reverse_logistics_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -79,6 +95,13 @@ def test_returns_reverse_logistics_runtime_applies_rules_parameters_configuratio
     )
     state = rule["state"]
     assert rule["rule"]["compiled_hash"]
+    extension = returns_reverse_logistics_register_schema_extension(
+        state,
+        "return_authorization",
+        {"policy_evidence": "jsonb"},
+    )
+    state = extension["state"]
+    assert extension["schema_extension"]["table"] == "return_authorization"
 
     state = returns_reverse_logistics_receive_event(
         state,
@@ -156,10 +179,27 @@ def test_returns_reverse_logistics_runtime_applies_rules_parameters_configuratio
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 5
+    assert workbench["binding_evidence"]["owned_tables"] == RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+    assert workbench["binding_evidence"]["shared_table_access"] is False
 
     ui_contract = returns_reverse_logistics_ui_contract()
-    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    api_contract = returns_reverse_logistics_build_api_contract()
+    permissions_contract = returns_reverse_logistics_permissions_contract()
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == (
+        RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
+    )
+    assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["configuration_editor"]["user_eventing_choice"] is False
+    assert ui_contract["event_surfaces"]["event_contract"] == "AppGen-X"
+    assert ui_contract["action_permissions"]["receive_event"] == (
+        "returns_reverse_logistics.event.consume"
+    )
+    assert api_contract["shared_table_access"] is False
+    assert api_contract["owned_tables"] == RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert permissions_contract["action_permissions"]["register_schema_extension"] == (
+        "returns_reverse_logistics.configure"
+    )
     rendered = returns_reverse_logistics_render_workbench(
         state,
         tenant="tenant_ops",
@@ -168,13 +208,45 @@ def test_returns_reverse_logistics_runtime_applies_rules_parameters_configuratio
             "returns_reverse_logistics.label",
             "returns_reverse_logistics.inspect",
             "returns_reverse_logistics.adjust",
+            "returns_reverse_logistics.event.consume",
             "returns_reverse_logistics.audit",
             "returns_reverse_logistics.configure",
         ),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
+    assert rendered["binding_evidence"]["dead_letter_table"] == (
+        "returns_reverse_logistics_dead_letter_event"
+    )
     assert not rendered["locked_actions"]
+
+
+def test_returns_reverse_logistics_enforces_owned_table_only_boundary() -> None:
+    allowed = returns_reverse_logistics_verify_owned_table_boundary(
+        (
+            "return_authorization",
+            "returns_reverse_logistics_inbox_event",
+            "OrderShipped",
+            "order_projection",
+            "POST /refunds",
+        )
+    )
+    blocked = returns_reverse_logistics_verify_owned_table_boundary(
+        ("return_authorization", "shared_orders", "customer_master")
+    )
+
+    assert allowed["ok"] is True
+    assert allowed["violations"] == ()
+    assert blocked["ok"] is False
+    assert blocked["violations"] == ("shared_orders", "customer_master")
+
+    state = returns_reverse_logistics_empty_state()
+    with pytest.raises(ValueError, match="owned tables"):
+        returns_reverse_logistics_register_schema_extension(
+            state,
+            "shared_orders",
+            {"foreign_status": "text"},
+        )
 
 
 def test_returns_reverse_logistics_rejects_invalid_runtime_inputs_and_records_dead_letters() -> None:
@@ -196,7 +268,7 @@ def test_returns_reverse_logistics_rejects_invalid_runtime_inputs_and_records_de
         {
             "database_backend": "postgresql",
             "event_topic": "appgen.returns.events",
-            "retry_limit": 1,
+            "retry_limit": 2,
             "default_currency": "USD",
             "supported_carriers": ("parcel_green",),
             "supported_dispositions": ("restock",),
@@ -204,10 +276,95 @@ def test_returns_reverse_logistics_rejects_invalid_runtime_inputs_and_records_de
     )["state"]
     with pytest.raises(ValueError, match="Unsupported Returns Reverse Logistics parameter"):
         returns_reverse_logistics_set_parameter(state, "stream_engine", 1)
+    with pytest.raises(ValueError, match="stream-engine or user eventing fields"):
+        returns_reverse_logistics_register_rule(
+            state,
+            {
+                "rule_id": "rule_bad",
+                "tenant": "tenant_ops",
+                "scope": "return_policy",
+                "status": "active",
+                "eligibility_policy": {"max_days_since_shipment": 30},
+                "label_policy": {"preferred_carriers": ("parcel_green",)},
+                "inspection_policy": {"restock_min": 0.8, "refurbish_min": 0.5},
+                "credit_policy": {
+                    "restock_factor": 0.9,
+                    "refurbish_factor": 0.65,
+                    "scrap_factor": 0.25,
+                },
+                "stream_engine_picker": "hidden",
+            },
+        )
+    accepted = returns_reverse_logistics_receive_event(
+        state,
+        {
+            "event_id": "evt_ship_once",
+            "event_type": "OrderShipped",
+            "idempotency_key": "order:once:v1",
+            "payload": {
+                "tenant": "tenant_ops",
+                "order_id": "order_once",
+                "payment_id": "pay_once",
+                "customer_id": "cust_once",
+                "shipped_at": "2026-05-20",
+                "days_since_shipped": 2,
+                "return_window_days": 30,
+                "final_sale": False,
+                "items": ({"sku": "sku_once", "quantity": 1, "unit_price": 80.0},),
+            },
+        },
+    )
+    state = accepted["state"]
+    duplicate = returns_reverse_logistics_receive_event(
+        state,
+        {
+            "event_id": "evt_ship_once",
+            "event_type": "OrderShipped",
+            "idempotency_key": "order:once:v1",
+            "payload": {
+                "tenant": "tenant_ops",
+                "order_id": "order_once",
+                "payment_id": "pay_once",
+                "customer_id": "cust_once",
+                "shipped_at": "2026-05-20",
+                "days_since_shipped": 2,
+                "return_window_days": 30,
+                "final_sale": False,
+                "items": ({"sku": "sku_once", "quantity": 1, "unit_price": 80.0},),
+            },
+        },
+    )
+    retrying = returns_reverse_logistics_receive_event(
+        state,
+        {
+            "event_id": "evt_unknown_retry",
+            "event_type": "UnknownEvent",
+            "idempotency_key": "unknown:retry",
+            "attempts": 1,
+            "payload": {"tenant": "tenant_ops"},
+        },
+    )
+    state = retrying["state"]
     failed = returns_reverse_logistics_receive_event(
         state,
-        {"event_id": "evt_unknown", "event_type": "UnknownEvent", "idempotency_key": "unknown:1", "attempts": 1, "payload": {"tenant": "tenant_ops"}},
+        {
+            "event_id": "evt_unknown_dead",
+            "event_type": "UnknownEvent",
+            "idempotency_key": "unknown:dead",
+            "attempts": 2,
+            "payload": {"tenant": "tenant_ops"},
+        },
     )
+    assert accepted["inbox_record"]["status"] == "handled"
+    assert duplicate["duplicate"] is True
+    assert duplicate["dead_lettered"] is False
+    assert len(state["inbox"]) == 2
+    assert retrying["ok"] is False
+    assert retrying["dead_lettered"] is False
+    assert retrying["retry_evidence"]["status"] == "retrying"
     assert failed["ok"] is False
     assert failed["dead_lettered"] is True
     assert len(failed["state"]["dead_letter"]) == 1
+    assert failed["dead_letter_record"]["dead_letter_table"] == (
+        "returns_reverse_logistics_dead_letter_event"
+    )

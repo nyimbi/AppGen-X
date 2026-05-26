@@ -1,7 +1,13 @@
 import pytest
 
 from pyAppGen.pbcs.global_inventory_visibility import (
+    GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
+    GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES,
+    GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES,
+    GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+    GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
     GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS,
+    global_inventory_visibility_build_api_contract,
     global_inventory_visibility_build_workbench_view,
     global_inventory_visibility_configure_runtime,
     global_inventory_visibility_empty_state,
@@ -10,13 +16,16 @@ from pyAppGen.pbcs.global_inventory_visibility import (
     global_inventory_visibility_record_availability_snapshot,
     global_inventory_visibility_register_inventory_pool,
     global_inventory_visibility_register_rule,
+    global_inventory_visibility_register_schema_extension,
     global_inventory_visibility_register_supply_node,
+    global_inventory_visibility_permissions_contract,
     global_inventory_visibility_render_workbench,
     global_inventory_visibility_reserve_inventory,
     global_inventory_visibility_runtime_capabilities,
     global_inventory_visibility_runtime_smoke,
     global_inventory_visibility_set_parameter,
     global_inventory_visibility_ui_contract,
+    global_inventory_visibility_verify_owned_table_boundary,
     implementation_contract,
 )
 
@@ -40,6 +49,10 @@ def test_global_inventory_visibility_runtime_executes_standard_and_advanced_capa
 
     contract = implementation_contract()
     assert contract["pbc"] == "global_inventory_visibility"
+    assert contract["owned_tables"] == GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+    assert contract["allowed_database_backends"] == GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
+    assert contract["api_contract"]["shared_table_access"] is False
+    assert contract["permissions_contract"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["ui_contract"]["ok"] is True
     assert "InventoryConfigurationPanel" in contract["ui_contract"]["fragments"]
@@ -336,3 +349,61 @@ def test_global_inventory_visibility_rejects_unsupported_backends_and_records_de
         "external:GoodsReceiptPosted:evt_retry_ops": 3
     }
     assert len(failed["state"]["dead_letters"]) == 1
+
+
+def test_global_inventory_visibility_proves_owned_boundary_contracts() -> None:
+    state = global_inventory_visibility_empty_state()
+    state = global_inventory_visibility_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "default_currency": "USD",
+            "projection_horizon_days": 10,
+            "staleness_sla_minutes": 60,
+            "workbench_limit": 50,
+        },
+    )["state"]
+
+    assert global_inventory_visibility_register_schema_extension(
+        state,
+        "inventory_projection",
+        {"explainability_payload": "jsonb"},
+    )["ok"] is True
+    assert global_inventory_visibility_register_schema_extension(
+        state,
+        "order_line",
+        {"order_payload": "jsonb"},
+    )["error"] == "table_not_owned"
+    assert global_inventory_visibility_register_schema_extension(
+        state,
+        "inventory_projection",
+        {"InvalidField": "jsonb"},
+    )["error"] == "invalid_extension_field"
+
+    api = global_inventory_visibility_build_api_contract()
+    assert api["owned_tables"] == GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+    assert api["database_backends"] == GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
+    assert api["required_event_topic"] == GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
+    assert api["events"]["emits"] == GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES
+    assert api["events"]["consumes"] == GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False
+
+    permissions = global_inventory_visibility_permissions_contract()
+    assert permissions["action_permissions"]["ingest_event"] == "global_inventory_visibility.configure"
+
+    allowed = global_inventory_visibility_verify_owned_table_boundary(
+        (
+            "inventory_pool",
+            "inventory_projection",
+            "global_inventory_visibility_appgen_inbox_event",
+            "wms_stock_projection",
+            "GET /transportation/shipments/{item_id}",
+        )
+    )
+    assert allowed["ok"] is True
+    rejected = global_inventory_visibility_verify_owned_table_boundary(("order_line", "wms_stock"))
+    assert rejected["ok"] is False
+    assert rejected["violations"] == ("order_line", "wms_stock")

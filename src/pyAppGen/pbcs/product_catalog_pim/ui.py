@@ -2,6 +2,18 @@
 
 from __future__ import annotations
 
+from .runtime import PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS
+from .runtime import PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES
+from .runtime import PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES
+from .runtime import PRODUCT_CATALOG_PIM_OWNED_TABLES
+from .runtime import PRODUCT_CATALOG_PIM_REQUIRED_CONFIGURATION_FIELDS
+from .runtime import PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC
+from .runtime import PRODUCT_CATALOG_PIM_REQUIRED_RULE_FIELDS
+from .runtime import PRODUCT_CATALOG_PIM_RUNTIME_TABLES
+from .runtime import PRODUCT_CATALOG_PIM_SUPPORTED_PARAMETER_NAMES
+from .runtime import product_catalog_pim_binding_evidence
+from .runtime import product_catalog_pim_permissions_contract
+
 
 PRODUCT_CATALOG_PIM_UI_FRAGMENT_KEYS = (
     "ProductCatalogWorkbench",
@@ -22,6 +34,7 @@ PRODUCT_CATALOG_PIM_UI_FRAGMENT_KEYS = (
 
 
 def product_catalog_pim_ui_contract() -> dict:
+    permissions = product_catalog_pim_permissions_contract()["action_permissions"]
     return {
         "format": "appgen.product-catalog-pim-ui-contract.v1",
         "ok": True,
@@ -60,55 +73,45 @@ def product_catalog_pim_ui_contract() -> dict:
             {
                 "key": "publication",
                 "fragment": "PublicationConsole",
-                "binds_to": ("catalog_publication", "catalog_channel_projection", "outbox"),
-                "commands": ("add_price_metadata", "publish_product", "run_control_tests"),
+                "binds_to": ("catalog_publication", "catalog_channel_projection", "outbox", "inbox", "dead_letter"),
+                "commands": ("add_price_metadata", "publish_product", "receive_event", "run_control_tests"),
             },
             {
                 "key": "governance_studio",
                 "fragment": "ProductRuleStudio",
-                "binds_to": ("rule", "parameter", "configuration"),
+                "binds_to": ("product_rule", "product_parameter", "product_configuration"),
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "create_product_family": "product_catalog_pim.product",
-            "register_product": "product_catalog_pim.product",
-            "define_attribute_schema": "product_catalog_pim.product",
-            "set_product_attribute": "product_catalog_pim.enrich",
-            "add_localized_content": "product_catalog_pim.enrich",
-            "attach_product_media": "product_catalog_pim.enrich",
-            "add_price_metadata": "product_catalog_pim.publish",
-            "add_compliance_claim": "product_catalog_pim.enrich",
-            "publish_product": "product_catalog_pim.publish",
-            "register_rule": "product_catalog_pim.configure",
-            "set_parameter": "product_catalog_pim.configure",
-            "configure_runtime": "product_catalog_pim.configure",
-            "run_control_tests": "product_catalog_pim.audit",
+        "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        "runtime_tables": {
+            "outbox": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[0],
+            "inbox": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[1],
+            "dead_letter": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[2],
         },
+        "action_permissions": permissions,
         "configuration_editor": {
-            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "required_fields": PRODUCT_CATALOG_PIM_REQUIRED_CONFIGURATION_FIELDS,
+            "allowed_database_backends": PRODUCT_CATALOG_PIM_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "event_topic": PRODUCT_CATALOG_PIM_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_eventing_choice_visible": False,
         },
         "parameter_editor": {
-            "numeric_parameters": (
-                "minimum_completeness",
-                "minimum_margin",
-                "max_missing_required_attributes",
-                "content_quality_threshold",
-                "publication_batch_size",
-                "retention_days",
-            ),
+            "numeric_parameters": PRODUCT_CATALOG_PIM_SUPPORTED_PARAMETER_NAMES,
         },
         "rule_editor": {
             "rule_types": ("sellability", "enrichment", "publication", "compliance", "channel", "taxonomy"),
-            "required_fields": ("rule_id", "tenant", "rule_type", "allowed_channels", "allowed_locales", "status"),
+            "required_fields": PRODUCT_CATALOG_PIM_REQUIRED_RULE_FIELDS,
         },
         "event_surfaces": {
-            "emits": ("ProductClassified", "ProductEnriched", "ProductPublished", "ProductPriceReady", "ForecastUpdated"),
-            "consumes": ("TaxCalculated", "MediaAssetApproved", "InventoryPositionUpdated", "PricePromotionApproved"),
+            "emits": PRODUCT_CATALOG_PIM_EMITTED_EVENT_TYPES,
+            "consumes": PRODUCT_CATALOG_PIM_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+            "stream_engine_picker_visible": False,
         },
     }
 
@@ -134,7 +137,10 @@ def product_catalog_pim_render_workbench(
         {"key": "publications", "value": len(publications), "fragment": "ChannelProjectionDashboard"},
         {"key": "media", "value": len(media), "fragment": "MediaReferencePanel"},
         {"key": "outbox", "value": len(state["outbox"]), "fragment": "PublicationConsole"},
+        {"key": "inbox", "value": len(state.get("inbox", ())), "fragment": "PublicationConsole"},
+        {"key": "dead_letter", "value": len(state.get("dead_letter", ())), "fragment": "PublicationConsole"},
     )
+    binding_evidence = product_catalog_pim_binding_evidence(state)
     return {
         "format": "appgen.product-catalog-pim-workbench-render.v1",
         "ok": True,
@@ -148,4 +154,19 @@ def product_catalog_pim_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "event_inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "owned_tables": PRODUCT_CATALOG_PIM_OWNED_TABLES,
+        "binding_evidence": {
+            **binding_evidence,
+            "ui_bindings": {
+                "configuration_fragment": "ProductConfigurationPanel",
+                "rule_fragment": "ProductRuleStudio",
+                "parameter_fragment": "ProductParameterConsole",
+                "outbox_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[0],
+                "inbox_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[1],
+                "dead_letter_table": PRODUCT_CATALOG_PIM_RUNTIME_TABLES[2],
+                "rbac": contract["action_permissions"],
+            },
+        },
     }
