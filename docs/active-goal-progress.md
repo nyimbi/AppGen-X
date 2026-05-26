@@ -1819,7 +1819,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   every implemented PBC. Package-local assurance tests pass (`3 passed`),
   targeted PBC evidence tests pass (`16 passed`), all package-local PBC tests
   pass (`396 passed`), and the full PBC audit stack including all built-in
-  generation smoke and `pbc_release_audit()` returns true. Commit: `pending`.
+  generation smoke and `pbc_release_audit()` returns true. Commit: `39c08cd`.
 
 ## Open Completion Areas
 
