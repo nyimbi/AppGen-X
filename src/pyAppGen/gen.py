@@ -16234,6 +16234,14 @@ def visual_design_ide_runtime_replay_matrix():
         "asset_import",
         "runtime_package",
     }
+    required_pipeline_by_surface = {
+        "style_authoring": {"inspect_effective_value", "publish_effective_value"},
+        "timeline_authoring": {"scrub_preview", "export_runtime_timeline"},
+        "effect_stack": {"validate_budget", "compile_fallback"},
+        "scene_authoring": {"assign_material", "validate_scene"},
+        "asset_import": {"write_asset_manifest", "generate_fallback_thumbnail"},
+        "runtime_package": {"target_artifacts_complete", "scene_materials_packaged"},
+    }
     replays = []
     for item in modules["modules"]:
         module_path = module_dir / f"{item['module']}.py"
@@ -16248,12 +16256,15 @@ def visual_design_ide_runtime_replay_matrix():
                 "module": item["module"],
                 "surface": item["surface"],
                 "pipeline": tuple(operation.get("pipeline", ())) if isinstance(operation, dict) else (),
+                "required_pipeline": tuple(sorted(required_pipeline_by_surface[item["surface"]])),
                 "ok": item["exists"]
                 and item["contract_ok"]
                 and item["smoke_ok"]
                 and tests_by_module.get(item["module"], {}).get("smoke_ok", False)
                 and bool(smoke.get("ok"))
                 and bool(operation.get("ok"))
+                and required_pipeline_by_surface[item["surface"]]
+                <= set(operation.get("pipeline", ()) if isinstance(operation, dict) else ())
                 and not tuple(smoke.get("side_effects", ()))
                 and not tuple(operation.get("side_effects", ())),
                 "smoke": smoke,
@@ -16274,6 +16285,18 @@ def visual_design_ide_runtime_replay_matrix():
             "evidence": tuple((item["surface"], item["pipeline"]) for item in replays),
         },
         {
+            "id": "generated_visual_design_ide_operation_pipeline_coverage",
+            "ok": all(set(item["required_pipeline"]) <= set(item["pipeline"]) for item in replays),
+            "evidence": tuple(
+                {
+                    "surface": item["surface"],
+                    "required_pipeline": item["required_pipeline"],
+                    "pipeline": item["pipeline"],
+                }
+                for item in replays
+            ),
+        },
+        {
             "id": "generated_visual_design_ide_replays_side_effect_free",
             "ok": all(
                 not tuple(item["smoke"].get("side_effects", ()))
@@ -16291,6 +16314,7 @@ def visual_design_ide_runtime_replay_matrix():
         "guards": (
             "generated_design_modules_before_runtime_claim",
             "generated_design_tests_before_release_claim",
+            "generated_design_operation_pipeline_contracts",
             "generated_design_operations_side_effect_free",
         ),
         "side_effects": (),

@@ -17059,6 +17059,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert visual_design_runtime_matrix["format"] == "appgen.generated-visual-design-ide-runtime-replay-matrix.v1"
     assert visual_design_runtime_matrix["ok"] is True
     assert len(visual_design_runtime_matrix["design_replays"]) == 6
+    assert "generated_design_operation_pipeline_contracts" in visual_design_runtime_matrix["guards"]
+    assert {
+        "generated_visual_design_ide_operation_pipeline_coverage",
+        "generated_visual_design_ide_replays_side_effect_free",
+    } <= {check["id"] for check in visual_design_runtime_matrix["checks"] if check["ok"]}
+    assert all(
+        set(item["required_pipeline"]) <= set(item["pipeline"])
+        for item in visual_design_runtime_matrix["design_replays"]
+    )
     assert visual_runtime_pipeline_manifest["ok"] is True
     assert visual_runtime_pipeline_test_manifest["ok"] is True
     assert visual_runtime_pipeline_runtime_matrix["format"] == (
