@@ -4476,6 +4476,13 @@ def pbc_source_artifact_contract(key: str) -> dict:
     manifest_text = (source_dir / "manifest.py").read_text(encoding="utf-8") if (source_dir / "manifest.py").is_file() else ""
     service_text = (source_dir / "services.py").read_text(encoding="utf-8") if (source_dir / "services.py").is_file() else ""
     route_text = (source_dir / "routes.py").read_text(encoding="utf-8") if (source_dir / "routes.py").is_file() else ""
+    config_text = (source_dir / "config.py").read_text(encoding="utf-8") if (source_dir / "config.py").is_file() else ""
+    permissions_text = (
+        (source_dir / "permissions.py").read_text(encoding="utf-8")
+        if (source_dir / "permissions.py").is_file()
+        else ""
+    )
+    seed_text = (source_dir / "seed_data.py").read_text(encoding="utf-8") if (source_dir / "seed_data.py").is_file() else ""
     release_text = (source_dir / "RELEASE_EVIDENCE.md").read_text(encoding="utf-8") if (source_dir / "RELEASE_EVIDENCE.md").is_file() else ""
     tests_text = (
         (source_dir / "tests" / "test_contract.py").read_text(encoding="utf-8")
@@ -4538,11 +4545,29 @@ def pbc_source_artifact_contract(key: str) -> dict:
             ),
         },
         {
+            "id": "governance_hooks_materialized",
+            "ok": "def validate_configuration(" in config_text
+            and "def configuration_manifest(" in config_text
+            and "def authorize(" in permissions_text
+            and "def permission_manifest(" in permissions_text
+            and "def validate_seed_data(" in seed_text
+            and "def seed_plan(" in seed_text
+            and "def smoke_test(" in config_text
+            and "def smoke_test(" in permissions_text
+            and "def smoke_test(" in seed_text,
+            "paths": (
+                f"{relative_dir}/config.py",
+                f"{relative_dir}/permissions.py",
+                f"{relative_dir}/seed_data.py",
+            ),
+        },
+        {
             "id": "contract_tests_materialized",
             "ok": "test_generated_schema_service_and_release_evidence" in tests_text
             and "test_manifest_and_event_contract" in tests_text
             and "test_registration_plan_is_side_effect_free" in tests_text
-            and "test_service_and_route_surface_are_executable" in tests_text,
+            and "test_service_and_route_surface_are_executable" in tests_text
+            and "test_configuration_permissions_and_seed_hooks_are_executable" in tests_text,
             "path": f"{relative_dir}/tests/test_contract.py",
         },
         {

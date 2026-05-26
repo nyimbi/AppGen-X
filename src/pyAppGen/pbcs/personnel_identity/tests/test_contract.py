@@ -45,3 +45,17 @@ def test_service_and_route_surface_are_executable():
     assert route_smoke['ok'] is True
     assert not service_smoke['side_effects']
     assert not route_smoke['side_effects']
+
+
+def test_configuration_permissions_and_seed_hooks_are_executable():
+    from .. import config, permissions, seed_data
+
+    config_smoke = config.smoke_test()
+    permission_smoke = permissions.smoke_test()
+    seed_smoke = seed_data.smoke_test()
+    assert config_smoke['ok'] is True
+    assert permission_smoke['ok'] is True
+    assert seed_smoke['ok'] is True
+    assert not config_smoke['side_effects']
+    assert not permission_smoke['side_effects']
+    assert not seed_smoke['side_effects']
