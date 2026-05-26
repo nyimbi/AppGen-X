@@ -1167,6 +1167,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   invocation, and binding bridge modules now expose one-file step contracts and
   a runtime replay matrix that gates kind coverage, operation-step coverage,
   validation-step coverage, and side-effect-free execution.
+- Current visual wiring pass adds standalone operation-step and validation-step
+  contracts to generated component wiring and handler architecture modules.
+  Generated drag payload, drop target, event wiring, handler definition,
+  handler registry, handler context, handler dispatch, and cross-handler call
+  modules now expose side-effect-free step contracts and matching generated test
+  exports.
 
 ## Open Completion Areas
 

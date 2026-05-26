@@ -2062,8 +2062,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         for item in inspector_workbench["inspector_module_test_artifacts"]
     )
     assert all(
-        {"handler_architecture_manifest", "invoke_handler", "call_handler"} <= set(item["exports"])
+        {
+            "handler_architecture_manifest",
+            "invoke_handler",
+            "call_handler",
+            "operation_steps",
+            "validation_steps",
+        }
+        <= set(item["exports"])
         for item in inspector_workbench["handler_architecture_artifacts"]
+    )
+    assert all(
+        "test_handler_architecture_module_step_contracts" in item["exports"]
+        for item in inspector_workbench["handler_architecture_test_artifacts"]
     )
     assert {
         item["kind"] for item in handler_architecture_module_file_manifest()
@@ -3941,12 +3952,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "event_wiring",
         "handler_definitions",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in component_wiring_module_file_manifest()
+    )
     assert {item["kind"] for item in component_wiring_module_test_file_manifest()} == {
         "drop_payloads",
         "drop_targets",
         "event_wiring",
         "handler_definitions",
     }
+    assert all(
+        "test_component_wiring_module_step_contracts" in item["exports"]
+        for item in component_wiring_module_test_file_manifest()
+    )
     assert set(wiring_gate["required_interaction_families"]) <= set(wiring_gate["passing_interaction_families"])
     assert set(wiring_gate["required_interaction_families"]) <= set(
         wiring_gate["passing_interaction_module_families"]
@@ -15525,6 +15544,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "event_wiring",
         "handler_definitions",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_wiring_module_files["modules"]
+    )
+    assert all(
+        "test_component_wiring_module_step_contracts" in item["exports"]
+        for item in generated_wiring_module_tests["tests"]
+    )
     assert {item["family"] for item in generated_form_interaction_files["modules"]} == {
         "palette_drag_source",
         "canvas_drop_target",
@@ -15545,6 +15572,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         module = _load_module(module_path, f"generated_component_wiring_module_{item['module']}")
         assert module.smoke_test("Book")["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps("Book")["ok"] is True
+        assert module.validation_steps("Book")["ok"] is True
     for item in generated_wiring_module_tests["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
@@ -17970,12 +17999,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "handler_dispatch",
         "cross_handler_invocation",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_handler_architecture_files["modules"]
+    )
+    assert all(
+        "test_handler_architecture_module_step_contracts" in item["exports"]
+        for item in generated_handler_architecture_tests["tests"]
+    )
     for item in generated_handler_architecture_files["modules"]:
         module_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(module_path), doraise=True)
         module = _load_module(module_path, f"generated_handler_architecture_module_{item['module']}")
         assert module.smoke_test("Book")["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps("Book")["ok"] is True
+        assert module.validation_steps("Book")["ok"] is True
         handler_manifest = module.handler_architecture_manifest("Book")
         assert handler_manifest["ok"] is True
         assert {"sender_context_required", "cross_handler_cycle_guard"} <= set(handler_manifest["guards"])

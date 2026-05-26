@@ -7278,7 +7278,14 @@ def object_inspector_workbench() -> dict:
             "ok": len(handler_architecture_artifacts) == 4
             and all(
                 item["ok"]
-                and {"handler_architecture_manifest", "invoke_handler", "call_handler", "smoke_test"}
+                and {
+                    "handler_architecture_manifest",
+                    "invoke_handler",
+                    "call_handler",
+                    "operation_steps",
+                    "validation_steps",
+                    "smoke_test",
+                }
                 <= set(item["exports"])
                 for item in handler_architecture_artifacts
             ),
@@ -7289,6 +7296,7 @@ def object_inspector_workbench() -> dict:
             "ok": len(handler_architecture_test_artifacts) == 4
             and all(
                 item["ok"] and "test_handler_architecture_module_smoke" in item["exports"]
+                and "test_handler_architecture_module_step_contracts" in item["exports"]
                 for item in handler_architecture_test_artifacts
             ),
             "evidence": handler_architecture_test_artifacts,
@@ -23316,6 +23324,8 @@ def component_wiring_module_file_manifest() -> tuple[dict, ...]:
         "component_wiring_manifest",
         "run_wiring_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -23342,6 +23352,7 @@ def component_wiring_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_component_wiring_module",
                 "test_component_wiring_module_contract",
                 "test_component_wiring_module_smoke",
+                "test_component_wiring_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
@@ -23364,6 +23375,8 @@ def handler_architecture_module_file_manifest() -> tuple[dict, ...]:
         "invoke_handler",
         "call_handler",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -23393,6 +23406,7 @@ def handler_architecture_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_handler_architecture_module",
                 "test_handler_architecture_module_contract",
                 "test_handler_architecture_module_smoke",
+                "test_handler_architecture_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],

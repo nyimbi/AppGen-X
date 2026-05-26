@@ -12080,6 +12080,8 @@ EXPECTED_EXPORTS = (
     "component_wiring_manifest",
     "run_wiring_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -12154,14 +12156,34 @@ def runtime_manifest(table_name=None):
     return _load_form_designer().component_drop_wiring_handler_contract(table_name)
 
 
-def smoke_test(table_name=None):
-    """Run side-effect-free checks for this generated component-wiring module."""
+def operation_steps(table_name=None):
+    """Return the side-effect-free operation steps for this wiring module."""
+    operation = run_wiring_operation(table_name)
+    return {{
+        "format": "appgen.component-wiring-module-operation-steps.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": operation["ok"] and bool(operation["operation_steps"]),
+        "steps": tuple(operation["operation_steps"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps(table_name=None):
+    """Return validation steps proving this wiring module is safe to load."""
     contract = module_contract()
     manifest = component_wiring_manifest(table_name)
     operation = run_wiring_operation(table_name)
     runtime = runtime_manifest(table_name)
+    steps = (
+        "module_contract_ok",
+        "component_wiring_manifest_ok",
+        "wiring_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
     return {{
-        "format": "appgen.component-wiring-module-smoke-test.v1",
+        "format": "appgen.component-wiring-module-validation-steps.v1",
         "module": MODULE,
         "kind": KIND,
         "ok": contract["ok"]
@@ -12170,13 +12192,42 @@ def smoke_test(table_name=None):
         and runtime["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated component-wiring module."""
+    contract = module_contract()
+    manifest = component_wiring_manifest(table_name)
+    operation = run_wiring_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    operations = operation_steps(table_name)
+    validations = validation_steps(table_name)
+    return {{
+        "format": "appgen.component-wiring-module-smoke-test.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
         "checks": (
             "module_contract_resolves",
             "component_wiring_manifest_resolves",
             "wiring_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -12221,15 +12272,28 @@ def test_component_wiring_module_smoke():
     assert result["checks"]
 
 
+def test_component_wiring_module_step_contracts():
+    """Assert standalone wiring operation and validation step contracts pass."""
+    module = load_component_wiring_module()
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps()["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_component_wiring_module_contract()
     test_component_wiring_module_smoke()
+    test_component_wiring_module_step_contracts()
     return {{
         "format": "appgen.component-wiring-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_component_wiring_module_contract", "test_component_wiring_module_smoke"),
+        "tests": (
+            "test_component_wiring_module_contract",
+            "test_component_wiring_module_smoke",
+            "test_component_wiring_module_step_contracts",
+        ),
     }}
 '''
 
@@ -12433,6 +12497,8 @@ EXPECTED_EXPORTS = (
     "invoke_handler",
     "call_handler",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -12566,6 +12632,63 @@ def runtime_manifest(table_name=None):
     return _load_form_designer().component_drop_wiring_handler_contract(table_name)
 
 
+def operation_steps(table_name=None):
+    """Return the side-effect-free handler operation steps for this module."""
+    manifest = handler_architecture_manifest(table_name)
+    first = manifest["handlers"][0]["handler"] if manifest["handlers"] else None
+    second = manifest["handlers"][1]["handler"] if len(manifest["handlers"]) > 1 else first
+    invocation = invoke_handler(first, table_name=table_name) if first else {{"ok": False, "side_effects": ()}}
+    cross_call = call_handler(first, second, table_name=table_name) if first and second and first != second else {{"ok": False, "side_effects": ()}}
+    steps_by_kind = {{
+        "handler_registry": ("load_handler_catalog", "index_handlers", "verify_signature", "publish_registry"),
+        "handler_context": ("resolve_sender", "build_context", "validate_context_keys", "freeze_event_fields"),
+        "handler_dispatch": ("resolve_handler", "build_context", "invoke_handler", "record_trace"),
+        "cross_handler_invocation": ("resolve_source", "check_cycle_guard", "resolve_target", "invoke_handler"),
+    }}
+    return {{
+        "format": "appgen.handler-architecture-module-operation-steps.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": manifest["ok"]
+        and invocation["ok"]
+        and cross_call["ok"]
+        and bool(steps_by_kind[KIND])
+        and not invocation["side_effects"]
+        and not cross_call["side_effects"],
+        "steps": steps_by_kind[KIND],
+        "side_effects": (),
+    }}
+
+
+def validation_steps(table_name=None):
+    """Return validation steps proving this handler architecture module is safe to load."""
+    contract = module_contract()
+    manifest = handler_architecture_manifest(table_name)
+    runtime = runtime_manifest(table_name)
+    operations = operation_steps(table_name)
+    steps = (
+        "module_contract_ok",
+        "handler_architecture_manifest_ok",
+        "handler_operation_ok",
+        "runtime_manifest_ok",
+        "cycle_guard_declared",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.handler-architecture-module-validation-steps.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and runtime["ok"]
+        and operations["ok"]
+        and "cross_handler_cycle_guard" in manifest["guards"]
+        and not manifest["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
 def smoke_test(table_name=None):
     """Run side-effect-free checks for this generated handler architecture module."""
     contract = module_contract()
@@ -12575,6 +12698,8 @@ def smoke_test(table_name=None):
     invocation = invoke_handler(first, table_name=table_name) if first else {{"ok": False, "side_effects": ()}}
     cross_call = call_handler(first, second, table_name=table_name) if first and second and first != second else {{"ok": False, "side_effects": ()}}
     runtime = runtime_manifest(table_name)
+    operations = operation_steps(table_name)
+    validations = validation_steps(table_name)
     return {{
         "format": "appgen.handler-architecture-module-smoke-test.v1",
         "module": MODULE,
@@ -12584,6 +12709,8 @@ def smoke_test(table_name=None):
         and invocation["ok"]
         and cross_call["ok"]
         and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
         and not manifest["side_effects"]
         and not invocation["side_effects"]
         and not cross_call["side_effects"],
@@ -12593,8 +12720,12 @@ def smoke_test(table_name=None):
             "handler_invocation_replays",
             "cross_handler_call_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -12639,15 +12770,28 @@ def test_handler_architecture_module_smoke():
     assert result["checks"]
 
 
+def test_handler_architecture_module_step_contracts():
+    """Assert standalone handler operation and validation step contracts pass."""
+    module = load_handler_architecture_module()
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps()["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_handler_architecture_module_contract()
     test_handler_architecture_module_smoke()
+    test_handler_architecture_module_step_contracts()
     return {{
         "format": "appgen.handler-architecture-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_handler_architecture_module_contract", "test_handler_architecture_module_smoke"),
+        "tests": (
+            "test_handler_architecture_module_contract",
+            "test_handler_architecture_module_smoke",
+            "test_handler_architecture_module_step_contracts",
+        ),
     }}
 '''
 
@@ -54210,8 +54354,8 @@ def object_inspector_workbench():
         {{"id": "inspector_readiness_contract", "ok": readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
         {{"id": "inspector_generated_modules", "ok": len(inspector_module_artifacts) == 6 and all(item["ok"] and "run_editor_operation" in item["exports"] and "operation_steps" in item["exports"] and "validation_steps" in item["exports"] for item in inspector_module_artifacts), "evidence": inspector_module_artifacts}},
         {{"id": "inspector_generated_module_tests", "ok": len(inspector_module_test_artifacts) == 6 and all(item["ok"] and "test_inspector_module_smoke" in item["exports"] and "test_inspector_module_step_contracts" in item["exports"] for item in inspector_module_test_artifacts), "evidence": inspector_module_test_artifacts}},
-        {{"id": "handler_architecture_modules", "ok": len(handler_architecture_artifacts) == 4 and all(item["ok"] and {{"handler_architecture_manifest", "invoke_handler", "call_handler", "smoke_test"}} <= set(item["exports"]) for item in handler_architecture_artifacts), "evidence": handler_architecture_artifacts}},
-        {{"id": "handler_architecture_module_tests", "ok": len(handler_architecture_test_artifacts) == 4 and all(item["ok"] and "test_handler_architecture_module_smoke" in item["exports"] for item in handler_architecture_test_artifacts), "evidence": handler_architecture_test_artifacts}},
+        {{"id": "handler_architecture_modules", "ok": len(handler_architecture_artifacts) == 4 and all(item["ok"] and {{"handler_architecture_manifest", "invoke_handler", "call_handler", "operation_steps", "validation_steps", "smoke_test"}} <= set(item["exports"]) for item in handler_architecture_artifacts), "evidence": handler_architecture_artifacts}},
+        {{"id": "handler_architecture_module_tests", "ok": len(handler_architecture_test_artifacts) == 4 and all(item["ok"] and "test_handler_architecture_module_smoke" in item["exports"] and "test_handler_architecture_module_step_contracts" in item["exports"] for item in handler_architecture_test_artifacts), "evidence": handler_architecture_test_artifacts}},
         {{"id": "handler_source_ide_contract", "ok": handler_source_ide["ok"] and {{"navigation_to_handler_source", "handler_stubs_editable", "breakpoints_map_to_designer", "handler_refactors_propagate"}} <= {{check["id"] for check in handler_source_ide["checks"] if check["ok"]}} and not handler_source_ide["side_effects"], "evidence": handler_source_ide}},
         {{"id": "handler_source_ide_modules", "ok": len(handler_source_ide_artifacts) == 5 and all(item["ok"] and {{"handler_source_manifest", "run_source_operation", "smoke_test"}} <= set(item["exports"]) for item in handler_source_ide_artifacts), "evidence": handler_source_ide_artifacts}},
         {{"id": "handler_source_ide_module_tests", "ok": len(handler_source_ide_test_artifacts) == 5 and all(item["ok"] and "test_handler_source_ide_module_smoke" in item["exports"] for item in handler_source_ide_test_artifacts), "evidence": handler_source_ide_test_artifacts}},
@@ -55099,6 +55243,8 @@ def component_wiring_module_file_manifest(existing_paths=None):
         "component_wiring_manifest",
         "run_wiring_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     manifest = []
@@ -55137,6 +55283,7 @@ def component_wiring_module_test_file_manifest(existing_paths=None):
                 "load_component_wiring_module",
                 "test_component_wiring_module_contract",
                 "test_component_wiring_module_smoke",
+                "test_component_wiring_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"] and path in paths,
@@ -55286,6 +55433,8 @@ def handler_architecture_module_file_manifest(existing_paths=None):
         "invoke_handler",
         "call_handler",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     manifest = []
@@ -55327,6 +55476,7 @@ def handler_architecture_module_test_file_manifest(existing_paths=None):
                 "load_handler_architecture_module",
                 "test_handler_architecture_module_contract",
                 "test_handler_architecture_module_smoke",
+                "test_handler_architecture_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"] and path in paths,
