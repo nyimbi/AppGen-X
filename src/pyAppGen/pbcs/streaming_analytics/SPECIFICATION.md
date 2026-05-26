@@ -19,6 +19,13 @@ AppGen-X events, idempotent handlers, UI fragments, tests, and release evidence.
 - Eventing standard: AppGen-X outbox/inbox events only.
 - User-facing stream-engine selector: forbidden and hidden.
 
+## Generated Schema
+
+`streaming_analytics_build_schema_contract()` is the package-local generated
+schema artifact for this PBC. It declares the owned datastore boundary, runtime
+AppGen-X tables, migrations, generated model artifacts, relationship edges, and
+the PostgreSQL/MySQL/MariaDB backend allowlist.
+
 ## Owned Datastore Boundary
 
 The PBC owns exactly these tables:
@@ -116,7 +123,13 @@ The runtime exposes evidence for:
 - Permissions governance evidence.
 - Governed model evidence for KPI confidence and forecasting.
 
-## Commands And Services
+## Service Layer
+
+`streaming_analytics_build_service_contract()` is the package-local service
+artifact for this PBC. It declares the generated command/query surface, route
+artifacts, AppGen-X event and handler artifacts, permissions, configuration,
+idempotent handler requirements, retry/dead-letter evidence, and UI fragment
+artifacts.
 
 The service layer exposes these package-local operations:
 
@@ -197,6 +210,10 @@ configuration editor allows only PostgreSQL, MySQL, and MariaDB and never
 exposes a stream-engine picker.
 
 ## Release Evidence
+
+`streaming_analytics_build_release_evidence()` aggregates the package-local
+schema, service, API, permissions, AppGen-X runtime control evidence, and
+generated artifact coverage into one release-ready contract.
 
 Focused tests prove:
 

@@ -8,6 +8,7 @@ import json
 import math
 
 
+PREDICTIVE_DEMAND_EVENT_CONTRACT = "AppGen-X"
 PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC = "appgen.predictive_demand.events"
 PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 PREDICTIVE_DEMAND_OWNED_TABLES = (
@@ -15,6 +16,11 @@ PREDICTIVE_DEMAND_OWNED_TABLES = (
     "forecast_run",
     "demand_signal",
     "forecast_result",
+)
+PREDICTIVE_DEMAND_RUNTIME_TABLES = (
+    "predictive_demand_appgen_outbox_event",
+    "predictive_demand_appgen_inbox_event",
+    "predictive_demand_dead_letter_event",
 )
 
 PREDICTIVE_DEMAND_RUNTIME_CAPABILITY_KEYS = (
@@ -86,6 +92,9 @@ PREDICTIVE_DEMAND_STANDARD_FEATURE_KEYS = (
     "rule_engine",
     "parameter_engine",
     "seed_data",
+    "schema_contract",
+    "service_contract",
+    "release_evidence",
     "workbench",
 )
 
@@ -173,6 +182,11 @@ def predictive_demand_runtime_capabilities() -> dict:
         "pbc": "predictive_demand",
         "implementation_directory": "src/pyAppGen/pbcs/predictive_demand",
         "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+        "runtime_tables": PREDICTIVE_DEMAND_RUNTIME_TABLES,
+        "required_event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+        "event_contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+        "consumes": PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES,
+        "emits": PREDICTIVE_DEMAND_EMITTED_EVENT_TYPES,
         "capabilities": PREDICTIVE_DEMAND_RUNTIME_CAPABILITY_KEYS,
         "standard_features": PREDICTIVE_DEMAND_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -186,6 +200,9 @@ def predictive_demand_runtime_capabilities() -> dict:
             "create_forecast_run",
             "publish_forecast_result",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -439,8 +456,9 @@ def predictive_demand_configure_runtime(state: dict, configuration: dict) -> dic
     }
     normalized["database_backend"] = backend
     normalized["ok"] = True
-    normalized["event_contract"] = "AppGen-X"
+    normalized["event_contract"] = PREDICTIVE_DEMAND_EVENT_CONTRACT
     normalized["stream_engine_picker_visible"] = False
+    normalized["user_selectable_event_contract"] = False
     runtime["configuration"] = normalized
     runtime["events"].append(_state_event("RuntimeConfigured", "runtime", normalized))
     return {"ok": True, "state": runtime, "configuration": normalized}
@@ -800,9 +818,13 @@ def predictive_demand_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "parameter_count": len(state.get("parameters", {})),
         "binding_evidence": {
             "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
-            "outbox_table": "predictive_demand_appgen_outbox_event",
-            "inbox_table": "predictive_demand_appgen_inbox_event",
-            "dead_letter_table": "predictive_demand_dead_letter_event",
+            "runtime_tables": PREDICTIVE_DEMAND_RUNTIME_TABLES,
+            "outbox_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[0],
+            "inbox_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[1],
+            "dead_letter_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[2],
+            "event_contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+            "required_event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
         },
     }
 
@@ -815,16 +837,15 @@ def predictive_demand_verify_owned_table_boundary(
         "POST /forecast-runs",
         "POST /demand-signals",
         "GET /forecast-results",
+        "GET /predictive-demand/schema-contract",
+        "GET /predictive-demand/service-contract",
+        "GET /predictive-demand/release-evidence",
         "inventory_pool_projection",
         "shipment_projection",
         "operational_kpi_projection",
     }
     allowed_event_dependencies = set(PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES)
-    allowed_runtime_tables = {
-        "predictive_demand_appgen_outbox_event",
-        "predictive_demand_appgen_inbox_event",
-        "predictive_demand_dead_letter_event",
-    }
+    allowed_runtime_tables = set(PREDICTIVE_DEMAND_RUNTIME_TABLES)
     violations = tuple(
         reference
         for reference in references
@@ -844,6 +865,9 @@ def predictive_demand_verify_owned_table_boundary(
                 "POST /forecast-runs",
                 "POST /demand-signals",
                 "GET /forecast-results",
+                "GET /predictive-demand/schema-contract",
+                "GET /predictive-demand/service-contract",
+                "GET /predictive-demand/release-evidence",
             ),
             "events": PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES,
             "api_projections": (
@@ -862,6 +886,7 @@ def predictive_demand_build_api_contract() -> dict:
     return {
         "format": "appgen.predictive-demand-api-contract.v1",
         "ok": True,
+        "pbc": "predictive_demand",
         "routes": (
             {
                 "route": "POST /forecast-models",
@@ -909,6 +934,24 @@ def predictive_demand_build_api_contract() -> dict:
                 "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
                 "requires_permission": "predictive_demand.audit",
             },
+            {
+                "route": "GET /predictive-demand/schema-contract",
+                "query": "build_schema_contract",
+                "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+                "requires_permission": "predictive_demand.audit",
+            },
+            {
+                "route": "GET /predictive-demand/service-contract",
+                "query": "build_service_contract",
+                "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+                "requires_permission": "predictive_demand.audit",
+            },
+            {
+                "route": "GET /predictive-demand/release-evidence",
+                "query": "build_release_evidence",
+                "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+                "requires_permission": "predictive_demand.audit",
+            },
         ),
         "declared_catalog_routes": (
             "POST /forecast-models",
@@ -917,13 +960,446 @@ def predictive_demand_build_api_contract() -> dict:
             "GET /forecast-results",
         ),
         "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+        "runtime_tables": PREDICTIVE_DEMAND_RUNTIME_TABLES,
         "emits": PREDICTIVE_DEMAND_EMITTED_EVENT_TYPES,
         "consumes": PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES,
         "database_backends": PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS,
         "permissions": tuple(sorted(predictive_demand_permissions_contract()["permissions"])),
         "shared_table_access": False,
-        "event_contract": "AppGen-X",
+        "event_contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+        "required_event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+    }
+
+
+def predictive_demand_build_schema_contract() -> dict:
+    table_fields = {
+        "forecast_model": (
+            "tenant",
+            "model_id",
+            "sku",
+            "location",
+            "algorithm",
+            "version",
+            "status",
+            "audit_proof",
+        ),
+        "forecast_run": (
+            "tenant",
+            "run_id",
+            "model_id",
+            "sku",
+            "location",
+            "signal_count",
+            "forecast_quantity",
+            "shortage_quantity",
+            "confidence",
+            "audit_proof",
+        ),
+        "demand_signal": (
+            "tenant",
+            "signal_id",
+            "signal_type",
+            "sku",
+            "location",
+            "region",
+            "quantity",
+            "source",
+            "driver_weight",
+            "audit_proof",
+        ),
+        "forecast_result": (
+            "tenant",
+            "result_id",
+            "run_id",
+            "model_id",
+            "sku",
+            "location",
+            "forecast_quantity",
+            "recommended_supply",
+            "shortage_quantity",
+            "confidence_band",
+            "planning_action",
+            "audit_proof",
+        ),
+    }
+    runtime_tables = (
+        {
+            "table": PREDICTIVE_DEMAND_RUNTIME_TABLES[0],
+            "fields": (
+                "tenant",
+                "event_id",
+                "event_type",
+                "payload",
+                "idempotency_key",
+                "retry_policy",
+                "audit_hash",
+            ),
+        },
+        {
+            "table": PREDICTIVE_DEMAND_RUNTIME_TABLES[1],
+            "fields": (
+                "event_id",
+                "event_type",
+                "payload",
+                "idempotency_key",
+                "attempts",
+                "status",
+            ),
+        },
+        {
+            "table": PREDICTIVE_DEMAND_RUNTIME_TABLES[2],
+            "fields": (
+                "event_id",
+                "event_type",
+                "payload",
+                "idempotency_key",
+                "attempts",
+                "status",
+            ),
+        },
+    )
+    relationships = (
+        {
+            "from_table": "forecast_run",
+            "from_field": "model_id",
+            "to_table": "forecast_model",
+            "to_field": "model_id",
+            "type": "owned_reference",
+        },
+        {
+            "from_table": "forecast_result",
+            "from_field": "run_id",
+            "to_table": "forecast_run",
+            "to_field": "run_id",
+            "type": "owned_reference",
+        },
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": next(field for field in table_fields[table] if field.endswith("_id")),
+            "owned_by": "predictive_demand",
+        }
+        for table in PREDICTIVE_DEMAND_OWNED_TABLES
+    )
+    migrations = tuple(
+        {
+            "path": f"pbcs/predictive_demand/migrations/{index:03d}_{table}.sql",
+            "operation": "create_owned_table",
+            "table": table,
+            "backend_allowlist": PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS,
+        }
+        for index, table in enumerate(PREDICTIVE_DEMAND_OWNED_TABLES, start=1)
+    )
+    models = tuple(
+        {
+            "module_path": f"pyAppGen.pbcs.predictive_demand.models.{table}",
+            "table": table,
+            "class_name": _class_name(table),
+        }
+        for table in PREDICTIVE_DEMAND_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.predictive-demand-owned-schema-contract.v1",
+        "ok": len(tables) == len(PREDICTIVE_DEMAND_OWNED_TABLES)
+        and len(migrations) == len(PREDICTIVE_DEMAND_OWNED_TABLES)
+        and len(models) == len(PREDICTIVE_DEMAND_OWNED_TABLES)
+        and tuple(item["table"] for item in runtime_tables) == PREDICTIVE_DEMAND_RUNTIME_TABLES,
+        "pbc": "predictive_demand",
+        "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+        "tables": tables,
+        "runtime_tables": runtime_tables,
+        "relationships": relationships,
+        "migrations": migrations,
+        "models": models,
+        "database_backends": PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+        "event_contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "shared_table_access": False,
+        "tenant_isolation": {"field": "tenant", "required": True},
+        "schema_extensions": {
+            "allowed": True,
+            "owned_tables_only": True,
+            "builder": "register_schema_extension",
+        },
+        "declared_dependencies": predictive_demand_verify_owned_table_boundary(())[
+            "declared_dependencies"
+        ],
+    }
+
+
+def predictive_demand_build_service_contract() -> dict:
+    api = predictive_demand_build_api_contract()
+    permissions = predictive_demand_permissions_contract()
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "register_forecast_model",
+        "receive_event",
+        "ingest_demand_signal",
+        "create_forecast_run",
+        "publish_forecast_result",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "verify_owned_table_boundary",
+        "build_api_contract",
+        "permissions_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    return {
+        "format": "appgen.predictive-demand-service-contract.v1",
+        "ok": len(command_methods) >= 9
+        and "receive_event" in command_methods
+        and "build_release_evidence" in query_methods,
+        "pbc": "predictive_demand",
+        "transaction_boundary": "predictive_demand_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": PREDICTIVE_DEMAND_OWNED_TABLES,
+        "mutates_only_owned_tables": True,
+        "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+        "runtime_tables": PREDICTIVE_DEMAND_RUNTIME_TABLES,
+        "event_contract": {
+            "contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+            "required_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+            "emits": PREDICTIVE_DEMAND_EMITTED_EVENT_TYPES,
+            "consumes": PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES,
+            "outbox_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[0],
+            "inbox_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[1],
+            "dead_letter_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[2],
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
+        },
+        "eventing": {
+            "contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+            "topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+            "outbox_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[0],
+            "inbox_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[1],
+            "dead_letter_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[2],
+            "idempotency_key": "event_type:event_id",
+        },
+        "idempotent_handlers": ("receive_event",),
+        "retry_dead_letter_evidence": {
+            "configured_by": "retry_limit",
+            "dead_letter_after_retry_limit": True,
+            "dead_letter_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[2],
+            "handler": "receive_event",
+        },
+        "configuration_contract": {
+            "required_fields": PREDICTIVE_DEMAND_SUPPORTED_CONFIGURATION_FIELDS,
+            "allowed_database_backends": PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+            "event_contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
+        },
+        "external_dependencies": predictive_demand_verify_owned_table_boundary(())[
+            "declared_dependencies"
+        ],
+        "shared_table_access": False,
+        "command_permissions": {
+            method: permissions["action_permissions"][method]
+            for method in command_methods
+            if method in permissions["action_permissions"]
+        },
+        "generated_service_artifacts": {
+            "services": tuple(
+                {
+                    "service": method,
+                    "callable": f"pyAppGen.pbcs.predictive_demand.runtime:{method}",
+                }
+                for method in command_methods + query_methods
+            ),
+            "routes": tuple(
+                {
+                    "route": route["route"],
+                    "operation": route.get("command", route.get("query")),
+                    "permission": route["requires_permission"],
+                }
+                for route in api["routes"]
+            ),
+            "events": {
+                "emits": tuple(
+                    {
+                        "event_type": event_type,
+                        "topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+                        "outbox_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[0],
+                    }
+                    for event_type in PREDICTIVE_DEMAND_EMITTED_EVENT_TYPES
+                ),
+                "consumes": tuple(
+                    {
+                        "event_type": event_type,
+                        "topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+                        "inbox_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[1],
+                    }
+                    for event_type in PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES
+                ),
+            },
+            "handlers": tuple(
+                {
+                    "event_type": event_type,
+                    "handler": "receive_event",
+                    "module": "pyAppGen.pbcs.predictive_demand.runtime",
+                    "idempotent": True,
+                    "dead_letter_table": PREDICTIVE_DEMAND_RUNTIME_TABLES[2],
+                }
+                for event_type in PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES
+            ),
+        },
+    }
+
+
+def predictive_demand_build_release_evidence() -> dict:
+    from .ui import PREDICTIVE_DEMAND_UI_FRAGMENT_KEYS
+    from .ui import predictive_demand_render_workbench
+    from .ui import predictive_demand_ui_contract
+
+    schema = predictive_demand_build_schema_contract()
+    service = predictive_demand_build_service_contract()
+    api = predictive_demand_build_api_contract()
+    permissions = predictive_demand_permissions_contract()
+    ui = predictive_demand_ui_contract()
+    control = _predictive_demand_release_control_evidence()
+    generated_artifacts = {
+        "migrations": schema["migrations"],
+        "models": schema["models"],
+        "services": service["generated_service_artifacts"]["services"],
+        "routes": service["generated_service_artifacts"]["routes"],
+        "events": service["generated_service_artifacts"]["events"],
+        "handlers": service["generated_service_artifacts"]["handlers"],
+        "ui": tuple(
+            {
+                "fragment": fragment,
+                "route": "/workbench/pbcs/predictive_demand",
+            }
+            for fragment in PREDICTIVE_DEMAND_UI_FRAGMENT_KEYS
+        ),
+    }
+    rendered = predictive_demand_render_workbench(
+        control["state"],
+        tenant="tenant_release",
+        principal_permissions=permissions["permissions"],
+    )
+    checks = (
+        {
+            "id": "owned_schema_contract",
+            "ok": schema["ok"] and schema["owned_tables"] == PREDICTIVE_DEMAND_OWNED_TABLES,
+        },
+        {
+            "id": "runtime_event_tables_declared",
+            "ok": tuple(item["table"] for item in schema["runtime_tables"])
+            == PREDICTIVE_DEMAND_RUNTIME_TABLES,
+        },
+        {
+            "id": "migration_model_generation",
+            "ok": len(schema["migrations"]) == len(PREDICTIVE_DEMAND_OWNED_TABLES)
+            and len(schema["models"]) == len(PREDICTIVE_DEMAND_OWNED_TABLES),
+        },
+        {
+            "id": "service_contract_queries_and_commands",
+            "ok": service["ok"]
+            and {"build_schema_contract", "build_service_contract", "build_release_evidence"}
+            <= set(service["query_methods"])
+            and {"configure_runtime", "register_rule", "register_schema_extension"}
+            <= set(service["command_methods"]),
+        },
+        {
+            "id": "appgen_x_eventing_only",
+            "ok": api["event_contract"] == PREDICTIVE_DEMAND_EVENT_CONTRACT
+            and api["required_event_topic"] == PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC
+            and api["stream_engine_picker_visible"] is False
+            and service["event_contract"]["stream_engine_picker_visible"] is False
+            and ui["configuration_editor"]["stream_engine_picker_visible"] is False,
+        },
+        {
+            "id": "permissions_cover_contracts",
+            "ok": {
+                "build_schema_contract",
+                "build_service_contract",
+                "build_release_evidence",
+                "register_schema_extension",
+            }
+            <= set(permissions["action_permissions"]),
+        },
+        {
+            "id": "retry_dead_letter_and_idempotency",
+            "ok": control["handled"]["status"] == "handled"
+            and control["duplicate"]["status"] == "duplicate"
+            and control["failed"]["status"] == "dead_letter",
+        },
+        {
+            "id": "runtime_outbox_inbox_dead_letter_evidence",
+            "ok": control["workbench"]["binding_evidence"]["runtime_tables"]
+            == PREDICTIVE_DEMAND_RUNTIME_TABLES
+            and control["workbench"]["outbox_count"] >= 2
+            and len(control["state"]["inbox"]) >= 2
+            and len(control["state"]["dead_letter"]) == 1,
+        },
+        {
+            "id": "generated_artifacts_present",
+            "ok": len(generated_artifacts["migrations"]) == len(PREDICTIVE_DEMAND_OWNED_TABLES)
+            and len(generated_artifacts["models"]) == len(PREDICTIVE_DEMAND_OWNED_TABLES)
+            and len(generated_artifacts["services"]) >= 10
+            and len(generated_artifacts["routes"]) >= 9
+            and len(generated_artifacts["handlers"]) == len(PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES)
+            and len(generated_artifacts["ui"]) == len(PREDICTIVE_DEMAND_UI_FRAGMENT_KEYS),
+        },
+        {
+            "id": "backend_allowlist_and_boundary",
+            "ok": schema["database_backends"] == PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS
+            and api["database_backends"] == PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS
+            and predictive_demand_verify_owned_table_boundary(
+                (
+                    "forecast_model",
+                    PREDICTIVE_DEMAND_RUNTIME_TABLES[0],
+                    "shipment_projection",
+                    "OrderShipped",
+                )
+            )["ok"]
+            and predictive_demand_verify_owned_table_boundary(("inventory_pool",))["ok"]
+            is False,
+        },
+        {
+            "id": "rendered_ui_binding_and_permissions",
+            "ok": rendered["ok"]
+            and not rendered["locked_actions"]
+            and rendered["binding_evidence"]["owned_tables"] == PREDICTIVE_DEMAND_OWNED_TABLES,
+        },
+        {
+            "id": "no_shared_table_access",
+            "ok": schema["shared_table_access"] is False
+            and service["shared_table_access"] is False
+            and api["shared_table_access"] is False,
+        },
+    )
+    blocking_gaps = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.predictive-demand-release-evidence.v1",
+        "ok": not blocking_gaps,
+        "pbc": "predictive_demand",
+        "checks": checks,
+        "blocking_gaps": blocking_gaps,
+        "schema_contract": schema,
+        "service_contract": service,
+        "api_contract": api,
+        "permissions_contract": permissions,
+        "ui_contract": ui,
+        "generated_artifacts": generated_artifacts,
+        "control_evidence": {
+            **control,
+            "rendered": rendered,
+        },
     }
 
 
@@ -946,12 +1422,212 @@ def predictive_demand_permissions_contract() -> dict:
             "create_forecast_run": "predictive_demand.run.write",
             "publish_forecast_result": "predictive_demand.result.write",
             "receive_event": "predictive_demand.event.consume",
+            "register_schema_extension": "predictive_demand.configure",
             "register_rule": "predictive_demand.configure",
             "set_parameter": "predictive_demand.configure",
             "configure_runtime": "predictive_demand.configure",
+            "build_api_contract": "predictive_demand.audit",
+            "permissions_contract": "predictive_demand.audit",
             "build_workbench_view": "predictive_demand.audit",
             "verify_owned_table_boundary": "predictive_demand.audit",
+            "build_schema_contract": "predictive_demand.audit",
+            "build_service_contract": "predictive_demand.audit",
+            "build_release_evidence": "predictive_demand.audit",
         },
+    }
+
+
+def _predictive_demand_release_control_evidence() -> dict:
+    state = predictive_demand_empty_state()
+    state = predictive_demand_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_uom": "EA",
+            "supported_regions": ("US",),
+            "supported_signal_types": (
+                "shipment",
+                "inventory",
+                "operational",
+                "manual",
+                "promotion",
+            ),
+            "planning_granularity": "daily",
+            "default_timezone": "UTC",
+            "shortage_policy": "service_level",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    for name, value in (
+        ("forecast_horizon_days", 14),
+        ("history_window_days", 180),
+        ("service_level_target", 0.95),
+        ("promotion_lift_default", 15.0),
+        ("causal_weight", 0.4),
+        ("anomaly_threshold", 2.5),
+        ("retrain_cadence_days", 14),
+        ("shortage_alert_days", 21),
+        ("bias_tolerance_percent", 10.0),
+        ("workbench_limit", 50),
+    ):
+        state = predictive_demand_set_parameter(state, name, value)["state"]
+    state = predictive_demand_register_rule(
+        state,
+        {
+            "rule_id": "rule_release",
+            "tenant": "tenant_release",
+            "scope": "predictive_demand",
+            "status": "active",
+            "allowed_signal_types": (
+                "shipment",
+                "inventory",
+                "operational",
+                "manual",
+                "promotion",
+            ),
+            "allowed_regions": ("US",),
+            "consensus_policy": {
+                "planner_override_limit_percent": 20.0,
+                "consensus_required": True,
+            },
+            "forecast_policy": {
+                "default_algorithm": "ensemble",
+                "allow_causal_inputs": True,
+            },
+            "shortage_policy": {
+                "emit_material_shortage": True,
+                "minimum_shortage_quantity": 1.0,
+            },
+        },
+    )["state"]
+    extension = predictive_demand_register_schema_extension(
+        state,
+        "forecast_result",
+        {"release_annotation": "jsonb"},
+    )
+    state = extension["state"]
+    state = predictive_demand_register_forecast_model(
+        state,
+        {
+            "model_id": "model_release",
+            "tenant": "tenant_release",
+            "sku": "SKU-REL",
+            "location": "DC-1",
+            "algorithm": "ensemble",
+            "version": "2026.05",
+            "status": "active",
+        },
+    )["state"]
+    handled = predictive_demand_receive_event(
+        state,
+        {
+            "event_id": "ship_release",
+            "event_type": "OrderShipped",
+            "payload": {
+                "tenant": "tenant_release",
+                "sku": "SKU-REL",
+                "location": "DC-1",
+                "region": "US",
+                "quantity": 60,
+            },
+        },
+    )
+    state = handled["state"]
+    duplicate = predictive_demand_receive_event(
+        state,
+        {
+            "event_id": "ship_release",
+            "event_type": "OrderShipped",
+            "payload": {
+                "tenant": "tenant_release",
+                "sku": "SKU-REL",
+                "location": "DC-1",
+                "region": "US",
+                "quantity": 60,
+            },
+        },
+    )
+    state = duplicate["state"]
+    state = predictive_demand_receive_event(
+        state,
+        {
+            "event_id": "inv_release",
+            "event_type": "InventoryPoolChanged",
+            "payload": {
+                "tenant": "tenant_release",
+                "sku": "SKU-REL",
+                "location": "DC-1",
+                "region": "US",
+                "available_quantity": 25,
+            },
+        },
+    )["state"]
+    failed = predictive_demand_receive_event(
+        state,
+        {
+            "event_id": "ops_release_fail",
+            "event_type": "OperationalKpiChanged",
+            "payload": {
+                "tenant": "tenant_release",
+                "sku": "SKU-REL",
+                "location": "DC-1",
+                "region": "US",
+                "value": 18,
+                "kpi_name": "order_intake_velocity",
+            },
+        },
+        simulate_failure=True,
+    )
+    state = failed["state"]
+    state = predictive_demand_ingest_demand_signal(
+        state,
+        {
+            "signal_id": "manual_release",
+            "tenant": "tenant_release",
+            "signal_type": "manual",
+            "sku": "SKU-REL",
+            "location": "DC-1",
+            "region": "US",
+            "quantity": 35,
+            "signal_date": "2026-05-26",
+            "source": "planner_override",
+            "payload": {"reason": "launch_commit"},
+        },
+    )["state"]
+    state = predictive_demand_create_forecast_run(
+        state,
+        {
+            "run_id": "run_release",
+            "model_id": "model_release",
+            "tenant": "tenant_release",
+            "sku": "SKU-REL",
+            "location": "DC-1",
+            "horizon_days": 14,
+            "initiated_by": "planner_release",
+            "status": "active",
+        },
+    )["state"]
+    published = predictive_demand_publish_forecast_result(
+        state,
+        {
+            "result_id": "result_release",
+            "run_id": "run_release",
+            "tenant": "tenant_release",
+            "status": "published",
+        },
+    )
+    state = published["state"]
+    workbench = predictive_demand_build_workbench_view(state, tenant="tenant_release")
+    return {
+        "state": state,
+        "extension": extension["extension"],
+        "handled": handled["handler"],
+        "duplicate": duplicate["handler"],
+        "failed": failed["handler"],
+        "forecast_result": published["forecast_result"],
+        "workbench": workbench,
     }
 
 
@@ -1121,7 +1797,7 @@ def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> None:
         "event_type": event_type,
         "tenant": tenant,
         "payload": payload,
-        "contract": "appgen_event_contract",
+        "contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
         "idempotency_key": (
             "predictive_demand:"
             f"{event_type}:"
@@ -1186,3 +1862,7 @@ def _digest(payload: dict) -> str:
             separators=(",", ":"),
         ).encode()
     ).hexdigest()
+
+
+def _class_name(name: str) -> str:
+    return "".join(part.capitalize() for part in name.split("_"))

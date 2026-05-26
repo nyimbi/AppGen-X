@@ -11,6 +11,11 @@ import math
 FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC = "appgen.fraud_anomaly_detection.events"
 FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 FRAUD_ANOMALY_DETECTION_OWNED_TABLES = ("risk_signal", "anomaly_score", "fraud_rule", "risk_case")
+FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES = (
+    "fraud_anomaly_detection_appgen_outbox_event",
+    "fraud_anomaly_detection_appgen_inbox_event",
+    "fraud_anomaly_detection_dead_letter_event",
+)
 
 FRAUD_ANOMALY_DETECTION_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_risk_signal_lifecycle",
@@ -151,6 +156,10 @@ def fraud_anomaly_detection_runtime_capabilities() -> dict:
         "pbc": "fraud_anomaly_detection",
         "implementation_directory": "src/pyAppGen/pbcs/fraud_anomaly_detection",
         "owned_tables": FRAUD_ANOMALY_DETECTION_OWNED_TABLES,
+        "runtime_tables": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
+        "required_event_topic": FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC,
+        "consumed_events": FRAUD_ANOMALY_DETECTION_CONSUMED_EVENT_TYPES,
+        "emitted_events": FRAUD_ANOMALY_DETECTION_EMITTED_EVENT_TYPES,
         "capabilities": FRAUD_ANOMALY_DETECTION_RUNTIME_CAPABILITY_KEYS,
         "standard_features": FRAUD_ANOMALY_DETECTION_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -164,6 +173,9 @@ def fraud_anomaly_detection_runtime_capabilities() -> dict:
             "open_risk_case",
             "receive_event",
             "build_workbench_view",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
         ),
         "smoke": smoke,
     }
@@ -737,23 +749,239 @@ def fraud_anomaly_detection_build_workbench_view(state: dict, *, tenant: str) ->
         "parameter_count": len(state.get("parameters", {})),
         "binding_evidence": {
             "owned_tables": FRAUD_ANOMALY_DETECTION_OWNED_TABLES,
-            "outbox_table": "fraud_anomaly_detection_appgen_outbox_event",
-            "inbox_table": "fraud_anomaly_detection_appgen_inbox_event",
-            "dead_letter_table": "fraud_anomaly_detection_dead_letter_event",
+            "runtime_tables": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
+            "event_contract": "AppGen-X",
+            "required_event_topic": FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC,
+            "outbox_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[0],
+            "inbox_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[1],
+            "dead_letter_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[2],
+            "stream_engine_picker_visible": False,
         },
     }
 
 
-def fraud_anomaly_detection_verify_owned_table_boundary() -> dict:
+def fraud_anomaly_detection_build_schema_contract() -> dict:
+    table_fields = {
+        "risk_signal": (
+            "tenant",
+            "signal_id",
+            "subject_key",
+            "event_type",
+            "region",
+            "raw_score",
+            "severity",
+            "source_event_id",
+            "signal_hash",
+        ),
+        "anomaly_score": (
+            "tenant",
+            "anomaly_score_id",
+            "signal_id",
+            "subject_key",
+            "event_type",
+            "risk_score",
+            "confidence",
+            "decision",
+            "severity",
+            "recommended_queue",
+            "audit_proof",
+        ),
+        "fraud_rule": (
+            "tenant",
+            "fraud_rule_id",
+            "name",
+            "event_type",
+            "score_adjustment",
+            "decision",
+            "status",
+            "compiled_hash",
+        ),
+        "risk_case": (
+            "tenant",
+            "case_id",
+            "signal_id",
+            "anomaly_score_id",
+            "subject_key",
+            "severity",
+            "status",
+            "queue",
+            "recommended_action",
+            "audit_proof",
+        ),
+    }
+    runtime_table_fields = {
+        FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[0]: (
+            "event_id",
+            "event_type",
+            "tenant",
+            "payload",
+            "idempotency_key",
+            "contract",
+            "retry_policy",
+            "audit_hash",
+        ),
+        FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[1]: (
+            "event_id",
+            "event_type",
+            "payload",
+            "idempotency_key",
+            "attempts",
+            "status",
+        ),
+        FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[2]: (
+            "event_id",
+            "event_type",
+            "payload",
+            "idempotency_key",
+            "attempts",
+            "status",
+        ),
+    }
+    relationships = (
+        {"from": "anomaly_score.signal_id", "to": "risk_signal.signal_id", "type": "owned_score"},
+        {"from": "risk_case.signal_id", "to": "risk_signal.signal_id", "type": "owned_case_signal"},
+        {"from": "risk_case.anomaly_score_id", "to": "anomaly_score.anomaly_score_id", "type": "owned_case_score"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id"))[:2],
+            "owned_by": "fraud_anomaly_detection",
+        }
+        for table in FRAUD_ANOMALY_DETECTION_OWNED_TABLES
+    )
+    runtime_tables = tuple(
+        {
+            "table": table,
+            "fields": runtime_table_fields[table],
+            "primary_key": ("event_id",),
+            "owned_by": "fraud_anomaly_detection_runtime",
+        }
+        for table in FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES
+    )
+    return {
+        "format": "appgen.fraud-anomaly-detection-owned-schema-contract.v1",
+        "ok": len(tables) == len(FRAUD_ANOMALY_DETECTION_OWNED_TABLES)
+        and tuple(item["table"] for item in runtime_tables) == FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
+        "pbc": "fraud_anomaly_detection",
+        "owned_tables": FRAUD_ANOMALY_DETECTION_OWNED_TABLES,
+        "tables": tables,
+        "runtime_tables": runtime_tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/fraud_anomaly_detection/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(FRAUD_ANOMALY_DETECTION_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+                "module_path": f"pyAppGen.pbcs.fraud_anomaly_detection.models.{table}",
+            }
+            for table in FRAUD_ANOMALY_DETECTION_OWNED_TABLES
+        ),
+        "datastore_backends": FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def fraud_anomaly_detection_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "register_fraud_rule",
+        "ingest_risk_signal",
+        "score_anomaly",
+        "open_risk_case",
+        "receive_event",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "build_api_contract",
+        "permissions_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+        "verify_owned_table_boundary",
+    )
+    return {
+        "format": "appgen.fraud-anomaly-detection-service-contract.v1",
+        "ok": len(command_methods) >= 9 and len(query_methods) >= 7,
+        "pbc": "fraud_anomaly_detection",
+        "transaction_boundary": "fraud_anomaly_detection_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": FRAUD_ANOMALY_DETECTION_OWNED_TABLES,
+        "runtime_tables": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
+        "external_dependencies": fraud_anomaly_detection_verify_owned_table_boundary()["declared_dependencies"],
+        "configuration": {
+            "required_fields": FRAUD_ANOMALY_DETECTION_SUPPORTED_CONFIGURATION_FIELDS,
+            "allowed_database_backends": FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC,
+            "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "event_contract_selector_visible": False,
+        },
+        "eventing": {
+            "contract": "AppGen-X",
+            "topic": FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC,
+            "outbox_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[0],
+            "inbox_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[1],
+            "dead_letter_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[2],
+            "idempotency_required": True,
+            "stream_engine_picker_visible": False,
+        },
+        "idempotent_handlers": ("receive_event",),
+        "retry_dead_letter_evidence": {
+            "retry_limit_field": "retry_limit",
+            "outbox_state": "outbox",
+            "inbox_state": "inbox",
+            "dead_letter_state": "dead_letter",
+            "dead_letter_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[2],
+        },
+        "generated_artifacts": {
+            "services": ("pbcs/fraud_anomaly_detection/services/risk_service.py",),
+            "routes": ("pbcs/fraud_anomaly_detection/routes/risk_routes.py",),
+            "events": ("pbcs/fraud_anomaly_detection/events/fraud_events.py",),
+            "handlers": ("pbcs/fraud_anomaly_detection/handlers/fraud_handlers.py",),
+            "ui": ("pbcs/fraud_anomaly_detection/ui/workbench.py",),
+        },
+        "shared_table_access": False,
+    }
+
+
+def fraud_anomaly_detection_verify_owned_table_boundary(references: tuple[str, ...] = ()) -> dict:
+    allowed = {
+        *FRAUD_ANOMALY_DETECTION_OWNED_TABLES,
+        *FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
+        *FRAUD_ANOMALY_DETECTION_CONSUMED_EVENT_TYPES,
+        "POST /risk-events",
+        "POST /fraud-checks",
+        "GET /risk-cases",
+        "GET /risk-workbench",
+    }
+    violations = tuple(reference for reference in references if reference not in allowed)
     return {
         "format": "appgen.fraud-anomaly-detection-boundary.v1",
-        "ok": True,
+        "ok": not violations,
         "owned_tables": FRAUD_ANOMALY_DETECTION_OWNED_TABLES,
+        "runtime_tables": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
         "declared_dependencies": {
             "apis": ("POST /risk-events", "POST /fraud-checks", "GET /risk-cases"),
             "events": FRAUD_ANOMALY_DETECTION_CONSUMED_EVENT_TYPES,
             "shared_tables": (),
         },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -767,24 +995,293 @@ def fraud_anomaly_detection_build_api_contract() -> dict:
             "GET /risk-cases",
             "GET /risk-workbench",
         ),
+        "route_contracts": (
+            {"route": "POST /risk-events", "command": "receive_event", "requires_permission": "fraud_anomaly_detection.event.consume"},
+            {"route": "POST /fraud-checks", "command": "score_anomaly", "requires_permission": "fraud_anomaly_detection.anomaly_score.write"},
+            {"route": "GET /risk-cases", "query": "build_workbench_view", "requires_permission": "fraud_anomaly_detection.risk_case.write"},
+            {"route": "GET /risk-workbench", "query": "build_workbench_view", "requires_permission": "fraud_anomaly_detection.audit"},
+        ),
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "required_event_topic": FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC,
+        "database_backends": FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "event_contract_selector_visible": False,
+        "consumed_events": FRAUD_ANOMALY_DETECTION_CONSUMED_EVENT_TYPES,
+        "emitted_events": FRAUD_ANOMALY_DETECTION_EMITTED_EVENT_TYPES,
     }
 
 
 def fraud_anomaly_detection_permissions_contract() -> dict:
+    permissions = (
+        "fraud_anomaly_detection.event.write",
+        "fraud_anomaly_detection.anomaly_score.write",
+        "fraud_anomaly_detection.fraud_rule.write",
+        "fraud_anomaly_detection.risk_case.write",
+        "fraud_anomaly_detection.event.consume",
+        "fraud_anomaly_detection.configure",
+        "fraud_anomaly_detection.audit",
+    )
+    action_permissions = {
+        "configure_runtime": "fraud_anomaly_detection.configure",
+        "set_parameter": "fraud_anomaly_detection.configure",
+        "register_rule": "fraud_anomaly_detection.configure",
+        "register_schema_extension": "fraud_anomaly_detection.configure",
+        "register_fraud_rule": "fraud_anomaly_detection.fraud_rule.write",
+        "ingest_risk_signal": "fraud_anomaly_detection.event.write",
+        "score_anomaly": "fraud_anomaly_detection.anomaly_score.write",
+        "open_risk_case": "fraud_anomaly_detection.risk_case.write",
+        "receive_event": "fraud_anomaly_detection.event.consume",
+        "build_workbench_view": "fraud_anomaly_detection.audit",
+        "build_schema_contract": "fraud_anomaly_detection.audit",
+        "build_service_contract": "fraud_anomaly_detection.audit",
+        "build_release_evidence": "fraud_anomaly_detection.audit",
+        "verify_owned_table_boundary": "fraud_anomaly_detection.audit",
+    }
     return {
         "format": "appgen.fraud-anomaly-detection-permissions.v1",
         "ok": True,
-        "permissions": (
-            "fraud_anomaly_detection.event.write",
-            "fraud_anomaly_detection.anomaly_score.write",
-            "fraud_anomaly_detection.fraud_rule.write",
-            "fraud_anomaly_detection.risk_case.write",
-            "fraud_anomaly_detection.event.consume",
-            "fraud_anomaly_detection.configure",
-            "fraud_anomaly_detection.audit",
-        ),
+        "permissions": permissions,
+        "action_permissions": action_permissions,
+        "roles": {
+            "fraud_anomaly_detection_admin": permissions,
+            "fraud_analyst": (
+                "fraud_anomaly_detection.anomaly_score.write",
+                "fraud_anomaly_detection.risk_case.write",
+                "fraud_anomaly_detection.audit",
+            ),
+            "fraud_runtime_operator": (
+                "fraud_anomaly_detection.event.consume",
+                "fraud_anomaly_detection.event.write",
+                "fraud_anomaly_detection.configure",
+            ),
+        },
+    }
+
+
+def fraud_anomaly_detection_build_release_evidence() -> dict:
+    from .ui import fraud_anomaly_detection_ui_contract
+
+    schema = fraud_anomaly_detection_build_schema_contract()
+    service = fraud_anomaly_detection_build_service_contract()
+    api = fraud_anomaly_detection_build_api_contract()
+    permissions = fraud_anomaly_detection_permissions_contract()
+    ui = fraud_anomaly_detection_ui_contract()
+    control = _fraud_anomaly_detection_release_control_evidence()
+    checks = (
+        {
+            "id": "owned_schema_depth",
+            "ok": schema["ok"] and schema["owned_tables"] == FRAUD_ANOMALY_DETECTION_OWNED_TABLES,
+        },
+        {
+            "id": "migration_per_owned_table",
+            "ok": len(schema["migrations"]) == len(FRAUD_ANOMALY_DETECTION_OWNED_TABLES),
+        },
+        {
+            "id": "model_per_owned_table",
+            "ok": len(schema["models"]) == len(FRAUD_ANOMALY_DETECTION_OWNED_TABLES),
+        },
+        {
+            "id": "runtime_event_tables_evidence",
+            "ok": tuple(item["table"] for item in schema["runtime_tables"]) == FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
+        },
+        {
+            "id": "service_contract_depth",
+            "ok": service["ok"]
+            and "receive_event" in service["idempotent_handlers"]
+            and {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(service["query_methods"]),
+        },
+        {
+            "id": "generated_runtime_artifacts",
+            "ok": {"services", "routes", "events", "handlers", "ui"} <= set(service["generated_artifacts"]),
+        },
+        {
+            "id": "appgen_event_contract_only",
+            "ok": api["event_contract"] == "AppGen-X"
+            and api["required_event_topic"] == FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC
+            and api["stream_engine_picker_visible"] is False,
+        },
+        {
+            "id": "permissions_cover_release_queries",
+            "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"]),
+        },
+        {
+            "id": "backend_allowlist",
+            "ok": schema["datastore_backends"] == FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS
+            and service["configuration"]["allowed_database_backends"] == FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS,
+        },
+        {
+            "id": "idempotent_eventing_evidence",
+            "ok": control["summary"]["handled_status"] == "handled"
+            and control["summary"]["duplicate_status"] == "duplicate"
+            and control["summary"]["dead_letter_status"] == "dead_letter",
+        },
+        {
+            "id": "ui_binding_evidence",
+            "ok": ui["ok"]
+            and control["workbench"]["binding_evidence"]["owned_tables"] == FRAUD_ANOMALY_DETECTION_OWNED_TABLES
+            and control["workbench"]["binding_evidence"]["runtime_tables"] == FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
+        },
+        {
+            "id": "no_shared_table_access",
+            "ok": not schema["shared_table_access"]
+            and not service["shared_table_access"]
+            and not api["shared_table_access"]
+            and service["external_dependencies"]["shared_tables"] == (),
+        },
+    )
+    blocking_gaps = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.fraud-anomaly-detection-release-evidence.v1",
+        "ok": not blocking_gaps,
+        "pbc": "fraud_anomaly_detection",
+        "checks": checks,
+        "blocking_gaps": blocking_gaps,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "ui": ui,
+        "control": control,
+    }
+
+
+def _fraud_anomaly_detection_release_control_evidence() -> dict:
+    from .ui import fraud_anomaly_detection_render_workbench
+
+    state = fraud_anomaly_detection_empty_state()
+    state = fraud_anomaly_detection_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_region": "US",
+            "supported_regions": ("US",),
+            "supported_event_types": FRAUD_ANOMALY_DETECTION_CONSUMED_EVENT_TYPES,
+            "identity_dimensions": (
+                "customer_id",
+                "email",
+                "device_id",
+                "ip_address",
+                "principal_id",
+            ),
+            "default_timezone": "UTC",
+            "scoring_mode": "policy",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    for name, value in (
+        ("checkout_risk_weight", 6.0),
+        ("payment_risk_weight", 7.0),
+        ("access_policy_risk_weight", 8.0),
+        ("anomaly_alert_threshold", 0.45),
+        ("case_open_threshold", 0.7),
+        ("baseline_min_events", 25),
+        ("behavior_decay_days", 90),
+        ("identity_linkage_weight", 4.0),
+        ("supervised_override_weight", 3.0),
+        ("workbench_limit", 50),
+    ):
+        state = fraud_anomaly_detection_set_parameter(state, name, value)["state"]
+    state = fraud_anomaly_detection_register_rule(
+        state,
+        {
+            "rule_id": "rule_release",
+            "tenant": "tenant_release",
+            "scope": "fraud_anomaly_detection",
+            "status": "active",
+            "allowed_event_types": FRAUD_ANOMALY_DETECTION_CONSUMED_EVENT_TYPES,
+            "allowed_regions": ("US",),
+            "signal_policy": {"minimum_indicators": 1, "baseline_family": "commerce_and_access"},
+            "anomaly_policy": {"review_threshold": 0.45, "bias": 0.05},
+            "case_policy": {"auto_open_threshold": 0.7, "queue": "fraud_ops"},
+        },
+    )["state"]
+    state = fraud_anomaly_detection_register_fraud_rule(
+        state,
+        {
+            "fraud_rule_id": "fraud_release_velocity",
+            "tenant": "tenant_release",
+            "name": "Release Checkout Velocity",
+            "event_type": "CheckoutCompleted",
+            "trigger": {"guest_checkout": True, "device_trust": "low"},
+            "score_adjustment": 0.18,
+            "decision": "review",
+            "status": "active",
+        },
+    )["state"]
+    handled = fraud_anomaly_detection_receive_event(
+        state,
+        {
+            "event_id": "checkout_release",
+            "event_type": "CheckoutCompleted",
+            "payload": {
+                "tenant": "tenant_release",
+                "checkout_id": "chk_release",
+                "customer_id": "cust_release",
+                "email": "release@example.com",
+                "amount": 2400.0,
+                "region": "US",
+                "guest_checkout": True,
+                "device_trust": "low",
+                "device_id": "device_release",
+                "ip_address": "10.0.0.21",
+            },
+        },
+    )
+    duplicate = fraud_anomaly_detection_receive_event(
+        handled["state"],
+        {
+            "event_id": "checkout_release",
+            "event_type": "CheckoutCompleted",
+            "payload": {
+                "tenant": "tenant_release",
+                "checkout_id": "chk_release",
+            },
+        },
+    )
+    failed = fraud_anomaly_detection_receive_event(
+        handled["state"],
+        {
+            "event_id": "checkout_release_fail",
+            "event_type": "CheckoutCompleted",
+            "payload": {"tenant": "tenant_release"},
+        },
+        simulate_failure=True,
+    )
+    workbench = fraud_anomaly_detection_build_workbench_view(failed["state"], tenant="tenant_release")
+    rendered = fraud_anomaly_detection_render_workbench(
+        failed["state"],
+        tenant="tenant_release",
+        principal_permissions=fraud_anomaly_detection_permissions_contract()["permissions"],
+    )
+    summary = {
+        "handled_status": handled["handler"]["status"],
+        "duplicate_status": duplicate["handler"]["status"],
+        "dead_letter_status": failed["handler"]["status"],
+        "outbox_contract": handled["state"]["outbox"][0]["contract"],
+        "outbox_table": workbench["binding_evidence"]["outbox_table"],
+        "inbox_table": workbench["binding_evidence"]["inbox_table"],
+        "dead_letter_table": workbench["binding_evidence"]["dead_letter_table"],
+        "retry_max_attempts": handled["state"]["outbox"][0]["retry_policy"]["max_attempts"],
+        "outbox_count": workbench["outbox_count"],
+        "inbox_count": len(failed["state"]["inbox"]),
+        "dead_letter_count": workbench["dead_letter_count"],
+        "open_case_count": workbench["open_case_count"],
+    }
+    return {
+        "ok": handled["ok"]
+        and duplicate["handler"]["status"] == "duplicate"
+        and failed["handler"]["status"] == "dead_letter"
+        and summary["outbox_contract"] == "AppGen-X"
+        and summary["dead_letter_count"] == 1,
+        "handled": handled,
+        "duplicate": duplicate,
+        "failed": failed,
+        "workbench": workbench,
+        "rendered": rendered,
+        "summary": summary,
     }
 
 
@@ -973,13 +1470,13 @@ def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> None:
         "event_type": event_type,
         "tenant": tenant,
         "payload": payload,
-        "contract": "appgen_event_contract",
+        "contract": "AppGen-X",
         "idempotency_key": (
             f"fraud_anomaly_detection:{event_type}:{payload.get('case_id') or payload.get('signal_id') or payload.get('subject_key') or len(state['outbox']) + 1}"
         ),
         "retry_policy": {
             "max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)),
-            "dead_letter": "fraud_anomaly_detection_dead_letter_event",
+            "dead_letter": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[2],
         },
         "audit_hash": _digest({"event_type": event_type, "tenant": tenant, "payload": payload}),
     }

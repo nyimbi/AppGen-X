@@ -104,6 +104,42 @@ Runtime configuration rejects unsupported backends, requires the AppGen-X event
 topic, and keeps `stream_engine_picker_visible` false. Ordinary eventing does
 not expose a stream-engine picker or per-PBC runtime selector.
 
+## Generated Schema and Models
+
+`enterprise_search_vector_build_schema_contract()` generates package-owned
+schema descriptors for business tables and AppGen-X runtime tables:
+
+- Business tables: `search_index`, `embedding_job`, `vector_document`, and
+  `query_trace`.
+- Runtime tables: `enterprise_search_vector_appgen_outbox_event`,
+  `enterprise_search_vector_appgen_inbox_event`, and
+  `enterprise_search_vector_dead_letter_event`.
+- Generated artifacts: one migration descriptor and one model descriptor per
+  owned table under `pbcs/enterprise_search_vector/migrations/` and
+  `pbcs/enterprise_search_vector/models/`.
+- Boundaries: tenant isolation is mandatory, schema extensions are allowed only
+  on owned tables, and declared dependencies remain APIs, AppGen-X events, or
+  projections.
+
+## Service Layer
+
+`enterprise_search_vector_build_service_contract()` defines the generated
+application service surface. Command methods cover runtime configuration,
+bounded parameter changes, rule compilation, schema extension registration,
+index creation, document ingestion, embedding jobs, index refresh, hybrid
+querying, relevance feedback, idempotent event receipt, workbench generation,
+boundary verification, schema/service/release evidence generation, and advanced
+search operations such as counterfactual ranking, freshness forecasting,
+quality remediation, policy screening, relevance controls, index proofs, and
+federated source views.
+
+The service transaction boundary is
+`enterprise_search_vector_owned_datastore_plus_appgen_outbox`. It mutates only
+Enterprise Search Vector owned tables plus its AppGen-X runtime tables, uses the
+fixed `appgen.enterprise_search_vector.events` topic, requires idempotent
+handlers, and records retry/dead-letter evidence through the
+`enterprise_search_vector_dead_letter_event` table.
+
 ## UI and Workbench
 
 The package exports a UI contract with fragments for:

@@ -1,11 +1,16 @@
 import pytest
 
 from pyAppGen.pbcs.loyalty_rewards import LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.loyalty_rewards import LOYALTY_REWARDS_CONSUMED_EVENT_TYPES
 from pyAppGen.pbcs.loyalty_rewards import LOYALTY_REWARDS_OWNED_TABLES
+from pyAppGen.pbcs.loyalty_rewards import LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.loyalty_rewards import LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.loyalty_rewards import implementation_contract
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_adjust_points
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_build_api_contract
+from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_build_release_evidence
+from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_build_schema_contract
+from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_build_service_contract
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_build_workbench_view
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_configure_runtime
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_create_redemption
@@ -29,11 +34,15 @@ def test_loyalty_rewards_runtime_executes_standard_and_advanced_capabilities() -
     runtime = loyalty_rewards_runtime_capabilities()
     smoke = loyalty_rewards_runtime_smoke()
     contract = implementation_contract()
+    schema = loyalty_rewards_build_schema_contract()
+    service = loyalty_rewards_build_service_contract()
+    release = loyalty_rewards_build_release_evidence()
 
     assert runtime["format"] == "appgen.loyalty-rewards-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/loyalty_rewards"
     assert runtime["owned_tables"] == LOYALTY_REWARDS_OWNED_TABLES
+    assert {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(runtime["operations"])
     assert len(runtime["standard_features"]) >= 20
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
@@ -43,7 +52,15 @@ def test_loyalty_rewards_runtime_executes_standard_and_advanced_capabilities() -
     assert not smoke["blocking_gaps"]
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["api_contract"]["ok"] is True
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence_contract"]["ok"] is True
+    assert contract["required_event_topic"] == LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC
     assert contract["permissions_contract"]["action_permissions"]["create_redemption"] == "loyalty_rewards.redemption.write"
+    assert schema["ok"] is True
+    assert service["ok"] is True
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
 
 def test_loyalty_rewards_runtime_applies_rules_parameters_configuration_events_and_ui() -> None:
@@ -73,6 +90,10 @@ def test_loyalty_rewards_runtime_applies_rules_parameters_configuration_events_a
         state,
         {"event_id": "pay_ops", "event_type": "PaymentCaptured", "payload": {"tenant": "tenant_ops", "customer_id": "cust_ops", "amount": 100.0, "currency": "USD", "region": "US"}},
     )["state"]
+    duplicate = loyalty_rewards_receive_event(
+        state,
+        {"event_id": "pay_ops", "event_type": "PaymentCaptured", "payload": {"tenant": "tenant_ops", "customer_id": "cust_ops", "amount": 100.0, "currency": "USD", "region": "US"}},
+    )
     state = loyalty_rewards_issue_points(
         state,
         {"ledger_id": "bonus_ops", "account_id": "acct_ops", "tenant": "tenant_ops", "points": 250, "source": "referral", "source_ref": "ref_ops"},
@@ -86,7 +107,10 @@ def test_loyalty_rewards_runtime_applies_rules_parameters_configuration_events_a
         {"redemption_id": "red_ops", "account_id": "acct_ops", "tenant": "tenant_ops", "points": 500, "order_id": "ord_ops", "status": "reserved"},
     )["state"]
     assert state["reward_accounts"]["acct_ops"]["balance"] > 0
+    assert duplicate["handler"]["status"] == "duplicate"
+    assert len(duplicate["state"]["inbox"]) == 1
     assert state["outbox"][-1]["idempotency_key"].startswith("loyalty_rewards:RewardBalanceChanged")
+    assert {event["contract"] for event in state["outbox"]} == {"AppGen-X"}
 
     workbench = loyalty_rewards_build_workbench_view(state, tenant="tenant_ops")
     assert workbench["account_count"] == 1
@@ -119,6 +143,7 @@ def test_loyalty_rewards_runtime_applies_rules_parameters_configuration_events_a
     api_contract = loyalty_rewards_build_api_contract()
     assert api_contract["database_backends"] == LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS
     assert api_contract["event_contract"] == "AppGen-X"
+    assert api_contract["required_event_topic"] == LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC
     assert api_contract["stream_engine_picker_visible"] is False
     assert api_contract["shared_table_access"] is False
     assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
@@ -128,8 +153,67 @@ def test_loyalty_rewards_runtime_applies_rules_parameters_configuration_events_a
         "create_redemption",
         "receive_event",
     }
+    assert {route["query"] for route in api_contract["routes"] if "query" in route} >= {
+        "build_workbench_view",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    }
     permissions = loyalty_rewards_permissions_contract()
     assert permissions["action_permissions"]["verify_owned_table_boundary"] == "loyalty_rewards.audit"
+    assert permissions["action_permissions"]["build_release_evidence"] == "loyalty_rewards.audit"
+
+    schema = loyalty_rewards_build_schema_contract()
+    assert tuple(item["table"] for item in schema["tables"]) == LOYALTY_REWARDS_OWNED_TABLES
+    assert tuple(item["table"] for item in schema["runtime_tables"]) == (
+        "loyalty_rewards_appgen_outbox_event",
+        "loyalty_rewards_appgen_inbox_event",
+        "loyalty_rewards_dead_letter_event",
+    )
+    assert len(schema["migrations"]) == len(LOYALTY_REWARDS_OWNED_TABLES)
+    assert len(schema["models"]) == len(LOYALTY_REWARDS_OWNED_TABLES)
+    assert schema["generated_artifacts"]["migrations"][0].startswith("pbcs/loyalty_rewards/migrations/")
+    assert schema["generated_artifacts"]["models"][0].startswith("pyAppGen.pbcs.loyalty_rewards.models.")
+    assert schema["shared_table_access"] is False
+    assert schema["datastore_backends"] == LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS
+
+    service = loyalty_rewards_build_service_contract()
+    assert "create_redemption" in service["command_methods"]
+    assert "build_release_evidence" in service["query_methods"]
+    assert service["configuration_schema"]["allowed_database_backends"] == LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS
+    assert service["configuration_schema"]["required_event_topic"] == LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC
+    assert service["configuration_schema"]["event_contract"] == "AppGen-X"
+    assert service["configuration_schema"]["stream_engine_picker_visible"] is False
+    assert service["permission_requirements"]["receive_event"] == "loyalty_rewards.event.consume"
+    assert service["permission_requirements"]["build_release_evidence"] == "loyalty_rewards.audit"
+    assert tuple(item["event_type"] for item in service["idempotent_handlers"]) == LOYALTY_REWARDS_CONSUMED_EVENT_TYPES
+    assert all(item["idempotency_key"] == "event_id" for item in service["idempotent_handlers"])
+    assert service["retry_dead_letter"]["inbox_table"] == "loyalty_rewards_appgen_inbox_event"
+    assert service["retry_dead_letter"]["outbox_table"] == "loyalty_rewards_appgen_outbox_event"
+    assert service["retry_dead_letter"]["dead_letter_table"] == "loyalty_rewards_dead_letter_event"
+    assert service["retry_dead_letter"]["simulate_failure_supported"] is True
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert any(item["name"] == "create_redemption" for item in service["generated_artifacts"]["services"])
+    assert any(item["route"] == "GET /loyalty-rewards/release-evidence" for item in service["generated_artifacts"]["routes"])
+    assert any(item["event_type"] == "PaymentCaptured" and item["direction"] == "consumes" for item in service["generated_artifacts"]["events"])
+    assert any(item["event_type"] == "RewardBalanceChanged" and item["direction"] == "emits" for item in service["generated_artifacts"]["events"])
+    assert any(item["event_type"] == "PaymentCaptured" for item in service["generated_artifacts"]["handlers"])
+    assert any(item["fragment"] == "RewardsEventOutbox" for item in service["generated_artifacts"]["ui"])
+
+    release = loyalty_rewards_build_release_evidence()
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert {
+        "owned_schema_coverage",
+        "runtime_appgen_x_tables",
+        "migration_and_model_artifacts",
+        "service_route_event_handler_ui_artifacts",
+        "commands_permissions_configuration",
+        "idempotent_handlers_retry_dead_letter",
+        "backend_allowlist_only",
+        "no_shared_tables_and_appgen_x_only_eventing",
+        "permissions_cover_release_queries",
+    } == {check["id"] for check in release["checks"]}
 
 
 def test_loyalty_rewards_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
@@ -162,7 +246,9 @@ def test_loyalty_rewards_rejects_invalid_inputs_and_proves_boundary_and_dead_let
     )
     assert failed["ok"] is False
     assert failed["handler"]["status"] == "dead_letter"
+    assert failed["handler"]["attempts"] == 3
     assert len(failed["state"]["dead_letter"]) == 1
+    assert failed["state"]["dead_letter"][0]["handler"]["status"] == "dead_letter"
 
     boundary = loyalty_rewards_verify_owned_table_boundary(
         (

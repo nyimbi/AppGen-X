@@ -11,6 +11,21 @@ import math
 STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC = "appgen.streaming_analytics.events"
 STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 STREAMING_ANALYTICS_OWNED_TABLES = ("metric_stream", "aggregation_window", "kpi_snapshot", "dashboard_projection")
+STREAMING_ANALYTICS_RUNTIME_TABLES = (
+    "streaming_analytics_appgen_outbox_event",
+    "streaming_analytics_appgen_inbox_event",
+    "streaming_analytics_dead_letter_event",
+)
+STREAMING_ANALYTICS_DECLARED_EVENT_PROVIDERS = (
+    "audit_ledger.AuditEventSealed",
+    "dom.OrderShipped",
+    "payment_orchestration.PaymentCaptured",
+)
+STREAMING_ANALYTICS_DECLARED_API_DEPENDENCIES = (
+    "POST /metric-streams",
+    "GET /kpis",
+    "GET /projections",
+)
 
 STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_metric_lifecycle",
@@ -138,6 +153,9 @@ def streaming_analytics_runtime_capabilities() -> dict:
         "pbc": "streaming_analytics",
         "implementation_directory": "src/pyAppGen/pbcs/streaming_analytics",
         "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
+        "runtime_tables": STREAMING_ANALYTICS_RUNTIME_TABLES,
+        "required_event_topic": STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC,
+        "allowed_database_backends": STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS,
         "capabilities": STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS,
         "standard_features": STREAMING_ANALYTICS_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -150,9 +168,12 @@ def streaming_analytics_runtime_capabilities() -> dict:
             "receive_event",
             "ingest_metric_event",
             "create_dashboard_projection",
-            "build_api_contract",
-            "permissions_contract",
             "build_workbench_view",
+            "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
+            "permissions_contract",
             "verify_owned_table_boundary",
         ),
         "smoke": smoke,
@@ -355,11 +376,25 @@ def streaming_analytics_receive_event(state: dict, event: dict, *, simulate_fail
     handler = {"event_id": event_id, "event_type": event["event_type"], "idempotency_key": f"streaming_analytics:{event['event_type']}:{event_id}", "attempts": int(runtime.get("configuration", {}).get("retry_limit", 3) or 3)}
     if simulate_failure:
         handler["status"] = "dead_letter"
-        runtime["dead_letter"].append({**event, "handler": handler})
+        runtime["dead_letter"].append(
+            {
+                **event,
+                "contract": "AppGen-X",
+                "runtime_table": STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+                "handler": handler,
+            }
+        )
         return {"ok": False, "state": runtime, "handler": handler}
     payload = dict(event.get("payload", {}))
     event_type = {"AuditEventSealed": "audit", "OrderShipped": "order", "PaymentCaptured": "payment"}[event["event_type"]]
-    runtime["inbox"].append({**event, "handler": {**handler, "status": "handled"}})
+    runtime["inbox"].append(
+        {
+            **event,
+            "contract": "AppGen-X",
+            "runtime_table": STREAMING_ANALYTICS_RUNTIME_TABLES[1],
+            "handler": {**handler, "status": "handled"},
+        }
+    )
     runtime["handled_events"].add(event_id)
     runtime = streaming_analytics_ingest_metric_event(runtime, {"event_id": event_id, "tenant": payload["tenant"], "event_type": event_type, "region": payload.get("region", "US"), "values": payload})["state"]
     runtime["events"].append(_state_event(f"{event['event_type']}Handled", event_id, payload))
@@ -417,25 +452,23 @@ def streaming_analytics_build_workbench_view(state: dict, *, tenant: str) -> dic
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
-        "binding_evidence": {"owned_tables": STREAMING_ANALYTICS_OWNED_TABLES, "outbox_table": "streaming_analytics_appgen_outbox_event", "inbox_table": "streaming_analytics_appgen_inbox_event", "dead_letter_table": "streaming_analytics_dead_letter_event"},
+        "binding_evidence": {
+            "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
+            "outbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[0],
+            "inbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[1],
+            "dead_letter_table": STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+        },
     }
 
 
 def streaming_analytics_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
-    allowed_event_dependencies = {
-        "audit_ledger.AuditEventSealed",
-        "dom.OrderShipped",
-        "payment_orchestration.PaymentCaptured",
-    }
-    allowed_api_dependencies = {
-        "POST /metric-streams",
-        "GET /kpis",
-        "GET /projections",
-    }
+    allowed_event_dependencies = set(STREAMING_ANALYTICS_DECLARED_EVENT_PROVIDERS)
+    allowed_api_dependencies = set(STREAMING_ANALYTICS_DECLARED_API_DEPENDENCIES)
     violations = tuple(
         reference
         for reference in references
         if reference not in set(STREAMING_ANALYTICS_OWNED_TABLES)
+        and reference not in set(STREAMING_ANALYTICS_RUNTIME_TABLES)
         and reference not in allowed_event_dependencies
         and reference not in allowed_api_dependencies
         and not str(reference).startswith("streaming_analytics_")
@@ -444,14 +477,89 @@ def streaming_analytics_verify_owned_table_boundary(references: tuple[str, ...] 
         "format": "appgen.streaming-analytics-boundary.v1",
         "ok": not violations,
         "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
+        "runtime_tables": STREAMING_ANALYTICS_RUNTIME_TABLES,
         "declared_dependencies": {
-            "apis": tuple(sorted(allowed_api_dependencies)),
+            "apis": STREAMING_ANALYTICS_DECLARED_API_DEPENDENCIES,
             "events": STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES,
-            "event_providers": tuple(sorted(allowed_event_dependencies)),
+            "event_providers": STREAMING_ANALYTICS_DECLARED_EVENT_PROVIDERS,
             "shared_tables": (),
         },
         "references": tuple(references),
         "violations": violations,
+    }
+
+
+def streaming_analytics_build_schema_contract() -> dict:
+    table_fields = {
+        "metric_stream": ("tenant", "stream_id", "name", "event_type", "metric_field", "aggregation", "region", "status", "compiled_hash"),
+        "aggregation_window": ("tenant", "window_id", "stream_id", "window_minutes", "status", "compiled_hash"),
+        "kpi_snapshot": ("tenant", "snapshot_id", "stream_id", "value", "event_count", "confidence", "audit_proof"),
+        "dashboard_projection": ("tenant", "projection_id", "name", "stream_ids", "snapshot_count", "latest_values", "status", "audit_proof"),
+    }
+    primary_keys = {
+        "metric_stream": ("stream_id",),
+        "aggregation_window": ("window_id",),
+        "kpi_snapshot": ("snapshot_id",),
+        "dashboard_projection": ("projection_id",),
+    }
+    runtime_tables = (
+        {
+            "table": STREAMING_ANALYTICS_RUNTIME_TABLES[0],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "retry_policy", "audit_hash"),
+            "purpose": "appgen_outbox",
+        },
+        {
+            "table": STREAMING_ANALYTICS_RUNTIME_TABLES[1],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "status", "audit_hash"),
+            "purpose": "appgen_inbox",
+        },
+        {
+            "table": STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "reason", "audit_hash"),
+            "purpose": "dead_letter",
+        },
+    )
+    relationships = (
+        {"from": "aggregation_window.stream_id", "to": "metric_stream.stream_id", "type": "owned_window"},
+        {"from": "kpi_snapshot.stream_id", "to": "metric_stream.stream_id", "type": "owned_snapshot"},
+        {"from": "dashboard_projection.stream_ids", "to": "metric_stream.stream_id", "type": "owned_projection"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": primary_keys[table],
+            "owned_by": "streaming_analytics",
+        }
+        for table in STREAMING_ANALYTICS_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.streaming-analytics-owned-schema-contract.v1",
+        "ok": len(tables) == len(STREAMING_ANALYTICS_OWNED_TABLES)
+        and tuple(item["table"] for item in tables) == STREAMING_ANALYTICS_OWNED_TABLES,
+        "tables": tables,
+        "runtime_tables": runtime_tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/streaming_analytics/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(STREAMING_ANALYTICS_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+                "module_path": f"pyAppGen.pbcs.streaming_analytics.models.{table}",
+            }
+            for table in STREAMING_ANALYTICS_OWNED_TABLES
+        ),
+        "datastore_backends": STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
     }
 
 
@@ -494,12 +602,224 @@ def streaming_analytics_build_api_contract() -> dict:
                 "owned_tables": ("dashboard_projection",),
                 "requires_permission": "streaming_analytics.audit",
             },
+            {
+                "route": "GET /streaming-analytics/workbench",
+                "query": "build_workbench_view",
+                "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
+                "requires_permission": "streaming_analytics.audit",
+            },
+            {
+                "route": "GET /streaming-analytics/schema-contract",
+                "query": "build_schema_contract",
+                "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
+                "requires_permission": "streaming_analytics.audit",
+            },
+            {
+                "route": "GET /streaming-analytics/service-contract",
+                "query": "build_service_contract",
+                "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
+                "requires_permission": "streaming_analytics.audit",
+            },
+            {
+                "route": "GET /streaming-analytics/release-evidence",
+                "query": "build_release_evidence",
+                "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
+                "requires_permission": "streaming_analytics.audit",
+            },
         ),
-        "declared_catalog_routes": ("POST /metric-streams", "GET /kpis", "GET /projections"),
+        "declared_catalog_routes": STREAMING_ANALYTICS_DECLARED_API_DEPENDENCIES,
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "required_event_topic": STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC,
+        "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES,
+        "consumes": STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES,
+        "runtime_tables": STREAMING_ANALYTICS_RUNTIME_TABLES,
         "stream_engine_picker_visible": False,
+        "user_eventing_choice": False,
         "database_backends": STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS,
+    }
+
+
+def streaming_analytics_build_service_contract() -> dict:
+    from .ui import STREAMING_ANALYTICS_UI_FRAGMENT_KEYS
+
+    api = streaming_analytics_build_api_contract()
+    permissions = streaming_analytics_permissions_contract()
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "register_metric_stream",
+        "define_window",
+        "receive_event",
+        "ingest_metric_event",
+        "create_dashboard_projection",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "build_api_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+        "verify_owned_table_boundary",
+    )
+    return {
+        "format": "appgen.streaming-analytics-service-contract.v1",
+        "ok": len(command_methods) >= 9
+        and {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(query_methods),
+        "transaction_boundary": "streaming_analytics_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": STREAMING_ANALYTICS_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": STREAMING_ANALYTICS_DECLARED_API_DEPENDENCIES,
+            "events": STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES,
+            "event_providers": STREAMING_ANALYTICS_DECLARED_EVENT_PROVIDERS,
+            "shared_tables": (),
+        },
+        "eventing": {
+            "contract": "AppGen-X",
+            "topic": STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC,
+            "outbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[0],
+            "inbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[1],
+            "dead_letter_table": STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+            "idempotency_required": True,
+        },
+        "service_artifacts": tuple(
+            {
+                "artifact": "service_method",
+                "kind": "command" if method in command_methods else "query",
+                "name": method,
+                "module_path": "pyAppGen.pbcs.streaming_analytics.runtime",
+            }
+            for method in (*command_methods, *query_methods)
+        ),
+        "routes": api["routes"],
+        "events": {
+            "contract": "AppGen-X",
+            "topic": STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC,
+            "consumes": STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES,
+            "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES,
+        },
+        "handlers": tuple(
+            {
+                "event_type": event_type,
+                "handler": "receive_event",
+                "idempotent": True,
+                "inbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[1],
+                "dead_letter_table": STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+            }
+            for event_type in STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES
+        ),
+        "ui_artifacts": tuple(
+            {
+                "artifact": "ui_fragment",
+                "fragment": fragment,
+                "module_path": "pyAppGen.pbcs.streaming_analytics.ui",
+                "route": "/workbench/pbcs/streaming_analytics",
+            }
+            for fragment in STREAMING_ANALYTICS_UI_FRAGMENT_KEYS
+        ),
+        "permissions": permissions["action_permissions"],
+        "configuration": {
+            "fields": STREAMING_ANALYTICS_SUPPORTED_CONFIGURATION_FIELDS,
+            "allowed_database_backends": STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC,
+            "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+        },
+        "idempotent_handlers": ("receive_event",),
+        "retry_dead_letter_evidence": {
+            "outbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[0],
+            "inbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[1],
+            "dead_letter_table": STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+            "retry_limit_field": "retry_limit",
+            "dead_letter_state": "dead_letter",
+            "handled_event_registry": "handled_events",
+        },
+        "advanced_capabilities": STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS,
+    }
+
+
+def streaming_analytics_build_release_evidence() -> dict:
+    schema = streaming_analytics_build_schema_contract()
+    service = streaming_analytics_build_service_contract()
+    api = streaming_analytics_build_api_contract()
+    permissions = streaming_analytics_permissions_contract()
+    control = _streaming_analytics_release_control_evidence()
+    checks = (
+        {
+            "id": "owned_schema_depth",
+            "ok": schema["ok"] and tuple(item["table"] for item in schema["tables"]) == STREAMING_ANALYTICS_OWNED_TABLES,
+        },
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(STREAMING_ANALYTICS_OWNED_TABLES)},
+        {
+            "id": "service_contract_depth",
+            "ok": service["ok"] and {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(service["query_methods"]),
+        },
+        {
+            "id": "appgen_x_runtime_tables",
+            "ok": tuple(item["table"] for item in schema["runtime_tables"]) == STREAMING_ANALYTICS_RUNTIME_TABLES
+            and service["eventing"]["outbox_table"] == STREAMING_ANALYTICS_RUNTIME_TABLES[0]
+            and service["eventing"]["inbox_table"] == STREAMING_ANALYTICS_RUNTIME_TABLES[1]
+            and service["eventing"]["dead_letter_table"] == STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+        },
+        {
+            "id": "generated_artifact_coverage",
+            "ok": bool(schema["migrations"])
+            and bool(schema["models"])
+            and bool(service["service_artifacts"])
+            and bool(service["routes"])
+            and bool(service["handlers"])
+            and bool(service["ui_artifacts"]),
+        },
+        {
+            "id": "permissions_cover_release_queries",
+            "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"]),
+        },
+        {
+            "id": "backend_allowlist",
+            "ok": schema["datastore_backends"] == STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS
+            and service["configuration"]["allowed_database_backends"] == STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS,
+        },
+        {
+            "id": "stream_engine_picker_hidden",
+            "ok": not api["stream_engine_picker_visible"] and not service["configuration"]["stream_engine_picker_visible"],
+        },
+        {
+            "id": "retry_dead_letter_evidence",
+            "ok": control["ok"]
+            and control["summary"]["outbox_retry_max_attempts"] == control["summary"]["retry_limit"]
+            and control["summary"]["dead_letter_status"] == "dead_letter",
+        },
+        {"id": "duplicate_idempotency_evidence", "ok": control["summary"]["duplicate_status"] == "duplicate"},
+        {
+            "id": "no_shared_table_access",
+            "ok": not schema["shared_table_access"]
+            and not api["shared_table_access"]
+            and service["external_dependencies"]["shared_tables"] == (),
+        },
+    )
+    return {
+        "format": "appgen.streaming-analytics-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "control": control,
+        "generated_artifacts": {
+            "migrations": schema["migrations"],
+            "models": schema["models"],
+            "services": service["service_artifacts"],
+            "routes": service["routes"],
+            "events": service["events"],
+            "handlers": service["handlers"],
+            "ui": service["ui_artifacts"],
+        },
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -515,6 +835,7 @@ def streaming_analytics_permissions_contract() -> dict:
     return {
         "format": "appgen.streaming-analytics-permissions.v1",
         "ok": True,
+        "pbc": "streaming_analytics",
         "permissions": permissions,
         "roles": {
             "streaming_analytics_admin": permissions,
@@ -534,6 +855,154 @@ def streaming_analytics_permissions_contract() -> dict:
             "event_idempotency_required",
             "shared_table_access_forbidden",
         ),
+        "action_permissions": {
+            "register_metric_stream": "streaming_analytics.stream.write",
+            "define_window": "streaming_analytics.window.write",
+            "create_dashboard_projection": "streaming_analytics.stream.write",
+            "ingest_metric_event": "streaming_analytics.event.write",
+            "receive_event": "streaming_analytics.event.consume",
+            "register_rule": "streaming_analytics.configure",
+            "register_schema_extension": "streaming_analytics.configure",
+            "set_parameter": "streaming_analytics.configure",
+            "configure_runtime": "streaming_analytics.configure",
+            "build_workbench_view": "streaming_analytics.audit",
+            "build_api_contract": "streaming_analytics.audit",
+            "build_schema_contract": "streaming_analytics.audit",
+            "build_service_contract": "streaming_analytics.audit",
+            "build_release_evidence": "streaming_analytics.audit",
+            "verify_owned_table_boundary": "streaming_analytics.audit",
+        },
+    }
+
+
+def _streaming_analytics_release_control_evidence() -> dict:
+    state = streaming_analytics_empty_state()
+    state = streaming_analytics_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_timezone": "UTC",
+            "supported_event_types": ("audit", "order", "payment", "operational"),
+            "supported_regions": ("US",),
+            "retention_days": 90,
+            "watermark_seconds": 120,
+            "aggregation_mode": "policy",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    for name, value in (
+        ("default_window_minutes", 15),
+        ("late_event_tolerance_seconds", 120),
+        ("quality_score_threshold", 0.9),
+        ("forecast_horizon_minutes", 240),
+        ("alert_threshold_multiplier", 1.5),
+        ("replay_batch_limit", 5000),
+        ("kpi_confidence_threshold", 0.75),
+        ("projection_refresh_seconds", 30),
+        ("max_events_per_window", 100000),
+        ("workbench_limit", 50),
+    ):
+        state = streaming_analytics_set_parameter(state, name, value)["state"]
+    state = streaming_analytics_register_rule(
+        state,
+        {
+            "rule_id": "rule_release",
+            "tenant": "tenant_release",
+            "scope": "streaming_analytics",
+            "status": "active",
+            "allowed_event_types": ("audit", "order", "payment", "operational"),
+            "allowed_regions": ("US",),
+            "quality_policy": {"minimum_score": 0.9, "drop_invalid": True},
+            "aggregation_policy": {"default_function": "sum", "watermark_seconds": 120},
+            "alert_policy": {"emit_on_threshold": True, "severity": "medium"},
+        },
+    )["state"]
+    state = streaming_analytics_register_metric_stream(
+        state,
+        {
+            "stream_id": "stream_release",
+            "tenant": "tenant_release",
+            "name": "Release Revenue",
+            "event_type": "payment",
+            "metric_field": "amount",
+            "aggregation": "sum",
+            "region": "US",
+            "status": "active",
+        },
+    )["state"]
+    state = streaming_analytics_define_window(
+        state,
+        {
+            "window_id": "window_release",
+            "tenant": "tenant_release",
+            "stream_id": "stream_release",
+            "window_minutes": 15,
+            "status": "active",
+        },
+    )["state"]
+    handled_event = {
+        "event_id": "evt_release_payment",
+        "event_type": "PaymentCaptured",
+        "payload": {"tenant": "tenant_release", "region": "US", "amount": 1200.0, "currency": "USD"},
+    }
+    handled = streaming_analytics_receive_event(state, handled_event)
+    state = handled["state"]
+    state = streaming_analytics_create_dashboard_projection(
+        state,
+        {
+            "projection_id": "proj_release",
+            "tenant": "tenant_release",
+            "name": "Release Dashboard",
+            "stream_ids": ("stream_release",),
+            "status": "active",
+        },
+    )["state"]
+    duplicate = streaming_analytics_receive_event(state, handled_event)
+    failed = streaming_analytics_receive_event(
+        state,
+        {
+            "event_id": "evt_release_dead_letter",
+            "event_type": "OrderShipped",
+            "payload": {"tenant": "tenant_release", "region": "US", "order_id": "ord_release", "units": 1},
+        },
+        simulate_failure=True,
+    )
+    final_state = failed["state"]
+    workbench = streaming_analytics_build_workbench_view(final_state, tenant="tenant_release")
+    return {
+        "ok": handled["ok"]
+        and duplicate["handler"]["status"] == "duplicate"
+        and not failed["ok"]
+        and bool(state["outbox"])
+        and bool(state["inbox"])
+        and bool(final_state["dead_letter"]),
+        "summary": {
+            "handled_status": handled["handler"]["status"],
+            "duplicate_status": duplicate["handler"]["status"],
+            "dead_letter_status": failed["handler"]["status"],
+            "retry_limit": state["configuration"]["retry_limit"],
+            "outbox_retry_max_attempts": state["outbox"][-1]["retry_policy"]["max_attempts"],
+            "outbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[0],
+            "inbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[1],
+            "dead_letter_table": STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+            "outbox_event_types": tuple(item["event_type"] for item in state["outbox"]),
+            "inbox_event_types": tuple(item["event_type"] for item in state["inbox"]),
+            "dead_letter_event_types": tuple(item["event_type"] for item in final_state["dead_letter"]),
+            "workbench": {
+                "stream_count": workbench["stream_count"],
+                "window_count": workbench["window_count"],
+                "snapshot_count": workbench["snapshot_count"],
+                "projection_count": workbench["projection_count"],
+                "dead_letter_count": workbench["dead_letter_count"],
+            },
+        },
+        "artifacts": {
+            "handled_inbox_record": state["inbox"][-1],
+            "handled_outbox_records": tuple(state["outbox"]),
+            "dead_letter_record": final_state["dead_letter"][-1],
+        },
     }
 
 
@@ -569,7 +1038,20 @@ def _require_configured(state: dict) -> None:
 
 
 def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> None:
-    event = {"event_id": f"{event_type.lower()}_{len(state['outbox']) + 1}", "event_type": event_type, "tenant": tenant, "payload": payload, "contract": "appgen_event_contract", "idempotency_key": f"streaming_analytics:{event_type}:{payload.get('snapshot_id') or payload.get('stream_id') or len(state['outbox']) + 1}", "retry_policy": {"max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)), "dead_letter": "streaming_analytics_dead_letter_event"}, "audit_hash": _digest({"event_type": event_type, "tenant": tenant, "payload": payload})}
+    event = {
+        "event_id": f"{event_type.lower()}_{len(state['outbox']) + 1}",
+        "event_type": event_type,
+        "tenant": tenant,
+        "payload": payload,
+        "contract": "AppGen-X",
+        "runtime_table": STREAMING_ANALYTICS_RUNTIME_TABLES[0],
+        "idempotency_key": f"streaming_analytics:{event_type}:{payload.get('snapshot_id') or payload.get('stream_id') or len(state['outbox']) + 1}",
+        "retry_policy": {
+            "max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)),
+            "dead_letter": STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+        },
+        "audit_hash": _digest({"event_type": event_type, "tenant": tenant, "payload": payload}),
+    }
     state["outbox"].append(event)
     state["events"].append(_state_event(event_type, event["event_id"], payload))
 

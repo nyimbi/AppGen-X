@@ -3,7 +3,11 @@ import pytest
 from pyAppGen.pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES
 from pyAppGen.pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES
 from pyAppGen.pbcs.enterprise_search_vector import enterprise_search_vector_build_api_contract
+from pyAppGen.pbcs.enterprise_search_vector import enterprise_search_vector_build_release_evidence
+from pyAppGen.pbcs.enterprise_search_vector import enterprise_search_vector_build_schema_contract
+from pyAppGen.pbcs.enterprise_search_vector import enterprise_search_vector_build_service_contract
 from pyAppGen.pbcs.enterprise_search_vector import enterprise_search_vector_build_workbench_view
 from pyAppGen.pbcs.enterprise_search_vector import enterprise_search_vector_configure_runtime
 from pyAppGen.pbcs.enterprise_search_vector import enterprise_search_vector_create_index
@@ -46,7 +50,11 @@ def test_enterprise_search_vector_runtime_executes_standard_and_advanced_capabil
     assert contract["side_effect_free"] is True
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["ui_contract"]["ok"] is True
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence"]["ok"] is True
     assert "SearchConfigurationPanel" in contract["ui_contract"]["fragments"]
+    assert contract["runtime_tables"] == ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES
     assert set(contract["advanced_runtime"]["capabilities"]) == set(
         ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS
     )
@@ -250,8 +258,23 @@ def test_enterprise_search_vector_runtime_applies_rules_parameters_queries_and_u
     api_contract = enterprise_search_vector_build_api_contract()
     assert "POST /query-feedback" in api_contract["routes"]
     assert api_contract["shared_table_access"] is False
+    assert api_contract["database_backends"] == ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS
     permissions = enterprise_search_vector_permissions_contract()
     assert "enterprise_search_vector.query" in permissions["permissions"]
+    assert permissions["action_permissions"]["build_release_evidence"] == "enterprise_search_vector.audit"
+
+    schema = enterprise_search_vector_build_schema_contract()
+    service = enterprise_search_vector_build_service_contract()
+    release = enterprise_search_vector_build_release_evidence()
+    assert set(ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES) <= set(schema["owned_tables"])
+    assert len(schema["migrations"]) == len(schema["owned_tables"])
+    assert all(path.startswith("pbcs/enterprise_search_vector/migrations/") for path in schema["migrations"])
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert service["eventing"]["dead_letter_table"] == ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[2]
+    assert "receive_event" in service["idempotent_handlers"]
+    assert {"services", "routes", "events", "handlers", "ui"} <= set(service["generated_artifacts"])
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
 
 def test_enterprise_search_vector_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:

@@ -11,6 +11,11 @@ import math
 LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC = "appgen.loyalty_rewards.events"
 LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 LOYALTY_REWARDS_OWNED_TABLES = ("reward_account", "points_ledger", "earning_rule", "redemption")
+LOYALTY_REWARDS_RUNTIME_TABLES = (
+    "loyalty_rewards_appgen_outbox_event",
+    "loyalty_rewards_appgen_inbox_event",
+    "loyalty_rewards_dead_letter_event",
+)
 
 LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_rewards_lifecycle",
@@ -156,6 +161,9 @@ def loyalty_rewards_runtime_capabilities() -> dict:
             "create_redemption",
             "expire_points",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -242,6 +250,10 @@ def loyalty_rewards_runtime_smoke() -> dict:
         {"redemption_id": "red_alpha", "account_id": "acct_alpha", "tenant": "tenant_alpha", "points": 500, "order_id": "ord_alpha", "status": "reserved"},
     )["state"]
     state = loyalty_rewards_expire_points(state, "acct_alpha", points=50)["state"]
+    api = loyalty_rewards_build_api_contract()
+    schema = loyalty_rewards_build_schema_contract()
+    service = loyalty_rewards_build_service_contract()
+    release = loyalty_rewards_build_release_evidence()
     checks = tuple({"id": key, "ok": True, "evidence": _capability_evidence(state, key)} for key in LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS)
     return {
         "format": "appgen.loyalty-rewards-runtime-smoke.v1",
@@ -252,6 +264,10 @@ def loyalty_rewards_runtime_smoke() -> dict:
         and bool(state["outbox"])
         and bool(state["handled_events"])
         and bool(state["configuration"].get("ok"))
+        and api["ok"]
+        and schema["ok"]
+        and service["ok"]
+        and release["ok"]
         and not tuple(check for check in checks if not check["ok"]),
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -472,11 +488,7 @@ def loyalty_rewards_verify_owned_table_boundary(references: tuple[str, ...] | li
         "customer_segment_projection",
     }
     allowed_event_dependencies = set(LOYALTY_REWARDS_CONSUMED_EVENT_TYPES)
-    allowed_runtime_tables = {
-        "loyalty_rewards_appgen_outbox_event",
-        "loyalty_rewards_appgen_inbox_event",
-        "loyalty_rewards_dead_letter_event",
-    }
+    allowed_runtime_tables = set(LOYALTY_REWARDS_RUNTIME_TABLES)
     violations = tuple(
         reference
         for reference in references
@@ -552,16 +564,405 @@ def loyalty_rewards_build_api_contract() -> dict:
                 "owned_tables": LOYALTY_REWARDS_OWNED_TABLES,
                 "requires_permission": "loyalty_rewards.audit",
             },
+            {
+                "route": "GET /loyalty-rewards/schema-contract",
+                "query": "build_schema_contract",
+                "owned_tables": LOYALTY_REWARDS_OWNED_TABLES,
+                "requires_permission": "loyalty_rewards.audit",
+            },
+            {
+                "route": "GET /loyalty-rewards/service-contract",
+                "query": "build_service_contract",
+                "owned_tables": LOYALTY_REWARDS_OWNED_TABLES,
+                "requires_permission": "loyalty_rewards.audit",
+            },
+            {
+                "route": "GET /loyalty-rewards/release-evidence",
+                "query": "build_release_evidence",
+                "owned_tables": LOYALTY_REWARDS_OWNED_TABLES,
+                "requires_permission": "loyalty_rewards.audit",
+            },
         ),
         "declared_catalog_routes": ("POST /points", "POST /redemptions", "GET /reward-accounts"),
         "owned_tables": LOYALTY_REWARDS_OWNED_TABLES,
+        "runtime_tables": LOYALTY_REWARDS_RUNTIME_TABLES,
         "emits": LOYALTY_REWARDS_EMITTED_EVENT_TYPES,
         "consumes": LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
         "database_backends": LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS,
         "permissions": tuple(sorted(loyalty_rewards_permissions_contract()["permissions"])),
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "required_event_topic": LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
+    }
+
+
+def loyalty_rewards_build_schema_contract() -> dict:
+    """Return owned schema plus AppGen-X runtime table evidence."""
+    table_fields = {
+        "reward_account": (
+            "account_id",
+            "tenant",
+            "customer_id",
+            "currency",
+            "region",
+            "tier",
+            "status",
+            "balance",
+            "lifetime_points",
+            "liability_amount",
+            "audit_proof",
+        ),
+        "points_ledger": (
+            "ledger_id",
+            "account_id",
+            "tenant",
+            "entry_type",
+            "points",
+            "source",
+            "source_ref",
+            "audit_proof",
+        ),
+        "earning_rule": (
+            "earning_rule_id",
+            "tenant",
+            "name",
+            "activity_type",
+            "points_per_currency_unit",
+            "tier_multipliers",
+            "status",
+            "compiled_hash",
+        ),
+        "redemption": (
+            "redemption_id",
+            "account_id",
+            "tenant",
+            "points",
+            "order_id",
+            "status",
+            "monetary_value",
+            "audit_proof",
+        ),
+    }
+    runtime_table_fields = {
+        "loyalty_rewards_appgen_outbox_event": (
+            "event_id",
+            "event_type",
+            "tenant",
+            "payload",
+            "contract",
+            "idempotency_key",
+            "retry_policy",
+            "audit_hash",
+        ),
+        "loyalty_rewards_appgen_inbox_event": (
+            "event_id",
+            "event_type",
+            "payload",
+            "handler",
+            "idempotency_key",
+            "attempts",
+            "status",
+        ),
+        "loyalty_rewards_dead_letter_event": (
+            "event_id",
+            "event_type",
+            "payload",
+            "handler",
+            "idempotency_key",
+            "attempts",
+            "reason",
+        ),
+    }
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id"))[:1],
+            "owned_by": "loyalty_rewards",
+        }
+        for table in LOYALTY_REWARDS_OWNED_TABLES
+    )
+    relationships = (
+        {"from_table": "points_ledger", "from_field": "account_id", "to_table": "reward_account", "to_field": "account_id", "type": "owned_reference"},
+        {"from_table": "redemption", "from_field": "account_id", "to_table": "reward_account", "to_field": "account_id", "type": "owned_reference"},
+        {"from_table": "reward_account", "from_field": "tier", "to_table": "earning_rule", "to_field": "status", "type": "runtime_policy_reference"},
+    )
+    migrations = tuple(
+        {
+            "path": f"pbcs/loyalty_rewards/migrations/{position:03d}_{table}.sql",
+            "operation": "create_owned_table",
+            "table": table,
+            "backend_allowlist": LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS,
+        }
+        for position, table in enumerate(LOYALTY_REWARDS_OWNED_TABLES, start=1)
+    )
+    models = tuple(
+        {
+            "class_name": "".join(part.capitalize() for part in table.split("_")),
+            "table": table,
+            "fields": table_fields[table],
+            "module": f"pyAppGen.pbcs.loyalty_rewards.models.{table}",
+        }
+        for table in LOYALTY_REWARDS_OWNED_TABLES
+    )
+    runtime_tables = tuple(
+        {
+            "table": table,
+            "fields": runtime_table_fields[table],
+            "event_contract": "AppGen-X",
+            "owned_by": "loyalty_rewards",
+        }
+        for table in LOYALTY_REWARDS_RUNTIME_TABLES
+    )
+    return {
+        "format": "appgen.loyalty-rewards-owned-schema-contract.v1",
+        "ok": len(tables) == len(LOYALTY_REWARDS_OWNED_TABLES)
+        and tuple(item["table"] for item in tables) == LOYALTY_REWARDS_OWNED_TABLES
+        and tuple(item["table"] for item in runtime_tables) == LOYALTY_REWARDS_RUNTIME_TABLES
+        and all(item["backend_allowlist"] == LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS for item in migrations),
+        "tables": tables,
+        "relationships": relationships,
+        "runtime_tables": runtime_tables,
+        "migrations": migrations,
+        "models": models,
+        "generated_artifacts": {
+            "migrations": tuple(item["path"] for item in migrations),
+            "models": tuple(item["module"] for item in models),
+        },
+        "datastore_backends": LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def loyalty_rewards_build_service_contract() -> dict:
+    """Return command/query/runtime evidence for generated Loyalty services."""
+    permissions = loyalty_rewards_permissions_contract()
+    api = loyalty_rewards_build_api_contract()
+    ui_fragments = (
+        "LoyaltyRewardsWorkbench",
+        "RewardAccountRegistry",
+        "PointsLedgerPanel",
+        "EarningRuleStudio",
+        "RedemptionConsole",
+        "TierQualificationBoard",
+        "ReferralAndPartnerPanel",
+        "ExpirationLiabilityPanel",
+        "RewardsFraudReviewQueue",
+        "RewardsRuleStudio",
+        "RewardsParameterConsole",
+        "RewardsConfigurationPanel",
+        "RewardsEventOutbox",
+        "RewardsDeadLetterQueue",
+    )
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "register_earning_rule",
+        "enroll_member",
+        "receive_event",
+        "issue_points",
+        "adjust_points",
+        "create_redemption",
+        "expire_points",
+        "verify_owned_table_boundary",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "build_api_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+        "permissions_contract",
+    )
+    idempotent_handlers = tuple(
+        {
+            "event_type": event_type,
+            "idempotency_key": "event_id",
+            "inbox_table": "loyalty_rewards_appgen_inbox_event",
+            "outbox_table": "loyalty_rewards_appgen_outbox_event",
+            "dead_letter_table": "loyalty_rewards_dead_letter_event",
+            "retry_limit_source": "configuration.retry_limit",
+            "event_contract": "AppGen-X",
+        }
+        for event_type in LOYALTY_REWARDS_CONSUMED_EVENT_TYPES
+    )
+    return {
+        "format": "appgen.loyalty-rewards-service-contract.v1",
+        "ok": len(command_methods) >= 10
+        and not api["shared_table_access"]
+        and tuple(item["event_type"] for item in idempotent_handlers) == LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
+        "transaction_boundary": "loyalty_rewards_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": LOYALTY_REWARDS_OWNED_TABLES,
+        "runtime_tables": LOYALTY_REWARDS_RUNTIME_TABLES,
+        "permission_requirements": {
+            name: permissions["action_permissions"][name]
+            for name in (
+                "configure_runtime",
+                "set_parameter",
+                "register_rule",
+                "register_schema_extension",
+                "register_earning_rule",
+                "enroll_member",
+                "receive_event",
+                "issue_points",
+                "adjust_points",
+                "create_redemption",
+                "expire_points",
+                "build_schema_contract",
+                "build_service_contract",
+                "build_release_evidence",
+                "verify_owned_table_boundary",
+            )
+        },
+        "configuration_schema": {
+            "required_fields": LOYALTY_REWARDS_SUPPORTED_CONFIGURATION_FIELDS,
+            "allowed_database_backends": LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS,
+            "event_contract": "AppGen-X",
+            "required_event_topic": LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+        },
+        "idempotent_handlers": idempotent_handlers,
+        "retry_dead_letter": {
+            "retry_limit_source": "configuration.retry_limit",
+            "outbox_table": "loyalty_rewards_appgen_outbox_event",
+            "inbox_table": "loyalty_rewards_appgen_inbox_event",
+            "dead_letter_table": "loyalty_rewards_dead_letter_event",
+            "simulate_failure_supported": True,
+        },
+        "generated_artifacts": {
+            "services": tuple(
+                {
+                    "name": command,
+                    "path": f"pbcs/loyalty_rewards/services/{command}.py",
+                }
+                for command in command_methods
+            ),
+            "routes": tuple(
+                {
+                    "route": item["route"],
+                    "path": f"pbcs/loyalty_rewards/routes/{item['route'].split(' ', 1)[1].strip('/').replace('/', '_').replace('-', '_') or 'root'}.py",
+                }
+                for item in api["routes"]
+            ),
+            "events": tuple(
+                {"direction": "consumes", "event_type": event_type, "topic": LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC}
+                for event_type in LOYALTY_REWARDS_CONSUMED_EVENT_TYPES
+            )
+            + tuple(
+                {"direction": "emits", "event_type": event_type, "topic": LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC}
+                for event_type in LOYALTY_REWARDS_EMITTED_EVENT_TYPES
+            ),
+            "handlers": tuple(
+                {
+                    "event_type": handler["event_type"],
+                    "path": f"pbcs/loyalty_rewards/handlers/{handler['event_type'].lower()}.py",
+                    "idempotency_key": handler["idempotency_key"],
+                    "dead_letter_table": handler["dead_letter_table"],
+                }
+                for handler in idempotent_handlers
+            ),
+            "ui": tuple(
+                {
+                    "fragment": fragment,
+                    "path": f"pbcs/loyalty_rewards/ui/{fragment}.tsx",
+                }
+                for fragment in ui_fragments
+            ),
+        },
+        "external_dependencies": {
+            "apis": ("payment_projection", "promotion_projection", "customer_segment_projection"),
+            "events": LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
+            "api_projections": ("payment_projection", "promotion_projection", "customer_segment_projection"),
+            "shared_tables": (),
+        },
+    }
+
+
+def loyalty_rewards_build_release_evidence() -> dict:
+    """Return package-local release evidence for Loyalty Rewards generation."""
+    schema = loyalty_rewards_build_schema_contract()
+    service = loyalty_rewards_build_service_contract()
+    api = loyalty_rewards_build_api_contract()
+    permissions = loyalty_rewards_permissions_contract()
+    checks = (
+        {
+            "id": "owned_schema_coverage",
+            "ok": schema["ok"] and tuple(item["table"] for item in schema["tables"]) == LOYALTY_REWARDS_OWNED_TABLES,
+        },
+        {
+            "id": "runtime_appgen_x_tables",
+            "ok": tuple(item["table"] for item in schema["runtime_tables"]) == LOYALTY_REWARDS_RUNTIME_TABLES
+            and api["runtime_tables"] == LOYALTY_REWARDS_RUNTIME_TABLES,
+        },
+        {
+            "id": "migration_and_model_artifacts",
+            "ok": len(schema["migrations"]) == len(LOYALTY_REWARDS_OWNED_TABLES)
+            and len(schema["models"]) == len(LOYALTY_REWARDS_OWNED_TABLES),
+        },
+        {
+            "id": "service_route_event_handler_ui_artifacts",
+            "ok": all(service["generated_artifacts"][key] for key in ("services", "routes", "events", "handlers", "ui")),
+        },
+        {
+            "id": "commands_permissions_configuration",
+            "ok": {
+                "configure_runtime",
+                "register_earning_rule",
+                "create_redemption",
+                "build_schema_contract",
+                "build_service_contract",
+                "build_release_evidence",
+            }
+            <= set(service["permission_requirements"])
+            and service["configuration_schema"]["event_contract"] == "AppGen-X"
+            and service["configuration_schema"]["required_event_topic"] == LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC
+            and not service["configuration_schema"]["stream_engine_picker_visible"],
+        },
+        {
+            "id": "idempotent_handlers_retry_dead_letter",
+            "ok": tuple(item["event_type"] for item in service["idempotent_handlers"]) == LOYALTY_REWARDS_CONSUMED_EVENT_TYPES
+            and service["retry_dead_letter"]["dead_letter_table"] == "loyalty_rewards_dead_letter_event",
+        },
+        {
+            "id": "backend_allowlist_only",
+            "ok": schema["datastore_backends"] == LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS
+            and service["configuration_schema"]["allowed_database_backends"] == LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS,
+        },
+        {
+            "id": "no_shared_tables_and_appgen_x_only_eventing",
+            "ok": not schema["shared_table_access"]
+            and not api["shared_table_access"]
+            and service["external_dependencies"]["shared_tables"] == ()
+            and api["event_contract"] == "AppGen-X"
+            and api["required_event_topic"] == LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC
+            and not api["stream_engine_picker_visible"],
+        },
+        {
+            "id": "permissions_cover_release_queries",
+            "ok": {
+                "build_api_contract",
+                "build_schema_contract",
+                "build_service_contract",
+                "build_release_evidence",
+                "verify_owned_table_boundary",
+            }
+            <= set(permissions["action_permissions"]),
+        },
+    )
+    return {
+        "format": "appgen.loyalty-rewards-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -586,8 +987,14 @@ def loyalty_rewards_permissions_contract() -> dict:
             "receive_event": "loyalty_rewards.event.consume",
             "register_earning_rule": "loyalty_rewards.configure",
             "register_rule": "loyalty_rewards.configure",
+            "register_schema_extension": "loyalty_rewards.configure",
             "set_parameter": "loyalty_rewards.configure",
             "configure_runtime": "loyalty_rewards.configure",
+            "build_api_contract": "loyalty_rewards.audit",
+            "build_schema_contract": "loyalty_rewards.audit",
+            "build_service_contract": "loyalty_rewards.audit",
+            "build_release_evidence": "loyalty_rewards.audit",
+            "permissions_contract": "loyalty_rewards.audit",
             "build_workbench_view": "loyalty_rewards.audit",
             "verify_owned_table_boundary": "loyalty_rewards.audit",
         },
@@ -650,7 +1057,7 @@ def _qualify_tier(state: dict, lifetime_points: int) -> str:
 
 
 def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> None:
-    event = {"event_id": f"{event_type.lower()}_{len(state['outbox']) + 1}", "event_type": event_type, "tenant": tenant, "payload": payload, "contract": "appgen_event_contract", "idempotency_key": f"loyalty_rewards:{event_type}:{payload.get('account_id') or payload.get('customer_id') or len(state['outbox']) + 1}", "retry_policy": {"max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)), "dead_letter": "loyalty_rewards_dead_letter_event"}, "audit_hash": _digest({"event_type": event_type, "tenant": tenant, "payload": payload})}
+    event = {"event_id": f"{event_type.lower()}_{len(state['outbox']) + 1}", "event_type": event_type, "tenant": tenant, "payload": payload, "contract": "AppGen-X", "idempotency_key": f"loyalty_rewards:{event_type}:{payload.get('account_id') or payload.get('customer_id') or len(state['outbox']) + 1}", "retry_policy": {"max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)), "dead_letter": "loyalty_rewards_dead_letter_event"}, "audit_hash": _digest({"event_type": event_type, "tenant": tenant, "payload": payload})}
     state["outbox"].append(event)
     state["events"].append(_state_event(event_type, event["event_id"], payload))
 

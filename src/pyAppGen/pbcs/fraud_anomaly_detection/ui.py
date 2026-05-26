@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from .runtime import FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS
 from .runtime import FRAUD_ANOMALY_DETECTION_OWNED_TABLES
+from .runtime import FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC
+from .runtime import FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES
 
 
 FRAUD_ANOMALY_DETECTION_UI_FRAGMENT_KEYS = (
@@ -147,5 +149,14 @@ def _view_counts(state: dict, tenant: str) -> dict:
             "rules": tuple(sorted(state.get("rules", {}))),
             "parameters": tuple(sorted(state.get("parameters", {}))),
             "owned_tables": FRAUD_ANOMALY_DETECTION_OWNED_TABLES,
+            "runtime_tables": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
+            "eventing": {
+                "event_contract": "AppGen-X",
+                "required_event_topic": FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC,
+                "outbox_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[0],
+                "inbox_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[1],
+                "dead_letter_table": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES[2],
+                "stream_engine_picker_visible": False,
+            },
         },
     }

@@ -3,6 +3,9 @@ import pytest
 from pyAppGen.pbcs.fraud_anomaly_detection import FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.fraud_anomaly_detection import FRAUD_ANOMALY_DETECTION_OWNED_TABLES
 from pyAppGen.pbcs.fraud_anomaly_detection import FRAUD_ANOMALY_DETECTION_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_release_evidence
+from pyAppGen.pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_schema_contract
+from pyAppGen.pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_service_contract
 from pyAppGen.pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_workbench_view
 from pyAppGen.pbcs.fraud_anomaly_detection import fraud_anomaly_detection_configure_runtime
 from pyAppGen.pbcs.fraud_anomaly_detection import fraud_anomaly_detection_empty_state
@@ -21,6 +24,9 @@ from pyAppGen.pbcs.fraud_anomaly_detection import implementation_contract
 def test_fraud_anomaly_detection_runtime_executes_standard_and_advanced_capabilities() -> None:
     runtime = fraud_anomaly_detection_runtime_capabilities()
     smoke = fraud_anomaly_detection_runtime_smoke()
+    schema = fraud_anomaly_detection_build_schema_contract()
+    service = fraud_anomaly_detection_build_service_contract()
+    release = fraud_anomaly_detection_build_release_evidence()
 
     assert runtime["format"] == "appgen.fraud-anomaly-detection-runtime-capabilities.v1"
     assert runtime["ok"] is True
@@ -35,11 +41,70 @@ def test_fraud_anomaly_detection_runtime_executes_standard_and_advanced_capabili
         FRAUD_ANOMALY_DETECTION_RUNTIME_CAPABILITY_KEYS
     )
     assert not smoke["blocking_gaps"]
+    assert schema["ok"] is True
+    assert schema["owned_tables"] == FRAUD_ANOMALY_DETECTION_OWNED_TABLES
+    assert len(schema["migrations"]) == len(FRAUD_ANOMALY_DETECTION_OWNED_TABLES)
+    assert len(schema["models"]) == len(FRAUD_ANOMALY_DETECTION_OWNED_TABLES)
+    assert tuple(item["table"] for item in schema["runtime_tables"]) == (
+        "fraud_anomaly_detection_appgen_outbox_event",
+        "fraud_anomaly_detection_appgen_inbox_event",
+        "fraud_anomaly_detection_dead_letter_event",
+    )
+    assert schema["datastore_backends"] == FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS
+    assert schema["shared_table_access"] is False
+    assert service["ok"] is True
+    assert {
+        "configure_runtime",
+        "register_fraud_rule",
+        "receive_event",
+    } <= set(service["command_methods"])
+    assert {
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    } <= set(service["query_methods"])
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert service["eventing"]["stream_engine_picker_visible"] is False
+    assert service["idempotent_handlers"] == ("receive_event",)
+    assert service["retry_dead_letter_evidence"]["dead_letter_table"] == "fraud_anomaly_detection_dead_letter_event"
+    assert set(service["generated_artifacts"]) == {"services", "routes", "events", "handlers", "ui"}
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert {check["id"] for check in release["checks"]} == {
+        "owned_schema_depth",
+        "migration_per_owned_table",
+        "model_per_owned_table",
+        "runtime_event_tables_evidence",
+        "service_contract_depth",
+        "generated_runtime_artifacts",
+        "appgen_event_contract_only",
+        "permissions_cover_release_queries",
+        "backend_allowlist",
+        "idempotent_eventing_evidence",
+        "ui_binding_evidence",
+        "no_shared_table_access",
+    }
+    assert release["control"]["summary"]["handled_status"] == "handled"
+    assert release["control"]["summary"]["duplicate_status"] == "duplicate"
+    assert release["control"]["summary"]["dead_letter_status"] == "dead_letter"
+    assert release["control"]["summary"]["outbox_contract"] == "AppGen-X"
+    assert release["control"]["summary"]["outbox_table"] == "fraud_anomaly_detection_appgen_outbox_event"
+    assert release["control"]["summary"]["inbox_table"] == "fraud_anomaly_detection_appgen_inbox_event"
+    assert release["control"]["summary"]["dead_letter_table"] == "fraud_anomaly_detection_dead_letter_event"
+    assert release["control"]["summary"]["retry_max_attempts"] == 3
 
     contract = implementation_contract()
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["ui_contract"]["ok"] is True
     assert contract["owned_tables"] == FRAUD_ANOMALY_DETECTION_OWNED_TABLES
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence_contract"]["ok"] is True
+    assert contract["boundary_contract"]["runtime_tables"] == (
+        "fraud_anomaly_detection_appgen_outbox_event",
+        "fraud_anomaly_detection_appgen_inbox_event",
+        "fraud_anomaly_detection_dead_letter_event",
+    )
     assert "RiskCaseConsole" in contract["ui_contract"]["fragments"]
 
 
@@ -127,6 +192,9 @@ def test_fraud_anomaly_detection_runtime_applies_rules_parameters_events_and_ui(
             },
         },
     )["state"]
+    assert state["outbox"][0]["contract"] == "AppGen-X"
+    assert state["outbox"][0]["retry_policy"]["dead_letter"] == "fraud_anomaly_detection_dead_letter_event"
+    assert state["inbox"][-1]["handler"]["status"] == "handled"
     assert state["outbox"][-1]["idempotency_key"].startswith(
         "fraud_anomaly_detection:RiskCaseOpened"
     )
@@ -140,6 +208,13 @@ def test_fraud_anomaly_detection_runtime_applies_rules_parameters_events_and_ui(
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 10
+    assert workbench["binding_evidence"]["runtime_tables"] == (
+        "fraud_anomaly_detection_appgen_outbox_event",
+        "fraud_anomaly_detection_appgen_inbox_event",
+        "fraud_anomaly_detection_dead_letter_event",
+    )
+    assert workbench["binding_evidence"]["event_contract"] == "AppGen-X"
+    assert workbench["binding_evidence"]["stream_engine_picker_visible"] is False
 
     ui_contract = fraud_anomaly_detection_ui_contract()
     assert (
@@ -163,6 +238,13 @@ def test_fraud_anomaly_detection_runtime_applies_rules_parameters_events_and_ui(
     assert rendered["ok"] is True
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == FRAUD_ANOMALY_DETECTION_OWNED_TABLES
+    assert rendered["binding_evidence"]["runtime_tables"] == (
+        "fraud_anomaly_detection_appgen_outbox_event",
+        "fraud_anomaly_detection_appgen_inbox_event",
+        "fraud_anomaly_detection_dead_letter_event",
+    )
+    assert rendered["binding_evidence"]["eventing"]["event_contract"] == "AppGen-X"
+    assert rendered["binding_evidence"]["eventing"]["stream_engine_picker_visible"] is False
 
 
 def test_fraud_anomaly_detection_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
@@ -205,6 +287,36 @@ def test_fraud_anomaly_detection_rejects_invalid_inputs_and_proves_boundary_and_
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
+    processed = fraud_anomaly_detection_receive_event(
+        state,
+        {
+            "event_id": "evt_ok",
+            "event_type": "CheckoutCompleted",
+            "payload": {
+                "tenant": "tenant_ops",
+                "checkout_id": "chk_ok",
+                "customer_id": "cust_ops",
+                "email": "buyer@example.com",
+                "amount": 2400.0,
+                "region": "US",
+                "guest_checkout": True,
+                "device_trust": "low",
+                "device_id": "device_ops",
+                "ip_address": "10.0.0.11",
+            },
+        },
+    )
+    duplicate = fraud_anomaly_detection_receive_event(
+        processed["state"],
+        {
+            "event_id": "evt_ok",
+            "event_type": "CheckoutCompleted",
+            "payload": {"tenant": "tenant_ops"},
+        },
+    )
+    assert processed["ok"] is True
+    assert duplicate["handler"]["status"] == "duplicate"
+
     boundary = fraud_anomaly_detection_verify_owned_table_boundary()
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == (
@@ -212,6 +324,11 @@ def test_fraud_anomaly_detection_rejects_invalid_inputs_and_proves_boundary_and_
         "anomaly_score",
         "fraud_rule",
         "risk_case",
+    )
+    assert boundary["runtime_tables"] == (
+        "fraud_anomaly_detection_appgen_outbox_event",
+        "fraud_anomaly_detection_appgen_inbox_event",
+        "fraud_anomaly_detection_dead_letter_event",
     )
     assert boundary["declared_dependencies"]["shared_tables"] == ()
 

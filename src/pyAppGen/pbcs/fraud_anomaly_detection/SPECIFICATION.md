@@ -26,6 +26,21 @@ stream-engine picker or alternate event-contract selector.
 Generated AppGen-X outbox, inbox, retry, idempotency, and dead-letter evidence
 remain platform-owned runtime metadata behind the package-local contract.
 
+## Generated Schema
+
+The package-local generated schema contract must enumerate only the owned
+domain tables plus AppGen-X runtime evidence tables:
+
+- Domain tables: `risk_signal`, `anomaly_score`, `fraud_rule`, `risk_case`
+- Runtime tables: `fraud_anomaly_detection_appgen_outbox_event`,
+  `fraud_anomaly_detection_appgen_inbox_event`,
+  `fraud_anomaly_detection_dead_letter_event`
+
+Generated artifacts must include one migration and one model descriptor per
+owned table, explicit owned relationships from signals to scores and cases, and
+the PostgreSQL/MySQL/MariaDB backend allowlist only. Shared-table access stays
+forbidden.
+
 ## Standard Capabilities
 
 - Risk signal ingestion for checkout, payment, and access-policy activity.
@@ -97,6 +112,23 @@ the AppGen-X fraud event topic, records the AppGen-X event contract, and keeps
 stream-engine selection hidden. Workbench views surface configuration, policy
 rules, fraud rules, parameters, outbox, inbox, and dead-letter bindings.
 
+## Service Layer
+
+The package-local service contract must expose command methods for runtime
+configuration, parameter/rule registration, fraud-rule registration, risk-signal
+ingestion, anomaly scoring, risk-case opening, and AppGen-X event handling.
+
+Query methods must include workbench, API, schema, service, and release
+evidence builders plus owned-boundary verification. Service-layer evidence must
+also include:
+
+- Fixed AppGen-X eventing with no stream-engine or event-contract picker
+- Explicit outbox/inbox/dead-letter table bindings
+- Idempotent `receive_event` handling
+- Retry/dead-letter evidence derived from `retry_limit`
+- Generated service, route, event, handler, and UI artifact descriptors
+- No shared-table dependencies
+
 ## UI Contract
 
 The package exports a workbench UI contract with fragments for risk signals,
@@ -119,6 +151,11 @@ audits prove all of the following:
   anomaly scoring, fraud-check decisioning, case opening, idempotent event
   handling, retry/dead-letter behavior, workbench binding evidence, and
   owned-table boundary rejection.
+- Package-local schema, service, and release-evidence builders prove owned
+  tables, runtime outbox/inbox/dead-letter evidence, generated
+  migration/model/service/route/event/handler/UI artifacts, permissions,
+  configuration, AppGen-X-only eventing, and the PostgreSQL/MySQL/MariaDB
+  backend allowlist.
 - `pbc_implementation_release_audit(("fraud_anomaly_detection",))`,
   `pbc_generation_smoke_audit(...)`, `pbc_implemented_capability_audit(...)`,
   full `pbc_implementation_release_audit(...)`, and `pbc_release_audit()` all

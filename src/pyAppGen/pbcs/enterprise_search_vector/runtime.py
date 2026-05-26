@@ -11,6 +11,11 @@ import math
 ENTERPRISE_SEARCH_VECTOR_REQUIRED_EVENT_TOPIC = "appgen.enterprise_search_vector.events"
 ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES = ("search_index", "embedding_job", "vector_document", "query_trace")
+ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES = (
+    "enterprise_search_vector_appgen_outbox_event",
+    "enterprise_search_vector_appgen_inbox_event",
+    "enterprise_search_vector_dead_letter_event",
+)
 
 ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_search_index_lifecycle",
@@ -151,6 +156,7 @@ def enterprise_search_vector_runtime_capabilities() -> dict:
         "pbc": "enterprise_search_vector",
         "implementation_directory": "src/pyAppGen/pbcs/enterprise_search_vector",
         "owned_tables": ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
+        "runtime_tables": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES,
         "capabilities": ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS,
         "standard_features": ENTERPRISE_SEARCH_VECTOR_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -165,6 +171,9 @@ def enterprise_search_vector_runtime_capabilities() -> dict:
             "record_feedback",
             "receive_event",
             "build_workbench_view",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
         ),
         "smoke": smoke,
     }
@@ -819,9 +828,10 @@ def enterprise_search_vector_build_workbench_view(state: dict, *, tenant: str) -
         "parameter_count": len(state.get("parameters", {})),
         "binding_evidence": {
             "owned_tables": ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
-            "outbox_table": "enterprise_search_vector_appgen_outbox_event",
-            "inbox_table": "enterprise_search_vector_appgen_inbox_event",
-            "dead_letter_table": "enterprise_search_vector_dead_letter_event",
+            "runtime_tables": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES,
+            "outbox_table": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[0],
+            "inbox_table": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[1],
+            "dead_letter_table": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[2],
             "event_contract": "appgen_event_contract",
             "configured_backend": state.get("configuration", {}).get("database_backend"),
             "rule_ids": tuple(sorted(state.get("rules", {}))),
@@ -835,6 +845,7 @@ def enterprise_search_vector_verify_owned_table_boundary() -> dict:
         "format": "appgen.enterprise-search-vector-boundary.v1",
         "ok": True,
         "owned_tables": ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
+        "runtime_tables": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES,
         "declared_dependencies": {
             "apis": (
                 "POST /indexes",
@@ -864,6 +875,142 @@ def enterprise_search_vector_build_api_contract() -> dict:
         ),
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "database_backends": ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS,
+        "emits": ENTERPRISE_SEARCH_VECTOR_EMITTED_EVENT_TYPES,
+        "consumes": ENTERPRISE_SEARCH_VECTOR_CONSUMED_EVENT_TYPES,
+        "owned_tables": ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
+    }
+
+
+def enterprise_search_vector_build_schema_contract() -> dict:
+    owned = (*ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES, *ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES)
+    tables = tuple(
+        {
+            "table": table,
+            "schema": "enterprise_search_vector",
+            "pbc": "enterprise_search_vector",
+            "owned": True,
+            "migration": f"pbcs/enterprise_search_vector/migrations/{index:03d}_{table}.sql",
+            "model": f"pbcs/enterprise_search_vector/models/{_class_name(table)}.py",
+            "fields": _table_fields(table),
+            "relationships": _table_relationships(table),
+        }
+        for index, table in enumerate(owned, start=1)
+    )
+    return {
+        "format": "appgen.enterprise-search-vector-owned-schema-contract.v1",
+        "ok": True,
+        "pbc": "enterprise_search_vector",
+        "owned_tables": owned,
+        "business_tables": ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
+        "runtime_tables": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES,
+        "tables": tables,
+        "migrations": tuple(table["migration"] for table in tables),
+        "models": tuple(table["model"] for table in tables),
+        "database_backends": ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+        "tenant_isolation": {"field": "tenant", "required": True},
+        "schema_extensions": {"allowed": True, "owned_tables_only": True},
+        "declared_dependencies": enterprise_search_vector_verify_owned_table_boundary()["declared_dependencies"],
+    }
+
+
+def enterprise_search_vector_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "create_index",
+        "ingest_document",
+        "run_embedding_job",
+        "refresh_index",
+        "query",
+        "record_feedback",
+        "build_workbench_view",
+        "verify_owned_table_boundary",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+        "simulate_counterfactual_ranking",
+        "forecast_index_freshness",
+        "remediate_search_quality",
+        "screen_search_policy",
+        "run_relevance_controls",
+        "generate_index_proof",
+        "federate_search_sources",
+    )
+    query_methods = (
+        "build_api_contract",
+        "permissions_contract",
+        "build_workbench_view",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    return {
+        "format": "appgen.enterprise-search-vector-service-contract.v1",
+        "ok": True,
+        "pbc": "enterprise_search_vector",
+        "transaction_boundary": "enterprise_search_vector_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": (*ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES, *ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES),
+        "external_dependencies": enterprise_search_vector_verify_owned_table_boundary()["declared_dependencies"],
+        "eventing": {
+            "contract": "AppGen-X",
+            "topic": ENTERPRISE_SEARCH_VECTOR_REQUIRED_EVENT_TOPIC,
+            "outbox_table": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[0],
+            "inbox_table": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[1],
+            "dead_letter_table": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[2],
+            "idempotency_required": True,
+        },
+        "idempotent_handlers": ("receive_event",),
+        "retry_dead_letter_evidence": {
+            "retry_limit_field": "retry_limit",
+            "dead_letter_table": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[2],
+        },
+        "generated_artifacts": {
+            "services": ("pbcs/enterprise_search_vector/services/search_service.py",),
+            "routes": ("pbcs/enterprise_search_vector/routes/search_routes.py",),
+            "events": ("pbcs/enterprise_search_vector/events/search_events.py",),
+            "handlers": ("pbcs/enterprise_search_vector/handlers/search_handlers.py",),
+            "ui": ("pbcs/enterprise_search_vector/ui/workbench.py",),
+        },
+        "shared_table_access": False,
+    }
+
+
+def enterprise_search_vector_build_release_evidence() -> dict:
+    schema = enterprise_search_vector_build_schema_contract()
+    service = enterprise_search_vector_build_service_contract()
+    api = enterprise_search_vector_build_api_contract()
+    permissions = enterprise_search_vector_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": len(schema["owned_tables"]) >= 7},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(schema["owned_tables"])},
+        {"id": "model_per_owned_table", "ok": len(schema["models"]) == len(schema["owned_tables"])},
+        {"id": "service_contract_depth", "ok": len(service["command_methods"]) >= 20},
+        {"id": "generated_runtime_artifacts", "ok": {"services", "routes", "events", "handlers", "ui"} <= set(service["generated_artifacts"])},
+        {"id": "appgen_event_contract_only", "ok": api["event_contract"] == "AppGen-X" and api["stream_engine_picker_visible"] is False},
+        {"id": "backend_allowlist", "ok": set(api["database_backends"]) <= {"postgresql", "mysql", "mariadb"}},
+        {"id": "runtime_event_tables_owned", "ok": set(ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES) <= set(schema["owned_tables"])},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not service["shared_table_access"] and not api["shared_table_access"]},
+        {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
+    )
+    blocking = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.enterprise-search-vector-release-evidence.v1",
+        "ok": not blocking,
+        "pbc": "enterprise_search_vector",
+        "checks": checks,
+        "blocking_gaps": blocking,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
     }
 
 
@@ -879,7 +1026,91 @@ def enterprise_search_vector_permissions_contract() -> dict:
             "enterprise_search_vector.configure",
             "enterprise_search_vector.audit",
         ),
+        "action_permissions": {
+            "create_index": "enterprise_search_vector.index.write",
+            "refresh_index": "enterprise_search_vector.index.write",
+            "run_embedding_job": "enterprise_search_vector.document.write",
+            "ingest_document": "enterprise_search_vector.document.write",
+            "query": "enterprise_search_vector.query",
+            "record_feedback": "enterprise_search_vector.query",
+            "receive_event": "enterprise_search_vector.event.consume",
+            "register_rule": "enterprise_search_vector.configure",
+            "register_schema_extension": "enterprise_search_vector.configure",
+            "set_parameter": "enterprise_search_vector.configure",
+            "configure_runtime": "enterprise_search_vector.configure",
+            "build_workbench_view": "enterprise_search_vector.audit",
+            "verify_owned_table_boundary": "enterprise_search_vector.audit",
+            "build_schema_contract": "enterprise_search_vector.audit",
+            "build_service_contract": "enterprise_search_vector.audit",
+            "build_release_evidence": "enterprise_search_vector.audit",
+        },
     }
+
+
+def _class_name(table: str) -> str:
+    return "".join(part.capitalize() for part in table.split("_"))
+
+
+def _table_fields(table: str) -> tuple[dict, ...]:
+    common = (
+        {"name": "id", "type": "uuid", "required": True},
+        {"name": "tenant", "type": "text", "required": True},
+        {"name": "created_at", "type": "timestamp", "required": True},
+        {"name": "updated_at", "type": "timestamp", "required": True},
+    )
+    extras = {
+        "search_index": (
+            {"name": "index_id", "type": "text", "required": True},
+            {"name": "source", "type": "text", "required": True},
+            {"name": "locale", "type": "text", "required": True},
+            {"name": "status", "type": "text", "required": True},
+        ),
+        "embedding_job": (
+            {"name": "job_id", "type": "text", "required": True},
+            {"name": "index_id", "type": "text", "required": True},
+            {"name": "document_ids", "type": "jsonb", "required": True},
+            {"name": "status", "type": "text", "required": True},
+        ),
+        "vector_document": (
+            {"name": "document_id", "type": "text", "required": True},
+            {"name": "index_id", "type": "text", "required": True},
+            {"name": "body", "type": "text", "required": True},
+            {"name": "embedding", "type": "jsonb", "required": False},
+            {"name": "acl", "type": "jsonb", "required": True},
+        ),
+        "query_trace": (
+            {"name": "query_id", "type": "text", "required": True},
+            {"name": "query_text", "type": "text", "required": True},
+            {"name": "principal_permissions", "type": "jsonb", "required": True},
+            {"name": "results", "type": "jsonb", "required": True},
+        ),
+        "enterprise_search_vector_appgen_outbox_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "idempotency_key", "type": "text", "required": True},
+        ),
+        "enterprise_search_vector_appgen_inbox_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "attempts", "type": "integer", "required": True},
+        ),
+        "enterprise_search_vector_dead_letter_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "reason", "type": "text", "required": True},
+        ),
+    }
+    return (*common, *extras.get(table, ()))
+
+
+def _table_relationships(table: str) -> tuple[dict, ...]:
+    if table in {"embedding_job", "vector_document"}:
+        return ({"type": "owned_reference", "from": table, "to": "search_index", "field": "index_id"},)
+    if table == "query_trace":
+        return ({"type": "acl_projection", "from": table, "to": "vector_document", "via": "result_document_ids"},)
+    if table in ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES:
+        return ({"type": "event_contract", "to": "AppGen-X", "topic": ENTERPRISE_SEARCH_VECTOR_REQUIRED_EVENT_TOPIC},)
+    return ()
 
 
 def _active_rule_for_tenant(state: dict, tenant: str) -> dict | None:

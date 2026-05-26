@@ -51,6 +51,29 @@ The owned-boundary verifier accepts only owned tables, declared APIs/events,
 declared projections, and PBC-local event tables. It rejects direct references
 such as `inventory_pool`.
 
+## Generated Schema
+
+`predictive_demand_build_schema_contract()` is the package-local generated
+schema descriptor for Predictive Demand. It publishes:
+
+- Owned tables: `forecast_model`, `forecast_run`, `demand_signal`, and
+  `forecast_result`.
+- Runtime AppGen-X event tables:
+  `predictive_demand_appgen_outbox_event`,
+  `predictive_demand_appgen_inbox_event`, and
+  `predictive_demand_dead_letter_event`.
+- Generated migration artifacts at
+  `pbcs/predictive_demand/migrations/001_forecast_model.sql` through
+  `pbcs/predictive_demand/migrations/004_forecast_result.sql`.
+- Generated model artifacts under
+  `pyAppGen.pbcs.predictive_demand.models.*`.
+- Owned-table relationships from `forecast_run.model_id` to
+  `forecast_model.model_id` and from `forecast_result.run_id` to
+  `forecast_run.run_id`.
+- Backend allowlist fixed to PostgreSQL, MySQL, and MariaDB.
+- Schema extensions limited to owned tables through
+  `register_schema_extension`.
+
 ## Standard Table-Stakes Capabilities
 
 The implementation covers the ordinary demand-planning capabilities expected
@@ -126,9 +149,10 @@ intelligence-grade planning PBC:
 - Configuration, rule, parameter, seed-data, and workbench evidence.
 - Governed model evidence.
 
-## Commands And Services
+## Service Layer
 
-The service layer exposes these package-local commands:
+`predictive_demand_build_service_contract()` is the package-local generated
+service descriptor. The service layer exposes these package-local commands:
 
 - `configure_runtime(configuration)`.
 - `set_parameter(name, value)`.
@@ -140,6 +164,9 @@ The service layer exposes these package-local commands:
 - `create_forecast_run(command)`.
 - `publish_forecast_result(command)`.
 - `build_api_contract()`.
+- `build_schema_contract()`.
+- `build_service_contract()`.
+- `build_release_evidence()`.
 - `permissions_contract()`.
 - `build_workbench_view(tenant=...)`.
 - `verify_owned_table_boundary(references=...)`.
@@ -147,6 +174,15 @@ The service layer exposes these package-local commands:
 All commands are deterministic and side-effect-free: they accept explicit state
 and return a new state plus evidence payloads suitable for generated apps and
 release smoke audits.
+
+The generated service contract also records:
+
+- Fixed AppGen-X eventing on `appgen.predictive_demand.events`.
+- Runtime outbox, inbox, and dead-letter tables owned by this PBC.
+- Idempotent consumed-event handling through `receive_event`.
+- Retry/dead-letter evidence driven by `retry_limit`.
+- Generated service, route, event, and handler artifacts derived from the
+  package-local runtime.
 
 ## APIs
 
@@ -170,6 +206,11 @@ The package-local API contract exposes route descriptors, not just route names:
 
 The catalog-facing routes remain `POST /forecast-models`,
 `POST /forecast-runs`, `POST /demand-signals`, and `GET /forecast-results`.
+Release-facing audit routes are package-local only:
+
+- `GET /predictive-demand/schema-contract`.
+- `GET /predictive-demand/service-contract`.
+- `GET /predictive-demand/release-evidence`.
 
 ## Events And Handlers
 
@@ -213,6 +254,9 @@ state, rules, parameters, outbox counts, and dead-letter counts.
 
 ## Release Evidence
 
+`predictive_demand_build_release_evidence()` aggregates generated schema,
+service, API, permissions, UI, and control evidence for release audits.
+
 Focused tests prove:
 
 - Runtime capability and smoke checks cover every advanced capability key.
@@ -224,6 +268,10 @@ Focused tests prove:
 - Backends remain limited to PostgreSQL, MySQL, and MariaDB.
 - Boundary validation accepts owned tables and declared dependencies and
   rejects direct foreign table references.
+- Generated migration, model, service, route, event, handler, and UI artifacts
+  are present and aligned with the package-local contract builders.
+- Idempotent handlers, retry evidence, and dead-letter evidence are present for
+  AppGen-X consumed events.
 - Invalid database backends, invalid parameters, non-owned schema extensions,
   and simulated handler failures are rejected or dead-lettered.
 - The package participates in all-PBC implementation release and generation

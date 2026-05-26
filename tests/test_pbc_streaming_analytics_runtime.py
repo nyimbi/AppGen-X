@@ -3,7 +3,11 @@ import pytest
 from pyAppGen.pbcs.streaming_analytics import STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.streaming_analytics import STREAMING_ANALYTICS_OWNED_TABLES
 from pyAppGen.pbcs.streaming_analytics import STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.streaming_analytics import implementation_contract
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_build_api_contract
+from pyAppGen.pbcs.streaming_analytics import streaming_analytics_build_release_evidence
+from pyAppGen.pbcs.streaming_analytics import streaming_analytics_build_schema_contract
+from pyAppGen.pbcs.streaming_analytics import streaming_analytics_build_service_contract
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_build_workbench_view
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_configure_runtime
 from pyAppGen.pbcs.streaming_analytics import streaming_analytics_create_dashboard_projection
@@ -31,6 +35,12 @@ def test_streaming_analytics_runtime_executes_standard_and_advanced_capabilities
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/streaming_analytics"
     assert runtime["owned_tables"] == STREAMING_ANALYTICS_OWNED_TABLES
+    assert runtime["runtime_tables"] == (
+        "streaming_analytics_appgen_outbox_event",
+        "streaming_analytics_appgen_inbox_event",
+        "streaming_analytics_dead_letter_event",
+    )
+    assert {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(runtime["operations"])
     assert len(runtime["standard_features"]) >= 20
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
@@ -38,6 +48,93 @@ def test_streaming_analytics_runtime_executes_standard_and_advanced_capabilities
     assert smoke["ok"] is True
     assert {check["id"] for check in smoke["checks"]} == set(STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS)
     assert not smoke["blocking_gaps"]
+
+
+def test_streaming_analytics_builders_publish_complete_pbc_contracts() -> None:
+    schema = streaming_analytics_build_schema_contract()
+    service = streaming_analytics_build_service_contract()
+    release = streaming_analytics_build_release_evidence()
+    package = implementation_contract()
+
+    assert schema["ok"] is True
+    assert tuple(table["table"] for table in schema["tables"]) == STREAMING_ANALYTICS_OWNED_TABLES
+    assert tuple(table["table"] for table in schema["runtime_tables"]) == (
+        "streaming_analytics_appgen_outbox_event",
+        "streaming_analytics_appgen_inbox_event",
+        "streaming_analytics_dead_letter_event",
+    )
+    assert {migration["table"] for migration in schema["migrations"]} == set(STREAMING_ANALYTICS_OWNED_TABLES)
+    assert {model["table"] for model in schema["models"]} == set(STREAMING_ANALYTICS_OWNED_TABLES)
+    assert all(tuple(migration["backend_allowlist"]) == STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS for migration in schema["migrations"])
+    assert schema["datastore_backends"] == STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS
+    assert schema["shared_table_access"] is False
+
+    assert service["ok"] is True
+    assert {
+        "configure_runtime",
+        "register_metric_stream",
+        "define_window",
+        "receive_event",
+        "ingest_metric_event",
+        "create_dashboard_projection",
+    } <= set(service["command_methods"])
+    assert {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(service["query_methods"])
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert service["eventing"]["outbox_table"] == "streaming_analytics_appgen_outbox_event"
+    assert service["eventing"]["inbox_table"] == "streaming_analytics_appgen_inbox_event"
+    assert service["eventing"]["dead_letter_table"] == "streaming_analytics_dead_letter_event"
+    assert service["configuration"]["allowed_database_backends"] == STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS
+    assert service["configuration"]["stream_engine_picker_visible"] is False
+    assert service["permissions"]["build_release_evidence"] == "streaming_analytics.audit"
+    assert service["idempotent_handlers"] == ("receive_event",)
+    assert {handler["event_type"] for handler in service["handlers"]} == {
+        "AuditEventSealed",
+        "OrderShipped",
+        "PaymentCaptured",
+    }
+    assert {route["route"] for route in service["routes"]} >= {
+        "POST /metric-streams",
+        "GET /streaming-analytics/schema-contract",
+        "GET /streaming-analytics/service-contract",
+        "GET /streaming-analytics/release-evidence",
+    }
+    assert {artifact["kind"] for artifact in service["service_artifacts"]} == {"command", "query"}
+    assert len(service["ui_artifacts"]) >= 5
+    assert service["external_dependencies"]["shared_tables"] == ()
+
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert release["generated_artifacts"]["events"]["contract"] == "AppGen-X"
+    assert release["generated_artifacts"]["events"]["consumes"] == (
+        "AuditEventSealed",
+        "OrderShipped",
+        "PaymentCaptured",
+    )
+    assert len(release["generated_artifacts"]["handlers"]) == 3
+    assert len(release["generated_artifacts"]["ui"]) >= 5
+    assert release["control"]["summary"]["outbox_table"] == "streaming_analytics_appgen_outbox_event"
+    assert release["control"]["summary"]["inbox_table"] == "streaming_analytics_appgen_inbox_event"
+    assert release["control"]["summary"]["dead_letter_table"] == "streaming_analytics_dead_letter_event"
+    assert release["control"]["summary"]["outbox_event_types"] == ("OperationalKpiChanged", "ForecastUpdated")
+    assert release["control"]["summary"]["inbox_event_types"] == ("PaymentCaptured",)
+    assert release["control"]["summary"]["dead_letter_event_types"] == ("OrderShipped",)
+    assert release["control"]["summary"]["duplicate_status"] == "duplicate"
+    assert release["control"]["summary"]["dead_letter_status"] == "dead_letter"
+    assert release["control"]["artifacts"]["handled_inbox_record"]["contract"] == "AppGen-X"
+    assert release["control"]["artifacts"]["handled_inbox_record"]["runtime_table"] == "streaming_analytics_appgen_inbox_event"
+    assert all(record["contract"] == "AppGen-X" for record in release["control"]["artifacts"]["handled_outbox_records"])
+    assert all(record["runtime_table"] == "streaming_analytics_appgen_outbox_event" for record in release["control"]["artifacts"]["handled_outbox_records"])
+    assert release["control"]["artifacts"]["dead_letter_record"]["runtime_table"] == "streaming_analytics_dead_letter_event"
+    assert release["schema"]["shared_table_access"] is False
+    assert release["api"]["shared_table_access"] is False
+    assert release["service"]["external_dependencies"]["shared_tables"] == ()
+
+    assert package["schema_contract"]["ok"] is True
+    assert package["service_contract"]["ok"] is True
+    assert package["release_evidence_contract"]["ok"] is True
+    assert package["required_event_topic"] == "appgen.streaming_analytics.events"
+    assert package["consumes"] == ("AuditEventSealed", "OrderShipped", "PaymentCaptured")
+    assert package["emits"] == ("ForecastUpdated", "OperationalKpiChanged")
 
 
 def test_streaming_analytics_runtime_applies_rules_parameters_events_and_ui() -> None:
@@ -100,14 +197,27 @@ def test_streaming_analytics_runtime_applies_rules_parameters_events_and_ui() ->
     api_contract = streaming_analytics_build_api_contract()
     assert api_contract["stream_engine_picker_visible"] is False
     assert api_contract["shared_table_access"] is False
+    assert api_contract["required_event_topic"] == "appgen.streaming_analytics.events"
+    assert api_contract["runtime_tables"] == (
+        "streaming_analytics_appgen_outbox_event",
+        "streaming_analytics_appgen_inbox_event",
+        "streaming_analytics_dead_letter_event",
+    )
     assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
         "register_metric_stream",
         "define_window",
         "ingest_metric_event",
     }
+    assert {route["query"] for route in api_contract["routes"] if "query" in route} >= {
+        "build_workbench_view",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    }
     permissions = streaming_analytics_permissions_contract()
     assert "streaming_analytics_admin" in permissions["roles"]
     assert "shared_table_access_forbidden" in permissions["policy_controls"]
+    assert permissions["action_permissions"]["build_release_evidence"] == "streaming_analytics.audit"
 
 
 def test_streaming_analytics_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
@@ -141,12 +251,25 @@ def test_streaming_analytics_rejects_invalid_inputs_and_proves_boundary_and_dead
     assert failed["ok"] is False
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
+    assert failed["state"]["dead_letter"][0]["contract"] == "AppGen-X"
+    assert failed["state"]["dead_letter"][0]["runtime_table"] == "streaming_analytics_dead_letter_event"
 
     boundary = streaming_analytics_verify_owned_table_boundary(
-        ("metric_stream", "kpi_snapshot", "audit_ledger.AuditEventSealed", "GET /kpis")
+        (
+            "metric_stream",
+            "kpi_snapshot",
+            "streaming_analytics_appgen_outbox_event",
+            "audit_ledger.AuditEventSealed",
+            "GET /kpis",
+        )
     )
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == ("metric_stream", "aggregation_window", "kpi_snapshot", "dashboard_projection")
+    assert boundary["runtime_tables"] == (
+        "streaming_analytics_appgen_outbox_event",
+        "streaming_analytics_appgen_inbox_event",
+        "streaming_analytics_dead_letter_event",
+    )
     assert boundary["declared_dependencies"]["shared_tables"] == ()
     violated = streaming_analytics_verify_owned_table_boundary(("payment_intent",))
     assert violated["ok"] is False

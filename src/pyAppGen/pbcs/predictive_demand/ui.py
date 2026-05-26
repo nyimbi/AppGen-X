@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from .runtime import PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS
+from .runtime import PREDICTIVE_DEMAND_EVENT_CONTRACT
 from .runtime import PREDICTIVE_DEMAND_OWNED_TABLES
+from .runtime import PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC
+from .runtime import PREDICTIVE_DEMAND_RUNTIME_TABLES
 
 
 PREDICTIVE_DEMAND_UI_FRAGMENT_KEYS = (
@@ -61,8 +64,10 @@ def predictive_demand_ui_contract() -> dict:
                 "shortage_policy",
             ),
             "allowed_database_backends": PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS,
-            "event_contract": "AppGen-X",
+            "event_contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+            "required_event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker_visible": False,
+            "user_eventing_choice": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -79,6 +84,8 @@ def predictive_demand_ui_contract() -> dict:
             ),
         },
         "event_surfaces": {
+            "event_contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+            "required_event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
             "emits": (
                 "ForecastUpdated",
                 "MaterialShortageDetected",
@@ -90,6 +97,13 @@ def predictive_demand_ui_contract() -> dict:
             ),
             "outbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+            "runtime_tables": PREDICTIVE_DEMAND_RUNTIME_TABLES,
+            "event_contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+            "required_event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
         },
     }
 
@@ -187,5 +201,8 @@ def _view_counts(state: dict, tenant: str) -> dict:
             "rules": tuple(sorted(state.get("rules", {}))),
             "parameters": tuple(sorted(state.get("parameters", {}))),
             "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+            "runtime_tables": PREDICTIVE_DEMAND_RUNTIME_TABLES,
+            "event_contract": PREDICTIVE_DEMAND_EVENT_CONTRACT,
+            "required_event_topic": PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC,
         },
     }

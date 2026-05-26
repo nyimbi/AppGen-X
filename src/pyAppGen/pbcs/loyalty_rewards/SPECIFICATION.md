@@ -124,7 +124,30 @@ modern relationship PBC:
 - Configuration, rule, parameter, seed-data, and workbench evidence.
 - Governed model evidence.
 
-## Commands And Services
+## Generated Schema
+
+`loyalty_rewards_build_schema_contract()` is the package-local generated schema
+descriptor for Loyalty Rewards. It proves:
+
+- Every owned table in `LOYALTY_REWARDS_OWNED_TABLES` is present exactly once:
+  `reward_account`, `points_ledger`, `earning_rule`, and `redemption`.
+- Generated migration artifacts exist for every owned table in
+  `pbcs/loyalty_rewards/migrations/{sequence}_{table}.sql`.
+- Generated model artifacts exist for every owned table in
+  `pyAppGen.pbcs.loyalty_rewards.models.{table}`.
+- Runtime AppGen-X eventing evidence remains package-local through
+  `loyalty_rewards_appgen_outbox_event`,
+  `loyalty_rewards_appgen_inbox_event`, and
+  `loyalty_rewards_dead_letter_event`.
+- Shared-table access remains forbidden and the datastore allowlist stays
+  limited to PostgreSQL, MySQL, and MariaDB.
+
+## Service Layer
+
+`loyalty_rewards_build_service_contract()` is the package-local service
+descriptor. It proves the generated service, route, event, handler, UI,
+permission, and configuration surfaces for Loyalty Rewards while keeping
+ordinary eventing fixed to AppGen-X and stream-engine selection hidden.
 
 The service layer exposes these package-local commands:
 
@@ -147,6 +170,22 @@ The service layer exposes these package-local commands:
 All commands are deterministic and side-effect-free: they accept explicit state
 and return new state plus evidence payloads suitable for generated apps and
 release smoke audits.
+
+`loyalty_rewards_build_service_contract()` additionally proves:
+
+- Generated service artifacts for every package-local command.
+- Generated route artifacts for account, points, redemption, inbox, workbench,
+  schema-contract, service-contract, and release-evidence surfaces.
+- Generated event and handler artifacts for `PaymentCaptured`,
+  `PromotionApplied`, `RewardBalanceChanged`, and
+  `CustomerSegmentUpdated`.
+- Generated UI artifacts for the owned rewards workbench fragments.
+- Idempotent inbox handlers keyed by `event_id` with retry and dead-letter
+  evidence bound to the package-local AppGen-X inbox/outbox tables.
+- Permission mappings for command, audit, and release-evidence surfaces.
+- Configuration schema evidence requiring the fixed AppGen-X topic
+  `appgen.loyalty_rewards.events`, PostgreSQL/MySQL/MariaDB only, and no
+  stream-engine picker.
 
 ## APIs
 
@@ -213,6 +252,9 @@ rule, redemption, balance, liability, outbox, and dead-letter counts; visible
 and locked actions from RBAC permissions; and owned-table binding evidence.
 
 ## Release Evidence
+
+`loyalty_rewards_build_release_evidence()` is the package-local release gate.
+It combines schema, service, API, and permission evidence and proves:
 
 Focused tests prove:
 
