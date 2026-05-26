@@ -1,8 +1,8 @@
 # AppGen Base Features
 
-This canonical roadmap file mirrors the original `docs/ base_features.md`
-without the leading-space filename, so tools and agents can reliably locate the
-base feature contract referenced by the project goal.
+This canonical roadmap file replaces the archived leading-space filename, so
+tools and agents can reliably locate the base feature contract referenced by
+the project goal.
 
 1. Data Modeling: Ability to define entities, relationships, attributes, and data types.
 2. User Interface Design: Ability to specify layouts, forms, elements, and other user interface components.

@@ -1102,6 +1102,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   were excluded from package builds and had no active source, test, README, or
   docs references; dirty generated folders remain in place for a separate,
   safer pass.
+- Current repository hygiene pass archives additional stale tracked leaf files
+  into `archive/cleanup-2026-05-26/`: duplicate roadmap docs, an obsolete
+  dependency dump, an unreferenced schema graph helper, and two unreferenced
+  legacy package modules. Dirty IDE metadata, generated fixtures, and
+  in-progress package work remain untouched.
 
 ## Open Completion Areas
 
