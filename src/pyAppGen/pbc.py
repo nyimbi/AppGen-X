@@ -864,6 +864,40 @@ API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "gateway_mlops_governance",
 )
+SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_schema_lifecycle",
+    "graph_relational_contract_topology",
+    "multi_tenant_contract_isolation",
+    "schema_on_read_contract_extensibility",
+    "probabilistic_breaking_change_scoring",
+    "real_time_contract_analytics",
+    "counterfactual_schema_evolution_simulation",
+    "temporal_compatibility_health_forecasting",
+    "autonomous_contract_remediation",
+    "semantic_schema_intent_parsing",
+    "predictive_contract_risk_scoring",
+    "self_healing_contract_validation_route_selection",
+    "zero_knowledge_schema_acceptance_proof",
+    "immutable_contract_audit_trail",
+    "dynamic_contract_policy_screening",
+    "automated_contract_control_testing",
+    "universal_api_async_contract_surface",
+    "cross_system_schema_federation",
+    "gateway_identity_audit_workflow_composition_integration",
+    "decentralized_producer_consumer_identity",
+    "chaos_engineered_contract_validation_tolerance",
+    "quantum_resistant_schema_signing",
+    "carbon_aware_contract_validation",
+    "algebraic_schema_diff_minimization",
+    "mechanism_design_consumer_impact_allocation",
+    "information_theoretic_validation_anomaly_detection",
+    "temporal_contract_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_contract_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "contract_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -888,6 +922,7 @@ IMPLEMENTED_PBC_KEYS = (
     "customer_360",
     "federated_iam",
     "api_gateway_mesh",
+    "schema_registry",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3147,6 +3182,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
         advanced_runtime = api_gateway_mesh_runtime_capabilities()
+    elif key == "schema_registry":
+        advanced_runtime = schema_registry_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3446,6 +3483,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "customer_360": len(CUSTOMER_360_ADVANCED_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
+        "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -5312,3 +5350,23 @@ from .pbcs.api_gateway_mesh import api_gateway_mesh_runtime_capabilities  # noqa
 from .pbcs.api_gateway_mesh import api_gateway_mesh_runtime_smoke  # noqa: E402,F401
 from .pbcs.api_gateway_mesh import api_gateway_mesh_set_parameter  # noqa: E402,F401
 from .pbcs.api_gateway_mesh import api_gateway_mesh_ui_contract  # noqa: E402,F401
+from .pbcs.schema_registry import SCHEMA_REGISTRY_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.schema_registry import SCHEMA_REGISTRY_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.schema_registry import SCHEMA_REGISTRY_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_build_workbench_view  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_configure_runtime  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_define_compatibility_rule  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_empty_state  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_publish_contract_projection  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_record_contract_violation  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_register_consumer_binding  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_register_rule  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_register_subject  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_render_workbench  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_run_compatibility_check  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_runtime_capabilities  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_runtime_smoke  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_set_parameter  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_submit_schema_version  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_ui_contract  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_validate_payload  # noqa: E402,F401
