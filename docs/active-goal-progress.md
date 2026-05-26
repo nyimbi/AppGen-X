@@ -1592,7 +1592,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   module tests assert those contracts, and the view-composition replay matrix
   proves surface, operation-step, validation-step, and side-effect-free coverage
   before generated view-composition readiness is trusted. Source syntax checks
-  and a direct generated-artifact probe pass. Commit: pending.
+  and a direct generated-artifact probe pass. Commit: `7e18de7`.
 - Current generated PBC contract-test execution pass strengthens
   `pbc_generation_smoke_audit()` so generated PBC package tests are imported and
   executed for each selected PBC, not only compiled. The generated package
