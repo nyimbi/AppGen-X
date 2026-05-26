@@ -1753,6 +1753,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   evidence tests pass (`8 passed`), and the full PBC audit stack including all
   built-in generation smoke and `pbc_release_audit()` returns true. Commit:
   `4b9ecb9`.
+- Current Object Inspector readiness pass promotes custom-designer transaction
+  replay into the ordered readiness gate for source and generated apps. The
+  readiness evidence now requires hook activation before preview render,
+  non-mutating overlays, hit-target routing, undoable overlay commits,
+  cancel/rollback snapshot restoration, hook unload, and custom-designer
+  metadata round trips before release claims. Commit: `pending`.
 
 ## Open Completion Areas
 

@@ -2080,6 +2080,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "editor_metadata_ready",
         "property_event_ready",
         "component_custom_designer_ready",
+        "custom_designer_transaction_ready",
         "state_design_surface_ready",
         "binding_handler_ready",
         "lifecycle_round_trip_ready",
@@ -2088,6 +2089,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } == {check["id"] for check in inspector_readiness["checks"]}
     assert inspector_readiness["final_state"]["component_count"] == len(inspector_workbench["contracts"])
     assert inspector_readiness["final_state"]["round_trips"] == len(inspector_workbench["contracts"])
+    assert inspector_readiness["final_state"]["custom_designer_hook_transactions"] == (
+        inspector_workbench["custom_designer_transaction_replay"]["final_state"]["hook_transactions"]
+    )
+    assert inspector_readiness["checks"][3]["evidence"]["final_state"]["metadata_round_trips"] == len(
+        inspector_workbench["contracts"]
+    )
     assert inspector_workbench["readiness"]["ok"] is True
     assert inspector_workbench["readiness"]["final_state"]["custom_designer_hooks"] > 0
     assert len(inspector_workbench["inspector_module_artifacts"]) == 6
@@ -5041,6 +5048,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "component_editor_transaction",
         "custom_designer_registration_replay",
+        "custom_designer_transaction_replay",
         "editor_lifecycle_replay",
         "design_surface_transaction_replay",
     } <= set(lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["inspector_passing_checks"])
@@ -5214,6 +5222,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "custom_designer_family_contract",
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
+        "custom_designer_transaction_replay",
         "inspector_family_replay_matrix",
         "phase_order_ready",
     } <= set(requirements_by_id["inspector_design_surface"]["deep_checks"])
@@ -15124,6 +15133,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "component_editor_transaction",
         "custom_designer_registration_replay",
+        "custom_designer_transaction_replay",
         "editor_lifecycle_replay",
         "design_surface_transaction_replay",
     } <= set(generated_lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["inspector_passing_checks"])
@@ -15308,6 +15318,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "custom_designer_family_contract",
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
+        "custom_designer_transaction_replay",
         "inspector_family_replay_matrix",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["inspector_design_surface"]["deep_checks"])
@@ -18440,6 +18451,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "editor_metadata_ready",
         "property_event_ready",
         "component_custom_designer_ready",
+        "custom_designer_transaction_ready",
         "state_design_surface_ready",
         "binding_handler_ready",
         "lifecycle_round_trip_ready",
@@ -18448,6 +18460,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } == {check["id"] for check in generated_inspector_readiness["checks"]}
     assert generated_inspector_readiness["final_state"]["component_count"] == len(generated_inspector["contracts"])
     assert generated_inspector_readiness["final_state"]["round_trips"] == len(generated_inspector["contracts"])
+    assert generated_inspector_readiness["final_state"]["custom_designer_hook_transactions"] == (
+        generated_inspector["custom_designer_transaction_replay"]["final_state"]["hook_transactions"]
+    )
+    assert generated_inspector_readiness["checks"][3]["evidence"]["final_state"]["metadata_round_trips"] == len(
+        generated_inspector["contracts"]
+    )
     assert generated_inspector["readiness"]["ok"] is True
     assert generated_inspector["readiness"]["final_state"]["custom_designer_hooks"] > 0
     assert len(generated_inspector["inspector_module_artifacts"]) == 6

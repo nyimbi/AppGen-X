@@ -6897,6 +6897,7 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
     multi_select = inspector_multi_select_contract(tuple(selected[:3]))
     design_surface_replay = inspector_design_surface_transaction_replay_contract(selected)
     custom_registration_replay = inspector_custom_designer_registration_replay_contract(selected)
+    custom_transaction_replay = inspector_custom_designer_transaction_replay_contract(selected)
     editor_lifecycle_replay = inspector_editor_lifecycle_replay_contract(selected)
     round_trips = tuple(inspector_round_trip_contract(component) for component in selected)
     binding_bridge = inspector_binding_designer_bridge_contract()
@@ -6935,10 +6936,12 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
             "phase": "run_component_and_custom_designers",
             "pipeline": tuple(step for contract in component_transactions for step in contract["transaction"])
             + tuple(step for contract in custom_lifecycle for item in contract["lifecycle"] for step in item["lifecycle"])
-            + tuple(item["phase"] for item in custom_registration_replay["replay"]),
+            + tuple(item["phase"] for item in custom_registration_replay["replay"])
+            + tuple(item["phase"] for item in custom_transaction_replay["replay"]),
             "ok": all({"snapshot_design", "apply_change", "record_undo"} <= set(contract["transaction"]) for contract in component_transactions)
             and all(contract["ok"] and not contract["side_effects"] for contract in custom_lifecycle)
             and custom_registration_replay["ok"]
+            and custom_transaction_replay["ok"]
             and "custom_designers_registered_before_activation" in custom_registration_replay["guards"],
         },
         {
@@ -6974,7 +6977,31 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
     checks = (
         {"id": "editor_metadata_ready", "ok": phases[0]["ok"], "evidence": {"contracts": contracts, "registries": editor_registries}},
         {"id": "property_event_ready", "ok": phases[1]["ok"], "evidence": {"properties": property_pipelines, "events": event_signatures}},
-        {"id": "component_custom_designer_ready", "ok": phases[2]["ok"], "evidence": {"component_transactions": component_transactions, "custom_lifecycle": custom_lifecycle, "custom_registration": custom_registration_replay}},
+        {
+            "id": "component_custom_designer_ready",
+            "ok": phases[2]["ok"],
+            "evidence": {
+                "component_transactions": component_transactions,
+                "custom_lifecycle": custom_lifecycle,
+                "custom_registration": custom_registration_replay,
+                "custom_transaction_replay": custom_transaction_replay,
+            },
+        },
+        {
+            "id": "custom_designer_transaction_ready",
+            "ok": custom_transaction_replay["ok"]
+            and {
+                "hook_transactions_activate_before_render",
+                "preview_overlays_are_non_mutating",
+                "hit_targets_route_to_context_actions",
+                "overlay_commits_record_undo",
+                "cancel_restores_design_snapshot",
+                "custom_designer_metadata_round_trips",
+                "custom_designer_transactions_side_effect_free",
+            } <= {check["id"] for check in custom_transaction_replay["checks"] if check["ok"]}
+            and not custom_transaction_replay["side_effects"],
+            "evidence": custom_transaction_replay,
+        },
         {"id": "state_design_surface_ready", "ok": phases[3]["ok"], "evidence": {"state_restore": state_restore, "multi_select": multi_select, "design_surface": design_surface_replay}},
         {"id": "binding_handler_ready", "ok": phases[4]["ok"], "evidence": {"binding_bridge": binding_bridge, "action_registry": action_registry, "cross_handler": cross_handler, "handler_invoke": handler_invoke}},
         {"id": "lifecycle_round_trip_ready", "ok": phases[5]["ok"], "evidence": {"lifecycle": editor_lifecycle_replay, "round_trips": round_trips}},
@@ -7027,6 +7054,7 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
             "event_editors": sum(len(contract["event_editors"]) for contract in contracts),
             "component_editor_transactions": len(component_transactions),
             "custom_designer_hooks": custom_registration_replay["final_state"]["registered_hooks"],
+            "custom_designer_hook_transactions": custom_transaction_replay["final_state"]["hook_transactions"],
             "round_trips": sum(1 for contract in round_trips if contract["ok"]),
             "handler_routes": len(cross_handler["routes"]),
         },
@@ -7034,6 +7062,7 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
             "metadata_before_editor_validation",
             "property_and_event_validation_before_design_surface_replay",
             "component_transactions_before_custom_registration_claim",
+            "custom_designer_transactions_before_release_claim",
             "state_restore_before_binding_bridge",
             "binding_bridge_before_release_claim",
             "side_effect_free_readiness",
@@ -7570,6 +7599,7 @@ def object_inspector_workbench() -> dict:
                 "editor_metadata_ready",
                 "property_event_ready",
                 "component_custom_designer_ready",
+                "custom_designer_transaction_ready",
                 "state_design_surface_ready",
                 "binding_handler_ready",
                 "lifecycle_round_trip_ready",
@@ -16399,6 +16429,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and {
                 "component_editor_transaction",
                 "custom_designer_registration_replay",
+                "custom_designer_transaction_replay",
                 "editor_lifecycle_replay",
                 "design_surface_transaction_replay",
             } <= inspector_passing_checks
@@ -16735,6 +16766,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "editor_metadata_ready",
                 "property_event_ready",
                 "component_custom_designer_ready",
+                "custom_designer_transaction_ready",
                 "state_design_surface_ready",
                 "binding_handler_ready",
                 "lifecycle_round_trip_ready",
@@ -16767,6 +16799,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "editor_lifecycle_replay",
                 "design_surface_transaction_replay",
                 "custom_designer_registration_replay",
+                "custom_designer_transaction_replay",
                 "inspector_generated_modules",
                 "inspector_generated_module_tests",
                 "property_editor_family_contract",
@@ -17536,6 +17569,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "editor_metadata_ready",
         "property_event_ready",
         "component_custom_designer_ready",
+        "custom_designer_transaction_ready",
         "state_design_surface_ready",
         "binding_handler_ready",
         "lifecycle_round_trip_ready",
