@@ -220,16 +220,47 @@ def time_labor_empty_state() -> dict:
 
 
 def time_labor_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Time and Labor supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Time and Labor requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def time_labor_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "standard_daily_hours",
+        "weekly_overtime_threshold",
+        "break_minutes",
+        "rounding_interval_minutes",
+        "geofence_radius_meters",
+        "shift_swap_window_hours",
+        "absence_notice_hours",
+        "approval_sla_hours",
+        "exception_escalation_hours",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported Time and Labor parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def time_labor_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Time and Labor rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("Time and Labor rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -419,7 +450,18 @@ def time_labor_model_stochastic_labor_exposure(*, hours_path: tuple[float, ...],
 
 def time_labor_build_workbench_view(state: dict, *, tenant: str) -> dict:
     shifts = tuple(shift for shift in state["shifts"].values() if shift["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "shift_count": len(shifts), "time_entry_count": len(tuple(entry for entry in state["time_entries"].values() if entry["tenant"] == tenant)), "absence_count": len(tuple(absence for absence in state["absences"].values() if absence["tenant"] == tenant)), "approved_summary_count": len(tuple(summary for summary in state["summaries"].values() if summary["tenant"] == tenant and summary["status"] == "approved")), "exception_count": len(tuple(event for event in state["clock_events"].values() if event["tenant"] == tenant and event["status"] == "exception"))}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "shift_count": len(shifts),
+        "time_entry_count": len(tuple(entry for entry in state["time_entries"].values() if entry["tenant"] == tenant)),
+        "absence_count": len(tuple(absence for absence in state["absences"].values() if absence["tenant"] == tenant)),
+        "approved_summary_count": len(tuple(summary for summary in state["summaries"].values() if summary["tenant"] == tenant and summary["status"] == "approved")),
+        "exception_count": len(tuple(event for event in state["clock_events"].values() if event["tenant"] == tenant and event["status"] == "exception")),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def time_labor_register_governed_model(name: str, metadata: dict) -> dict:

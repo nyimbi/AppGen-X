@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import TIME_LABOR_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
@@ -122,6 +124,9 @@ def test_time_labor_runtime_applies_rules_parameters_and_configuration() -> None
     assert workbench["time_entry_count"] == 1
     assert workbench["absence_count"] == 1
     assert workbench["approved_summary_count"] == 1
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 4
 
     ui_contract = time_labor_ui_contract()
     assert ui_contract["ok"] is True
@@ -145,3 +150,21 @@ def test_time_labor_runtime_applies_rules_parameters_and_configuration() -> None
     assert rendered["event_outbox_count"] == 6
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+
+def test_time_labor_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = time_labor_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        time_labor_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.time.events",
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Time and Labor parameter"):
+        time_labor_set_parameter(state, "stream_engine", "hidden_picker")
