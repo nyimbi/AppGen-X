@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from .runtime import EAM_ALLOWED_DATABASE_BACKENDS
+from .runtime import EAM_REQUIRED_RULE_FIELDS
+from .runtime import EAM_SUPPORTED_PARAMETERS
 
 EAM_UI_FRAGMENT_KEYS = (
     "MaintenanceWorkbench",
@@ -87,22 +90,18 @@ def eam_ui_contract() -> dict:
         },
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": EAM_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "stream_engine_picker": False,
+            "user_selectable_eventing": False,
         },
         "parameter_editor": {
-            "numeric_parameters": (
-                "default_pm_interval_days",
-                "failure_risk_threshold",
-                "mttr_target_hours",
-                "criticality_weight",
-                "safety_risk_threshold",
-                "retention_days",
-            ),
+            "numeric_parameters": EAM_SUPPORTED_PARAMETERS,
         },
         "rule_editor": {
             "rule_types": ("maintenance", "strategy", "safety", "spares", "reliability", "vendor"),
-            "required_fields": ("rule_id", "tenant", "rule_type", "eligible_work_types", "allowed_sites", "status"),
+            "required_fields": EAM_REQUIRED_RULE_FIELDS,
+            "compile_evidence_visible": True,
         },
         "event_surfaces": {
             "emits": ("MaintenanceCompleted", "VendorPerformanceUpdated", "WorkOrderCreated"),

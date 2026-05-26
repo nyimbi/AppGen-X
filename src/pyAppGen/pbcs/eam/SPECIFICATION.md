@@ -37,6 +37,23 @@ Owned tables:
 Allowed datastore backends are PostgreSQL, MySQL, and MariaDB. Ordinary eventing
 uses the AppGen-X outbox/inbox event contract.
 
+Executable runtime guarantees for this package are strict:
+
+- Runtime configuration rejects any backend outside PostgreSQL, MySQL, and
+  MariaDB.
+- Runtime configuration requires an AppGen-X event topic, stamps the
+  AppGen-X event contract, and does not expose any user-facing stream-engine
+  or eventing-backend picker.
+- Parameters are bounded to the package-owned maintenance controls:
+  `default_pm_interval_days`, `failure_risk_threshold`,
+  `mttr_target_hours`, `criticality_weight`, `safety_risk_threshold`, and
+  `retention_days`.
+- Rules must include `rule_id`, `tenant`, `rule_type`,
+  `eligible_work_types`, `allowed_sites`, and `status`; compiled rule
+  evidence is deterministic and hash-based.
+- Workbench/runtime evidence must expose configuration, rule, and parameter
+  bindings for the active tenant view.
+
 ## Standard Capabilities
 
 - Equipment master data, hierarchy, criticality, location, warranty, and
@@ -131,3 +148,8 @@ the AppGen-X outbox adapter, and route exhausted failures to
 The package exports a workbench UI contract with fragments for equipment,
 maintenance plans, work orders, scheduling, reliability analytics, safety,
 spares, vendor service, rules, parameters, and configuration.
+
+The configuration editor exposes only datastore and AppGen-X event topic
+controls. The workbench must surface configuration binding status, bound rule
+identifiers, and bound parameter identifiers without presenting a stream-engine
+selector or alternative user-facing eventing mode.

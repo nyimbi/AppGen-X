@@ -69,6 +69,57 @@ QUALITY_ASSURANCE_STANDARD_FEATURE_KEYS = (
     "seed_data",
     "workbench",
 )
+QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS = (
+    "database_backend",
+    "event_topic",
+    "retry_limit",
+    "allowed_sites",
+    "allowed_inspection_sources",
+    "allowed_hold_reasons",
+    "allowed_dispositions",
+    "default_timezone",
+    "workbench_limit",
+)
+QUALITY_ASSURANCE_SUPPORTED_CONFIGURATION_FIELDS = QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS
+QUALITY_ASSURANCE_FORBIDDEN_EVENTING_FIELDS = (
+    "event_bus",
+    "event_engine",
+    "eventing_backend",
+    "eventing_mode",
+    "stream_engine",
+)
+QUALITY_ASSURANCE_SUPPORTED_PARAMETER_NAMES = (
+    "default_sample_size",
+    "defect_threshold",
+    "cpk_minimum",
+    "hold_severity_threshold",
+    "capa_due_days",
+    "retention_days",
+    "release_approval_threshold",
+)
+QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS = (
+    "rule_id",
+    "tenant",
+    "rule_type",
+    "eligible_sources",
+    "allowed_sites",
+    "sampling_methods",
+    "required_measurements",
+    "critical_defect_classes",
+    "release_dispositions",
+    "status",
+)
+QUALITY_ASSURANCE_SUPPORTED_RULE_TYPES = (
+    "inspection",
+    "sampling",
+    "spc",
+    "hold",
+    "nonconformance",
+    "release",
+    "compliance",
+    "quality",
+)
 
 
 def quality_assurance_runtime_capabilities() -> dict:
@@ -215,16 +266,63 @@ def quality_assurance_empty_state() -> dict:
 
 
 def quality_assurance_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    forbidden = tuple(sorted(field for field in QUALITY_ASSURANCE_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError("Quality Assurance uses the AppGen-X event contract and does not allow stream-engine or user-selectable eventing fields")
+    unknown = tuple(sorted(field for field in configuration if field not in QUALITY_ASSURANCE_SUPPORTED_CONFIGURATION_FIELDS))
+    if unknown:
+        raise ValueError(f"Unsupported Quality Assurance configuration fields: {unknown}")
+    missing = tuple(sorted(field for field in QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS if field not in configuration))
+    if missing:
+        raise ValueError(f"Missing required Quality Assurance configuration fields: {missing}")
+    if configuration.get("database_backend") not in QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS:
+        raise ValueError("Quality Assurance supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Quality Assurance requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS,
+        "supported_fields": QUALITY_ASSURANCE_SUPPORTED_CONFIGURATION_FIELDS,
+        "stream_engine_picker_visible": False,
+        "user_eventing_choice": False,
+        "configuration_hash": _digest({field: configuration[field] for field in QUALITY_ASSURANCE_SUPPORTED_CONFIGURATION_FIELDS}),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def quality_assurance_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    if name not in QUALITY_ASSURANCE_SUPPORTED_PARAMETER_NAMES:
+        raise ValueError(f"Unsupported Quality Assurance parameter: {name}")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"Quality Assurance parameter values must be numeric: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def quality_assurance_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    missing = tuple(sorted(field for field in QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Quality Assurance rule fields: {missing}")
+    if rule["rule_type"] not in QUALITY_ASSURANCE_SUPPORTED_RULE_TYPES:
+        raise ValueError(f"Unsupported Quality Assurance rule type: {rule['rule_type']}")
+    scope = rule.get("scope") or rule["rule_type"]
+    compiled_hash = _digest(rule)
+    compile_evidence = {
+        "format": "appgen.quality-assurance-rule-compile-evidence.v1",
+        "rule_id": rule["rule_id"],
+        "scope": scope,
+        "compiled_hash": compiled_hash,
+        "required_fields": QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS,
+        "normalized_rule": _normalize_value(rule),
+    }
+    enriched = {
+        **rule,
+        "scope": scope,
+        "enabled": rule["status"] == "active",
+        "compiled_hash": compiled_hash,
+        "compile_evidence": compile_evidence,
+    }
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -237,7 +335,12 @@ def quality_assurance_register_schema_extension(state: dict, table: str, fields:
 
 def quality_assurance_create_inspection_plan(state: dict, plan: dict) -> dict:
     rule = next(iter(state["rules"].values()))
-    ok = plan["site"] in state["configuration"].get("allowed_sites", ()) and plan["source"] in rule["eligible_sources"] and plan["sampling_method"] in rule["sampling_methods"]
+    ok = (
+        plan["site"] in state["configuration"].get("allowed_sites", ())
+        and plan["source"] in state["configuration"].get("allowed_inspection_sources", ())
+        and plan["source"] in rule["eligible_sources"]
+        and plan["sampling_method"] in rule["sampling_methods"]
+    )
     enriched = {**plan, "status": "active" if ok else "blocked", "graph_degree": len(tuple(value for value in (plan["item"], plan["site"], plan["source"], plan["revision"]) if value))}
     next_state = {**state, "plans": {**state["plans"], plan["plan_id"]: enriched}}
     next_state = _append_event(next_state, "InspectionPlanCreated", {"tenant": plan["tenant"], "plan_id": plan["plan_id"], "item": plan["item"]})
@@ -345,6 +448,12 @@ def quality_assurance_run_control_tests(state: dict) -> dict:
     gaps = []
     if not state["configuration"].get("ok"):
         gaps.append("invalid_configuration")
+    if state["configuration"].get("database_backend") not in QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS:
+        gaps.append("invalid_database_backend")
+    if state["configuration"].get("event_contract") != "AppGen-X":
+        gaps.append("invalid_event_contract")
+    if state["configuration"].get("user_eventing_choice"):
+        gaps.append("user_eventing_choice_exposed")
     if not state["rules"]:
         gaps.append("missing_rules")
     if not state["parameters"]:
@@ -358,7 +467,15 @@ def quality_assurance_run_control_tests(state: dict) -> dict:
 
 
 def quality_assurance_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /inspections", "POST /non-conformances", "POST /quality-holds", "POST /quality-rules", "POST /quality-parameters", "POST /quality-configuration"), "events": {"emits": ("QualityHoldReleased", "NonConformanceRaised"), "consumes": ("ProductionCompleted", "GoodsReceiptPosted")}, "permissions": ("quality_assurance.read", "quality_assurance.inspect", "quality_assurance.hold", "quality_assurance.disposition", "quality_assurance.configure", "quality_assurance.audit"), "configuration": ("QUALITY_ASSURANCE_DATABASE_URL", "QUALITY_ASSURANCE_EVENT_TOPIC", "QUALITY_ASSURANCE_RETRY_LIMIT", "QUALITY_ASSURANCE_DEFAULT_TIMEZONE")}
+    return {
+        "ok": True,
+        "routes": ("POST /inspections", "POST /non-conformances", "POST /quality-holds", "POST /quality-rules", "POST /quality-parameters", "POST /quality-configuration"),
+        "events": {"emits": ("QualityHoldReleased", "NonConformanceRaised"), "consumes": ("ProductionCompleted", "GoodsReceiptPosted")},
+        "permissions": ("quality_assurance.read", "quality_assurance.inspect", "quality_assurance.hold", "quality_assurance.disposition", "quality_assurance.configure", "quality_assurance.audit"),
+        "configuration": ("QUALITY_ASSURANCE_DATABASE_URL", "QUALITY_ASSURANCE_EVENT_TOPIC", "QUALITY_ASSURANCE_RETRY_LIMIT", "QUALITY_ASSURANCE_DEFAULT_TIMEZONE"),
+        "event_contract": "AppGen-X",
+        "user_eventing_choice": False,
+    }
 
 
 def quality_assurance_federate_quality_view(state: dict, result_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -419,11 +536,54 @@ def quality_assurance_build_workbench_view(state: dict, *, tenant: str) -> dict:
     results = tuple(result for result in state["results"].values() if result["tenant"] == tenant)
     holds = tuple(hold for hold in state["holds"].values() if hold["tenant"] == tenant)
     ncs = tuple(nc for nc in state["nonconformances"].values() if nc["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "plan_count": len(plans), "inspection_count": len(results), "failed_inspection_count": len(tuple(result for result in results if result["decision"] == "fail")), "hold_count": len(holds), "released_hold_count": len(tuple(hold for hold in holds if hold["status"] == "released")), "nonconformance_count": len(ncs), "critical_nonconformance_count": len(tuple(nc for nc in ncs if nc["severity_class"] == "critical")), "average_cpk": round(sum(result["spc"]["cpk"] for result in results) / max(len(results), 1), 4)}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "plan_count": len(plans),
+        "inspection_count": len(results),
+        "failed_inspection_count": len(tuple(result for result in results if result["decision"] == "fail")),
+        "hold_count": len(holds),
+        "released_hold_count": len(tuple(hold for hold in holds if hold["status"] == "released")),
+        "nonconformance_count": len(ncs),
+        "critical_nonconformance_count": len(tuple(nc for nc in ncs if nc["severity_class"] == "critical")),
+        "average_cpk": round(sum(result["spc"]["cpk"] for result in results) / max(len(results), 1), 4),
+        "configuration_bound": bool(state["configuration"].get("ok")),
+        "rules_bound": tuple(sorted(state["rules"])),
+        "parameters_bound": tuple(sorted(state["parameters"])),
+        "binding_evidence": quality_assurance_binding_evidence(state),
+    }
 
 
 def quality_assurance_register_governed_model(name: str, metadata: dict) -> dict:
     return {"ok": metadata.get("auc", 0) >= 0.85 and metadata.get("drift_score", 1) <= 0.1, "name": name, "metadata": metadata, "governance": {"regulated": True, "feature_lineage": tuple(metadata.get("features", ())), "explainability_required": True}}
+
+
+def quality_assurance_binding_evidence(state: dict) -> dict:
+    configuration = state["configuration"]
+    rules = tuple(
+        {
+            "rule_id": rule["rule_id"],
+            "scope": rule.get("scope") or rule.get("rule_type"),
+            "enabled": bool(rule.get("enabled")),
+            "compiled_hash": rule["compiled_hash"],
+        }
+        for rule in sorted(state["rules"].values(), key=lambda item: item["rule_id"])
+    )
+    parameters = tuple({"name": name, "value": state["parameters"][name]} for name in sorted(state["parameters"]))
+    evidence = {
+        "configuration": {
+            "bound": bool(configuration.get("ok")),
+            "database_backend": configuration.get("database_backend"),
+            "event_contract": configuration.get("event_contract"),
+            "supported_fields": configuration.get("supported_fields", QUALITY_ASSURANCE_SUPPORTED_CONFIGURATION_FIELDS),
+            "allowed_database_backends": configuration.get("allowed_database_backends", QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS),
+            "stream_engine_picker_visible": bool(configuration.get("stream_engine_picker_visible", False)),
+            "user_eventing_choice": bool(configuration.get("user_eventing_choice", False)),
+        },
+        "rules": rules,
+        "parameters": parameters,
+    }
+    return {**evidence, "binding_hash": _digest(evidence)}
 
 
 def _spc(measurements: dict) -> dict:
@@ -447,3 +607,11 @@ def _append_event(state: dict, event_type: str, payload: dict) -> dict:
 
 def _digest(value: object) -> str:
     return hashlib.sha3_256(json.dumps(value, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def _normalize_value(value: object) -> object:
+    if isinstance(value, dict):
+        return {key: _normalize_value(value[key]) for key in sorted(value)}
+    if isinstance(value, (tuple, list)):
+        return tuple(_normalize_value(item) for item in value)
+    return value

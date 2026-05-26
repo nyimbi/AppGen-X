@@ -73,10 +73,20 @@ The runtime must prove deterministic evidence for:
 The PBC must understand and execute:
 
 - Configuration: database backend, event topic, retry limit, allowed sites, allowed work-center types, allowed downtime reasons, allowed production routes, default timezone, and workbench limit.
-- Parameters: capacity threshold, OEE target, scrap threshold, takt time minutes, schedule horizon days, downtime severity minutes, and carbon shift preference.
+- Parameters: capacity threshold, OEE target, scrap threshold, takt time minutes, schedule horizon days, and downtime severity minutes.
 - Rules: work-center eligibility, routing eligibility, dispatch priority, capacity overload, quality gate, completion, downtime severity, and asset commissioning policies.
 
 Rules are compiled into deterministic hashes, parameters are stored in owned runtime state, and configuration gates work-center, order, routing, downtime, scheduling, and completion operations.
+
+## Runtime Completeness Contract
+
+The runtime must prove that:
+
+- Configuration rejects unsupported backends, rejects unsupported configuration fields, and exposes only the AppGen-X event contract without any user-facing stream-engine picker or event-contract choice.
+- Parameter support is bounded to the package-local production-control parameter set and rejects unknown parameters.
+- Rules require production-control binding fields, compile into deterministic hashes, and retain deterministic compilation evidence for workbench and release audits.
+- Package-local workbench and UI surfaces expose evidence for configuration, rule, and parameter bindings without crossing the `production_control` package boundary.
+- Standard and advanced capability claims remain testable through package-local runtime, UI, and release evidence.
 
 ## UI Contract
 

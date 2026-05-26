@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
@@ -69,7 +71,7 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
     state = production_control_set_parameter(state, "takt_time_minutes", 10)["state"]
     state = production_control_set_parameter(state, "schedule_horizon_days", 14)["state"]
     state = production_control_set_parameter(state, "downtime_severity_minutes", 30)["state"]
-    state = production_control_register_rule(
+    rule = production_control_register_rule(
         state,
         {
             "rule_id": "rule_ops",
@@ -83,7 +85,19 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
             "dispatch_priorities": ("expedite", "standard"),
             "status": "active",
         },
-    )["state"]
+    )
+    state = rule["state"]
+    assert rule["rule"]["compiled_hash"]
+    assert rule["rule"]["compiled_evidence"]["rule_id"] == "rule_ops"
+    assert rule["rule"]["compiled_evidence"]["required_fields"] == (
+        "rule_id",
+        "tenant",
+        "rule_type",
+        "eligible_work_center_types",
+        "allowed_sites",
+        "allowed_routes",
+        "status",
+    )
     state = production_control_register_work_center(
         state,
         {
@@ -165,11 +179,64 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
     assert workbench["downtime_count"] == 1
     assert workbench["completed_qty"] == 9
     assert workbench["oee"] > 0
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 6
+    assert workbench["binding_evidence"]["configuration"] == {
+        "bound": True,
+        "database_backend": "postgresql",
+        "event_contract": "appgen_event_contract",
+        "visible_event_contracts": ("appgen_event_contract",),
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "supported_fields": (
+            "database_backend",
+            "event_topic",
+            "retry_limit",
+            "allowed_sites",
+            "allowed_work_center_types",
+            "allowed_downtime_reasons",
+            "allowed_production_routes",
+            "default_timezone",
+            "workbench_limit",
+        ),
+    }
+    assert workbench["binding_evidence"]["rules"] == (
+        {
+            "rule_id": "rule_ops",
+            "scope": "production",
+            "compiled_hash": rule["rule"]["compiled_hash"],
+            "required_fields": rule["rule"]["compiled_evidence"]["required_fields"],
+        },
+    )
+    assert workbench["binding_evidence"]["parameters"] == {
+        "supported": (
+            "capacity_threshold",
+            "oee_target",
+            "scrap_threshold",
+            "takt_time_minutes",
+            "schedule_horizon_days",
+            "downtime_severity_minutes",
+        ),
+        "active": (
+            "capacity_threshold",
+            "downtime_severity_minutes",
+            "oee_target",
+            "schedule_horizon_days",
+            "scrap_threshold",
+            "takt_time_minutes",
+        ),
+    }
 
     ui_contract = production_control_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["visible_event_contracts"] == ("appgen_event_contract",)
+    assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
+    assert ui_contract["configuration_editor"]["user_selectable_event_contract"] is False
     assert "capacity_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    assert "allowed_routes" in ui_contract["rule_editor"]["required_fields"]
+    assert ui_contract["rule_editor"]["compiled_evidence_fields"] == ("compiled_hash", "compiled_evidence")
     rendered = production_control_render_workbench(
         state,
         tenant="tenant_ops",
@@ -186,3 +253,61 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
     assert rendered["event_outbox_count"] == 9
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+    assert rendered["rules_bound"] == ("rule_ops",)
+    assert rendered["parameters_bound"] == (
+        "capacity_threshold",
+        "downtime_severity_minutes",
+        "oee_target",
+        "schedule_horizon_days",
+        "scrap_threshold",
+        "takt_time_minutes",
+    )
+    assert rendered["binding_evidence"]["configuration"] == workbench["binding_evidence"]["configuration"]
+    assert rendered["binding_evidence"]["rules"] == (
+        {
+            "rule_id": "rule_ops",
+            "compiled_hash": rule["rule"]["compiled_hash"],
+            "required_fields": rule["rule"]["compiled_evidence"]["required_fields"],
+        },
+    )
+    assert rendered["binding_evidence"]["parameters"] == workbench["binding_evidence"]["parameters"]
+
+
+def test_production_control_rejects_unsupported_backends_unknown_parameters_and_stream_picker_config() -> None:
+    state = production_control_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        production_control_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.production.events",
+                "retry_limit": 3,
+                "allowed_sites": ("factory_ops",),
+                "allowed_work_center_types": ("assembly",),
+                "allowed_downtime_reasons": ("maintenance",),
+                "allowed_production_routes": ("make",),
+                "default_timezone": "UTC",
+                "workbench_limit": 50,
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Production Control configuration fields"):
+        production_control_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": "appgen.production.events",
+                "retry_limit": 3,
+                "allowed_sites": ("factory_ops",),
+                "allowed_work_center_types": ("assembly",),
+                "allowed_downtime_reasons": ("maintenance",),
+                "allowed_production_routes": ("make",),
+                "default_timezone": "UTC",
+                "workbench_limit": 50,
+                "stream_engine": "hidden_picker",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Production Control parameter"):
+        production_control_set_parameter(state, "stream_engine", "hidden_picker")

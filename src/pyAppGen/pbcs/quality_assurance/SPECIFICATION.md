@@ -73,7 +73,16 @@ The PBC must understand and execute:
 - Parameters: default sample size, defect threshold, Cpk minimum, hold severity threshold, CAPA due days, retention days, and release approval threshold.
 - Rules: inspection-plan eligibility, sampling method, SPC acceptance, quality hold, non-conformance severity, disposition, release, and compliance evidence policies.
 
-Rules are compiled into deterministic hashes, parameters are stored in owned runtime state, and configuration gates inspection, hold, non-conformance, disposition, and release operations.
+Strict guarantees:
+
+- Runtime configuration accepts only PostgreSQL, MySQL, or MariaDB backends.
+- Runtime eventing is fixed to the AppGen-X contract. There is no stream-engine picker or user-facing eventing-mode selection in configuration.
+- Parameters are bounded to the supported package-local names above; unknown parameter names are rejected.
+- Rules must include `rule_id`, `tenant`, `rule_type`, `eligible_sources`, `allowed_sites`, `sampling_methods`, `required_measurements`, `critical_defect_classes`, `release_dispositions`, and `status`.
+- Rule registration produces deterministic compile evidence, including a stable compiled hash and normalized rule payload evidence.
+- Workbench and UI renderers expose binding evidence for configuration, rules, and parameters so the installed contract can be verified from package-local outputs.
+
+Rules are compiled into deterministic hashes and evidence, parameters are stored in owned runtime state, and configuration gates inspection, hold, non-conformance, disposition, and release operations.
 
 ## UI Contract
 
@@ -91,6 +100,7 @@ Rules are compiled into deterministic hashes, parameters are stored in owned run
 - Runtime configuration panel.
 
 UI actions are RBAC-gated and bind only to owned tables, projections, and AppGen-X event surfaces.
+The UI must keep AppGen-X eventing fixed and surface explicit configuration/rule/parameter binding evidence on the package-local workbench.
 
 ## Release Evidence
 

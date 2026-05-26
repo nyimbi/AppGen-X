@@ -129,3 +129,13 @@ The package exports a workbench UI contract with fragments for profile registry,
 identity resolution, preference and consent management, touchpoint capture,
 timeline analytics, relationship graph, merge review, segment projections,
 rules, parameters, and configuration.
+
+## Rules, Parameters, and Configuration
+
+Rules compile into deterministic hashes with tenant, status, and privacy or
+identity scope evidence. Parameters are bounded to identity matching, churn
+risk, engagement decay, consent confidence, timeline, retention, and workbench
+controls. Runtime configuration rejects backends outside PostgreSQL, MySQL, and
+MariaDB, requires an AppGen-X event topic, and does not expose user-facing
+stream-engine selection. Workbench views must surface configuration, rule, and
+parameter bindings alongside customer timeline and consent evidence.

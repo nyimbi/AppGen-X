@@ -132,3 +132,13 @@ The package exports a workbench UI contract with fragments for product master
 data, family and variant modeling, attribute schemas, enrichment, localization,
 media, compliance, publication, channel projections, rules, parameters, and
 configuration.
+
+## Rules, Parameters, and Configuration
+
+Rules compile into deterministic hashes with required tenant, status, and
+sellability scope evidence. Parameters are bounded to catalog readiness,
+margin, content-quality, publication-batch, retention, and workbench controls.
+Runtime configuration rejects backends outside PostgreSQL, MySQL, and MariaDB,
+requires an AppGen-X event topic, and does not expose user-facing stream-engine
+selection. Workbench views must surface configuration, rule, and parameter
+bindings alongside catalog publication evidence.

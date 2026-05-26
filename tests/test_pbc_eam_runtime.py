@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import EAM_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import eam_build_workbench_view
 from pyAppGen.pbc import eam_complete_work_order
@@ -83,6 +85,18 @@ def test_eam_runtime_applies_rules_parameters_configuration_and_ui() -> None:
             "status": "active",
         },
     )["state"]
+    assert state["rules"]["rule_ops"]["enabled"] is True
+    assert state["rules"]["rule_ops"]["scope"] == "maintenance"
+    assert state["rules"]["rule_ops"]["compiled_hash"]
+    assert state["rules"]["rule_ops"]["compile_evidence"]["hash_algorithm"] == "sha3_256"
+    assert state["rules"]["rule_ops"]["compile_evidence"]["required_fields"] == (
+        "rule_id",
+        "tenant",
+        "rule_type",
+        "eligible_work_types",
+        "allowed_sites",
+        "status",
+    )
     equipment = eam_register_equipment(
         state,
         {
@@ -203,11 +217,25 @@ def test_eam_runtime_applies_rules_parameters_configuration_and_ui() -> None:
     assert workbench["completed_work_order_count"] == 1
     assert workbench["critical_work_order_count"] == 1
     assert workbench["spare_cost"] == 250
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 5
+    assert workbench["rules_bound"] == ("rule_ops",)
+    assert workbench["parameters_bound"] == (
+        "criticality_weight",
+        "default_pm_interval_days",
+        "failure_risk_threshold",
+        "mttr_target_hours",
+        "safety_risk_threshold",
+    )
 
     ui_contract = eam_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["stream_engine_picker"] is False
+    assert ui_contract["configuration_editor"]["user_selectable_eventing"] is False
     assert "failure_risk_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    assert ui_contract["rule_editor"]["compile_evidence_visible"] is True
     rendered = eam_render_workbench(
         state,
         tenant="tenant_ops",
@@ -222,6 +250,42 @@ def test_eam_runtime_applies_rules_parameters_configuration_and_ui() -> None:
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
+    assert rendered["rules_bound"] == ("rule_ops",)
+    assert rendered["parameters_bound"] == (
+        "criticality_weight",
+        "default_pm_interval_days",
+        "failure_risk_threshold",
+        "mttr_target_hours",
+        "safety_risk_threshold",
+    )
     assert rendered["event_outbox_count"] == 9
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+
+def test_eam_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = eam_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        eam_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.maintenance.events",
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Enterprise Asset Management parameter"):
+        eam_set_parameter(state, "stream_engine", "hidden_picker")
+
+    with pytest.raises(ValueError, match="Missing required Enterprise Asset Management rule fields"):
+        eam_register_rule(
+            state,
+            {
+                "rule_id": "rule_incomplete",
+                "tenant": "tenant_ops",
+                "status": "active",
+            },
+        )

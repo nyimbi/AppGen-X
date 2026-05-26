@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from .runtime import PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS
+from .runtime import PRODUCTION_CONTROL_REQUIRED_RULE_FIELDS
+from .runtime import PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS
+from .runtime import PRODUCTION_CONTROL_SUPPORTED_PARAMETER_KEYS
 
 PRODUCTION_CONTROL_UI_FRAGMENT_KEYS = (
     "ProductionControlWorkbench",
@@ -77,23 +81,21 @@ def production_control_ui_contract() -> dict:
             "run_control_tests": "production_control.audit",
         },
         "configuration_editor": {
-            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "required_fields": PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS,
+            "allowed_database_backends": PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "visible_event_contracts": ("appgen_event_contract",),
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
-            "numeric_parameters": (
-                "capacity_threshold",
-                "oee_target",
-                "scrap_threshold",
-                "takt_time_minutes",
-                "schedule_horizon_days",
-                "downtime_severity_minutes",
-            ),
+            "numeric_parameters": PRODUCTION_CONTROL_SUPPORTED_PARAMETER_KEYS,
+            "supported_parameters": PRODUCTION_CONTROL_SUPPORTED_PARAMETER_KEYS,
         },
         "rule_editor": {
             "rule_types": ("production", "dispatch", "capacity", "quality_gate", "downtime", "completion"),
-            "required_fields": ("rule_id", "tenant", "rule_type", "eligible_work_center_types", "allowed_sites", "status"),
+            "required_fields": PRODUCTION_CONTROL_REQUIRED_RULE_FIELDS,
+            "compiled_evidence_fields": ("compiled_hash", "compiled_evidence"),
         },
         "event_surfaces": {
             "emits": ("ProductionCompleted", "AssetPlacedInService", "DowntimeCaptured"),
@@ -122,6 +124,9 @@ def production_control_render_workbench(
     orders = tuple(order for order in state["orders"].values() if order["tenant"] == tenant)
     steps = tuple(step for step in state["routing_steps"].values() if step["tenant"] == tenant)
     downtime = tuple(event for event in state["downtime_events"].values() if event["tenant"] == tenant)
+    configuration = state["configuration"]
+    rule_ids = tuple(sorted(state["rules"]))
+    parameter_names = tuple(sorted(state["parameters"]))
     cards = (
         {"key": "work_centers", "value": len(centers), "fragment": "WorkCenterConsole"},
         {"key": "production_orders", "value": len(orders), "fragment": "ProductionOrderBoard"},
@@ -139,8 +144,31 @@ def production_control_render_workbench(
         "cards": cards,
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in action_permissions if action not in visible_actions),
-        "configuration_bound": bool(state["configuration"].get("ok")),
-        "rules_bound": tuple(sorted(state["rules"])),
-        "parameters_bound": tuple(sorted(state["parameters"])),
+        "configuration_bound": bool(configuration.get("ok")),
+        "rules_bound": rule_ids,
+        "parameters_bound": parameter_names,
+        "binding_evidence": {
+            "configuration": {
+                "bound": bool(configuration.get("ok")),
+                "database_backend": configuration.get("database_backend"),
+                "event_contract": configuration.get("event_contract"),
+                "visible_event_contracts": configuration.get("visible_event_contracts", ()),
+                "stream_engine_picker_visible": configuration.get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": configuration.get("user_selectable_event_contract"),
+                "supported_fields": configuration.get("supported_configuration_fields", PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS),
+            },
+            "rules": tuple(
+                {
+                    "rule_id": rule_id,
+                    "compiled_hash": state["rules"][rule_id].get("compiled_hash"),
+                    "required_fields": state["rules"][rule_id].get("compiled_evidence", {}).get("required_fields", ()),
+                }
+                for rule_id in rule_ids
+            ),
+            "parameters": {
+                "supported": PRODUCTION_CONTROL_SUPPORTED_PARAMETER_KEYS,
+                "active": parameter_names,
+            },
+        },
         "event_outbox_count": len(state["outbox"]),
     }

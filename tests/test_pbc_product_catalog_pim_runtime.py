@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import PRODUCT_CATALOG_PIM_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
@@ -161,6 +163,9 @@ def test_product_catalog_pim_runtime_applies_rules_parameters_configuration_and_
     assert workbench["publication_count"] == 1
     assert workbench["media_count"] == 1
     assert workbench["average_completeness"] >= 0.8
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 5
 
     ui_contract = product_catalog_pim_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
@@ -182,3 +187,21 @@ def test_product_catalog_pim_runtime_applies_rules_parameters_configuration_and_
     assert rendered["event_outbox_count"] == 8
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+
+def test_product_catalog_pim_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = product_catalog_pim_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        product_catalog_pim_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.product.events",
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Product Catalog PIM parameter"):
+        product_catalog_pim_set_parameter(state, "stream_engine", "hidden_picker")

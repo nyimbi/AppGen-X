@@ -7,6 +7,24 @@ import json
 import math
 import re
 
+EAM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+EAM_EVENT_CONTRACT = "appgen_event_contract"
+EAM_SUPPORTED_PARAMETERS = (
+    "default_pm_interval_days",
+    "failure_risk_threshold",
+    "mttr_target_hours",
+    "criticality_weight",
+    "safety_risk_threshold",
+    "retention_days",
+)
+EAM_REQUIRED_RULE_FIELDS = (
+    "rule_id",
+    "tenant",
+    "rule_type",
+    "eligible_work_types",
+    "allowed_sites",
+    "status",
+)
 
 EAM_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_maintenance_lifecycle",
@@ -313,16 +331,43 @@ def eam_empty_state() -> dict:
 
 
 def eam_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    if configuration.get("database_backend") not in EAM_ALLOWED_DATABASE_BACKENDS:
+        raise ValueError("Enterprise Asset Management supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Enterprise Asset Management requires an AppGen-X event topic")
+    if configuration.get("stream_engine") or configuration.get("eventing_backend"):
+        raise ValueError("Enterprise Asset Management uses the AppGen-X event contract and does not expose stream-engine selection")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": EAM_EVENT_CONTRACT,
+        "allowed_database_backends": EAM_ALLOWED_DATABASE_BACKENDS,
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def eam_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    if name not in EAM_SUPPORTED_PARAMETERS:
+        raise ValueError(f"Unsupported Enterprise Asset Management parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def eam_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    missing = tuple(sorted(field for field in EAM_REQUIRED_RULE_FIELDS if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Enterprise Asset Management rule fields: {missing}")
+    compiled_hash = _digest(rule)
+    enriched = {
+        **rule,
+        "scope": rule.get("scope") or rule["rule_type"],
+        "enabled": rule["status"] == "active",
+        "compiled_hash": compiled_hash,
+        "compile_evidence": {
+            "hash_algorithm": "sha3_256",
+            "required_fields": EAM_REQUIRED_RULE_FIELDS,
+            "required_field_values": {field: rule[field] for field in EAM_REQUIRED_RULE_FIELDS},
+        },
+    }
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -476,8 +521,13 @@ def eam_screen_policy(state: dict, work_order_id: str, *, restricted_sites: tupl
 
 def eam_run_control_tests(state: dict) -> dict:
     gaps = []
-    if not state["configuration"].get("ok"):
+    configuration = state["configuration"]
+    if not configuration.get("ok"):
         gaps.append("invalid_configuration")
+    if configuration.get("event_contract") != EAM_EVENT_CONTRACT:
+        gaps.append("invalid_event_contract")
+    if configuration.get("database_backend") not in EAM_ALLOWED_DATABASE_BACKENDS:
+        gaps.append("unsupported_database_backend")
     if not state["rules"]:
         gaps.append("missing_rules")
     if not state["parameters"]:
@@ -570,6 +620,11 @@ def eam_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "spare_cost": round(sum(usage["cost"] for usage in spares), 2),
         "mttr_hours": round(sum(work_order.get("mttr_hours", 0) for work_order in completed) / max(len(completed), 1), 2),
         "downtime_hours": round(sum(work_order.get("downtime_hours", 0) for work_order in completed), 2),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+        "rules_bound": tuple(sorted(state.get("rules", {}))),
+        "parameters_bound": tuple(sorted(state.get("parameters", {}))),
     }
 
 

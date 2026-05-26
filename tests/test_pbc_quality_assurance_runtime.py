@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
@@ -45,6 +47,29 @@ def test_quality_assurance_runtime_executes_standard_and_advanced_capabilities()
     assert pbc_implemented_capability_audit(("quality_assurance",))["ok"] is True
 
 
+def test_quality_assurance_runtime_rejects_unsupported_backends_and_unknown_parameters() -> None:
+    configuration = {
+        "database_backend": "sqlite",
+        "event_topic": "appgen.quality.events",
+        "retry_limit": 3,
+        "allowed_sites": ("factory_ops",),
+        "allowed_inspection_sources": ("production",),
+        "allowed_hold_reasons": ("defect",),
+        "allowed_dispositions": ("rework", "release"),
+        "default_timezone": "UTC",
+        "workbench_limit": 50,
+    }
+
+    with pytest.raises(ValueError, match="supports only PostgreSQL, MySQL, or MariaDB"):
+        quality_assurance_configure_runtime(quality_assurance_empty_state(), configuration)
+
+    with pytest.raises(ValueError, match="does not allow stream-engine or user-selectable eventing fields"):
+        quality_assurance_configure_runtime(quality_assurance_empty_state(), {**configuration, "database_backend": "postgresql", "stream_engine": "kafka"})
+
+    with pytest.raises(ValueError, match="Unsupported Quality Assurance parameter"):
+        quality_assurance_set_parameter(quality_assurance_empty_state(), "unexpected_parameter", 3)
+
+
 def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui() -> None:
     state = quality_assurance_empty_state()
     state = quality_assurance_configure_runtime(
@@ -61,26 +86,63 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
             "workbench_limit": 50,
         },
     )["state"]
+    assert state["configuration"]["event_contract"] == "AppGen-X"
+    assert state["configuration"]["stream_engine_picker_visible"] is False
+    assert state["configuration"]["user_eventing_choice"] is False
     state = quality_assurance_set_parameter(state, "default_sample_size", 5)["state"]
     state = quality_assurance_set_parameter(state, "defect_threshold", 1)["state"]
     state = quality_assurance_set_parameter(state, "cpk_minimum", 1.0)["state"]
     state = quality_assurance_set_parameter(state, "hold_severity_threshold", 0.7)["state"]
     state = quality_assurance_set_parameter(state, "capa_due_days", 14)["state"]
-    state = quality_assurance_register_rule(
+    rule_definition = {
+        "rule_id": "rule_ops",
+        "tenant": "tenant_ops",
+        "rule_type": "quality",
+        "eligible_sources": ("production",),
+        "allowed_sites": ("factory_ops",),
+        "sampling_methods": ("fixed",),
+        "required_measurements": ("length", "torque"),
+        "critical_defect_classes": ("safety",),
+        "release_dispositions": ("release", "rework"),
+        "status": "active",
+    }
+    rule = quality_assurance_register_rule(
         state,
+        rule_definition,
+    )
+    state = rule["state"]
+    assert rule["rule"]["compiled_hash"] == rule["rule"]["compile_evidence"]["compiled_hash"]
+    assert rule["rule"]["compile_evidence"]["rule_id"] == "rule_ops"
+    assert rule["rule"]["compile_evidence"]["required_fields"] == (
+        "rule_id",
+        "tenant",
+        "rule_type",
+        "eligible_sources",
+        "allowed_sites",
+        "sampling_methods",
+        "required_measurements",
+        "critical_defect_classes",
+        "release_dispositions",
+        "status",
+    )
+    assert rule["rule"]["compile_evidence"]["normalized_rule"]["rule_type"] == "quality"
+    deterministic_rule = quality_assurance_register_rule(
+        quality_assurance_empty_state(),
         {
-            "rule_id": "rule_ops",
             "tenant": "tenant_ops",
-            "rule_type": "quality",
+            "rule_id": "rule_ops",
             "eligible_sources": ("production",),
+            "rule_type": "quality",
             "allowed_sites": ("factory_ops",),
-            "sampling_methods": ("fixed",),
             "required_measurements": ("length", "torque"),
+            "sampling_methods": ("fixed",),
             "critical_defect_classes": ("safety",),
-            "release_dispositions": ("release", "rework"),
             "status": "active",
+            "release_dispositions": ("release", "rework"),
         },
-    )["state"]
+    )
+    assert deterministic_rule["rule"]["compiled_hash"] == rule["rule"]["compiled_hash"]
+    assert deterministic_rule["rule"]["compile_evidence"]["normalized_rule"] == rule["rule"]["compile_evidence"]["normalized_rule"]
     plan = quality_assurance_create_inspection_plan(
         state,
         {
@@ -146,11 +208,39 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
     assert workbench["released_hold_count"] == 1
     assert workbench["nonconformance_count"] == 1
     assert workbench["critical_nonconformance_count"] == 1
+    assert workbench["configuration_bound"] is True
+    assert workbench["rules_bound"] == ("rule_ops",)
+    assert "default_sample_size" in workbench["parameters_bound"]
+    assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
+    assert workbench["binding_evidence"]["configuration"]["stream_engine_picker_visible"] is False
+    assert workbench["binding_evidence"]["configuration"]["user_eventing_choice"] is False
+    assert workbench["binding_evidence"]["rules"] == (
+        {
+            "rule_id": "rule_ops",
+            "scope": "quality",
+            "enabled": True,
+            "compiled_hash": rule["rule"]["compiled_hash"],
+        },
+    )
+    assert {item["name"] for item in workbench["binding_evidence"]["parameters"]} == {
+        "capa_due_days",
+        "cpk_minimum",
+        "default_sample_size",
+        "defect_threshold",
+        "hold_severity_threshold",
+    }
+    assert workbench["binding_evidence"]["binding_hash"]
 
     ui_contract = quality_assurance_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
+    assert ui_contract["configuration_editor"]["user_eventing_choice_visible"] is False
     assert "default_sample_size" in ui_contract["parameter_editor"]["numeric_parameters"]
+    assert "release_approval_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    assert "required_measurements" in ui_contract["rule_editor"]["required_fields"]
+    assert "quality" not in ui_contract["rule_editor"]["rule_types"]
+    assert ui_contract["rule_editor"]["legacy_rule_type_aliases"] == ("quality",)
     rendered = quality_assurance_render_workbench(
         state,
         tenant="tenant_ops",
@@ -167,3 +257,11 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
     assert rendered["event_outbox_count"] == 6
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+    assert rendered["binding_evidence"]["configuration"] == workbench["binding_evidence"]["configuration"]
+    assert rendered["binding_evidence"]["rules"] == workbench["binding_evidence"]["rules"]
+    assert rendered["binding_evidence"]["parameters"] == workbench["binding_evidence"]["parameters"]
+    assert rendered["binding_evidence"]["ui_bindings"] == {
+        "configuration_fragment": "QualityConfigurationPanel",
+        "rule_fragment": "QualityRuleStudio",
+        "parameter_fragment": "QualityParameterConsole",
+    }

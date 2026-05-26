@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from .runtime import QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
+from .runtime import QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS
+from .runtime import QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS
+from .runtime import QUALITY_ASSURANCE_SUPPORTED_PARAMETER_NAMES
+from .runtime import QUALITY_ASSURANCE_SUPPORTED_RULE_TYPES
+from .runtime import quality_assurance_binding_evidence
 
 QUALITY_ASSURANCE_UI_FRAGMENT_KEYS = (
     "QualityAssuranceWorkbench",
@@ -75,23 +81,20 @@ def quality_assurance_ui_contract() -> dict:
             "run_control_tests": "quality_assurance.audit",
         },
         "configuration_editor": {
-            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "required_fields": QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS,
+            "supported_fields": QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS,
+            "allowed_database_backends": QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_eventing_choice_visible": False,
         },
         "parameter_editor": {
-            "numeric_parameters": (
-                "default_sample_size",
-                "defect_threshold",
-                "cpk_minimum",
-                "hold_severity_threshold",
-                "capa_due_days",
-                "retention_days",
-            ),
+            "numeric_parameters": QUALITY_ASSURANCE_SUPPORTED_PARAMETER_NAMES,
         },
         "rule_editor": {
-            "rule_types": ("inspection", "sampling", "spc", "hold", "nonconformance", "release"),
-            "required_fields": ("rule_id", "tenant", "rule_type", "eligible_sources", "allowed_sites", "status"),
+            "rule_types": tuple(rule_type for rule_type in QUALITY_ASSURANCE_SUPPORTED_RULE_TYPES if rule_type != "quality"),
+            "legacy_rule_type_aliases": ("quality",),
+            "required_fields": QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS,
         },
         "event_surfaces": {
             "emits": ("QualityHoldReleased", "NonConformanceRaised"),
@@ -124,6 +127,7 @@ def quality_assurance_render_workbench(
         {"key": "released_holds", "value": len(tuple(hold for hold in holds if hold["status"] == "released")), "fragment": "QualityHoldBoard"},
         {"key": "nonconformances", "value": len(ncs), "fragment": "NonConformanceBoard"},
     )
+    binding_evidence = quality_assurance_binding_evidence(state)
     return {
         "format": "appgen.quality-assurance-workbench-render.v1",
         "ok": True,
@@ -137,4 +141,12 @@ def quality_assurance_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "binding_evidence": {
+            **binding_evidence,
+            "ui_bindings": {
+                "configuration_fragment": "QualityConfigurationPanel",
+                "rule_fragment": "QualityRuleStudio",
+                "parameter_fragment": "QualityParameterConsole",
+            },
+        },
     }

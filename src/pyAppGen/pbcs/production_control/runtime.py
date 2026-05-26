@@ -70,6 +70,49 @@ PRODUCTION_CONTROL_STANDARD_FEATURE_KEYS = (
     "seed_data",
     "workbench",
 )
+PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS = (
+    "database_backend",
+    "event_topic",
+    "retry_limit",
+    "allowed_sites",
+    "allowed_work_center_types",
+    "allowed_downtime_reasons",
+    "allowed_production_routes",
+    "default_timezone",
+    "workbench_limit",
+)
+PRODUCTION_CONTROL_SUPPORTED_PARAMETER_KEYS = (
+    "capacity_threshold",
+    "oee_target",
+    "scrap_threshold",
+    "takt_time_minutes",
+    "schedule_horizon_days",
+    "downtime_severity_minutes",
+)
+PRODUCTION_CONTROL_REQUIRED_RULE_FIELDS = (
+    "rule_id",
+    "tenant",
+    "rule_type",
+    "eligible_work_center_types",
+    "allowed_sites",
+    "allowed_routes",
+    "status",
+)
+_PRODUCTION_CONTROL_CONFIGURATION_SEQUENCE_FIELDS = {
+    "allowed_sites",
+    "allowed_work_center_types",
+    "allowed_downtime_reasons",
+    "allowed_production_routes",
+}
+_PRODUCTION_CONTROL_RULE_SEQUENCE_FIELDS = {
+    "eligible_work_center_types",
+    "allowed_sites",
+    "allowed_routes",
+    "quality_gates",
+    "asset_commissioning_items",
+    "dispatch_priorities",
+}
 
 
 def production_control_runtime_capabilities() -> dict:
@@ -223,16 +266,53 @@ def production_control_empty_state() -> dict:
 
 
 def production_control_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    unknown = tuple(sorted(field for field in configuration if field not in PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS))
+    if unknown:
+        raise ValueError(f"Unsupported Production Control configuration fields: {unknown}")
+    missing = tuple(sorted(field for field in PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS if field not in configuration))
+    if missing:
+        raise ValueError(f"Missing required Production Control configuration fields: {missing}")
+    if configuration.get("database_backend") not in PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS:
+        raise ValueError("Production Control supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Production Control requires an AppGen-X event topic")
+    configured = {
+        **_normalize_fields(configuration, _PRODUCTION_CONTROL_CONFIGURATION_SEQUENCE_FIELDS),
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS,
+        "supported_configuration_fields": PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS,
+        "visible_event_contracts": ("appgen_event_contract",),
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def production_control_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    if name not in PRODUCTION_CONTROL_SUPPORTED_PARAMETER_KEYS:
+        raise ValueError(f"Unsupported Production Control parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def production_control_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    missing = tuple(sorted(field for field in PRODUCTION_CONTROL_REQUIRED_RULE_FIELDS if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Production Control rule fields: {missing}")
+    normalized = _normalize_fields(rule, _PRODUCTION_CONTROL_RULE_SEQUENCE_FIELDS)
+    compiled_hash = _digest(normalized)
+    enriched = {
+        **normalized,
+        "scope": normalized.get("scope") or normalized["rule_type"],
+        "enabled": normalized["status"] == "active",
+        "compiled_hash": compiled_hash,
+        "compiled_evidence": {
+            "rule_id": normalized["rule_id"],
+            "hash": compiled_hash,
+            "compilation_basis": "sha3_256(json(sort_keys=True))",
+            "required_fields": PRODUCTION_CONTROL_REQUIRED_RULE_FIELDS,
+        },
+    }
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -386,7 +466,7 @@ def production_control_run_control_tests(state: dict) -> dict:
 
 
 def production_control_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /production-orders", "POST /downtime", "GET /schedule", "POST /production-rules", "POST /production-parameters", "POST /production-configuration"), "events": {"emits": ("ProductionCompleted", "AssetPlacedInService", "DowntimeCaptured"), "consumes": ("PlannedOrderReleased", "MaintenanceCompleted")}, "permissions": ("production_control.read", "production_control.schedule", "production_control.operate", "production_control.complete", "production_control.configure", "production_control.audit"), "configuration": ("PRODUCTION_CONTROL_DATABASE_URL", "PRODUCTION_CONTROL_EVENT_TOPIC", "PRODUCTION_CONTROL_RETRY_LIMIT", "PRODUCTION_CONTROL_DEFAULT_TIMEZONE")}
+    return {"ok": True, "contract": "appgen_event_contract", "routes": ("POST /production-orders", "POST /downtime", "GET /schedule", "POST /production-rules", "POST /production-parameters", "POST /production-configuration"), "events": {"emits": ("ProductionCompleted", "AssetPlacedInService", "DowntimeCaptured"), "consumes": ("PlannedOrderReleased", "MaintenanceCompleted")}, "permissions": ("production_control.read", "production_control.schedule", "production_control.operate", "production_control.complete", "production_control.configure", "production_control.audit"), "configuration": ("PRODUCTION_CONTROL_DATABASE_URL", "PRODUCTION_CONTROL_EVENT_TOPIC", "PRODUCTION_CONTROL_RETRY_LIMIT", "PRODUCTION_CONTROL_DEFAULT_TIMEZONE")}
 
 
 def production_control_federate_execution_view(state: dict, order_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -452,7 +532,50 @@ def production_control_build_workbench_view(state: dict, *, tenant: str) -> dict
     scheduled_hours = sum((step["standard_minutes"] + step["setup_minutes"]) / 60 for step in steps)
     downtime_hours = sum(event["minutes"] for event in downtime) / 60
     oee = round(max(0, (scheduled_hours - downtime_hours) / max(scheduled_hours, 0.01)) * (completed_qty / max(completed_qty + scrap_qty, 1)), 4)
-    return {"ok": True, "tenant": tenant, "work_center_count": len(centers), "order_count": len(orders), "scheduled_order_count": len(tuple(order for order in orders if order["status"] in {"scheduled", "completed"})), "completed_order_count": len(tuple(order for order in orders if order["status"] == "completed")), "routing_step_count": len(steps), "downtime_count": len(downtime), "downtime_minutes": sum(event["minutes"] for event in downtime), "completed_qty": round(completed_qty, 2), "scrap_qty": round(scrap_qty, 2), "oee": oee}
+    configuration = state.get("configuration", {})
+    rule_ids = tuple(sorted(state.get("rules", {})))
+    parameter_names = tuple(sorted(state.get("parameters", {})))
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "work_center_count": len(centers),
+        "order_count": len(orders),
+        "scheduled_order_count": len(tuple(order for order in orders if order["status"] in {"scheduled", "completed"})),
+        "completed_order_count": len(tuple(order for order in orders if order["status"] == "completed")),
+        "routing_step_count": len(steps),
+        "downtime_count": len(downtime),
+        "downtime_minutes": sum(event["minutes"] for event in downtime),
+        "completed_qty": round(completed_qty, 2),
+        "scrap_qty": round(scrap_qty, 2),
+        "oee": oee,
+        "configuration_bound": bool(configuration.get("ok")),
+        "rule_count": len(rule_ids),
+        "parameter_count": len(parameter_names),
+        "binding_evidence": {
+            "configuration": {
+                "bound": bool(configuration.get("ok")),
+                "database_backend": configuration.get("database_backend"),
+                "event_contract": configuration.get("event_contract"),
+                "visible_event_contracts": configuration.get("visible_event_contracts", ()),
+                "stream_engine_picker_visible": configuration.get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": configuration.get("user_selectable_event_contract"),
+                "supported_fields": configuration.get("supported_configuration_fields", PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS),
+            },
+            "rules": tuple(
+                {
+                    "rule_id": rule_id,
+                    "scope": state["rules"][rule_id].get("scope"),
+                    "compiled_hash": state["rules"][rule_id].get("compiled_hash"),
+                    "required_fields": state["rules"][rule_id].get("compiled_evidence", {}).get("required_fields", ()),
+                }
+                for rule_id in rule_ids
+            ),
+            "parameters": {
+                "supported": PRODUCTION_CONTROL_SUPPORTED_PARAMETER_KEYS,
+                "active": parameter_names,
+            },
+        },
+    }
 
 
 def production_control_register_governed_model(name: str, metadata: dict) -> dict:
@@ -470,3 +593,13 @@ def _append_event(state: dict, event_type: str, payload: dict) -> dict:
 
 def _digest(value: object) -> str:
     return hashlib.sha3_256(json.dumps(value, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def _normalize_fields(values: dict, sequence_fields: set[str]) -> dict:
+    normalized = dict(values)
+    for field in sequence_fields:
+        if field in normalized:
+            value = normalized[field]
+            if isinstance(value, list):
+                normalized[field] = tuple(value)
+    return normalized

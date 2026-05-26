@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import CUSTOMER_360_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import customer_360_build_timeline
 from pyAppGen.pbc import customer_360_build_workbench_view
@@ -153,6 +155,9 @@ def test_customer_360_runtime_applies_rules_parameters_configuration_and_ui() ->
     assert workbench["touchpoint_count"] == 1
     assert workbench["engagement_event_count"] == 1
     assert workbench["customer_value"] == 240
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 5
 
     ui_contract = customer_360_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
@@ -175,3 +180,21 @@ def test_customer_360_runtime_applies_rules_parameters_configuration_and_ui() ->
     assert rendered["event_outbox_count"] == 8
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+
+def test_customer_360_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = customer_360_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        customer_360_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.customer.events",
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Customer 360 parameter"):
+        customer_360_set_parameter(state, "stream_engine", "hidden_picker")
