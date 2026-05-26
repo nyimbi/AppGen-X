@@ -1727,7 +1727,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   registration. Syntax checks pass, source/generated package evidence tests
   pass (`8 passed`), all package-local PBC tests pass (`322 passed`), and the
   full PBC audit stack including all built-in generation smoke and
-  `pbc_release_audit()` returns true. Commit: `pending`.
+  `pbc_release_audit()` returns true. Commit: `cbe8c93`.
 
 ## Open Completion Areas
 
