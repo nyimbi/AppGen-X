@@ -2085,9 +2085,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         item["kind"] for item in handler_source_ide_module_file_manifest()
     } == {"source_navigation", "stub_editor", "breakpoints", "user_code_regions", "refactor_propagation"}
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in handler_source_ide_module_file_manifest()
+    )
     assert {
         item["kind"] for item in handler_source_ide_module_test_file_manifest()
     } == {"source_navigation", "stub_editor", "breakpoints", "user_code_regions", "refactor_propagation"}
+    assert all(
+        "test_handler_source_ide_module_step_contracts" in item["exports"]
+        for item in handler_source_ide_module_test_file_manifest()
+    )
     assert {
         item["family"] for item in property_editor_family_module_file_manifest()
     } == {"string", "number", "boolean", "choice", "collection", "binding", "color", "resource"}
@@ -18056,12 +18064,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "user_code_regions",
         "refactor_propagation",
     }
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_handler_source_files["modules"]
+    )
+    assert all(
+        "test_handler_source_ide_module_step_contracts" in item["exports"]
+        for item in generated_handler_source_tests["tests"]
+    )
     for item in generated_handler_source_files["modules"]:
         module_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(module_path), doraise=True)
         module = _load_module(module_path, f"generated_handler_source_ide_module_{item['module']}")
         assert module.smoke_test("Book")["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps("Book")["ok"] is True
+        assert module.validation_steps("Book")["ok"] is True
         source_manifest = module.handler_source_manifest("Book")
         assert source_manifest["ok"] is True
         assert {"handler_source_span_stable", "user_code_regions_preserved"} <= set(source_manifest["guards"])

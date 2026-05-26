@@ -7314,7 +7314,14 @@ def object_inspector_workbench() -> dict:
             "ok": len(handler_source_ide_artifacts) == 5
             and all(
                 item["ok"]
-                and {"handler_source_manifest", "run_source_operation", "smoke_test"} <= set(item["exports"])
+                and {
+                    "handler_source_manifest",
+                    "run_source_operation",
+                    "operation_steps",
+                    "validation_steps",
+                    "smoke_test",
+                }
+                <= set(item["exports"])
                 for item in handler_source_ide_artifacts
             ),
             "evidence": handler_source_ide_artifacts,
@@ -7324,6 +7331,7 @@ def object_inspector_workbench() -> dict:
             "ok": len(handler_source_ide_test_artifacts) == 5
             and all(
                 item["ok"] and "test_handler_source_ide_module_smoke" in item["exports"]
+                and "test_handler_source_ide_module_step_contracts" in item["exports"]
                 for item in handler_source_ide_test_artifacts
             ),
             "evidence": handler_source_ide_test_artifacts,
@@ -23516,6 +23524,8 @@ def handler_source_ide_module_file_manifest() -> tuple[dict, ...]:
         "handler_source_manifest",
         "run_source_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -23545,6 +23555,7 @@ def handler_source_ide_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_handler_source_ide_module",
                 "test_handler_source_ide_module_contract",
                 "test_handler_source_ide_module_smoke",
+                "test_handler_source_ide_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],

@@ -12887,6 +12887,8 @@ EXPECTED_EXPORTS = (
     "handler_source_manifest",
     "run_source_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -12966,12 +12968,57 @@ def runtime_manifest(table_name=None):
     return designer.handler_source_ide_contract(table_name)
 
 
+def operation_steps(table_name=None):
+    """Return side-effect-free source IDE operation steps for this module."""
+    operation = run_source_operation(table_name)
+    return {{
+        "format": "appgen.handler-source-ide-module-operation-steps.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": operation["ok"] and bool(operation["operation_steps"]),
+        "steps": tuple(operation["operation_steps"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps(table_name=None):
+    """Return validation steps proving this handler source module is safe to load."""
+    contract = module_contract()
+    manifest = handler_source_manifest(table_name)
+    operation = run_source_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    steps = (
+        "module_contract_ok",
+        "handler_source_manifest_ok",
+        "source_operation_ok",
+        "runtime_manifest_ok",
+        "user_code_regions_preserved",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.handler-source-ide-module-validation-steps.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and "user_code_regions_preserved" in manifest["guards"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
 def smoke_test(table_name=None):
     """Run side-effect-free checks for this generated handler source IDE module."""
     contract = module_contract()
     manifest = handler_source_manifest(table_name)
     operation = run_source_operation(table_name)
     runtime = runtime_manifest(table_name)
+    operations = operation_steps(table_name)
+    validations = validation_steps(table_name)
     return {{
         "format": "appgen.handler-source-ide-module-smoke-test.v1",
         "module": MODULE,
@@ -12980,6 +13027,8 @@ def smoke_test(table_name=None):
         and manifest["ok"]
         and operation["ok"]
         and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
         "checks": (
@@ -12987,8 +13036,12 @@ def smoke_test(table_name=None):
             "handler_source_manifest_resolves",
             "source_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -13033,15 +13086,28 @@ def test_handler_source_ide_module_smoke():
     assert result["checks"]
 
 
+def test_handler_source_ide_module_step_contracts():
+    """Assert standalone source IDE operation and validation step contracts pass."""
+    module = load_handler_source_ide_module()
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps()["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_handler_source_ide_module_contract()
     test_handler_source_ide_module_smoke()
+    test_handler_source_ide_module_step_contracts()
     return {{
         "format": "appgen.handler-source-ide-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_handler_source_ide_module_contract", "test_handler_source_ide_module_smoke"),
+        "tests": (
+            "test_handler_source_ide_module_contract",
+            "test_handler_source_ide_module_smoke",
+            "test_handler_source_ide_module_step_contracts",
+        ),
     }}
 '''
 
@@ -54421,8 +54487,8 @@ def object_inspector_workbench():
         {{"id": "handler_architecture_modules", "ok": len(handler_architecture_artifacts) == 4 and all(item["ok"] and {{"handler_architecture_manifest", "invoke_handler", "call_handler", "operation_steps", "validation_steps", "smoke_test"}} <= set(item["exports"]) for item in handler_architecture_artifacts), "evidence": handler_architecture_artifacts}},
         {{"id": "handler_architecture_module_tests", "ok": len(handler_architecture_test_artifacts) == 4 and all(item["ok"] and "test_handler_architecture_module_smoke" in item["exports"] and "test_handler_architecture_module_step_contracts" in item["exports"] for item in handler_architecture_test_artifacts), "evidence": handler_architecture_test_artifacts}},
         {{"id": "handler_source_ide_contract", "ok": handler_source_ide["ok"] and {{"navigation_to_handler_source", "handler_stubs_editable", "breakpoints_map_to_designer", "handler_refactors_propagate"}} <= {{check["id"] for check in handler_source_ide["checks"] if check["ok"]}} and not handler_source_ide["side_effects"], "evidence": handler_source_ide}},
-        {{"id": "handler_source_ide_modules", "ok": len(handler_source_ide_artifacts) == 5 and all(item["ok"] and {{"handler_source_manifest", "run_source_operation", "smoke_test"}} <= set(item["exports"]) for item in handler_source_ide_artifacts), "evidence": handler_source_ide_artifacts}},
-        {{"id": "handler_source_ide_module_tests", "ok": len(handler_source_ide_test_artifacts) == 5 and all(item["ok"] and "test_handler_source_ide_module_smoke" in item["exports"] for item in handler_source_ide_test_artifacts), "evidence": handler_source_ide_test_artifacts}},
+        {{"id": "handler_source_ide_modules", "ok": len(handler_source_ide_artifacts) == 5 and all(item["ok"] and {{"handler_source_manifest", "run_source_operation", "operation_steps", "validation_steps", "smoke_test"}} <= set(item["exports"]) for item in handler_source_ide_artifacts), "evidence": handler_source_ide_artifacts}},
+        {{"id": "handler_source_ide_module_tests", "ok": len(handler_source_ide_test_artifacts) == 5 and all(item["ok"] and "test_handler_source_ide_module_smoke" in item["exports"] and "test_handler_source_ide_module_step_contracts" in item["exports"] for item in handler_source_ide_test_artifacts), "evidence": handler_source_ide_test_artifacts}},
         {{"id": "property_editor_family_contract", "ok": property_editor_families["ok"] and set(property_editor_families["required_families"]) <= {{family["family"] for family in property_editor_families["families"] if family["editors"]}} and not property_editor_families["side_effects"], "evidence": property_editor_families}},
         {{"id": "property_editor_family_modules", "ok": len(property_editor_family_artifacts) == 8 and all(item["ok"] and {{"property_editor_family_manifest", "run_editor_operation", "smoke_test"}} <= set(item["exports"]) for item in property_editor_family_artifacts), "evidence": property_editor_family_artifacts}},
         {{"id": "property_editor_family_module_tests", "ok": len(property_editor_family_test_artifacts) == 8 and all(item["ok"] and "test_property_editor_family_module_smoke" in item["exports"] for item in property_editor_family_test_artifacts), "evidence": property_editor_family_test_artifacts}},
@@ -55667,6 +55733,8 @@ def handler_source_ide_module_file_manifest(existing_paths=None):
         "handler_source_manifest",
         "run_source_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     manifest = []
@@ -55708,6 +55776,7 @@ def handler_source_ide_module_test_file_manifest(existing_paths=None):
                 "load_handler_source_ide_module",
                 "test_handler_source_ide_module_contract",
                 "test_handler_source_ide_module_smoke",
+                "test_handler_source_ide_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"] and path in paths,

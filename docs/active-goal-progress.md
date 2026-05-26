@@ -1180,6 +1180,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   editor, and preview replay modules now expose step contracts and matching
   generated test exports before the visual designer release gate can trust
   drag/drop workflow evidence.
+- Current handler source IDE pass adds standalone operation-step and
+  validation-step contracts to generated handler source modules. Generated
+  source navigation, stub editor, breakpoint, user-code-region, and refactor
+  propagation modules now expose step contracts and matching generated tests so
+  handler editing is checked independently from handler dispatch.
 
 ## Open Completion Areas
 
