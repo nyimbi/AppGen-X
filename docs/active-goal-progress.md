@@ -796,6 +796,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   import, and runtime package surfaces are now replayed as source and generated
   runtime evidence required by visual-depth readiness, platform lifecycle,
   platform requirement, and generated runtime validation gates.
+- `09abad9` tightens generated visual design runtime replay by requiring each
+  generated authoring surface to prove its expected operation pipeline steps
+  before the runtime matrix can pass.
 
 ## Open Completion Areas
 
