@@ -1215,6 +1215,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and UI fine-tuning modules. The generated chrome manifests and tests now fail
   unless each module proves concrete side-effect-free design operations and
   validation gates before UI customization readiness is trusted.
+- Current database operations tooling pass adds standalone operation-step and
+  validation-step contracts to generated provider runtime, add-on runtime,
+  migration runtime, and projection runtime modules. Generated database
+  operations manifests and tests now fail unless each module proves concrete
+  provider, add-on, cutover, and projection steps before data tooling readiness
+  is trusted.
 
 ## Open Completion Areas
 

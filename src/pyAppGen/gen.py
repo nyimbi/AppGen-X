@@ -5488,6 +5488,8 @@ EXPECTED_EXPORTS = (
     "module_contract",
     "ops_manifest",
     "run_database_operation",
+    "operation_steps",
+    "validation_steps",
     "release_context",
     "smoke_test",
 )
@@ -5600,11 +5602,58 @@ def release_context():
     }}
 
 
+def operation_steps():
+    """Return concrete side-effect-free database operation steps this module replays."""
+    steps = {{
+        "provider_runtime": ("load_provider_catalog", "split_relational_and_document", "build_compose_plan", "build_statefulset_plan"),
+        "addon_runtime": ("load_addon_catalog", "build_high_availability_plan", "build_graphql_plan", "build_search_plan", "run_addon_release_gate"),
+        "migration_runtime": ("load_migration_targets", "inventory_schema", "assess_migration_risk", "build_reviewed_cutover_plan"),
+        "projection_runtime": ("load_projection_matrix", "load_document_providers", "select_source_table", "build_document_projection"),
+    }}[SURFACE]
+    operation = run_database_operation()
+    return {{
+        "format": "appgen.database-ops-module-operation-steps.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "steps": steps,
+        "ok": operation["ok"] and bool(steps),
+        "side_effects": operation.get("side_effects", ()),
+    }}
+
+
+def validation_steps():
+    """Return validation steps proving this database operations module is usable."""
+    manifest = ops_manifest()
+    operation = run_database_operation()
+    release = release_context()
+    steps = (
+        "ops_manifest_ok",
+        "database_operation_ok",
+        "release_context_ok",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.database-ops-module-validation-steps.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "steps": steps,
+        "ok": manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "side_effects": (),
+    }}
+
+
 def smoke_test():
     """Run side-effect-free checks for this generated database operations module."""
     contract = module_contract()
     manifest = ops_manifest()
     operation = run_database_operation()
+    operations = operation_steps()
+    validations = validation_steps()
     release = release_context()
     return {{
         "format": "appgen.database-ops-module-smoke-test.v1",
@@ -5613,6 +5662,8 @@ def smoke_test():
         "ok": contract["ok"]
         and manifest["ok"]
         and operation["ok"]
+        and operations["ok"]
+        and validations["ok"]
         and release["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"]
@@ -5620,11 +5671,15 @@ def smoke_test():
         "contract": contract,
         "manifest": manifest,
         "operation": operation,
+        "operation_steps": operations,
+        "validation_steps": validations,
         "release": release,
         "checks": (
             "module_contract_resolves",
             "ops_manifest_ok",
             "database_operation_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "release_context_ok",
             "no_side_effects",
         ),
@@ -5676,16 +5731,45 @@ def test_database_ops_module_smoke():
     assert result["checks"]
 
 
+def test_database_ops_module_operation_steps():
+    """Assert the module exposes concrete operation steps."""
+    module = load_database_ops_module()
+    result = module.operation_steps()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["steps"]
+    assert result["side_effects"] == ()
+
+
+def test_database_ops_module_validation_steps():
+    """Assert the module exposes concrete validation steps."""
+    module = load_database_ops_module()
+    result = module.validation_steps()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["steps"]
+    assert result["side_effects"] == ()
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_database_ops_module_contract()
     test_database_ops_module_smoke()
+    test_database_ops_module_operation_steps()
+    test_database_ops_module_validation_steps()
     return {{
         "format": "appgen.database-ops-module-generated-test-smoke.v1",
         "module": MODULE,
         "surface": SURFACE,
         "ok": True,
-        "tests": ("test_database_ops_module_contract", "test_database_ops_module_smoke"),
+        "tests": (
+            "test_database_ops_module_contract",
+            "test_database_ops_module_smoke",
+            "test_database_ops_module_operation_steps",
+            "test_database_ops_module_validation_steps",
+        ),
     }}
 '''
 
@@ -40889,7 +40973,15 @@ def database_ops_module_file_manifest():
         ("migration_runtime_module", "migration_runtime"),
         ("projection_runtime_module", "projection_runtime"),
     )
-    expected_exports = ("module_contract", "ops_manifest", "run_database_operation", "release_context", "smoke_test")
+    expected_exports = (
+        "module_contract",
+        "ops_manifest",
+        "run_database_operation",
+        "operation_steps",
+        "validation_steps",
+        "release_context",
+        "smoke_test",
+    )
     module_dir = Path(__file__).with_name("database_ops_modules")
     entries = []
     for module_name, surface in modules:
@@ -40897,11 +40989,15 @@ def database_ops_module_file_manifest():
         exports = ()
         contract_ok = False
         smoke_ok = False
+        operation_steps_ok = False
+        validation_steps_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_database_ops_module_{{module_name}}")
             exports = tuple(name for name in expected_exports if hasattr(module, name))
             contract = module.module_contract()
             smoke = module.smoke_test()
+            operation_steps_ok = module.operation_steps()["ok"]
+            validation_steps_ok = module.validation_steps()["ok"]
             contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
             smoke_ok = smoke["ok"] and smoke["surface"] == surface
         entries.append(
@@ -40914,6 +41010,8 @@ def database_ops_module_file_manifest():
                 "expected_exports": expected_exports,
                 "contract_ok": contract_ok,
                 "smoke_ok": smoke_ok,
+                "operation_steps_ok": operation_steps_ok,
+                "validation_steps_ok": validation_steps_ok,
             }}
         )
     return {{
@@ -40923,11 +41021,19 @@ def database_ops_module_file_manifest():
             item["exists"]
             and item["contract_ok"]
             and item["smoke_ok"]
+            and item["operation_steps_ok"]
+            and item["validation_steps_ok"]
             and set(item["expected_exports"]) <= set(item["exports"])
             for item in entries
         ),
         "modules": tuple(entries),
-        "guards": ("one_file_per_database_ops_module", "declared_exports_present", "module_smoke_loads"),
+        "guards": (
+            "one_file_per_database_ops_module",
+            "declared_exports_present",
+            "module_smoke_loads",
+            "operation_steps_declared",
+            "validation_steps_declared",
+        ),
         "side_effects": (),
     }}
 
@@ -40939,6 +41045,8 @@ def database_ops_module_test_file_manifest():
         "load_database_ops_module",
         "test_database_ops_module_contract",
         "test_database_ops_module_smoke",
+        "test_database_ops_module_operation_steps",
+        "test_database_ops_module_validation_steps",
         "smoke_test",
     )
     test_dir = Path(__file__).with_name("database_ops_module_tests")
@@ -40969,7 +41077,11 @@ def database_ops_module_test_file_manifest():
         and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
         "tests": tuple(entries),
         "required_exports": required_exports,
-        "guards": ("one_test_file_per_database_ops_module", "contract_and_smoke_tests_exported"),
+        "guards": (
+            "one_test_file_per_database_ops_module",
+            "contract_and_smoke_tests_exported",
+            "operation_and_validation_tests_exported",
+        ),
         "side_effects": (),
     }}
 
