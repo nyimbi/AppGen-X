@@ -1367,6 +1367,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   implementation release, generation smoke, capability, full implementation
   release, and catalog release audits all return true for the implemented PBC
   set. Commit: `9fbb80f`.
+- Current Transportation Management PBC completion pass expands
+  `transportation_management` into a package-local freight execution
+  implementation with 58 owned tables, schema/model/migration contract
+  evidence, service and release evidence contracts, AppGen-X eventing,
+  UI/workbench binding, rules, parameters, configuration, boundary checks, and
+  a detailed package specification. Focused Transportation tests pass
+  (`4 passed`), syntax and whitespace checks pass, the restricted-name scan
+  has no hits, and implementation release, generation smoke, capability, full
+  implementation release, and catalog release audits all return true for the
+  implemented PBC set. Commit: `107c597`.
 - Current visual binding runtime pass hardens generated binding module tests
   and binding designer family modules so generated binding readiness fails
   unless visual graph, expression, designer, runtime wiring, propagation, and
@@ -1383,6 +1393,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and release workbench module exposes reusable operation-step and
   validation-step contracts, generated tests assert those contracts, and the
   replay matrix proves step coverage without side effects. Commit: `b155502`.
+- Current generated wizard runtime pass hardens generated wizard modules so
+  table wizards, workflow wizards, validation sessions, and reviewable
+  submission plans are replayed through an aggregate matrix that proves
+  operation-step coverage, validation-step coverage, surface coverage, and
+  side-effect-free module execution before generated wizard readiness is
+  trusted.
 
 ## Open Completion Areas
 

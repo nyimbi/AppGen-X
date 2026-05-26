@@ -19449,6 +19449,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     wizard_module_tests = wizards.wizard_module_test_file_manifest()
     assert wizard_module_files["ok"] is True
     assert wizard_module_tests["ok"] is True
+    assert {"operation_steps_declared", "validation_steps_declared"} <= set(wizard_module_files["guards"])
+    assert "operation_and_validation_tests_exported" in wizard_module_tests["guards"]
     assert {item["surface"] for item in wizard_module_files["modules"]} == {
         "table_wizard",
         "workflow_wizard",
@@ -19477,6 +19479,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_wizard_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
+    wizard_replay = wizards.wizard_module_replay_matrix()
+    assert wizard_replay["format"] == "appgen.generated-wizard-module-replay-matrix.v1"
+    assert wizard_replay["ok"] is True
+    assert len(wizard_replay["module_replays"]) == 4
+    assert {
+        "wizard_modules_replay",
+        "wizard_surface_coverage",
+        "wizard_operation_step_coverage",
+        "wizard_validation_step_coverage",
+        "wizard_replays_side_effect_free",
+    } <= {check["id"] for check in wizard_replay["checks"] if check["ok"]}
+    assert {"table_wizard", "workflow_wizard", "validation_session", "submission_plan"} == {
+        item["surface"] for item in wizard_replay["module_replays"]
+    }
+    assert all(item["operation_steps"] for item in wizard_replay["module_replays"])
+    assert all("side_effects_disallowed" in item["validation_steps"] for item in wizard_replay["module_replays"])
     flow_export = json.loads((tmp_path / "automation" / "node-red" / "flows.json").read_text())
     assert node_red.event_topic("Book", "updated") == "Book.updated"
     assert node_red.webhook_plan("Book", "updated", "https://example.test")["url"] == (

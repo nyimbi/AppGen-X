@@ -33,6 +33,12 @@ Procurement verification cleanup:
 - Follow-on PBC verification regenerated a small cache subset.
 - Regenerated cache artifacts moved to `post-procurement-cache`.
 
+Wizard verification cleanup:
+
+- Focused generated-app verification regenerated Python import/test caches.
+- Regenerated cache artifacts moved to `post-wizard-cache` and
+  `post-wizard-cache-2`.
+
 ## Rationale
 
 These files are generated interpreter/test-run artifacts. They are not source
