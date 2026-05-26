@@ -626,6 +626,40 @@ MRP_ENGINE_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "planning_mlops_governance",
 )
+PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_production_lifecycle",
+    "graph_relational_routing_work_center_topology",
+    "multi_tenant_site_execution_isolation",
+    "schema_evolution_resilient_production_schema",
+    "probabilistic_downtime_yield_schedule_risk_scoring",
+    "real_time_oee_execution_analytics",
+    "counterfactual_dispatch_capacity_simulation",
+    "temporal_throughput_downtime_forecasting",
+    "autonomous_production_exception_resolution",
+    "semantic_shop_floor_instruction_parsing",
+    "predictive_schedule_quality_maintenance_risk",
+    "self_healing_execution_route_selection",
+    "zero_knowledge_completion_proof",
+    "immutable_production_audit_trail",
+    "dynamic_production_policy_screening",
+    "automated_production_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_production_federation",
+    "mrp_inventory_quality_asset_integration",
+    "decentralized_work_center_asset_identity",
+    "chaos_engineered_shop_floor_tolerance",
+    "quantum_resistant_production_authorization",
+    "carbon_aware_production_scheduling",
+    "algebraic_schedule_optimization",
+    "mechanism_design_capacity_allocation",
+    "information_theoretic_downtime_anomaly_detection",
+    "temporal_production_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_production_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "production_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -643,6 +677,7 @@ IMPLEMENTED_PBC_KEYS = (
     "payroll_engine",
     "talent_onboarding",
     "mrp_engine",
+    "production_control",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2888,6 +2923,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = talent_onboarding_runtime_capabilities()
     elif key == "mrp_engine":
         advanced_runtime = mrp_engine_runtime_capabilities()
+    elif key == "production_control":
+        advanced_runtime = production_control_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3180,6 +3217,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "payroll_engine": len(PAYROLL_ENGINE_ADVANCED_CAPABILITY_KEYS),
         "talent_onboarding": len(TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS),
         "mrp_engine": len(MRP_ENGINE_ADVANCED_CAPABILITY_KEYS),
+        "production_control": len(PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4905,3 +4943,23 @@ from .pbcs.mrp_engine import mrp_engine_runtime_capabilities  # noqa: E402,F401
 from .pbcs.mrp_engine import mrp_engine_runtime_smoke  # noqa: E402,F401
 from .pbcs.mrp_engine import mrp_engine_set_parameter  # noqa: E402,F401
 from .pbcs.mrp_engine import mrp_engine_ui_contract  # noqa: E402,F401
+from .pbcs.production_control import PRODUCTION_CONTROL_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.production_control import PRODUCTION_CONTROL_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.production_control import PRODUCTION_CONTROL_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.production_control import production_control_build_workbench_view  # noqa: E402,F401
+from .pbcs.production_control import production_control_complete_production_order  # noqa: E402,F401
+from .pbcs.production_control import production_control_configure_runtime  # noqa: E402,F401
+from .pbcs.production_control import production_control_confirm_operation  # noqa: E402,F401
+from .pbcs.production_control import production_control_create_production_order  # noqa: E402,F401
+from .pbcs.production_control import production_control_define_routing_step  # noqa: E402,F401
+from .pbcs.production_control import production_control_empty_state  # noqa: E402,F401
+from .pbcs.production_control import production_control_record_downtime  # noqa: E402,F401
+from .pbcs.production_control import production_control_register_rule  # noqa: E402,F401
+from .pbcs.production_control import production_control_register_work_center  # noqa: E402,F401
+from .pbcs.production_control import production_control_render_workbench  # noqa: E402,F401
+from .pbcs.production_control import production_control_runtime_capabilities  # noqa: E402,F401
+from .pbcs.production_control import production_control_runtime_smoke  # noqa: E402,F401
+from .pbcs.production_control import production_control_schedule_order  # noqa: E402,F401
+from .pbcs.production_control import production_control_set_parameter  # noqa: E402,F401
+from .pbcs.production_control import production_control_start_operation  # noqa: E402,F401
+from .pbcs.production_control import production_control_ui_contract  # noqa: E402,F401
