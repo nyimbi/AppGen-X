@@ -873,6 +873,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   composition selection, implemented-capability audit, implementation release
   audit, `pbc_release_audit()`, all-46-PBC generation smoke audit, and the
   restricted legacy-name diff scan.
+- `c527500` normalizes `procurement_sourcing` into the complete package
+  surface: package-local procurement UI/workbench contract, stricter executable
+  configuration and parameter validation, source contract wiring, central PBC
+  exports, focused procurement tests, and release-audit evidence. Verification
+  passed for procurement focused tests, the 66-test PBC regression slice,
+  central enterprise composition selection, implemented-capability audit,
+  implementation release audit, `pbc_release_audit()`, all-46-PBC generation
+  smoke audit, and the restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
