@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'checkout_processing_cart', 'rows': ({'code': 'CHECKOUT_PROCESSING-001', 'status': 'active'},)}, {'table': 'checkout_processing_cart_line', 'rows': ({'code': 'CHECKOUT_PROCESSING-002', 'status': 'active'},)})

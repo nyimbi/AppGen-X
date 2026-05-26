@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'transportation_management_shipment', 'rows': ({'code': 'TRANSPORTATION_MANAGEMENT-001', 'status': 'active'},)}, {'table': 'transportation_management_shipment_line', 'rows': ({'code': 'TRANSPORTATION_MANAGEMENT-002', 'status': 'active'},)})

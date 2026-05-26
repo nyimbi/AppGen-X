@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'PRODUCTION_CONTROL_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'PRODUCTION_CONTROL_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'PRODUCTION_CONTROL_RETRY_LIMIT', 'required': False, 'source': 'environment'})

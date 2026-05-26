@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'ASSET_LIFECYCLE_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'ASSET_LIFECYCLE_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'ASSET_LIFECYCLE_RETRY_LIMIT', 'required': False, 'source': 'environment'})

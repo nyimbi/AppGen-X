@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'MRP_ENGINE_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'MRP_ENGINE_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'MRP_ENGINE_RETRY_LIMIT', 'required': False, 'source': 'environment'})

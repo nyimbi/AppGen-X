@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'returns_reverse_logistics_return_authorization', 'rows': ({'code': 'RETURNS_REVERSE_LOGISTICS-001', 'status': 'active'},)}, {'table': 'returns_reverse_logistics_return_label', 'rows': ({'code': 'RETURNS_REVERSE_LOGISTICS-002', 'status': 'active'},)})

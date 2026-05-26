@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'WMS_CORE_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'WMS_CORE_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'WMS_CORE_RETRY_LIMIT', 'required': False, 'source': 'environment'})

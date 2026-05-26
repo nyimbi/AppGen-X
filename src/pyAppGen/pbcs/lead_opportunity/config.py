@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'LEAD_OPPORTUNITY_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'LEAD_OPPORTUNITY_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'LEAD_OPPORTUNITY_RETRY_LIMIT', 'required': False, 'source': 'environment'})

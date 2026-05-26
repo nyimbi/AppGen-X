@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'TREASURY_CASH_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'TREASURY_CASH_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'TREASURY_CASH_RETRY_LIMIT', 'required': False, 'source': 'environment'})

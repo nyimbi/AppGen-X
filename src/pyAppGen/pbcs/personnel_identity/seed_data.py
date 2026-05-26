@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'personnel_identity_personnel_department', 'rows': ({'code': 'PERSONNEL_IDENTITY-001', 'status': 'active'},)}, {'table': 'personnel_identity_personnel_department_hierarchy', 'rows': ({'code': 'PERSONNEL_IDENTITY-002', 'status': 'active'},)})

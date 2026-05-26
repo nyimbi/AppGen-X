@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'payroll_engine_payroll_calendar', 'rows': ({'code': 'PAYROLL_ENGINE-001', 'status': 'active'},)}, {'table': 'payroll_engine_payroll_period', 'rows': ({'code': 'PAYROLL_ENGINE-002', 'status': 'active'},)})

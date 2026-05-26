@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'TALENT_ONBOARDING_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'TALENT_ONBOARDING_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'TALENT_ONBOARDING_RETRY_LIMIT', 'required': False, 'source': 'environment'})

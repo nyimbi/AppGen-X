@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'time_labor_shift', 'rows': ({'code': 'TIME_LABOR-001', 'status': 'active'},)}, {'table': 'time_labor_shift_pattern', 'rows': ({'code': 'TIME_LABOR-002', 'status': 'active'},)})

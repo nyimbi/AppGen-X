@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'customer_360_customer_profile', 'rows': ({'code': 'CUSTOMER_360-001', 'status': 'active'},)}, {'table': 'customer_360_engagement_event', 'rows': ({'code': 'CUSTOMER_360-002', 'status': 'active'},)})

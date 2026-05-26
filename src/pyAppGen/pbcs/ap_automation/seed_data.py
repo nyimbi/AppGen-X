@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'ap_automation_vendor', 'rows': ({'code': 'AP_AUTOMATION-001', 'status': 'active'},)}, {'table': 'ap_automation_vendor_site', 'rows': ({'code': 'AP_AUTOMATION-002', 'status': 'active'},)})

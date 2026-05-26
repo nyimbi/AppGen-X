@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'SERVICE_TICKETING_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'SERVICE_TICKETING_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'SERVICE_TICKETING_RETRY_LIMIT', 'required': False, 'source': 'environment'})

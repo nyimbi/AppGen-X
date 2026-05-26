@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'asset_lifecycle_fixed_asset', 'rows': ({'code': 'ASSET_LIFECYCLE-001', 'status': 'active'},)}, {'table': 'asset_lifecycle_asset_component', 'rows': ({'code': 'ASSET_LIFECYCLE-002', 'status': 'active'},)})

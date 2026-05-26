@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'price_promotion_engine_price_rule', 'rows': ({'code': 'PRICE_PROMOTION_ENGINE-001', 'status': 'active'},)}, {'table': 'price_promotion_engine_promotion', 'rows': ({'code': 'PRICE_PROMOTION_ENGINE-002', 'status': 'active'},)})

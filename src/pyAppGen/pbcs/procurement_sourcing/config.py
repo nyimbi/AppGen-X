@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'PROCUREMENT_SOURCING_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'PROCUREMENT_SOURCING_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'PROCUREMENT_SOURCING_RETRY_LIMIT', 'required': False, 'source': 'environment'})

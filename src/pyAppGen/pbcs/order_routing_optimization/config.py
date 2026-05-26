@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'ORDER_ROUTING_OPTIMIZATION_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'ORDER_ROUTING_OPTIMIZATION_RETRY_LIMIT', 'required': False, 'source': 'environment'})

@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'payment_orchestration_payment_gateway', 'rows': ({'code': 'PAYMENT_ORCHESTRATION-001', 'status': 'active'},)}, {'table': 'payment_orchestration_payment_intent', 'rows': ({'code': 'PAYMENT_ORCHESTRATION-002', 'status': 'active'},)})

@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'federated_iam_tenant', 'rows': ({'code': 'FEDERATED_IAM-001', 'status': 'active'},)}, {'table': 'federated_iam_principal', 'rows': ({'code': 'FEDERATED_IAM-002', 'status': 'active'},)})

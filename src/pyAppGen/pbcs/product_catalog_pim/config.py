@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'PRODUCT_CATALOG_PIM_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'PRODUCT_CATALOG_PIM_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'PRODUCT_CATALOG_PIM_RETRY_LIMIT', 'required': False, 'source': 'environment'})

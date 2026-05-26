@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'TRANSPORTATION_MANAGEMENT_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'TRANSPORTATION_MANAGEMENT_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'TRANSPORTATION_MANAGEMENT_RETRY_LIMIT', 'required': False, 'source': 'environment'})

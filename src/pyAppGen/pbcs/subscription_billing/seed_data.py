@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'subscription_billing_subscription', 'rows': ({'code': 'SUBSCRIPTION_BILLING-001', 'status': 'active'},)}, {'table': 'subscription_billing_usage_meter', 'rows': ({'code': 'SUBSCRIPTION_BILLING-002', 'status': 'active'},)})

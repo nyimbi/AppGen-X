@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'PREDICTIVE_DEMAND_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'PREDICTIVE_DEMAND_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'PREDICTIVE_DEMAND_RETRY_LIMIT', 'required': False, 'source': 'environment'})

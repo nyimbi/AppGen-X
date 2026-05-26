@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'notifications_notification_template', 'rows': ({'code': 'NOTIFICATIONS-001', 'status': 'active'},)}, {'table': 'notifications_delivery_channel', 'rows': ({'code': 'NOTIFICATIONS-002', 'status': 'active'},)})

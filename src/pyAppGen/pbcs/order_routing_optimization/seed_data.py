@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'order_routing_optimization_routing_rule', 'rows': ({'code': 'ORDER_ROUTING_OPTIMIZATION-001', 'status': 'active'},)}, {'table': 'order_routing_optimization_route_candidate', 'rows': ({'code': 'ORDER_ROUTING_OPTIMIZATION-002', 'status': 'active'},)})

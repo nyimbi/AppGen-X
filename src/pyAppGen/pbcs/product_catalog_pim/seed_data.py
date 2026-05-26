@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'product_catalog_pim_product', 'rows': ({'code': 'PRODUCT_CATALOG_PIM-001', 'status': 'active'},)}, {'table': 'product_catalog_pim_product_price', 'rows': ({'code': 'PRODUCT_CATALOG_PIM-002', 'status': 'active'},)})

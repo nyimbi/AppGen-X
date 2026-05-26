@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'predictive_demand_forecast_model', 'rows': ({'code': 'PREDICTIVE_DEMAND-001', 'status': 'active'},)}, {'table': 'predictive_demand_forecast_run', 'rows': ({'code': 'PREDICTIVE_DEMAND-002', 'status': 'active'},)})

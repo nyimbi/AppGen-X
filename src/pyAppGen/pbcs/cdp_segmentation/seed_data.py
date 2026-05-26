@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'cdp_segmentation_customer_event', 'rows': ({'code': 'CDP_SEGMENTATION-001', 'status': 'active'},)}, {'table': 'cdp_segmentation_segment_definition', 'rows': ({'code': 'CDP_SEGMENTATION-002', 'status': 'active'},)})

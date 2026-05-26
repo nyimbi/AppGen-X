@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'LOYALTY_REWARDS_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'LOYALTY_REWARDS_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'LOYALTY_REWARDS_RETRY_LIMIT', 'required': False, 'source': 'environment'})

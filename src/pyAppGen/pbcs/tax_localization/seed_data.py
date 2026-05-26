@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'tax_localization_tax_jurisdiction', 'rows': ({'code': 'TAX_LOCALIZATION-001', 'status': 'active'},)}, {'table': 'tax_localization_tax_jurisdiction_topology', 'rows': ({'code': 'TAX_LOCALIZATION-002', 'status': 'active'},)})

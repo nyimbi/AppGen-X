@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'ENTERPRISE_SEARCH_VECTOR_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'ENTERPRISE_SEARCH_VECTOR_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'ENTERPRISE_SEARCH_VECTOR_RETRY_LIMIT', 'required': False, 'source': 'environment'})

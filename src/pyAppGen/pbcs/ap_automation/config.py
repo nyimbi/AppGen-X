@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'AP_AUTOMATION_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'AP_AUTOMATION_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'AP_AUTOMATION_RETRY_LIMIT', 'required': False, 'source': 'environment'})

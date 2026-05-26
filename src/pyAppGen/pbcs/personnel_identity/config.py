@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'PERSONNEL_IDENTITY_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'PERSONNEL_IDENTITY_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'PERSONNEL_IDENTITY_RETRY_LIMIT', 'required': False, 'source': 'environment'})

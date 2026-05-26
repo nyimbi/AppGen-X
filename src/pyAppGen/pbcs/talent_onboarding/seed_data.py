@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'talent_onboarding_job_requisition', 'rows': ({'code': 'TALENT_ONBOARDING-001', 'status': 'active'},)}, {'table': 'talent_onboarding_job_requisition_approval', 'rows': ({'code': 'TALENT_ONBOARDING-002', 'status': 'active'},)})

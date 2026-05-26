@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'CDP_SEGMENTATION_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'CDP_SEGMENTATION_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'CDP_SEGMENTATION_RETRY_LIMIT', 'required': False, 'source': 'environment'})

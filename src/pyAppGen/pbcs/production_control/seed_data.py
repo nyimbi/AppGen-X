@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'production_control_work_center', 'rows': ({'code': 'PRODUCTION_CONTROL-001', 'status': 'active'},)}, {'table': 'production_control_production_order', 'rows': ({'code': 'PRODUCTION_CONTROL-002', 'status': 'active'},)})

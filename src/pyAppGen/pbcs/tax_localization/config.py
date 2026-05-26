@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'TAX_LOCALIZATION_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'TAX_LOCALIZATION_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'TAX_LOCALIZATION_RETRY_LIMIT', 'required': False, 'source': 'environment'})

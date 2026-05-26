@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'fraud_anomaly_detection_risk_signal', 'rows': ({'code': 'FRAUD_ANOMALY_DETECTION-001', 'status': 'active'},)}, {'table': 'fraud_anomaly_detection_anomaly_score', 'rows': ({'code': 'FRAUD_ANOMALY_DETECTION-002', 'status': 'active'},)})

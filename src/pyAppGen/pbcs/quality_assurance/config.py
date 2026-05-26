@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'QUALITY_ASSURANCE_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'QUALITY_ASSURANCE_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'QUALITY_ASSURANCE_RETRY_LIMIT', 'required': False, 'source': 'environment'})

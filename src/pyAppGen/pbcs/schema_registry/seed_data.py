@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'schema_registry_schema_subject', 'rows': ({'code': 'SCHEMA_REGISTRY-001', 'status': 'active'},)}, {'table': 'schema_registry_schema_version', 'rows': ({'code': 'SCHEMA_REGISTRY-002', 'status': 'active'},)})

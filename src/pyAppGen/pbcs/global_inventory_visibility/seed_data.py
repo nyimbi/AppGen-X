@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'global_inventory_visibility_inventory_pool', 'rows': ({'code': 'GLOBAL_INVENTORY_VISIBILITY-001', 'status': 'active'},)}, {'table': 'global_inventory_visibility_inventory_projection', 'rows': ({'code': 'GLOBAL_INVENTORY_VISIBILITY-002', 'status': 'active'},)})

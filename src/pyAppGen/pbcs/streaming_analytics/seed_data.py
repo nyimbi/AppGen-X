@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'streaming_analytics_metric_stream', 'rows': ({'code': 'STREAMING_ANALYTICS-001', 'status': 'active'},)}, {'table': 'streaming_analytics_aggregation_window', 'rows': ({'code': 'STREAMING_ANALYTICS-002', 'status': 'active'},)})

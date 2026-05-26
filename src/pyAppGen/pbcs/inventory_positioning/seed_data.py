@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'inventory_positioning_item', 'rows': ({'code': 'INVENTORY_POSITIONING-001', 'status': 'active'},)}, {'table': 'inventory_positioning_item_attribute', 'rows': ({'code': 'INVENTORY_POSITIONING-002', 'status': 'active'},)})

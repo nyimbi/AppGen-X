@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'audit_ledger_audit_event', 'rows': ({'code': 'AUDIT_LEDGER-001', 'status': 'active'},)}, {'table': 'audit_ledger_signature_chain', 'rows': ({'code': 'AUDIT_LEDGER-002', 'status': 'active'},)})

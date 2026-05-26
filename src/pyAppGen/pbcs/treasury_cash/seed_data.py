@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'treasury_cash_bank_account', 'rows': ({'code': 'TREASURY_CASH-001', 'status': 'active'},)}, {'table': 'treasury_cash_bank_account_signatory', 'rows': ({'code': 'TREASURY_CASH-002', 'status': 'active'},)})

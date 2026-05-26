@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'SCHEMA_REGISTRY_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'SCHEMA_REGISTRY_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'SCHEMA_REGISTRY_RETRY_LIMIT', 'required': False, 'source': 'environment'})

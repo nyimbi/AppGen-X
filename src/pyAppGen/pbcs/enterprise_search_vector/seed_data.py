@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'enterprise_search_vector_search_index', 'rows': ({'code': 'ENTERPRISE_SEARCH_VECTOR-001', 'status': 'active'},)}, {'table': 'enterprise_search_vector_embedding_job', 'rows': ({'code': 'ENTERPRISE_SEARCH_VECTOR-002', 'status': 'active'},)})

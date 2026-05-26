@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'PAYMENT_ORCHESTRATION_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'PAYMENT_ORCHESTRATION_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'PAYMENT_ORCHESTRATION_RETRY_LIMIT', 'required': False, 'source': 'environment'})

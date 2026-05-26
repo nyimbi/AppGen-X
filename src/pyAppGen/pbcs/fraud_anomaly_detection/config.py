@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'FRAUD_ANOMALY_DETECTION_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'FRAUD_ANOMALY_DETECTION_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'FRAUD_ANOMALY_DETECTION_RETRY_LIMIT', 'required': False, 'source': 'environment'})

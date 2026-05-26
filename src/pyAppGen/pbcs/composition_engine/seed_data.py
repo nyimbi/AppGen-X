@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'composition_engine_composition_workspace', 'rows': ({'code': 'COMPOSITION_ENGINE-001', 'status': 'active'},)}, {'table': 'composition_engine_ui_fragment', 'rows': ({'code': 'COMPOSITION_ENGINE-002', 'status': 'active'},)})

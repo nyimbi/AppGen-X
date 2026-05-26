@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'SUBSCRIPTION_BILLING_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'SUBSCRIPTION_BILLING_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'SUBSCRIPTION_BILLING_RETRY_LIMIT', 'required': False, 'source': 'environment'})

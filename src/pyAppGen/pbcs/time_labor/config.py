@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'TIME_LABOR_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'TIME_LABOR_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'TIME_LABOR_RETRY_LIMIT', 'required': False, 'source': 'environment'})

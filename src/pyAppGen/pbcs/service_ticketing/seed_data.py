@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'service_ticketing_support_ticket', 'rows': ({'code': 'SERVICE_TICKETING-001', 'status': 'active'},)}, {'table': 'service_ticketing_sla_policy', 'rows': ({'code': 'SERVICE_TICKETING-002', 'status': 'active'},)})

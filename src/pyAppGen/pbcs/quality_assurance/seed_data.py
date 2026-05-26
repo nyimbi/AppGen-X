@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'quality_assurance_inspection_plan', 'rows': ({'code': 'QUALITY_ASSURANCE-001', 'status': 'active'},)}, {'table': 'quality_assurance_inspection_result', 'rows': ({'code': 'QUALITY_ASSURANCE-002', 'status': 'active'},)})

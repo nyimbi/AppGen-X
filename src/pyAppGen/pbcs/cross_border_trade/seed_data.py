@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'cross_border_trade_hs_classification', 'rows': ({'code': 'CROSS_BORDER_TRADE-001', 'status': 'active'},)}, {'table': 'cross_border_trade_landed_cost_quote', 'rows': ({'code': 'CROSS_BORDER_TRADE-002', 'status': 'active'},)})

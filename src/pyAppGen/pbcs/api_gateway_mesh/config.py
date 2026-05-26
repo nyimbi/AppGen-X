@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'API_GATEWAY_MESH_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'API_GATEWAY_MESH_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'API_GATEWAY_MESH_RETRY_LIMIT', 'required': False, 'source': 'environment'})

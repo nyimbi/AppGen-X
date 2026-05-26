@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'api_gateway_mesh_service_route', 'rows': ({'code': 'API_GATEWAY_MESH-001', 'status': 'active'},)}, {'table': 'api_gateway_mesh_rate_limit_policy', 'rows': ({'code': 'API_GATEWAY_MESH-002', 'status': 'active'},)})

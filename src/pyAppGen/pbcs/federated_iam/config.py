@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'FEDERATED_IAM_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'FEDERATED_IAM_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'FEDERATED_IAM_RETRY_LIMIT', 'required': False, 'source': 'environment'})

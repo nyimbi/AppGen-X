@@ -1,0 +1,1 @@
+PERMISSIONS = ('global_inventory_visibility.read', 'global_inventory_visibility.create', 'global_inventory_visibility.update', 'global_inventory_visibility.approve', 'global_inventory_visibility.admin')

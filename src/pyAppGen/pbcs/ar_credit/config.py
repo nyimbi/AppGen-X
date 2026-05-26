@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'AR_CREDIT_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'AR_CREDIT_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'AR_CREDIT_RETRY_LIMIT', 'required': False, 'source': 'environment'})

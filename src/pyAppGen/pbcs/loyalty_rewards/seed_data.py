@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'loyalty_rewards_reward_account', 'rows': ({'code': 'LOYALTY_REWARDS-001', 'status': 'active'},)}, {'table': 'loyalty_rewards_points_ledger', 'rows': ({'code': 'LOYALTY_REWARDS-002', 'status': 'active'},)})

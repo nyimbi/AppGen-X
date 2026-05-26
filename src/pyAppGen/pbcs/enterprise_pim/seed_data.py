@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'enterprise_pim_product_taxonomy', 'rows': ({'code': 'ENTERPRISE_PIM-001', 'status': 'active'},)}, {'table': 'enterprise_pim_taxonomy_node', 'rows': ({'code': 'ENTERPRISE_PIM-002', 'status': 'active'},)})

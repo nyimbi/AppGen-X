@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'CROSS_BORDER_TRADE_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'CROSS_BORDER_TRADE_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'CROSS_BORDER_TRADE_RETRY_LIMIT', 'required': False, 'source': 'environment'})

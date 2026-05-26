@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'mrp_engine_bill_of_material', 'rows': ({'code': 'MRP_ENGINE-001', 'status': 'active'},)}, {'table': 'mrp_engine_bom_revision', 'rows': ({'code': 'MRP_ENGINE-002', 'status': 'active'},)})

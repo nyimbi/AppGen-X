@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'workflow_orchestration_workflow_definition', 'rows': ({'code': 'WORKFLOW_ORCHESTRATION-001', 'status': 'active'},)}, {'table': 'workflow_orchestration_workflow_instance', 'rows': ({'code': 'WORKFLOW_ORCHESTRATION-002', 'status': 'active'},)})

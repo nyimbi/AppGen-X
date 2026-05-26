@@ -1,0 +1,1 @@
+SEED_DATA = ({'table': 'lead_opportunity_lead', 'rows': ({'code': 'LEAD_OPPORTUNITY-001', 'status': 'active'},)}, {'table': 'lead_opportunity_opportunity', 'rows': ({'code': 'LEAD_OPPORTUNITY-002', 'status': 'active'},)})

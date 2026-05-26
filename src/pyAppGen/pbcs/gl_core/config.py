@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'GL_CORE_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'GL_CORE_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'GL_CORE_RETRY_LIMIT', 'required': False, 'source': 'environment'})

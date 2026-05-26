@@ -4407,6 +4407,120 @@ def _pbc_source_package_contract(key: str) -> dict:
     }
 
 
+def pbc_source_artifact_contract(key: str) -> dict:
+    """Verify the source PBC directory contains the real package artifacts."""
+    if key not in PBC_CATALOG:
+        return {
+            "format": "appgen.pbc-source-artifact-contract.v1",
+            "ok": False,
+            "pbc": key,
+            "error": "unknown PBC",
+        }
+    source_dir = Path(__file__).resolve().parent / "pbcs" / key
+    relative_dir = f"src/pyAppGen/pbcs/{key}"
+    files = []
+    missing = []
+    compile_failures = []
+    for artifact in PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS:
+        path = source_dir / artifact
+        exists = path.is_file()
+        files.append(
+            {
+                "artifact": artifact,
+                "path": f"{relative_dir}/{artifact}",
+                "exists": exists,
+            }
+        )
+        if not exists:
+            missing.append(artifact)
+            continue
+        if artifact.endswith(".py"):
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append(
+                    {
+                        "artifact": artifact,
+                        "path": f"{relative_dir}/{artifact}",
+                        "error": str(exc),
+                    }
+                )
+    migration_path = source_dir / "migrations" / "001_initial.sql"
+    migration_text = migration_path.read_text(encoding="utf-8") if migration_path.is_file() else ""
+    manifest_text = (source_dir / "manifest.py").read_text(encoding="utf-8") if (source_dir / "manifest.py").is_file() else ""
+    service_text = (source_dir / "services.py").read_text(encoding="utf-8") if (source_dir / "services.py").is_file() else ""
+    release_text = (source_dir / "RELEASE_EVIDENCE.md").read_text(encoding="utf-8") if (source_dir / "RELEASE_EVIDENCE.md").is_file() else ""
+    tests_text = (
+        (source_dir / "tests" / "test_contract.py").read_text(encoding="utf-8")
+        if (source_dir / "tests" / "test_contract.py").is_file()
+        else ""
+    )
+    checks = (
+        {
+            "id": "required_source_artifacts_exist",
+            "ok": not missing,
+            "missing": tuple(missing),
+        },
+        {
+            "id": "source_python_artifacts_compile",
+            "ok": not compile_failures,
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "owned_migration_materialized",
+            "ok": "CREATE TABLE" in migration_text and f"{key}_" in migration_text,
+            "path": f"{relative_dir}/migrations/001_initial.sql",
+        },
+        {
+            "id": "manifest_materialized",
+            "ok": "PBC_MANIFEST" in manifest_text and repr(key) in manifest_text,
+            "path": f"{relative_dir}/manifest.py",
+        },
+        {
+            "id": "service_layer_materialized",
+            "ok": "class " in service_text
+            and "transaction_boundary" in service_text
+            and "owned_datastore_plus_outbox" in service_text,
+            "path": f"{relative_dir}/services.py",
+        },
+        {
+            "id": "contract_tests_materialized",
+            "ok": "test_generated_schema_service_and_release_evidence" in tests_text
+            and "test_manifest_and_event_contract" in tests_text,
+            "path": f"{relative_dir}/tests/test_contract.py",
+        },
+        {
+            "id": "release_evidence_materialized",
+            "ok": "Release Evidence" in release_text and f"pbcs/{key}" in release_text,
+            "path": f"{relative_dir}/RELEASE_EVIDENCE.md",
+        },
+    )
+    return {
+        "format": "appgen.pbc-source-artifact-contract.v1",
+        "ok": source_dir.is_dir() and all(check["ok"] for check in checks),
+        "pbc": key,
+        "directory": relative_dir,
+        "required_artifacts": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
+        "files": tuple(files),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def pbc_source_artifact_release_audit(selected_pbcs: tuple[str, ...] | list[str] | None = None) -> dict:
+    """Verify every built-in PBC has materialized package files in source control."""
+    selected = tuple(dict.fromkeys(selected_pbcs or tuple(PBC_CATALOG)))
+    contracts = tuple(pbc_source_artifact_contract(key) for key in selected)
+    return {
+        "format": "appgen.pbc-source-artifact-release-audit.v1",
+        "ok": bool(contracts) and all(contract["ok"] for contract in contracts),
+        "pbc_count": len(contracts),
+        "required_artifacts": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
+        "contracts": contracts,
+        "blocking_gaps": tuple(contract for contract in contracts if not contract["ok"]),
+    }
+
+
 def _pbc_specification_path(key: str) -> Path:
     return Path(__file__).resolve().parent / "pbcs" / key / "SPECIFICATION.md"
 
@@ -4978,6 +5092,7 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
             contract["events"]["dead_letter_table"],
         }
         specification = pbc_specification_contract(contract["pbc"])
+        source_artifacts = pbc_source_artifact_contract(contract["pbc"])
         table_stakes = _pbc_table_stakes_evidence(contract)
         advanced_runtime = _pbc_advanced_runtime_evidence(contract)
         source_package = contract["source_package"]
@@ -4999,6 +5114,11 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                 {
                     "id": f"{contract['pbc']}:source_package_directory",
                     "ok": source_package["ok"],
+                },
+                {
+                    "id": f"{contract['pbc']}:source_artifacts_materialized",
+                    "ok": source_artifacts["ok"],
+                    "source_artifacts": source_artifacts,
                 },
                 {
                     "id": f"{contract['pbc']}:specification_completeness",
@@ -5540,6 +5660,7 @@ def pbc_release_audit() -> dict:
     package_loading = pbc_package_loading_smoke_audit()
     lifecycle_docs = pbc_lifecycle_documentation_audit()
     specification_audit = pbc_specification_release_audit()
+    source_artifact_audit = pbc_source_artifact_release_audit()
     source_test_coverage = pbc_source_runtime_test_coverage_audit()
     implementation_audit = pbc_implementation_release_audit()
     nl_selection = pbc_selection_from_prompt(
@@ -5570,6 +5691,7 @@ def pbc_release_audit() -> dict:
         {
             "id": "pbc_implementation_contracts",
             "ok": specification_audit["ok"]
+            and source_artifact_audit["ok"]
             and source_test_coverage["ok"]
             and implementation_audit["ok"]
             and implementation_audit["pbc_count"] == len(PBC_CATALOG),
@@ -5582,6 +5704,7 @@ def pbc_release_audit() -> dict:
                 }
                 for contract in specification_audit["contracts"]
             ),
+            "source_artifacts": source_artifact_audit,
             "source_test_coverage": source_test_coverage,
             "checks": implementation_audit["checks"],
         },
@@ -5701,6 +5824,7 @@ def pbc_release_audit() -> dict:
         "package_loading": package_loading,
         "lifecycle_documentation": lifecycle_docs,
         "specification_audit": specification_audit,
+        "source_artifacts": source_artifact_audit,
         "source_test_coverage": source_test_coverage,
         "implementation_audit": implementation_audit,
         "sample_composition": composition,

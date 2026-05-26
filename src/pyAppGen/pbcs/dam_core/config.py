@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'DAM_CORE_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'DAM_CORE_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'DAM_CORE_RETRY_LIMIT', 'required': False, 'source': 'environment'})

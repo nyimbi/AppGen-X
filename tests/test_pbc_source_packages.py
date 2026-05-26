@@ -3,6 +3,7 @@ from importlib import import_module
 from pyAppGen.pbc import (
     PBC_CATALOG,
     pbc_implementation_release_audit,
+    pbc_source_artifact_release_audit,
     pbc_source_runtime_test_coverage_audit,
     pbc_specification_release_audit,
 )
@@ -45,6 +46,9 @@ def test_release_audit_requires_builtin_pbc_source_packages():
         if check["id"].endswith(":table_stakes_evidence")
     } == {f"{key}:table_stakes_evidence" for key in PBC_CATALOG}
     for check in audit["checks"]:
+        if check["id"].endswith(":source_artifacts_materialized"):
+            assert check["ok"] is True
+            assert not check["source_artifacts"]["blocking_gaps"]
         if check["id"].endswith(":table_stakes_evidence"):
             assert check["ok"] is True
             assert not check["table_stakes"]["blocking_gaps"]
@@ -53,6 +57,23 @@ def test_release_audit_requires_builtin_pbc_source_packages():
             assert not check["advanced_runtime"]["blocking_gaps"]
             assert check["advanced_runtime"]["operations"]
             assert check["advanced_runtime"]["capabilities"]
+
+
+def test_every_builtin_pbc_has_materialized_source_artifacts():
+    audit = pbc_source_artifact_release_audit(tuple(PBC_CATALOG))
+
+    assert audit["format"] == "appgen.pbc-source-artifact-release-audit.v1"
+    assert audit["ok"] is True
+    assert audit["pbc_count"] == len(PBC_CATALOG)
+    assert not audit["blocking_gaps"]
+    for contract in audit["contracts"]:
+        assert contract["directory"] == f"src/pyAppGen/pbcs/{contract['pbc']}"
+        assert {
+            file["artifact"]
+            for file in contract["files"]
+            if file["exists"]
+        } == set(audit["required_artifacts"])
+        assert not contract["blocking_gaps"]
 
 
 def test_every_builtin_pbc_has_comprehensive_package_specification():

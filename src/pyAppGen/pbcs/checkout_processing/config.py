@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'CHECKOUT_PROCESSING_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'CHECKOUT_PROCESSING_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'CHECKOUT_PROCESSING_RETRY_LIMIT', 'required': False, 'source': 'environment'})

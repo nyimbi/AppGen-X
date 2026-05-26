@@ -1,0 +1,1 @@
+CONFIG_SCHEMA = ({'key': 'RETURNS_REVERSE_LOGISTICS_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'RETURNS_REVERSE_LOGISTICS_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'RETURNS_REVERSE_LOGISTICS_RETRY_LIMIT', 'required': False, 'source': 'environment'})
