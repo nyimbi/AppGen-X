@@ -49,6 +49,15 @@ Developer-tool adapter verification cleanup:
 - Focused generated-app verification regenerated Python import/test caches.
 - Regenerated cache artifacts moved to `post-devtools-cache`.
 
+Component package contract verification cleanup:
+
+- Focused component-package and generated-app verification regenerated Python
+  import/test caches.
+- Regenerated cache artifacts moved to `post-component-package-cache` and
+  `post-component-package-cache-2`; final import-cache leftovers moved to
+  `post-component-package-cache-3`, `post-component-package-cache-4`, and
+  `post-component-package-cache-5`.
+
 ## Rationale
 
 These files are generated interpreter/test-run artifacts. They are not source

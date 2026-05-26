@@ -1532,6 +1532,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   release workbench surfaces prove reusable operation-step and validation-step
   contracts through an aggregate replay matrix before developer-tool readiness
   is trusted. Commit: `7b28597`.
+- Current component package contract pass hardens generated design-time
+  component package modules so each installable package exposes reusable
+  operation-step and validation-step contracts, generated package tests replay
+  those contracts, and generated device API component tests preserve set-based
+  release gate assertions. Focused source-side component package probes and
+  generated-app regression pass. Commit: `pending`.
 
 ## Open Completion Areas
 

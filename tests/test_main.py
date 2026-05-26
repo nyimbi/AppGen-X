@@ -3463,6 +3463,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "component_parity_readiness",
         "component_parity_scenario",
     } == {check["id"] for check in usability["checks"]}
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in usability["package_files"]
+    )
+    assert all(
+        "test_package_step_contracts" in item["exports"]
+        for item in usability["package_test_files"]
+    )
     assert usability["behavior_workbench"]["ok"] is True
     assert usability["behavior_workbench"]["component_count"] == len(palette)
     assert "implementation_depth" in {
@@ -15299,6 +15307,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_package_workbench["marketplace_publication"]["ok"] is True
     assert generated_package_workbench["contracts"][0]["self_registration"]["entrypoint"].endswith(":register")
     assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in form_designer.component_package_file_manifest()
+    )
+    assert all(
+        "test_package_step_contracts" in item["exports"]
+        for item in form_designer.component_package_test_file_manifest()
+    )
+    assert all(
         {"resolve_metadata", "sandbox_load", "adapter_compile", "registry_commit", "palette_refresh", "rollback_probe"}
         <= {phase["phase"] for phase in session["phases"]}
         for session in generated_package_workbench["install_replay"]["sessions"]
@@ -18558,6 +18574,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("serialize_instance" in item["exports"] for item in generated_usability["component_files"])
     assert all("apply_property" in item["exports"] for item in generated_usability["component_files"])
     assert all("design_surface" in item["exports"] for item in generated_usability["component_files"])
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_usability["package_files"]
+    )
+    assert all(
+        "test_package_step_contracts" in item["exports"]
+        for item in generated_usability["package_test_files"]
+    )
     assert all("run_family_replay" in item["exports"] for item in generated_usability["component_family_modules"])
     assert all(
         "test_component_family_module_smoke" in item["exports"]
@@ -18609,12 +18633,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     for index, item in enumerate(generated_usability["package_files"]):
         module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_package_smoke_{index}")
         assert module.smoke_test()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
+        assert "side_effects_disallowed" in module.validation_steps()["steps"]
     for index, item in enumerate(generated_usability["component_test_files"]):
         module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_component_test_smoke_{index}")
         assert module.smoke_test()["ok"] is True
     for index, item in enumerate(generated_usability["package_test_files"]):
         module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_package_test_smoke_{index}")
         assert module.smoke_test()["ok"] is True
+        assert "test_package_step_contracts" in module.smoke_test()["tests"]
     for index, item in enumerate(generated_usability["component_family_modules"]):
         module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_component_family_smoke_{index}")
         assert module.module_contract()["ok"] is True
@@ -18663,6 +18691,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert component_package.adapter_smoke()["ok"] is True
     assert component_package.preview_load()["ok"] is True
     assert component_package.behavior_contract()["ok"] is True
+    assert component_package.operation_steps()["ok"] is True
+    assert component_package.validation_steps()["ok"] is True
+    assert "side_effects_disallowed" in component_package.validation_steps()["steps"]
     assert component_package.validate_load_request()["ok"] is False
     assert component_package.validate_load_request(
         {"accepted": component_package.load_policy()["checks"]}
@@ -18674,6 +18705,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "dependency_order_ok" in component_package.test_plan()["tests"]
     assert "compatibility_smoke_ok" in component_package.test_plan()["tests"]
     assert "behavior_contract_ok" in component_package.test_plan()["tests"]
+    assert "operation_steps_declared" in component_package.test_plan()["tests"]
+    assert "validation_steps_declared" in component_package.test_plan()["tests"]
     assert len(workbench["forms"]) >= 2
     assert any(item["type"] == "DatePicker" for item in workbench["field_mappings"])
     assert form_designer.form_designer_workbench({"app/form_designer.py"})["ok"] is False

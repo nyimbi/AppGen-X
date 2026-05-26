@@ -25048,6 +25048,8 @@ def component_package_module_implementation_contract(package_id: str) -> dict:
         "preview_load",
         "behavior_contract",
         "validate_load_request",
+        "operation_steps",
+        "validation_steps",
         "test_plan",
         "smoke_test",
     )
@@ -25066,6 +25068,8 @@ def component_package_module_implementation_contract(package_id: str) -> dict:
         "isolated_preview_loads",
         "behavior_contract_ok",
         "load_request_validation_blocks_missing_checks",
+        "operation_steps_declared",
+        "validation_steps_declared",
     )
     return {
         "format": "appgen.component-package-module-implementation-contract.v1",
@@ -25100,7 +25104,13 @@ def component_package_test_file_manifest() -> tuple[dict, ...]:
             "package": item["package"],
             "path": item["path"].replace("app/component_packages/", "app/component_package_tests/test_"),
             "target": item["path"],
-            "exports": ("load_package_module", "test_package_contract", "test_package_smoke", "smoke_test"),
+            "exports": (
+                "load_package_module",
+                "test_package_contract",
+                "test_package_smoke",
+                "test_package_step_contracts",
+                "smoke_test",
+            ),
             "smoke_tests": item["module_contract"]["smoke_tests"],
             "ok": item["module_contract"]["ok"] and bool(item["module_contract"]["smoke_tests"]),
         }
@@ -25199,7 +25209,16 @@ def component_usability_workbench() -> dict:
             "id": "per_package_files",
             "ok": len(component_package_file_manifest()) == len(THIRD_PARTY_COMPONENT_SUITES)
             and all(
-                {"package_contract", "install_plan", "load_policy", "test_plan", "smoke_test"} <= set(item["exports"])
+                {
+                    "package_contract",
+                    "install_plan",
+                    "load_policy",
+                    "operation_steps",
+                    "validation_steps",
+                    "test_plan",
+                    "smoke_test",
+                }
+                <= set(item["exports"])
                 and item["module_contract"]["ok"]
                 for item in component_package_file_manifest()
             ),
@@ -25245,7 +25264,13 @@ def component_usability_workbench() -> dict:
             "id": "per_package_test_files",
             "ok": len(component_package_test_file_manifest()) == len(THIRD_PARTY_COMPONENT_SUITES)
             and all(
-                {"test_package_contract", "test_package_smoke", "smoke_test"} <= set(item["exports"])
+                {
+                    "test_package_contract",
+                    "test_package_smoke",
+                    "test_package_step_contracts",
+                    "smoke_test",
+                }
+                <= set(item["exports"])
                 and item["ok"]
                 for item in component_package_test_file_manifest()
             ),
