@@ -1848,7 +1848,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   scenario matrix replay for source and generated apps. Readiness now requires
   supported targets to replay, unsupported targets to block with a visible
   fallback, target-matrix ordering before designer claims, and final-state
-  target/fallback counts before release claims. Commit: `pending`.
+  target/fallback counts before release claims. Commit: `bd0ca49`.
 
 ## Open Completion Areas
 
