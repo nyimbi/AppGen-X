@@ -1,7 +1,10 @@
+import pytest
+
 from pyAppGen.pbc import AR_CREDIT_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import ar_credit_apply_cash
 from pyAppGen.pbc import ar_credit_build_workbench_view
 from pyAppGen.pbc import ar_credit_calculate_aging
+from pyAppGen.pbc import ar_credit_configure_runtime
 from pyAppGen.pbc import ar_credit_create_credit_memo
 from pyAppGen.pbc import ar_credit_create_dunning_plan
 from pyAppGen.pbc import ar_credit_empty_state
@@ -13,10 +16,15 @@ from pyAppGen.pbc import ar_credit_parse_remittance
 from pyAppGen.pbc import ar_credit_record_delivery_confirmation
 from pyAppGen.pbc import ar_credit_record_unapplied_cash
 from pyAppGen.pbc import ar_credit_recognize_revenue_schedule
+from pyAppGen.pbc import ar_credit_register_rule
+from pyAppGen.pbc import ar_credit_render_workbench
 from pyAppGen.pbc import ar_credit_runtime_capabilities
 from pyAppGen.pbc import ar_credit_runtime_smoke
 from pyAppGen.pbc import ar_credit_schedule_collection_action
+from pyAppGen.pbc import ar_credit_set_parameter
+from pyAppGen.pbc import ar_credit_ui_contract
 from pyAppGen.pbc import ar_credit_write_off_receivable
+from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbc import pbc_release_audit
@@ -29,6 +37,10 @@ def test_ar_credit_runtime_executes_all_documented_advanced_capabilities() -> No
     assert runtime["format"] == "appgen.ar-credit-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/ar_credit"
+    assert "configuration_schema" in runtime["standard_features"]
+    assert "rule_engine" in runtime["standard_features"]
+    assert "parameter_engine" in runtime["standard_features"]
+    assert "workbench" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert set(AR_CREDIT_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
     assert not smoke["blocking_gaps"]
@@ -36,13 +48,41 @@ def test_ar_credit_runtime_executes_all_documented_advanced_capabilities() -> No
     contract = pbc_implementation_contract("ar_credit")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert "ArConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(AR_CREDIT_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("ar_credit",))["ok"] is True
+    assert pbc_implemented_capability_audit(("ar_credit",))["ok"] is True
     assert pbc_release_audit()["ok"] is True
 
 
 def test_ar_credit_runtime_handles_core_receivables_cash_application() -> None:
     state = ar_credit_empty_state()
+    state = ar_credit_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.ar.events",
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "allowed_collection_channels": ("portal", "api", "email"),
+            "workbench_limit": 50,
+        },
+    )["state"]
+    state = ar_credit_set_parameter(state, "auto_cash_threshold", 0.95)["state"]
+    state = ar_credit_set_parameter(state, "credit_limit_buffer", 0.2)["state"]
+    state = ar_credit_register_rule(
+        state,
+        {
+            "rule_id": "rule_beta",
+            "tenant": "tenant_beta",
+            "scope": "cash_application",
+            "auto_cash_threshold": 0.95,
+            "requires_delivery_confirmation": True,
+            "status": "active",
+        },
+    )["state"]
     customer = ar_credit_onboard_customer(
         state,
         {
@@ -92,6 +132,37 @@ def test_ar_credit_runtime_handles_core_receivables_cash_application() -> None:
     assert cash["confidence"] == 0.99
     assert cash["state"]["invoices"]["ar_inv_beta"]["status"] == "cleared"
     assert cash["state"]["outbox"][-1]["idempotency_key"] == "ar_credit:PaymentReceived:ar_evt_000004"
+
+    workbench = ar_credit_build_workbench_view(cash["state"], tenant="tenant_beta", as_of="2026-06-24")
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 2
+
+    ui_contract = ar_credit_ui_contract()
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert "auto_cash_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
+    assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    rendered = ar_credit_render_workbench(
+        cash["state"],
+        tenant="tenant_beta",
+        principal_permissions=(
+            "ar_credit.customer",
+            "ar_credit.invoice",
+            "ar_credit.delivery",
+            "ar_credit.cash",
+            "ar_credit.adjustment",
+            "ar_credit.refund",
+            "ar_credit.collection",
+            "ar_credit.credit",
+            "ar_credit.configure",
+            "ar_credit.audit",
+        ),
+    )
+    assert rendered["ok"] is True
+    assert rendered["configuration_bound"] is True
+    assert rendered["event_outbox_count"] == 4
+    assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
+    assert not rendered["locked_actions"]
 
 
 def test_ar_credit_runtime_covers_usual_ar_operations() -> None:
@@ -193,3 +264,22 @@ def test_ar_credit_runtime_covers_usual_ar_operations() -> None:
     assert workbench["open_balance"] == 0
     assert workbench["unapplied_cash_total"] == 75
     assert workbench["collection_action_count"] == 1
+
+
+def test_ar_credit_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = ar_credit_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        ar_credit_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.ar.events",
+                "retry_limit": 3,
+                "default_currency": "USD",
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported AR Credit parameter"):
+        ar_credit_set_parameter(state, "stream_engine", "hidden_picker")

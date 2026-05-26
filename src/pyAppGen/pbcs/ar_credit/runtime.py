@@ -43,8 +43,13 @@ AR_CREDIT_RUNTIME_CAPABILITY_KEYS = (
     "financial_mlops_governance",
 )
 AR_CREDIT_STANDARD_FEATURE_KEYS = (
+    "configuration_schema",
+    "rule_engine",
+    "parameter_engine",
     "customer_master",
+    "customer_onboarding",
     "invoice_generation",
+    "invoice_validation",
     "delivery_confirmation",
     "cash_application",
     "partial_payment",
@@ -73,6 +78,9 @@ def ar_credit_runtime_capabilities() -> dict:
         "implementation_directory": "src/pyAppGen/pbcs/ar_credit",
         "capabilities": AR_CREDIT_RUNTIME_CAPABILITY_KEYS,
         "operations": (
+            "configure_runtime",
+            "set_parameter",
+            "register_rule",
             "onboard_customer",
             "issue_invoice",
             "record_delivery_confirmation",
@@ -120,6 +128,31 @@ def ar_credit_runtime_capabilities() -> dict:
 
 def ar_credit_runtime_smoke() -> dict:
     state = ar_credit_empty_state()
+    state = ar_credit_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.ar.events",
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "allowed_collection_channels": ("portal", "api", "email"),
+            "workbench_limit": 100,
+        },
+    )["state"]
+    state = ar_credit_set_parameter(state, "auto_cash_threshold", 0.95)["state"]
+    state = ar_credit_set_parameter(state, "credit_limit_buffer", 0.2)["state"]
+    state = ar_credit_register_rule(
+        state,
+        {
+            "rule_id": "rule_ar",
+            "tenant": "tenant_alpha",
+            "scope": "cash_application",
+            "auto_cash_threshold": 0.95,
+            "requires_delivery_confirmation": True,
+            "status": "active",
+        },
+    )["state"]
     state = ar_credit_register_schema_extension(
         state,
         "receivable",
@@ -258,6 +291,9 @@ def ar_credit_runtime_smoke() -> dict:
 
 def ar_credit_empty_state() -> dict:
     return {
+        "configuration": {},
+        "parameters": {},
+        "rules": {},
         "events": (),
         "outbox": (),
         "customers": {},
@@ -276,6 +312,44 @@ def ar_credit_empty_state() -> dict:
         "schema_extensions": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
     }
+
+
+def ar_credit_configure_runtime(state: dict, configuration: dict) -> dict:
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("AR Credit supports only PostgreSQL, MySQL, or MariaDB backends")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
+
+
+def ar_credit_set_parameter(state: dict, key: str, value: int | float | str) -> dict:
+    allowed = {
+        "auto_cash_threshold",
+        "credit_limit_buffer",
+        "collection_risk_threshold",
+        "dunning_grace_days",
+        "write_off_approval_limit",
+        "workbench_limit",
+    }
+    if key not in allowed:
+        raise ValueError(f"Unsupported AR Credit parameter: {key}")
+    parameters = {**state.get("parameters", {}), key: value}
+    return {"ok": True, "state": {**state, "parameters": parameters}, "parameter": {"key": key, "value": value}}
+
+
+def ar_credit_register_rule(state: dict, rule: dict) -> dict:
+    required = {"rule_id", "tenant", "scope", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required AR rule fields: {missing}")
+    stored = {**rule, "enabled": rule["status"] == "active"}
+    rules = {**state.get("rules", {}), rule["rule_id"]: stored}
+    return {"ok": True, "state": {**state, "rules": rules}, "rule": stored}
 
 
 def ar_credit_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
@@ -524,6 +598,9 @@ def ar_credit_build_workbench_view(state: dict, *, tenant: str, as_of: str) -> d
         "aging": aging["buckets"],
         "collection_action_count": len(tuple(action for action in state["collection_actions"].values() if action["tenant"] == tenant)),
         "unapplied_cash_total": round(sum(item["amount"] for item in state["unapplied_cash"].values() if item["tenant"] == tenant), 2),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
     }
 
 

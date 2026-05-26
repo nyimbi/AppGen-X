@@ -7,6 +7,7 @@ from .runtime import ar_credit_apply_cash
 from .runtime import ar_credit_build_api_contract
 from .runtime import ar_credit_build_workbench_view
 from .runtime import ar_credit_calculate_aging
+from .runtime import ar_credit_configure_runtime
 from .runtime import ar_credit_create_credit_memo
 from .runtime import ar_credit_create_dunning_plan
 from .runtime import ar_credit_detect_cash_application_anomaly
@@ -28,6 +29,7 @@ from .runtime import ar_credit_record_delivery_confirmation
 from .runtime import ar_credit_record_unapplied_cash
 from .runtime import ar_credit_recognize_revenue_schedule
 from .runtime import ar_credit_register_governed_model
+from .runtime import ar_credit_register_rule
 from .runtime import ar_credit_register_schema_extension
 from .runtime import ar_credit_resolve_dispute
 from .runtime import ar_credit_rotate_crypto_epoch
@@ -40,11 +42,15 @@ from .runtime import ar_credit_schedule_carbon_aware_collection
 from .runtime import ar_credit_schedule_collection_action
 from .runtime import ar_credit_score_customer_default
 from .runtime import ar_credit_screen_customer_network
+from .runtime import ar_credit_set_parameter
 from .runtime import ar_credit_submit_e_invoice
 from .runtime import ar_credit_verify_customer_identity
 from .runtime import ar_credit_verify_formal_invariants
 from .runtime import ar_credit_verify_revenue_proof
 from .runtime import ar_credit_write_off_receivable
+from .ui import AR_CREDIT_UI_FRAGMENT_KEYS
+from .ui import ar_credit_render_workbench
+from .ui import ar_credit_ui_contract
 
 PBC_KEY = "ar_credit"
 
@@ -56,4 +62,5 @@ def implementation_contract() -> dict:
         **contract,
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
+        "ui_contract": ar_credit_ui_contract(),
     }
