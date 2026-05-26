@@ -5168,6 +5168,9 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
                 "runtime_operation_modules_replay",
                 "compiler_runtime_modules_replay",
                 "deep_runtime_modules_replay",
+                "native_form_operation_step_coverage",
+                "runtime_operation_step_coverage",
+                "native_runtime_validation_step_coverage",
                 "side_effect_free_module_replay",
             }
             <= {check["id"] for check in runtime_module_replay_matrix["checks"] if check["ok"]},
@@ -13863,7 +13866,11 @@ def mobile_native_api_workbench() -> dict:
             "id": "device_component_modules",
             "ok": len(device_component_module_artifacts) == len(api_set)
             and api_set == {item["api"] for item in device_component_module_artifacts}
-            and all(item["ok"] and "replay" in item["exports"] for item in device_component_module_artifacts),
+            and all(
+                item["ok"]
+                and {"replay", "run_scenario", "operation_steps", "validation_steps"} <= set(item["exports"])
+                for item in device_component_module_artifacts
+            ),
             "evidence": device_component_module_artifacts,
         },
         {
@@ -22662,6 +22669,8 @@ def device_api_component_file_manifest() -> tuple[dict, ...]:
         "run_scenario",
         "dispatch_event",
         "design_tools",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -24365,6 +24374,8 @@ def device_api_component_module_file_manifest() -> tuple[dict, ...]:
         "run_scenario",
         "dispatch_event",
         "design_tools",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -24414,6 +24425,8 @@ def native_form_module_file_manifest() -> tuple[dict, ...]:
         "native_form_manifest",
         "run_native_form_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -24464,6 +24477,8 @@ def runtime_operation_module_file_manifest() -> tuple[dict, ...]:
         "operation_manifest",
         "run_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -24640,36 +24655,48 @@ def pascal_runtime_module_replay_matrix(design: dict | None = None) -> dict:
             "surface": "stream",
             "ok": round_trip["ok"] and binary_round_trip["ok"] and stream_variants["ok"],
             "pipeline": ("parse_text_stream", "decode_binary_stream", "round_trip_stream_variants"),
+            "operation_steps": ("parse_text_stream", "decode_binary_stream", "round_trip_stream_variants"),
+            "validation_steps": ("text_round_trip_ok", "binary_round_trip_ok", "stream_variants_ok", "side_effects_disallowed"),
         },
         {
             "module": "native_unit_module",
             "surface": "unit",
             "ok": unit_parse["class_name"] == unit["class_name"] and bool(unit_parse["component_declarations"]),
             "pipeline": ("parse_unit", "bind_resource_directive", "cross_check_components"),
+            "operation_steps": ("parse_unit", "bind_resource_directive", "cross_check_components"),
+            "validation_steps": ("unit_parse_ok", "resource_directive_bound", "component_declarations_ok", "side_effects_disallowed"),
         },
         {
             "module": "native_resource_module",
             "surface": "resource",
             "ok": payload_ok(resources) and payload_ok(resource_fidelity),
             "pipeline": ("load_resource_stream", "record_resource_hashes", "verify_round_trip_fidelity"),
+            "operation_steps": ("load_resource_stream", "record_resource_hashes", "verify_round_trip_fidelity"),
+            "validation_steps": ("resource_streaming_ok", "resource_fidelity_ok", "side_effects_disallowed"),
         },
         {
             "module": "native_compile_module",
             "surface": "compile",
             "ok": {"parse_units", "type_check", "resource_link", "emit_target"} <= set(compiler["stages"]),
             "pipeline": compiler["stages"],
+            "operation_steps": tuple(compiler["stages"]),
+            "validation_steps": ("compiler_pipeline_ok", "stage_coverage_ok", "side_effects_disallowed"),
         },
         {
             "module": "native_runtime_load_module",
             "surface": "runtime_load",
             "ok": runtime_replay["ok"] and not runtime_replay["side_effects"],
             "pipeline": tuple(item["phase"] for item in runtime_replay["replay"]),
+            "operation_steps": tuple(item["phase"] for item in runtime_replay["replay"]),
+            "validation_steps": ("runtime_replay_ok", "runtime_phases_ok", "side_effects_disallowed"),
         },
         {
             "module": "native_design_edit_module",
             "surface": "design_edit",
             "ok": design_edit_replay["ok"] and not design_edit_replay["side_effects"],
             "pipeline": tuple(item["phase"] for item in design_edit_replay["replay"]),
+            "operation_steps": tuple(item["phase"] for item in design_edit_replay["replay"]),
+            "validation_steps": ("design_edit_replay_ok", "design_edit_phases_ok", "side_effects_disallowed"),
         },
     )
     operation_replays = tuple(
@@ -24677,6 +24704,8 @@ def pascal_runtime_module_replay_matrix(design: dict | None = None) -> dict:
             "operation": name,
             "ok": operation["ok"] and not operation["side_effects"],
             "pipeline": operation["pipeline"],
+            "operation_steps": tuple(operation["pipeline"]),
+            "validation_steps": ("operation_ok", "pipeline_declared", "side_effects_disallowed"),
         }
         for name, operation in operations["operations"].items()
     )
@@ -24701,6 +24730,24 @@ def pascal_runtime_module_replay_matrix(design: dict | None = None) -> dict:
         {"id": "runtime_operation_modules_replay", "ok": len(operation_replays) == 7 and all(item["ok"] for item in operation_replays)},
         {"id": "compiler_runtime_modules_replay", "ok": len(compiler_replays) == 6 and all(item["ok"] for item in compiler_replays)},
         {"id": "deep_runtime_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)},
+        {
+            "id": "native_form_operation_step_coverage",
+            "ok": all(set(item["pipeline"]) <= set(item["operation_steps"]) for item in native_replays),
+            "evidence": tuple((item["module"], item["operation_steps"]) for item in native_replays),
+        },
+        {
+            "id": "runtime_operation_step_coverage",
+            "ok": all(set(item["pipeline"]) <= set(item["operation_steps"]) for item in operation_replays),
+            "evidence": tuple((item["operation"], item["operation_steps"]) for item in operation_replays),
+        },
+        {
+            "id": "native_runtime_validation_step_coverage",
+            "ok": all("side_effects_disallowed" in item["validation_steps"] for item in (*native_replays, *operation_replays)),
+            "evidence": {
+                "native": tuple((item["module"], item["validation_steps"]) for item in native_replays),
+                "operations": tuple((item["operation"], item["validation_steps"]) for item in operation_replays),
+            },
+        },
         {"id": "side_effect_free_module_replay", "ok": operations["ok"] and not operations["side_effects"]},
     )
     return {
@@ -24715,6 +24762,9 @@ def pascal_runtime_module_replay_matrix(design: dict | None = None) -> dict:
         "guards": (
             "native_form_modules_replay_runtime_surfaces",
             "runtime_operation_modules_are_callable",
+            "native_form_operation_steps_required",
+            "runtime_operation_steps_required",
+            "native_runtime_validation_steps_required",
             "compiler_runtime_modules_replay_surface_payloads",
             "deep_runtime_modules_replay_surface_payloads",
             "side_effect_free_module_replay",

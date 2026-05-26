@@ -3843,6 +3843,8 @@ EXPECTED_EXPORTS = (
     "native_form_manifest",
     "run_native_form_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -3985,12 +3987,61 @@ def runtime_manifest(table_name=None):
     return _runtime().native_form_runtime_manifest(table_name)
 
 
+def operation_steps(table_name=None):
+    """Return concrete side-effect-free steps this native form module replays."""
+    operation = run_native_form_operation(table_name)
+    steps_by_kind = {{
+        "stream": ("parse_text_stream", "decode_binary_stream", "round_trip_stream_variants"),
+        "unit": ("parse_unit", "bind_resource_directive", "cross_check_components"),
+        "resource": ("load_resource_stream", "record_resource_hashes", "verify_round_trip_fidelity"),
+        "compile": ("parse_units", "type_check", "resource_link", "emit_target"),
+        "runtime_load": tuple(operation["runtime_replay"].get("runtime_phases", ())),
+        "design_edit": tuple(operation["runtime_replay"].get("design_phases", ())),
+    }}
+    steps = tuple(steps_by_kind[_module_kind()])
+    return {{
+        "format": "appgen.native-form-module-operation-steps.v1",
+        "module": MODULE,
+        "kind": _module_kind(),
+        "steps": steps,
+        "ok": operation["ok"] and bool(steps),
+        "side_effects": operation["side_effects"],
+    }}
+
+
+def validation_steps(table_name=None):
+    """Return validation steps proving this native form module is usable."""
+    manifest = native_form_manifest(table_name)
+    operation = run_native_form_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    steps = (
+        "native_form_manifest_ok",
+        "native_form_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.native-form-module-validation-steps.v1",
+        "module": MODULE,
+        "kind": _module_kind(),
+        "steps": steps,
+        "ok": manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "side_effects": (),
+    }}
+
+
 def smoke_test(table_name=None):
     """Run side-effect-free checks for this generated native form module."""
     contract = module_contract()
     manifest = native_form_manifest(table_name)
     operation = run_native_form_operation(table_name)
     runtime = runtime_manifest(table_name)
+    operations = operation_steps(table_name)
+    validations = validation_steps(table_name)
     return {{
         "format": "appgen.native-form-module-smoke-test.v1",
         "module": MODULE,
@@ -3999,6 +4050,8 @@ def smoke_test(table_name=None):
         and manifest["ok"]
         and operation["ok"]
         and runtime["ok"]
+        and operations["ok"]
+        and validations["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
         "checks": (
@@ -4006,8 +4059,12 @@ def smoke_test(table_name=None):
             "native_form_manifest_resolves",
             "native_form_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -4041,6 +4098,8 @@ def test_native_form_module_contract():
     assert contract["module"] == MODULE
     assert contract["ok"] is True
     assert all(hasattr(module, name) for name in contract["expected_exports"])
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
 
 
 def _assert_native_form_module_smoke(table_name=None):
@@ -4049,6 +4108,8 @@ def _assert_native_form_module_smoke(table_name=None):
     assert result["ok"] is True
     assert result["module"] == MODULE
     assert result["checks"]
+    assert "operation_steps_declared" in result["checks"]
+    assert "validation_steps_declared" in result["checks"]
 
 
 def test_native_form_module_smoke():
@@ -4114,6 +4175,8 @@ EXPECTED_EXPORTS = (
     "operation_manifest",
     "run_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -4179,12 +4242,54 @@ def runtime_manifest(table_name=None):
     return _load_runtime_operations().runtime_operations_manifest(table_name)
 
 
+def operation_steps(table_name=None):
+    """Return concrete side-effect-free steps this runtime operation module replays."""
+    operation = run_operation(table_name)
+    steps = tuple(operation["result"].get("pipeline", ()))
+    return {{
+        "format": "appgen.runtime-operation-module-operation-steps.v1",
+        "module": MODULE,
+        "operation": OPERATION,
+        "steps": steps,
+        "ok": operation["ok"] and bool(steps),
+        "side_effects": operation["side_effects"],
+    }}
+
+
+def validation_steps(table_name=None):
+    """Return validation steps proving this runtime operation module is usable."""
+    manifest = operation_manifest(table_name)
+    operation = run_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    steps = (
+        "operation_manifest_ok",
+        "operation_replay_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.runtime-operation-module-validation-steps.v1",
+        "module": MODULE,
+        "operation": OPERATION,
+        "steps": steps,
+        "ok": manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and OPERATION in runtime["operation_names"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "side_effects": (),
+    }}
+
+
 def smoke_test(table_name=None):
     """Run side-effect-free checks for this generated runtime operation module."""
     contract = module_contract()
     manifest = operation_manifest(table_name)
     operation = run_operation(table_name)
     runtime = runtime_manifest(table_name)
+    operations = operation_steps(table_name)
+    validations = validation_steps(table_name)
     return {{
         "format": "appgen.runtime-operation-module-smoke-test.v1",
         "module": MODULE,
@@ -4194,6 +4299,8 @@ def smoke_test(table_name=None):
         and operation["ok"]
         and runtime["ok"]
         and OPERATION in runtime["operation_names"]
+        and operations["ok"]
+        and validations["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
         "checks": (
@@ -4201,8 +4308,12 @@ def smoke_test(table_name=None):
             "operation_manifest_resolves",
             "operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -4239,6 +4350,8 @@ def test_runtime_operation_module_contract():
     assert contract["operation"] == OPERATION
     assert contract["ok"] is True
     assert all(hasattr(module, name) for name in contract["expected_exports"])
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
 
 
 def _assert_runtime_operation_module_smoke(table_name=None):
@@ -4247,6 +4360,8 @@ def _assert_runtime_operation_module_smoke(table_name=None):
     assert result["ok"] is True
     assert result["module"] == MODULE
     assert result["operation"] == OPERATION
+    assert "operation_steps_declared" in result["checks"]
+    assert "validation_steps_declared" in result["checks"]
 
 
 def test_runtime_operation_module_smoke():
@@ -19354,6 +19469,8 @@ def native_form_module_file_manifest(table_name=None):
         "native_form_manifest",
         "run_native_form_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     module_dir = Path(__file__).with_name("native_form_modules")
@@ -19434,6 +19551,111 @@ def native_form_module_test_file_manifest(table_name=None):
         "tests": tuple(entries),
         "required_exports": required_exports,
         "guards": ("one_test_file_per_native_form_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
+def runtime_operation_module_file_manifest(table_name=None):
+    """Return file-level evidence for generated runtime operation modules."""
+    module_map = {
+        "open_design_stream_operation": "open_design_stream",
+        "apply_property_delta_operation": "apply_property_delta",
+        "round_trip_stream_operation": "round_trip_stream",
+        "compile_preview_operation": "compile_preview",
+        "refresh_resources_operation": "refresh_resources",
+        "reload_runtime_preview_operation": "reload_runtime_preview",
+        "start_debug_preview_operation": "start_debug_preview",
+    }
+    required_exports = (
+        "module_contract",
+        "operation_manifest",
+        "run_operation",
+        "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("runtime_operation_modules")
+    entries = []
+    for module_name, operation_name in module_map.items():
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_runtime_operation_module_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test(table_name)
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["operation"] == operation_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name and smoke["operation"] == operation_name
+        entries.append(
+            {
+                "module": module_name,
+                "operation": operation_name,
+                "path": f"app/runtime_operation_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": required_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-runtime-operation-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_runtime_operation", "declared_exports_present", "operation_module_smoke_replays"),
+        "side_effects": (),
+    }
+
+
+def runtime_operation_module_test_file_manifest(table_name=None):
+    """Return file-level evidence for generated runtime operation module tests."""
+    module_map = {
+        "open_design_stream_operation": "open_design_stream",
+        "apply_property_delta_operation": "apply_property_delta",
+        "round_trip_stream_operation": "round_trip_stream",
+        "compile_preview_operation": "compile_preview",
+        "refresh_resources_operation": "refresh_resources",
+        "reload_runtime_preview_operation": "reload_runtime_preview",
+        "start_debug_preview_operation": "start_debug_preview",
+    }
+    required_exports = (
+        "load_runtime_operation_module",
+        "test_runtime_operation_module_contract",
+        "test_runtime_operation_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("runtime_operation_module_tests")
+    entries = []
+    for module_name, operation_name in module_map.items():
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_runtime_operation_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke = module.smoke_test(table_name)
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name and smoke["operation"] == operation_name
+        entries.append(
+            {
+                "module": module_name,
+                "operation": operation_name,
+                "path": f"app/runtime_operation_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "required_exports": required_exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-runtime-operation-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] and set(item["required_exports"]) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_runtime_operation", "contract_and_smoke_tests_exported"),
         "side_effects": (),
     }
 
@@ -19647,26 +19869,58 @@ def deep_runtime_module_test_file_manifest(table_name=None):
 def native_runtime_module_replay_matrix(table_name=None):
     """Replay generated native, compiler, and deep runtime modules through their exports."""
     native_modules = native_form_module_file_manifest(table_name)
+    runtime_operation_modules = runtime_operation_module_file_manifest(table_name)
     compiler_modules = compiler_runtime_module_file_manifest(table_name)
     deep_modules = deep_runtime_module_file_manifest(table_name)
     native_dir = Path(__file__).with_name("native_form_modules")
+    operation_dir = Path(__file__).with_name("runtime_operation_modules")
     compiler_dir = Path(__file__).with_name("compiler_runtime_modules")
     deep_dir = Path(__file__).with_name("deep_runtime_modules")
     native_replays = []
     for item in native_modules["modules"]:
         result = {"ok": False, "side_effects": (), "error": "missing_module"}
+        operation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
+        validation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
         module_path = native_dir / f"{item['module']}.py"
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_native_runtime_matrix_{item['module']}")
             result = module.run_native_form_operation(table_name)
+            operation_steps = module.operation_steps(table_name)
+            validation_steps = module.validation_steps(table_name)
         native_replays.append({
             "module": item["module"],
             "surface": item.get("kind"),
             "operation_name": result.get("operation_name", ""),
+            "operation_steps": tuple(operation_steps.get("steps", ())),
+            "validation_steps": tuple(validation_steps.get("steps", ())),
             "runtime_phases": tuple(result.get("runtime_replay", {}).get("runtime_phases", ())),
             "design_phases": tuple(result.get("runtime_replay", {}).get("design_phases", ())),
-            "ok": result["ok"] and not result.get("side_effects", ()),
+            "ok": result["ok"] and operation_steps.get("ok") and validation_steps.get("ok") and not result.get("side_effects", ()) and not operation_steps.get("side_effects", ()) and not validation_steps.get("side_effects", ()),
             "result": result,
+            "operation_step_contract": operation_steps,
+            "validation_step_contract": validation_steps,
+        })
+    runtime_operation_replays = []
+    for item in runtime_operation_modules["modules"]:
+        result = {"ok": False, "side_effects": (), "error": "missing_module", "result": {"pipeline": ()}}
+        operation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
+        validation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
+        module_path = operation_dir / f"{item['module']}.py"
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_runtime_operation_matrix_{item['module']}")
+            result = module.run_operation(table_name)
+            operation_steps = module.operation_steps(table_name)
+            validation_steps = module.validation_steps(table_name)
+        runtime_operation_replays.append({
+            "module": item["module"],
+            "operation": item["operation"],
+            "pipeline": tuple(result.get("result", {}).get("pipeline", ())) if isinstance(result, dict) else (),
+            "operation_steps": tuple(operation_steps.get("steps", ())),
+            "validation_steps": tuple(validation_steps.get("steps", ())),
+            "ok": result["ok"] and operation_steps.get("ok") and validation_steps.get("ok") and not result.get("side_effects", ()) and not operation_steps.get("side_effects", ()) and not validation_steps.get("side_effects", ()),
+            "result": result,
+            "operation_step_contract": operation_steps,
+            "validation_step_contract": validation_steps,
         })
     compiler_replays = []
     for item in compiler_modules["modules"]:
@@ -19704,6 +19958,15 @@ def native_runtime_module_replay_matrix(table_name=None):
         "reload_runtime_preview",
         "apply_property_delta",
     }
+    required_runtime_operations = {
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "refresh_resources",
+        "reload_runtime_preview",
+        "start_debug_preview",
+    }
     required_compiler_steps = {
         "parse_units",
         "type_check",
@@ -19727,12 +19990,39 @@ def native_runtime_module_replay_matrix(table_name=None):
     }
     checks = (
         {"id": "generated_native_form_modules_replay", "ok": len(native_replays) == 6 and all(item["ok"] for item in native_replays)},
+        {"id": "generated_runtime_operation_modules_replay", "ok": len(runtime_operation_replays) == 7 and all(item["ok"] for item in runtime_operation_replays)},
         {"id": "generated_compiler_runtime_modules_replay", "ok": len(compiler_replays) == 6 and all(item["ok"] for item in compiler_replays)},
         {"id": "generated_deep_runtime_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)},
         {
             "id": "generated_native_form_operation_coverage",
             "ok": required_native_operations <= {item["operation_name"] for item in native_replays if item["ok"]},
             "evidence": tuple(sorted(item["operation_name"] for item in native_replays if item["operation_name"])),
+        },
+        {
+            "id": "generated_runtime_operation_coverage",
+            "ok": required_runtime_operations <= {item["operation"] for item in runtime_operation_replays if item["ok"]},
+            "evidence": tuple(sorted(item["operation"] for item in runtime_operation_replays if item["operation"])),
+        },
+        {
+            "id": "generated_native_form_operation_step_coverage",
+            "ok": all(item["operation_step_contract"].get("ok") and set(item["operation_steps"]) for item in native_replays),
+            "evidence": tuple((item["module"], item["operation_steps"]) for item in native_replays),
+        },
+        {
+            "id": "generated_runtime_operation_step_coverage",
+            "ok": all(set(item["pipeline"]) <= set(item["operation_steps"]) for item in runtime_operation_replays),
+            "evidence": tuple((item["operation"], item["operation_steps"]) for item in runtime_operation_replays),
+        },
+        {
+            "id": "generated_native_runtime_validation_step_coverage",
+            "ok": all(
+                "side_effects_disallowed" in item["validation_steps"]
+                for item in (*native_replays, *runtime_operation_replays)
+            ),
+            "evidence": {
+                "native": tuple((item["module"], item["validation_steps"]) for item in native_replays),
+                "operations": tuple((item["operation"], item["validation_steps"]) for item in runtime_operation_replays),
+            },
         },
         {
             "id": "generated_compiler_validation_step_coverage",
@@ -19747,7 +20037,9 @@ def native_runtime_module_replay_matrix(table_name=None):
         },
         {
             "id": "generated_native_runtime_replays_side_effect_free",
-            "ok": all(not item["result"].get("side_effects", ()) for item in (*native_replays, *compiler_replays, *deep_replays)),
+            "ok": all(not item["result"].get("side_effects", ()) for item in (*native_replays, *runtime_operation_replays, *compiler_replays, *deep_replays))
+            and all(not item["operation_step_contract"].get("side_effects", ()) for item in (*native_replays, *runtime_operation_replays))
+            and all(not item["validation_step_contract"].get("side_effects", ()) for item in (*native_replays, *runtime_operation_replays)),
         },
     )
     return {
@@ -19755,14 +20047,20 @@ def native_runtime_module_replay_matrix(table_name=None):
         "ok": all(check["ok"] for check in checks),
         "table": table_name,
         "native_form_replays": tuple(native_replays),
+        "runtime_operation_replays": tuple(runtime_operation_replays),
         "compiler_runtime_replays": tuple(compiler_replays),
         "deep_runtime_replays": tuple(deep_replays),
         "checks": checks,
         "guards": (
             "generated_native_form_modules_replay_exports",
+            "generated_runtime_operation_modules_replay_exports",
             "generated_compiler_runtime_modules_replay_exports",
             "generated_deep_runtime_modules_replay_exports",
             "generated_native_form_operation_coverage_required",
+            "generated_runtime_operation_coverage_required",
+            "generated_native_form_operation_steps_required",
+            "generated_runtime_operation_steps_required",
+            "generated_native_runtime_validation_steps_required",
             "generated_compiler_validation_step_coverage_required",
             "generated_deep_runtime_validation_step_coverage_required",
             "generated_native_runtime_replay_side_effect_guards",
@@ -19859,6 +20157,8 @@ def validate_native_form_runtime(table_name=None):
     replay = replay_native_form_runtime(table_name)
     module_files = native_form_module_file_manifest(table_name)
     module_tests = native_form_module_test_file_manifest(table_name)
+    runtime_operation_modules = runtime_operation_module_file_manifest(table_name)
+    runtime_operation_tests = runtime_operation_module_test_file_manifest(table_name)
     compiler_modules = compiler_runtime_module_file_manifest(table_name)
     compiler_module_tests = compiler_runtime_module_test_file_manifest(table_name)
     deep_modules = deep_runtime_module_file_manifest(table_name)
@@ -19876,6 +20176,8 @@ def validate_native_form_runtime(table_name=None):
         {"id": "artifact_parity_declared", "ok": "runtime_diff_visible" in manifest["artifact_parity"]["guards"]},
         {"id": "native_form_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
         {"id": "native_form_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
+        {"id": "runtime_operation_modules_ready", "ok": runtime_operation_modules["ok"] and not runtime_operation_modules["side_effects"]},
+        {"id": "runtime_operation_module_tests_ready", "ok": runtime_operation_tests["ok"] and not runtime_operation_tests["side_effects"]},
         {"id": "compiler_runtime_modules_ready", "ok": compiler_modules["ok"] and not compiler_modules["side_effects"]},
         {"id": "compiler_runtime_module_tests_ready", "ok": compiler_module_tests["ok"] and not compiler_module_tests["side_effects"]},
         {"id": "deep_runtime_modules_ready", "ok": deep_modules["ok"] and not deep_modules["side_effects"]},
@@ -19890,6 +20192,8 @@ def validate_native_form_runtime(table_name=None):
         "manifest": manifest,
         "module_files": module_files,
         "module_tests": module_tests,
+        "runtime_operation_modules": runtime_operation_modules,
+        "runtime_operation_tests": runtime_operation_tests,
         "compiler_modules": compiler_modules,
         "compiler_module_tests": compiler_module_tests,
         "deep_modules": deep_modules,
@@ -20006,6 +20310,8 @@ def runtime_operation_module_file_manifest(table_name=None):
         "operation_manifest",
         "run_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     module_dir = Path(__file__).with_name("runtime_operation_modules")
@@ -51716,15 +52022,15 @@ def pascal_runtime_module_replay_matrix(table_name=None, design=None):
         return bool(payload) and payload.get("ok", True) and not payload.get("side_effects", ())
 
     native_replays = (
-        {{"module": "native_stream_module", "surface": "stream", "ok": round_trip["ok"] and binary_round_trip["ok"] and stream_variants["ok"], "pipeline": ("parse_text_stream", "decode_binary_stream", "round_trip_stream_variants")}},
-        {{"module": "native_unit_module", "surface": "unit", "ok": unit_parse["class_name"] == unit["class_name"] and bool(unit_parse["component_declarations"]), "pipeline": ("parse_unit", "bind_resource_directive", "cross_check_components")}},
-        {{"module": "native_resource_module", "surface": "resource", "ok": payload_ok(resources) and payload_ok(resource_fidelity), "pipeline": ("load_resource_stream", "record_resource_hashes", "verify_round_trip_fidelity")}},
-        {{"module": "native_compile_module", "surface": "compile", "ok": {{"parse_units", "type_check", "resource_link", "emit_target"}} <= set(compiler["stages"]), "pipeline": compiler["stages"]}},
-        {{"module": "native_runtime_load_module", "surface": "runtime_load", "ok": runtime_replay["ok"] and not runtime_replay["side_effects"], "pipeline": tuple(item["phase"] for item in runtime_replay["replay"])}},
-        {{"module": "native_design_edit_module", "surface": "design_edit", "ok": design_edit_replay["ok"] and not design_edit_replay["side_effects"], "pipeline": tuple(item["phase"] for item in design_edit_replay["replay"])}},
+        {{"module": "native_stream_module", "surface": "stream", "ok": round_trip["ok"] and binary_round_trip["ok"] and stream_variants["ok"], "pipeline": ("parse_text_stream", "decode_binary_stream", "round_trip_stream_variants"), "operation_steps": ("parse_text_stream", "decode_binary_stream", "round_trip_stream_variants"), "validation_steps": ("text_round_trip_ok", "binary_round_trip_ok", "stream_variants_ok", "side_effects_disallowed")}},
+        {{"module": "native_unit_module", "surface": "unit", "ok": unit_parse["class_name"] == unit["class_name"] and bool(unit_parse["component_declarations"]), "pipeline": ("parse_unit", "bind_resource_directive", "cross_check_components"), "operation_steps": ("parse_unit", "bind_resource_directive", "cross_check_components"), "validation_steps": ("unit_parse_ok", "resource_directive_bound", "component_declarations_ok", "side_effects_disallowed")}},
+        {{"module": "native_resource_module", "surface": "resource", "ok": payload_ok(resources) and payload_ok(resource_fidelity), "pipeline": ("load_resource_stream", "record_resource_hashes", "verify_round_trip_fidelity"), "operation_steps": ("load_resource_stream", "record_resource_hashes", "verify_round_trip_fidelity"), "validation_steps": ("resource_streaming_ok", "resource_fidelity_ok", "side_effects_disallowed")}},
+        {{"module": "native_compile_module", "surface": "compile", "ok": {{"parse_units", "type_check", "resource_link", "emit_target"}} <= set(compiler["stages"]), "pipeline": compiler["stages"], "operation_steps": tuple(compiler["stages"]), "validation_steps": ("compiler_pipeline_ok", "stage_coverage_ok", "side_effects_disallowed")}},
+        {{"module": "native_runtime_load_module", "surface": "runtime_load", "ok": runtime_replay["ok"] and not runtime_replay["side_effects"], "pipeline": tuple(item["phase"] for item in runtime_replay["replay"]), "operation_steps": tuple(item["phase"] for item in runtime_replay["replay"]), "validation_steps": ("runtime_replay_ok", "runtime_phases_ok", "side_effects_disallowed")}},
+        {{"module": "native_design_edit_module", "surface": "design_edit", "ok": design_edit_replay["ok"] and not design_edit_replay["side_effects"], "pipeline": tuple(item["phase"] for item in design_edit_replay["replay"]), "operation_steps": tuple(item["phase"] for item in design_edit_replay["replay"]), "validation_steps": ("design_edit_replay_ok", "design_edit_phases_ok", "side_effects_disallowed")}},
     )
     operation_replays = tuple(
-        {{"operation": name, "ok": operation["ok"] and not operation["side_effects"], "pipeline": operation["pipeline"]}}
+        {{"operation": name, "ok": operation["ok"] and not operation["side_effects"], "pipeline": operation["pipeline"], "operation_steps": tuple(operation["pipeline"]), "validation_steps": ("operation_ok", "pipeline_declared", "side_effects_disallowed")}}
         for name, operation in operations["operations"].items()
     )
     compiler_replays = tuple({{"surface": surface, "ok": payload_ok(payload), "guards": payload.get("guards", ())}} for surface, payload in compiler_surfaces.items())
@@ -51734,6 +52040,9 @@ def pascal_runtime_module_replay_matrix(table_name=None, design=None):
         {{"id": "runtime_operation_modules_replay", "ok": len(operation_replays) == 7 and all(item["ok"] for item in operation_replays)}},
         {{"id": "compiler_runtime_modules_replay", "ok": len(compiler_replays) == 6 and all(item["ok"] for item in compiler_replays)}},
         {{"id": "deep_runtime_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)}},
+        {{"id": "native_form_operation_step_coverage", "ok": all(set(item["pipeline"]) <= set(item["operation_steps"]) for item in native_replays), "evidence": tuple((item["module"], item["operation_steps"]) for item in native_replays)}},
+        {{"id": "runtime_operation_step_coverage", "ok": all(set(item["pipeline"]) <= set(item["operation_steps"]) for item in operation_replays), "evidence": tuple((item["operation"], item["operation_steps"]) for item in operation_replays)}},
+        {{"id": "native_runtime_validation_step_coverage", "ok": all("side_effects_disallowed" in item["validation_steps"] for item in (*native_replays, *operation_replays)), "evidence": {{"native": tuple((item["module"], item["validation_steps"]) for item in native_replays), "operations": tuple((item["operation"], item["validation_steps"]) for item in operation_replays)}}}},
         {{"id": "side_effect_free_module_replay", "ok": operations["ok"] and not operations["side_effects"]}},
     )
     return {{
@@ -51745,7 +52054,7 @@ def pascal_runtime_module_replay_matrix(table_name=None, design=None):
         "compiler_runtime_replays": compiler_replays,
         "deep_runtime_replays": deep_replays,
         "checks": checks,
-        "guards": ("native_form_modules_replay_runtime_surfaces", "runtime_operation_modules_are_callable", "compiler_runtime_modules_replay_surface_payloads", "deep_runtime_modules_replay_surface_payloads", "side_effect_free_module_replay"),
+        "guards": ("native_form_modules_replay_runtime_surfaces", "runtime_operation_modules_are_callable", "native_form_operation_steps_required", "runtime_operation_steps_required", "native_runtime_validation_steps_required", "compiler_runtime_modules_replay_surface_payloads", "deep_runtime_modules_replay_surface_payloads", "side_effect_free_module_replay"),
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -51897,7 +52206,7 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "compiler_runtime_module_tests", "ok": compiler_runtime_module_tests["ok"] and len(compiler_runtime_module_tests["tests"]) == 6 and not compiler_runtime_module_tests["side_effects"], "evidence": compiler_runtime_module_tests}},
         {{"id": "deep_runtime_modules", "ok": deep_runtime_modules["ok"] and len(deep_runtime_modules["modules"]) == 8 and not deep_runtime_modules["side_effects"], "evidence": deep_runtime_modules}},
         {{"id": "deep_runtime_module_tests", "ok": deep_runtime_module_tests["ok"] and len(deep_runtime_module_tests["tests"]) == 8 and not deep_runtime_module_tests["side_effects"], "evidence": deep_runtime_module_tests}},
-        {{"id": "runtime_module_replay_matrix", "ok": runtime_module_replay_matrix["ok"] and {{"native_form_modules_replay", "runtime_operation_modules_replay", "compiler_runtime_modules_replay", "deep_runtime_modules_replay", "side_effect_free_module_replay"}} <= {{check["id"] for check in runtime_module_replay_matrix["checks"] if check["ok"]}}, "evidence": runtime_module_replay_matrix}},
+        {{"id": "runtime_module_replay_matrix", "ok": runtime_module_replay_matrix["ok"] and {{"native_form_modules_replay", "runtime_operation_modules_replay", "compiler_runtime_modules_replay", "deep_runtime_modules_replay", "native_form_operation_step_coverage", "runtime_operation_step_coverage", "native_runtime_validation_step_coverage", "side_effect_free_module_replay"}} <= {{check["id"] for check in runtime_module_replay_matrix["checks"] if check["ok"]}}, "evidence": runtime_module_replay_matrix}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -60513,7 +60822,7 @@ def mobile_native_api_workbench():
     designer_transaction_replay = mobile_device_designer_transaction_replay_contract()
     capability_lifecycle_replay = mobile_device_capability_lifecycle_replay_contract()
     device_component_module_artifacts = tuple(
-        {{"api": item["api"], "component": item["component"], "path": f"app/device_api_components/{{_module_name(item['api'])}}.py", "exports": ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "smoke_test"), "ok": True}}
+        {{"api": item["api"], "component": item["component"], "path": f"app/device_api_components/{{_module_name(item['api'])}}.py", "exports": ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "operation_steps", "validation_steps", "smoke_test"), "ok": True}}
         for item in mobile_device_component_spec_contract()["specs"]
     )
     device_component_test_artifacts = tuple(
@@ -60553,7 +60862,7 @@ def mobile_native_api_workbench():
         {{"id": "designer_transaction_replay", "ok": designer_transaction_replay["ok"] and {{"permission_manifest_before_adapter_dispatch", "runtime_replay_covers_all_device_apis"}} <= set(designer_transaction_replay["guards"]) and not designer_transaction_replay["side_effects"], "evidence": designer_transaction_replay}},
         {{"id": "capability_lifecycle_replay", "ok": capability_lifecycle_replay["ok"] and {{"privacy_before_permission", "runtime_and_designer_replay_aligned"}} <= set(capability_lifecycle_replay["guards"]) and not capability_lifecycle_replay["side_effects"], "evidence": capability_lifecycle_replay}},
         {{"id": "mobile_readiness_contract", "ok": readiness["ok"] and {{"privacy_permission_ready", "simulator_ready", "bridge_component_ready", "fallback_lifecycle_ready", "runtime_delivery_ready", "device_scenarios_ready", "designer_capability_ready", "operation_surface_ready", "phase_order_ready"}} <= set(check["id"] for check in readiness["checks"] if check["ok"]) and not readiness["side_effects"], "evidence": readiness}},
-        {{"id": "device_component_modules", "ok": len(device_component_module_artifacts) == len(api_set) and api_set == {{item["api"] for item in device_component_module_artifacts}} and all(item["ok"] and "replay" in item["exports"] for item in device_component_module_artifacts), "evidence": device_component_module_artifacts}},
+        {{"id": "device_component_modules", "ok": len(device_component_module_artifacts) == len(api_set) and api_set == {{item["api"] for item in device_component_module_artifacts}} and all(item["ok"] and {{"replay", "run_scenario", "operation_steps", "validation_steps"}} <= set(item["exports"]) for item in device_component_module_artifacts), "evidence": device_component_module_artifacts}},
         {{"id": "device_component_module_tests", "ok": len(device_component_test_artifacts) == len(api_set) and api_set == {{item["api"] for item in device_component_test_artifacts}} and all(item["ok"] and "test_device_component_smoke" in item["exports"] for item in device_component_test_artifacts), "evidence": device_component_test_artifacts}},
     )
     ok = all(check["ok"] for check in checks)

@@ -3730,9 +3730,26 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert len(runtime_module_replay["compiler_runtime_replays"]) == 6
     assert len(runtime_module_replay["deep_runtime_replays"]) == 8
     assert runtime["runtime_module_replay_matrix"]["ok"] is True
-    assert {"native_form_modules_replay", "runtime_operation_modules_replay", "compiler_runtime_modules_replay", "deep_runtime_modules_replay"} <= {
+    assert {
+        "native_form_modules_replay",
+        "runtime_operation_modules_replay",
+        "compiler_runtime_modules_replay",
+        "deep_runtime_modules_replay",
+        "native_form_operation_step_coverage",
+        "runtime_operation_step_coverage",
+        "native_runtime_validation_step_coverage",
+    } <= {
         check["id"] for check in runtime["runtime_module_replay_matrix"]["checks"] if check["ok"]
     }
+    assert all(set(item["pipeline"]) <= set(item["operation_steps"]) for item in runtime_module_replay["native_form_replays"])
+    assert all(
+        set(item["pipeline"]) <= set(item["operation_steps"])
+        for item in runtime_module_replay["runtime_operation_replays"]
+    )
+    assert all(
+        "side_effects_disallowed" in item["validation_steps"]
+        for item in (*runtime_module_replay["native_form_replays"], *runtime_module_replay["runtime_operation_replays"])
+    )
 
     drop_wiring = component_drop_wiring_handler_contract(design)
     assert drop_wiring["format"] == "appgen.component-drop-wiring-handler-contract.v1"
@@ -15372,6 +15389,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_runtime["runtime_module_replay_matrix"]["runtime_operation_replays"]) == 7
     assert len(generated_runtime["runtime_module_replay_matrix"]["compiler_runtime_replays"]) == 6
     assert len(generated_runtime["runtime_module_replay_matrix"]["deep_runtime_replays"]) == 8
+    assert {
+        "native_form_operation_step_coverage",
+        "runtime_operation_step_coverage",
+        "native_runtime_validation_step_coverage",
+    } <= {
+        check["id"]
+        for check in generated_runtime["runtime_module_replay_matrix"]["checks"]
+        if check["ok"]
+    }
+    assert all(
+        set(item["pipeline"]) <= set(item["operation_steps"])
+        for item in generated_runtime["runtime_module_replay_matrix"]["native_form_replays"]
+    )
+    assert all(
+        set(item["pipeline"]) <= set(item["operation_steps"])
+        for item in generated_runtime["runtime_module_replay_matrix"]["runtime_operation_replays"]
+    )
+    assert all(
+        "side_effects_disallowed" in item["validation_steps"]
+        for item in (
+            *generated_runtime["runtime_module_replay_matrix"]["native_form_replays"],
+            *generated_runtime["runtime_module_replay_matrix"]["runtime_operation_replays"],
+        )
+    )
     assert len(generated_runtime["native_form_modules"]["modules"]) == 6
     assert len(generated_runtime["runtime_operation_modules"]["modules"]) == 7
     assert len(generated_runtime["compiler_runtime_modules"]["modules"]) == 6
@@ -16609,6 +16650,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "artifact_parity_declared",
         "native_form_modules_ready",
         "native_form_module_tests_ready",
+        "runtime_operation_modules_ready",
+        "runtime_operation_module_tests_ready",
         "compiler_runtime_modules_ready",
         "compiler_runtime_module_tests_ready",
         "deep_runtime_modules_ready",
@@ -16624,10 +16667,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert native_runtime_matrix["format"] == "appgen.generated-native-runtime-module-replay-matrix.v1"
     assert native_runtime_matrix["ok"] is True
     assert len(native_runtime_matrix["native_form_replays"]) == 6
+    assert len(native_runtime_matrix["runtime_operation_replays"]) == 7
     assert len(native_runtime_matrix["compiler_runtime_replays"]) == 6
     assert len(native_runtime_matrix["deep_runtime_replays"]) == 8
     assert {
         "generated_native_form_operation_coverage",
+        "generated_runtime_operation_coverage",
+        "generated_native_form_operation_step_coverage",
+        "generated_runtime_operation_step_coverage",
+        "generated_native_runtime_validation_step_coverage",
         "generated_compiler_validation_step_coverage",
         "generated_deep_runtime_validation_step_coverage",
         "generated_native_runtime_replays_side_effect_free",
@@ -16640,6 +16688,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "reload_runtime_preview",
         "apply_property_delta",
     } == {item["operation_name"] for item in native_runtime_matrix["native_form_replays"]}
+    assert {
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "refresh_resources",
+        "reload_runtime_preview",
+        "start_debug_preview",
+    } == {item["operation"] for item in native_runtime_matrix["runtime_operation_replays"]}
+    assert all(
+        item["operation_steps"]
+        and set(item["pipeline"]) <= set(item["operation_steps"])
+        for item in native_runtime_matrix["runtime_operation_replays"]
+    )
+    assert all(
+        "side_effects_disallowed" in item["validation_steps"]
+        for item in (*native_runtime_matrix["native_form_replays"], *native_runtime_matrix["runtime_operation_replays"])
+    )
     assert {"map_component_declarations", "sandbox_invocation"} <= {
         step
         for item in native_runtime_matrix["compiler_runtime_replays"]
