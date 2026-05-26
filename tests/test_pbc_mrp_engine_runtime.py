@@ -20,6 +20,16 @@ from pyAppGen.pbc import mrp_engine_ui_contract
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
+from pyAppGen.pbcs.mrp_engine import MRP_ENGINE_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.mrp_engine import MRP_ENGINE_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.mrp_engine import MRP_ENGINE_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.mrp_engine import MRP_ENGINE_OWNED_TABLES
+from pyAppGen.pbcs.mrp_engine import MRP_ENGINE_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.mrp_engine import mrp_engine_build_api_contract
+from pyAppGen.pbcs.mrp_engine import mrp_engine_permissions_contract
+from pyAppGen.pbcs.mrp_engine import mrp_engine_receive_event
+from pyAppGen.pbcs.mrp_engine import mrp_engine_register_schema_extension
+from pyAppGen.pbcs.mrp_engine import mrp_engine_verify_owned_table_boundary
 
 
 def test_mrp_engine_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -44,6 +54,11 @@ def test_mrp_engine_runtime_executes_standard_and_advanced_capabilities() -> Non
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "MrpConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(MRP_ENGINE_ADVANCED_CAPABILITY_KEYS)
+    assert contract["source_package"]["api_contract"]["shared_table_access"] is False
+    assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "mrp_engine.event"
+    assert contract["source_package"]["owned_tables"] == MRP_ENGINE_OWNED_TABLES
+    assert contract["source_package"]["allowed_database_backends"] == MRP_ENGINE_ALLOWED_DATABASE_BACKENDS
     assert pbc_implementation_release_audit(("mrp_engine",))["ok"] is True
     assert pbc_implemented_capability_audit(("mrp_engine",))["ok"] is True
 
@@ -54,7 +69,7 @@ def test_mrp_engine_runtime_applies_rules_parameters_configuration_and_ui() -> N
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.mrp.events",
+            "event_topic": MRP_ENGINE_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_sites": ("factory_ops",),
             "allowed_order_types": ("production", "purchase"),
@@ -139,17 +154,27 @@ def test_mrp_engine_runtime_applies_rules_parameters_configuration_and_ui() -> N
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 7
+    assert workbench["binding_evidence"]["owned_tables"] == MRP_ENGINE_OWNED_TABLES
+    assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
+    assert workbench["binding_evidence"]["configuration"]["event_topic"] == MRP_ENGINE_REQUIRED_EVENT_TOPIC
+    assert workbench["binding_evidence"]["configuration"]["stream_engine_picker_visible"] is False
 
     ui_contract = mrp_engine_ui_contract()
-    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == MRP_ENGINE_ALLOWED_DATABASE_BACKENDS
+    assert ui_contract["configuration_editor"]["fixed_event_topic"] == MRP_ENGINE_REQUIRED_EVENT_TOPIC
+    assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert "planning_horizon_days" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    assert ui_contract["event_surfaces"]["emits"] == MRP_ENGINE_EMITTED_EVENT_TYPES
+    assert ui_contract["event_surfaces"]["consumes"] == MRP_ENGINE_CONSUMED_EVENT_TYPES
     rendered = mrp_engine_render_workbench(
         state,
         tenant="tenant_ops",
         principal_permissions=(
+            "mrp_engine.master",
             "mrp_engine.plan",
             "mrp_engine.release",
+            "mrp_engine.event",
             "mrp_engine.configure",
             "mrp_engine.audit",
         ),
@@ -157,6 +182,9 @@ def test_mrp_engine_runtime_applies_rules_parameters_configuration_and_ui() -> N
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert rendered["event_outbox_count"] == 6
+    assert rendered["event_inbox_count"] == 0
+    assert rendered["dead_letter_count"] == 0
+    assert rendered["binding_evidence"]["owned_tables"] == MRP_ENGINE_OWNED_TABLES
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
 
@@ -169,7 +197,7 @@ def test_mrp_engine_rejects_unsupported_database_backends_and_unknown_parameters
             state,
             {
                 "database_backend": "stream_store",
-                "event_topic": "appgen.mrp.events",
+                "event_topic": MRP_ENGINE_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "default_planning_bucket": "daily",
             },
@@ -177,3 +205,112 @@ def test_mrp_engine_rejects_unsupported_database_backends_and_unknown_parameters
 
     with pytest.raises(ValueError, match="Unsupported MRP Engine parameter"):
         mrp_engine_set_parameter(state, "stream_engine", "hidden_picker")
+
+    with pytest.raises(ValueError, match="requires AppGen-X event topic"):
+        mrp_engine_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": "custom.mrp.events",
+                "retry_limit": 3,
+                "default_planning_bucket": "daily",
+            },
+        )
+
+    with pytest.raises(ValueError, match="unsupported eventing fields"):
+        mrp_engine_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": MRP_ENGINE_REQUIRED_EVENT_TOPIC,
+                "retry_limit": 3,
+                "default_planning_bucket": "daily",
+                "stream_engine_picker": "visible",
+            },
+        )
+
+
+def test_mrp_engine_contracts_events_schema_and_boundaries_are_package_local() -> None:
+    state = mrp_engine_configure_runtime(
+        mrp_engine_empty_state(),
+        {
+            "database_backend": "mysql",
+            "event_topic": MRP_ENGINE_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "default_planning_bucket": "daily",
+        },
+    )["state"]
+
+    extension = mrp_engine_register_schema_extension(
+        state,
+        "planned_order",
+        {"simulation_payload": "jsonb", "constraint_score": "numeric"},
+    )
+    state = extension["state"]
+    assert extension["ok"] is True
+    assert state["schema_extensions"]["planned_order"]["constraint_score"] == "numeric"
+
+    with pytest.raises(ValueError, match="owned tables"):
+        mrp_engine_register_schema_extension(state, "inventory_balance", {"foreign_stock": "numeric"})
+
+    invalid = mrp_engine_register_schema_extension(state, "planned_order", {"BadField": "text"})
+    assert invalid["ok"] is False
+    assert invalid["error"] == "invalid_extension_field"
+
+    api = mrp_engine_build_api_contract()
+    assert api["format"] == "appgen.mrp-engine-api-contract.v1"
+    assert api["database_backends"] == MRP_ENGINE_ALLOWED_DATABASE_BACKENDS
+    assert api["owned_tables"] == MRP_ENGINE_OWNED_TABLES
+    assert api["events"]["emits"] == MRP_ENGINE_EMITTED_EVENT_TYPES
+    assert api["events"]["consumes"] == MRP_ENGINE_CONSUMED_EVENT_TYPES
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False
+    assert any(route["command"] == "receive_event" for route in api["routes"])
+
+    permissions = mrp_engine_permissions_contract()
+    assert permissions["ok"] is True
+    assert permissions["action_permissions"]["receive_event"] == "mrp_engine.event"
+    assert "mrp_engine.configure" in permissions["permissions"]
+
+    processed = mrp_engine_receive_event(
+        state,
+        {
+            "event_id": "evt_inventory_1",
+            "event_type": "InventoryReleased",
+            "payload": {"tenant": "tenant_ops", "release_id": "rel_1", "item": "component_ops", "available_qty": 10},
+        },
+    )
+    state = processed["state"]
+    assert processed["ok"] is True
+    assert state["inventory_release_projections"]["rel_1"]["available_qty"] == 10
+    duplicate = mrp_engine_receive_event(
+        state,
+        {
+            "event_id": "evt_inventory_1",
+            "event_type": "InventoryReleased",
+            "payload": {"tenant": "tenant_ops", "release_id": "rel_1"},
+        },
+    )
+    assert duplicate["duplicate"] is True
+    assert len(duplicate["state"]["inbox"]) == 1
+
+    retry = mrp_engine_receive_event(
+        state,
+        {
+            "event_id": "evt_bad",
+            "event_type": "UnknownPlanningEvent",
+            "payload": {"tenant": "tenant_ops"},
+        },
+    )
+    assert retry["ok"] is False
+    assert retry["handler"]["status"] == "retrying"
+    dead = mrp_engine_receive_event(retry["state"], {"event_id": "evt_bad", "event_type": "UnknownPlanningEvent", "payload": {"tenant": "tenant_ops"}})
+    assert dead["handler"]["status"] == "dead_letter"
+    assert dead["state"]["dead_letters"][-1]["reason"] == "unsupported_or_failed_mrp_event"
+
+    boundary = mrp_engine_verify_owned_table_boundary(("planned_order", "InventoryReleased", "inventory_release_projection", "mrp_engine_custom_projection"))
+    assert boundary["ok"] is True
+    assert boundary["declared_dependencies"]["shared_tables"] == ()
+    violation = mrp_engine_verify_owned_table_boundary(("inventory_balance", "customer_profile"))
+    assert violation["ok"] is False
+    assert violation["violations"] == ("inventory_balance", "customer_profile")

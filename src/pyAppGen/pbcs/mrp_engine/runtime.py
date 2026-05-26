@@ -8,6 +8,69 @@ import math
 import re
 
 
+MRP_ENGINE_REQUIRED_EVENT_TOPIC = "appgen.mrp.events"
+MRP_ENGINE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+MRP_ENGINE_OWNED_TABLES = (
+    "bill_of_material",
+    "bom_revision",
+    "material_demand",
+    "inventory_projection",
+    "capacity_projection",
+    "mrp_run",
+    "planned_order",
+    "material_shortage",
+    "planning_exception",
+    "mrp_rule",
+    "mrp_parameter",
+    "mrp_configuration",
+)
+MRP_ENGINE_EMITTED_EVENT_TYPES = (
+    "BomRegistered",
+    "DemandProjectionIngested",
+    "InventoryProjectionIngested",
+    "MrpRunStarted",
+    "MaterialShortageDetected",
+    "PlannedOrderReleased",
+)
+MRP_ENGINE_CONSUMED_EVENT_TYPES = (
+    "InventoryReleased",
+    "OrderVerified",
+    "ForecastUpdated",
+    "ProductionCapacityChanged",
+    "QualityHoldReleased",
+    "SupplierLeadTimeUpdated",
+)
+_MRP_ENGINE_RUNTIME_TABLES = (
+    "mrp_engine_appgen_outbox_event",
+    "mrp_engine_appgen_inbox_event",
+    "mrp_engine_dead_letter_event",
+)
+_MRP_ENGINE_ALLOWED_DEPENDENCIES = (
+    "inventory_release_projection",
+    "order_verification_projection",
+    "forecast_projection",
+    "production_capacity_projection",
+    "quality_hold_projection",
+    "supplier_lead_time_projection",
+    "GET /inventory/releases/{id}",
+    "GET /orders/verified/{id}",
+    "GET /forecasts/{id}",
+    "GET /production/capacity/{id}",
+    "GET /quality/holds/{id}",
+    "GET /suppliers/lead-times/{id}",
+    "POST /audit/planning-events",
+)
+_MRP_ENGINE_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 MRP_ENGINE_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_planning_lifecycle",
     "graph_relational_bom_topology",
@@ -79,12 +142,15 @@ def mrp_engine_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "mrp_engine",
         "implementation_directory": "src/pyAppGen/pbcs/mrp_engine",
+        "owned_tables": MRP_ENGINE_OWNED_TABLES,
         "capabilities": MRP_ENGINE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": MRP_ENGINE_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_bom",
             "ingest_demand_projection",
             "ingest_inventory_projection",
@@ -92,7 +158,10 @@ def mrp_engine_runtime_capabilities() -> dict:
             "explode_bom",
             "calculate_material_plan",
             "release_planned_order",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -104,7 +173,7 @@ def mrp_engine_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.mrp.events",
+            "event_topic": MRP_ENGINE_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_sites": ("factory_east", "factory_west"),
             "allowed_order_types": ("production", "purchase"),
@@ -226,20 +295,49 @@ def mrp_engine_runtime_smoke() -> dict:
 
 
 def mrp_engine_empty_state() -> dict:
-    return {"events": (), "outbox": (), "boms": {}, "demands": {}, "inventory": {}, "mrp_runs": {}, "planned_orders": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "inventory_release_projections": {},
+        "order_verification_projections": {},
+        "forecast_projections": {},
+        "production_capacity_projections": {},
+        "quality_hold_projections": {},
+        "supplier_lead_time_projections": {},
+        "boms": {},
+        "demands": {},
+        "inventory": {},
+        "mrp_runs": {},
+        "planned_orders": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def mrp_engine_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _MRP_ENGINE_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"MRP Engine uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(MRP_ENGINE_ALLOWED_DATABASE_BACKENDS):
         raise ValueError("MRP Engine supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("MRP Engine requires an AppGen-X event topic")
+    if configuration.get("event_topic") != MRP_ENGINE_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"MRP Engine requires AppGen-X event topic {MRP_ENGINE_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": MRP_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": MRP_ENGINE_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -275,10 +373,79 @@ def mrp_engine_register_rule(state: dict, rule: dict) -> dict:
 
 
 def mrp_engine_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in MRP_ENGINE_OWNED_TABLES:
+        raise ValueError(f"MRP Engine schema extensions must target owned tables: {MRP_ENGINE_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    existing = dict(state.get("schema_extensions", {}).get(table, {}))
+    merged = {**existing, **fields}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}},
+        "schema_extension": {"table": table, "fields": dict(fields)},
+        "target": table,
+        "fields": merged,
+    }
+
+
+def mrp_engine_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {
+        **state,
+        "inbox": (*state.get("inbox", ()), inbox_entry),
+        "handled_events": dict(handled),
+        "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "dead_letters": tuple(state.get("dead_letters", ())),
+        "dead_letter": tuple(state.get("dead_letter", ())),
+        "inventory_release_projections": dict(state.get("inventory_release_projections", {})),
+        "order_verification_projections": dict(state.get("order_verification_projections", {})),
+        "forecast_projections": dict(state.get("forecast_projections", {})),
+        "production_capacity_projections": dict(state.get("production_capacity_projections", {})),
+        "quality_hold_projections": dict(state.get("quality_hold_projections", {})),
+        "supplier_lead_time_projections": dict(state.get("supplier_lead_time_projections", {})),
+    }
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in MRP_ENGINE_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state["retry_evidence"], evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_mrp_event"}
+            next_state["dead_letters"] = (*next_state["dead_letters"], dead)
+            next_state["dead_letter"] = (*next_state["dead_letter"], dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "InventoryReleased":
+        next_state["inventory_release_projections"][payload.get("release_id", event_id)] = payload
+    elif event_type == "OrderVerified":
+        next_state["order_verification_projections"][payload.get("order_id", event_id)] = payload
+    elif event_type == "ForecastUpdated":
+        next_state["forecast_projections"][payload.get("forecast_id", event_id)] = payload
+    elif event_type == "ProductionCapacityChanged":
+        next_state["production_capacity_projections"][payload.get("capacity_id", event_id)] = payload
+    elif event_type == "QualityHoldReleased":
+        next_state["quality_hold_projections"][payload.get("hold_id", event_id)] = payload
+    elif event_type == "SupplierLeadTimeUpdated":
+        next_state["supplier_lead_time_projections"][payload.get("supplier_id", event_id)] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def mrp_engine_register_bom(state: dict, bom: dict) -> dict:
@@ -418,7 +585,103 @@ def mrp_engine_run_control_tests(state: dict) -> dict:
 
 
 def mrp_engine_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /mrp-runs", "GET /planned-orders", "GET /shortages", "POST /mrp-rules", "POST /mrp-parameters", "POST /mrp-configuration"), "events": {"emits": ("MaterialShortageDetected", "PlannedOrderReleased"), "consumes": ("InventoryReleased", "OrderVerified", "ForecastUpdated")}, "permissions": ("mrp_engine.read", "mrp_engine.plan", "mrp_engine.release", "mrp_engine.configure", "mrp_engine.audit"), "configuration": ("MRP_ENGINE_DATABASE_URL", "MRP_ENGINE_EVENT_TOPIC", "MRP_ENGINE_RETRY_LIMIT", "MRP_ENGINE_DEFAULT_PLANNING_BUCKET")}
+    return {
+        "ok": True,
+        "format": "appgen.mrp-engine-api-contract.v1",
+        "routes": (
+            {"route": "POST /mrp/boms", "command": "register_bom", "owned_tables": ("bill_of_material", "bom_revision"), "emits": ("BomRegistered",), "requires_permission": "mrp_engine.master", "idempotency_key": "bom_id"},
+            {"route": "POST /mrp/demand-projections", "command": "ingest_demand_projection", "owned_tables": ("material_demand",), "emits": ("DemandProjectionIngested",), "requires_permission": "mrp_engine.plan", "idempotency_key": "demand_id"},
+            {"route": "POST /mrp/inventory-projections", "command": "ingest_inventory_projection", "owned_tables": ("inventory_projection",), "emits": ("InventoryProjectionIngested",), "requires_permission": "mrp_engine.plan", "idempotency_key": "inventory_id"},
+            {"route": "POST /mrp/runs", "command": "create_mrp_run", "owned_tables": ("mrp_run",), "emits": ("MrpRunStarted",), "requires_permission": "mrp_engine.plan", "idempotency_key": "run_id"},
+            {"route": "POST /mrp/runs/{id}/calculate", "command": "calculate_material_plan", "owned_tables": ("planned_order", "material_shortage", "planning_exception"), "emits": ("MaterialShortageDetected",), "requires_permission": "mrp_engine.plan", "idempotency_key": "run_id"},
+            {"route": "POST /mrp/planned-orders/{id}/release", "command": "release_planned_order", "owned_tables": ("planned_order",), "emits": ("PlannedOrderReleased",), "requires_permission": "mrp_engine.release", "idempotency_key": "planned_order_id"},
+            {"route": "POST /mrp/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": MRP_ENGINE_CONSUMED_EVENT_TYPES, "requires_permission": "mrp_engine.event", "idempotency_key": "event_id"},
+            {"route": "POST /mrp/schema-extensions", "command": "register_schema_extension", "owned_tables": MRP_ENGINE_OWNED_TABLES, "requires_permission": "mrp_engine.configure"},
+            {"route": "GET /mrp/workbench", "query": "build_workbench_view", "owned_tables": MRP_ENGINE_OWNED_TABLES, "requires_permission": "mrp_engine.audit"},
+        ),
+        "declared_catalog_routes": ("POST /mrp-runs", "GET /planned-orders", "GET /shortages", "POST /mrp-rules", "POST /mrp-parameters", "POST /mrp-configuration"),
+        "events": {"emits": MRP_ENGINE_EMITTED_EVENT_TYPES, "consumes": MRP_ENGINE_CONSUMED_EVENT_TYPES},
+        "emits": MRP_ENGINE_EMITTED_EVENT_TYPES,
+        "consumes": MRP_ENGINE_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(mrp_engine_permissions_contract()["permissions"])),
+        "database_backends": MRP_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": MRP_ENGINE_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("MRP_ENGINE_DATABASE_URL", "MRP_ENGINE_EVENT_TOPIC", "MRP_ENGINE_RETRY_LIMIT", "MRP_ENGINE_DEFAULT_PLANNING_BUCKET"),
+    }
+
+
+def mrp_engine_permissions_contract() -> dict:
+    return {
+        "format": "appgen.mrp-engine-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "mrp_engine.read",
+            "mrp_engine.master",
+            "mrp_engine.plan",
+            "mrp_engine.release",
+            "mrp_engine.event",
+            "mrp_engine.configure",
+            "mrp_engine.audit",
+        ),
+        "action_permissions": {
+            "register_bom": "mrp_engine.master",
+            "ingest_demand_projection": "mrp_engine.plan",
+            "ingest_inventory_projection": "mrp_engine.plan",
+            "create_mrp_run": "mrp_engine.plan",
+            "calculate_material_plan": "mrp_engine.plan",
+            "release_planned_order": "mrp_engine.release",
+            "receive_event": "mrp_engine.event",
+            "register_rule": "mrp_engine.configure",
+            "register_schema_extension": "mrp_engine.configure",
+            "set_parameter": "mrp_engine.configure",
+            "configure_runtime": "mrp_engine.configure",
+            "generate_supply_proof": "mrp_engine.audit",
+            "run_control_tests": "mrp_engine.audit",
+            "build_workbench_view": "mrp_engine.audit",
+        },
+    }
+
+
+def mrp_engine_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *MRP_ENGINE_OWNED_TABLES,
+        *MRP_ENGINE_CONSUMED_EVENT_TYPES,
+        *_MRP_ENGINE_RUNTIME_TABLES,
+        *_MRP_ENGINE_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(reference for reference in references if reference not in allowed_set and not str(reference).startswith("mrp_engine_"))
+    return {
+        "format": "appgen.mrp-engine-boundary.v1",
+        "ok": not violations,
+        "owned_tables": MRP_ENGINE_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "GET /inventory/releases/{id}",
+                "GET /orders/verified/{id}",
+                "GET /forecasts/{id}",
+                "GET /production/capacity/{id}",
+                "GET /quality/holds/{id}",
+                "GET /suppliers/lead-times/{id}",
+                "POST /audit/planning-events",
+            ),
+            "events": MRP_ENGINE_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "inventory_release_projection",
+                "order_verification_projection",
+                "forecast_projection",
+                "production_capacity_projection",
+                "quality_hold_projection",
+                "supplier_lead_time_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def mrp_engine_federate_plan_view(state: dict, planned_order_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -493,6 +756,21 @@ def mrp_engine_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": MRP_ENGINE_OWNED_TABLES,
+            "outbox_table": "mrp_engine_appgen_outbox_event",
+            "inbox_table": "mrp_engine_appgen_inbox_event",
+            "dead_letter_table": "mrp_engine_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+            "permissions": tuple(sorted(mrp_engine_permissions_contract()["permissions"])),
+        },
     }
 
 

@@ -2,103 +2,180 @@
 
 ## Purpose
 
-`mrp_engine` owns material requirements planning for manufacturing: bill-of-material graph analysis, material demand, supply netting, capacity-aware planned orders, shortages, and release-ready procurement/production suggestions. It composes with inventory, order management, forecasting, procurement, production control, quality, and audit capabilities only through AppGen-X APIs, events, and projections.
+`mrp_engine` is the package-local Material Requirements Planning capability for AppGen-X manufacturing applications. It owns the planning graph that turns demand, supply projections, bill-of-material structure, site policy, capacity signals, lead times, lot sizing, safety stock, scrap, yield, and release rules into executable planned production orders and planned purchase suggestions. The package must work as a composable PBC: it has its own schema boundary, runtime services, API descriptors, event contracts, handlers, UI fragments, configuration model, rules, parameters, tests, and release evidence.
 
-## Owned Boundary
+The PBC does not own inventory balances, customer orders, supplier masters, production execution, quality inspection, or audit ledgers. It composes with those domains only through AppGen-X APIs, AppGen-X events, and package-owned projections. Cross-PBC dependency data is copied into MRP-owned projection tables or in-memory runtime projections; no shared table access is part of the contract.
+
+## Package Boundary
 
 - PBC key: `mrp_engine`
-- Mesh: `opsmfg`
-- Owned datastore backends: PostgreSQL, MySQL, or MariaDB
-- Owned tables: `bill_of_material`, `material_demand`, `mrp_run`, `planned_order`
-- Owned event tables: `mrp_engine_outbox`, `mrp_engine_inbox`, `mrp_engine_dead_letter`
-- Consumed events: `InventoryReleased`, `OrderVerified`, `ForecastUpdated`
-- Emitted events: `MaterialShortageDetected`, `PlannedOrderReleased`
-- External access rule: no shared inventory, order, forecast, procurement, or production tables; use projections, APIs, and events only.
+- Mesh assignment: `opsmfg`
+- Implementation directory: `src/pyAppGen/pbcs/mrp_engine`
+- Ordinary datastore backends: PostgreSQL, MySQL, or MariaDB only
+- Required event contract: AppGen-X
+- Fixed event topic: `appgen.mrp.events`
+- User-facing stream-engine picker: forbidden
+- Owned runtime event tables: `mrp_engine_appgen_outbox_event`, `mrp_engine_appgen_inbox_event`, `mrp_engine_dead_letter_event`
+
+Owned tables are:
+
+- `bill_of_material`
+- `bom_revision`
+- `material_demand`
+- `inventory_projection`
+- `capacity_projection`
+- `mrp_run`
+- `planned_order`
+- `material_shortage`
+- `planning_exception`
+- `mrp_rule`
+- `mrp_parameter`
+- `mrp_configuration`
+
+Allowed dependency projections are inventory release, verified order, forecast, production capacity, quality hold, and supplier lead-time projections. These are MRP-owned representations sourced from declared APIs or events, not foreign tables.
 
 ## Standard Table-Stakes Capabilities
 
-1. Bill-of-material master capture with parent item, component item, quantity, scrap, effective dates, and revision status.
-2. Multi-level BOM explosion and component dependency graph traversal.
-3. Demand projection ingestion from verified orders and forecasts.
-4. Inventory availability projection ingestion from inventory events.
-5. Supply and demand netting by item, site, date, and planning bucket.
-6. Safety stock, lot size, lead time, yield, scrap, and rounding parameter handling.
-7. MRP run creation by tenant, site, horizon, bucket, planner, and scenario.
-8. Shortage detection and root-cause evidence.
-9. Planned production order generation.
-10. Planned purchase suggestion generation.
-11. Capacity-aware release readiness.
-12. Pegging from demand to planned order and component shortages.
-13. Exception messages for expedite, defer, cancel, reschedule, and substitute.
-14. Scenario simulation and what-if planning.
-15. Multi-tenant and multi-site isolation.
-16. AppGen-X outbox/inbox idempotency.
-17. Retry and dead-letter evidence.
-18. RBAC descriptors for planner, production planner, procurement planner, auditor, and admin actions.
-19. Configuration schema for runtime installation.
-20. Rule engine for planning policy, item eligibility, shortage severity, substitution, release, and exception policies.
-21. Parameter engine for horizon, bucket size, safety stock, lot size, lead time, and capacity thresholds.
-22. Seed data for planning buckets, exception codes, lot-size policies, lead-time classes, and release statuses.
-23. Package metadata, source registration, and release evidence.
-24. Package-local workbench UI for BOMs, demand, MRP runs, planned orders, shortages, rules, parameters, and configuration.
+The PBC must cover the baseline functionality expected from a production MRP engine:
 
-## Advanced Capability Requirements
+1. Bill-of-material master capture for parent item, component item, component quantity, revision, site, status, and scrap percent.
+2. BOM revision eligibility and release-state checking through rule policy.
+3. BOM explosion from finished goods into required component quantities.
+4. Demand projection ingestion from verified orders and forecasts.
+5. Inventory projection ingestion from released inventory availability signals.
+6. Supply and demand netting by tenant, site, item, quantity, and planning run.
+7. Safety stock multiplier, lot-size minimum, lead-time days, capacity threshold, and shortage-severity parameters.
+8. MRP run creation by tenant, site, horizon, scenario, and planner.
+9. Shortage detection with total shortage, per-item shortage, pegged demand, and severity scoring.
+10. Planned purchase suggestion generation for externally procured components.
+11. Planned production order generation for internally made or assembled components.
+12. Release of planned orders into downstream procurement or production routes.
+13. Pegging from planned order back to demand and BOM requirement.
+14. Exception recommendations for shortage, capacity, and quality-hold cases.
+15. Scenario simulation for counterfactual demand and planning-policy changes.
+16. Multi-tenant and multi-site isolation in runtime views and commands.
+17. Idempotent event handlers with inbox records and handled-event keys.
+18. Retry evidence and dead-letter evidence for failed or unsupported events.
+19. RBAC descriptors for master data, planning, release, event handling, configuration, and audit actions.
+20. Configuration schema and validation for backend, event topic, retry limit, sites, routes, buckets, and workbench limits.
+21. Rule engine for planning, shortage, substitution, release, capacity, and exception policies.
+22. Parameter engine for numeric planning controls.
+23. Schema-extension registration limited to MRP-owned tables.
+24. Seed-ready descriptors for buckets, exception codes, release routes, lot-size policies, and lead-time classes.
+25. Workbench UI fragments for BOMs, demand, MRP runs, shortages, planned orders, rules, parameters, and configuration.
+26. API route descriptors for each command and query with owned-table, event, idempotency, and permission metadata.
 
-The runtime must prove deterministic evidence for:
+## Advanced Capability Contract
 
-- Event-sourced planning lifecycle and immutable audit trail.
-- Graph-relational BOM topology and multi-level dependency traversal.
+The runtime must provide deterministic evidence for the advanced MRP feature set:
+
+- Event-sourced planning lifecycle with immutable planning event hashes.
+- Graph-relational BOM topology suitable for traversal and future multi-level expansion.
 - Multi-tenant and multi-site planning isolation.
-- Schema evolution for planning attributes.
-- Probabilistic shortage, supplier, and capacity risk scoring.
-- Real-time planning analytics and counterfactual planning-policy simulation.
-- Demand, shortage, and inventory exposure forecasting.
-- Autonomous planning exception recommendations.
-- Semantic demand and BOM instruction parsing.
-- Self-healing inventory/procurement/production route selection.
-- Zero-knowledge supply availability proofs.
-- Dynamic planning policy screening and automated controls.
-- Universal API/event contracts and cross-system MRP federation.
-- Inventory, order, forecast, procurement, and production integration through projections.
-- Decentralized item/source identity verification.
-- Resilience drills, crypto agility, and carbon-aware planning batch scheduling.
-- Algebraic material allocation optimization and mechanism-design capacity allocation.
+- Schema-on-read extension points for owned planning tables.
+- Probabilistic shortage, quality, and capacity risk scoring.
+- Real-time workbench analytics over current runtime state.
+- Counterfactual planning-policy simulation.
+- Temporal demand, shortage, and inventory exposure forecasting.
+- Autonomous exception-resolution recommendations.
+- Semantic parsing of planning instructions.
+- Predictive material, capacity, and compliance-risk screening.
+- Self-healing route selection for procurement, production, and outbox fallback paths.
+- Zero-disclosure supply availability proof generation from permitted public claims.
+- Immutable control trail validation through event hash-chain checks.
+- Dynamic policy screening for restricted sites and blocked runs.
+- Automated control tests for configuration, rules, parameters, planned-order correctness, and event integrity.
+- Universal AppGen-X API and event descriptors.
+- Cross-system plan federation through declared APIs and projections.
+- Decentralized item and source identity verification.
+- Chaos-style resilience drills for projection delay and downstream API timeout scenarios.
+- Crypto-agility evidence for planning authorization epochs.
+- Carbon-aware planning batch scheduling.
+- Algebraic material allocation optimization.
+- Mechanism-design capacity allocation.
 - Information-theoretic shortage anomaly detection.
 - Stochastic material exposure modeling.
-- Governed planning model registration with lineage, drift, and explainability controls.
+- Governed planning model registration with feature lineage, drift threshold, and explainability requirements.
 
-## Rules, Parameters, And Configuration
+## Runtime Configuration
 
-The PBC must understand and execute:
+`mrp_engine_configure_runtime` is the installation gate. It must reject any database backend outside PostgreSQL, MySQL, and MariaDB. It must reject any event topic other than `appgen.mrp.events`. It must reject user-facing eventing or stream-engine fields such as `stream_engine`, `stream_engine_picker`, `eventing_mode`, `event_transport`, or `user_eventing_choice`. A successful configuration writes:
 
-- Configuration: database backend, event topic, retry limit, allowed sites, allowed order types, allowed procurement routes, allowed production routes, default planning bucket, and workbench limit.
-- Parameters: planning horizon days, bucket size days, safety stock multiplier, lot size minimum, lead time days, capacity threshold, shortage severity threshold, and scrap factor.
-- Rules: planning item eligibility, BOM revision eligibility, demand-source eligibility, shortage severity, substitution, release, and planner approval policies.
+- `event_contract: AppGen-X`
+- `allowed_database_backends`
+- `stream_engine_picker_visible: False`
+- `user_selectable_event_contract: False`
+- `owned_tables`
 
-Rules are compiled into deterministic hashes, parameters are stored in owned runtime state, backend configuration rejects anything outside PostgreSQL, MySQL, or MariaDB, eventing remains bound to the AppGen-X event contract without user-facing stream-engine selection, and configuration gates BOM, demand, MRP run, planned order, and release operations.
+This makes ordinary eventing non-negotiable and prevents generated apps from exposing implementation choices that would break the AppGen-X event contract.
 
-## UI Contract
+## Rules And Parameters
 
-`ui.py` owns package-local UI contract functions for:
+Rules are registered with `rule_id`, tenant, status, and either `scope` or `rule_type`. The runtime compiles a deterministic hash over each rule, marks active rules as enabled, and uses rule attributes to decide BOM eligibility, demand-source eligibility, allowed sites, release routes, substitutions, and exception behavior.
 
-- MRP workbench.
-- BOM graph explorer.
-- Demand console.
-- MRP run control.
-- Shortage board.
-- Planned order board.
-- Rule studio.
-- Parameter console.
-- Runtime configuration panel.
+Parameters are limited to known planning controls: planning horizon, bucket size, safety-stock multiplier, lot-size minimum, lead-time days, capacity threshold, shortage-severity threshold, scrap factor, planner approval threshold, and workbench limit. Unknown parameters are rejected so configuration cannot smuggle unsupported behavior into the runtime.
 
-UI actions are RBAC-gated and bind only to owned tables, projections, and AppGen-X event surfaces.
+## Event Contract And Handlers
+
+Emitted events:
+
+- `BomRegistered`
+- `DemandProjectionIngested`
+- `InventoryProjectionIngested`
+- `MrpRunStarted`
+- `MaterialShortageDetected`
+- `PlannedOrderReleased`
+
+Consumed events:
+
+- `InventoryReleased`
+- `OrderVerified`
+- `ForecastUpdated`
+- `ProductionCapacityChanged`
+- `QualityHoldReleased`
+- `SupplierLeadTimeUpdated`
+
+`mrp_engine_receive_event` is idempotent. It builds a deterministic idempotency key from the incoming event when one is not provided. Processed events are stored in `handled_events`; duplicate processed deliveries return without adding inbox records or changing projections. Supported events are projected into package-owned projection stores. Unsupported events and simulated failures create retry evidence until the configured retry limit is reached, then append dead-letter records with failure reason `unsupported_or_failed_mrp_event`.
+
+## API And Permission Contract
+
+`mrp_engine_build_api_contract` returns descriptor routes, not unstructured route strings. Each descriptor identifies the route, command or query, owned tables touched, emitted or consumed event types, required permission, and idempotency key. The contract explicitly states:
+
+- `shared_table_access: False`
+- `event_contract: AppGen-X`
+- `stream_engine_picker_visible: False`
+- `database_backends: ("postgresql", "mysql", "mariadb")`
+- owned tables and event contracts from package constants
+
+`mrp_engine_permissions_contract` defines read, master, plan, release, event, configure, and audit permissions. Every command exposed by the API contract and workbench has a corresponding action-permission mapping.
+
+## UI And Workbench Contract
+
+`ui.py` exposes package-local fragments:
+
+- `MrpEngineWorkbench`
+- `BomGraphExplorer`
+- `DemandConsole`
+- `MrpRunControl`
+- `ShortageBoard`
+- `PlannedOrderBoard`
+- `MrpRuleStudio`
+- `MrpParameterConsole`
+- `MrpConfigurationPanel`
+
+The UI contract binds fragments to owned tables, projections, and AppGen-X event surfaces. It exposes outbox, inbox, and dead-letter status as visible operational evidence. The configuration editor exposes the fixed AppGen-X topic and allowed backend list while keeping the stream-engine picker hidden. `mrp_engine_render_workbench` filters visible actions by RBAC permissions and reports owned-table, configuration, outbox, inbox, and dead-letter binding evidence.
+
+## Boundary Verification
+
+`mrp_engine_verify_owned_table_boundary` proves that a generated or composed MRP package references only MRP-owned tables, MRP runtime event tables, declared AppGen-X consumed events, declared dependency APIs, declared dependency projections, or `mrp_engine_`-prefixed package-local artifacts. It reports violations for foreign operational tables such as inventory balances or customer profile data.
 
 ## Release Evidence
 
-Completion requires:
+The package is complete only when:
 
-- Package-local specification, runtime, UI, and tests.
-- `pbc_implementation_contract("mrp_engine")` returns an ok source package and advanced runtime.
+- Runtime, UI, exports, specification, and focused tests live in the package directory or focused test file.
+- `mrp_engine_runtime_smoke()` passes every standard and advanced capability check.
+- `pbc_implementation_contract("mrp_engine")` exposes source package, runtime, UI, API, permissions, owned tables, and allowed database backends.
 - `pbc_implementation_release_audit(("mrp_engine",))` passes.
 - `pbc_implemented_capability_audit(("mrp_engine",))` passes.
-- Full 46-PBC generation smoke remains green.
+- Focused tests prove domain workflows, rules, parameters, configuration, UI binding, schema ownership, AppGen-X event handling, retry/dead-letter behavior, API/RBAC descriptors, and owned-table boundary enforcement.

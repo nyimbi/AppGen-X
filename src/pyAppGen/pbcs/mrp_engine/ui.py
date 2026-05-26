@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from .runtime import MRP_ENGINE_ALLOWED_DATABASE_BACKENDS
+from .runtime import MRP_ENGINE_CONSUMED_EVENT_TYPES
+from .runtime import MRP_ENGINE_EMITTED_EVENT_TYPES
+from .runtime import MRP_ENGINE_OWNED_TABLES
+from .runtime import MRP_ENGINE_REQUIRED_EVENT_TOPIC
+
 
 MRP_ENGINE_UI_FRAGMENT_KEYS = (
     "MrpEngineWorkbench",
@@ -61,21 +67,26 @@ def mrp_engine_ui_contract() -> dict:
             },
         ),
         "action_permissions": {
-            "register_bom": "mrp_engine.plan",
+            "register_bom": "mrp_engine.master",
             "ingest_demand_projection": "mrp_engine.plan",
             "ingest_inventory_projection": "mrp_engine.plan",
             "create_mrp_run": "mrp_engine.plan",
             "calculate_material_plan": "mrp_engine.plan",
             "release_planned_order": "mrp_engine.release",
+            "receive_event": "mrp_engine.event",
             "register_rule": "mrp_engine.configure",
+            "register_schema_extension": "mrp_engine.configure",
             "set_parameter": "mrp_engine.configure",
             "configure_runtime": "mrp_engine.configure",
             "run_control_tests": "mrp_engine.audit",
         },
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_planning_bucket"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": MRP_ENGINE_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "fixed_event_topic": MRP_ENGINE_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -93,10 +104,26 @@ def mrp_engine_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "rule_type", "eligible_item_types", "allowed_sites", "status"),
         },
         "event_surfaces": {
-            "emits": ("MaterialShortageDetected", "PlannedOrderReleased"),
-            "consumes": ("InventoryReleased", "OrderVerified", "ForecastUpdated"),
+            "emits": MRP_ENGINE_EMITTED_EVENT_TYPES,
+            "consumes": MRP_ENGINE_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": MRP_ENGINE_OWNED_TABLES,
+            "outbox_table": "mrp_engine_appgen_outbox_event",
+            "inbox_table": "mrp_engine_appgen_inbox_event",
+            "dead_letter_table": "mrp_engine_dead_letter_event",
+            "rbac_permissions": (
+                "mrp_engine.read",
+                "mrp_engine.master",
+                "mrp_engine.plan",
+                "mrp_engine.release",
+                "mrp_engine.event",
+                "mrp_engine.configure",
+                "mrp_engine.audit",
+            ),
         },
     }
 
@@ -140,4 +167,17 @@ def mrp_engine_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "event_inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": MRP_ENGINE_OWNED_TABLES,
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+            },
+            "outbox_table": "mrp_engine_appgen_outbox_event",
+            "inbox_table": "mrp_engine_appgen_inbox_event",
+            "dead_letter_table": "mrp_engine_dead_letter_event",
+        },
     }
