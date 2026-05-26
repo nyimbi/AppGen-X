@@ -10,6 +10,9 @@ from .runtime import INVENTORY_POSITIONING_RUNTIME_CAPABILITY_KEYS
 from .runtime import INVENTORY_POSITIONING_STANDARD_FEATURE_KEYS
 from .runtime import inventory_positioning_allocate_inventory
 from .runtime import inventory_positioning_build_api_contract
+from .runtime import inventory_positioning_build_release_evidence
+from .runtime import inventory_positioning_build_schema_contract
+from .runtime import inventory_positioning_build_service_contract
 from .runtime import inventory_positioning_build_workbench_view
 from .runtime import inventory_positioning_calculate_availability
 from .runtime import inventory_positioning_configure_runtime
@@ -42,7 +45,13 @@ def implementation_contract() -> dict:
         "owned_tables": INVENTORY_POSITIONING_OWNED_TABLES,
         "allowed_database_backends": INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS,
         "api_contract": inventory_positioning_build_api_contract(),
+        "schema_contract": inventory_positioning_build_schema_contract(),
+        "service_contract": inventory_positioning_build_service_contract(),
+        "release_evidence_contract": inventory_positioning_build_release_evidence(),
         "permissions_contract": inventory_positioning_permissions_contract(),
+        "required_event_topic": INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC,
+        "consumes": INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES,
+        "emits": INVENTORY_POSITIONING_EMITTED_EVENT_TYPES,
         "advanced_runtime": runtime,
         "ui_contract": inventory_positioning_ui_contract(),
     }

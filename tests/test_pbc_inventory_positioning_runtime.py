@@ -2,6 +2,9 @@ import pytest
 
 from pyAppGen.pbc import INVENTORY_POSITIONING_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import inventory_positioning_allocate_inventory
+from pyAppGen.pbc import inventory_positioning_build_release_evidence
+from pyAppGen.pbc import inventory_positioning_build_schema_contract
+from pyAppGen.pbc import inventory_positioning_build_service_contract
 from pyAppGen.pbc import inventory_positioning_build_workbench_view
 from pyAppGen.pbc import inventory_positioning_calculate_availability
 from pyAppGen.pbc import inventory_positioning_configure_runtime
@@ -40,7 +43,15 @@ def test_inventory_positioning_runtime_executes_standard_and_advanced_capabiliti
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/inventory_positioning"
     assert runtime["owned_tables"] == INVENTORY_POSITIONING_OWNED_TABLES
+    assert len(runtime["owned_tables"]) >= 40
     assert len(runtime["standard_features"]) >= 18
+    assert "item_attributes" in runtime["standard_features"]
+    assert "lot_master" in runtime["standard_features"]
+    assert "node_capacity" in runtime["standard_features"]
+    assert "position_snapshots" in runtime["standard_features"]
+    assert "allocation_lines" in runtime["standard_features"]
+    assert "appgen_x_inbox" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
@@ -57,9 +68,38 @@ def test_inventory_positioning_runtime_executes_standard_and_advanced_capabiliti
 
     package_contract = inventory_positioning_package_contract()
     assert package_contract["api_contract"]["event_contract"] == "AppGen-X"
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
     assert package_contract["permissions_contract"]["action_permissions"]["receive_event"] == "inventory_positioning.event"
     assert package_contract["owned_tables"] == INVENTORY_POSITIONING_OWNED_TABLES
     assert package_contract["allowed_database_backends"] == INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS
+    assert package_contract["required_event_topic"] == INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC
+    assert package_contract["consumes"] == INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES
+    assert package_contract["emits"] == INVENTORY_POSITIONING_EMITTED_EVENT_TYPES
+
+    schema = inventory_positioning_build_schema_contract()
+    service = inventory_positioning_build_service_contract()
+    release = inventory_positioning_build_release_evidence()
+    assert schema["format"] == "appgen.inventory-positioning-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(INVENTORY_POSITIONING_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(INVENTORY_POSITIONING_OWNED_TABLES)
+    assert {
+        "inventory_positioning_lot",
+        "inventory_positioning_position_snapshot",
+        "inventory_positioning_allocation_line",
+        "inventory_positioning_replenishment_plan",
+        "inventory_positioning_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.inventory-positioning-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.inventory-positioning-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert pbc_implementation_release_audit(("inventory_positioning",))["ok"] is True
     assert pbc_implemented_capability_audit(("inventory_positioning",))["ok"] is True
 

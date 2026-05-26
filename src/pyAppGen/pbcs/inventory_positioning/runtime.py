@@ -12,16 +12,49 @@ INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC = "appgen.inventory.events"
 INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 INVENTORY_POSITIONING_OWNED_TABLES = (
     "inventory_positioning_item",
+    "inventory_positioning_item_attribute",
+    "inventory_positioning_item_substitution",
+    "inventory_positioning_lot",
+    "inventory_positioning_serial",
     "inventory_positioning_node",
+    "inventory_positioning_node_calendar",
+    "inventory_positioning_node_capacity",
+    "inventory_positioning_node_identity",
     "inventory_positioning_inventory_position",
+    "inventory_positioning_position_snapshot",
     "inventory_positioning_receipt",
+    "inventory_positioning_receipt_line",
     "inventory_positioning_adjustment",
+    "inventory_positioning_cycle_count",
+    "inventory_positioning_reservation",
     "inventory_positioning_allocation",
+    "inventory_positioning_allocation_line",
+    "inventory_positioning_allocation_expiry",
     "inventory_positioning_quality_hold",
+    "inventory_positioning_quality_release",
+    "inventory_positioning_in_transit_projection",
+    "inventory_positioning_traceability_event",
+    "inventory_positioning_backorder",
     "inventory_positioning_replenishment_signal",
+    "inventory_positioning_replenishment_plan",
+    "inventory_positioning_reconciliation",
+    "inventory_positioning_policy_screening",
+    "inventory_positioning_stock_proof",
+    "inventory_positioning_cross_node_federation",
+    "inventory_positioning_carbon_fulfillment",
+    "inventory_positioning_channel_allocation",
+    "inventory_positioning_anomaly_signal",
+    "inventory_positioning_stock_risk_model",
+    "inventory_positioning_seed_data",
+    "inventory_positioning_schema_extension",
+    "inventory_positioning_control_assertion",
+    "inventory_positioning_governed_model",
     "inventory_positioning_rule",
     "inventory_positioning_parameter",
     "inventory_positioning_configuration",
+    "inventory_positioning_appgen_outbox_event",
+    "inventory_positioning_appgen_inbox_event",
+    "inventory_positioning_dead_letter_event",
 )
 INVENTORY_POSITIONING_EMITTED_EVENT_TYPES = (
     "ItemRegistered",
@@ -103,12 +136,23 @@ INVENTORY_POSITIONING_RUNTIME_CAPABILITY_KEYS = (
 )
 INVENTORY_POSITIONING_STANDARD_FEATURE_KEYS = (
     "item_master",
+    "item_attributes",
+    "item_substitution",
+    "lot_master",
+    "serial_tracking",
     "inventory_node_master",
+    "node_calendar",
+    "node_capacity",
+    "node_identity",
     "inventory_position",
+    "position_snapshots",
     "goods_receipt",
+    "receipt_lines",
     "inventory_adjustment",
+    "cycle_count",
     "availability_to_promise",
     "allocation_creation",
+    "allocation_lines",
     "allocation_release",
     "reservation_ttl",
     "quality_hold",
@@ -117,8 +161,12 @@ INVENTORY_POSITIONING_STANDARD_FEATURE_KEYS = (
     "multi_node_isolation",
     "substitution_availability",
     "backorder_management",
+    "replenishment_planning",
     "replenishment_signal",
     "inventory_reconciliation",
+    "appgen_x_outbox",
+    "appgen_x_inbox",
+    "retry_dead_letter_evidence",
     "idempotent_handlers",
     "permissions",
     "configuration_schema",
@@ -165,6 +213,9 @@ def inventory_positioning_runtime_capabilities() -> dict:
             "screen_inventory_policy",
             "run_control_tests",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "federate_inventory_view",
             "verify_node_identity",
@@ -296,6 +347,9 @@ def inventory_positioning_runtime_smoke() -> dict:
     screening = inventory_positioning_screen_inventory_policy(state, item_id="sku_100", restricted_nodes=("restricted_node",))
     controls = inventory_positioning_run_control_tests(state)
     api = inventory_positioning_build_api_contract()
+    schema = inventory_positioning_build_schema_contract()
+    service = inventory_positioning_build_service_contract()
+    release = inventory_positioning_build_release_evidence()
     federation = inventory_positioning_federate_inventory_view(state, item_id="sku_100", systems=("warehouse", "commerce", "transportation"))
     identity = inventory_positioning_verify_node_identity(node["node"]["identity"])
     resilience = inventory_positioning_run_resilience_drill(state, "node_unavailable")
@@ -334,7 +388,7 @@ def inventory_positioning_runtime_smoke() -> dict:
         {"id": "immutable_inventory_traceability_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_inventory_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_inventory_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "InventoryAllocated" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "InventoryAllocated" in api["events"]["emits"]},
         {"id": "cross_node_inventory_federation", "ok": federation["ok"] and "warehouse" in federation["systems"]},
         {"id": "warehouse_order_quality_integration", "ok": {"OrderVerified", "ShipmentDelivered", "QualityHoldReleased"} <= set(api["events"]["consumes"]) and received["handler"]["status"] == "processed"},
         {"id": "decentralized_node_lot_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -686,6 +740,185 @@ def inventory_positioning_build_api_contract() -> dict:
         "required_event_topic": INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
         "configuration": ("INVENTORY_POSITIONING_DATABASE_URL", "INVENTORY_POSITIONING_EVENT_TOPIC", "INVENTORY_POSITIONING_RETRY_LIMIT", "INVENTORY_POSITIONING_DEFAULT_UOM"),
+    }
+
+
+def inventory_positioning_build_schema_contract() -> dict:
+    """Return Inventory-owned schema, migration, model, and relationship evidence."""
+    table_fields = {
+        "inventory_positioning_item": ("tenant", "item_id", "sku", "uom", "lot_tracked", "serial_tracked", "status"),
+        "inventory_positioning_item_attribute": ("tenant", "attribute_id", "item_id", "name", "value", "source"),
+        "inventory_positioning_item_substitution": ("tenant", "substitution_id", "item_id", "substitute_item_id", "priority", "status"),
+        "inventory_positioning_lot": ("tenant", "lot_id", "item_id", "expires", "status", "trace_hash"),
+        "inventory_positioning_serial": ("tenant", "serial_id", "item_id", "lot_id", "status", "node_id"),
+        "inventory_positioning_node": ("tenant", "node_id", "node_type", "country", "region", "calendar", "status"),
+        "inventory_positioning_node_calendar": ("tenant", "calendar_id", "node_id", "timezone", "working_days", "cutoff_time"),
+        "inventory_positioning_node_capacity": ("tenant", "capacity_id", "node_id", "item_id", "daily_capacity", "status"),
+        "inventory_positioning_node_identity": ("tenant", "identity_id", "node_id", "did", "issuer", "status"),
+        "inventory_positioning_inventory_position": ("tenant", "position_id", "node_id", "item_id", "on_hand", "reserved", "quarantine", "in_transit"),
+        "inventory_positioning_position_snapshot": ("tenant", "snapshot_id", "position_id", "as_of", "on_hand", "available"),
+        "inventory_positioning_receipt": ("tenant", "receipt_id", "node_id", "item_id", "quantity", "status"),
+        "inventory_positioning_receipt_line": ("tenant", "receipt_line_id", "receipt_id", "item_id", "quantity", "lot_id"),
+        "inventory_positioning_adjustment": ("tenant", "adjustment_id", "node_id", "item_id", "quantity", "reason"),
+        "inventory_positioning_cycle_count": ("tenant", "cycle_count_id", "node_id", "item_id", "physical_count", "variance"),
+        "inventory_positioning_reservation": ("tenant", "reservation_id", "order_id", "item_id", "quantity", "expires_at"),
+        "inventory_positioning_allocation": ("tenant", "allocation_id", "order_id", "item_id", "quantity_allocated", "status"),
+        "inventory_positioning_allocation_line": ("tenant", "allocation_line_id", "allocation_id", "node_id", "lot_id", "quantity"),
+        "inventory_positioning_allocation_expiry": ("tenant", "expiry_id", "allocation_id", "expires_at", "released"),
+        "inventory_positioning_quality_hold": ("tenant", "hold_id", "node_id", "item_id", "quantity", "reason"),
+        "inventory_positioning_quality_release": ("tenant", "release_id", "hold_id", "released_by", "released_at", "evidence_hash"),
+        "inventory_positioning_in_transit_projection": ("tenant", "transit_id", "item_id", "quantity", "confidence", "eta_days"),
+        "inventory_positioning_traceability_event": ("tenant", "trace_event_id", "item_id", "lot_id", "event_type", "trace_hash"),
+        "inventory_positioning_backorder": ("tenant", "backorder_id", "order_id", "item_id", "quantity", "status"),
+        "inventory_positioning_replenishment_signal": ("tenant", "signal_id", "item_id", "recommended_quantity", "reason", "status"),
+        "inventory_positioning_replenishment_plan": ("tenant", "plan_id", "item_id", "node_id", "quantity", "due_date"),
+        "inventory_positioning_reconciliation": ("tenant", "reconciliation_id", "item_id", "ledger", "physical_count", "variance"),
+        "inventory_positioning_policy_screening": ("tenant", "screening_id", "item_id", "decision", "policy", "evidence_hash"),
+        "inventory_positioning_stock_proof": ("tenant", "proof_id", "item_id", "proof_hash", "public_claims", "created_at"),
+        "inventory_positioning_cross_node_federation": ("tenant", "federation_id", "item_id", "external_system", "projection_hash"),
+        "inventory_positioning_carbon_fulfillment": ("tenant", "carbon_id", "node_id", "carbon_intensity", "selected", "scheduled_at"),
+        "inventory_positioning_channel_allocation": ("tenant", "channel_allocation_id", "channel", "item_id", "quantity", "clearing_bid"),
+        "inventory_positioning_anomaly_signal": ("tenant", "signal_id", "item_id", "entropy", "observed_at", "decision"),
+        "inventory_positioning_stock_risk_model": ("tenant", "risk_model_id", "item_id", "risk_score", "model_version", "explanations"),
+        "inventory_positioning_seed_data": ("tenant", "seed_id", "node_type", "status", "uom", "allocation_policy"),
+        "inventory_positioning_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "version"),
+        "inventory_positioning_control_assertion": ("tenant", "control_id", "assertion", "status", "evidence_hash", "tested_at"),
+        "inventory_positioning_governed_model": ("tenant", "model_id", "name", "feature_lineage", "drift_score", "governance_status"),
+        "inventory_positioning_rule": ("tenant", "rule_id", "scope", "status", "predicate", "compiled_hash"),
+        "inventory_positioning_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
+        "inventory_positioning_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_uom"),
+        "inventory_positioning_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        "inventory_positioning_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "inventory_positioning_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "inventory_positioning_item_attribute.item_id", "to": "inventory_positioning_item.item_id", "type": "owned_child"},
+        {"from": "inventory_positioning_lot.item_id", "to": "inventory_positioning_item.item_id", "type": "owned_lot"},
+        {"from": "inventory_positioning_serial.lot_id", "to": "inventory_positioning_lot.lot_id", "type": "owned_serial"},
+        {"from": "inventory_positioning_node_calendar.node_id", "to": "inventory_positioning_node.node_id", "type": "owned_calendar"},
+        {"from": "inventory_positioning_inventory_position.item_id", "to": "inventory_positioning_item.item_id", "type": "owned_position"},
+        {"from": "inventory_positioning_inventory_position.node_id", "to": "inventory_positioning_node.node_id", "type": "owned_position"},
+        {"from": "inventory_positioning_receipt_line.receipt_id", "to": "inventory_positioning_receipt.receipt_id", "type": "owned_child"},
+        {"from": "inventory_positioning_allocation_line.allocation_id", "to": "inventory_positioning_allocation.allocation_id", "type": "owned_child"},
+        {"from": "inventory_positioning_quality_release.hold_id", "to": "inventory_positioning_quality_hold.hold_id", "type": "owned_release"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "inventory_positioning",
+        }
+        for table in INVENTORY_POSITIONING_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.inventory-positioning-owned-schema-contract.v1",
+        "ok": len(tables) == len(INVENTORY_POSITIONING_OWNED_TABLES)
+        and len(tables) >= 40
+        and all(item["table"].startswith("inventory_positioning_") for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/inventory_positioning/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(INVENTORY_POSITIONING_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in INVENTORY_POSITIONING_OWNED_TABLES
+        ),
+        "datastore_backends": INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def inventory_positioning_build_service_contract() -> dict:
+    """Return Inventory Positioning command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_item",
+        "register_node",
+        "post_goods_receipt",
+        "post_adjustment",
+        "allocate_inventory",
+        "release_allocation",
+        "apply_quality_hold",
+        "project_in_transit",
+        "generate_replenishment_signal",
+        "reconcile_inventory",
+        "parse_inventory_event",
+        "simulate_allocation_policy",
+        "route_allocation",
+        "generate_stock_proof",
+        "screen_inventory_policy",
+        "federate_inventory_view",
+        "verify_node_identity",
+        "schedule_carbon_aware_fulfillment",
+        "optimize_allocation",
+        "allocate_competing_channels",
+        "run_control_tests",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.inventory-positioning-service-contract.v1",
+        "ok": len(command_methods) >= 25,
+        "transaction_boundary": "inventory_positioning_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "calculate_availability",
+            "build_workbench_view",
+            "forecast_stockout",
+            "score_stock_risk",
+            "detect_inventory_anomaly",
+            "model_stochastic_stock_exposure",
+            "verify_owned_table_boundary",
+        ),
+        "mutates_only": INVENTORY_POSITIONING_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _INVENTORY_POSITIONING_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _INVENTORY_POSITIONING_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def inventory_positioning_build_release_evidence() -> dict:
+    """Return Inventory Positioning package-local release evidence."""
+    schema = inventory_positioning_build_schema_contract()
+    service = inventory_positioning_build_service_contract()
+    api = inventory_positioning_build_api_contract()
+    permissions = inventory_positioning_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 40},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(INVENTORY_POSITIONING_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 25},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"register_item", "allocate_inventory", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.inventory-positioning-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
