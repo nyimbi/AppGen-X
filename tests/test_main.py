@@ -5504,6 +5504,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "device_component_modules_ready",
         "device_component_tests_ready",
         "device_component_scenarios_ready",
+        "device_component_runtime_replay_matrix_ready",
     } <= set(mobile_device_smoke["passing_checks"])
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
@@ -16783,6 +16784,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "device_component_modules_ready",
         "device_component_tests_ready",
         "device_component_scenarios_ready",
+        "device_component_runtime_replay_matrix_ready",
     } <= set(mobile_runtime_smoke["checks"])
     device_module_manifest = mobile_runtime.device_api_component_module_manifest()
     device_test_manifest = mobile_runtime.device_api_component_test_module_manifest()
@@ -16793,6 +16795,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_runtime_scenarios["ok"] is True
     assert generated_runtime_scenarios["scenario_count"] == len(generated_mobile_apis)
     assert generated_runtime_scenarios["unsupported_fallback"]["decision"] == "blocked_unsupported_target"
+    generated_component_runtime_matrix = mobile_runtime.device_api_component_runtime_replay_matrix()
+    assert generated_component_runtime_matrix["format"] == "appgen.generated-device-api-component-runtime-replay-matrix.v1"
+    assert generated_component_runtime_matrix["ok"] is True
+    assert len(generated_component_runtime_matrix["component_replays"]) == len(generated_mobile_apis)
+    assert {
+        "device_component_modules_replay",
+        "device_component_api_coverage",
+        "device_component_event_pipeline_coverage",
+        "device_component_unsupported_target_fallback",
+        "device_component_replays_side_effect_free",
+    } <= {check["id"] for check in generated_component_runtime_matrix["checks"] if check["ok"]}
+    assert all(
+        "emit_component_event" in item["scenario"]["pipeline"]
+        for item in generated_component_runtime_matrix["component_replays"]
+    )
     assert {item["api"] for item in device_module_manifest["components"]} == generated_mobile_apis
     assert {item["api"] for item in device_test_manifest["tests"]} == generated_mobile_apis
     camera_device_component = _load_module(output_dir / "device_api_components" / "camera.py", "generated_camera_device_component")

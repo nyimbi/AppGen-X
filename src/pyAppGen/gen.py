@@ -19659,6 +19659,124 @@ def device_api_component_scenario_matrix(target="android"):
     }
 
 
+def device_api_component_runtime_replay_matrix(target="android"):
+    """Replay generated device component modules and generated tests as one runtime gate."""
+    form_designer = _load_form_designer()
+    specs = form_designer.mobile_device_component_spec_contract()["specs"]
+    module_manifest = device_api_component_module_manifest()
+    test_manifest = device_api_component_test_module_manifest()
+    tests_by_api = {item["api"]: item for item in test_manifest["tests"]}
+    component_dir = Path(__file__).with_name("device_api_components")
+    test_dir = Path(__file__).with_name("device_api_component_tests")
+    replays = []
+    for item in specs:
+        module_name = _module_name(item["api"])
+        module_path = component_dir / f"{module_name}.py"
+        test_path = test_dir / f"test_{module_name}.py"
+        module_smoke = {"ok": False, "checks": (), "side_effects": (), "error": "missing_module"}
+        replay = {"ok": False, "side_effects": (), "decision": "missing_module", "phases": ()}
+        scenario = {"ok": False, "side_effects": (), "decision": "missing_module", "pipeline": ()}
+        test_smoke = {"ok": False, "tests": (), "error": "missing_test_module"}
+        selected_target = target if target in item["targets"] else item["targets"][0]
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_device_component_runtime_matrix_{module_name}")
+            module_smoke = module.smoke_test()
+            replay = module.replay(selected_target)
+            scenario = module.run_scenario(selected_target)
+        if test_path.exists():
+            test_module = _load_generated_module(test_path, f"generated_device_component_runtime_matrix_test_{module_name}")
+            test_smoke = test_module.smoke_test()
+        replays.append(
+            {
+                "api": item["api"],
+                "component": item["component"],
+                "target": selected_target,
+                "path": f"app/device_api_components/{module_name}.py",
+                "test_path": tests_by_api.get(item["api"], {}).get("path"),
+                "ok": module_path.exists()
+                and test_path.exists()
+                and tests_by_api.get(item["api"], {}).get("exists", False)
+                and bool(module_smoke.get("ok"))
+                and bool(replay.get("ok"))
+                and bool(scenario.get("ok"))
+                and bool(test_smoke.get("ok"))
+                and "dispatch_component_events" in tuple(replay.get("phases", ()))
+                and "emit_component_event" in tuple(scenario.get("pipeline", ()))
+                and not tuple(module_smoke.get("side_effects", ()))
+                and not tuple(replay.get("side_effects", ()))
+                and not tuple(scenario.get("side_effects", ())),
+                "module_smoke": module_smoke,
+                "replay": replay,
+                "scenario": scenario,
+                "test_smoke": test_smoke,
+            }
+        )
+    unsupported = replay_device_api("nfc", "web-pwa")
+    checks = (
+        {
+            "id": "device_component_modules_replay",
+            "ok": len(replays) == len(specs) and all(item["ok"] for item in replays),
+            "evidence": tuple(item["api"] for item in replays),
+        },
+        {
+            "id": "device_component_api_coverage",
+            "ok": {item["api"] for item in specs} == {item["api"] for item in replays},
+            "evidence": tuple(sorted(item["api"] for item in replays)),
+        },
+        {
+            "id": "device_component_event_pipeline_coverage",
+            "ok": all(
+                "dispatch_component_events" in tuple(item["replay"].get("phases", ()))
+                and "emit_component_event" in tuple(item["scenario"].get("pipeline", ()))
+                for item in replays
+            ),
+            "evidence": tuple(
+                {
+                    "api": item["api"],
+                    "phases": item["replay"].get("phases", ()),
+                    "pipeline": item["scenario"].get("pipeline", ()),
+                }
+                for item in replays
+            ),
+        },
+        {
+            "id": "device_component_unsupported_target_fallback",
+            "ok": unsupported["decision"] == "blocked_unsupported_target"
+            and not unsupported["ok"]
+            and "disable_component_with_explanation" in unsupported["phases"],
+            "evidence": unsupported,
+        },
+        {
+            "id": "device_component_replays_side_effect_free",
+            "ok": all(
+                not tuple(item["module_smoke"].get("side_effects", ()))
+                and not tuple(item["replay"].get("side_effects", ()))
+                and not tuple(item["scenario"].get("side_effects", ()))
+                for item in replays
+            )
+            and not tuple(unsupported.get("side_effects", ())),
+            "evidence": (),
+        },
+    )
+    return {
+        "format": "appgen.generated-device-api-component-runtime-replay-matrix.v1",
+        "ok": module_manifest["ok"] and test_manifest["ok"] and all(check["ok"] for check in checks),
+        "target": target,
+        "component_replays": tuple(replays),
+        "unsupported_fallback": unsupported,
+        "checks": checks,
+        "guards": (
+            "device_component_modules_before_runtime_claim",
+            "device_component_tests_before_runtime_claim",
+            "event_pipeline_required_before_release",
+            "unsupported_targets_disable_component",
+            "device_component_replays_are_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def mobile_device_runtime_manifest(include_scenarios=True):
     """Return generated device APIs, permissions, adapters, fixtures, and replay evidence."""
     form_designer = _load_form_designer()
@@ -19769,6 +19887,7 @@ def replay_device_api(api, target="android"):
 def validate_mobile_device_runtime():
     """Validate generated device runtime coverage before mobile/native release claims."""
     manifest = mobile_device_runtime_manifest()
+    component_replay_matrix = device_api_component_runtime_replay_matrix()
     required = (
         "camera",
         "location",
@@ -19798,6 +19917,7 @@ def validate_mobile_device_runtime():
         {"id": "device_component_modules_ready", "ok": manifest["device_component_modules"]["ok"]},
         {"id": "device_component_tests_ready", "ok": manifest["device_component_tests"]["ok"]},
         {"id": "device_component_scenarios_ready", "ok": manifest["device_component_scenarios"]["ok"] and manifest["device_component_scenarios"]["scenario_count"] == len(manifest["apis"])},
+        {"id": "device_component_runtime_replay_matrix_ready", "ok": component_replay_matrix["ok"] and not component_replay_matrix["side_effects"]},
     )
     return {
         "format": "appgen.generated-mobile-device-runtime-validation.v1",
@@ -19805,6 +19925,7 @@ def validate_mobile_device_runtime():
         "checks": checks,
         "manifest": manifest,
         "replays": replays,
+        "component_replay_matrix": component_replay_matrix,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 

@@ -25589,6 +25589,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "capability_lifecycle_complete",
         "device_component_modules_ready",
         "device_component_tests_ready",
+        "device_component_scenarios_ready",
+        "device_component_runtime_replay_matrix_ready",
     )
 
     checks = (
