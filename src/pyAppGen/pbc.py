@@ -4476,6 +4476,7 @@ def pbc_source_artifact_contract(key: str) -> dict:
     manifest_text = (source_dir / "manifest.py").read_text(encoding="utf-8") if (source_dir / "manifest.py").is_file() else ""
     service_text = (source_dir / "services.py").read_text(encoding="utf-8") if (source_dir / "services.py").is_file() else ""
     route_text = (source_dir / "routes.py").read_text(encoding="utf-8") if (source_dir / "routes.py").is_file() else ""
+    handler_text = (source_dir / "handlers.py").read_text(encoding="utf-8") if (source_dir / "handlers.py").is_file() else ""
     ui_text = (source_dir / "ui.py").read_text(encoding="utf-8") if (source_dir / "ui.py").is_file() else ""
     config_text = (source_dir / "config.py").read_text(encoding="utf-8") if (source_dir / "config.py").is_file() else ""
     permissions_text = (
@@ -4546,6 +4547,16 @@ def pbc_source_artifact_contract(key: str) -> dict:
             ),
         },
         {
+            "id": "handler_runtime_surface_materialized",
+            "ok": "def handler_manifest(" in handler_text
+            and "def dispatch_event(" in handler_text
+            and "def smoke_test(" in handler_text
+            and "idempotency_key" in handler_text
+            and "retry_policy" in handler_text
+            and "dead_letter_table" in handler_text,
+            "path": f"{relative_dir}/handlers.py",
+        },
+        {
             "id": "governance_hooks_materialized",
             "ok": "def validate_configuration(" in config_text
             and "def configuration_manifest(" in config_text
@@ -4578,6 +4589,11 @@ def pbc_source_artifact_contract(key: str) -> dict:
             and "test_registration_plan_is_side_effect_free" in tests_text
             and "test_service_and_route_surface_are_executable" in tests_text
             and "test_configuration_permissions_and_seed_hooks_are_executable" in tests_text,
+            "path": f"{relative_dir}/tests/test_contract.py",
+        },
+        {
+            "id": "handler_contract_tests_materialized",
+            "ok": "test_event_handlers_are_idempotent_and_retryable" in tests_text,
             "path": f"{relative_dir}/tests/test_contract.py",
         },
         {

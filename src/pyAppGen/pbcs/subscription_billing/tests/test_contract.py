@@ -59,3 +59,40 @@ def test_configuration_permissions_and_seed_hooks_are_executable():
     assert not config_smoke['side_effects']
     assert not permission_smoke['side_effects']
     assert not seed_smoke['side_effects']
+
+
+def test_ui_workbench_surface_is_executable():
+    from .. import ui
+
+    if hasattr(ui, 'smoke_test'):
+        smoke = ui.smoke_test()
+    else:
+        contract = getattr(ui, f"{PBC_MANIFEST['pbc']}_ui_contract")()
+        rendered = {
+            'ok': contract['ok'],
+            'cards': contract.get('panels') or contract.get('fragments'),
+            'route': (contract.get('routes') or (None,))[0],
+        }
+        smoke = {
+            'ok': contract['ok'] and bool(contract.get('fragments')) and bool(rendered['cards']),
+            'manifest': {'fragments': contract.get('fragments', ())},
+            'rendered': rendered,
+            'side_effects': (),
+        }
+    assert smoke['ok'] is True
+    assert smoke['manifest']['fragments']
+    assert smoke['rendered']['cards']
+    assert not smoke['side_effects']
+
+
+def test_event_handlers_are_idempotent_and_retryable():
+    from .. import handlers
+
+    smoke = handlers.smoke_test()
+    assert smoke['ok'] is True
+    assert smoke['manifest']['handlers']
+    assert smoke['first_result']['retry_policy']
+    assert smoke['first_result']['dead_letter_table'].startswith('subscription_billing_')
+    assert smoke['duplicate_result']['duplicate'] is True
+    assert smoke['unknown_result']['handled'] is False
+    assert not smoke['side_effects']
