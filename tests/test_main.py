@@ -2781,23 +2781,29 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "probe_connection",
         "design_dataset",
+        "generate_relationship_lookups",
         "publish_service_resources",
         "rehearse_offline_replay",
         "monitor_replication_and_failover",
+        "prove_design_runtime_session",
         "surface_runtime_diagnostics",
     } == {item["phase"] for item in readiness["phases"]}
     assert {
         "connection_ready",
         "dataset_ready",
+        "relationship_lookup_ready",
         "publish_ready",
         "offline_replay_ready",
         "replication_failover_ready",
+        "design_runtime_session_ready",
         "diagnostics_ready",
         "operation_surface_ready",
         "ide_scenario_ready",
         "phase_order_ready",
     } == {check["id"] for check in readiness["checks"]}
     assert readiness["final_state"]["persisted_writes"] == 0
+    assert readiness["final_state"]["lookup_endpoints"] == data_ide_scenario["final_state"]["lookup_endpoints"]
+    assert readiness["final_state"]["design_runtime_phases"] == data_ide_scenario["final_state"]["design_runtime_phases"]
     assert readiness["final_state"]["scenario_steps"] == len(data_ide_scenario["pipeline"])
     assert data_workbench["readiness"]["ok"] is True
     assert data_workbench["readiness"]["final_state"]["runtime_steps"] > 0
@@ -16492,23 +16498,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "probe_connection",
         "design_dataset",
+        "generate_relationship_lookups",
         "publish_service_resources",
         "rehearse_offline_replay",
         "monitor_replication_and_failover",
+        "prove_design_runtime_session",
         "surface_runtime_diagnostics",
     } == {item["phase"] for item in generated_readiness["phases"]}
     assert {
         "connection_ready",
         "dataset_ready",
+        "relationship_lookup_ready",
         "publish_ready",
         "offline_replay_ready",
         "replication_failover_ready",
+        "design_runtime_session_ready",
         "diagnostics_ready",
         "operation_surface_ready",
         "ide_scenario_ready",
         "phase_order_ready",
     } == {check["id"] for check in generated_readiness["checks"]}
     assert generated_readiness["final_state"]["persisted_writes"] == 0
+    assert generated_readiness["final_state"]["lookup_endpoints"] == generated_data_ide_scenario["final_state"]["lookup_endpoints"]
+    assert generated_readiness["final_state"]["design_runtime_phases"] == generated_data_ide_scenario["final_state"]["design_runtime_phases"]
     assert generated_readiness["final_state"]["scenario_steps"] == len(generated_data_ide_scenario["pipeline"])
     assert generated_data_tooling["readiness"]["ok"] is True
     assert generated_data_tooling["readiness"]["final_state"]["runtime_steps"] > 0

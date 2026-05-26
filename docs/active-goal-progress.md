@@ -1820,6 +1820,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   targeted PBC evidence tests pass (`16 passed`), all package-local PBC tests
   pass (`396 passed`), and the full PBC audit stack including all built-in
   generation smoke and `pbc_release_audit()` returns true. Commit: `39c08cd`.
+- Current data tooling readiness pass promotes relationship lookup lifecycle
+  replay and design-runtime session replay into first-class source and
+  generated readiness blockers. Data tooling readiness now requires lookup
+  editor generation for each relationship, lookup endpoint parity, design
+  runtime replay ordering, and scenario final-state parity before release
+  claims. Commit: pending.
 
 ## Open Completion Areas
 
