@@ -1084,6 +1084,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   runtime tests, implemented-capability audit, implementation release audit,
   `pbc_release_audit()`, generation smoke audit, the restricted legacy-name
   scan, and the 113-test PBC runtime regression slice.
+- `4015545` tightens generated binding runtime replay coverage: core binding
+  modules and designer-family modules now publish operation-step evidence, and
+  generated validation fails when binding operation-step coverage,
+  designer-family operation-step coverage, or side-effect-free replay evidence
+  is missing. Verification passed for py-compile, staged diff hygiene,
+  generated app regression, and the source audit gate.
+- Current cleanup pass archives inactive tracked workspace folders into
+  `archive/tracked-unused-2026-05-26/` with a manifest. The archived folders
+  were excluded from package builds and had no active source, test, README, or
+  docs references; dirty generated folders remain in place for a separate,
+  safer pass.
 
 ## Open Completion Areas
 
