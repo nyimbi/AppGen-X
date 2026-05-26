@@ -1670,6 +1670,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   package-local PBC tests pass (`322 passed`), and the full PBC audit stack
   including all built-in generation smoke and `pbc_release_audit()` returns true.
   Commit: `0f60fe1`.
+- Current PBC UI workbench execution pass adds direct source-package
+  `smoke_test()` workbench execution to every built-in PBC UI module. Each
+  smoke path renders the package workbench with deterministic state and proves
+  fragments, routes, cards, permissions, configuration, rule, parameter, event
+  surface, no-stream-picker, and no-shared-table binding evidence instead of
+  relying on fallback manifest checks. UI syntax checks pass, source/generated
+  package evidence tests pass (`8 passed`), all package-local PBC tests pass
+  (`322 passed`), and the full PBC audit stack including all built-in generation
+  smoke and `pbc_release_audit()` returns true. Commit: `7fde8c6`.
 
 ## Open Completion Areas
 
