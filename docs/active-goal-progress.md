@@ -1714,6 +1714,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   PBC tests pass (`322 passed`), and the full PBC audit stack including all
   built-in generation smoke and `pbc_release_audit()` returns true. Commit:
   `1c6a27c`.
+- Current repository hygiene pass archives ignored Python/test runtime caches
+  from the active tree into `archive/repo-cleanup-2026-05-27/runtime-cache/`
+  and records the cleanup scope in a manifest. This keeps source, docs,
+  templates, and in-flight PBC release-evidence edits untouched while removing
+  generated cache directories from the working tree. Commit: `f6ebf82`.
 
 ## Open Completion Areas
 
