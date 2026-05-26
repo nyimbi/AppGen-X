@@ -11518,6 +11518,14 @@ def run_binding_operation():
     runtime_manifest_data = _runtime().binding_runtime_manifest()
     replay = _runtime().replay_binding_runtime()
     kind = _module_kind()
+    operation_steps = {{
+        "graph": ("load_binding_graph", "validate_nodes", "validate_edges", "record_graph_diagnostics"),
+        "expression": ("parse_expression", "sandbox_expression", "apply_converters", "run_validators"),
+        "designer": ("open_binding_designer", "stage_visual_link", "validate_graph", "preview_value"),
+        "runtime_wiring": ("emit_binding_registry", "attach_observers", "build_update_queue", "wire_validation_pipeline"),
+        "propagation": ("propagate_dataset_to_field", "propagate_field_to_control", "recover_validator_failure"),
+        "lifecycle": ("author_binding_graph", "generate_runtime_wiring", "replay_design_session", "release_binding_runtime"),
+    }}[kind]
     operation = {{
         "graph": designer.livebindings_graph_contract(),
         "expression": designer.binding_expression_sandbox_contract(),
@@ -11534,6 +11542,7 @@ def run_binding_operation():
         "kind": kind,
         "ok": operation_ok and not side_effects and replay["ok"],
         "operation": operation,
+        "operation_steps": operation_steps,
         "replay": replay,
         "side_effects": (),
     }}
@@ -17714,6 +17723,7 @@ def binding_module_runtime_replay_matrix():
             {
                 "module": item["module"],
                 "kind": operation.get("kind"),
+                "operation_steps": tuple(operation.get("operation_steps", ())),
                 "path": item["path"],
                 "test_path": tests_by_module.get(item["module"], {}).get("path"),
                 "ok": item["exists"]
@@ -17769,6 +17779,28 @@ def binding_module_runtime_replay_matrix():
         )
     required_kinds = {"graph", "expression", "designer", "runtime_wiring", "propagation", "lifecycle"}
     required_families = set(form_designer.binding_designer_family_contract()["required_families"])
+    required_binding_steps = {
+        "load_binding_graph",
+        "validate_nodes",
+        "validate_edges",
+        "parse_expression",
+        "sandbox_expression",
+        "stage_visual_link",
+        "emit_binding_registry",
+        "attach_observers",
+        "propagate_dataset_to_field",
+        "propagate_field_to_control",
+        "recover_validator_failure",
+        "release_binding_runtime",
+    }
+    required_family_steps = {
+        "open_binding_designer",
+        "stage_graph_change",
+        "validate_graph",
+        "preview_runtime_effect",
+        "commit_or_rollback",
+        "record_history",
+    }
     checks = (
         {
             "id": "binding_modules_replay",
@@ -17789,6 +17821,18 @@ def binding_module_runtime_replay_matrix():
             "id": "binding_designer_family_coverage",
             "ok": required_families == {item["family"] for item in family_replays},
             "evidence": tuple(sorted(item["family"] for item in family_replays)),
+        },
+        {
+            "id": "binding_module_operation_step_coverage",
+            "ok": required_binding_steps
+            <= {step for item in binding_replays if item["ok"] for step in item["operation_steps"]},
+            "evidence": tuple(sorted({step for item in binding_replays for step in item["operation_steps"]})),
+        },
+        {
+            "id": "binding_designer_family_operation_step_coverage",
+            "ok": required_family_steps
+            <= {step for item in family_replays if item["ok"] for step in item["operation_steps"]},
+            "evidence": tuple(sorted({step for item in family_replays for step in item["operation_steps"]})),
         },
         {
             "id": "binding_module_replays_side_effect_free",

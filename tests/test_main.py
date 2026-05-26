@@ -16394,8 +16394,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding_module_kind_coverage",
         "binding_designer_family_modules_replay",
         "binding_designer_family_coverage",
+        "binding_module_operation_step_coverage",
+        "binding_designer_family_operation_step_coverage",
         "binding_module_replays_side_effect_free",
     } <= {check["id"] for check in binding_module_runtime_matrix["checks"] if check["ok"]}
+    assert {"validate_nodes", "sandbox_expression", "emit_binding_registry", "recover_validator_failure"} <= {
+        step
+        for item in binding_module_runtime_matrix["binding_module_replays"]
+        for step in item["operation_steps"]
+    }
+    assert {"open_binding_designer", "stage_graph_change", "preview_runtime_effect", "record_history"} <= {
+        step
+        for item in binding_module_runtime_matrix["binding_designer_family_replays"]
+        for step in item["operation_steps"]
+    }
     assert all(item["operation_steps"] for item in binding_module_runtime_matrix["binding_designer_family_replays"])
     binding_replay = binding_runtime.replay_binding_runtime()
     assert binding_replay["ok"] is True
