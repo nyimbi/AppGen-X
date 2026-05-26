@@ -20,13 +20,58 @@ Package-local implementation contract for the Payroll Engine PBC. The package ow
 Owned tables and generated model artifacts:
 
 - `payroll_calendar`
+- `payroll_period`
+- `payroll_pay_group`
+- `payroll_legal_entity`
 - `payroll_run`
+- `payroll_run_worker`
+- `payroll_run_approval`
+- `payroll_run_lock`
 - `worker_projection`
+- `worker_pay_profile`
+- `worker_bank_instruction`
 - `labor_hours`
+- `labor_hours_line`
+- `earning_code`
+- `earning_calculation`
+- `overtime_calculation`
+- `gross_pay_component`
 - `payslip`
+- `payslip_line`
+- `tax_withholding_projection`
 - `deduction`
+- `deduction_rule`
+- `deduction_arrear`
+- `garnishment_order`
 - `benefit_allocation`
+- `benefit_plan`
+- `employer_contribution`
+- `net_pay_distribution`
+- `payment_instruction`
+- `payment_batch_projection`
+- `journal_request_projection`
+- `tax_wage_base_projection`
 - `payroll_filing`
+- `payroll_filing_line`
+- `payroll_correction`
+- `retro_adjustment`
+- `off_cycle_payment`
+- `payroll_exception`
+- `payroll_policy_screening`
+- `payroll_audit_trace`
+- `payroll_proof`
+- `payroll_federation_projection`
+- `payroll_carbon_batch_window`
+- `payroll_batch_optimization`
+- `payroll_cash_allocation`
+- `payroll_anomaly_signal`
+- `payroll_risk_model`
+- `payroll_cash_forecast`
+- `payroll_parsed_instruction`
+- `payroll_seed_data`
+- `payroll_schema_extension`
+- `payroll_control_assertion`
+- `payroll_governed_model`
 - `payroll_rule`
 - `payroll_parameter`
 - `payroll_configuration`
@@ -44,24 +89,70 @@ The PBC does not share personnel, time/labor, tax, treasury, ledger, or audit ta
 ## Standard Capabilities
 
 - Payroll calendar and payroll run creation by tenant, legal entity, country, period, currency, and run type.
+- Payroll periods, pay groups, legal entities, payroll run rosters, run approvals, and run locks.
 - Worker payroll projection from personnel identity evidence.
+- Worker pay profiles, bank instructions, pay group eligibility, and country/currency controls.
 - Labor-hours ingestion from AppGen-X events or direct package-local command paths.
+- Labor-hour lines, earning code catalogs, earning calculations, overtime calculations, and gross-pay components.
 - Hourly, salary, overtime, supplemental, and off-cycle gross-pay calculation.
 - Tax withholding projection and gross-to-net payslip calculation.
+- Payslip lines for earnings, taxes, deductions, benefits, net-pay distributions, and corrections.
 - Deduction handling for retirement, garnishment, court, tax, loan, and post-tax deductions with rule-based limits.
+- Deduction rules, arrears, and garnishment-order priority evidence.
 - Benefit allocation with employer and employee contribution tracking.
+- Benefit plans and employer contribution evidence.
 - Net pay floor enforcement and payroll precision support.
+- Payment instructions, payment-batch projections, and treasury handoff readiness.
 - Payslip generation with gross, tax, deduction, benefit, net-pay, risk, currency, and status fields.
 - Approval workflow and payroll posting control.
 - Filing preparation by jurisdiction and statutory channel.
+- Filing lines, filing materiality, and jurisdiction-level filing evidence.
 - Treasury payment-batch readiness without treasury table access.
 - Ledger journal request readiness without ledger table access.
 - Tax wage-base projection handoff without tax table access.
 - Retroactive adjustment and off-cycle payroll policy support through rules and parameters.
+- Payroll corrections, payroll exceptions, policy screening, audit traces, payroll proofs, federation projections, carbon-aware batch windows, batch optimization, cash allocation, anomaly signals, risk models, cash forecasts, parsed instruction evidence, control assertions, governed model metadata, seed data, and schema extensions.
 - Multi-tenant and multi-entity isolation.
 - AppGen-X inbox/outbox idempotency and dead-letter evidence.
 - RBAC descriptors for run, approval, filing, event, configuration, and audit actions.
 - Package-local workbench UI for runs, payslips, deductions, benefits, filings, rules, parameters, configuration, and event evidence.
+
+## Generated Schema, Services, And Release Evidence
+
+`build_schema_contract` emits field definitions, relationships, migration paths
+under `pbcs/payroll_engine/migrations/`, generated model names, backend
+allowlists, and `shared_table_access: false` for every owned table. The
+schema contract covers calendar, period, pay group, legal entity, runs, run
+workers, approvals, locks, workers, pay profiles, bank instructions, labor
+hours, earning codes, overtime, gross components, payslips, taxes, deductions,
+arrears, garnishments, benefits, employer contributions, net distributions,
+payment instructions, payment batches, journal requests, tax wage bases,
+filings, corrections, retro adjustments, off-cycle payments, exceptions,
+policy screening, audit trace, proofs, federation, carbon windows,
+optimization, cash allocation, anomaly, risk, forecast, parsed instructions,
+seed data, extensions, controls, governed models, rules, parameters,
+configuration, outbox, inbox, and dead-letter artifacts.
+
+`build_service_contract` declares the transaction boundary as the Payroll
+Engine owned datastore plus the AppGen-X outbox. Commands configure runtime
+state, set parameters, register rules and schema extensions, receive events,
+maintain worker projections, open payroll runs, ingest labor hours, calculate
+payslips, apply deductions, allocate benefits, post payroll, prepare filings,
+route payment or filing work, generate payroll proofs, screen policy, federate
+payroll views, verify worker identity, run resilience drills, rotate crypto
+epochs, schedule carbon-aware batches, optimize payroll batches, allocate cash,
+run controls, register governed models, and verify owned-table boundaries.
+Query methods cover workbench views, pay-policy simulation, cash forecasting,
+semantic instruction parsing, payroll-risk scoring, exception recommendations,
+anomaly detection, stochastic exposure, and generated API/schema/release
+contracts. External dependencies are declared APIs, consumed AppGen-X events,
+and package-local projections only; shared tables are forbidden.
+
+`build_release_evidence` combines schema, service, API, and RBAC evidence into
+release checks for owned schema depth, migration coverage, command depth,
+fixed AppGen-X eventing, permission coverage for key commands, backend
+allowlist, and no shared-table access. A Payroll Engine release is valid only
+when all checks pass and `blocking_gaps` is empty.
 
 ## Advanced Capabilities
 

@@ -9,6 +9,9 @@ from pyAppGen.pbc import PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbc import payroll_engine_allocate_benefit
 from pyAppGen.pbc import payroll_engine_apply_deduction
 from pyAppGen.pbc import payroll_engine_build_api_contract
+from pyAppGen.pbc import payroll_engine_build_release_evidence
+from pyAppGen.pbc import payroll_engine_build_schema_contract
+from pyAppGen.pbc import payroll_engine_build_service_contract
 from pyAppGen.pbc import payroll_engine_build_workbench_view
 from pyAppGen.pbc import payroll_engine_calculate_payslip
 from pyAppGen.pbc import payroll_engine_configure_runtime
@@ -41,10 +44,14 @@ def test_payroll_engine_runtime_executes_standard_and_advanced_capabilities() ->
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/payroll_engine"
     assert runtime["owned_tables"] == PAYROLL_ENGINE_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 24
+    assert len(runtime["owned_tables"]) >= 40
+    assert len(runtime["standard_features"]) >= 40
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
+    assert "appgen_x_outbox" in runtime["standard_features"]
+    assert "appgen_x_inbox" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert set(PAYROLL_ENGINE_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
@@ -56,7 +63,13 @@ def test_payroll_engine_runtime_executes_standard_and_advanced_capabilities() ->
     assert contract["source_package"]["owned_tables"] == PAYROLL_ENGINE_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "payroll_engine.event"
+    assert contract["source_package"]["required_event_topic"] == PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == PAYROLL_ENGINE_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == PAYROLL_ENGINE_EMITTED_EVENT_TYPES
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "PayrollConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(PAYROLL_ENGINE_ADVANCED_CAPABILITY_KEYS)
@@ -64,6 +77,9 @@ def test_payroll_engine_runtime_executes_standard_and_advanced_capabilities() ->
     assert pbc_implemented_capability_audit(("payroll_engine",))["ok"] is True
 
     api = payroll_engine_build_api_contract()
+    schema = payroll_engine_build_schema_contract()
+    service = payroll_engine_build_service_contract()
+    release = payroll_engine_build_release_evidence()
     permissions = payroll_engine_permissions_contract()
     assert api["format"] == "appgen.payroll-engine-api-contract.v1"
     assert api["owned_tables"] == PAYROLL_ENGINE_OWNED_TABLES
@@ -74,6 +90,25 @@ def test_payroll_engine_runtime_executes_standard_and_advanced_capabilities() ->
     assert api["stream_engine_picker_visible"] is False
     assert {route["route"] for route in api["routes"]} >= {"POST /payroll-runs", "POST /payroll/events/inbox", "GET /payroll-workbench"}
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert schema["format"] == "appgen.payroll-engine-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(PAYROLL_ENGINE_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(PAYROLL_ENGINE_OWNED_TABLES)
+    assert {
+        "payroll_period",
+        "worker_pay_profile",
+        "payslip_line",
+        "tax_withholding_projection",
+        "payroll_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.payroll-engine-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.payroll-engine-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert permissions["action_permissions"]["post_payroll_run"] == "payroll_engine.approve"
 
 
@@ -220,6 +255,7 @@ def test_payroll_engine_runtime_applies_rules_parameters_configuration_and_ui() 
             "payroll_engine.event",
             "payroll_engine.configure",
             "payroll_engine.audit",
+            "payroll_engine.read",
         ),
     )
     assert rendered["ok"] is True

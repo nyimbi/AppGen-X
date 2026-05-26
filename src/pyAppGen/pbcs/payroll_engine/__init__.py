@@ -11,6 +11,9 @@ from .runtime import PAYROLL_ENGINE_STANDARD_FEATURE_KEYS
 from .runtime import payroll_engine_allocate_benefit
 from .runtime import payroll_engine_apply_deduction
 from .runtime import payroll_engine_build_api_contract
+from .runtime import payroll_engine_build_release_evidence
+from .runtime import payroll_engine_build_schema_contract
+from .runtime import payroll_engine_build_service_contract
 from .runtime import payroll_engine_build_workbench_view
 from .runtime import payroll_engine_calculate_payslip
 from .runtime import payroll_engine_configure_runtime
@@ -44,7 +47,13 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": payroll_engine_ui_contract(),
         "api_contract": payroll_engine_build_api_contract(),
+        "schema_contract": payroll_engine_build_schema_contract(),
+        "service_contract": payroll_engine_build_service_contract(),
+        "release_evidence_contract": payroll_engine_build_release_evidence(),
         "permissions_contract": payroll_engine_permissions_contract(),
         "owned_tables": PAYROLL_ENGINE_OWNED_TABLES,
         "allowed_database_backends": PAYROLL_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": PAYROLL_ENGINE_REQUIRED_EVENT_TOPIC,
+        "consumes": PAYROLL_ENGINE_CONSUMED_EVENT_TYPES,
+        "emits": PAYROLL_ENGINE_EMITTED_EVENT_TYPES,
     }
