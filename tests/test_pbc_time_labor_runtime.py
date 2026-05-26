@@ -11,6 +11,9 @@ from pyAppGen.pbcs.time_labor import TIME_LABOR_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.time_labor import TIME_LABOR_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.time_labor import time_labor_approve_labor_summary
 from pyAppGen.pbcs.time_labor import time_labor_build_api_contract
+from pyAppGen.pbcs.time_labor import time_labor_build_release_evidence
+from pyAppGen.pbcs.time_labor import time_labor_build_schema_contract
+from pyAppGen.pbcs.time_labor import time_labor_build_service_contract
 from pyAppGen.pbcs.time_labor import time_labor_build_workbench_view
 from pyAppGen.pbcs.time_labor import time_labor_calculate_time_entry
 from pyAppGen.pbcs.time_labor import time_labor_configure_runtime
@@ -38,10 +41,14 @@ def test_time_labor_runtime_executes_standard_and_advanced_capabilities() -> Non
     assert runtime["format"] == "appgen.time-labor-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/time_labor"
-    assert len(runtime["standard_features"]) >= 18
+    assert len(runtime["owned_tables"]) >= 40
+    assert len(runtime["standard_features"]) >= 40
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
+    assert "appgen_x_outbox" in runtime["standard_features"]
+    assert "appgen_x_inbox" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert runtime["owned_tables"] == TIME_LABOR_OWNED_TABLES
     assert set(TIME_LABOR_RUNTIME_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
@@ -53,12 +60,41 @@ def test_time_labor_runtime_executes_standard_and_advanced_capabilities() -> Non
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "TimeConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["ok"] is True
     assert contract["source_package"]["owned_tables"] == TIME_LABOR_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == TIME_LABOR_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["required_event_topic"] == TIME_LABOR_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == TIME_LABOR_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == TIME_LABOR_EMITTED_EVENT_TYPES
     assert set(contract["advanced_runtime"]["capabilities"]) == set(TIME_LABOR_RUNTIME_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("time_labor",))["ok"] is True
     assert pbc_implemented_capability_audit(("time_labor",))["ok"] is True
+
+    schema = time_labor_build_schema_contract()
+    service = time_labor_build_service_contract()
+    release = time_labor_build_release_evidence()
+    assert schema["format"] == "appgen.time-labor-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(TIME_LABOR_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(TIME_LABOR_OWNED_TABLES)
+    assert {
+        "shift_pattern",
+        "clock_device",
+        "absence_balance",
+        "labor_cost_allocation",
+        "time_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.time-labor-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.time-labor-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
 
 def test_time_labor_runtime_applies_rules_parameters_and_configuration() -> None:
@@ -169,6 +205,7 @@ def test_time_labor_runtime_applies_rules_parameters_and_configuration() -> None
             "time_labor.event",
             "time_labor.configure",
             "time_labor.audit",
+            "time_labor.read",
         ),
     )
     assert rendered["ok"] is True

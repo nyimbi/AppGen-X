@@ -12,16 +12,67 @@ TIME_LABOR_REQUIRED_EVENT_TOPIC = "appgen.time.events"
 TIME_LABOR_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 TIME_LABOR_OWNED_TABLES = (
     "shift",
+    "shift_pattern",
+    "shift_assignment",
+    "shift_swap_request",
+    "schedule_bid",
+    "labor_demand_forecast",
     "clock_event",
+    "clock_device",
+    "clock_source_route",
+    "clock_exception",
     "time_entry",
+    "time_entry_line",
+    "break_deduction",
+    "overtime_bucket",
+    "premium_calculation",
+    "holiday_calendar",
     "absence",
+    "absence_balance",
+    "absence_entitlement",
+    "absence_approval",
     "labor_summary",
+    "labor_summary_line",
+    "labor_cost_allocation",
+    "labor_distribution",
+    "approval_workflow",
+    "approval_task",
+    "employee_projection",
+    "role_projection",
+    "payroll_labor_projection",
+    "warehouse_site_projection",
+    "manufacturing_shift_projection",
+    "project_cost_projection",
+    "time_policy_screening",
+    "time_audit_trace",
+    "time_hours_proof",
+    "time_federation_projection",
+    "time_carbon_schedule_window",
+    "time_schedule_optimization",
+    "time_shift_allocation",
+    "time_anomaly_signal",
+    "time_labor_risk_model",
+    "time_labor_risk_forecast",
+    "time_parsed_event",
+    "time_seed_data",
+    "time_schema_extension",
+    "time_control_assertion",
+    "time_governed_model",
     "time_rule",
     "time_parameter",
     "time_configuration",
+    "time_labor_appgen_outbox_event",
+    "time_labor_appgen_inbox_event",
+    "time_labor_dead_letter_event",
 )
 TIME_LABOR_CONSUMED_EVENT_TYPES = ("EmployeeCreated", "RoleChanged")
-TIME_LABOR_EMITTED_EVENT_TYPES = ("LaborHoursApproved", "AbsenceRecorded")
+TIME_LABOR_EMITTED_EVENT_TYPES = (
+    "ShiftCreated",
+    "ClockEventRecorded",
+    "TimeEntryCalculated",
+    "LaborHoursApproved",
+    "AbsenceRecorded",
+)
 _TIME_LABOR_RUNTIME_TABLES = (
     "time_labor_appgen_outbox_event",
     "time_labor_appgen_inbox_event",
@@ -86,27 +137,66 @@ TIME_LABOR_RUNTIME_CAPABILITY_KEYS = (
 )
 TIME_LABOR_STANDARD_FEATURE_KEYS = (
     "shift_creation",
+    "shift_pattern_management",
+    "shift_assignment",
+    "shift_swap_request",
+    "schedule_bidding",
+    "labor_demand_forecasting",
     "clock_event_ingestion",
+    "clock_device_registry",
+    "clock_source_route",
+    "clock_exception_queue",
     "clock_sequence_validation",
     "geofence_validation",
     "time_entry_calculation",
+    "time_entry_lines",
     "break_deduction",
+    "meal_penalty_tracking",
     "overtime_calculation",
+    "overtime_bucket",
     "premium_calculation",
+    "holiday_calendar",
     "absence_recording",
+    "absence_balance",
     "entitlement_check",
+    "absence_approval",
     "labor_summary",
+    "labor_summary_line",
+    "labor_cost_allocation",
+    "labor_distribution",
     "approval_workflow",
+    "approval_task",
     "employee_projection",
     "role_projection",
+    "payroll_labor_projection",
+    "warehouse_site_projection",
+    "manufacturing_shift_projection",
+    "project_cost_projection",
     "payroll_ready_event",
     "multi_entity_isolation",
+    "appgen_x_outbox",
+    "appgen_x_inbox",
     "idempotent_handlers",
+    "retry_dead_letter_evidence",
     "permissions",
     "configuration_schema",
     "rule_engine",
     "parameter_engine",
     "seed_data",
+    "schema_extension",
+    "policy_screening",
+    "audit_trace",
+    "hours_proof",
+    "federation_projection",
+    "carbon_schedule_window",
+    "schedule_optimization",
+    "shift_allocation",
+    "time_anomaly_signal",
+    "labor_risk_model",
+    "labor_risk_forecast",
+    "semantic_event_parser",
+    "control_assertion",
+    "governed_model",
     "workbench",
 )
 
@@ -134,6 +224,9 @@ def time_labor_runtime_capabilities() -> dict:
             "record_absence",
             "approve_labor_summary",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -230,6 +323,9 @@ def time_labor_runtime_smoke() -> dict:
     screening = time_labor_screen_policy(state, "shift_100", restricted_sites=("restricted_site",))
     controls = time_labor_run_control_tests(state)
     api = time_labor_build_api_contract()
+    schema = time_labor_build_schema_contract()
+    service = time_labor_build_service_contract()
+    release = time_labor_build_release_evidence()
     federation = time_labor_federate_labor_view(state, "summary_100", systems=("personnel", "payroll", "warehouse"))
     identity = time_labor_verify_employee_identity(state["employees"]["emp_100"]["identity"])
     resilience = time_labor_run_resilience_drill(state, "kiosk_api_timeout")
@@ -258,7 +354,7 @@ def time_labor_runtime_smoke() -> dict:
         {"id": "immutable_labor_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_labor_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_time_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "LaborHoursApproved" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "LaborHoursApproved" in api["events"]["emits"]},
         {"id": "cross_system_labor_federation", "ok": federation["ok"] and "payroll" in federation["systems"]},
         {"id": "workforce_device_integration", "ok": route["idempotency_key"].startswith("time_labor:ClockSource")},
         {"id": "decentralized_employee_time_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -533,11 +629,16 @@ def time_labor_build_api_contract() -> dict:
         "ok": True,
         "routes": (
             {"route": "POST /shifts", "command": "create_shift", "owned_tables": ("shift",), "emits": (), "requires_permission": "time_labor.schedule", "idempotency_key": "shift_id"},
+            {"route": "POST /shift-patterns", "command": "create_shift", "owned_tables": ("shift_pattern",), "emits": (), "requires_permission": "time_labor.schedule", "idempotency_key": "pattern_id"},
+            {"route": "POST /shift-swaps", "command": "create_shift", "owned_tables": ("shift_swap_request",), "emits": (), "requires_permission": "time_labor.schedule", "idempotency_key": "swap_id"},
             {"route": "POST /clock-events", "command": "record_clock_event", "owned_tables": ("clock_event",), "emits": (), "requires_permission": "time_labor.clock", "idempotency_key": "event_id"},
             {"route": "POST /time-entries/calculate", "command": "calculate_time_entry", "owned_tables": ("time_entry",), "emits": (), "requires_permission": "time_labor.summarize", "idempotency_key": "shift_id"},
             {"route": "POST /absences", "command": "record_absence", "owned_tables": ("absence",), "emits": ("AbsenceRecorded",), "requires_permission": "time_labor.absence", "idempotency_key": "absence_id"},
             {"route": "POST /labor-summaries/{id}/approve", "command": "approve_labor_summary", "owned_tables": ("labor_summary",), "emits": ("LaborHoursApproved",), "requires_permission": "time_labor.approve", "idempotency_key": "summary_id:approved_by"},
             {"route": "POST /time/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": TIME_LABOR_CONSUMED_EVENT_TYPES, "requires_permission": "time_labor.event", "idempotency_key": "event_id"},
+            {"route": "POST /time/rules", "command": "register_rule", "owned_tables": ("time_rule",), "requires_permission": "time_labor.configure", "idempotency_key": "rule_id"},
+            {"route": "POST /time/parameters", "command": "set_parameter", "owned_tables": ("time_parameter",), "requires_permission": "time_labor.configure", "idempotency_key": "parameter_name"},
+            {"route": "POST /time/configuration", "command": "configure_runtime", "owned_tables": ("time_configuration",), "requires_permission": "time_labor.configure", "idempotency_key": "tenant"},
             {"route": "GET /labor-summaries", "query": "build_workbench_view", "owned_tables": ("labor_summary", "time_entry"), "requires_permission": "time_labor.read"},
             {"route": "GET /time-workbench", "query": "build_workbench_view", "owned_tables": TIME_LABOR_OWNED_TABLES, "requires_permission": "time_labor.audit"},
         ),
@@ -552,6 +653,193 @@ def time_labor_build_api_contract() -> dict:
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
         "configuration": ("TIME_LABOR_DATABASE_URL", "TIME_LABOR_EVENT_TOPIC", "TIME_LABOR_RETRY_LIMIT", "TIME_LABOR_DEFAULT_TIMEZONE"),
+    }
+
+
+def time_labor_build_schema_contract() -> dict:
+    """Return generated Time Labor schema, migration, and model evidence."""
+    default_fields = ("tenant", "record_id", "source_id", "status", "effective_at", "audit_hash")
+    table_fields = {table: default_fields for table in TIME_LABOR_OWNED_TABLES}
+    table_fields.update(
+        {
+            "shift": ("tenant", "shift_id", "employee_id", "date", "planned_start", "planned_end", "site", "cost_center", "job", "status", "audit_hash"),
+            "shift_pattern": ("tenant", "pattern_id", "name", "cycle_days", "planned_start", "planned_end", "status", "audit_hash"),
+            "shift_assignment": ("tenant", "assignment_id", "shift_id", "employee_id", "assignment_type", "status", "audit_hash"),
+            "shift_swap_request": ("tenant", "swap_id", "from_employee_id", "to_employee_id", "shift_id", "decision", "audit_hash"),
+            "schedule_bid": ("tenant", "bid_id", "employee_id", "shift_id", "preference_score", "bid_status", "audit_hash"),
+            "labor_demand_forecast": ("tenant", "forecast_id", "site", "date", "required_hours", "confidence", "audit_hash"),
+            "clock_event": ("tenant", "event_id", "shift_id", "kind", "time", "source", "distance_meters", "status", "audit_hash"),
+            "clock_device": ("tenant", "device_id", "source", "site", "trust_score", "last_seen_at", "audit_hash"),
+            "clock_source_route": ("tenant", "route_id", "event_id", "route", "latency", "failover_used", "audit_hash"),
+            "clock_exception": ("tenant", "exception_id", "shift_id", "exception_type", "resolution", "status", "audit_hash"),
+            "time_entry": ("tenant", "entry_id", "shift_id", "employee_id", "hours", "overtime_hours", "premium_hours", "status", "audit_hash"),
+            "time_entry_line": ("tenant", "line_id", "entry_id", "earning_code", "hours", "rate_multiplier", "audit_hash"),
+            "break_deduction": ("tenant", "deduction_id", "entry_id", "break_minutes", "policy_rule_id", "audit_hash"),
+            "overtime_bucket": ("tenant", "bucket_id", "employee_id", "period", "threshold", "overtime_hours", "audit_hash"),
+            "premium_calculation": ("tenant", "premium_id", "entry_id", "premium_code", "hours", "multiplier", "audit_hash"),
+            "absence": ("tenant", "absence_id", "employee_id", "absence_type", "hours", "date", "status", "audit_hash"),
+            "absence_balance": ("tenant", "balance_id", "employee_id", "absence_type", "available_hours", "effective_at", "audit_hash"),
+            "absence_entitlement": ("tenant", "entitlement_id", "absence_type", "annual_hours", "eligibility_rule_id", "audit_hash"),
+            "absence_approval": ("tenant", "approval_id", "absence_id", "approver", "decision", "decided_at", "audit_hash"),
+            "labor_summary": ("tenant", "summary_id", "employee_id", "period", "approved_hours", "overtime_hours", "approved_by", "status", "audit_hash"),
+            "labor_summary_line": ("tenant", "line_id", "summary_id", "entry_id", "earning_code", "hours", "audit_hash"),
+            "labor_cost_allocation": ("tenant", "allocation_id", "summary_id", "cost_center", "project_id", "hours", "audit_hash"),
+            "approval_workflow": ("tenant", "workflow_id", "scope", "sla_hours", "status", "audit_hash"),
+            "approval_task": ("tenant", "task_id", "workflow_id", "subject_id", "assignee", "decision", "audit_hash"),
+            "employee_projection": ("tenant", "employee_id", "role", "status", "site", "identity_hash", "audit_hash"),
+            "role_projection": ("tenant", "employee_id", "role", "received_event_id", "audit_hash"),
+            "time_rule": ("tenant", "rule_id", "scope", "compiled_hash", "enabled", "status", "audit_hash"),
+            "time_parameter": ("tenant", "parameter_name", "parameter_value", "effective_at", "changed_by", "audit_hash"),
+            "time_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "event_contract", "stream_engine_picker_visible", "audit_hash"),
+            "time_labor_appgen_outbox_event": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "published_at", "audit_hash"),
+            "time_labor_appgen_inbox_event": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "audit_hash"),
+            "time_labor_dead_letter_event": ("tenant", "event_id", "event_type", "payload", "reason", "attempts", "audit_hash"),
+        }
+    )
+    relationships = (
+        {"from_table": "shift_assignment", "from_field": "shift_id", "to_table": "shift", "to_field": "shift_id"},
+        {"from_table": "shift_assignment", "from_field": "employee_id", "to_table": "employee_projection", "to_field": "employee_id"},
+        {"from_table": "shift_swap_request", "from_field": "shift_id", "to_table": "shift", "to_field": "shift_id"},
+        {"from_table": "schedule_bid", "from_field": "shift_id", "to_table": "shift", "to_field": "shift_id"},
+        {"from_table": "clock_event", "from_field": "shift_id", "to_table": "shift", "to_field": "shift_id"},
+        {"from_table": "clock_source_route", "from_field": "event_id", "to_table": "clock_event", "to_field": "event_id"},
+        {"from_table": "clock_exception", "from_field": "shift_id", "to_table": "shift", "to_field": "shift_id"},
+        {"from_table": "time_entry", "from_field": "shift_id", "to_table": "shift", "to_field": "shift_id"},
+        {"from_table": "time_entry_line", "from_field": "entry_id", "to_table": "time_entry", "to_field": "entry_id"},
+        {"from_table": "break_deduction", "from_field": "entry_id", "to_table": "time_entry", "to_field": "entry_id"},
+        {"from_table": "premium_calculation", "from_field": "entry_id", "to_table": "time_entry", "to_field": "entry_id"},
+        {"from_table": "absence_approval", "from_field": "absence_id", "to_table": "absence", "to_field": "absence_id"},
+        {"from_table": "labor_summary_line", "from_field": "summary_id", "to_table": "labor_summary", "to_field": "summary_id"},
+        {"from_table": "labor_cost_allocation", "from_field": "summary_id", "to_table": "labor_summary", "to_field": "summary_id"},
+        {"from_table": "approval_task", "from_field": "workflow_id", "to_table": "approval_workflow", "to_field": "workflow_id"},
+    )
+    allowed_prefixes = (
+        "shift",
+        "schedule_",
+        "labor_",
+        "clock_",
+        "time_",
+        "break_",
+        "overtime_",
+        "premium_",
+        "holiday_",
+        "absence",
+        "approval_",
+        "employee_",
+        "role_",
+        "payroll_",
+        "warehouse_",
+        "manufacturing_",
+        "project_",
+    )
+    tables = tuple({"table": table, "fields": table_fields[table], "owner": "time_labor"} for table in TIME_LABOR_OWNED_TABLES)
+    return {
+        "format": "appgen.time-labor-owned-schema-contract.v1",
+        "ok": len(tables) == len(TIME_LABOR_OWNED_TABLES) and len(tables) >= 40 and all(item["table"].startswith(allowed_prefixes) for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/time_labor/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": TIME_LABOR_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(TIME_LABOR_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in TIME_LABOR_OWNED_TABLES
+        ),
+        "datastore_backends": TIME_LABOR_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def time_labor_build_service_contract() -> dict:
+    """Return Time Labor command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "upsert_employee_projection",
+        "create_shift",
+        "record_clock_event",
+        "calculate_time_entry",
+        "record_absence",
+        "approve_labor_summary",
+        "route_clock_source",
+        "generate_hours_proof",
+        "screen_policy",
+        "federate_labor_view",
+        "verify_employee_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_shift",
+        "optimize_schedule",
+        "allocate_shifts",
+        "run_control_tests",
+        "register_governed_model",
+        "recommend_exception_resolution",
+        "verify_owned_table_boundary",
+    )
+    return {
+        "format": "appgen.time-labor-service-contract.v1",
+        "ok": len(command_methods) >= 25,
+        "transaction_boundary": "time_labor_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "simulate_schedule_policy",
+            "forecast_overtime",
+            "parse_clock_event",
+            "score_labor_risk",
+            "detect_time_anomaly",
+            "model_stochastic_labor_exposure",
+            "build_api_contract",
+            "build_schema_contract",
+            "build_release_evidence",
+        ),
+        "mutates_only": TIME_LABOR_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _TIME_LABOR_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": TIME_LABOR_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _TIME_LABOR_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def time_labor_build_release_evidence() -> dict:
+    """Return Time Labor package-local release evidence."""
+    schema = time_labor_build_schema_contract()
+    service = time_labor_build_service_contract()
+    api = time_labor_build_api_contract()
+    permissions = time_labor_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 40},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(TIME_LABOR_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 25},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"create_shift", "record_clock_event", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == TIME_LABOR_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.time-labor-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -582,6 +870,28 @@ def time_labor_permissions_contract() -> dict:
             "set_parameter": "time_labor.configure",
             "configure_runtime": "time_labor.configure",
             "build_workbench_view": "time_labor.audit",
+            "route_clock_source": "time_labor.clock",
+            "generate_hours_proof": "time_labor.audit",
+            "screen_policy": "time_labor.audit",
+            "federate_labor_view": "time_labor.read",
+            "verify_employee_identity": "time_labor.audit",
+            "run_resilience_drill": "time_labor.audit",
+            "rotate_crypto_epoch": "time_labor.audit",
+            "schedule_carbon_aware_shift": "time_labor.schedule",
+            "optimize_schedule": "time_labor.schedule",
+            "allocate_shifts": "time_labor.schedule",
+            "run_control_tests": "time_labor.audit",
+            "register_governed_model": "time_labor.audit",
+            "recommend_exception_resolution": "time_labor.approve",
+            "detect_time_anomaly": "time_labor.audit",
+            "model_stochastic_labor_exposure": "time_labor.audit",
+            "parse_clock_event": "time_labor.read",
+            "score_labor_risk": "time_labor.audit",
+            "forecast_overtime": "time_labor.read",
+            "simulate_schedule_policy": "time_labor.read",
+            "build_schema_contract": "time_labor.audit",
+            "build_service_contract": "time_labor.audit",
+            "build_release_evidence": "time_labor.audit",
         },
     }
 

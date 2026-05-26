@@ -10,6 +10,9 @@ from .runtime import TIME_LABOR_RUNTIME_CAPABILITY_KEYS
 from .runtime import TIME_LABOR_STANDARD_FEATURE_KEYS
 from .runtime import time_labor_approve_labor_summary
 from .runtime import time_labor_build_api_contract
+from .runtime import time_labor_build_release_evidence
+from .runtime import time_labor_build_schema_contract
+from .runtime import time_labor_build_service_contract
 from .runtime import time_labor_build_workbench_view
 from .runtime import time_labor_calculate_time_entry
 from .runtime import time_labor_configure_runtime
@@ -42,7 +45,13 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": time_labor_ui_contract(),
         "api_contract": time_labor_build_api_contract(),
+        "schema_contract": time_labor_build_schema_contract(),
+        "service_contract": time_labor_build_service_contract(),
+        "release_evidence_contract": time_labor_build_release_evidence(),
         "permissions_contract": time_labor_permissions_contract(),
         "owned_tables": TIME_LABOR_OWNED_TABLES,
         "allowed_database_backends": TIME_LABOR_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": TIME_LABOR_REQUIRED_EVENT_TOPIC,
+        "consumes": TIME_LABOR_CONSUMED_EVENT_TYPES,
+        "emits": TIME_LABOR_EMITTED_EVENT_TYPES,
     }

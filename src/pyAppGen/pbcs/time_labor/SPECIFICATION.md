@@ -9,15 +9,38 @@ owned under `src/pyAppGen/pbcs/time_labor/`.
 
 - **PBC key:** `time_labor`
 - **Mesh:** `hcm`
-- **Owned tables:** `shift`, `clock_event`, `time_entry`, `absence`,
-  `labor_summary`, `time_rule`, `time_parameter`, `time_configuration`
+- **Owned tables:** `shift`, `shift_pattern`, `shift_assignment`,
+  `shift_swap_request`, `schedule_bid`, `labor_demand_forecast`,
+  `clock_event`, `clock_device`, `clock_source_route`, `clock_exception`,
+  `time_entry`, `time_entry_line`, `break_deduction`, `overtime_bucket`,
+  `premium_calculation`, `holiday_calendar`, `absence`, `absence_balance`,
+  `absence_entitlement`, `absence_approval`, `labor_summary`,
+  `labor_summary_line`, `labor_cost_allocation`, `labor_distribution`,
+  `approval_workflow`, `approval_task`, `employee_projection`,
+  `role_projection`, `payroll_labor_projection`,
+  `warehouse_site_projection`, `manufacturing_shift_projection`,
+  `project_cost_projection`, `time_policy_screening`, `time_audit_trace`,
+  `time_hours_proof`, `time_federation_projection`,
+  `time_carbon_schedule_window`, `time_schedule_optimization`,
+  `time_shift_allocation`, `time_anomaly_signal`, `time_labor_risk_model`,
+  `time_labor_risk_forecast`, `time_parsed_event`, `time_seed_data`,
+  `time_schema_extension`, `time_control_assertion`,
+  `time_governed_model`, `time_rule`, `time_parameter`,
+  `time_configuration`, `time_labor_appgen_outbox_event`,
+  `time_labor_appgen_inbox_event`, `time_labor_dead_letter_event`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
 - **Event contract:** AppGen-X outbox/inbox event contract only on fixed topic
   `appgen.time.events`
-- **Emits:** `LaborHoursApproved`, `AbsenceRecorded`
+- **Emits:** `ShiftCreated`, `ClockEventRecorded`, `TimeEntryCalculated`,
+  `LaborHoursApproved`, `AbsenceRecorded`
 - **Consumes:** `EmployeeCreated`, `RoleChanged`
-- **Primary APIs:** `POST /clock-events`, `POST /absences`,
-  `GET /labor-summaries`
+- **Primary APIs:** `POST /shifts`, `POST /shift-patterns`,
+  `POST /shift-swaps`, `POST /clock-events`,
+  `POST /time-entries/calculate`, `POST /absences`,
+  `POST /labor-summaries/{id}/approve`, `POST /time/events/inbox`,
+  `POST /time/rules`, `POST /time/parameters`,
+  `POST /time/configuration`, `GET /labor-summaries`,
+  `GET /time-workbench`
 - **UI artifacts:** time workbench, schedule board, clock event queue, overtime
   review, absence calendar, approval queue, policy editor
 
@@ -63,30 +86,82 @@ warehouse, manufacturing, finance, or project tables.
 
 1. Shift creation with employee, role, date, planned start/end, site, cost
    center, job, and schedule status.
-2. Clock-in and clock-out events from kiosk, mobile, web, badge, or integration
+2. Shift pattern, shift assignment, schedule bid, and shift-swap request
+   management.
+3. Labor demand forecasts for site, date, required hours, and confidence.
+4. Clock-in and clock-out events from kiosk, mobile, web, badge, or integration
    sources.
-3. Geo-fence, source, and sequence validation for clock actions.
-4. Time-entry calculation with rounded hours, break deduction, premium,
+5. Clock-device registry, source routing, and self-healing route evidence.
+6. Clock exception queues for missed punches, geofence breaks, and sequence
+   gaps.
+7. Geo-fence, source, and sequence validation for clock actions.
+8. Time-entry calculation with rounded hours, break deduction, premium,
    exception flags, and audit evidence.
-5. Overtime, double-time, holiday, shift differential, and premium calculation.
-6. Absence recording, entitlement check, approval status, and event emission.
-7. Labor summary generation by employee, date, cost center, role, project, and
+9. Time-entry lines for earning codes, rates, premiums, and adjustment
+   evidence.
+10. Overtime, double-time, holiday, shift differential, and premium
+    calculation.
+11. Absence recording, balance, entitlement check, approval status, and event
+    emission.
+12. Labor summary generation by employee, date, cost center, role, project, and
    payroll period.
-8. Approval workflow for overtime, exceptions, absences, and payroll-ready
+13. Labor summary lines, cost allocation, and labor distribution.
+14. Approval workflow and approval tasks for overtime, exceptions, absences,
+   and payroll-ready
    hours.
-9. Employee and role projection handling from personnel identity events.
-10. Payroll-ready labor event emission with idempotency evidence.
-11. Multi-tenant and multi-entity time isolation.
-12. Retry, dead-letter, and idempotent consumed-event handling.
-13. Time workbench views for open shifts, exceptions, overtime, absences,
+15. Employee and role projection handling from personnel identity events.
+16. Payroll, warehouse, manufacturing, project, and audit projections as local
+    read models instead of shared tables.
+17. Payroll-ready labor event emission with idempotency evidence.
+18. Multi-tenant and multi-entity time isolation.
+19. AppGen-X outbox/inbox, retry, dead-letter, and idempotent consumed-event
+    handling.
+20. Time policy screening, audit trace, hours-proof, and control assertion
+    evidence.
+21. Carbon schedule windows, schedule optimization, and shift-allocation
+    records.
+22. Labor risk models, risk forecasts, anomaly signals, parsed event evidence,
+    governed-model metadata, seed data, and schema extensions.
+23. Time workbench views for open shifts, exceptions, overtime, absences,
     approvals, and payroll-ready summaries.
-14. Permissions and ABAC descriptors for schedule, clock, approve, absence,
+24. Permissions and ABAC descriptors for schedule, clock, approve, absence,
     summarize, configure, and audit operations.
-15. Configuration schema and seed data for clock sources, absence types,
+25. Configuration schema and seed data for clock sources, absence types,
     premium codes, approval levels, and default parameters.
-16. Release-audit evidence for package ownership, manifests, schema, migrations,
+26. Release-audit evidence for package ownership, manifests, schema, migrations,
     models, services, routes, events, handlers, UI, permissions, configuration,
     tests, registration metadata, and generation smoke.
+
+## Generated Schema, Services, and Release Evidence
+
+`build_schema_contract` emits table fields, relationships, migration artifact
+paths under `pbcs/time_labor/migrations/`, generated model names, backend
+allowlists, and `shared_table_access: false` for every owned table. The schema
+contract covers scheduling, clocking, entries, breaks, overtime, premiums,
+holidays, absence, summaries, labor costing, approvals, projections, policy
+screening, audit, proof, federation, carbon scheduling, optimization,
+allocation, anomaly, risk, parsed event, seed, extension, control, governed
+model, rules, parameters, configuration, outbox, inbox, and dead-letter
+evidence.
+
+`build_service_contract` declares the transaction boundary as the Time Labor
+owned datastore plus the AppGen-X outbox. Commands configure runtime state, set
+parameters, register rules and schema extensions, receive events, maintain
+employee projections, create shifts, record clock events, calculate entries,
+record absences, approve labor summaries, route clock sources, generate hours
+proofs, screen policies, federate labor views, verify employee identities, run
+resilience drills, rotate crypto epochs, schedule carbon-aware shifts, optimize
+schedules, allocate shifts, run controls, and register governed models. Query
+methods cover workbench views, counterfactual schedule policy simulation,
+overtime forecasting, semantic clock parsing, labor-risk scoring, anomaly
+detection, stochastic labor exposure, and generated API/schema/release
+contracts.
+
+`build_release_evidence` combines schema, service, API, and permissions checks:
+owned schema depth, per-table migration coverage, command depth, fixed
+AppGen-X event contract, key command permission coverage, backend allowlist,
+and no shared-table access. A release is valid only when every check passes and
+`blocking_gaps` is empty.
 
 ## Event Handling and Projections
 
