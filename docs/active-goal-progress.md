@@ -991,6 +991,18 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the 90-test PBC regression slice, implemented-capability audit,
   implementation release audit, `pbc_release_audit()`, payment generation smoke
   audit, and the restricted legacy-name scan.
+- `9572314` implements the formerly skeletal `returns_reverse_logistics`
+  package: package-local specification, executable return authorization, label,
+  inspection, credit-adjustment, eventing, and reverse-logistics runtime,
+  UI/workbench contract, central audit wiring, and focused tests. The package
+  enforces PostgreSQL/MySQL/MariaDB datastore boundaries, AppGen-X eventing
+  without user-facing stream-engine selection, bounded rules and parameters,
+  idempotent consumed-event handling, retry/dead-letter evidence, advanced
+  runtime smoke evidence, and workbench binding evidence. Verification passed
+  for returns py-compile, focused runtime tests, the 93-test PBC regression
+  slice, implemented-capability audit, implementation release audit,
+  `pbc_release_audit()`, returns generation smoke audit, and the restricted
+  legacy-name scan.
 
 ## Open Completion Areas
 
