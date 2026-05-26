@@ -55,6 +55,14 @@ def test_checkout_processing_runtime_executes_standard_and_advanced_capabilities
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["advanced_runtime"]["owned_tables"] == CHECKOUT_PROCESSING_OWNED_TABLES
     assert contract["ui_contract"]["ok"] is True
+    assert contract["owned_tables"] == CHECKOUT_PROCESSING_OWNED_TABLES
+    assert contract["allowed_database_backends"] == CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS
+    assert contract["required_event_topic"] == CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC
+    assert contract["emits"] == CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES
+    assert contract["consumes"] == CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES
+    assert contract["api_contract"]["shared_table_access"] is False
+    assert contract["permissions_contract"]["action_permissions"]["receive_event"] == "checkout_processing.event.consume"
+    assert contract["boundary_contract"]["ok"] is True
     assert "CheckoutConfigurationPanel" in contract["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS)
 

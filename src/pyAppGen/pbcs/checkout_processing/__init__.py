@@ -65,4 +65,22 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": checkout_processing_ui_contract(),
+        "api_contract": checkout_processing_build_api_contract(),
+        "permissions_contract": checkout_processing_permissions_contract(),
+        "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
+        "allowed_database_backends": CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC,
+        "emits": CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES,
+        "consumes": CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES,
+        "boundary_contract": checkout_processing_verify_owned_table_boundary(
+            CHECKOUT_PROCESSING_OWNED_TABLES
+            + (
+                "checkout_processing_appgen_outbox_event",
+                "checkout_processing_appgen_inbox_event",
+                "checkout_processing_dead_letter_event",
+                "ProductPublished",
+                "product_projection",
+                "POST /payment-intents",
+            )
+        ),
     }
