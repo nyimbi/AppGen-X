@@ -15,7 +15,7 @@ SECRET_KEY = "\2\1thisismyscretkey\1\2\e\y\y\h"
 # The SQLAlchemy connection string.
 SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(basedir, "app.db")
 # SQLALCHEMY_DATABASE_URI = 'mysql://myapp@localhost/myapp'
-SQLALCHEMY_DATABASE_URI = 'postgresql:///testx'
+SQLALCHEMY_DATABASE_URI = 'postgresql:///t2'
 
 # Flask-WTF flag for CSRF
 CSRF_ENABLED = True
@@ -24,7 +24,7 @@ CSRF_ENABLED = True
 # GLOBALS FOR APP Builder
 # ------------------------------
 # Uncomment to setup Your App name
-# APP_NAME = "My App Name"
+APP_NAME = "ADM"
 
 # Uncomment to setup Setup an App icon
 # APP_ICON = "static/img/logo.jpg"
@@ -46,7 +46,7 @@ AUTH_TYPE = AUTH_DB
 # AUTH_ROLE_PUBLIC = 'Public'
 
 # Will allow user self registration
-# AUTH_USER_REGISTRATION = True
+AUTH_USER_REGISTRATION = True
 
 # The default user self registration role
 # AUTH_USER_REGISTRATION_ROLE = "Public"
@@ -70,8 +70,15 @@ BABEL_DEFAULT_FOLDER = "translations"
 # The allowed translation for you app
 LANGUAGES = {
     "en": {"flag": "gb", "name": "English"},
+    "en": {"flag": "gb", "name": "English"},
     "pt": {"flag": "pt", "name": "Portuguese"},
-    "pt_BR": {"flag": "br", "name": "Pt Brazil"},
+    "fr": {"flag" : "fr", "name": "French"},
+    'ki': {'flag': 'tz', 'name': 'Kiswahili'},
+    'rw': {'flag': 'rw', 'name': 'Rwandan'},
+    'hw': {'flag': 'ng', 'name': 'Hausa'},
+    'ug': {'flag': 'ug', 'name': 'Buganda'},
+    'ig': {'flag': 'ng', 'name': 'Igbo'},
+    'yo': {'flag': 'ng', 'name': 'Yoruba'},
     "es": {"flag": "es", "name": "Spanish"},
     "de": {"flag": "de", "name": "German"},
     "zh": {"flag": "cn", "name": "Chinese"},

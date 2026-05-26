@@ -66,7 +66,7 @@ from .mixins import *
 
 
 
-class Userx(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Userx(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'userx'  
 
     id = Column(Integer, primary_key=True)
@@ -96,7 +96,7 @@ class Userx(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocM
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Individual(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Individual(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'individual'  
 
     id = Column(Integer, primary_key=True)
@@ -132,7 +132,7 @@ class Individual(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin,
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Industry(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Industry(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'industry'  
 
     id = Column(Integer, primary_key=True)
@@ -163,7 +163,7 @@ class Industry(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, D
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class IndustryJob(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class IndustryJob(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'industry_job'  
 
     industry = Column(Integer, ForeignKey('industry.id'), primary_key=True)
@@ -194,7 +194,7 @@ class IndustryJob(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Job(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Job(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'job'  
 
     id = Column(Integer, primary_key=True)
@@ -239,7 +239,7 @@ class Job(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMix
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class JobSkill(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class JobSkill(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'job_skill'  
 
     skills = Column(Integer, ForeignKey('skill.id'), primary_key=True)
@@ -270,7 +270,7 @@ class JobSkill(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, D
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Skill(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Skill(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'skill'  
 
     id = Column(Integer, primary_key=True)
@@ -301,7 +301,7 @@ class Skill(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocM
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Education(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Education(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'education'  
 
     id = Column(Integer, primary_key=True)
@@ -339,7 +339,7 @@ class Education(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, 
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class IndividualJob(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class IndividualJob(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'individual_job'  
 
     individual = Column(Integer, ForeignKey('individual.id'), primary_key=True)
@@ -370,7 +370,7 @@ class IndividualJob(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMix
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Profilesource(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Profilesource(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'profilesource'  
 
     id = Column(Integer, primary_key=True)
@@ -401,7 +401,7 @@ class Profilesource(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMix
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Location(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Location(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'location'  
 
     id = Column(Integer, primary_key=True)
@@ -432,7 +432,7 @@ class Location(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, D
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Portal(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Portal(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'portal'  
 
     id = Column(Integer, primary_key=True)
@@ -487,7 +487,7 @@ class Portal(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, Doc
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Page(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Page(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'page'  
 
     id = Column(Integer, primary_key=True)
@@ -521,7 +521,7 @@ class Page(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMi
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Profile(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Profile(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'profile'  
 
     id = Column(Integer, primary_key=True)
@@ -559,7 +559,7 @@ class Profile(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, Do
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Resume(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Resume(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'resume'  
 
     id = Column(Integer, primary_key=True)
@@ -597,7 +597,7 @@ class Resume(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, Doc
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class Swarm(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class Swarm(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'swarm'  
 
     id = Column(Integer, primary_key=True)
@@ -628,7 +628,7 @@ class Swarm(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocM
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class IndividualSwarm(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class IndividualSwarm(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'individual_swarm'  
 
     individual = Column(Integer, ForeignKey('individual.id'), primary_key=True)
@@ -659,7 +659,7 @@ class IndividualSwarm(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceM
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class UserSkill(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class UserSkill(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'user_skill'  
 
     skills = Column(Integer, ForeignKey('skill.id'), primary_key=True)
@@ -690,7 +690,7 @@ class UserSkill(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, 
     # def intersects(self, other):
     #     return self.contains(other.start) | self.contains(other.end)
 
-class WorkHistory(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
+class WorkHistory(AuditMixin, RefTypeMixin, Model,): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
     __tablename__ = 'work_history'  
 
     id = Column(Integer, primary_key=True)

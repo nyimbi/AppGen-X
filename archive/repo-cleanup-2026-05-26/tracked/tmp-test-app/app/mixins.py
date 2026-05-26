@@ -20,6 +20,8 @@ from sqlalchemy_utils import observes
 from sqlalchemy_utils.types import TSVectorType
 from geopy import Point, distance
 from datetime import date, timedelta
+from  base64 import b64encode, decode
+import os
 
 ### UTILITY Classes #####
 class AuditMixinNullable(AuditMixin):
@@ -92,9 +94,9 @@ class AuditMixinNullable(AuditMixin):
 class RefTypeMixin(object):
     # id = Column(Integer, autoincrement=True, primary_key=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
-    code = Column(String(20), default="0000", index=True)
+    # code = Column(String(20), default="0000", index=True)
     description = Column(String(100))
-    # notes = Column(Text, default='')
+    notes = Column(Text, default='')
 
     def __repr__(self):
         return self.name
@@ -193,7 +195,7 @@ class ProjectMixin(object):
             project_start_date = Column(DateTime)
             project_end_date = Column(DateTime)
             project_duration = Column(Interval)
-            activities = relationship('ActivityModel', backref=self.__tablename__)
+            activities = relationship('ActivityModel', backref=cls.__tablename__)
 
             @property
             def actual_project_duration(self):
@@ -272,7 +274,7 @@ class ProjectMixin(object):
 
             @validates('actual_start_date')
             def update_start_delay(self, key, value):
-                self.start_delay = datetime(self.actual_start_date) - datetime(self.planned_start_date)
+                self.start_delay = datetime.datetime(self.actual_start_date) - datetime.datetime(self.planned_start_date)
                 if self.start_delay > 0:
                     self.late_start = True
                     self.early_start = False
@@ -282,7 +284,7 @@ class ProjectMixin(object):
 
             @validates('actual_end_date')
             def update_end_delay(self, key, value):
-                self.end_delay = datetime(self.actual_end_date) - datetime(self.planned_end_date)
+                self.end_delay = datetime.datetime(self.actual_end_date) - datetime.datetime(self.planned_end_date)
                 if self.end_delay > 0:
                     self.late_end = True
                     self.early_end = False
@@ -323,7 +325,7 @@ class ProjectMixin(object):
 
 
 class TransientMixin(object):
-    started_date = Column(DateTime, default=datetime.now)
+    started_date = Column(DateTime, default=datetime.datetime.now())
     ended_date = Column(DateTime)
     is_active = Column(Boolean)
     is_suspended = Column(Boolean)
@@ -689,7 +691,7 @@ class WebMixin(object):
 
 # TODO Expand the DocumentMixin to make it searchable
 class DocMixin(object):
-    query_class = DocQuery
+    # query_class = DocQuery
     mime_type = Column(String(60), default="application/pdf")
     doc = Column(ImageColumn(thumbnail_size=(30, 30, True), size=(300, 300, True)))
     doc_text = Column(Text)
