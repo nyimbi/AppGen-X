@@ -7,9 +7,13 @@ from .runtime import GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES
 from .runtime import GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
 from .runtime import GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
 from .runtime import GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
 from .runtime import GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS
 from .runtime import global_inventory_visibility_allocate_competing_pools
 from .runtime import global_inventory_visibility_build_api_contract
+from .runtime import global_inventory_visibility_build_release_evidence
+from .runtime import global_inventory_visibility_build_schema_contract
+from .runtime import global_inventory_visibility_build_service_contract
 from .runtime import global_inventory_visibility_build_workbench_view
 from .runtime import global_inventory_visibility_configure_runtime
 from .runtime import global_inventory_visibility_detect_inventory_anomaly
@@ -61,8 +65,12 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": global_inventory_visibility_ui_contract(),
         "api_contract": global_inventory_visibility_build_api_contract(),
+        "schema_contract": global_inventory_visibility_build_schema_contract(),
+        "service_contract": global_inventory_visibility_build_service_contract(),
+        "release_evidence_contract": global_inventory_visibility_build_release_evidence(),
         "permissions_contract": global_inventory_visibility_permissions_contract(),
         "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+        "runtime_tables": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES,
         "allowed_database_backends": GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
         "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
         "consumes": GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES,
@@ -78,10 +86,14 @@ __all__ = (
     "GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES",
     "GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC",
     "GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS",
+    "GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES",
     "GLOBAL_INVENTORY_VISIBILITY_UI_FRAGMENT_KEYS",
     "PBC_KEY",
     "global_inventory_visibility_allocate_competing_pools",
     "global_inventory_visibility_build_api_contract",
+    "global_inventory_visibility_build_release_evidence",
+    "global_inventory_visibility_build_schema_contract",
+    "global_inventory_visibility_build_service_contract",
     "global_inventory_visibility_build_workbench_view",
     "global_inventory_visibility_configure_runtime",
     "global_inventory_visibility_detect_inventory_anomaly",

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from .runtime import CROSS_BORDER_TRADE_ALLOWED_DATABASE_BACKENDS
+from .runtime import CROSS_BORDER_TRADE_CONSUMED_EVENT_TYPES
+from .runtime import CROSS_BORDER_TRADE_EMITTED_EVENT_TYPES
 from .runtime import CROSS_BORDER_TRADE_REQUIRED_EVENT_TOPIC
 from .runtime import cross_border_trade_build_workbench_view
 from .runtime import cross_border_trade_permissions_contract
@@ -50,6 +52,7 @@ def cross_border_trade_ui_contract() -> dict:
             "/workbench/pbcs/cross_border_trade/parameters",
             "/workbench/pbcs/cross_border_trade/configuration",
             "/workbench/pbcs/cross_border_trade/eventing",
+            "/workbench/pbcs/cross_border_trade/dead-letter",
         ),
         "panels": (
             {
@@ -73,7 +76,7 @@ def cross_border_trade_ui_contract() -> dict:
             {
                 "key": "declarations",
                 "fragment": "CustomsDeclarationConsole",
-                "binds_to": ("customs_declaration", "broker_submission", "documents"),
+                "binds_to": ("customs_declaration", "broker_handoff", "carrier_handoff", "documents", "compliance_hold"),
                 "commands": ("file_customs_declaration",),
             },
             {
@@ -81,6 +84,12 @@ def cross_border_trade_ui_contract() -> dict:
                 "fragment": "TradeEventingMonitor",
                 "binds_to": ("inbox", "outbox", "dead_letter", "idempotency_key"),
                 "commands": ("receive_event",),
+            },
+            {
+                "key": "holds",
+                "fragment": "TradeExceptionResolutionBoard",
+                "binds_to": ("trade_compliance_hold", "denied_party_screening", "country_restriction_policy"),
+                "commands": ("screen_export_control", "file_customs_declaration"),
             },
             {
                 "key": "governance",
@@ -142,8 +151,8 @@ def cross_border_trade_ui_contract() -> dict:
             "compiled_evidence_required": True,
         },
         "event_surfaces": {
-            "emits": ("HSClassified", "LandedCostQuoted", "ExportControlCleared", "CustomsDeclarationFiled"),
-            "consumes": ("InventoryReserved", "OrderPlaced", "PaymentCaptured", "ShipmentDispatched"),
+            "emits": CROSS_BORDER_TRADE_EMITTED_EVENT_TYPES,
+            "consumes": CROSS_BORDER_TRADE_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
@@ -185,6 +194,11 @@ def cross_border_trade_render_workbench(
             "key": "declarations",
             "value": snapshot["declaration_count"],
             "fragment": "CustomsDeclarationConsole",
+        },
+        {
+            "key": "compliance_holds",
+            "value": snapshot["compliance_hold_count"],
+            "fragment": "TradeExceptionResolutionBoard",
         },
         {
             "key": "dead_letters",

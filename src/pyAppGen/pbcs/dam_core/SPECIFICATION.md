@@ -198,9 +198,37 @@ AppGen-X event contract.
 
 ## Release Evidence
 
+`dam_core_build_schema_contract()` emits the generated DAM-owned schema plan for
+asset lifecycle, binary/fingerprint storage, collections, renditions,
+transcoding jobs/routes, metadata taxonomy and enrichment, semantic
+annotations, rights/licensing/entitlements, product/campaign/channel
+projections, workflow and review cases, exceptions, quality scoring, usage
+snapshots and forecasts, duplicate candidates, lineage, audit entries, policy
+screenings, control assertions, federation views, resilience drills, crypto
+epochs, carbon windows, route allocations, anomaly/exposure forecasts,
+identity attestations, governed models, seed data, rule/parameter/configuration
+tables, and AppGen-X inbox/outbox/dead-letter tables. Every owned table receives
+a deterministic migration descriptor under `pbcs/dam_core/migrations/` and a
+generated model descriptor under `pbcs/dam_core/models/`.
+
+`dam_core_build_service_contract()` declares the command/query surface used by
+generated applications: runtime configuration, parameter and rule registration,
+schema extension, AppGen-X inbox handling, asset registration, rights policy
+management, metadata tagging, rendition request/completion, rights enforcement,
+quality scoring, route selection, usage forecasting, exception resolution,
+asset-proof generation, dynamic policy screening, control testing, workbench
+queries, owned-boundary checks, and descriptor retrieval.
+
+`dam_core_build_release_evidence()` is the package-local release gate. It proves
+owned-schema depth, one migration/model descriptor per table, broad service
+coverage, AppGen-X-only eventing, relational backend allowlist compliance,
+permission coverage for descriptor queries, owned runtime event tables, and no
+shared-table access.
+
 Focused tests prove:
 
 - Runtime capabilities and smoke checks pass.
+- Schema, service, and release-evidence descriptor builders pass.
 - Configuration, parameters, rules, schema extensions, event consumption, asset
   registration, rights policy attachment, metadata tagging, rendition request
   and completion, rights enforcement, API contract, workbench rendering, and UI

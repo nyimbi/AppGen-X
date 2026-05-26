@@ -6,6 +6,9 @@ from pyAppGen.pbcs.dam_core import DAM_CORE_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.dam_core import dam_core_add_metadata_tag
 from pyAppGen.pbcs.dam_core import dam_core_attach_rights_policy
 from pyAppGen.pbcs.dam_core import dam_core_build_api_contract
+from pyAppGen.pbcs.dam_core import dam_core_build_release_evidence
+from pyAppGen.pbcs.dam_core import dam_core_build_schema_contract
+from pyAppGen.pbcs.dam_core import dam_core_build_service_contract
 from pyAppGen.pbcs.dam_core import dam_core_build_workbench_view
 from pyAppGen.pbcs.dam_core import dam_core_complete_rendition
 from pyAppGen.pbcs.dam_core import dam_core_configure_runtime
@@ -34,7 +37,7 @@ def test_dam_core_runtime_executes_standard_and_advanced_capabilities() -> None:
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/dam_core"
     assert runtime["owned_tables"] == DAM_CORE_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 18
+    assert len(runtime["standard_features"]) >= 45
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
@@ -45,6 +48,10 @@ def test_dam_core_runtime_executes_standard_and_advanced_capabilities() -> None:
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["ui_contract"]["ok"] is True
     assert contract["api_contract"]["ok"] is True
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence_contract"]["ok"] is True
+    assert len(contract["schema_contract"]["owned_tables"]) >= 45
     assert contract["permissions_contract"]["register_asset"] == "dam_core.asset.write"
     assert "DamConfigurationPanel" in contract["ui_contract"]["fragments"]
 
@@ -161,6 +168,7 @@ def test_dam_core_runtime_applies_rules_parameters_configuration_events_and_ui()
     assert rendered["ok"] is True
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == DAM_CORE_OWNED_TABLES
+    assert rendered["binding_evidence"]["shared_table_access"] is False
 
     api_contract = dam_core_build_api_contract()
     assert api_contract["stream_engine_picker_visible"] is False
@@ -173,6 +181,23 @@ def test_dam_core_runtime_applies_rules_parameters_configuration_events_and_ui()
         "receive_event",
     }
     assert api_contract["database_backends"] == DAM_CORE_ALLOWED_DATABASE_BACKENDS
+    assert any(route.get("query") == "build_release_evidence" for route in api_contract["routes"])
+
+    schema = dam_core_build_schema_contract()
+    service = dam_core_build_service_contract()
+    release = dam_core_build_release_evidence()
+    assert schema["format"] == "appgen.dam-core-owned-schema-contract.v1"
+    assert schema["shared_table_access"] is False
+    assert "asset_binary" in schema["owned_tables"]
+    assert "dam_core_dead_letter_event" in schema["owned_tables"]
+    assert len(schema["migrations"]) == len(DAM_CORE_OWNED_TABLES)
+    assert all(path.startswith("pbcs/dam_core/migrations/") for path in schema["migrations"])
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert service["shared_table_access"] is False
+    assert "build_schema_contract" in service["query_methods"]
+    assert "generate_asset_proof" in service["command_methods"]
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
 
 def test_dam_core_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
@@ -209,7 +234,7 @@ def test_dam_core_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() 
 
     boundary = dam_core_verify_owned_table_boundary(("asset", "asset_rendition", "enterprise_pim.ProductPublished", "product_projection"))
     assert boundary["ok"] is True
-    assert boundary["owned_tables"] == ("asset", "asset_rendition", "rights_policy", "metadata_tag")
+    assert boundary["owned_tables"] == DAM_CORE_OWNED_TABLES
     assert boundary["declared_dependencies"]["shared_tables"] == ()
     violated = dam_core_verify_owned_table_boundary(("product",))
     assert violated["ok"] is False

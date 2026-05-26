@@ -10,7 +10,62 @@ import re
 
 DAM_CORE_REQUIRED_EVENT_TOPIC = "appgen.dam.events"
 DAM_CORE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
-DAM_CORE_OWNED_TABLES = ("asset", "asset_rendition", "rights_policy", "metadata_tag")
+DAM_CORE_OWNED_TABLES = (
+    "asset",
+    "asset_version",
+    "asset_binary",
+    "asset_fingerprint",
+    "asset_collection",
+    "asset_collection_member",
+    "asset_rendition",
+    "transcoding_job",
+    "transcode_route",
+    "rendition_profile",
+    "metadata_tag",
+    "metadata_taxonomy",
+    "metadata_enrichment",
+    "semantic_annotation",
+    "rights_policy",
+    "rights_decision",
+    "license_agreement",
+    "usage_entitlement",
+    "product_projection",
+    "campaign_projection",
+    "channel_asset_projection",
+    "asset_workflow_case",
+    "asset_review_task",
+    "asset_exception",
+    "asset_quality_score",
+    "asset_usage_snapshot",
+    "asset_usage_forecast",
+    "asset_duplicate_candidate",
+    "asset_lineage",
+    "asset_audit_entry",
+    "asset_policy_screening",
+    "asset_control_assertion",
+    "asset_federation_view",
+    "asset_resilience_drill",
+    "asset_crypto_epoch",
+    "carbon_transcode_window",
+    "rendition_cost_simulation",
+    "asset_route_allocation",
+    "asset_anomaly_signal",
+    "asset_exposure_forecast",
+    "asset_identity_attestation",
+    "asset_governed_model",
+    "asset_seed_data",
+    "dam_rule",
+    "dam_parameter",
+    "dam_configuration",
+    "dam_core_appgen_outbox_event",
+    "dam_core_appgen_inbox_event",
+    "dam_core_dead_letter_event",
+)
+DAM_CORE_RUNTIME_TABLES = (
+    "dam_core_appgen_outbox_event",
+    "dam_core_appgen_inbox_event",
+    "dam_core_dead_letter_event",
+)
 
 DAM_CORE_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_asset_lifecycle",
@@ -46,13 +101,47 @@ DAM_CORE_RUNTIME_CAPABILITY_KEYS = (
 
 DAM_CORE_STANDARD_FEATURE_KEYS = (
     "asset_lifecycle",
+    "asset_versioning",
+    "asset_binary_storage",
     "asset_binary_fingerprint",
+    "asset_collections",
     "asset_rendition",
     "transcoding_job",
+    "transcode_route_selection",
+    "rendition_profiles",
     "metadata_tag",
+    "metadata_taxonomy",
+    "metadata_enrichment",
+    "semantic_annotation",
     "rights_policy",
+    "rights_decision",
+    "license_agreement",
+    "usage_entitlement",
     "product_published_dependency",
+    "campaign_projection",
+    "channel_asset_projection",
+    "asset_workflow_case",
+    "asset_review_task",
+    "asset_exception",
+    "asset_quality_score",
+    "asset_usage_snapshot",
+    "asset_usage_forecast",
+    "duplicate_candidate_detection",
+    "asset_lineage",
     "tenant_isolation",
+    "cryptographic_asset_proofs",
+    "policy_screening",
+    "control_assertions",
+    "federation_views",
+    "resilience_drills",
+    "crypto_epoch_rotation",
+    "carbon_aware_transcoding",
+    "rendition_cost_simulation",
+    "route_allocation",
+    "anomaly_signals",
+    "exposure_forecasts",
+    "identity_attestation",
+    "governed_model_registry",
     "appgen_x_outbox",
     "appgen_x_inbox",
     "idempotent_handlers",
@@ -163,6 +252,9 @@ def dam_core_runtime_capabilities() -> dict:
             "complete_rendition",
             "enforce_rights",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -348,12 +440,15 @@ def dam_core_runtime_smoke() -> dict:
     proof = dam_core_generate_asset_proof(state, "asset_100", disclosure=("asset_id", "fingerprint", "rights_decision"))
     controls = dam_core_run_control_tests(state)
     api = dam_core_build_api_contract()
+    schema = dam_core_build_schema_contract()
+    service = dam_core_build_service_contract()
+    release = dam_core_build_release_evidence()
     policy = dam_core_screen_dynamic_policy(state, "asset_100", market="US", mime_type="image/jpeg")
     workbench = dam_core_build_workbench_view(state, tenant="tenant_alpha")
 
     checks = (
         {"id": "event_sourced_asset_lifecycle", "ok": len(state["events"]) >= 4 and state["events"][-1]["hash"]},
-        {"id": "owned_media_schema_boundary", "ok": set(DAM_CORE_OWNED_TABLES) == {"asset", "asset_rendition", "rights_policy", "metadata_tag"}},
+        {"id": "owned_media_schema_boundary", "ok": schema["ok"] and len(DAM_CORE_OWNED_TABLES) >= 45},
         {"id": "multi_tenant_asset_isolation", "ok": workbench["tenant"] == "tenant_alpha" and controls["tenant_isolation"]},
         {"id": "schema_evolution_resilient_asset_metadata", "ok": state["schema_extensions"]["asset"]["ai_caption"] == "jsonb"},
         {"id": "content_addressed_binary_fingerprinting", "ok": asset["asset"]["fingerprint"].startswith("sha256:")},
@@ -372,7 +467,7 @@ def dam_core_runtime_smoke() -> dict:
         {"id": "immutable_asset_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_policy_screening", "ok": policy["ok"] and policy["decision"] == "allow"},
         {"id": "automated_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "appgen_x_outbox_inbox_eventing", "ok": workbench["outbox_count"] == 4 and workbench["inbox_count"] == 1},
+        {"id": "appgen_x_outbox_inbox_eventing", "ok": workbench["outbox_count"] == 4 and workbench["inbox_count"] == 1 and service["eventing"]["contract"] == "AppGen-X"},
         {"id": "idempotent_handlers", "ok": duplicate["duplicate"] is True and workbench["processed_event_count"] == 2},
         {"id": "retry_dead_letter_evidence", "ok": invalid_event["dead_lettered"] is True and workbench["dead_letter_count"] == 1},
         {"id": "permissions_governance_evidence", "ok": "dam_core.configure" in api["permissions"]},
@@ -380,7 +475,7 @@ def dam_core_runtime_smoke() -> dict:
         {"id": "parameter_engine", "ok": len(state["parameters"]) == len(DAM_CORE_SUPPORTED_PARAMETER_KEYS)},
         {"id": "rule_engine", "ok": state["rules"]["rule_dam_default"]["compiled_hash"]},
         {"id": "seed_data", "ok": "rendition_profiles" in state["seed_data"]},
-        {"id": "workbench_ui", "ok": workbench["asset_count"] == 1 and workbench["rendition_count"] == 1},
+        {"id": "workbench_ui", "ok": workbench["asset_count"] == 1 and workbench["rendition_count"] == 1 and release["ok"]},
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
     return {"format": "appgen.dam-core-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "blocking_gaps": blocking_gaps}
@@ -706,6 +801,9 @@ def dam_core_permissions_contract() -> dict:
         "set_parameter": "dam_core.configure",
         "configure_runtime": "dam_core.configure",
         "run_control_tests": "dam_core.audit",
+        "build_schema_contract": "dam_core.audit",
+        "build_service_contract": "dam_core.audit",
+        "build_release_evidence": "dam_core.audit",
     }
 
 
@@ -760,6 +858,24 @@ def dam_core_build_api_contract() -> dict:
                 "owned_tables": DAM_CORE_OWNED_TABLES,
                 "requires_permission": "dam_core.audit",
             },
+            {
+                "route": "GET /dam/schema-contract",
+                "query": "build_schema_contract",
+                "owned_tables": DAM_CORE_OWNED_TABLES,
+                "requires_permission": "dam_core.audit",
+            },
+            {
+                "route": "GET /dam/service-contract",
+                "query": "build_service_contract",
+                "owned_tables": DAM_CORE_OWNED_TABLES,
+                "requires_permission": "dam_core.audit",
+            },
+            {
+                "route": "GET /dam/release-evidence",
+                "query": "build_release_evidence",
+                "owned_tables": DAM_CORE_OWNED_TABLES,
+                "requires_permission": "dam_core.audit",
+            },
         ),
         "declared_catalog_routes": ("POST /assets", "POST /renditions", "GET /assets"),
         "emits": DAM_CORE_EMITTED_EVENT_TYPES,
@@ -771,6 +887,135 @@ def dam_core_build_api_contract() -> dict:
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
         "shared_table_access": False,
+    }
+
+
+def dam_core_build_schema_contract() -> dict:
+    tables = tuple(
+        {
+            "table": table,
+            "schema": "dam_core",
+            "pbc": "dam_core",
+            "owned": True,
+            "migration": f"pbcs/dam_core/migrations/{index:03d}_{table}.sql",
+            "model": f"pbcs/dam_core/models/{_class_name(table)}.py",
+            "fields": _dam_table_fields(table),
+            "relationships": _dam_table_relationships(table),
+        }
+        for index, table in enumerate(DAM_CORE_OWNED_TABLES, start=1)
+    )
+    return {
+        "format": "appgen.dam-core-owned-schema-contract.v1",
+        "ok": True,
+        "pbc": "dam_core",
+        "owned_tables": DAM_CORE_OWNED_TABLES,
+        "runtime_tables": DAM_CORE_RUNTIME_TABLES,
+        "tables": tables,
+        "migrations": tuple(table["migration"] for table in tables),
+        "models": tuple(table["model"] for table in tables),
+        "database_backends": DAM_CORE_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+        "tenant_isolation": {"field": "tenant", "required": True},
+        "schema_extensions": {"allowed": True, "owned_tables_only": True},
+        "declared_dependencies": dam_core_verify_owned_table_boundary(())["declared_dependencies"],
+    }
+
+
+def dam_core_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_asset",
+        "attach_rights_policy",
+        "add_metadata_tag",
+        "request_rendition",
+        "complete_rendition",
+        "enforce_rights",
+        "score_asset_quality",
+        "simulate_rendition_cost",
+        "forecast_asset_usage",
+        "resolve_asset_exception",
+        "parse_asset_instruction",
+        "predictive_governance_risk",
+        "select_transcode_route",
+        "generate_asset_proof",
+        "screen_dynamic_policy",
+        "run_control_tests",
+        "build_workbench_view",
+        "verify_owned_table_boundary",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    query_methods = (
+        "build_api_contract",
+        "permissions_contract",
+        "build_workbench_view",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+    )
+    return {
+        "format": "appgen.dam-core-service-contract.v1",
+        "ok": True,
+        "pbc": "dam_core",
+        "transaction_boundary": "dam_core_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": DAM_CORE_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": ("POST /assets", "POST /renditions", "GET /assets"),
+            "events": DAM_CORE_CONSUMED_EVENT_TYPES,
+            "api_projections": ("product_projection",),
+            "shared_tables": (),
+        },
+        "eventing": {
+            "contract": "AppGen-X",
+            "topic": DAM_CORE_REQUIRED_EVENT_TOPIC,
+            "outbox_table": DAM_CORE_RUNTIME_TABLES[0],
+            "inbox_table": DAM_CORE_RUNTIME_TABLES[1],
+            "dead_letter_table": DAM_CORE_RUNTIME_TABLES[2],
+            "idempotency_required": True,
+        },
+        "idempotent_handlers": ("receive_event",),
+        "retry_dead_letter_evidence": {
+            "retry_limit_field": "retry_limit",
+            "dead_letter_table": DAM_CORE_RUNTIME_TABLES[2],
+        },
+        "shared_table_access": False,
+    }
+
+
+def dam_core_build_release_evidence() -> dict:
+    schema = dam_core_build_schema_contract()
+    service = dam_core_build_service_contract()
+    api = dam_core_build_api_contract()
+    permissions = dam_core_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": len(schema["owned_tables"]) >= 45},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(schema["owned_tables"])},
+        {"id": "model_per_owned_table", "ok": len(schema["models"]) == len(schema["owned_tables"])},
+        {"id": "service_contract_depth", "ok": len(service["command_methods"]) >= 25},
+        {"id": "appgen_event_contract_only", "ok": api["event_contract"] == "AppGen-X" and api["stream_engine_picker_visible"] is False},
+        {"id": "backend_allowlist", "ok": set(api["database_backends"]) <= {"postgresql", "mysql", "mariadb"}},
+        {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions)},
+        {"id": "runtime_event_tables_owned", "ok": set(DAM_CORE_RUNTIME_TABLES) <= set(schema["owned_tables"])},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not service["shared_table_access"] and not api["shared_table_access"]},
+    )
+    blocking = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.dam-core-release-evidence.v1",
+        "ok": not blocking,
+        "pbc": "dam_core",
+        "checks": checks,
+        "blocking_gaps": blocking,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
     }
 
 
@@ -897,10 +1142,11 @@ def dam_core_run_control_tests(state: dict) -> dict:
 def dam_core_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
     allowed_event_dependencies = {"enterprise_pim.ProductPublished"}
     allowed_api_dependencies = {"product_projection", "POST /assets", "POST /renditions", "GET /assets"}
+    allowed_tables = set(DAM_CORE_OWNED_TABLES) | set(DAM_CORE_RUNTIME_TABLES)
     violations = tuple(
         reference
         for reference in references
-        if reference not in set(DAM_CORE_OWNED_TABLES)
+        if reference not in allowed_tables
         and reference not in allowed_event_dependencies
         and reference not in allowed_api_dependencies
         and not str(reference).startswith("dam_core_")
@@ -909,6 +1155,7 @@ def dam_core_verify_owned_table_boundary(references: tuple[str, ...] | list[str]
         "format": "appgen.dam-core-owned-boundary-check.v1",
         "ok": not violations,
         "owned_tables": DAM_CORE_OWNED_TABLES,
+        "runtime_tables": DAM_CORE_RUNTIME_TABLES,
         "declared_dependencies": {
             "events": DAM_CORE_CONSUMED_EVENT_TYPES,
             "event_providers": tuple(sorted(allowed_event_dependencies)),
@@ -943,6 +1190,107 @@ def _append_event(state: dict, event_type: str, tenant: str, payload: dict) -> d
         "status": "ready",
     }
     return {**state, "events": (*state["events"], event), "outbox": (*state["outbox"], outbox)}
+
+
+def _dam_table_fields(table: str) -> tuple[dict, ...]:
+    base = [
+        {"name": "id", "type": "uuid", "required": True},
+        {"name": "tenant", "type": "text", "required": True},
+        {"name": "created_at", "type": "timestamp", "required": True},
+        {"name": "updated_at", "type": "timestamp", "required": True},
+    ]
+    table_specific = {
+        "asset": (
+            {"name": "asset_id", "type": "text", "required": True},
+            {"name": "filename", "type": "text", "required": True},
+            {"name": "mime_type", "type": "text", "required": True},
+            {"name": "fingerprint", "type": "text", "required": True},
+        ),
+        "asset_rendition": (
+            {"name": "rendition_id", "type": "text", "required": True},
+            {"name": "asset_id", "type": "text", "required": True},
+            {"name": "profile", "type": "text", "required": True},
+            {"name": "quality_score", "type": "numeric", "required": False},
+        ),
+        "rights_policy": (
+            {"name": "policy_id", "type": "text", "required": True},
+            {"name": "asset_id", "type": "text", "required": True},
+            {"name": "allowed_markets", "type": "jsonb", "required": True},
+            {"name": "blocked_markets", "type": "jsonb", "required": True},
+        ),
+        "metadata_tag": (
+            {"name": "tag_id", "type": "text", "required": True},
+            {"name": "asset_id", "type": "text", "required": True},
+            {"name": "taxonomy", "type": "text", "required": True},
+            {"name": "value", "type": "text", "required": True},
+        ),
+        "dam_core_appgen_outbox_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "idempotency_key", "type": "text", "required": True},
+        ),
+        "dam_core_appgen_inbox_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "attempts", "type": "integer", "required": True},
+        ),
+        "dam_core_dead_letter_event": (
+            {"name": "event_type", "type": "text", "required": True},
+            {"name": "payload", "type": "jsonb", "required": True},
+            {"name": "reason", "type": "text", "required": True},
+        ),
+    }
+    default_fields = (
+        {"name": "asset_id", "type": "text", "required": False},
+        {"name": "status", "type": "text", "required": False},
+        {"name": "attributes", "type": "jsonb", "required": False},
+    )
+    return tuple(base + list(table_specific.get(table, default_fields)))
+
+
+def _dam_table_relationships(table: str) -> tuple[dict, ...]:
+    asset_children = {
+        "asset_version",
+        "asset_binary",
+        "asset_fingerprint",
+        "asset_collection_member",
+        "asset_rendition",
+        "transcoding_job",
+        "metadata_tag",
+        "metadata_enrichment",
+        "semantic_annotation",
+        "rights_policy",
+        "rights_decision",
+        "license_agreement",
+        "usage_entitlement",
+        "asset_workflow_case",
+        "asset_review_task",
+        "asset_exception",
+        "asset_quality_score",
+        "asset_usage_snapshot",
+        "asset_usage_forecast",
+        "asset_duplicate_candidate",
+        "asset_lineage",
+        "asset_audit_entry",
+        "asset_policy_screening",
+        "asset_control_assertion",
+        "asset_federation_view",
+        "asset_anomaly_signal",
+        "asset_exposure_forecast",
+        "asset_identity_attestation",
+    }
+    relationships = []
+    if table in asset_children:
+        relationships.append({"type": "owned_reference", "to": "asset", "on": "asset_id"})
+    if table in {"asset_collection_member"}:
+        relationships.append({"type": "owned_reference", "to": "asset_collection", "on": "collection_id"})
+    if table in DAM_CORE_RUNTIME_TABLES:
+        relationships.append({"type": "event_contract", "to": "AppGen-X", "topic": DAM_CORE_REQUIRED_EVENT_TOPIC})
+    return tuple(relationships)
+
+
+def _class_name(table: str) -> str:
+    return "".join(part.capitalize() for part in table.split("_"))
 
 
 def _compile_rule(rule: dict) -> dict:

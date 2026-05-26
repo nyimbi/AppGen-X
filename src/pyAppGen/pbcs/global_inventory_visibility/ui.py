@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
+from .runtime import GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
+from .runtime import global_inventory_visibility_permissions_contract
+
 
 GLOBAL_INVENTORY_VISIBILITY_UI_FRAGMENT_KEYS = (
     "GlobalInventoryWorkbench",
@@ -98,20 +106,7 @@ def global_inventory_visibility_ui_contract() -> dict:
                 ),
             },
         ),
-        "action_permissions": {
-            "register_inventory_pool": "global_inventory_visibility.configure",
-            "register_supply_node": "global_inventory_visibility.configure",
-            "record_availability_snapshot": "global_inventory_visibility.configure",
-            "project_availability": "global_inventory_visibility.read",
-            "get_global_availability": "global_inventory_visibility.read",
-            "reserve_inventory": "global_inventory_visibility.reserve",
-            "ingest_event": "global_inventory_visibility.configure",
-            "generate_availability_proof": "global_inventory_visibility.audit",
-            "register_rule": "global_inventory_visibility.configure",
-            "set_parameter": "global_inventory_visibility.configure",
-            "configure_runtime": "global_inventory_visibility.configure",
-            "run_control_tests": "global_inventory_visibility.audit",
-        },
+        "action_permissions": global_inventory_visibility_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": (
                 "database_backend",
@@ -122,9 +117,11 @@ def global_inventory_visibility_ui_contract() -> dict:
                 "staleness_sla_minutes",
                 "workbench_limit",
             ),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
             "user_facing_stream_engine_picker": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -153,11 +150,24 @@ def global_inventory_visibility_ui_contract() -> dict:
             "compiled_evidence_required": True,
         },
         "event_surfaces": {
-            "emits": ("AvailabilityProjected", "InventoryPoolChanged"),
-            "consumes": ("GoodsReceiptPosted", "ShipmentDelivered", "InventoryAllocated"),
+            "emits": GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES,
+            "consumes": GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
             "user_facing_stream_engine_picker": False,
+        },
+        "binding_evidence": {
+            "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+            "runtime_tables": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES,
+            "outbox_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[0],
+            "inbox_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[1],
+            "dead_letter_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[2],
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "event_contract": "AppGen-X",
+            "shared_table_access": False,
         },
     }
 
@@ -228,7 +238,18 @@ def global_inventory_visibility_render_workbench(
         ),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "binding_evidence": {
+            "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+            "runtime_tables": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES,
+            "outbox_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[0],
+            "inbox_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[1],
+            "dead_letter_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[2],
             "configuration": state.get("configuration", {}).get("event_topic"),
+            "configuration_state": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
             "rule_hashes": tuple(
                 sorted(
                     rule["compiled_hash"]
@@ -237,7 +258,15 @@ def global_inventory_visibility_render_workbench(
                 )
             ),
             "parameters": tuple(sorted(state.get("parameters", {}))),
+            "ui_bindings": {
+                "configuration_fragment": "InventoryConfigurationPanel",
+                "rule_fragment": "PoolRuleStudio",
+                "parameter_fragment": "InventoryParameterConsole",
+                "workbench_fragment": "GlobalInventoryWorkbench",
+                "rbac": contract["action_permissions"],
+            },
         },
         "event_outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
         "dead_letter_count": len(state.get("dead_letters", ())),
     }

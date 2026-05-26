@@ -5,7 +5,9 @@ from __future__ import annotations
 from .runtime import DAM_CORE_ALLOWED_DATABASE_BACKENDS
 from .runtime import DAM_CORE_CONSUMED_EVENT_TYPES
 from .runtime import DAM_CORE_EMITTED_EVENT_TYPES
+from .runtime import DAM_CORE_OWNED_TABLES
 from .runtime import DAM_CORE_REQUIRED_EVENT_TOPIC
+from .runtime import DAM_CORE_RUNTIME_TABLES
 from .runtime import dam_core_build_workbench_view
 from .runtime import dam_core_permissions_contract
 
@@ -24,6 +26,9 @@ DAM_CORE_UI_FRAGMENT_KEYS = (
     "DamEventOutbox",
     "DamInboxMonitor",
     "DamDeadLetterQueue",
+    "DamSchemaContractExplorer",
+    "DamServiceContractExplorer",
+    "DamReleaseEvidencePanel",
 )
 
 
@@ -45,6 +50,9 @@ def dam_core_ui_contract() -> dict:
             "/workbench/pbcs/dam_core/parameters",
             "/workbench/pbcs/dam_core/configuration",
             "/workbench/pbcs/dam_core/eventing",
+            "/workbench/pbcs/dam_core/schema-contract",
+            "/workbench/pbcs/dam_core/service-contract",
+            "/workbench/pbcs/dam_core/release-evidence",
         ),
         "panels": (
             {
@@ -76,6 +84,12 @@ def dam_core_ui_contract() -> dict:
                 "fragment": "DamRuleStudio",
                 "binds_to": ("configuration", "parameter", "rule"),
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
+            },
+            {
+                "key": "release_evidence",
+                "fragment": "DamReleaseEvidencePanel",
+                "binds_to": DAM_CORE_RUNTIME_TABLES,
+                "commands": ("build_schema_contract", "build_service_contract", "build_release_evidence"),
             },
         ),
         "action_permissions": dam_core_permissions_contract(),
@@ -134,6 +148,13 @@ def dam_core_ui_contract() -> dict:
             "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {
+            "owned_tables": DAM_CORE_OWNED_TABLES,
+            "runtime_tables": DAM_CORE_RUNTIME_TABLES,
+            "shared_table_access": False,
+            "event_contract": "AppGen-X",
+            "required_event_topic": DAM_CORE_REQUIRED_EVENT_TOPIC,
+        },
     }
 
 
@@ -176,7 +197,9 @@ def dam_core_render_workbench(
         "dead_letter_count": snapshot["dead_letter_count"],
         "binding_evidence": {
             "owned_tables": snapshot["owned_tables"],
+            "runtime_tables": DAM_CORE_RUNTIME_TABLES,
             "event_contract": snapshot["event_contract"],
             "product_projection_count": snapshot["product_projection_count"],
+            "shared_table_access": False,
         },
     }

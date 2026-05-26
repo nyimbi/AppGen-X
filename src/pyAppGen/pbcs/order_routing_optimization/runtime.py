@@ -9,14 +9,58 @@ import re
 
 
 ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC = "appgen.order-routing.events"
+ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS = (
+    "postgresql",
+    "mysql",
+    "mariadb",
+)
 ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES = (
-    "routing_rule",
+    "routing_plan",
+    "routing_plan_leg",
+    "routing_node",
+    "routing_node_calendar",
+    "routing_node_service",
+    "routing_node_capacity",
+    "routing_constraint",
+    "routing_cost_component",
+    "routing_promise",
+    "split_shipment",
+    "split_shipment_leg",
+    "inventory_input_projection",
+    "transport_input_projection",
+    "service_input_projection",
     "route_candidate",
     "capacity_snapshot",
     "routing_decision",
     "node_reservation",
+    "route_simulation",
+    "route_simulation_scenario",
+    "optimization_run",
+    "optimization_candidate",
+    "routing_exception",
+    "exception_resolution",
+    "routing_approval",
+    "routing_feedback",
+    "routing_policy_screening",
+    "routing_audit_trace",
+    "routing_federation_projection",
+    "routing_carbon_schedule",
+    "routing_network_optimization",
+    "routing_capacity_allocation",
+    "routing_anomaly_signal",
+    "routing_exposure_model",
+    "routing_forecast",
+    "routing_parsed_request",
+    "routing_seed_data",
+    "routing_schema_extension",
+    "routing_control_assertion",
+    "routing_governed_model",
+    "routing_rule",
     "routing_parameter",
     "routing_configuration",
+    "order_routing_optimization_appgen_outbox_event",
+    "order_routing_optimization_appgen_inbox_event",
+    "order_routing_optimization_dead_letter_event",
 )
 ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES = (
     "FulfillmentRouteSelected",
@@ -51,11 +95,23 @@ ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS = (
     "distributed_systems_engineering",
 )
 ORDER_ROUTING_OPTIMIZATION_STANDARD_FEATURE_KEYS = (
+    "routing_plans",
+    "routing_nodes",
+    "routing_constraints",
+    "routing_costs",
+    "routing_promises",
+    "split_shipments",
+    "inventory_transport_service_inputs",
     "routing_rules",
     "route_candidates",
     "capacity_snapshots",
     "routing_decisions",
     "node_reservation",
+    "route_simulations",
+    "optimization_runs",
+    "routing_exceptions",
+    "routing_approvals",
+    "routing_feedback",
     "cost_sla_scoring",
     "split_shipment_policy",
     "substitution_eligibility",
@@ -68,13 +124,13 @@ ORDER_ROUTING_OPTIMIZATION_STANDARD_FEATURE_KEYS = (
     "configuration_schema",
     "rule_engine",
     "parameter_engine",
+    "schema_contract",
+    "service_contract",
+    "release_evidence",
+    "api_descriptors",
+    "ui_workbench_binding_evidence",
     "seed_data",
     "workbench",
-)
-ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS = (
-    "postgresql",
-    "mysql",
-    "mariadb",
 )
 ORDER_ROUTING_OPTIMIZATION_SUPPORTED_CONFIGURATION_FIELDS = (
     "database_backend",
@@ -127,12 +183,20 @@ _ORDER_ROUTING_OPTIMIZATION_ALLOWED_DEPENDENCIES = (
     "GET /tax-calculations",
     "GET /inventory-nodes",
     "GET /wms-capacity",
+    "GET /transport-service-options",
+    "GET /delivery-promises",
+    "POST /routing-approvals",
+    "POST /routing-feedback",
     "order_projection",
     "availability_projection",
     "tax_projection",
     "inventory_projection",
     "wms_capacity_projection",
     "dom_projection",
+    "transport_service_projection",
+    "delivery_promise_projection",
+    "approval_policy_projection",
+    "feedback_signal_projection",
 )
 _ORDER_ROUTING_OPTIMIZATION_CONFIGURATION_SEQUENCE_FIELDS = {
     "supported_regions",
@@ -179,7 +243,28 @@ def order_routing_optimization_runtime_capabilities() -> dict:
             "upsert_route_candidate",
             "route_orders",
             "reserve_node_capacity",
+            "simulate_counterfactual",
+            "forecast_capacity",
+            "recommend_exception_resolution",
+            "parse_route_request",
+            "score_fulfillment_risk",
+            "self_heal_route_selection",
+            "generate_routing_proof",
+            "screen_policy",
+            "run_control_tests",
+            "federate_routing_view",
+            "run_resilience_drill",
+            "rotate_crypto_epoch",
+            "schedule_carbon_aware_route",
+            "optimize_route_network",
+            "clear_capacity_auction",
+            "detect_routing_anomaly",
+            "model_stochastic_exposure",
+            "register_governed_model",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -366,6 +451,7 @@ def order_routing_optimization_runtime_smoke() -> dict:
         "route_req_smoke",
         proposed_node="node_green",
     )
+    state = simulation["state"]
     forecast = order_routing_optimization_forecast_capacity(
         capacity_path=(6, 6, 5),
         demand_path=(3, 3, 4),
@@ -558,6 +644,8 @@ def order_routing_optimization_runtime_smoke() -> dict:
         "ok": not blocking_gaps,
         "checks": checks,
         "blocking_gaps": blocking_gaps,
+        "state": state,
+        "workbench": workbench,
     }
 
 
@@ -567,10 +655,25 @@ def order_routing_optimization_empty_state() -> dict:
         "outbox": (),
         "inbox": (),
         "dead_letter": (),
+        "routing_plans": {},
+        "routing_plan_legs": {},
+        "routing_nodes": {},
+        "routing_constraints": {},
+        "routing_costs": {},
+        "routing_promises": {},
+        "split_shipments": {},
+        "inventory_inputs": {},
+        "transport_inputs": {},
+        "service_inputs": {},
         "route_candidates": {},
         "capacity_snapshots": {},
         "routing_decisions": {},
         "node_reservations": {},
+        "route_simulations": {},
+        "optimization_runs": {},
+        "routing_exceptions": {},
+        "routing_approvals": {},
+        "routing_feedback": {},
         "rules": {},
         "parameters": {},
         "configuration": {},
@@ -635,6 +738,9 @@ def order_routing_optimization_configure_runtime(
         "supported_configuration_fields": (
             ORDER_ROUTING_OPTIMIZATION_SUPPORTED_CONFIGURATION_FIELDS
         ),
+        "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+        "emitted_event_types": ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
+        "consumed_event_types": ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
         "visible_event_contracts": ("AppGen-X",),
         "stream_engine_picker_visible": False,
         "user_selectable_event_contract": False,
@@ -721,9 +827,28 @@ def order_routing_optimization_register_rule(state: dict, rule: dict) -> dict:
             "required_fields": ORDER_ROUTING_OPTIMIZATION_REQUIRED_RULE_FIELDS,
         },
     }
+    constraint = {
+        "constraint_id": f"constraint_{normalized['rule_id']}",
+        "tenant": normalized["tenant"],
+        "rule_id": normalized["rule_id"],
+        "regions": normalized["regions"],
+        "eligible_nodes": normalized["eligible_nodes"],
+        "preferred_nodes": normalized.get("preferred_nodes", ()),
+        "capacity_floor": normalized["capacity_floor"],
+        "split_policy": normalized["split_policy"],
+        "substitution_mode": normalized["substitution_mode"],
+        "status": normalized["status"],
+    }
     return {
         "ok": True,
-        "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}},
+        "state": {
+            **state,
+            "rules": {**state["rules"], rule["rule_id"]: enriched},
+            "routing_constraints": {
+                **state["routing_constraints"],
+                constraint["constraint_id"]: constraint,
+            },
+        },
         "rule": enriched,
     }
 
@@ -869,7 +994,21 @@ def order_routing_optimization_handle_event(
                 "source_event_id": event_id,
             },
         }
-        next_state = {**next_state, "order_evidence": order_evidence}
+        next_state = {
+            **next_state,
+            "order_evidence": order_evidence,
+            "service_inputs": {
+                **next_state["service_inputs"],
+                f"order:{order_id}": {
+                    "input_id": f"order:{order_id}",
+                    "tenant": payload["tenant"],
+                    "order_id": order_id,
+                    "source_event_id": event_id,
+                    "input_type": "order_verification",
+                    "verified": True,
+                },
+            },
+        }
     elif event_type == "AvailabilityProjected":
         projection_key = _capacity_key(payload["tenant"], payload["node_id"])
         next_state = {
@@ -878,6 +1017,17 @@ def order_routing_optimization_handle_event(
                 **next_state["availability_projections"],
                 projection_key: dict(payload),
             },
+            "inventory_inputs": {
+                **next_state["inventory_inputs"],
+                projection_key: {
+                    "input_id": projection_key,
+                    "tenant": payload["tenant"],
+                    "node_id": payload["node_id"],
+                    "available_units": float(payload.get("available_units", 0.0)),
+                    "input_type": "availability_projection",
+                    "source_event_id": event_id,
+                },
+            },
         }
     elif event_type == "TaxCalculated":
         next_state = {
@@ -885,6 +1035,17 @@ def order_routing_optimization_handle_event(
             "tax_quotes": {
                 **next_state["tax_quotes"],
                 payload["order_id"]: float(payload.get("tax_total", 0.0)),
+            },
+            "service_inputs": {
+                **next_state["service_inputs"],
+                f"tax:{payload['order_id']}": {
+                    "input_id": f"tax:{payload['order_id']}",
+                    "tenant": payload["tenant"],
+                    "order_id": payload["order_id"],
+                    "tax_total": float(payload.get("tax_total", 0.0)),
+                    "input_type": "tax_quote",
+                    "source_event_id": event_id,
+                },
             },
         }
     handler = {
@@ -932,6 +1093,19 @@ def order_routing_optimization_ingest_capacity_snapshot(
     next_state = {
         **state,
         "capacity_snapshots": {**state["capacity_snapshots"], key: enriched},
+        "routing_nodes": {
+            **state["routing_nodes"],
+            key: {
+                "tenant": snapshot["tenant"],
+                "node_id": snapshot["node_id"],
+                "node_type": snapshot.get("node_type", "fulfillment"),
+                "available_units": available_units,
+                "reserved_units": reserved_units,
+                "available_to_promise": available_to_promise,
+                "forecast_load": float(snapshot.get("forecast_load", 0.0)),
+                "status": "active",
+            },
+        },
     }
     next_state = _append_event(
         next_state,
@@ -989,6 +1163,34 @@ def order_routing_optimization_upsert_route_candidate(
         "route_candidates": {
             **state["route_candidates"],
             candidate["candidate_id"]: enriched,
+        },
+        "transport_inputs": {
+            **state["transport_inputs"],
+            candidate["candidate_id"]: {
+                "input_id": candidate["candidate_id"],
+                "tenant": candidate["tenant"],
+                "order_id": candidate["order_id"],
+                "node_id": candidate["node_id"],
+                "distance_km": float(candidate["distance_km"]),
+                "base_cost": float(candidate["base_cost"]),
+                "carbon_kg": float(candidate["carbon_kg"]),
+                "input_type": "transport_option",
+            },
+        },
+        "service_inputs": {
+            **state["service_inputs"],
+            candidate["candidate_id"]: {
+                "input_id": candidate["candidate_id"],
+                "tenant": candidate["tenant"],
+                "order_id": candidate["order_id"],
+                "node_id": candidate["node_id"],
+                "sla_hours": float(candidate["sla_hours"]),
+                "split_supported": bool(candidate.get("split_supported", False)),
+                "substitution_eligible": bool(
+                    candidate.get("substitution_eligible", False)
+                ),
+                "input_type": "service_option",
+            },
         },
     }
     next_state = _append_event(
@@ -1242,8 +1444,122 @@ def order_routing_optimization_route_orders(state: dict, request: dict) -> dict:
         **decision,
         "reservation_ids": tuple(reservation_ids),
     }
+    routing_plan = {
+        "plan_id": decision_id,
+        "tenant": tenant,
+        "order_id": order_id,
+        "decision_id": decision_id,
+        "status": "selected",
+        "selected_node_ids": final_decision["selected_node_ids"],
+        "split": final_decision["split"],
+    }
+    plan_legs = {
+        f"{decision_id}_leg_{index:02d}": {
+            "leg_id": f"{decision_id}_leg_{index:02d}",
+            "plan_id": decision_id,
+            "tenant": tenant,
+            "node_id": allocation["node_id"],
+            "allocated_units": allocation["allocated_units"],
+            "sequence": index,
+            "status": "planned",
+        }
+        for index, allocation in enumerate(allocations, start=1)
+    }
+    cost_record = {
+        "cost_id": f"cost_{decision_id}",
+        "tenant": tenant,
+        "decision_id": decision_id,
+        "currency": state.get("configuration", {}).get("default_currency", "USD"),
+        "total_cost": final_decision["total_cost"],
+        "total_carbon": final_decision["total_carbon"],
+        "risk_score": final_decision["risk_score"],
+        "status": "committed",
+    }
+    promise_record = {
+        "promise_id": f"promise_{decision_id}",
+        "tenant": tenant,
+        "order_id": order_id,
+        "decision_id": decision_id,
+        "promised_sla_hours": min(
+            selected_candidates[item["candidate_id"]]["sla_hours"] for item in allocations
+        ),
+        "confidence": final_decision["confidence"],
+        "status": "active",
+    }
+    optimization_record = {
+        "run_id": f"optimization_{decision_id}",
+        "tenant": tenant,
+        "decision_id": decision_id,
+        "candidate_count": len(scored_candidates),
+        "selected_candidate_ids": final_decision["selected_candidate_ids"],
+        "objective_score": final_decision["objective_score"],
+        "status": "applied",
+    }
+    approval_record = {
+        "approval_id": f"approval_{decision_id}",
+        "tenant": tenant,
+        "decision_id": decision_id,
+        "approval_mode": "auto",
+        "approved": True,
+        "reason": "objective_score_threshold_met",
+        "status": "approved",
+    }
+    feedback_record = {
+        "feedback_id": f"feedback_{decision_id}",
+        "tenant": tenant,
+        "decision_id": decision_id,
+        "feedback_source": "system",
+        "feedback_type": "route_selection",
+        "score": final_decision["objective_score"],
+        "status": "recorded",
+    }
     next_state = {
         **next_state,
+        "routing_plans": {
+            **next_state["routing_plans"],
+            decision_id: routing_plan,
+        },
+        "routing_plan_legs": {
+            **next_state["routing_plan_legs"],
+            **plan_legs,
+        },
+        "routing_costs": {
+            **next_state["routing_costs"],
+            cost_record["cost_id"]: cost_record,
+        },
+        "routing_promises": {
+            **next_state["routing_promises"],
+            promise_record["promise_id"]: promise_record,
+        },
+        "optimization_runs": {
+            **next_state["optimization_runs"],
+            optimization_record["run_id"]: optimization_record,
+        },
+        "routing_approvals": {
+            **next_state["routing_approvals"],
+            approval_record["approval_id"]: approval_record,
+        },
+        "routing_feedback": {
+            **next_state["routing_feedback"],
+            feedback_record["feedback_id"]: feedback_record,
+        },
+        "split_shipments": {
+            **next_state["split_shipments"],
+            **(
+                {
+                    decision_id: {
+                        "split_shipment_id": decision_id,
+                        "tenant": tenant,
+                        "decision_id": decision_id,
+                        "order_id": order_id,
+                        "allocation_count": len(allocations),
+                        "status": "planned",
+                    }
+                }
+                if final_decision["split"]
+                else {}
+            ),
+        },
         "routing_decisions": {
             **next_state["routing_decisions"],
             decision_id: final_decision,
@@ -1336,14 +1652,34 @@ def order_routing_optimization_simulate_counterfactual(
         for candidate in state["route_candidates"].values()
         if candidate["order_id"] == order_id and candidate["node_id"] == current_node
     )
-    return {
-        "ok": True,
+    simulation_id = f"simulation_{decision_id}_{proposed_node}"
+    simulation = {
+        "simulation_id": simulation_id,
         "decision_id": decision_id,
         "current_node": current_node,
         "proposed_node": proposed_node,
         "cost_delta": round(proposed["total_cost"] - current["total_cost"], 2),
         "sla_delta": round(proposed["sla_hours"] - current["sla_hours"], 2),
         "carbon_delta": round(proposed["carbon_kg"] - current["carbon_kg"], 2),
+        "status": "evaluated",
+    }
+    next_state = {
+        **state,
+        "route_simulations": {
+            **state["route_simulations"],
+            simulation_id: simulation,
+        },
+    }
+    return {
+        "ok": True,
+        "state": next_state,
+        "simulation_id": simulation_id,
+        "decision_id": decision_id,
+        "current_node": current_node,
+        "proposed_node": proposed_node,
+        "cost_delta": simulation["cost_delta"],
+        "sla_delta": simulation["sla_delta"],
+        "carbon_delta": simulation["carbon_delta"],
     }
 
 
@@ -1577,11 +1913,43 @@ def order_routing_optimization_build_api_contract() -> dict:
                 "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
                 "requires_permission": "order_routing_optimization.audit",
             },
+            {
+                "route": "POST /routing-simulations",
+                "command": "simulate_counterfactual",
+                "owned_tables": ("route_simulation", "route_simulation_scenario"),
+                "requires_permission": "order_routing_optimization.audit",
+            },
+            {
+                "route": "POST /routing-optimizations",
+                "command": "optimize_route_network",
+                "owned_tables": ("optimization_run", "optimization_candidate"),
+                "requires_permission": "order_routing_optimization.route",
+            },
+            {
+                "route": "POST /routing-policy-screening",
+                "command": "screen_policy",
+                "owned_tables": ("routing_policy_screening", "routing_approval"),
+                "requires_permission": "order_routing_optimization.audit",
+            },
+            {
+                "route": "GET /routing-federation",
+                "query": "federate_routing_view",
+                "owned_tables": ("routing_federation_projection", "routing_promise"),
+                "requires_permission": "order_routing_optimization.read",
+            },
+            {
+                "route": "POST /routing-proof",
+                "command": "generate_routing_proof",
+                "owned_tables": ("routing_audit_trace", "routing_promise"),
+                "requires_permission": "order_routing_optimization.audit",
+            },
         ),
         "declared_catalog_routes": (
             "POST /route-orders",
             "GET /route-candidates",
             "POST /capacity",
+            "POST /routing-simulations",
+            "POST /routing-optimizations",
         ),
         "events": {
             "emits": ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
@@ -1604,6 +1972,713 @@ def order_routing_optimization_build_api_contract() -> dict:
     }
 
 
+def order_routing_optimization_build_schema_contract() -> dict:
+    """Return Order Routing Optimization-owned schema, migration, model, and relationship evidence."""
+    default_fields = (
+        "tenant",
+        "record_id",
+        "source_id",
+        "status",
+        "effective_at",
+        "audit_hash",
+    )
+    table_fields = {
+        table: default_fields for table in ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+    } | {
+        "routing_plan": (
+            "tenant",
+            "plan_id",
+            "order_id",
+            "decision_id",
+            "selected_node_ids",
+            "split",
+            "status",
+        ),
+        "routing_plan_leg": (
+            "tenant",
+            "leg_id",
+            "plan_id",
+            "node_id",
+            "allocated_units",
+            "sequence",
+            "status",
+        ),
+        "routing_node": (
+            "tenant",
+            "node_id",
+            "node_type",
+            "region",
+            "timezone",
+            "available_to_promise",
+            "status",
+        ),
+        "routing_node_calendar": (
+            "tenant",
+            "calendar_id",
+            "node_id",
+            "timezone",
+            "cutoff_time",
+            "working_days",
+            "status",
+        ),
+        "routing_node_service": (
+            "tenant",
+            "service_id",
+            "node_id",
+            "service_type",
+            "sla_hours",
+            "cost_basis",
+            "status",
+        ),
+        "routing_node_capacity": (
+            "tenant",
+            "capacity_id",
+            "node_id",
+            "available_units",
+            "reserved_units",
+            "forecast_load",
+            "status",
+        ),
+        "routing_constraint": (
+            "tenant",
+            "constraint_id",
+            "rule_id",
+            "constraint_type",
+            "constraint_value",
+            "priority",
+            "status",
+        ),
+        "routing_cost_component": (
+            "tenant",
+            "cost_id",
+            "decision_id",
+            "currency",
+            "total_cost",
+            "total_carbon",
+            "status",
+        ),
+        "routing_promise": (
+            "tenant",
+            "promise_id",
+            "order_id",
+            "decision_id",
+            "promised_sla_hours",
+            "confidence",
+            "status",
+        ),
+        "split_shipment": (
+            "tenant",
+            "split_shipment_id",
+            "decision_id",
+            "order_id",
+            "allocation_count",
+            "reason",
+            "status",
+        ),
+        "split_shipment_leg": (
+            "tenant",
+            "split_leg_id",
+            "split_shipment_id",
+            "node_id",
+            "allocated_units",
+            "sequence",
+            "status",
+        ),
+        "inventory_input_projection": (
+            "tenant",
+            "input_id",
+            "node_id",
+            "item_scope",
+            "available_units",
+            "input_type",
+            "source_event_id",
+        ),
+        "transport_input_projection": (
+            "tenant",
+            "input_id",
+            "order_id",
+            "node_id",
+            "distance_km",
+            "base_cost",
+            "input_type",
+        ),
+        "service_input_projection": (
+            "tenant",
+            "input_id",
+            "order_id",
+            "node_id",
+            "sla_hours",
+            "input_type",
+            "status",
+        ),
+        "route_candidate": (
+            "tenant",
+            "candidate_id",
+            "order_id",
+            "node_id",
+            "region",
+            "total_cost",
+            "status",
+        ),
+        "capacity_snapshot": (
+            "tenant",
+            "snapshot_id",
+            "node_id",
+            "available_units",
+            "reserved_units",
+            "available_to_promise",
+            "status",
+        ),
+        "routing_decision": (
+            "tenant",
+            "decision_id",
+            "order_id",
+            "selected_node_ids",
+            "objective_score",
+            "confidence",
+            "status",
+        ),
+        "node_reservation": (
+            "tenant",
+            "reservation_id",
+            "decision_id",
+            "order_id",
+            "node_id",
+            "allocated_units",
+            "status",
+        ),
+        "route_simulation": (
+            "tenant",
+            "simulation_id",
+            "decision_id",
+            "current_node",
+            "proposed_node",
+            "cost_delta",
+            "status",
+        ),
+        "route_simulation_scenario": (
+            "tenant",
+            "scenario_id",
+            "simulation_id",
+            "scenario_type",
+            "input_hash",
+            "result_hash",
+            "status",
+        ),
+        "optimization_run": (
+            "tenant",
+            "run_id",
+            "decision_id",
+            "candidate_count",
+            "objective_score",
+            "selected_candidate_ids",
+            "status",
+        ),
+        "optimization_candidate": (
+            "tenant",
+            "optimization_candidate_id",
+            "run_id",
+            "candidate_id",
+            "objective_score",
+            "selected",
+            "status",
+        ),
+        "routing_exception": (
+            "tenant",
+            "exception_id",
+            "decision_id",
+            "exception_type",
+            "severity",
+            "recommended_action",
+            "status",
+        ),
+        "exception_resolution": (
+            "tenant",
+            "resolution_id",
+            "exception_id",
+            "resolution_action",
+            "resolved_by",
+            "resolved_at",
+            "status",
+        ),
+        "routing_approval": (
+            "tenant",
+            "approval_id",
+            "decision_id",
+            "approval_mode",
+            "approved",
+            "reason",
+            "status",
+        ),
+        "routing_feedback": (
+            "tenant",
+            "feedback_id",
+            "decision_id",
+            "feedback_source",
+            "feedback_type",
+            "score",
+            "status",
+        ),
+        "routing_policy_screening": (
+            "tenant",
+            "screening_id",
+            "decision_id",
+            "decision",
+            "blocked_nodes",
+            "carbon_budget",
+            "status",
+        ),
+        "routing_audit_trace": (
+            "tenant",
+            "trace_id",
+            "decision_id",
+            "trace_type",
+            "trace_hash",
+            "public_claims",
+            "status",
+        ),
+        "routing_federation_projection": (
+            "tenant",
+            "federation_id",
+            "order_id",
+            "system_name",
+            "projection_hash",
+            "projection_type",
+            "status",
+        ),
+        "routing_carbon_schedule": (
+            "tenant",
+            "schedule_id",
+            "decision_id",
+            "node_id",
+            "carbon_kg",
+            "scheduled_at",
+            "status",
+        ),
+        "routing_network_optimization": (
+            "tenant",
+            "optimization_id",
+            "run_id",
+            "selected_node_id",
+            "objective_score",
+            "demand_units",
+            "status",
+        ),
+        "routing_capacity_allocation": (
+            "tenant",
+            "allocation_id",
+            "decision_id",
+            "node_id",
+            "allocated_units",
+            "clearing_bid",
+            "status",
+        ),
+        "routing_anomaly_signal": (
+            "tenant",
+            "signal_id",
+            "decision_id",
+            "entropy",
+            "outlier_count",
+            "observed_at",
+            "status",
+        ),
+        "routing_exposure_model": (
+            "tenant",
+            "model_id",
+            "decision_id",
+            "expected_exposure",
+            "tail_risk",
+            "simulation_count",
+            "status",
+        ),
+        "routing_forecast": (
+            "tenant",
+            "forecast_id",
+            "node_id",
+            "horizon_hours",
+            "expected_available_units",
+            "saturation_risk",
+            "status",
+        ),
+        "routing_parsed_request": (
+            "tenant",
+            "parsed_request_id",
+            "order_id",
+            "region",
+            "requested_units",
+            "sla_target_hours",
+            "status",
+        ),
+        "routing_seed_data": (
+            "tenant",
+            "seed_id",
+            "region",
+            "split_policy",
+            "substitution_mode",
+            "currency",
+            "status",
+        ),
+        "routing_schema_extension": (
+            "tenant",
+            "extension_id",
+            "table_name",
+            "field_name",
+            "field_type",
+            "version",
+            "status",
+        ),
+        "routing_control_assertion": (
+            "tenant",
+            "control_id",
+            "assertion",
+            "status",
+            "evidence_hash",
+            "tested_at",
+            "severity",
+        ),
+        "routing_governed_model": (
+            "tenant",
+            "model_id",
+            "name",
+            "feature_lineage",
+            "drift_score",
+            "governance_status",
+            "status",
+        ),
+        "routing_rule": (
+            "tenant",
+            "rule_id",
+            "scope",
+            "regions",
+            "eligible_nodes",
+            "compiled_hash",
+            "status",
+        ),
+        "routing_parameter": (
+            "tenant",
+            "parameter_id",
+            "name",
+            "value",
+            "bounds",
+            "compiled_hash",
+            "status",
+        ),
+        "routing_configuration": (
+            "tenant",
+            "configuration_id",
+            "database_backend",
+            "event_topic",
+            "retry_limit",
+            "default_currency",
+            "status",
+        ),
+        "order_routing_optimization_appgen_outbox_event": (
+            "tenant",
+            "event_id",
+            "event_type",
+            "topic",
+            "idempotency_key",
+            "published_at",
+            "audit_hash",
+        ),
+        "order_routing_optimization_appgen_inbox_event": (
+            "tenant",
+            "event_id",
+            "event_type",
+            "payload_hash",
+            "idempotency_key",
+            "attempts",
+            "status",
+        ),
+        "order_routing_optimization_dead_letter_event": (
+            "tenant",
+            "event_id",
+            "event_type",
+            "payload_hash",
+            "attempts",
+            "reason",
+            "status",
+        ),
+    }
+    relationships = (
+        {
+            "from": "routing_plan_leg.plan_id",
+            "to": "routing_plan.plan_id",
+            "type": "owned_child",
+        },
+        {
+            "from": "routing_node_calendar.node_id",
+            "to": "routing_node.node_id",
+            "type": "owned_calendar",
+        },
+        {
+            "from": "routing_node_service.node_id",
+            "to": "routing_node.node_id",
+            "type": "owned_service",
+        },
+        {
+            "from": "routing_node_capacity.node_id",
+            "to": "routing_node.node_id",
+            "type": "owned_capacity",
+        },
+        {
+            "from": "routing_constraint.rule_id",
+            "to": "routing_rule.rule_id",
+            "type": "owned_constraint",
+        },
+        {
+            "from": "routing_cost_component.decision_id",
+            "to": "routing_decision.decision_id",
+            "type": "owned_cost",
+        },
+        {
+            "from": "routing_promise.decision_id",
+            "to": "routing_decision.decision_id",
+            "type": "owned_promise",
+        },
+        {
+            "from": "split_shipment_leg.split_shipment_id",
+            "to": "split_shipment.split_shipment_id",
+            "type": "owned_split_leg",
+        },
+        {
+            "from": "node_reservation.decision_id",
+            "to": "routing_decision.decision_id",
+            "type": "owned_reservation",
+        },
+        {
+            "from": "route_simulation_scenario.simulation_id",
+            "to": "route_simulation.simulation_id",
+            "type": "owned_simulation",
+        },
+        {
+            "from": "optimization_candidate.run_id",
+            "to": "optimization_run.run_id",
+            "type": "owned_optimization_candidate",
+        },
+        {
+            "from": "exception_resolution.exception_id",
+            "to": "routing_exception.exception_id",
+            "type": "owned_resolution",
+        },
+        {
+            "from": "routing_approval.decision_id",
+            "to": "routing_decision.decision_id",
+            "type": "owned_approval",
+        },
+        {
+            "from": "routing_feedback.decision_id",
+            "to": "routing_decision.decision_id",
+            "type": "owned_feedback",
+        },
+    )
+    allowed_prefixes = (
+        "routing_",
+        "route_",
+        "node_",
+        "capacity_",
+        "split_",
+        "inventory_",
+        "transport_",
+        "service_",
+        "optimization_",
+        "exception_",
+        "order_routing_optimization_",
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(
+                field
+                for field in table_fields[table]
+                if field.endswith("_id") or field == "event_id"
+            )[:2],
+            "owned_by": "order_routing_optimization",
+        }
+        for table in ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.order-routing-optimization-owned-schema-contract.v1",
+        "ok": len(tables) == len(ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES)
+        and len(tables) >= 40
+        and all(item["table"].startswith(allowed_prefixes) for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": (
+                    "pbcs/order_routing_optimization/migrations/"
+                    f"{position + 1:03d}_{table}.sql"
+                ),
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(
+                ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+            )
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(
+                    part.capitalize() for part in table.split("_")
+                ),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+        ),
+        "datastore_backends": ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def order_routing_optimization_build_service_contract() -> dict:
+    """Return Order Routing Optimization command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "handle_event",
+        "ingest_capacity_snapshot",
+        "upsert_route_candidate",
+        "route_orders",
+        "reserve_node_capacity",
+        "simulate_counterfactual",
+        "forecast_capacity",
+        "recommend_exception_resolution",
+        "parse_route_request",
+        "score_fulfillment_risk",
+        "self_heal_route_selection",
+        "generate_routing_proof",
+        "screen_policy",
+        "run_control_tests",
+        "federate_routing_view",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_route",
+        "optimize_route_network",
+        "clear_capacity_auction",
+        "detect_routing_anomaly",
+        "model_stochastic_exposure",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.order-routing-optimization-service-contract.v1",
+        "ok": len(command_methods) >= 25,
+        "transaction_boundary": (
+            "order_routing_optimization_owned_datastore_plus_appgen_outbox"
+        ),
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
+            "verify_owned_table_boundary",
+        ),
+        "mutates_only": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(
+                item
+                for item in _ORDER_ROUTING_OPTIMIZATION_ALLOWED_DEPENDENCIES
+                if str(item).startswith(("GET ", "POST "))
+            ),
+            "events": ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(
+                item
+                for item in _ORDER_ROUTING_OPTIMIZATION_ALLOWED_DEPENDENCIES
+                if str(item).endswith("_projection")
+            ),
+            "shared_tables": (),
+        },
+    }
+
+
+def order_routing_optimization_build_release_evidence() -> dict:
+    """Return Order Routing Optimization package-local release evidence."""
+    from .ui import order_routing_optimization_ui_contract
+
+    schema = order_routing_optimization_build_schema_contract()
+    service = order_routing_optimization_build_service_contract()
+    api = order_routing_optimization_build_api_contract()
+    permissions = order_routing_optimization_permissions_contract()
+    smoke = order_routing_optimization_runtime_smoke()
+    workbench = smoke["workbench"]
+    ui = order_routing_optimization_ui_contract()
+    state = smoke["state"]
+    checks = (
+        {
+            "id": "owned_schema_depth",
+            "ok": schema["ok"] and len(schema["tables"]) >= 40,
+        },
+        {
+            "id": "migration_per_owned_table",
+            "ok": len(schema["migrations"])
+            == len(ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES),
+        },
+        {
+            "id": "service_command_depth",
+            "ok": service["ok"] and len(service["command_methods"]) >= 25,
+        },
+        {
+            "id": "api_event_contract",
+            "ok": api["ok"] and api["event_contract"] == "AppGen-X",
+        },
+        {
+            "id": "permissions_cover_commands",
+            "ok": {
+                "route_orders",
+                "reserve_node_capacity",
+                "handle_event",
+                "build_release_evidence",
+            } <= set(permissions["action_permissions"]),
+        },
+        {
+            "id": "backend_allowlist",
+            "ok": schema["datastore_backends"]
+            == ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS,
+        },
+        {
+            "id": "no_shared_table_access",
+            "ok": not schema["shared_table_access"] and not api["shared_table_access"],
+        },
+        {
+            "id": "ui_workbench_binding_evidence",
+            "ok": ui["ok"]
+            and workbench["binding_evidence"]["owned_tables"]
+            == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+            and not ui["configuration_editor"]["stream_engine_picker_visible"],
+        },
+        {
+            "id": "idempotent_inbox_outbox_dead_letter_evidence",
+            "ok": len(state["outbox"]) >= 1
+            and len(state["inbox"]) >= len(ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES)
+            and workbench["binding_evidence"]["outbox_table"]
+            == "order_routing_optimization_appgen_outbox_event"
+            and workbench["binding_evidence"]["inbox_table"]
+            == "order_routing_optimization_appgen_inbox_event"
+            and workbench["binding_evidence"]["dead_letter_table"]
+            == "order_routing_optimization_dead_letter_event",
+        },
+    )
+    return {
+        "format": "appgen.order-routing-optimization-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "ui": ui,
+        "workbench": workbench,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def order_routing_optimization_permissions_contract() -> dict:
     return {
         "format": "appgen.order-routing-optimization-permissions.v1",
@@ -1623,12 +2698,31 @@ def order_routing_optimization_permissions_contract() -> dict:
             "upsert_route_candidate": "order_routing_optimization.capacity",
             "handle_event": "order_routing_optimization.event",
             "simulate_counterfactual": "order_routing_optimization.audit",
+            "forecast_capacity": "order_routing_optimization.read",
             "register_rule": "order_routing_optimization.configure",
             "register_schema_extension": "order_routing_optimization.configure",
             "set_parameter": "order_routing_optimization.configure",
             "configure_runtime": "order_routing_optimization.configure",
+            "recommend_exception_resolution": "order_routing_optimization.audit",
+            "parse_route_request": "order_routing_optimization.read",
+            "score_fulfillment_risk": "order_routing_optimization.audit",
+            "self_heal_route_selection": "order_routing_optimization.route",
+            "generate_routing_proof": "order_routing_optimization.audit",
+            "screen_policy": "order_routing_optimization.audit",
             "run_control_tests": "order_routing_optimization.audit",
+            "federate_routing_view": "order_routing_optimization.read",
+            "run_resilience_drill": "order_routing_optimization.audit",
+            "rotate_crypto_epoch": "order_routing_optimization.audit",
+            "schedule_carbon_aware_route": "order_routing_optimization.route",
+            "optimize_route_network": "order_routing_optimization.route",
+            "clear_capacity_auction": "order_routing_optimization.route",
+            "detect_routing_anomaly": "order_routing_optimization.audit",
+            "model_stochastic_exposure": "order_routing_optimization.audit",
+            "register_governed_model": "order_routing_optimization.audit",
             "build_workbench_view": "order_routing_optimization.audit",
+            "build_schema_contract": "order_routing_optimization.audit",
+            "build_service_contract": "order_routing_optimization.audit",
+            "build_release_evidence": "order_routing_optimization.audit",
         },
     }
 
@@ -1877,6 +2971,45 @@ def order_routing_optimization_build_workbench_view(
     *,
     tenant: str,
 ) -> dict:
+    plans = tuple(
+        plan for plan in state["routing_plans"].values() if plan["tenant"] == tenant
+    )
+    nodes = tuple(
+        node for node in state["routing_nodes"].values() if node["tenant"] == tenant
+    )
+    constraints = tuple(
+        item
+        for item in state["routing_constraints"].values()
+        if item["tenant"] == tenant
+    )
+    costs = tuple(
+        item for item in state["routing_costs"].values() if item["tenant"] == tenant
+    )
+    promises = tuple(
+        item
+        for item in state["routing_promises"].values()
+        if item["tenant"] == tenant
+    )
+    split_shipments = tuple(
+        item
+        for item in state["split_shipments"].values()
+        if item["tenant"] == tenant
+    )
+    inventory_inputs = tuple(
+        item
+        for item in state["inventory_inputs"].values()
+        if item["tenant"] == tenant
+    )
+    transport_inputs = tuple(
+        item
+        for item in state["transport_inputs"].values()
+        if item["tenant"] == tenant
+    )
+    service_inputs = tuple(
+        item
+        for item in state["service_inputs"].values()
+        if item["tenant"] == tenant
+    )
     candidates = tuple(
         candidate
         for candidate in state["route_candidates"].values()
@@ -1897,6 +3030,32 @@ def order_routing_optimization_build_workbench_view(
         for reservation in state["node_reservations"].values()
         if reservation["tenant"] == tenant
     )
+    simulations = tuple(
+        item
+        for item in state["route_simulations"].values()
+        if state["routing_decisions"]
+        and state["routing_decisions"][item["decision_id"]]["tenant"] == tenant
+    )
+    optimizations = tuple(
+        item
+        for item in state["optimization_runs"].values()
+        if item["tenant"] == tenant
+    )
+    exceptions = tuple(
+        item
+        for item in state["routing_exceptions"].values()
+        if item["tenant"] == tenant
+    )
+    approvals = tuple(
+        item
+        for item in state["routing_approvals"].values()
+        if item["tenant"] == tenant
+    )
+    feedback = tuple(
+        item
+        for item in state["routing_feedback"].values()
+        if item["tenant"] == tenant
+    )
     inbox = tuple(entry for entry in state["inbox"] if entry["tenant"] == tenant)
     dead_letter = tuple(
         entry
@@ -1912,6 +3071,15 @@ def order_routing_optimization_build_workbench_view(
     return {
         "ok": True,
         "tenant": tenant,
+        "routing_plan_count": len(plans),
+        "routing_node_count": len(nodes),
+        "routing_constraint_count": len(constraints),
+        "routing_cost_count": len(costs),
+        "routing_promise_count": len(promises),
+        "split_shipment_count": len(split_shipments),
+        "inventory_input_count": len(inventory_inputs),
+        "transport_input_count": len(transport_inputs),
+        "service_input_count": len(service_inputs),
         "route_candidate_count": len(candidates),
         "ready_candidate_count": len(
             tuple(candidate for candidate in candidates if candidate["status"] == "ready")
@@ -1922,6 +3090,11 @@ def order_routing_optimization_build_workbench_view(
             tuple(decision for decision in decisions if decision["split"])
         ),
         "reservation_count": len(reservations),
+        "route_simulation_count": len(simulations),
+        "optimization_run_count": len(optimizations),
+        "exception_count": len(exceptions),
+        "approval_count": len(approvals),
+        "feedback_count": len(feedback),
         "reserved_units": round(
             sum(reservation["allocated_units"] for reservation in reservations),
             2,
@@ -1970,6 +3143,22 @@ def order_routing_optimization_build_workbench_view(
             "parameters": {
                 "supported": ORDER_ROUTING_OPTIMIZATION_SUPPORTED_PARAMETER_KEYS,
                 "active": parameter_names,
+            },
+            "events": {
+                "emits": ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
+                "consumes": ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
+                "topic": configuration.get("event_topic"),
+            },
+            "workbench": {
+                "plans": len(plans),
+                "nodes": len(nodes),
+                "constraints": len(constraints),
+                "promises": len(promises),
+                "simulations": len(simulations),
+                "optimizations": len(optimizations),
+                "exceptions": len(exceptions),
+                "approvals": len(approvals),
+                "feedback": len(feedback),
             },
             "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
             "outbox_table": "order_routing_optimization_appgen_outbox_event",

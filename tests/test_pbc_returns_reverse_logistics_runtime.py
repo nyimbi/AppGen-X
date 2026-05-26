@@ -1,11 +1,18 @@
 import pytest
 
 from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_EMITTED_EVENT_TYPES
 from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
 from pyAppGen.pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.returns_reverse_logistics import implementation_contract as package_implementation_contract
 from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_authorize_return
 from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_build_api_contract
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_build_release_evidence
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_build_schema_contract
+from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_build_service_contract
 from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_build_workbench_view
 from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_configure_runtime
 from pyAppGen.pbcs.returns_reverse_logistics import returns_reverse_logistics_create_return_label
@@ -31,10 +38,19 @@ def test_returns_reverse_logistics_runtime_executes_standard_and_advanced_capabi
     assert runtime["format"] == "appgen.returns-reverse-logistics-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/returns_reverse_logistics"
-    assert len(runtime["standard_features"]) >= 18
+    assert runtime["required_event_topic"] == RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+    assert runtime["runtime_tables"] == RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
+    assert len(runtime["owned_tables"]) >= 35
+    assert len(runtime["standard_features"]) >= 25
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
+    assert "schema_contract" in runtime["standard_features"]
+    assert "service_contract" in runtime["standard_features"]
+    assert "release_gate" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
+    assert {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(
+        runtime["operations"]
+    )
     assert smoke["ok"] is True
     assert {check["id"] for check in smoke["checks"]} == set(RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS)
     assert not smoke["blocking_gaps"]
@@ -46,11 +62,19 @@ def test_returns_reverse_logistics_runtime_executes_standard_and_advanced_capabi
     assert package_contract["ui_contract"]["ok"] is True
     assert "ReturnConfigurationPanel" in package_contract["ui_contract"]["fragments"]
     assert package_contract["api_contract"]["ok"] is True
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
     assert package_contract["permissions_contract"]["ok"] is True
     assert package_contract["owned_tables"] == RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+    assert package_contract["runtime_tables"] == RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
     assert package_contract["allowed_database_backends"] == (
         RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
     )
+    assert package_contract["required_event_topic"] == RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+    assert package_contract["emits"] == RETURNS_REVERSE_LOGISTICS_EMITTED_EVENT_TYPES
+    assert package_contract["consumes"] == RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES
+    assert package_contract["boundary_contract"]["ok"] is True
     assert package_contract["shared_table_access"] is False
     assert package_contract["api_contract"]["event_contract"] == "AppGen-X"
     assert package_contract["permissions_contract"]["action_permissions"]["receive_event"] == (
@@ -174,13 +198,19 @@ def test_returns_reverse_logistics_runtime_applies_rules_parameters_configuratio
     workbench = returns_reverse_logistics_build_workbench_view(state, tenant="tenant_ops")
     assert workbench["return_count"] == 1
     assert workbench["label_count"] == 1
+    assert workbench["receipt_count"] == 1
     assert workbench["inspection_count"] == 1
     assert workbench["credit_count"] == 1
+    assert workbench["customer_status_count"] == 1
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 5
     assert workbench["binding_evidence"]["owned_tables"] == RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+    assert workbench["binding_evidence"]["runtime_tables"] == RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
     assert workbench["binding_evidence"]["shared_table_access"] is False
+    assert workbench["binding_evidence"]["required_event_topic"] == (
+        RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+    )
 
     ui_contract = returns_reverse_logistics_ui_contract()
     api_contract = returns_reverse_logistics_build_api_contract()
@@ -188,17 +218,40 @@ def test_returns_reverse_logistics_runtime_applies_rules_parameters_configuratio
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == (
         RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
     )
+    assert ui_contract["configuration_editor"]["required_event_topic"] == (
+        RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+    )
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["configuration_editor"]["user_eventing_choice"] is False
     assert ui_contract["event_surfaces"]["event_contract"] == "AppGen-X"
+    assert ui_contract["event_surfaces"]["required_event_topic"] == (
+        RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+    )
+    assert ui_contract["binding_evidence"]["runtime_tables"] == RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
     assert ui_contract["action_permissions"]["receive_event"] == (
         "returns_reverse_logistics.event.consume"
     )
     assert api_contract["shared_table_access"] is False
     assert api_contract["owned_tables"] == RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+    assert api_contract["runtime_tables"] == RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
+    assert api_contract["required_event_topic"] == RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
     assert api_contract["stream_engine_picker_visible"] is False
+    assert any(route.get("command") == "configure_runtime" for route in api_contract["routes"])
+    assert any(route.get("command") == "receive_event" for route in api_contract["routes"])
+    assert any(route.get("query") == "build_schema_contract" for route in api_contract["routes"])
+    assert any(route.get("query") == "build_service_contract" for route in api_contract["routes"])
+    assert any(route.get("query") == "build_release_evidence" for route in api_contract["routes"])
     assert permissions_contract["action_permissions"]["register_schema_extension"] == (
         "returns_reverse_logistics.configure"
+    )
+    assert permissions_contract["action_permissions"]["build_schema_contract"] == (
+        "returns_reverse_logistics.audit"
+    )
+    assert permissions_contract["action_permissions"]["build_service_contract"] == (
+        "returns_reverse_logistics.audit"
+    )
+    assert permissions_contract["action_permissions"]["build_release_evidence"] == (
+        "returns_reverse_logistics.audit"
     )
     rendered = returns_reverse_logistics_render_workbench(
         state,
@@ -211,6 +264,7 @@ def test_returns_reverse_logistics_runtime_applies_rules_parameters_configuratio
             "returns_reverse_logistics.event.consume",
             "returns_reverse_logistics.audit",
             "returns_reverse_logistics.configure",
+            "returns_reverse_logistics.claim",
         ),
     )
     assert rendered["ok"] is True
@@ -218,7 +272,68 @@ def test_returns_reverse_logistics_runtime_applies_rules_parameters_configuratio
     assert rendered["binding_evidence"]["dead_letter_table"] == (
         "returns_reverse_logistics_dead_letter_event"
     )
+    assert rendered["binding_evidence"]["runtime_tables"] == RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
     assert not rendered["locked_actions"]
+
+
+def test_returns_reverse_logistics_package_schema_service_and_release_contracts() -> None:
+    schema = returns_reverse_logistics_build_schema_contract()
+    service = returns_reverse_logistics_build_service_contract()
+    release = returns_reverse_logistics_build_release_evidence()
+    api = returns_reverse_logistics_build_api_contract()
+
+    assert schema["format"] == "appgen.returns-reverse-logistics-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert schema["owned_tables"] == RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+    assert len(schema["tables"]) == len(RETURNS_REVERSE_LOGISTICS_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(RETURNS_REVERSE_LOGISTICS_OWNED_TABLES)
+    assert schema["runtime_tables"] == (
+        {
+            "table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[0],
+            "fields": ("tenant", "event_id", "event_type", "topic", "payload", "idempotency_key", "published_at", "audit_hash"),
+        },
+        {
+            "table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[1],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "status", "audit_hash"),
+        },
+        {
+            "table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[2],
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "reason", "audit_hash"),
+        },
+    )
+    assert schema["required_event_topic"] == RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+    assert schema["shared_table_access"] is False
+
+    assert service["format"] == "appgen.returns-reverse-logistics-service-contract.v1"
+    assert service["ok"] is True
+    assert service["mutates_only_owned_tables"] is True
+    assert service["shared_table_access"] is False
+    assert service["event_contract"]["contract"] == "AppGen-X"
+    assert service["event_contract"]["required_topic"] == RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+    assert "open_carrier_claim" in service["command_methods"]
+    assert "build_release_evidence" in service["query_methods"]
+    assert service["retry_dead_letter_evidence"]["dead_letter_table"] == (
+        RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[2]
+    )
+
+    assert api["dependencies"]["shared_tables"] == ()
+    assert api["events"] == {
+        "emits": RETURNS_REVERSE_LOGISTICS_EMITTED_EVENT_TYPES,
+        "consumes": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+    }
+
+    assert release["format"] == "appgen.returns-reverse-logistics-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert release["schema"]["format"] == schema["format"]
+    assert release["service"]["format"] == service["format"]
+    assert release["api"]["required_event_topic"] == RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+    assert release["control"]["summary"]["duplicate_status"] == "duplicate"
+    assert release["control"]["summary"]["retry_status"] == "retrying"
+    assert release["control"]["summary"]["dead_letter_status"] == "dead_letter"
+    assert release["control"]["workbench"]["binding_evidence"]["runtime_tables"] == (
+        RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
+    )
 
 
 def test_returns_reverse_logistics_enforces_owned_table_only_boundary() -> None:
@@ -229,6 +344,7 @@ def test_returns_reverse_logistics_enforces_owned_table_only_boundary() -> None:
             "OrderShipped",
             "order_projection",
             "POST /refunds",
+            "POST /exchange-orders",
         )
     )
     blocked = returns_reverse_logistics_verify_owned_table_boundary(
@@ -256,7 +372,7 @@ def test_returns_reverse_logistics_rejects_invalid_runtime_inputs_and_records_de
             state,
             {
                 "database_backend": "stream_store",
-                "event_topic": "appgen.returns.events",
+                "event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "default_currency": "USD",
                 "supported_carriers": ("parcel_green",),
@@ -267,13 +383,25 @@ def test_returns_reverse_logistics_rejects_invalid_runtime_inputs_and_records_de
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.returns.events",
+            "event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
             "retry_limit": 2,
             "default_currency": "USD",
             "supported_carriers": ("parcel_green",),
             "supported_dispositions": ("restock",),
         },
     )["state"]
+    with pytest.raises(ValueError, match="requires event topic"):
+        returns_reverse_logistics_configure_runtime(
+            returns_reverse_logistics_empty_state(),
+            {
+                "database_backend": "postgresql",
+                "event_topic": "custom.returns.events",
+                "retry_limit": 2,
+                "default_currency": "USD",
+                "supported_carriers": ("parcel_green",),
+                "supported_dispositions": ("restock",),
+            },
+        )
     with pytest.raises(ValueError, match="Unsupported Returns Reverse Logistics parameter"):
         returns_reverse_logistics_set_parameter(state, "stream_engine", 1)
     with pytest.raises(ValueError, match="stream-engine or user eventing fields"):

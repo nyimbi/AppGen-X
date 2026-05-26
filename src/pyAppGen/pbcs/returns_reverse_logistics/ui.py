@@ -5,6 +5,7 @@ from __future__ import annotations
 from .runtime import RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
 from .runtime import RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
 from .runtime import RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+from .runtime import RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
 from .runtime import returns_reverse_logistics_build_workbench_view
 from .runtime import returns_reverse_logistics_permissions_contract
 
@@ -18,6 +19,10 @@ RETURNS_REVERSE_LOGISTICS_UI_FRAGMENT_KEYS = (
     "InspectionDispositionWorkbench",
     "CreditAdjustmentConsole",
     "RefundLedgerHandoffPanel",
+    "RefundExchangeResolutionPanel",
+    "RestockRepairRecoveryPanel",
+    "CarrierClaimsPanel",
+    "CustomerReturnStatusPanel",
     "FraudSignalPanel",
     "ReverseTopologyGraph",
     "ReturnExceptionResolutionBoard",
@@ -45,6 +50,10 @@ def returns_reverse_logistics_ui_contract() -> dict:
             "/workbench/pbcs/returns_reverse_logistics/inspection",
             "/workbench/pbcs/returns_reverse_logistics/credits",
             "/workbench/pbcs/returns_reverse_logistics/refunds-ledger",
+            "/workbench/pbcs/returns_reverse_logistics/refund-exchange",
+            "/workbench/pbcs/returns_reverse_logistics/recovery",
+            "/workbench/pbcs/returns_reverse_logistics/carrier-claims",
+            "/workbench/pbcs/returns_reverse_logistics/customer-status",
             "/workbench/pbcs/returns_reverse_logistics/fraud",
             "/workbench/pbcs/returns_reverse_logistics/topology",
             "/workbench/pbcs/returns_reverse_logistics/exceptions",
@@ -71,6 +80,24 @@ def returns_reverse_logistics_ui_contract() -> dict:
                 "fragment": "InspectionDispositionWorkbench",
                 "binds_to": ("inspection_grade", "disposition", "credit_adjustment", "ledger_handoff"),
                 "commands": ("record_inspection_grade", "issue_credit_adjustment"),
+            },
+            {
+                "key": "refund_exchange",
+                "fragment": "RefundExchangeResolutionPanel",
+                "binds_to": ("refund_exchange_resolution", "refund_ledger_handoff"),
+                "commands": ("issue_credit_adjustment",),
+            },
+            {
+                "key": "recovery",
+                "fragment": "RestockRepairRecoveryPanel",
+                "binds_to": ("restocking_order", "repair_refurbishment_order", "carrier_claim"),
+                "commands": ("issue_credit_adjustment",),
+            },
+            {
+                "key": "customer_status",
+                "fragment": "CustomerReturnStatusPanel",
+                "binds_to": ("return_customer_status", "customer_notification_projection"),
+                "commands": ("build_customer_return_status",),
             },
             {
                 "key": "eventing",
@@ -140,10 +167,18 @@ def returns_reverse_logistics_ui_contract() -> dict:
             "emits": ("ReturnAuthorized", "CreditAdjustmentIssued"),
             "consumes": ("OrderShipped", "PaymentCaptured"),
             "event_contract": "AppGen-X",
+            "required_event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker_visible": False,
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+            "runtime_tables": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES,
+            "required_event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+            "event_contract": "AppGen-X",
+            "shared_table_access": False,
         },
         "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
         "shared_table_access": False,

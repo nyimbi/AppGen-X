@@ -1,75 +1,109 @@
-# Returns and Reverse Logistics PBC
+# Returns and Reverse Logistics PBC Specification
 
-## Purpose
-
-The Returns and Reverse Logistics PBC owns return authorizations, RMAs, return
-eligibility, return labels, carrier handoff, receipt and inspection evidence,
-disposition routing, restock/refurbish/scrap routing, credit adjustments,
-refund and ledger handoff, fraud and abuse screening, runtime control
-evidence, and the returns workbench. It integrates with order, payment,
-inventory, ledger, identity, and platform event infrastructure through APIs,
-AppGen-X events, and read-only federated projections.
+`returns_reverse_logistics` is the AppGen-X packaged business capability for
+RMA and reverse-flow execution. It owns return authorization, eligibility,
+labels, receiving, inspection, disposition, refund or exchange settlement,
+restocking and repair recovery, carrier claims, fraud and risk evidence,
+customer-facing status, exception workflows, and package-local completeness
+contracts under `src/pyAppGen/pbcs/returns_reverse_logistics/`.
 
 Implementation entrypoint: `implementation_contract()`.
 
-## Owned Datastore Boundary
+## Owned Boundary
 
-The PBC owns:
-
-- `return_authorization`: RMA, order/payment/customer references, eligibility,
-  fraud score, lifecycle status, and graph topology evidence.
-- `return_label`: carrier route selection, label status, handoff state,
-  tracking, and carbon-aware route evidence.
-- `inspection_grade`: receipt, inspection grade, disposition recommendation,
-  recovery estimate, and inspection notes.
-- `credit_adjustment`: refund/credit amount, disposition-adjusted recovery,
-  refund handoff, ledger handoff, and immutable issuance evidence.
-- `returns_reverse_logistics_outbox_event`,
+- **PBC key:** `returns_reverse_logistics`
+- **Allowed datastores:** PostgreSQL, MySQL, MariaDB
+- **Required AppGen-X topic:** `appgen.returns.events`
+- **Emits:** `ReturnAuthorized`, `CreditAdjustmentIssued`
+- **Consumes:** `OrderShipped`, `PaymentCaptured`
+- **Shared table access:** forbidden
+- **Owned tables:** `return_authorization`, `return_line`,
+  `return_eligibility_decision`, `return_policy_snapshot`,
+  `reverse_route_graph`, `return_label`, `carrier_handoff`,
+  `return_receipt`, `inspection_grade`, `inspection_finding`,
+  `disposition_decision`, `refund_exchange_resolution`,
+  `restocking_order`, `repair_refurbishment_order`, `carrier_claim`,
+  `return_customer_status`, `return_exception_case`,
+  `return_exception_task`, `return_fraud_signal`, `credit_adjustment`,
+  `refund_ledger_handoff`, `inventory_recovery_projection`,
+  `repair_vendor_projection`, `carrier_claim_projection`,
+  `customer_notification_projection`, `order_return_projection`,
+  `payment_return_projection`, `inventory_return_projection`,
+  `ledger_return_projection`, `returns_reverse_logistics_rule`,
+  `returns_reverse_logistics_parameter`,
+  `returns_reverse_logistics_configuration`,
+  `returns_reverse_logistics_schema_extension`, `return_proof`,
+  `return_policy_screening`, `return_control_assertion`,
+  `return_governed_model`, `return_seed_data`,
+  `returns_reverse_logistics_outbox_event`,
   `returns_reverse_logistics_inbox_event`, and
-  `returns_reverse_logistics_dead_letter_event`: AppGen-X event contract tables for
-  idempotent handlers, retry evidence, and dead-letter triage.
+  `returns_reverse_logistics_dead_letter_event`
 
-Supported backing stores are PostgreSQL, MySQL, and MariaDB only.
-Schema extensions are accepted only for owned tables and reject non-owned or
-invalid field names.
+Boundary validation is executable through
+`returns_reverse_logistics_verify_owned_table_boundary(references)`. It allows
+only owned tables, declared upstream APIs, declared consumed events, and
+declared read-only projections. Schema extensions are accepted only for owned
+tables and only for lowercase snake_case field names.
 
-Boundary validation is package-local and executable through
-`returns_reverse_logistics_verify_owned_table_boundary(references)`. It accepts
-only owned tables plus declared API/event dependencies and rejects shared-table
-access.
+## Standard Table-Stakes
 
-## Standard Table-Stakes Capabilities
+The package completeness contract covers:
 
-The PBC fully implements return authorizations and RMAs, return eligibility,
-return labels, carrier handoff, receipt and inspection, disposition routing,
-restock/refurbish/scrap routing, credit adjustments, refund and ledger
-handoff, fraud and abuse screening, tenant isolation, idempotent handlers,
-AppGen-X outbox/inbox eventing, retry/dead-letter evidence, permissions,
-configuration schema, executable rules, bounded runtime parameters, seed-data
-surfaces, immutable audit evidence, and package-owned workbench views.
+1. RMA creation and return authorization.
+2. Return eligibility evaluation and decision evidence.
+3. Label generation and carrier handoff tracking.
+4. Return receiving and receipt evidence.
+5. Inspection grading and finding capture.
+6. Disposition decisioning for restock, refurbish, or scrap.
+7. Refund and exchange resolution metadata.
+8. Restocking, repair, and refurbishment recovery records.
+9. Carrier claims and downstream claim projections.
+10. Fraud and abuse screening with customer-visible status updates.
+11. Refund and ledger handoff evidence.
+12. Customer status and exception workflow tracking.
+13. Rule, parameter, and configuration support.
+14. AppGen-X outbox, inbox, retry, and dead-letter evidence.
+15. Package-local API, schema, service, permission, and release contracts.
+16. Workbench and UI binding evidence without stream-engine selection.
 
-## Advanced Capabilities
+## Advanced Runtime Evidence
 
-The runtime proves event-sourced returns lifecycle, graph-relational reverse
-logistics topology, probabilistic return eligibility and fraud scoring,
-counterfactual disposition simulation, temporal return-rate and recovery
-forecasting, autonomous return exception resolution, semantic return
-instruction parsing, predictive return risk, self-healing label and carrier
-route selection, cryptographic return proof, immutable return audit trail,
-dynamic return policy screening, automated control testing, cross-system
-order/payment/inventory/ledger federation, universal API plus asynchronous
-streaming, distributed systems evidence, chaos tolerance, crypto agility,
-carbon-aware return routing, mathematical recovery optimization, disposition
-allocation mechanism design, anomaly detection, stochastic return exposure
-modeling, and governed ML model evidence.
+The runtime proves the following advanced capabilities:
+
+1. Event-sourced returns lifecycle.
+2. Graph-relational reverse logistics topology.
+3. Probabilistic eligibility scoring.
+4. Counterfactual disposition simulation.
+5. Temporal recovery forecasting.
+6. Autonomous exception resolution.
+7. Semantic return instruction parsing.
+8. Predictive return risk.
+9. Self-healing carrier and route selection.
+10. Cryptographic return proof.
+11. Immutable return audit trail.
+12. Dynamic return policy screening.
+13. Automated control testing.
+14. Cross-system order, payment, inventory, and ledger federation.
+15. Universal API plus async AppGen-X eventing.
+16. Distributed-systems evidence for idempotent handlers.
+17. Fraud and abuse screening.
+18. Tenant isolation.
+19. Chaos-tolerant reverse operations.
+20. Crypto agility.
+21. Carbon-aware routing.
+22. Mathematical recovery optimization.
+23. Disposition allocation mechanism design.
+24. Return anomaly detection.
+25. Stochastic exposure modeling.
+26. Governed-model evidence.
+27. Permission-governance evidence.
 
 ## Rules, Parameters, and Configuration
 
-Rules are executable records with required fields `rule_id`, `tenant`, `scope`,
-`status`, `eligibility_policy`, `label_policy`, `inspection_policy`, and
-`credit_policy`. Runtime compilation produces a deterministic `compiled_hash`
-and structured rule evidence. Rules reject hidden stream-engine or user-facing
-eventing choices.
+Rules require `rule_id`, `tenant`, `scope`, `status`,
+`eligibility_policy`, `label_policy`, `inspection_policy`, and
+`credit_policy`. Runtime compilation emits a deterministic `compiled_hash`
+plus rule evidence. Rules reject stream-engine or user-facing eventing fields.
 
 Supported parameters are bounded to:
 
@@ -85,32 +119,57 @@ Supported parameters are bounded to:
 
 Configuration requires `database_backend`, `event_topic`, `retry_limit`,
 `default_currency`, `supported_carriers`, and `supported_dispositions`.
-Runtime requires the AppGen-X topic `appgen.returns.events`, rejects stream
-engine pickers or user-facing eventing choices, and accepts only PostgreSQL,
-MySQL, or MariaDB backends.
+The event topic is fixed to `appgen.returns.events`; stream-engine pickers and
+user-facing eventing choices are rejected.
 
-Implementation metadata exports:
+## API Contract
 
-- `allowed_database_backends`
-- `owned_tables`
-- `api_contract`
-- `permissions_contract`
-- `shared_table_access = false`
+The package-local API contract is descriptor-driven and includes configuration,
+parameter, rule, schema-extension, return authorization, label generation,
+receipt, inspection, disposition, credit, refund or exchange, carrier claim,
+customer-status, inbox, workbench, schema-contract, service-contract, and
+release-evidence routes.
 
-## Public APIs
+Every descriptor states:
 
-- `POST /returns`
-- `POST /labels`
-- `POST /inspection-grades`
-- `POST /credit-adjustments`
-- `POST /returns-reverse-logistics/events/inbox`
-- `GET /returns-reverse-logistics-workbench`
+- route
+- command or query
+- owned tables touched
+- required permission
+- idempotency key where mutation occurs
+- declared upstream API or event dependencies when external state is involved
 
-The package-local API contract records owned tables touched per command,
-declared upstream dependencies, required permissions, idempotency keys, fixed
-AppGen-X eventing, and the absence of any stream-engine picker.
+The API contract explicitly records:
 
-## Permissions Contract
+- `event_contract: AppGen-X`
+- `required_event_topic: appgen.returns.events`
+- `runtime_tables`
+- `dependencies.shared_tables: ()`
+- `shared_table_access: false`
+- `stream_engine_picker_visible: false`
+- `user_eventing_choice: false`
+
+## Schema, Service, and Release Contracts
+
+`returns_reverse_logistics_build_schema_contract()` emits generated table
+descriptors, runtime-table descriptors, relationship metadata, migration
+descriptors under `pbcs/returns_reverse_logistics/migrations/`, and generated
+model descriptors for every owned table.
+
+`returns_reverse_logistics_build_service_contract()` proves that mutations are
+bounded to Returns-owned tables and that external state enters only through
+declared APIs, events, and projections. It records the transaction boundary,
+idempotent inbox handler, retry/dead-letter evidence, command methods for core
+reverse-logistics flows, and query methods for forecasting, proof, anomaly,
+policy, and release evidence.
+
+`returns_reverse_logistics_build_release_evidence()` is the package-local
+release gate. It combines schema depth, migration coverage, service depth,
+AppGen-X event contract, permission coverage, duplicate/retry/dead-letter
+control evidence, and workbench binding evidence. The package is not complete
+unless this contract returns `ok: true`.
+
+## Permissions
 
 Declared permissions:
 
@@ -121,44 +180,49 @@ Declared permissions:
 - `returns_reverse_logistics.event.consume`
 - `returns_reverse_logistics.configure`
 - `returns_reverse_logistics.audit`
+- `returns_reverse_logistics.exception`
+- `returns_reverse_logistics.claim`
 
-The action-permission mapping covers runtime configuration, rule and schema
-registration, event consumption, return authorization, label generation,
-inspection capture, credit adjustment, workbench rendering, and boundary
-verification.
+Action-permission mappings cover return authorization, labels, receipt and
+inspection, disposition and crediting, exchange resolution, carrier claims,
+runtime configuration, schema and rule maintenance, workbench and contract
+queries, and boundary verification.
 
-## Events
+## UI and Workbench Binding
 
-Emitted events:
+The UI contract exposes:
 
-- `ReturnAuthorized`
-- `CreditAdjustmentIssued`
+- returns workbench
+- return authorization console
+- eligibility screening panel
+- return label console
+- carrier handoff board
+- inspection and disposition workbench
+- credit adjustment console
+- refund/ledger handoff panel
+- refund or exchange resolution panel
+- restock/repair recovery panel
+- carrier claims panel
+- customer return status panel
+- fraud signal panel
+- topology graph
+- exception board
+- rule studio
+- parameter console
+- configuration panel
+- AppGen-X eventing monitor
 
-Consumed events:
+Workbench binding evidence includes `owned_tables`, `runtime_tables`, fixed
+AppGen-X topic and contract, no shared-table access, and release-query
+surfaces for schema, service, and release evidence.
 
-- `OrderShipped`
-- `PaymentCaptured`
+## Release Expectations
 
-Handlers are idempotent by
-`returns_reverse_logistics:{event_type}:{event_id}`, retry at least three
-times, write retry evidence into package-owned runtime state, and write
-exhausted failures to `returns_reverse_logistics_dead_letter_event`.
+Focused validation for this package must include:
 
-## UI and Workbench
-
-The UI exposes a returns workbench, return authorization console, eligibility
-screening panel, return label console, carrier handoff board, inspection and
-disposition workbench, credit adjustment console, refund/ledger handoff panel,
-fraud signal panel, topology graph, return exception board, rule studio,
-parameter console, configuration panel, and AppGen-X eventing monitor. The
-workbench renders configuration/rule/parameter binding evidence directly from
-package-owned runtime state, including owned-table binding evidence for inbox,
-outbox, and dead-letter surfaces.
-
-## Release Evidence
-
-Release readiness requires passing package-local runtime smoke, API/event
-contract evidence, AppGen-X inbox/outbox/dead-letter evidence, deterministic
-rule compilation, bounded parameter validation, workbench render evidence,
-tenant isolation checks, focused unit tests, and restricted legacy-name scans
-over the package write scope.
+- `py_compile` over the package and focused runtime test file
+- focused `pytest` for `tests/test_pbc_returns_reverse_logistics_runtime.py`
+- release evidence with no blocking gaps
+- idempotent duplicate/retry/dead-letter evidence
+- package-local checks that no stream-engine picker or user eventing selector
+  appears in the package contract surface

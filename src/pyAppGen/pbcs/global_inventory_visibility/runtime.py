@@ -48,8 +48,13 @@ GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS = (
     "availability_snapshot",
     "inventory_projection",
     "global_available_to_promise",
+    "capable_to_promise_projection",
+    "channel_projection",
+    "supply_demand_signal",
     "reservation_visibility",
     "allocation_visibility",
+    "inventory_reconciliation",
+    "exception_handling",
     "in_transit_visibility",
     "safety_stock_policy",
     "freshness_staleness_checks",
@@ -67,6 +72,9 @@ GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS = (
     "workbench",
     "immutable_audit_log",
     "cross_system_federation",
+    "schema_contract",
+    "service_contract",
+    "release_evidence_contract",
 )
 
 GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC = "appgen.global_inventory_visibility.events"
@@ -76,30 +84,61 @@ GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES = (
     "supply_node",
     "availability_snapshot",
     "inventory_projection",
+    "available_to_promise_projection",
+    "capable_to_promise_projection",
+    "channel_projection",
+    "supply_signal",
+    "demand_signal",
     "inventory_reservation",
+    "inventory_allocation",
     "inventory_adjustment",
+    "inventory_reconciliation",
+    "inventory_exception",
+    "freshness_sla_evidence",
+    "inventory_federation_projection",
+    "inventory_audit_trace",
+    "inventory_control_assertion",
+    "inventory_schema_extension",
     "inventory_rule",
     "inventory_parameter",
     "inventory_configuration",
     "inventory_governed_model",
-)
-GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES = ("GoodsReceiptPosted", "ShipmentDelivered", "InventoryAllocated")
-GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES = ("AvailabilityProjected", "InventoryPoolChanged")
-_ALLOWED_DATABASE_BACKENDS = GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
-_GIV_RUNTIME_TABLES = (
     "global_inventory_visibility_appgen_outbox_event",
     "global_inventory_visibility_appgen_inbox_event",
     "global_inventory_visibility_dead_letter_event",
 )
+GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES = ("GoodsReceiptPosted", "ShipmentDelivered", "InventoryAllocated")
+GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES = ("AvailabilityProjected", "InventoryPoolChanged")
+_ALLOWED_DATABASE_BACKENDS = GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
+GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES = (
+    "global_inventory_visibility_appgen_outbox_event",
+    "global_inventory_visibility_appgen_inbox_event",
+    "global_inventory_visibility_dead_letter_event",
+)
+_GIV_RUNTIME_TABLES = GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
 _GIV_ALLOWED_DEPENDENCIES = (
     "wms_stock_projection",
     "transportation_in_transit_projection",
     "order_reservation_projection",
+    "erp_supply_signal_projection",
+    "planning_demand_signal_projection",
+    "sales_channel_projection",
     "GET /wms/stock/{item_id}",
     "GET /transportation/shipments/{item_id}",
     "GET /orders/reservations/{item_id}",
+    "GET /planning/demand/{item_id}",
+    "GET /commerce/channels/{item_id}",
     "POST /audit/inventory-visibility-events",
 )
+_GIV_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
 _ALLOWED_CRYPTO_ALGORITHMS = (
     "sha3_256",
     "blake2b",
@@ -131,6 +170,8 @@ def global_inventory_visibility_runtime_capabilities() -> dict:
         "pbc": "global_inventory_visibility",
         "implementation_directory": "src/pyAppGen/pbcs/global_inventory_visibility",
         "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+        "runtime_tables": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES,
+        "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
         "allowed_database_backends": GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
         "capabilities": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS,
         "standard_features": GLOBAL_INVENTORY_VISIBILITY_STANDARD_FEATURE_KEYS,
@@ -156,6 +197,9 @@ def global_inventory_visibility_runtime_capabilities() -> dict:
             "screen_allocation_policy",
             "run_control_tests",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "verify_owned_table_boundary",
             "federate_inventory_view",
@@ -397,8 +441,11 @@ def global_inventory_visibility_runtime_smoke() -> dict:
         restricted_nodes=("node_blocked",),
     )
     controls = global_inventory_visibility_run_control_tests(state)
+    schema = global_inventory_visibility_build_schema_contract()
+    service = global_inventory_visibility_build_service_contract()
     api = global_inventory_visibility_build_api_contract()
     permissions = global_inventory_visibility_permissions_contract()
+    release = global_inventory_visibility_build_release_evidence()
     boundary = global_inventory_visibility_verify_owned_table_boundary(
         GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
         + _GIV_RUNTIME_TABLES
@@ -469,7 +516,8 @@ def global_inventory_visibility_runtime_smoke() -> dict:
         },
         {
             "id": "schema_evolution_resilient_availability_schema",
-            "ok": state["schema_extensions"]["inventory_projection"]["explainability_evidence"] == "jsonb",
+            "ok": state["schema_extensions"]["inventory_projection"]["explainability_evidence"] == "jsonb"
+            and schema["ok"],
         },
         {
             "id": "probabilistic_availability_freshness_scoring",
@@ -477,7 +525,9 @@ def global_inventory_visibility_runtime_smoke() -> dict:
         },
         {
             "id": "real_time_atp_visibility_convergence",
-            "ok": aggregate["available_to_promise"] > 0 and aggregate["projection_count"] >= 1,
+            "ok": aggregate["available_to_promise"] > 0
+            and aggregate["capable_to_promise"] >= aggregate["available_to_promise"]
+            and aggregate["projection_count"] >= 1,
         },
         {
             "id": "counterfactual_allocation_simulation",
@@ -517,11 +567,14 @@ def global_inventory_visibility_runtime_smoke() -> dict:
         },
         {
             "id": "automated_inventory_control_testing",
-            "ok": controls["ok"] and not controls["blocking_gaps"],
+            "ok": controls["ok"] and release["ok"] and not controls["blocking_gaps"],
         },
         {
             "id": "universal_api_async_streaming",
-            "ok": api["ok"] and api["events"]["emits"] == _EMITTED_EVENTS and permissions["ok"],
+            "ok": api["ok"]
+            and service["ok"]
+            and api["events"]["emits"] == _EMITTED_EVENTS
+            and permissions["ok"],
         },
         {
             "id": "cross_system_inventory_federation",
@@ -565,7 +618,10 @@ def global_inventory_visibility_runtime_smoke() -> dict:
         },
         {
             "id": "distributed_systems_engineering",
-            "ok": len(state["inbox"]) == 3 and not state["dead_letters"] and boundary["ok"],
+            "ok": len(state["inbox"]) == 3
+            and not state["dead_letters"]
+            and boundary["ok"]
+            and tuple(item["table"] for item in schema["runtime_tables"]) == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES,
         },
         {
             "id": "governed_ml_availability_evidence",
@@ -625,7 +681,7 @@ def global_inventory_visibility_configure_runtime(state: dict, configuration: di
         raise ValueError(
             f"Global Inventory Visibility requires AppGen-X event topic {GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC}"
         )
-    forbidden = {"stream_engine", "stream_backend", "event_picker"} & set(configuration)
+    forbidden = _GIV_FORBIDDEN_EVENTING_FIELDS & set(configuration)
     if forbidden:
         raise ValueError(
             "Global Inventory Visibility exposes AppGen-X eventing only; stream-engine selection is not supported"
@@ -637,6 +693,8 @@ def global_inventory_visibility_configure_runtime(state: dict, configuration: di
         "allowed_database_backends": _ALLOWED_DATABASE_BACKENDS,
         "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
         "user_facing_eventing_choice": False,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
     }
     return {
         "ok": True,
@@ -881,6 +939,53 @@ def global_inventory_visibility_project_availability(
     confidence_score = round(max(confidence_floor, avg_freshness * avg_health), 4)
     available = round(on_hand + in_transit - reserved - allocated - safety_stock, 2)
     available_to_promise = round(max(0.0, available * confidence_score), 2)
+    capable_to_promise = round(
+        max(0.0, (on_hand + in_transit - reserved - allocated) * confidence_score),
+        2,
+    )
+    channels = tuple(
+        sorted(
+            {
+                reservation["channel"]
+                for reservation in state["reservations"].values()
+                if reservation["tenant"] == tenant
+                and reservation["pool_id"] == pool_id
+                and reservation["status"] == "active"
+            }
+        )
+    )
+    channel_projection = tuple(
+        {
+            "channel": channel,
+            "reserved_quantity": round(
+                sum(
+                    reservation["quantity"]
+                    for reservation in state["reservations"].values()
+                    if reservation["tenant"] == tenant
+                    and reservation["pool_id"] == pool_id
+                    and reservation["status"] == "active"
+                    and reservation["channel"] == channel
+                ),
+                2,
+            ),
+        }
+        for channel in channels
+    )
+    staleness_sla = float(
+        state["parameters"].get(
+            "staleness_sla_minutes",
+            state["configuration"].get("staleness_sla_minutes", 60),
+        )
+    )
+    freshness_sla_minutes = round(staleness_sla, 2)
+    stale_snapshot_count = sum(1 for snapshot in snapshots if snapshot["staleness"] == "stale")
+    reconciliation_delta = round(
+        abs(adjustments["on_hand"])
+        + abs(adjustments["reserved"])
+        + abs(adjustments["allocated"])
+        + abs(adjustments["in_transit"]),
+        2,
+    )
     projection_id = f"projection_{len(state['inventory_projections']) + 1:03d}"
     projection = {
         "projection_id": projection_id,
@@ -894,9 +999,25 @@ def global_inventory_visibility_project_availability(
         "safety_stock": safety_stock,
         "available": available,
         "available_to_promise": available_to_promise,
+        "capable_to_promise": capable_to_promise,
         "freshness_score": avg_freshness,
         "confidence_score": confidence_score,
-        "stale_snapshot_count": sum(1 for snapshot in snapshots if snapshot["staleness"] == "stale"),
+        "stale_snapshot_count": stale_snapshot_count,
+        "freshness_sla_minutes": freshness_sla_minutes,
+        "sla_breached": stale_snapshot_count > 0,
+        "channel_projection": channel_projection,
+        "supply_signal": {
+            "on_hand": on_hand,
+            "in_transit": in_transit,
+            "net_supply": round(on_hand + in_transit - safety_stock, 2),
+        },
+        "demand_signal": {
+            "reserved": reserved,
+            "allocated": allocated,
+            "gross_demand": round(reserved + allocated, 2),
+        },
+        "reconciliation_status": "adjusted" if reconciliation_delta else "reconciled",
+        "reconciliation_delta": reconciliation_delta,
         "rule_bindings": tuple(sorted(state["rules"])),
         "parameter_bindings": tuple(sorted(state["parameters"])),
         "configuration_bound": bool(state["configuration"].get("ok")),
@@ -948,8 +1069,10 @@ def global_inventory_visibility_get_global_availability(
         "in_transit": round(sum(projection["in_transit"] for projection in projections), 2),
         "safety_stock": round(sum(projection["safety_stock"] for projection in projections), 2),
         "available_to_promise": round(sum(projection["available_to_promise"] for projection in projections), 2),
+        "capable_to_promise": round(sum(projection["capable_to_promise"] for projection in projections), 2),
         "freshness_score": round(sum(projection["freshness_score"] for projection in projections) / len(projections), 4),
         "stale_snapshot_count": sum(projection["stale_snapshot_count"] for projection in projections),
+        "freshness_sla_breached": any(projection["sla_breached"] for projection in projections),
         "pools": tuple(sorted(projection["pool_id"] for projection in projections)),
     }
 
@@ -1298,42 +1421,186 @@ def global_inventory_visibility_run_control_tests(state: dict) -> dict:
 
 
 def global_inventory_visibility_build_api_contract() -> dict:
+    permissions = global_inventory_visibility_permissions_contract()
+    routes = (
+        {
+            "route": "PUT /inventory/configuration",
+            "command": "configure_runtime",
+            "owned_tables": ("inventory_configuration",),
+            "requires_permission": permissions["action_permissions"]["configure_runtime"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "POST /inventory/parameters",
+            "command": "set_parameter",
+            "owned_tables": ("inventory_parameter",),
+            "requires_permission": permissions["action_permissions"]["set_parameter"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "POST /inventory/rules",
+            "command": "register_rule",
+            "owned_tables": ("inventory_rule",),
+            "requires_permission": permissions["action_permissions"]["register_rule"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "POST /inventory/pools",
+            "command": "register_inventory_pool",
+            "owned_tables": ("inventory_pool",),
+            "requires_permission": permissions["action_permissions"]["register_inventory_pool"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "POST /inventory/supply-nodes",
+            "command": "register_supply_node",
+            "owned_tables": ("supply_node",),
+            "requires_permission": permissions["action_permissions"]["register_supply_node"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "POST /inventory/snapshots",
+            "command": "record_availability_snapshot",
+            "owned_tables": ("availability_snapshot", "freshness_sla_evidence"),
+            "requires_permission": permissions["action_permissions"]["record_availability_snapshot"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "POST /inventory/projections",
+            "command": "project_availability",
+            "owned_tables": (
+                "inventory_projection",
+                "available_to_promise_projection",
+                "capable_to_promise_projection",
+                "channel_projection",
+                "supply_signal",
+                "demand_signal",
+            ),
+            "requires_permission": permissions["action_permissions"]["project_availability"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "POST /inventory/reservations",
+            "command": "reserve_inventory",
+            "owned_tables": ("inventory_reservation", "channel_projection"),
+            "requires_permission": permissions["action_permissions"]["reserve_inventory"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "POST /inventory/events/inbox",
+            "command": "ingest_event",
+            "owned_tables": (
+                GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[1],
+                "inventory_adjustment",
+                "inventory_exception",
+            ),
+            "consumes": _CONSUMED_EVENTS,
+            "requires_permission": permissions["action_permissions"]["ingest_event"],
+            "idempotency_key": "idempotency_key",
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "GET /inventory/availability",
+            "query": "get_global_availability",
+            "owned_tables": (
+                "inventory_projection",
+                "available_to_promise_projection",
+                "capable_to_promise_projection",
+            ),
+            "requires_permission": permissions["action_permissions"]["get_global_availability"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "GET /inventory/workbench",
+            "query": "build_workbench_view",
+            "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+            "requires_permission": permissions["action_permissions"]["build_workbench_view"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "GET /inventory/schema-contract",
+            "query": "build_schema_contract",
+            "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+            "requires_permission": permissions["action_permissions"]["build_schema_contract"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "GET /inventory/service-contract",
+            "query": "build_service_contract",
+            "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+            "requires_permission": permissions["action_permissions"]["build_service_contract"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+        {
+            "route": "GET /inventory/release-evidence",
+            "query": "build_release_evidence",
+            "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+            "requires_permission": permissions["action_permissions"]["build_release_evidence"],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
+        },
+    )
     return {
         "ok": True,
         "format": "appgen.global-inventory-visibility-api-contract.v1",
         "pbc": "global_inventory_visibility",
         "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+        "runtime_tables": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES,
         "database_backends": GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
         "event_contract": "AppGen-X",
         "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
         "shared_table_access": False,
         "stream_engine_picker_visible": False,
-        "routes": (
-            "GET /global-availability",
-            "POST /pool-rules",
-            "GET /supply-nodes",
-            "POST /availability-snapshots",
-            "GET /inventory/workbench",
-        ),
+        "routes": routes,
+        "emits": _EMITTED_EVENTS,
+        "consumes": _CONSUMED_EVENTS,
         "events": {
             "emits": _EMITTED_EVENTS,
             "consumes": _CONSUMED_EVENTS,
         },
-        "permissions": (
-            "global_inventory_visibility.read",
-            "global_inventory_visibility.reserve",
-            "global_inventory_visibility.configure",
-            "global_inventory_visibility.audit",
-        ),
+        "permissions": tuple(sorted(permissions["permissions"])),
         "configuration": (
             "GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL",
             "GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC",
             "GLOBAL_INVENTORY_VISIBILITY_RETRY_LIMIT",
             "GLOBAL_INVENTORY_VISIBILITY_DEFAULT_CURRENCY",
         ),
+        "rules_parameters_configuration": (
+            "register_rule",
+            "set_parameter",
+            "configure_runtime",
+        ),
         "dependencies": {
-            "apis": _GIV_ALLOWED_DEPENDENCIES,
+            "apis": tuple(item for item in _GIV_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
             "projections": tuple(item for item in _GIV_ALLOWED_DEPENDENCIES if item.endswith("_projection")),
+            "shared_tables": (),
         },
     }
 
@@ -1360,13 +1627,298 @@ def global_inventory_visibility_permissions_contract() -> dict:
             "register_rule": "global_inventory_visibility.configure",
             "set_parameter": "global_inventory_visibility.configure",
             "configure_runtime": "global_inventory_visibility.configure",
+            "build_api_contract": "global_inventory_visibility.audit",
+            "build_schema_contract": "global_inventory_visibility.audit",
+            "build_service_contract": "global_inventory_visibility.audit",
+            "build_release_evidence": "global_inventory_visibility.audit",
+            "build_workbench_view": "global_inventory_visibility.audit",
+            "verify_owned_table_boundary": "global_inventory_visibility.audit",
+            "federate_inventory_view": "global_inventory_visibility.read",
+            "verify_supply_identity": "global_inventory_visibility.audit",
+            "run_resilience_drill": "global_inventory_visibility.audit",
+            "rotate_crypto_epoch": "global_inventory_visibility.audit",
+            "schedule_carbon_aware_sourcing": "global_inventory_visibility.read",
+            "optimize_allocation": "global_inventory_visibility.read",
+            "allocate_competing_pools": "global_inventory_visibility.read",
+            "simulate_counterfactual_allocation": "global_inventory_visibility.read",
+            "forecast_temporal_availability": "global_inventory_visibility.read",
+            "score_stockout_risk": "global_inventory_visibility.audit",
+            "resolve_exception": "global_inventory_visibility.audit",
+            "route_projection": "global_inventory_visibility.read",
+            "generate_availability_proof": "global_inventory_visibility.audit",
+            "screen_allocation_policy": "global_inventory_visibility.audit",
             "run_control_tests": "global_inventory_visibility.audit",
+            "register_governed_model": "global_inventory_visibility.audit",
+            "detect_inventory_anomaly": "global_inventory_visibility.audit",
+            "verify_formal_invariants": "global_inventory_visibility.audit",
         },
-        "rbac_tables": ("inventory_rule", "inventory_parameter", "inventory_configuration"),
+        "rbac_tables": (
+            "inventory_rule",
+            "inventory_parameter",
+            "inventory_configuration",
+            "inventory_control_assertion",
+        ),
     }
 
 
-def global_inventory_visibility_verify_owned_table_boundary(references: tuple[str, ...]) -> dict:
+def global_inventory_visibility_build_schema_contract() -> dict:
+    """Return owned schema, relationship, migration, and model evidence."""
+    default_fields = ("tenant", "record_id", "status", "effective_at", "audit_hash")
+    table_fields = {
+        table: default_fields for table in GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+    } | {
+        "inventory_pool": ("tenant", "pool_id", "item_id", "pool_type", "allocation_policy", "safety_stock_units"),
+        "supply_node": ("tenant", "node_id", "node_type", "country", "region", "health_score", "carbon_intensity"),
+        "availability_snapshot": ("tenant", "snapshot_id", "pool_id", "node_id", "on_hand", "reserved", "allocated", "in_transit", "staleness_minutes"),
+        "inventory_projection": ("tenant", "projection_id", "pool_id", "item_id", "available_to_promise", "capable_to_promise", "freshness_score"),
+        "available_to_promise_projection": ("tenant", "projection_id", "pool_id", "item_id", "available_to_promise", "confidence_score"),
+        "capable_to_promise_projection": ("tenant", "projection_id", "pool_id", "item_id", "capable_to_promise", "confidence_score"),
+        "channel_projection": ("tenant", "projection_id", "pool_id", "channel", "reserved_quantity", "available_to_promise"),
+        "supply_signal": ("tenant", "signal_id", "pool_id", "node_id", "signal_type", "quantity", "observed_at"),
+        "demand_signal": ("tenant", "signal_id", "pool_id", "channel", "signal_type", "quantity", "observed_at"),
+        "inventory_reservation": ("tenant", "reservation_id", "pool_id", "order_id", "channel", "quantity", "status", "ttl_minutes"),
+        "inventory_allocation": ("tenant", "allocation_id", "pool_id", "order_id", "node_id", "quantity", "status"),
+        "inventory_adjustment": ("tenant", "adjustment_id", "pool_id", "node_id", "adjustment_type", "quantity", "reason"),
+        "inventory_reconciliation": ("tenant", "reconciliation_id", "pool_id", "cycle_id", "variance_units", "status", "recorded_at"),
+        "inventory_exception": ("tenant", "exception_id", "pool_id", "exception_type", "severity", "status", "opened_at"),
+        "freshness_sla_evidence": ("tenant", "evidence_id", "pool_id", "snapshot_id", "freshness_score", "sla_minutes", "breached"),
+        "inventory_federation_projection": ("tenant", "federation_id", "pool_id", "system_name", "lag_minutes", "available_to_promise"),
+        "inventory_audit_trace": ("tenant", "trace_id", "subject_id", "event_type", "event_id", "audit_hash", "recorded_at"),
+        "inventory_control_assertion": ("tenant", "assertion_id", "control_name", "control_status", "evidence_hash", "checked_at"),
+        "inventory_schema_extension": ("tenant", "extension_id", "entity_name", "field_name", "field_type", "registered_at"),
+        "inventory_rule": ("tenant", "rule_id", "scope", "rule_type", "status", "compiled_hash"),
+        "inventory_parameter": ("tenant", "parameter_name", "parameter_value", "lower_bound", "upper_bound", "recorded_at"),
+        "inventory_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_currency"),
+        "inventory_governed_model": ("tenant", "model_name", "model_version", "drift_score", "explainability_status", "registered_at"),
+        GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[0]: ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[1]: ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[2]: ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "availability_snapshot.pool_id", "to": "inventory_pool.pool_id", "type": "owned_projection"},
+        {"from": "availability_snapshot.node_id", "to": "supply_node.node_id", "type": "owned_projection"},
+        {"from": "inventory_projection.pool_id", "to": "inventory_pool.pool_id", "type": "owned_projection"},
+        {"from": "available_to_promise_projection.projection_id", "to": "inventory_projection.projection_id", "type": "owned_child"},
+        {"from": "capable_to_promise_projection.projection_id", "to": "inventory_projection.projection_id", "type": "owned_child"},
+        {"from": "channel_projection.projection_id", "to": "inventory_projection.projection_id", "type": "owned_child"},
+        {"from": "supply_signal.pool_id", "to": "inventory_pool.pool_id", "type": "owned_signal"},
+        {"from": "demand_signal.pool_id", "to": "inventory_pool.pool_id", "type": "owned_signal"},
+        {"from": "inventory_reservation.pool_id", "to": "inventory_pool.pool_id", "type": "owned_reservation"},
+        {"from": "inventory_allocation.pool_id", "to": "inventory_pool.pool_id", "type": "owned_allocation"},
+        {"from": "inventory_reconciliation.pool_id", "to": "inventory_pool.pool_id", "type": "owned_reconciliation"},
+        {"from": "inventory_exception.pool_id", "to": "inventory_pool.pool_id", "type": "owned_exception"},
+        {"from": "freshness_sla_evidence.snapshot_id", "to": "availability_snapshot.snapshot_id", "type": "owned_evidence"},
+        {"from": "inventory_federation_projection.pool_id", "to": "inventory_pool.pool_id", "type": "owned_federation"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(
+                field for field in table_fields[table] if field.endswith("_id") or field in {"event_id", "model_name", "parameter_name"}
+            )[:2],
+            "owned_by": "global_inventory_visibility",
+        }
+        for table in GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+    )
+    allowed_prefixes = (
+        "inventory_",
+        "supply_",
+        "availability_",
+        "available_",
+        "capable_",
+        "freshness_",
+        "channel_",
+        "demand_",
+        "global_inventory_visibility_",
+    )
+    runtime_tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "event_contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+        }
+        for table in GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
+    )
+    return {
+        "format": "appgen.global-inventory-visibility-owned-schema-contract.v1",
+        "ok": len(tables) == len(GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES)
+        and len(tables) >= 20
+        and all(item["table"].startswith(allowed_prefixes) for item in tables),
+        "tables": tables,
+        "runtime_tables": runtime_tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/global_inventory_visibility/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+        ),
+        "datastore_backends": GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+        "shared_table_access": False,
+    }
+
+
+def global_inventory_visibility_build_service_contract() -> dict:
+    """Return command/query, eventing, and dependency evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "register_supply_node",
+        "register_inventory_pool",
+        "record_availability_snapshot",
+        "project_availability",
+        "reserve_inventory",
+        "ingest_event",
+        "resolve_exception",
+        "route_projection",
+        "generate_availability_proof",
+        "screen_allocation_policy",
+        "run_control_tests",
+        "federate_inventory_view",
+        "verify_supply_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_sourcing",
+        "optimize_allocation",
+        "allocate_competing_pools",
+        "register_governed_model",
+        "verify_owned_table_boundary",
+        "build_api_contract",
+        "build_schema_contract",
+        "build_release_evidence",
+    )
+    return {
+        "format": "appgen.global-inventory-visibility-service-contract.v1",
+        "ok": len(command_methods) >= 25,
+        "transaction_boundary": "global_inventory_visibility_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "get_global_availability",
+            "parse_semantic_query",
+            "simulate_counterfactual_allocation",
+            "forecast_temporal_availability",
+            "score_stockout_risk",
+            "detect_inventory_anomaly",
+            "verify_formal_invariants",
+            "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
+        ),
+        "mutates_only": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+        "idempotent_handlers": ("ingest_event",),
+        "retry_dead_letter_evidence": {
+            "inbox_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[1],
+            "outbox_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[0],
+            "dead_letter_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[2],
+            "max_attempts": 3,
+        },
+        "eventing": {
+            "contract": "AppGen-X",
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
+        },
+        "rules_parameters_configuration": (
+            "register_rule",
+            "set_parameter",
+            "configure_runtime",
+        ),
+        "advanced_capabilities": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS,
+        "external_dependencies": {
+            "apis": tuple(item for item in _GIV_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _GIV_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def global_inventory_visibility_build_release_evidence() -> dict:
+    """Return package-local schema, service, UI, and workbench evidence."""
+    from .ui import global_inventory_visibility_ui_contract
+
+    schema = global_inventory_visibility_build_schema_contract()
+    service = global_inventory_visibility_build_service_contract()
+    api = global_inventory_visibility_build_api_contract()
+    permissions = global_inventory_visibility_permissions_contract()
+    ui = global_inventory_visibility_ui_contract()
+    boundary = global_inventory_visibility_verify_owned_table_boundary(
+        GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+        + GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
+        + (
+            "wms_stock_projection",
+            "GET /transportation/shipments/{item_id}",
+            "erp_supply_signal_projection",
+        )
+    )
+    workbench = global_inventory_visibility_build_workbench_view(
+        _global_inventory_visibility_release_probe_state(),
+        tenant="tenant_release",
+    )
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 20},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and "ingest_event" in service["idempotent_handlers"]},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {
+            "id": "permissions_cover_release_queries",
+            "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"]),
+        },
+        {
+            "id": "ui_binding_evidence",
+            "ok": ui["binding_evidence"]["runtime_tables"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
+            and ui["binding_evidence"]["shared_table_access"] is False,
+        },
+        {
+            "id": "workbench_binding_evidence",
+            "ok": workbench["binding_evidence"]["outbox_table"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[0]
+            and workbench["binding_evidence"]["ui_bindings"]["parameter_fragment"] == "InventoryParameterConsole",
+        },
+        {
+            "id": "backend_allowlist",
+            "ok": schema["datastore_backends"] == GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS,
+        },
+        {
+            "id": "no_shared_table_access",
+            "ok": not schema["shared_table_access"] and not api["shared_table_access"] and boundary["declared_dependencies"]["shared_tables"] == (),
+        },
+    )
+    return {
+        "format": "appgen.global-inventory-visibility-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "ui": ui,
+        "boundary": boundary,
+        "workbench": workbench,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def global_inventory_visibility_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
     allowed = set(GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES) | set(_GIV_RUNTIME_TABLES) | set(_GIV_ALLOWED_DEPENDENCIES)
     violations = tuple(sorted(reference for reference in references if reference not in allowed))
     return {
@@ -1376,6 +1928,13 @@ def global_inventory_visibility_verify_owned_table_boundary(references: tuple[st
         "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
         "runtime_tables": _GIV_RUNTIME_TABLES,
         "allowed_dependencies": _GIV_ALLOWED_DEPENDENCIES,
+        "declared_dependencies": {
+            "apis": tuple(item for item in _GIV_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _GIV_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
         "violations": violations,
         "shared_table_access": False,
     }
@@ -1512,6 +2071,7 @@ def global_inventory_visibility_build_workbench_view(
     *,
     tenant: str,
 ) -> dict:
+    permissions = global_inventory_visibility_permissions_contract()
     pools = tuple(
         pool for pool in state["inventory_pools"].values() if pool["tenant"] == tenant
     )
@@ -1528,6 +2088,8 @@ def global_inventory_visibility_build_workbench_view(
         for reservation in state["reservations"].values()
         if reservation["tenant"] == tenant and reservation["status"] == "active"
     )
+    projections_atp = round(sum(projection["available_to_promise"] for projection in projections), 2)
+    projections_ctp = round(sum(projection["capable_to_promise"] for projection in projections), 2)
     return {
         "ok": True,
         "tenant": tenant,
@@ -1535,7 +2097,8 @@ def global_inventory_visibility_build_workbench_view(
         "node_count": len(nodes),
         "projection_count": len(projections),
         "reservation_count": len(reservations),
-        "available_to_promise": round(sum(projection["available_to_promise"] for projection in projections), 2),
+        "available_to_promise": projections_atp,
+        "capable_to_promise": projections_ctp,
         "in_transit": round(sum(projection["in_transit"] for projection in projections), 2),
         "freshness_score": round(
             sum(projection["freshness_score"] for projection in projections) / len(projections),
@@ -1548,10 +2111,38 @@ def global_inventory_visibility_build_workbench_view(
         "parameter_count": len(state["parameters"]),
         "rules_bound": tuple(sorted(rule_id for rule_id, rule in state["rules"].items() if rule["tenant"] == tenant)),
         "parameters_bound": tuple(sorted(state["parameters"])),
+        "outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letters", ())),
+        "channel_projection_count": len(
+            {
+                reservation["channel"]
+                for reservation in reservations
+            }
+        ),
         "configuration_evidence": {
             "event_topic": state["configuration"].get("event_topic"),
             "database_backend": state["configuration"].get("database_backend"),
             "event_contract": state["configuration"].get("event_contract"),
+        },
+        "binding_evidence": {
+            "owned_tables": GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
+            "runtime_tables": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES,
+            "outbox_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[0],
+            "inbox_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[1],
+            "dead_letter_table": GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[2],
+            "required_event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "event_contract": state["configuration"].get("event_contract"),
+            "rules": tuple(sorted(rule_id for rule_id, rule in state["rules"].items() if rule["tenant"] == tenant)),
+            "parameters": tuple(sorted(state["parameters"])),
+            "ui_bindings": {
+                "configuration_fragment": "InventoryConfigurationPanel",
+                "rule_fragment": "PoolRuleStudio",
+                "parameter_fragment": "InventoryParameterConsole",
+                "workbench_fragment": "GlobalInventoryWorkbench",
+                "rbac": permissions["action_permissions"],
+            },
+            "shared_table_access": False,
         },
     }
 
@@ -1579,6 +2170,87 @@ def global_inventory_visibility_verify_formal_invariants(state: dict) -> dict:
         "hash_chain_valid": _hash_chain_valid(state["events"]),
         "non_negative_atp": projections_ok,
     }
+
+
+def _global_inventory_visibility_release_probe_state() -> dict:
+    state = global_inventory_visibility_empty_state()
+    state = global_inventory_visibility_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "projection_horizon_days": 7,
+            "staleness_sla_minutes": 60,
+            "workbench_limit": 25,
+        },
+    )["state"]
+    state = global_inventory_visibility_set_parameter(state, "safety_stock_percent", 0.1)["state"]
+    state = global_inventory_visibility_set_parameter(state, "freshness_half_life_hours", 24)["state"]
+    state = global_inventory_visibility_set_parameter(state, "reservation_ttl_minutes", 120)["state"]
+    state = global_inventory_visibility_register_rule(
+        state,
+        {
+            "rule_id": "rule_release",
+            "tenant": "tenant_release",
+            "scope": "pool_release",
+            "status": "active",
+            "rule_type": "allocation",
+            "preferred_nodes": ("node_release",),
+            "policy": "balanced",
+        },
+    )["state"]
+    state = global_inventory_visibility_register_supply_node(
+        state,
+        {
+            "node_id": "node_release",
+            "tenant": "tenant_release",
+            "node_type": "warehouse",
+            "country": "US",
+            "region": "CENTRAL",
+            "health_score": 0.95,
+            "latency_ms": 15,
+            "carbon_intensity": 80,
+            "federated_systems": ("wms", "erp"),
+            "identity": {"did": "did:appgen:node-release", "issuer": "trusted_registry", "status": "active"},
+        },
+    )["state"]
+    state = global_inventory_visibility_register_inventory_pool(
+        state,
+        {
+            "pool_id": "pool_release",
+            "tenant": "tenant_release",
+            "item_id": "sku_release",
+            "pool_type": "enterprise",
+            "node_ids": ("node_release",),
+            "allocation_policy": "balanced",
+            "safety_stock_units": 5,
+            "lead_time_days": 2,
+        },
+    )["state"]
+    state = global_inventory_visibility_record_availability_snapshot(
+        state,
+        {
+            "snapshot_id": "snap_release",
+            "tenant": "tenant_release",
+            "pool_id": "pool_release",
+            "node_id": "node_release",
+            "on_hand": 50,
+            "reserved": 5,
+            "allocated": 4,
+            "in_transit": 10,
+            "safety_stock": 5,
+            "freshness_age_hours": 3,
+            "staleness_minutes": 20,
+        },
+    )["state"]
+    state = global_inventory_visibility_project_availability(
+        state,
+        tenant="tenant_release",
+        pool_id="pool_release",
+    )["state"]
+    return state
 
 
 def _canonical_json(value: object) -> str:

@@ -1,6 +1,6 @@
 # Order Routing Optimization
 
-Package-local implementation contract for the Order Routing Optimization PBC. The package owns fulfillment-routing policy, route candidates, capacity snapshots, routing decisions, node reservations, event evidence, rules, parameters, configuration, UI fragments, and release validation for optimized enterprise order routing.
+Package-local implementation contract for the Order Routing Optimization PBC. The package owns order-routing plans, node topology and services, routing constraints and costs, delivery promises, split-shipment evidence, inventory/transport/service inputs, route simulation and optimization evidence, approvals, feedback, AppGen-X event evidence, UI/workbench bindings, and package-local release validation for optimized enterprise order routing.
 
 ## Stable Identity
 
@@ -16,83 +16,169 @@ Package-local implementation contract for the Order Routing Optimization PBC. Th
 
 ## Owned Boundary
 
-Owned tables and generated model artifacts:
+Owned tables and generated descriptors:
 
-- `routing_rule`
+- `routing_plan`
+- `routing_plan_leg`
+- `routing_node`
+- `routing_node_calendar`
+- `routing_node_service`
+- `routing_node_capacity`
+- `routing_constraint`
+- `routing_cost_component`
+- `routing_promise`
+- `split_shipment`
+- `split_shipment_leg`
+- `inventory_input_projection`
+- `transport_input_projection`
+- `service_input_projection`
 - `route_candidate`
 - `capacity_snapshot`
 - `routing_decision`
 - `node_reservation`
+- `route_simulation`
+- `route_simulation_scenario`
+- `optimization_run`
+- `optimization_candidate`
+- `routing_exception`
+- `exception_resolution`
+- `routing_approval`
+- `routing_feedback`
+- `routing_policy_screening`
+- `routing_audit_trace`
+- `routing_federation_projection`
+- `routing_carbon_schedule`
+- `routing_network_optimization`
+- `routing_capacity_allocation`
+- `routing_anomaly_signal`
+- `routing_exposure_model`
+- `routing_forecast`
+- `routing_parsed_request`
+- `routing_seed_data`
+- `routing_schema_extension`
+- `routing_control_assertion`
+- `routing_governed_model`
+- `routing_rule`
 - `routing_parameter`
 - `routing_configuration`
 - `order_routing_optimization_appgen_outbox_event`
 - `order_routing_optimization_appgen_inbox_event`
 - `order_routing_optimization_dead_letter_event`
 
-The PBC does not share order, inventory, tax, WMS, DOM, carrier, or checkout tables. Cross-PBC integration is represented only by declared APIs, events, or projections:
+The package does not share checkout, order, inventory, tax, transportation, WMS, DOM, approval, or feedback tables. Cross-PBC integration is represented only by declared APIs, AppGen-X events, or read-only projections:
 
 - Consumed AppGen-X events: `OrderVerified`, `AvailabilityProjected`, `TaxCalculated`.
-- API dependencies: `POST /orders/verify`, `GET /availability-projections`, `GET /tax-calculations`, `GET /inventory-nodes`, `GET /wms-capacity`.
-- Projections: `order_projection`, `availability_projection`, `tax_projection`, `inventory_projection`, `wms_capacity_projection`, and `dom_projection`.
-- Emitted events: `FulfillmentRouteSelected` and `NodeCapacityReserved`.
+- Emitted AppGen-X events: `FulfillmentRouteSelected`, `NodeCapacityReserved`.
+- API dependencies: `POST /orders/verify`, `GET /availability-projections`, `GET /tax-calculations`, `GET /inventory-nodes`, `GET /wms-capacity`, `GET /transport-service-options`, `GET /delivery-promises`, `POST /routing-approvals`, and `POST /routing-feedback`.
+- Projection dependencies: `order_projection`, `availability_projection`, `tax_projection`, `inventory_projection`, `wms_capacity_projection`, `dom_projection`, `transport_service_projection`, `delivery_promise_projection`, `approval_policy_projection`, and `feedback_signal_projection`.
 
 ## Standard Capabilities
 
-- Routing rule management with eligible nodes, preferred nodes, region constraints, split policy, substitution mode, and capacity floors.
-- Route candidate intake with node, region, order, inventory source, cost, SLA, risk, carbon, split, substitution, and graph-topology evidence.
-- Capacity snapshot intake with available, reserved, available-to-promise, and forecast-gap calculations.
-- Event intake for verified orders, availability projections, and tax quotes.
-- Routing decision selection across candidate score, cost, SLA, capacity, risk, carbon, split policy, and substitution policy.
-- Node reservation with hold duration and capacity decrement.
-- Split-shipment routing when single-node capacity cannot satisfy the request and policy allows it.
-- Substitution eligibility enforcement.
-- Tenant isolation for rules, events, candidates, decisions, reservations, and workbench views.
-- AppGen-X outbox/inbox records with idempotent handler keys.
-- Retry and dead-letter evidence for failed event handling.
-- Configuration schema, bounded parameter engine, compiled rule engine, seed runtime state, RBAC descriptors, API routes, and workbench fragments.
+- Routing-plan ownership for decision headers and plan legs.
+- Routing-node, calendar, service, and capacity evidence.
+- Routing-rule and routing-constraint management with deterministic compiled hashes.
+- Route-candidate intake with region, cost, SLA, risk, carbon, split, and substitution evidence.
+- Capacity snapshots with available-to-promise calculation and reservation decrement.
+- Routing-cost and delivery-promise evidence per selected decision.
+- Split-shipment evidence when a request is fulfilled across multiple nodes.
+- Inventory, transport, and service inputs recorded from event and candidate intake.
+- Routing decisions and node reservations with tenant isolation.
+- AppGen-X outbox, inbox, retry, and dead-letter evidence.
+- Idempotent event handling keyed by consumed event type and event id.
+- Configuration schema, bounded parameter engine, package-local API descriptors, RBAC descriptors, and workbench fragments.
+- Package-local `build_schema_contract()`, `build_service_contract()`, and `build_release_evidence()` exported through `__init__.implementation_contract()`.
 
 ## Advanced Capabilities
 
 - Event-sourced routing lifecycle with immutable hash-chain audit evidence.
-- Graph-relational fulfillment topology across order, region, nodes, candidates, decisions, rules, and reservations.
-- Probabilistic SLA, cost, capacity, risk, and carbon scoring.
-- Counterfactual routing simulation for alternative nodes.
-- Temporal capacity forecasting from capacity and demand paths.
-- Autonomous routing exception recommendations for capacity shortfall, tax mismatch, carrier disruption, and inventory drift.
-- Semantic route-request parsing for natural-language order, region, units, SLA, and split hints.
-- Predictive fulfillment-risk scoring from stockout, tax variance, exception, and capacity-volatility signals.
-- Self-healing route selection when selected nodes become unavailable.
+- Graph-relational routing topology across orders, regions, nodes, plans, constraints, candidates, decisions, promises, and reservations.
+- Probabilistic cost, SLA, capacity, risk, and carbon scoring.
+- Counterfactual route simulation for alternate nodes.
+- Forecasting of future available capacity and saturation risk.
+- Autonomous routing exception resolution recommendations.
+- Natural-language route-request parsing.
+- Predictive fulfillment-risk scoring.
+- Self-healing route selection when nodes become unavailable.
 - Cryptographic routing proof generation for selective disclosure.
 - Dynamic routing policy screening for blocked nodes and carbon budgets.
-- Continuous control tests for configuration, rules, parameters, event-contract safety, dead-letter backlog, and hash-chain integrity.
-- Cross-system federation through order, inventory, tax, WMS, and DOM projections.
-- Chaos-tolerant outbox replay for availability, tax, and worker-restart failures.
-- Crypto-agile epoch rotation.
-- Carbon-aware route scheduling.
-- Mathematical route-network optimization.
-- Auction-style capacity clearing across nodes.
-- Routing anomaly detection with entropy evidence.
-- Stochastic routing exposure modeling.
-- Governed model registration with regulated and explainability evidence.
-- Distributed-systems idempotency evidence on emitted reservation events.
+- Carbon-aware scheduling, network optimization, and auction-style capacity allocation evidence.
+- Routing anomaly detection and stochastic exposure modeling.
+- Governed model registration with explainability and lineage evidence.
+- Package-local release evidence combining schema, service, API, permissions, workbench, and eventing proofs.
+
+## Schema Contract
+
+`build_schema_contract()` emits:
+
+- An owned-table contract covering all package-owned runtime and metadata tables.
+- Field descriptors for plans, legs, nodes, constraints, costs, promises, splits, inputs, simulations, optimization runs, exceptions, approvals, feedback, rules, parameters, configuration, and AppGen-X evidence.
+- Relationship descriptors connecting plans to legs, nodes to calendars/services/capacity, rules to constraints, decisions to costs/promises/reservations/approvals/feedback, simulations to scenarios, optimization runs to candidates, and exceptions to resolutions.
+- Generated migration descriptors at `pbcs/order_routing_optimization/migrations/<nnn>_<table>.sql`.
+- Generated model descriptors with package-local class names and field ownership evidence.
+- Back-end allowlist evidence and explicit `shared_table_access: false`.
+
+## Service Contract
+
+`build_service_contract()` declares the transaction boundary as the Order Routing Optimization owned datastore plus the AppGen-X outbox.
+
+Command methods include:
+
+- `configure_runtime`
+- `set_parameter`
+- `register_rule`
+- `register_schema_extension`
+- `handle_event`
+- `ingest_capacity_snapshot`
+- `upsert_route_candidate`
+- `route_orders`
+- `reserve_node_capacity`
+- `simulate_counterfactual`
+- `forecast_capacity`
+- `recommend_exception_resolution`
+- `parse_route_request`
+- `score_fulfillment_risk`
+- `self_heal_route_selection`
+- `generate_routing_proof`
+- `screen_policy`
+- `run_control_tests`
+- `federate_routing_view`
+- `run_resilience_drill`
+- `rotate_crypto_epoch`
+- `schedule_carbon_aware_route`
+- `optimize_route_network`
+- `clear_capacity_auction`
+- `detect_routing_anomaly`
+- `model_stochastic_exposure`
+- `register_governed_model`
+
+Query methods include:
+
+- `build_workbench_view`
+- `build_api_contract`
+- `build_schema_contract`
+- `build_service_contract`
+- `build_release_evidence`
+- `verify_owned_table_boundary`
+
+The service contract also records owned-only mutation boundaries and declared external API, event, and projection dependencies with no shared-table access.
 
 ## Runtime Services
 
-- `configure_runtime` validates required configuration fields, exact AppGen-X event topic, backend, retry limit, supported regions, split policies, substitution modes, topology systems, timezone, and workbench limit.
+- `configure_runtime` validates all required configuration fields, exact AppGen-X event topic, relational backend, retry limit, supported regions, split policies, substitution modes, topology systems, timezone, and workbench limit.
 - `set_parameter` accepts only supported bounded numeric routing parameters.
-- `register_rule` validates routing-policy fields and stores deterministic compiled evidence.
-- `register_schema_extension` accepts only owned-table extensions with valid field identifiers.
-- `handle_event` idempotently processes consumed events, records inbox evidence, schedules retries, and dead-letters exhausted failures.
-- `ingest_capacity_snapshot` owns capacity projection and available-to-promise calculation.
-- `upsert_route_candidate` owns route-candidate projection and tax/capacity scoring inputs.
-- `route_orders` selects or splits fulfillment routes using rules, parameters, candidate scores, and capacity.
-- `reserve_node_capacity` owns node reservations and capacity decrement.
-- `build_api_contract` emits descriptor-level API, event, permission, dependency, and owned-table metadata.
-- `permissions_contract` maps runtime commands to RBAC permissions.
-- `verify_owned_table_boundary` accepts owned tables and declared API/event/projection dependencies, then reports direct foreign-table violations.
-- `build_workbench_view` exposes operational counts and release evidence.
+- `register_rule` validates rule fields and emits compiled routing-constraint evidence.
+- `register_schema_extension` allows extensions only for package-owned tables and valid field identifiers.
+- `handle_event` idempotently consumes `OrderVerified`, `AvailabilityProjected`, and `TaxCalculated`, updates order/inventory/service inputs, records inbox evidence, and preserves retry/dead-letter evidence.
+- `ingest_capacity_snapshot` records capacity and routing-node evidence.
+- `upsert_route_candidate` records route candidates plus transport/service input evidence.
+- `route_orders` selects a standard route or split route, records plans, costs, promises, optimization runs, approvals, feedback, and node reservations, and emits AppGen-X outbox events.
+- `reserve_node_capacity` decrements available-to-promise capacity and emits `NodeCapacityReserved`.
+- `simulate_counterfactual`, `forecast_capacity`, `optimize_route_network`, and `clear_capacity_auction` provide advanced optimization evidence.
+- `recommend_exception_resolution`, `screen_policy`, `detect_routing_anomaly`, `model_stochastic_exposure`, and `register_governed_model` provide hardened operational evidence.
 
 ## API Contract
+
+`build_api_contract()` exposes descriptor-level API evidence:
 
 - `POST /route-orders` maps to `route_orders`.
 - `GET /route-candidates` maps to `build_workbench_view`.
@@ -100,8 +186,13 @@ The PBC does not share order, inventory, tax, WMS, DOM, carrier, or checkout tab
 - `POST /route-candidates` maps to `upsert_route_candidate`.
 - `POST /order-routing/events/inbox` maps to `handle_event`.
 - `GET /routing-workbench` maps to `build_workbench_view`.
+- `POST /routing-simulations` maps to `simulate_counterfactual`.
+- `POST /routing-optimizations` maps to `optimize_route_network`.
+- `POST /routing-policy-screening` maps to `screen_policy`.
+- `GET /routing-federation` maps to `federate_routing_view`.
+- `POST /routing-proof` maps to `generate_routing_proof`.
 
-Every route descriptor includes owned tables, command or query binding, idempotency key where applicable, required permission, emitted events, consumed events, and declared dependency evidence.
+Every route descriptor includes owned tables, command or query binding, emitted or consumed event metadata where applicable, required permission, and declared dependency evidence.
 
 ## Events And Handlers
 
@@ -116,7 +207,12 @@ Consumed events:
 - `AvailabilityProjected`
 - `TaxCalculated`
 
-Handlers are idempotent by event type and event id. Duplicate processed events do not append additional inbox entries. Failed events record retry evidence until the configured retry limit and then produce dead-letter records.
+Handler expectations:
+
+- AppGen-X event topic is fixed to `appgen.order-routing.events`.
+- Duplicate processed events do not append duplicate inbox or projection records.
+- Retry evidence is recorded until `retry_limit` is reached.
+- Exhausted failures create dead-letter evidence in the package-owned dead-letter table contract.
 
 ## Rules, Parameters, And Configuration
 
@@ -132,7 +228,7 @@ Rules require:
 - `substitution_mode`
 - `status`
 
-Parameters include:
+Parameters:
 
 - `cost_weight`
 - `sla_weight`
@@ -145,33 +241,99 @@ Parameters include:
 - `simulation_sample_size`
 - `confidence_floor`
 
-Configuration includes backend, event topic, retry limit, default currency, supported regions, split policies, substitution modes, topology systems, default timezone, and workbench limit. Runtime configuration records `event_contract: AppGen-X`, hidden stream-engine picker evidence, non-selectable event-contract evidence, and supported configuration fields.
+Configuration:
+
+- `database_backend`
+- `event_topic`
+- `retry_limit`
+- `default_currency`
+- `supported_regions`
+- `supported_split_policies`
+- `supported_substitution_modes`
+- `topology_systems`
+- `default_timezone`
+- `workbench_limit`
+
+Configuration evidence also records `event_contract: AppGen-X`, locked event-contract visibility, hidden stream-engine picker evidence, emitted and consumed event types, and owned-table binding evidence.
+
+## Permissions
+
+`permissions_contract()` exposes action-level RBAC evidence with package-local permissions:
+
+- `order_routing_optimization.read`
+- `order_routing_optimization.route`
+- `order_routing_optimization.capacity`
+- `order_routing_optimization.configure`
+- `order_routing_optimization.audit`
+- `order_routing_optimization.event`
+
+Action bindings cover standard order-routing operations plus advanced contract builders:
+
+- `route_orders`, `reserve_node_capacity`, `optimize_route_network`, `clear_capacity_auction`, and `schedule_carbon_aware_route`.
+- `ingest_capacity_snapshot` and `upsert_route_candidate`.
+- `handle_event`.
+- `configure_runtime`, `set_parameter`, `register_rule`, and `register_schema_extension`.
+- `simulate_counterfactual`, `recommend_exception_resolution`, `score_fulfillment_risk`, `generate_routing_proof`, `screen_policy`, `run_control_tests`, `run_resilience_drill`, `rotate_crypto_epoch`, `detect_routing_anomaly`, `model_stochastic_exposure`, `register_governed_model`, `build_workbench_view`, `build_schema_contract`, `build_service_contract`, and `build_release_evidence`.
 
 ## UI And Workbench
 
-UI fragments:
+UI fragments include:
 
 - `OrderRoutingWorkbench`
+- `RoutingNodeTopologyMap`
 - `RoutingRuleStudio`
 - `RouteCandidateGrid`
 - `CapacitySnapshotBoard`
 - `RoutingDecisionLedger`
+- `RoutingPromiseBoard`
+- `SplitShipmentStudio`
 - `ReservationConsole`
 - `CounterfactualSimulationLab`
+- `RoutingOptimizationWorkbench`
+- `RoutingExceptionConsole`
+- `RoutingApprovalQueue`
+- `RoutingFeedbackLedger`
 - `RoutingInboxMonitor`
 - `RoutingParameterConsole`
 - `RoutingConfigurationPanel`
 - `RoutingPolicyScreeningPanel`
 - `RoutingAuditTrailView`
 
-The workbench exposes route candidate, capacity, decision, split, reservation, inbox, outbox, dead-letter, configuration, rule, parameter, and owned-boundary evidence. Visible actions are RBAC-filtered by route, capacity, event, configuration, and audit permissions.
+Workbench evidence includes:
+
+- Counts for plans, nodes, constraints, costs, promises, split shipments, inventory/transport/service inputs, candidates, capacity snapshots, decisions, reservations, simulations, optimization runs, exceptions, approvals, feedback, inbox entries, outbox entries, and dead-letter entries.
+- Configuration binding evidence with AppGen-X lock metadata.
+- Rule and parameter binding evidence.
+- Event surface evidence for emitted/consumed event types and fixed topic.
+- Owned-table, outbox-table, inbox-table, and dead-letter-table evidence.
 
 ## Release Evidence
 
-The focused test suite proves:
+`build_release_evidence()` combines:
 
-- Runtime smoke covers every declared standard and advanced capability key.
-- The package declares owned tables, allowed relational backends, AppGen-X eventing, descriptor APIs, and action-level RBAC.
-- Configuration, parameters, rules, schema extensions, event handling, capacity, candidates, decisions, reservations, UI, and workbench evidence execute.
-- Boundary validation accepts owned tables and declared API/event/projection dependencies, then rejects direct foreign-table references.
-- Invalid backend, unsupported configuration fields, unsupported parameters, out-of-range parameters, non-owned schema extensions, idempotent duplicates, retries, and dead letters are verified.
+- `build_schema_contract()`
+- `build_service_contract()`
+- `build_api_contract()`
+- `permissions_contract()`
+- Runtime smoke state
+- Workbench binding evidence
+- UI contract evidence
+
+Release checks prove:
+
+- Owned schema depth and migration-per-owned-table coverage.
+- Service command depth for standard and advanced routing capabilities.
+- Fixed AppGen-X event contract and hidden stream-engine picker evidence.
+- Permission coverage for core routing and contract-builder operations.
+- Owned-only datastore boundaries.
+- Idempotent inbox/outbox/dead-letter evidence through package-owned table bindings.
+
+## Focused Validation
+
+The focused package test covers:
+
+- Runtime smoke against every declared advanced capability key.
+- `implementation_contract()` exposure of schema, service, release, API, permissions, UI, event topic, emitted events, and consumed events.
+- Positive schema/service/release evidence with expanded owned tables and generated migration/model descriptors.
+- Configuration, parameters, rules, schema extensions, event handling, capacity, candidates, routing decisions, promises, approvals, feedback, workbench binding evidence, and UI rendering.
+- Invalid backends, unsupported configuration fields, unsupported parameters, out-of-range parameters, non-owned schema extensions, duplicate event handling, retries, and dead letters.

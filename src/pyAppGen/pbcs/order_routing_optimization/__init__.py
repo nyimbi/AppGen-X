@@ -9,6 +9,9 @@ from .runtime import ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC
 from .runtime import ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import ORDER_ROUTING_OPTIMIZATION_STANDARD_FEATURE_KEYS
 from .runtime import order_routing_optimization_build_api_contract
+from .runtime import order_routing_optimization_build_release_evidence
+from .runtime import order_routing_optimization_build_schema_contract
+from .runtime import order_routing_optimization_build_service_contract
 from .runtime import order_routing_optimization_build_workbench_view
 from .runtime import order_routing_optimization_clear_capacity_auction
 from .runtime import order_routing_optimization_configure_runtime
@@ -55,10 +58,16 @@ def implementation_contract() -> dict:
     return {
         **contract,
         "standard_features": runtime["standard_features"],
-        "advanced_runtime": runtime,
-        "ui_contract": order_routing_optimization_ui_contract(),
-        "api_contract": order_routing_optimization_build_api_contract(),
-        "permissions_contract": order_routing_optimization_permissions_contract(),
         "owned_tables": ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES,
         "allowed_database_backends": ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS,
+        "api_contract": order_routing_optimization_build_api_contract(),
+        "schema_contract": order_routing_optimization_build_schema_contract(),
+        "service_contract": order_routing_optimization_build_service_contract(),
+        "release_evidence_contract": order_routing_optimization_build_release_evidence(),
+        "permissions_contract": order_routing_optimization_permissions_contract(),
+        "required_event_topic": ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
+        "consumes": ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
+        "emits": ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
+        "advanced_runtime": runtime,
+        "ui_contract": order_routing_optimization_ui_contract(),
     }

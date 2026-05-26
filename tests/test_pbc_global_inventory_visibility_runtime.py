@@ -7,7 +7,11 @@ from pyAppGen.pbcs.global_inventory_visibility import (
     GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES,
     GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC,
     GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS,
+    GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES,
     global_inventory_visibility_build_api_contract,
+    global_inventory_visibility_build_release_evidence,
+    global_inventory_visibility_build_schema_contract,
+    global_inventory_visibility_build_service_contract,
     global_inventory_visibility_build_workbench_view,
     global_inventory_visibility_configure_runtime,
     global_inventory_visibility_empty_state,
@@ -37,10 +41,16 @@ def test_global_inventory_visibility_runtime_executes_standard_and_advanced_capa
     assert runtime["format"] == "appgen.global-inventory-visibility-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/global_inventory_visibility"
+    assert runtime["owned_tables"] == GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+    assert runtime["runtime_tables"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
+    assert runtime["required_event_topic"] == GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
     assert len(runtime["standard_features"]) >= 18
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
+    assert {"build_schema_contract", "build_service_contract", "build_release_evidence", "run_control_tests"} <= set(
+        runtime["operations"]
+    )
     assert smoke["ok"] is True
     assert set(GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS) == {
         check["id"] for check in smoke["checks"]
@@ -52,13 +62,72 @@ def test_global_inventory_visibility_runtime_executes_standard_and_advanced_capa
     assert contract["owned_tables"] == GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
     assert contract["allowed_database_backends"] == GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
     assert contract["api_contract"]["shared_table_access"] is False
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence_contract"]["ok"] is True
     assert contract["permissions_contract"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["ui_contract"]["ok"] is True
     assert "InventoryConfigurationPanel" in contract["ui_contract"]["fragments"]
+    assert contract["runtime_tables"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
     assert set(contract["advanced_runtime"]["capabilities"]) == set(
         GLOBAL_INVENTORY_VISIBILITY_RUNTIME_CAPABILITY_KEYS
     )
+
+
+def test_global_inventory_visibility_package_schema_service_release_and_ui_contracts() -> None:
+    schema = global_inventory_visibility_build_schema_contract()
+    service = global_inventory_visibility_build_service_contract()
+    release = global_inventory_visibility_build_release_evidence()
+    api = global_inventory_visibility_build_api_contract()
+    ui = global_inventory_visibility_ui_contract()
+
+    assert schema["format"] == "appgen.global-inventory-visibility-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES)
+    assert tuple(item["table"] for item in schema["runtime_tables"]) == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
+    assert schema["datastore_backends"] == GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
+    assert schema["required_event_topic"] == GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
+    assert schema["shared_table_access"] is False
+
+    assert service["format"] == "appgen.global-inventory-visibility-service-contract.v1"
+    assert service["ok"] is True
+    assert service["transaction_boundary"] == "global_inventory_visibility_owned_datastore_plus_appgen_outbox"
+    assert "ingest_event" in service["idempotent_handlers"]
+    assert service["retry_dead_letter_evidence"]["dead_letter_table"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[2]
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert service["rules_parameters_configuration"] == ("register_rule", "set_parameter", "configure_runtime")
+
+    assert ui["binding_evidence"]["runtime_tables"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
+    assert ui["binding_evidence"]["event_contract"] == "AppGen-X"
+    assert ui["binding_evidence"]["required_event_topic"] == GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
+    assert ui["binding_evidence"]["shared_table_access"] is False
+
+    assert {route["route"] for route in api["routes"]} >= {
+        "PUT /inventory/configuration",
+        "POST /inventory/parameters",
+        "POST /inventory/rules",
+        "POST /inventory/events/inbox",
+        "GET /inventory/workbench",
+        "GET /inventory/schema-contract",
+        "GET /inventory/service-contract",
+        "GET /inventory/release-evidence",
+    }
+    assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert all(route["event_contract"] == "AppGen-X" for route in api["routes"])
+    assert all(route["shared_table_access"] is False for route in api["routes"])
+
+    assert release["format"] == "appgen.global-inventory-visibility-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert release["schema"]["format"] == schema["format"]
+    assert release["service"]["format"] == service["format"]
+    assert release["api"]["required_event_topic"] == GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
+    assert release["ui"]["binding_evidence"]["runtime_tables"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
+    assert release["workbench"]["binding_evidence"]["outbox_table"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[0]
+    assert release["boundary"]["declared_dependencies"]["shared_tables"] == ()
 
 
 def test_global_inventory_visibility_runtime_applies_rules_parameters_and_configuration() -> None:
@@ -155,6 +224,13 @@ def test_global_inventory_visibility_runtime_applies_rules_parameters_and_config
     assert projection["projection"]["allocated"] == 10
     assert projection["projection"]["safety_stock"] == 12
     assert projection["projection"]["available_to_promise"] == 76.1
+    assert projection["projection"]["capable_to_promise"] == pytest.approx(86.48, rel=1e-6)
+    assert projection["projection"]["supply_signal"]["net_supply"] == 103
+    assert projection["projection"]["demand_signal"]["gross_demand"] == 15
+    assert projection["projection"]["freshness_sla_minutes"] == 60
+    assert projection["projection"]["sla_breached"] is False
+    assert projection["projection"]["reconciliation_status"] == "reconciled"
+    assert projection["projection"]["channel_projection"] == ()
 
     reservation = global_inventory_visibility_reserve_inventory(
         state,
@@ -170,6 +246,9 @@ def test_global_inventory_visibility_runtime_applies_rules_parameters_and_config
     state = reservation["state"]
     assert reservation["reservation"]["ttl_minutes"] == 240.0
     assert reservation["projection"]["reserved"] == 25
+    assert reservation["projection"]["channel_projection"] == (
+        {"channel": "web", "reserved_quantity": 20},
+    )
 
     state = global_inventory_visibility_ingest_event(
         state,
@@ -183,6 +262,20 @@ def test_global_inventory_visibility_runtime_applies_rules_parameters_and_config
             "quantity": 10,
         },
     )["state"]
+    duplicate = global_inventory_visibility_ingest_event(
+        state,
+        {
+            "event_id": "evt_receipt_ops",
+            "event_type": "GoodsReceiptPosted",
+            "idempotency_key": "external:GoodsReceiptPosted:evt_receipt_ops",
+            "tenant": "tenant_ops",
+            "pool_id": "pool_ops",
+            "node_id": "node_ops",
+            "quantity": 10,
+        },
+    )
+    assert duplicate["duplicate"] is True
+    assert len(duplicate["state"]["inbox"]) == 1
     state = global_inventory_visibility_project_availability(
         state,
         tenant="tenant_ops",
@@ -204,6 +297,13 @@ def test_global_inventory_visibility_runtime_applies_rules_parameters_and_config
         "reservation_ttl_minutes",
         "safety_stock_percent",
     )
+    assert workbench["capable_to_promise"] == pytest.approx(233.49, rel=1e-6)
+    assert workbench["channel_projection_count"] == 1
+    assert workbench["outbox_count"] == 4
+    assert workbench["inbox_count"] == 1
+    assert workbench["dead_letter_count"] == 0
+    assert workbench["binding_evidence"]["runtime_tables"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
+    assert workbench["binding_evidence"]["ui_bindings"]["parameter_fragment"] == "InventoryParameterConsole"
 
     ui_contract = global_inventory_visibility_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == (
@@ -211,9 +311,11 @@ def test_global_inventory_visibility_runtime_applies_rules_parameters_and_config
         "mysql",
         "mariadb",
     )
+    assert ui_contract["configuration_editor"]["required_event_topic"] == GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["user_facing_stream_engine_picker"] is False
     assert "safety_stock_percent" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    assert ui_contract["binding_evidence"]["runtime_tables"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
     rendered = global_inventory_visibility_render_workbench(
         state,
         tenant="tenant_ops",
@@ -233,9 +335,12 @@ def test_global_inventory_visibility_runtime_applies_rules_parameters_and_config
         "safety_stock_percent",
     )
     assert rendered["event_outbox_count"] == 4
+    assert rendered["inbox_count"] == 1
     assert rendered["dead_letter_count"] == 0
-    assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
-    assert not rendered["locked_actions"]
+    assert rendered["binding_evidence"]["outbox_table"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES[0]
+    assert rendered["binding_evidence"]["configuration_state"]["event_contract"] == "AppGen-X"
+    assert rendered["binding_evidence"]["ui_bindings"]["parameter_fragment"] == "InventoryParameterConsole"
+    assert set(rendered["visible_actions"]) <= set(ui_contract["action_permissions"])
 
 
 def test_global_inventory_visibility_rejects_unsupported_backends_and_records_dead_letter_evidence() -> None:
@@ -384,15 +489,28 @@ def test_global_inventory_visibility_proves_owned_boundary_contracts() -> None:
 
     api = global_inventory_visibility_build_api_contract()
     assert api["owned_tables"] == GLOBAL_INVENTORY_VISIBILITY_OWNED_TABLES
+    assert api["runtime_tables"] == GLOBAL_INVENTORY_VISIBILITY_RUNTIME_TABLES
     assert api["database_backends"] == GLOBAL_INVENTORY_VISIBILITY_ALLOWED_DATABASE_BACKENDS
     assert api["required_event_topic"] == GLOBAL_INVENTORY_VISIBILITY_REQUIRED_EVENT_TOPIC
-    assert api["events"]["emits"] == GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES
-    assert api["events"]["consumes"] == GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES
+    assert api["emits"] == GLOBAL_INVENTORY_VISIBILITY_EMITTED_EVENT_TYPES
+    assert api["consumes"] == GLOBAL_INVENTORY_VISIBILITY_CONSUMED_EVENT_TYPES
     assert api["shared_table_access"] is False
     assert api["stream_engine_picker_visible"] is False
+    assert api["dependencies"]["shared_tables"] == ()
+    assert api["rules_parameters_configuration"] == ("register_rule", "set_parameter", "configure_runtime")
+    assert any(route["command"] == "configure_runtime" for route in api["routes"])
+    assert any(route["command"] == "set_parameter" for route in api["routes"])
+    assert any(route["command"] == "register_rule" for route in api["routes"])
+    assert any(route["command"] == "ingest_event" for route in api["routes"])
+    assert any(route.get("query") == "build_schema_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_service_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_release_evidence" for route in api["routes"])
 
     permissions = global_inventory_visibility_permissions_contract()
     assert permissions["action_permissions"]["ingest_event"] == "global_inventory_visibility.configure"
+    assert permissions["action_permissions"]["build_schema_contract"] == "global_inventory_visibility.audit"
+    assert permissions["action_permissions"]["build_service_contract"] == "global_inventory_visibility.audit"
+    assert permissions["action_permissions"]["build_release_evidence"] == "global_inventory_visibility.audit"
 
     allowed = global_inventory_visibility_verify_owned_table_boundary(
         (
@@ -404,6 +522,7 @@ def test_global_inventory_visibility_proves_owned_boundary_contracts() -> None:
         )
     )
     assert allowed["ok"] is True
+    assert allowed["declared_dependencies"]["shared_tables"] == ()
     rejected = global_inventory_visibility_verify_owned_table_boundary(("order_line", "wms_stock"))
     assert rejected["ok"] is False
     assert rejected["violations"] == ("order_line", "wms_stock")

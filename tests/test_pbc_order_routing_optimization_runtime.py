@@ -23,6 +23,15 @@ from pyAppGen.pbcs.order_routing_optimization import (
     order_routing_optimization_build_api_contract,
 )
 from pyAppGen.pbcs.order_routing_optimization import (
+    order_routing_optimization_build_release_evidence,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
+    order_routing_optimization_build_schema_contract,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
+    order_routing_optimization_build_service_contract,
+)
+from pyAppGen.pbcs.order_routing_optimization import (
     order_routing_optimization_build_workbench_view,
 )
 from pyAppGen.pbcs.order_routing_optimization import (
@@ -80,11 +89,19 @@ def test_order_routing_optimization_runtime_executes_standard_and_advanced_capab
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/order_routing_optimization"
     assert runtime["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 18
+    assert len(runtime["standard_features"]) >= 28
     assert "configuration_schema" in runtime["standard_features"]
+    assert "schema_contract" in runtime["standard_features"]
+    assert "service_contract" in runtime["standard_features"]
+    assert "release_evidence" in runtime["standard_features"]
+    assert "routing_promises" in runtime["standard_features"]
+    assert "routing_approvals" in runtime["standard_features"]
+    assert "routing_feedback" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert smoke["ok"] is True
+    assert smoke["state"]["route_simulations"]
+    assert smoke["workbench"]["route_simulation_count"] == 1
     assert {
         check["id"] for check in smoke["checks"]
     } == set(ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS)
@@ -97,7 +114,13 @@ def test_order_routing_optimization_runtime_executes_standard_and_advanced_capab
     assert contract["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
     assert contract["allowed_database_backends"] == ORDER_ROUTING_OPTIMIZATION_ALLOWED_DATABASE_BACKENDS
     assert contract["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["schema_contract"]["ok"] is True
+    assert contract["service_contract"]["ok"] is True
+    assert contract["release_evidence_contract"]["ok"] is True
     assert contract["permissions_contract"]["action_permissions"]["register_schema_extension"] == "order_routing_optimization.configure"
+    assert contract["required_event_topic"] == ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC
+    assert contract["consumes"] == ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES
+    assert contract["emits"] == ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES
     assert (
         "RoutingConfigurationPanel"
         in contract["ui_contract"]["fragments"]
@@ -107,6 +130,9 @@ def test_order_routing_optimization_runtime_executes_standard_and_advanced_capab
     )
 
     api = order_routing_optimization_build_api_contract()
+    schema = order_routing_optimization_build_schema_contract()
+    service = order_routing_optimization_build_service_contract()
+    release = order_routing_optimization_build_release_evidence()
     permissions = order_routing_optimization_permissions_contract()
     assert api["format"] == "appgen.order-routing-optimization-api-contract.v1"
     assert api["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
@@ -121,9 +147,36 @@ def test_order_routing_optimization_runtime_executes_standard_and_advanced_capab
         "POST /capacity",
         "POST /order-routing/events/inbox",
         "GET /routing-workbench",
+        "POST /routing-simulations",
+        "POST /routing-optimizations",
     }
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert schema["format"] == "appgen.order-routing-optimization-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES)
+    assert {
+        "routing_plan",
+        "routing_promise",
+        "split_shipment",
+        "route_simulation",
+        "optimization_run",
+        "routing_approval",
+        "routing_feedback",
+        "routing_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.order-routing-optimization-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.order-routing-optimization-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert release["workbench"]["binding_evidence"]["outbox_table"] == "order_routing_optimization_appgen_outbox_event"
+    assert release["ui"]["binding_evidence"]["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
     assert permissions["action_permissions"]["route_orders"] == "order_routing_optimization.route"
+    assert permissions["action_permissions"]["build_release_evidence"] == "order_routing_optimization.audit"
 
 
 def test_order_routing_optimization_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -309,11 +362,25 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
         state,
         tenant="tenant_ops",
     )
+    assert workbench["routing_plan_count"] == 1
+    assert workbench["routing_node_count"] == 2
+    assert workbench["routing_constraint_count"] == 1
+    assert workbench["routing_cost_count"] == 1
+    assert workbench["routing_promise_count"] == 1
+    assert workbench["split_shipment_count"] == 0
+    assert workbench["inventory_input_count"] == 1
+    assert workbench["transport_input_count"] == 2
+    assert workbench["service_input_count"] == 4
     assert workbench["route_candidate_count"] == 2
     assert workbench["capacity_snapshot_count"] == 2
     assert workbench["routing_decision_count"] == 1
     assert workbench["split_decision_count"] == 0
     assert workbench["reservation_count"] == 1
+    assert workbench["route_simulation_count"] == 0
+    assert workbench["optimization_run_count"] == 1
+    assert workbench["exception_count"] == 0
+    assert workbench["approval_count"] == 1
+    assert workbench["feedback_count"] == 1
     assert workbench["reserved_units"] == 6
     assert workbench["substitution_eligible_count"] == 2
     assert workbench["inbox_count"] == 3
@@ -342,6 +409,22 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
             "default_timezone",
             "workbench_limit",
         ),
+    }
+    assert workbench["binding_evidence"]["events"] == {
+        "emits": ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
+        "consumes": ORDER_ROUTING_OPTIMIZATION_CONSUMED_EVENT_TYPES,
+        "topic": ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC,
+    }
+    assert workbench["binding_evidence"]["workbench"] == {
+        "plans": 1,
+        "nodes": 2,
+        "constraints": 1,
+        "promises": 1,
+        "simulations": 0,
+        "optimizations": 1,
+        "exceptions": 0,
+        "approvals": 1,
+        "feedback": 1,
     }
     assert workbench["binding_evidence"]["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
     assert workbench["binding_evidence"]["rules"] == (
@@ -390,6 +473,16 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["configuration_editor"]["user_selectable_event_contract"] is False
     assert ui_contract["binding_evidence"]["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
+    assert ui_contract["event_surfaces"]["topic"] == ORDER_ROUTING_OPTIMIZATION_REQUIRED_EVENT_TOPIC
+    assert ui_contract["event_surfaces"]["contract_locked"] is True
+    assert {
+        "RoutingNodeTopologyMap",
+        "RoutingPromiseBoard",
+        "SplitShipmentStudio",
+        "RoutingOptimizationWorkbench",
+        "RoutingApprovalQueue",
+        "RoutingFeedbackLedger",
+    } <= set(ui_contract["fragments"])
     assert (
         ui_contract["rule_editor"]["compiled_evidence_fields"]
         == ("compiled_hash", "compiled_evidence")
@@ -398,6 +491,7 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
         state,
         tenant="tenant_ops",
         principal_permissions=(
+            "order_routing_optimization.read",
             "order_routing_optimization.route",
             "order_routing_optimization.capacity",
             "order_routing_optimization.event",
@@ -410,6 +504,13 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
     assert rendered["event_outbox_count"] == 6
     assert rendered["inbox_count"] == 3
     assert rendered["dead_letter_count"] == 0
+    assert {card["key"] for card in rendered["cards"]} >= {
+        "routing_promises",
+        "route_simulations",
+        "optimization_runs",
+        "approvals",
+        "feedback",
+    }
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["rules_bound"] == ("rule_ops",)
@@ -437,6 +538,12 @@ def test_order_routing_optimization_runtime_applies_rules_parameters_configurati
     )
     assert rendered["binding_evidence"]["parameters"] == workbench["binding_evidence"][
         "parameters"
+    ]
+    assert rendered["binding_evidence"]["events"] == workbench["binding_evidence"][
+        "events"
+    ]
+    assert rendered["binding_evidence"]["workbench"] == workbench["binding_evidence"][
+        "workbench"
     ]
     assert rendered["binding_evidence"]["owned_tables"] == ORDER_ROUTING_OPTIMIZATION_OWNED_TABLES
 

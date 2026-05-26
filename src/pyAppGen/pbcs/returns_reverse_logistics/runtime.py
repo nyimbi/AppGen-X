@@ -46,15 +46,23 @@ RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS = (
 
 RETURNS_REVERSE_LOGISTICS_STANDARD_FEATURE_KEYS = (
     "return_authorizations_rma",
+    "return_authorization_workflows",
     "return_eligibility",
+    "eligibility_decisions",
     "return_labels",
     "carrier_handoff",
+    "return_receiving",
     "receipt_and_inspection",
     "disposition_routing",
+    "refund_exchange_resolution",
     "restock_refurbish_scrap_routing",
+    "repair_refurbishment",
+    "carrier_claims",
     "credit_adjustments",
     "refund_ledger_handoff",
     "fraud_abuse_screening",
+    "customer_return_status",
+    "exception_workflows",
     "tenant_isolation",
     "idempotent_handlers",
     "appgen_x_outbox_inbox_eventing",
@@ -63,25 +71,101 @@ RETURNS_REVERSE_LOGISTICS_STANDARD_FEATURE_KEYS = (
     "configuration_schema",
     "rule_engine",
     "parameter_engine",
+    "owned_datastore_boundary",
+    "schema_contract",
+    "service_contract",
+    "release_gate",
     "seed_data",
+    "appgen_event_contract",
     "workbench",
     "immutable_audit",
     "governed_model_evidence",
 )
 
 RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
-RETURNS_REVERSE_LOGISTICS_OWNED_TABLES = (
-    "return_authorization",
-    "return_label",
-    "inspection_grade",
-    "credit_adjustment",
+RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES = (
     "returns_reverse_logistics_outbox_event",
     "returns_reverse_logistics_inbox_event",
     "returns_reverse_logistics_dead_letter_event",
 )
+RETURNS_REVERSE_LOGISTICS_OWNED_TABLES = (
+    "return_authorization",
+    "return_line",
+    "return_eligibility_decision",
+    "return_policy_snapshot",
+    "reverse_route_graph",
+    "return_label",
+    "carrier_handoff",
+    "return_receipt",
+    "inspection_grade",
+    "inspection_finding",
+    "disposition_decision",
+    "refund_exchange_resolution",
+    "restocking_order",
+    "repair_refurbishment_order",
+    "carrier_claim",
+    "return_customer_status",
+    "return_exception_case",
+    "return_exception_task",
+    "return_fraud_signal",
+    "credit_adjustment",
+    "refund_ledger_handoff",
+    "inventory_recovery_projection",
+    "repair_vendor_projection",
+    "carrier_claim_projection",
+    "customer_notification_projection",
+    "order_return_projection",
+    "payment_return_projection",
+    "inventory_return_projection",
+    "ledger_return_projection",
+    "returns_reverse_logistics_rule",
+    "returns_reverse_logistics_parameter",
+    "returns_reverse_logistics_configuration",
+    "returns_reverse_logistics_schema_extension",
+    "return_proof",
+    "return_policy_screening",
+    "return_control_assertion",
+    "return_governed_model",
+    "return_seed_data",
+    *RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES,
+)
 RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES = ("OrderShipped", "PaymentCaptured")
 RETURNS_REVERSE_LOGISTICS_EMITTED_EVENT_TYPES = ("ReturnAuthorized", "CreditAdjustmentIssued")
-RETURNS_REVERSE_LOGISTICS_API_SURFACES = ("POST /returns", "POST /labels", "POST /inspection-grades")
+RETURNS_REVERSE_LOGISTICS_API_SURFACES = (
+    "PUT /returns-reverse-logistics/configuration",
+    "POST /returns-reverse-logistics/parameters",
+    "POST /returns-reverse-logistics/rules",
+    "POST /returns",
+    "POST /labels",
+    "POST /returns/{return_id}/receipts",
+    "POST /inspection-grades",
+    "POST /returns/{return_id}/dispositions",
+    "POST /credit-adjustments",
+    "POST /returns/{return_id}/refund-exchange",
+    "POST /returns/{return_id}/carrier-claims",
+    "GET /returns/{return_id}/customer-status",
+    "POST /returns-reverse-logistics/events/inbox",
+    "GET /returns-reverse-logistics-workbench",
+    "GET /returns-reverse-logistics/schema-contract",
+    "GET /returns-reverse-logistics/service-contract",
+    "GET /returns-reverse-logistics/release-evidence",
+)
+RETURNS_REVERSE_LOGISTICS_DECLARED_API_DEPENDENCIES = (
+    "GET /orders/{order_id}",
+    "GET /payments/{payment_id}",
+    "POST /inventory-dispositions",
+    "POST /refunds",
+    "POST /exchange-orders",
+    "POST /ledger-adjustments",
+    "POST /carrier-claims",
+    "GET /customer-status",
+)
+RETURNS_REVERSE_LOGISTICS_DECLARED_PROJECTIONS = (
+    "order_projection",
+    "payment_projection",
+    "inventory_projection",
+    "ledger_projection",
+)
 
 _SUPPORTED_DATABASE_BACKENDS = RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS
 _SUPPORTED_PARAMETERS = {
@@ -125,6 +209,10 @@ _API_SURFACES = RETURNS_REVERSE_LOGISTICS_API_SURFACES
 _EMITTED_EVENT_TYPES = RETURNS_REVERSE_LOGISTICS_EMITTED_EVENT_TYPES
 _DEFAULT_DISPOSITIONS = ("restock", "refurbish", "scrap")
 _DISPOSITION_FACTORS = {"restock": 0.9, "refurbish": 0.65, "scrap": 0.25}
+_RETURNS_REVERSE_LOGISTICS_ALLOWED_DEPENDENCIES = (
+    *RETURNS_REVERSE_LOGISTICS_DECLARED_API_DEPENDENCIES,
+    *RETURNS_REVERSE_LOGISTICS_DECLARED_PROJECTIONS,
+)
 
 
 def returns_reverse_logistics_runtime_capabilities() -> dict:
@@ -134,6 +222,9 @@ def returns_reverse_logistics_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "returns_reverse_logistics",
         "implementation_directory": "src/pyAppGen/pbcs/returns_reverse_logistics",
+        "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+        "runtime_tables": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES,
+        "required_event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
         "capabilities": RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS,
         "standard_features": RETURNS_REVERSE_LOGISTICS_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -148,6 +239,9 @@ def returns_reverse_logistics_runtime_capabilities() -> dict:
             "issue_credit_adjustment",
             "build_workbench_view",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "verify_owned_table_boundary",
         ),
@@ -445,9 +539,25 @@ def returns_reverse_logistics_empty_state() -> dict:
         "rules": {},
         "schema_extensions": {},
         "return_authorizations": {},
+        "return_lines": {},
+        "eligibility_decisions": {},
+        "policy_snapshots": {},
+        "route_graphs": {},
         "return_labels": {},
+        "carrier_handoffs": {},
+        "return_receipts": {},
         "inspection_grades": {},
+        "inspection_findings": {},
+        "disposition_decisions": {},
         "credit_adjustments": {},
+        "refund_exchange_resolutions": {},
+        "restocking_orders": {},
+        "repair_refurbishment_orders": {},
+        "carrier_claims": {},
+        "customer_statuses": {},
+        "exception_cases": {},
+        "fraud_signals": {},
+        "refund_ledger_handoffs": {},
         "order_shipments": {},
         "payment_captures": {},
         "events": [],
@@ -706,6 +816,7 @@ def returns_reverse_logistics_authorize_return(state: dict, payload: dict) -> di
     if not payment_projection or payment_projection["tenant"] != tenant:
         raise ValueError("Return authorization requires a PaymentCaptured projection for the same tenant.")
 
+    rule = _active_rule_for_tenant(state, tenant)
     eligibility = returns_reverse_logistics_evaluate_eligibility(state, payload)
     prior_returns = len(
         tuple(
@@ -747,6 +858,49 @@ def returns_reverse_logistics_authorize_return(state: dict, payload: dict) -> di
         "credit_adjustment_id": None,
     }
     new_state["return_authorizations"][record["return_id"]] = record
+    new_state["return_lines"][record["return_id"]] = tuple(
+        {
+            "return_id": record["return_id"],
+            "tenant": tenant,
+            "line_number": index,
+            "sku": item["sku"],
+            "quantity": int(item.get("quantity", 1)),
+        }
+        for index, item in enumerate(record["items"], start=1)
+    )
+    new_state["eligibility_decisions"][record["return_id"]] = {
+        "return_id": record["return_id"],
+        "tenant": tenant,
+        "eligible": eligibility["eligible"],
+        "score": eligibility["score"],
+        "window_days": eligibility["window_days"],
+        "blocked_reasons": eligibility["blocked_reasons"],
+    }
+    new_state["policy_snapshots"][record["return_id"]] = {
+        "return_id": record["return_id"],
+        "tenant": tenant,
+        "rule_id": rule.get("rule_id", "implicit_default"),
+        "scope": rule.get("scope", "return_policy"),
+        "compiled_hash": rule.get("compiled_hash"),
+    }
+    new_state["route_graphs"][record["return_id"]] = {
+        "return_id": record["return_id"],
+        "tenant": tenant,
+        "nodes": ("customer", "order", "payment", "return"),
+        "edges": (("customer", "order"), ("order", "payment"), ("order", "return")),
+    }
+    new_state["fraud_signals"][record["return_id"]] = {
+        "return_id": record["return_id"],
+        "tenant": tenant,
+        "fraud_score": fraud_assessment["fraud_score"],
+        "decision": fraud_assessment["decision"],
+    }
+    new_state["customer_statuses"][record["return_id"]] = {
+        "return_id": record["return_id"],
+        "tenant": tenant,
+        "status": "authorized",
+        "customer_visible_status": "Authorization approved",
+    }
     new_state, event = _append_domain_event(
         new_state,
         event_type="ReturnAuthorized",
@@ -814,7 +968,20 @@ def returns_reverse_logistics_create_return_label(state: dict, payload: dict) ->
         "route_selection": route_selection,
     }
     new_state["return_labels"][label["label_id"]] = label
+    new_state["carrier_handoffs"][payload["return_id"]] = {
+        "return_id": payload["return_id"],
+        "tenant": payload["tenant"],
+        "label_id": label["label_id"],
+        "carrier_id": label["carrier_id"],
+        "handoff_status": label["handoff_status"],
+    }
     new_state["return_authorizations"][payload["return_id"]]["label_id"] = label["label_id"]
+    new_state["customer_statuses"][payload["return_id"]] = {
+        "return_id": payload["return_id"],
+        "tenant": payload["tenant"],
+        "status": "label_generated",
+        "customer_visible_status": "Label ready",
+    }
     new_state, event = _append_domain_event(
         new_state,
         event_type="ReturnLabelCreated",
@@ -856,8 +1023,33 @@ def returns_reverse_logistics_record_inspection_grade(state: dict, payload: dict
         "expected_recovery_rate": simulation["best_option"]["recovery_rate"],
     }
     new_state["inspection_grades"][record["inspection_id"]] = record
+    new_state["return_receipts"][payload["return_id"]] = {
+        "receipt_id": f"rcpt_{payload['inspection_id']}",
+        "return_id": payload["return_id"],
+        "tenant": payload["tenant"],
+        "received_status": "received",
+        "inspection_id": record["inspection_id"],
+    }
+    new_state["inspection_findings"][record["inspection_id"]] = {
+        "inspection_id": record["inspection_id"],
+        "tenant": payload["tenant"],
+        "grade": record["grade"],
+        "recommended_disposition": record["recommended_disposition"],
+    }
+    new_state["disposition_decisions"][payload["return_id"]] = {
+        "return_id": payload["return_id"],
+        "tenant": payload["tenant"],
+        "disposition": record["recommended_disposition"],
+        "expected_recovery_rate": record["expected_recovery_rate"],
+    }
     new_state["return_authorizations"][payload["return_id"]]["inspection_id"] = record["inspection_id"]
     new_state["return_authorizations"][payload["return_id"]]["status"] = "inspected"
+    new_state["customer_statuses"][payload["return_id"]] = {
+        "return_id": payload["return_id"],
+        "tenant": payload["tenant"],
+        "status": "inspection_complete",
+        "customer_visible_status": "Inspection complete",
+    }
     new_state, event = _append_domain_event(
         new_state,
         event_type="InspectionGraded",
@@ -905,8 +1097,49 @@ def returns_reverse_logistics_issue_credit_adjustment(state: dict, payload: dict
     }
     new_state = _clone_state(state)
     new_state["credit_adjustments"][adjustment["adjustment_id"]] = adjustment
+    new_state["refund_exchange_resolutions"][payload["return_id"]] = {
+        "return_id": payload["return_id"],
+        "tenant": payload["tenant"],
+        "resolution_mode": payload.get("resolution_mode", "refund"),
+        "adjustment_id": adjustment["adjustment_id"],
+        "status": "queued",
+    }
+    new_state["refund_ledger_handoffs"][payload["return_id"]] = {
+        "return_id": payload["return_id"],
+        "tenant": payload["tenant"],
+        "adjustment_id": adjustment["adjustment_id"],
+        "target_account": adjustment["ledger_handoff"]["target_account"],
+        "status": adjustment["ledger_handoff"]["status"],
+    }
+    if inspection["recommended_disposition"] == "restock":
+        new_state["restocking_orders"][payload["return_id"]] = {
+            "return_id": payload["return_id"],
+            "tenant": payload["tenant"],
+            "status": "queued",
+            "inventory_action": "restock",
+        }
+    elif inspection["recommended_disposition"] == "refurbish":
+        new_state["repair_refurbishment_orders"][payload["return_id"]] = {
+            "return_id": payload["return_id"],
+            "tenant": payload["tenant"],
+            "status": "queued",
+            "repair_path": "refurbish",
+        }
+    else:
+        new_state["carrier_claims"][payload["return_id"]] = {
+            "return_id": payload["return_id"],
+            "tenant": payload["tenant"],
+            "claim_reason": "scrap_recovery_shortfall",
+            "status": "review",
+        }
     new_state["return_authorizations"][payload["return_id"]]["credit_adjustment_id"] = adjustment["adjustment_id"]
     new_state["return_authorizations"][payload["return_id"]]["status"] = "credit_issued"
+    new_state["customer_statuses"][payload["return_id"]] = {
+        "return_id": payload["return_id"],
+        "tenant": payload["tenant"],
+        "status": "credit_issued",
+        "customer_visible_status": "Refund or exchange pending settlement",
+    }
     new_state, event = _append_domain_event(
         new_state,
         event_type="CreditAdjustmentIssued",
@@ -1151,63 +1384,175 @@ def returns_reverse_logistics_run_control_tests(state: dict) -> dict:
 
 def returns_reverse_logistics_build_api_contract() -> dict:
     permissions = returns_reverse_logistics_permissions_contract()
+    routes = (
+        {
+            "route": "PUT /returns-reverse-logistics/configuration",
+            "command": "configure_runtime",
+            "owned_tables": ("returns_reverse_logistics_configuration",),
+            "requires_permission": permissions["action_permissions"]["configure_runtime"],
+            "idempotency_key": "configuration_hash",
+        },
+        {
+            "route": "POST /returns-reverse-logistics/parameters",
+            "command": "set_parameter",
+            "owned_tables": ("returns_reverse_logistics_parameter",),
+            "requires_permission": permissions["action_permissions"]["set_parameter"],
+            "idempotency_key": "parameter_name",
+        },
+        {
+            "route": "POST /returns-reverse-logistics/rules",
+            "command": "register_rule",
+            "owned_tables": ("returns_reverse_logistics_rule", "return_policy_snapshot"),
+            "requires_permission": permissions["action_permissions"]["register_rule"],
+            "idempotency_key": "rule_id",
+        },
+        {
+            "route": "POST /returns-reverse-logistics/schema-extensions",
+            "command": "register_schema_extension",
+            "owned_tables": ("returns_reverse_logistics_schema_extension",),
+            "requires_permission": permissions["action_permissions"]["register_schema_extension"],
+            "idempotency_key": "table_name:field_name",
+        },
+        {
+            "route": "POST /returns",
+            "command": "authorize_return",
+            "owned_tables": (
+                "return_authorization",
+                "return_line",
+                "return_eligibility_decision",
+                "return_policy_snapshot",
+                "return_fraud_signal",
+                "return_customer_status",
+            ),
+            "declared_event_dependencies": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+            "requires_permission": permissions["action_permissions"]["authorize_return"],
+            "idempotency_key": "return_id",
+            "emits": ("ReturnAuthorized",),
+        },
+        {
+            "route": "POST /labels",
+            "command": "create_return_label",
+            "owned_tables": ("return_label", "carrier_handoff", "reverse_route_graph", "return_customer_status"),
+            "requires_permission": permissions["action_permissions"]["create_return_label"],
+            "idempotency_key": "label_id",
+        },
+        {
+            "route": "POST /returns/{return_id}/receipts",
+            "command": "record_return_receipt",
+            "owned_tables": ("return_receipt", "return_customer_status"),
+            "requires_permission": permissions["action_permissions"]["record_return_receipt"],
+            "idempotency_key": "receipt_id",
+        },
+        {
+            "route": "POST /inspection-grades",
+            "command": "record_inspection_grade",
+            "owned_tables": (
+                "inspection_grade",
+                "inspection_finding",
+                "disposition_decision",
+                "return_receipt",
+                "return_customer_status",
+            ),
+            "requires_permission": permissions["action_permissions"]["record_inspection_grade"],
+            "idempotency_key": "inspection_id",
+        },
+        {
+            "route": "POST /returns/{return_id}/dispositions",
+            "command": "resolve_disposition",
+            "owned_tables": ("disposition_decision", "restocking_order", "repair_refurbishment_order", "carrier_claim"),
+            "requires_permission": permissions["action_permissions"]["resolve_disposition"],
+            "idempotency_key": "return_id:disposition",
+        },
+        {
+            "route": "POST /credit-adjustments",
+            "command": "issue_credit_adjustment",
+            "owned_tables": (
+                "credit_adjustment",
+                "refund_exchange_resolution",
+                "refund_ledger_handoff",
+                "restocking_order",
+                "repair_refurbishment_order",
+                "carrier_claim",
+                "return_customer_status",
+            ),
+            "declared_api_dependencies": (
+                "POST /refunds",
+                "POST /exchange-orders",
+                "POST /ledger-adjustments",
+                "POST /carrier-claims",
+            ),
+            "requires_permission": permissions["action_permissions"]["issue_credit_adjustment"],
+            "idempotency_key": "adjustment_id",
+            "emits": ("CreditAdjustmentIssued",),
+        },
+        {
+            "route": "POST /returns/{return_id}/refund-exchange",
+            "command": "register_exchange_resolution",
+            "owned_tables": ("refund_exchange_resolution", "return_customer_status"),
+            "requires_permission": permissions["action_permissions"]["register_exchange_resolution"],
+            "idempotency_key": "return_id:resolution_mode",
+        },
+        {
+            "route": "POST /returns/{return_id}/carrier-claims",
+            "command": "open_carrier_claim",
+            "owned_tables": ("carrier_claim", "carrier_claim_projection"),
+            "requires_permission": permissions["action_permissions"]["open_carrier_claim"],
+            "idempotency_key": "return_id:claim_reason",
+        },
+        {
+            "route": "GET /returns/{return_id}/customer-status",
+            "query": "build_customer_return_status",
+            "owned_tables": ("return_customer_status",),
+            "requires_permission": permissions["action_permissions"]["build_customer_return_status"],
+        },
+        {
+            "route": "POST /returns-reverse-logistics/events/inbox",
+            "command": "receive_event",
+            "owned_tables": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES,
+            "consumes": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+            "requires_permission": permissions["action_permissions"]["receive_event"],
+            "idempotency_key": "idempotency_key",
+        },
+        {
+            "route": "GET /returns-reverse-logistics-workbench",
+            "query": "build_workbench_view",
+            "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+            "requires_permission": permissions["action_permissions"]["build_workbench_view"],
+        },
+        {
+            "route": "GET /returns-reverse-logistics/schema-contract",
+            "query": "build_schema_contract",
+            "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+            "requires_permission": permissions["action_permissions"]["build_schema_contract"],
+        },
+        {
+            "route": "GET /returns-reverse-logistics/service-contract",
+            "query": "build_service_contract",
+            "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+            "requires_permission": permissions["action_permissions"]["build_service_contract"],
+        },
+        {
+            "route": "GET /returns-reverse-logistics/release-evidence",
+            "query": "build_release_evidence",
+            "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+            "requires_permission": permissions["action_permissions"]["build_release_evidence"],
+        },
+    )
     return {
         "format": "appgen.returns-reverse-logistics-api-contract.v1",
         "ok": True,
         "pbc": "returns_reverse_logistics",
         "apis": _API_SURFACES,
-        "operations": (
-            {
-                "route": "POST /returns",
-                "command": "authorize_return",
-                "owned_tables": ("return_authorization",),
-                "declared_event_dependencies": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
-                "requires_permission": permissions["action_permissions"]["authorize_return"],
-                "idempotency_key": "return_id",
-            },
-            {
-                "route": "POST /labels",
-                "command": "create_return_label",
-                "owned_tables": ("return_label", "return_authorization"),
-                "requires_permission": permissions["action_permissions"]["create_return_label"],
-                "idempotency_key": "label_id",
-            },
-            {
-                "route": "POST /inspection-grades",
-                "command": "record_inspection_grade",
-                "owned_tables": ("inspection_grade", "return_authorization"),
-                "requires_permission": permissions["action_permissions"]["record_inspection_grade"],
-                "idempotency_key": "inspection_id",
-            },
-            {
-                "route": "POST /credit-adjustments",
-                "command": "issue_credit_adjustment",
-                "owned_tables": ("credit_adjustment", "return_authorization"),
-                "declared_api_dependencies": ("POST /refunds", "POST /ledger-adjustments"),
-                "requires_permission": permissions["action_permissions"]["issue_credit_adjustment"],
-                "idempotency_key": "adjustment_id",
-                "emits": ("CreditAdjustmentIssued",),
-            },
-            {
-                "route": "POST /returns-reverse-logistics/events/inbox",
-                "command": "receive_event",
-                "owned_tables": (
-                    "returns_reverse_logistics_inbox_event",
-                    "returns_reverse_logistics_dead_letter_event",
-                ),
-                "consumes": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
-                "requires_permission": permissions["action_permissions"]["receive_event"],
-                "idempotency_key": "idempotency_key",
-            },
-            {
-                "route": "GET /returns-reverse-logistics-workbench",
-                "query": "build_workbench_view",
-                "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
-                "requires_permission": permissions["action_permissions"]["build_workbench_view"],
-            },
+        "routes": routes,
+        "operations": routes,
+        "declared_catalog_routes": (
+            "POST /returns",
+            "POST /labels",
+            "POST /inspection-grades",
+            "POST /credit-adjustments",
         ),
-        "declared_catalog_routes": ("POST /returns", "POST /labels", "POST /inspection-grades"),
         "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+        "runtime_tables": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES,
         "events": {
             "emits": RETURNS_REVERSE_LOGISTICS_EMITTED_EVENT_TYPES,
             "consumes": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
@@ -1215,18 +1560,276 @@ def returns_reverse_logistics_build_api_contract() -> dict:
         "emits": _EMITTED_EVENT_TYPES,
         "consumes": tuple(sorted(_CONSUMED_EVENT_TYPES)),
         "async_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+        "required_event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
         "database_backends": RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS,
         "permissions": permissions["permissions"],
         "shared_table_access": False,
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
         "user_eventing_choice": False,
+        "dependencies": {
+            "apis": RETURNS_REVERSE_LOGISTICS_DECLARED_API_DEPENDENCIES,
+            "events": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+            "api_projections": RETURNS_REVERSE_LOGISTICS_DECLARED_PROJECTIONS,
+            "shared_tables": (),
+        },
         "configuration": (
             "RETURNS_REVERSE_LOGISTICS_DATABASE_URL",
             "RETURNS_REVERSE_LOGISTICS_EVENT_TOPIC",
             "RETURNS_REVERSE_LOGISTICS_RETRY_LIMIT",
             "RETURNS_REVERSE_LOGISTICS_DEFAULT_CURRENCY",
         ),
+    }
+
+
+def returns_reverse_logistics_build_schema_contract() -> dict:
+    default_fields = ("tenant", "record_id", "source_id", "status", "effective_at", "audit_hash")
+    table_fields = {table: default_fields for table in RETURNS_REVERSE_LOGISTICS_OWNED_TABLES} | {
+        "return_authorization": ("tenant", "return_id", "rma", "order_id", "payment_id", "customer_id", "reason", "status", "audit_hash"),
+        "return_line": ("tenant", "return_line_id", "return_id", "sku", "quantity", "reason_code", "status", "audit_hash"),
+        "return_eligibility_decision": ("tenant", "decision_id", "return_id", "score", "eligible", "window_days", "audit_hash"),
+        "return_policy_snapshot": ("tenant", "snapshot_id", "return_id", "rule_id", "scope", "compiled_hash", "audit_hash"),
+        "reverse_route_graph": ("tenant", "graph_id", "return_id", "carrier_id", "route_health", "carbon_intensity", "audit_hash"),
+        "return_label": ("tenant", "label_id", "return_id", "carrier_id", "tracking_number", "handoff_status", "status", "audit_hash"),
+        "carrier_handoff": ("tenant", "handoff_id", "return_id", "label_id", "carrier_id", "handoff_status", "audit_hash"),
+        "return_receipt": ("tenant", "receipt_id", "return_id", "received_at", "receiving_site", "received_status", "audit_hash"),
+        "inspection_grade": ("tenant", "inspection_id", "return_id", "grade", "recommended_disposition", "expected_recovery_rate", "audit_hash"),
+        "inspection_finding": ("tenant", "finding_id", "inspection_id", "finding_type", "severity", "notes", "audit_hash"),
+        "disposition_decision": ("tenant", "disposition_id", "return_id", "disposition", "expected_recovery_rate", "audit_hash"),
+        "refund_exchange_resolution": ("tenant", "resolution_id", "return_id", "resolution_mode", "adjustment_id", "status", "audit_hash"),
+        "restocking_order": ("tenant", "restocking_order_id", "return_id", "inventory_action", "destination_site", "status", "audit_hash"),
+        "repair_refurbishment_order": ("tenant", "repair_order_id", "return_id", "repair_path", "provider_ref", "status", "audit_hash"),
+        "carrier_claim": ("tenant", "carrier_claim_id", "return_id", "claim_reason", "carrier_id", "status", "audit_hash"),
+        "return_customer_status": ("tenant", "status_id", "return_id", "customer_visible_status", "status", "updated_at", "audit_hash"),
+        "return_exception_case": ("tenant", "exception_case_id", "return_id", "exception_type", "severity", "status", "audit_hash"),
+        "return_exception_task": ("tenant", "exception_task_id", "exception_case_id", "owner", "due_at", "status", "audit_hash"),
+        "return_fraud_signal": ("tenant", "fraud_signal_id", "return_id", "fraud_score", "decision", "audit_hash"),
+        "credit_adjustment": ("tenant", "adjustment_id", "return_id", "amount", "currency", "disposition", "status", "audit_hash"),
+        "refund_ledger_handoff": ("tenant", "handoff_id", "return_id", "adjustment_id", "target_account", "status", "audit_hash"),
+        "inventory_recovery_projection": ("tenant", "projection_id", "return_id", "recovery_type", "recovery_status", "audit_hash"),
+        "repair_vendor_projection": ("tenant", "projection_id", "return_id", "provider_ref", "repair_status", "audit_hash"),
+        "carrier_claim_projection": ("tenant", "projection_id", "return_id", "carrier_id", "claim_status", "audit_hash"),
+        "customer_notification_projection": ("tenant", "projection_id", "return_id", "channel", "delivery_status", "audit_hash"),
+        "order_return_projection": ("tenant", "projection_id", "order_id", "return_id", "projection_status", "audit_hash"),
+        "payment_return_projection": ("tenant", "projection_id", "payment_id", "return_id", "projection_status", "audit_hash"),
+        "inventory_return_projection": ("tenant", "projection_id", "inventory_reference", "return_id", "projection_status", "audit_hash"),
+        "ledger_return_projection": ("tenant", "projection_id", "ledger_reference", "return_id", "projection_status", "audit_hash"),
+        "returns_reverse_logistics_rule": ("tenant", "rule_id", "scope", "compiled_hash", "status", "audit_hash"),
+        "returns_reverse_logistics_parameter": ("tenant", "parameter_name", "parameter_value", "effective_at", "audit_hash"),
+        "returns_reverse_logistics_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "event_contract", "retry_limit", "audit_hash"),
+        "returns_reverse_logistics_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "revision", "audit_hash"),
+        "return_proof": ("tenant", "proof_id", "return_id", "proof_hash", "disclosure_level", "audit_hash"),
+        "return_policy_screening": ("tenant", "screening_id", "return_id", "decision", "reasons", "audit_hash"),
+        "return_control_assertion": ("tenant", "assertion_id", "control_name", "assertion_status", "asserted_at", "audit_hash"),
+        "return_governed_model": ("tenant", "model_id", "model_name", "auc", "drift_score", "audit_hash"),
+        "return_seed_data": ("tenant", "seed_id", "seed_type", "seed_key", "seed_value", "audit_hash"),
+        RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[0]: ("tenant", "event_id", "event_type", "topic", "payload", "idempotency_key", "published_at", "audit_hash"),
+        RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[1]: ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "status", "audit_hash"),
+        RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[2]: ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "reason", "audit_hash"),
+    }
+    runtime_tables = tuple(
+        {"table": table, "fields": table_fields[table]} for table in RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES
+    )
+    relationships = (
+        {"from": "return_line.return_id", "to": "return_authorization.return_id", "type": "owned_line"},
+        {"from": "return_eligibility_decision.return_id", "to": "return_authorization.return_id", "type": "owned_eligibility"},
+        {"from": "return_policy_snapshot.return_id", "to": "return_authorization.return_id", "type": "owned_policy"},
+        {"from": "return_label.return_id", "to": "return_authorization.return_id", "type": "owned_label"},
+        {"from": "carrier_handoff.return_id", "to": "return_authorization.return_id", "type": "owned_handoff"},
+        {"from": "return_receipt.return_id", "to": "return_authorization.return_id", "type": "owned_receipt"},
+        {"from": "inspection_grade.return_id", "to": "return_authorization.return_id", "type": "owned_inspection"},
+        {"from": "inspection_finding.inspection_id", "to": "inspection_grade.inspection_id", "type": "owned_finding"},
+        {"from": "disposition_decision.return_id", "to": "return_authorization.return_id", "type": "owned_disposition"},
+        {"from": "credit_adjustment.return_id", "to": "return_authorization.return_id", "type": "owned_credit"},
+        {"from": "refund_exchange_resolution.return_id", "to": "return_authorization.return_id", "type": "owned_resolution"},
+        {"from": "restocking_order.return_id", "to": "return_authorization.return_id", "type": "owned_restock"},
+        {"from": "repair_refurbishment_order.return_id", "to": "return_authorization.return_id", "type": "owned_repair"},
+        {"from": "carrier_claim.return_id", "to": "return_authorization.return_id", "type": "owned_claim"},
+        {"from": "return_exception_task.exception_case_id", "to": "return_exception_case.exception_case_id", "type": "owned_exception_task"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(
+                field
+                for field in table_fields[table]
+                if field.endswith("_id") or field in {"parameter_name", "configuration_id"}
+            )[:2],
+            "owned_by": "returns_reverse_logistics",
+        }
+        for table in RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.returns-reverse-logistics-owned-schema-contract.v1",
+        "ok": len(tables) == len(RETURNS_REVERSE_LOGISTICS_OWNED_TABLES)
+        and len(tables) >= 30
+        and all(item["table"] in RETURNS_REVERSE_LOGISTICS_OWNED_TABLES for item in tables),
+        "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+        "tables": tables,
+        "runtime_tables": runtime_tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/returns_reverse_logistics/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(RETURNS_REVERSE_LOGISTICS_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+                "module_path": f"pyAppGen.pbcs.returns_reverse_logistics.models.{table}",
+            }
+            for table in RETURNS_REVERSE_LOGISTICS_OWNED_TABLES
+        ),
+        "datastore_backends": RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+        "event_contract": "AppGen-X",
+        "shared_table_access": False,
+    }
+
+
+def returns_reverse_logistics_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "authorize_return",
+        "create_return_label",
+        "record_return_receipt",
+        "record_inspection_grade",
+        "resolve_disposition",
+        "issue_credit_adjustment",
+        "register_exchange_resolution",
+        "create_restocking_order",
+        "create_repair_refurbishment_order",
+        "open_carrier_claim",
+        "update_customer_return_status",
+        "open_exception_case",
+        "screen_policy",
+        "run_control_tests",
+        "register_governed_model",
+        "rotate_crypto_epoch",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "build_api_contract",
+        "build_schema_contract",
+        "build_service_contract",
+        "build_release_evidence",
+        "evaluate_eligibility",
+        "score_fraud",
+        "simulate_disposition",
+        "forecast_return_recovery",
+        "resolve_exception",
+        "parse_return_instruction",
+        "predict_return_risk",
+        "select_label_route",
+        "generate_return_proof",
+        "federate_return_view",
+        "run_resilience_drill",
+        "optimize_carbon_aware_routing",
+        "optimize_recovery_math",
+        "allocate_disposition_mechanism",
+        "detect_return_anomaly",
+        "model_stochastic_exposure",
+        "build_customer_return_status",
+        "verify_owned_table_boundary",
+    )
+    return {
+        "format": "appgen.returns-reverse-logistics-service-contract.v1",
+        "ok": len(command_methods) >= 18 and len(query_methods) >= 18,
+        "transaction_boundary": "returns_reverse_logistics_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+        "mutates_only_owned_tables": True,
+        "shared_table_access": False,
+        "event_contract": {
+            "contract": "AppGen-X",
+            "required_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+        },
+        "eventing": {
+            "contract": "AppGen-X",
+            "topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+            "outbox_table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[0],
+            "inbox_table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[1],
+            "dead_letter_table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[2],
+            "idempotency_required": True,
+        },
+        "idempotent_handlers": ("receive_event",),
+        "retry_dead_letter_evidence": {
+            "retry_evidence_state": "retry_evidence",
+            "dead_letter_state": "dead_letter",
+            "dead_letter_table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[2],
+            "retry_limit_field": "retry_limit",
+        },
+        "external_dependencies": {
+            "apis": RETURNS_REVERSE_LOGISTICS_DECLARED_API_DEPENDENCIES,
+            "events": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+            "api_projections": RETURNS_REVERSE_LOGISTICS_DECLARED_PROJECTIONS,
+            "shared_tables": (),
+        },
+        "advanced_capabilities": RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS,
+    }
+
+
+def returns_reverse_logistics_build_release_evidence() -> dict:
+    schema = returns_reverse_logistics_build_schema_contract()
+    service = returns_reverse_logistics_build_service_contract()
+    api = returns_reverse_logistics_build_api_contract()
+    permissions = returns_reverse_logistics_permissions_contract()
+    control = _returns_reverse_logistics_release_control_evidence()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 30},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(RETURNS_REVERSE_LOGISTICS_OWNED_TABLES)},
+        {"id": "service_contract_depth", "ok": service["ok"] and "receive_event" in service["idempotent_handlers"]},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and api["required_event_topic"] == RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC},
+        {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
+        {"id": "retry_dead_letter_evidence", "ok": control["ok"] and control["summary"]["retry_status"] == "retrying" and control["summary"]["dead_letter_status"] == "dead_letter"},
+        {"id": "duplicate_idempotency_evidence", "ok": control["summary"]["duplicate_status"] == "duplicate"},
+        {"id": "ui_workbench_binding", "ok": control["workbench"]["binding_evidence"]["runtime_tables"] == RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"] and not service["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.returns-reverse-logistics-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "control": control,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def returns_reverse_logistics_build_customer_return_status(state: dict, return_id: str) -> dict:
+    authorization = state["return_authorizations"][return_id]
+    status = state["customer_statuses"].get(
+        return_id,
+        {
+            "return_id": return_id,
+            "tenant": authorization["tenant"],
+            "status": authorization["status"],
+            "customer_visible_status": authorization["status"].replace("_", " "),
+        },
+    )
+    return {
+        "return_id": return_id,
+        "tenant": authorization["tenant"],
+        "status": status["status"],
+        "customer_visible_status": status["customer_visible_status"],
+        "label_id": authorization.get("label_id"),
+        "inspection_id": authorization.get("inspection_id"),
+        "credit_adjustment_id": authorization.get("credit_adjustment_id"),
     }
 
 
@@ -1343,8 +1946,11 @@ def returns_reverse_logistics_register_governed_model(model_name: str, metadata:
 def returns_reverse_logistics_build_workbench_view(state: dict, *, tenant: str) -> dict:
     returns_for_tenant = tuple(record for record in state["return_authorizations"].values() if record["tenant"] == tenant)
     labels = tuple(record for record in state["return_labels"].values() if record["tenant"] == tenant)
+    receipts = tuple(record for record in state["return_receipts"].values() if record["tenant"] == tenant)
     inspections = tuple(record for record in state["inspection_grades"].values() if record["tenant"] == tenant)
     adjustments = tuple(record for record in state["credit_adjustments"].values() if record["tenant"] == tenant)
+    customer_statuses = tuple(record for record in state["customer_statuses"].values() if record["tenant"] == tenant)
+    exception_cases = tuple(record for record in state["exception_cases"].values() if record["tenant"] == tenant)
     inbox = tuple(record for record in state["inbox"] if record.get("tenant") == tenant)
     outbox = tuple(record for record in state["outbox"] if record.get("tenant") == tenant)
     dead_letter = tuple(record for record in state["dead_letter"] if record.get("tenant") == tenant)
@@ -1356,8 +1962,11 @@ def returns_reverse_logistics_build_workbench_view(state: dict, *, tenant: str) 
         "return_count": len(returns_for_tenant),
         "authorized_count": len(tuple(record for record in returns_for_tenant if record["status"] in {"authorized", "inspected", "credit_issued"})),
         "label_count": len(labels),
+        "receipt_count": len(receipts),
         "inspection_count": len(inspections),
         "credit_count": len(adjustments),
+        "customer_status_count": len(customer_statuses),
+        "exception_count": len(exception_cases),
         "inbox_count": len(inbox),
         "outbox_count": len(outbox),
         "dead_letter_count": len(dead_letter),
@@ -1370,39 +1979,81 @@ def returns_reverse_logistics_build_workbench_view(state: dict, *, tenant: str) 
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "binding_evidence": {
             "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
-            "outbox_table": "returns_reverse_logistics_outbox_event",
-            "inbox_table": "returns_reverse_logistics_inbox_event",
-            "dead_letter_table": "returns_reverse_logistics_dead_letter_event",
+            "runtime_tables": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES,
+            "outbox_table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[0],
+            "inbox_table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[1],
+            "dead_letter_table": RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES[2],
             "shared_table_access": False,
             "event_contract": state.get("configuration", {}).get("event_contract"),
+            "required_event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+            "service_release_queries": (
+                "build_schema_contract",
+                "build_service_contract",
+                "build_release_evidence",
+            ),
         },
     }
 
 
 def returns_reverse_logistics_permissions_contract() -> dict:
+    permissions = (
+        "returns_reverse_logistics.authorize",
+        "returns_reverse_logistics.label",
+        "returns_reverse_logistics.inspect",
+        "returns_reverse_logistics.adjust",
+        "returns_reverse_logistics.event.consume",
+        "returns_reverse_logistics.configure",
+        "returns_reverse_logistics.audit",
+        "returns_reverse_logistics.exception",
+        "returns_reverse_logistics.claim",
+    )
     return {
         "format": "appgen.returns-reverse-logistics-permissions.v1",
         "ok": True,
-        "permissions": (
-            "returns_reverse_logistics.authorize",
-            "returns_reverse_logistics.label",
-            "returns_reverse_logistics.inspect",
-            "returns_reverse_logistics.adjust",
-            "returns_reverse_logistics.event.consume",
-            "returns_reverse_logistics.configure",
-            "returns_reverse_logistics.audit",
+        "permissions": permissions,
+        "roles": {
+            "returns_reverse_logistics_admin": permissions,
+            "returns_reverse_logistics_operator": (
+                "returns_reverse_logistics.authorize",
+                "returns_reverse_logistics.label",
+                "returns_reverse_logistics.inspect",
+                "returns_reverse_logistics.adjust",
+                "returns_reverse_logistics.event.consume",
+                "returns_reverse_logistics.claim",
+                "returns_reverse_logistics.exception",
+            ),
+            "returns_reverse_logistics_auditor": (
+                "returns_reverse_logistics.audit",
+                "returns_reverse_logistics.event.consume",
+            ),
+        },
+        "policy_controls": (
+            "tenant_scope_required",
+            "appgen_x_event_contract_locked",
+            "event_topic_fixed",
+            "event_idempotency_required",
+            "no_shared_table_access",
         ),
         "action_permissions": {
             "authorize_return": "returns_reverse_logistics.authorize",
             "create_return_label": "returns_reverse_logistics.label",
+            "record_return_receipt": "returns_reverse_logistics.inspect",
             "record_inspection_grade": "returns_reverse_logistics.inspect",
+            "resolve_disposition": "returns_reverse_logistics.adjust",
             "issue_credit_adjustment": "returns_reverse_logistics.adjust",
+            "register_exchange_resolution": "returns_reverse_logistics.adjust",
+            "open_carrier_claim": "returns_reverse_logistics.claim",
+            "build_customer_return_status": "returns_reverse_logistics.audit",
             "receive_event": "returns_reverse_logistics.event.consume",
             "register_rule": "returns_reverse_logistics.configure",
             "register_schema_extension": "returns_reverse_logistics.configure",
             "set_parameter": "returns_reverse_logistics.configure",
             "configure_runtime": "returns_reverse_logistics.configure",
             "build_workbench_view": "returns_reverse_logistics.audit",
+            "build_api_contract": "returns_reverse_logistics.audit",
+            "build_schema_contract": "returns_reverse_logistics.audit",
+            "build_service_contract": "returns_reverse_logistics.audit",
+            "build_release_evidence": "returns_reverse_logistics.audit",
             "verify_owned_table_boundary": "returns_reverse_logistics.audit",
         },
     }
@@ -1411,49 +2062,130 @@ def returns_reverse_logistics_permissions_contract() -> dict:
 def returns_reverse_logistics_verify_owned_table_boundary(
     references: tuple[str, ...] | list[str] | set[str] = (),
 ) -> dict:
-    allowed_api_dependencies = {
-        "GET /orders/{order_id}",
-        "GET /payments/{payment_id}",
-        "POST /inventory-dispositions",
-        "POST /refunds",
-        "POST /ledger-adjustments",
-        "order_projection",
-        "payment_projection",
-        "inventory_projection",
-        "ledger_projection",
-    }
-    allowed_event_dependencies = set(RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES)
+    allowed = (
+        *RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
+        *RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
+        *RETURNS_REVERSE_LOGISTICS_RUNTIME_TABLES,
+        *_RETURNS_REVERSE_LOGISTICS_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
     violations = tuple(
         reference
         for reference in references
-        if reference not in set(RETURNS_REVERSE_LOGISTICS_OWNED_TABLES)
-        and reference not in allowed_api_dependencies
-        and reference not in allowed_event_dependencies
-        and not str(reference).startswith("returns_reverse_logistics_")
+        if reference not in allowed_set and not str(reference).startswith("returns_reverse_logistics_")
     )
     return {
         "format": "appgen.returns-reverse-logistics-boundary.v1",
         "ok": not violations,
         "owned_tables": RETURNS_REVERSE_LOGISTICS_OWNED_TABLES,
         "declared_dependencies": {
-            "apis": (
-                "GET /orders/{order_id}",
-                "GET /payments/{payment_id}",
-                "POST /inventory-dispositions",
-                "POST /refunds",
-                "POST /ledger-adjustments",
-            ),
+            "apis": RETURNS_REVERSE_LOGISTICS_DECLARED_API_DEPENDENCIES,
             "events": RETURNS_REVERSE_LOGISTICS_CONSUMED_EVENT_TYPES,
-            "api_projections": (
-                "order_projection",
-                "payment_projection",
-                "inventory_projection",
-                "ledger_projection",
-            ),
+            "api_projections": RETURNS_REVERSE_LOGISTICS_DECLARED_PROJECTIONS,
             "shared_tables": (),
         },
         "references": tuple(references),
         "violations": violations,
+    }
+
+
+def _returns_reverse_logistics_release_control_evidence() -> dict:
+    state = returns_reverse_logistics_empty_state()
+    state = returns_reverse_logistics_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "default_currency": "USD",
+            "supported_carriers": ("parcel_green",),
+            "supported_dispositions": _DEFAULT_DISPOSITIONS,
+            "workbench_limit": 20,
+        },
+    )["state"]
+    state = returns_reverse_logistics_register_rule(
+        state,
+        {
+            "rule_id": "rule_release",
+            "tenant": "tenant_release",
+            "scope": "return_policy",
+            "status": "active",
+            "eligibility_policy": {"max_days_since_shipment": 30, "blocked_reasons": (), "minimum_payment_capture_ratio": 1.0},
+            "label_policy": {"preferred_carriers": ("parcel_green",), "max_cost": 15.0},
+            "inspection_policy": {"restock_min": 0.85, "refurbish_min": 0.55},
+            "credit_policy": {"restock_factor": 0.9, "refurbish_factor": 0.65, "scrap_factor": 0.25},
+        },
+    )["state"]
+    accepted = returns_reverse_logistics_receive_event(
+        state,
+        {
+            "event_id": "evt_release_ship",
+            "event_type": "OrderShipped",
+            "idempotency_key": "release:order:v1",
+            "payload": {
+                "tenant": "tenant_release",
+                "order_id": "order_release",
+                "payment_id": "pay_release",
+                "customer_id": "cust_release",
+                "shipped_at": "2026-05-20",
+                "days_since_shipped": 3,
+                "return_window_days": 30,
+                "final_sale": False,
+                "items": ({"sku": "sku_release", "quantity": 1, "unit_price": 75.0},),
+            },
+        },
+    )
+    state = accepted["state"]
+    duplicate = returns_reverse_logistics_receive_event(
+        state,
+        {
+            "event_id": "evt_release_ship",
+            "event_type": "OrderShipped",
+            "idempotency_key": "release:order:v1",
+            "payload": {
+                "tenant": "tenant_release",
+                "order_id": "order_release",
+                "payment_id": "pay_release",
+                "customer_id": "cust_release",
+                "shipped_at": "2026-05-20",
+                "days_since_shipped": 3,
+                "return_window_days": 30,
+                "final_sale": False,
+                "items": ({"sku": "sku_release", "quantity": 1, "unit_price": 75.0},),
+            },
+        },
+    )
+    retrying = returns_reverse_logistics_receive_event(
+        state,
+        {
+            "event_id": "evt_release_retry",
+            "event_type": "UnknownEvent",
+            "idempotency_key": "release:retry:v1",
+            "attempts": 1,
+            "payload": {"tenant": "tenant_release"},
+        },
+    )
+    state = retrying["state"]
+    failed = returns_reverse_logistics_receive_event(
+        state,
+        {
+            "event_id": "evt_release_dead",
+            "event_type": "UnknownEvent",
+            "idempotency_key": "release:dead:v1",
+            "attempts": 2,
+            "payload": {"tenant": "tenant_release"},
+        },
+    )
+    workbench = returns_reverse_logistics_build_workbench_view(failed["state"], tenant="tenant_release")
+    return {
+        "ok": accepted["ok"] is True and failed["dead_lettered"] is True,
+        "summary": {
+            "accepted_status": accepted["inbox_record"]["status"],
+            "duplicate_status": "duplicate" if duplicate["duplicate"] else duplicate["inbox_record"]["status"],
+            "retry_status": retrying["retry_evidence"]["status"],
+            "dead_letter_status": "dead_letter" if failed["dead_lettered"] else failed["inbox_record"]["status"],
+        },
+        "workbench": workbench,
     }
 
 
