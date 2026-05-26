@@ -255,16 +255,47 @@ def payroll_engine_empty_state() -> dict:
 
 
 def payroll_engine_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Payroll Engine supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Payroll Engine requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def payroll_engine_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "standard_period_hours",
+        "overtime_multiplier",
+        "supplemental_rate",
+        "rounding_precision",
+        "net_pay_floor",
+        "filing_materiality_threshold",
+        "approval_amount_threshold",
+        "off_cycle_approval_threshold",
+        "retro_lookback_periods",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported Payroll Engine parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def payroll_engine_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Payroll Engine rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("Payroll Engine rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -482,7 +513,21 @@ def payroll_engine_build_workbench_view(state: dict, *, tenant: str) -> dict:
     runs = tuple(run for run in state["payroll_runs"].values() if run["tenant"] == tenant)
     payslips = tuple(payslip for payslip in state["payslips"].values() if payslip["tenant"] == tenant)
     filings = tuple(filing for filing in state["filings"].values() if filing["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "run_count": len(runs), "posted_run_count": len(tuple(run for run in runs if run["status"] == "posted")), "payslip_count": len(payslips), "gross_pay_total": round(sum(payslip["gross_pay"] for payslip in payslips), 2), "net_pay_total": round(sum(payslip["net_pay"] for payslip in payslips), 2), "deduction_count": len(tuple(item for item in state["deductions"].values() if item["tenant"] == tenant)), "benefit_count": len(tuple(item for item in state["benefit_allocations"].values() if item["tenant"] == tenant)), "filing_count": len(filings)}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "run_count": len(runs),
+        "posted_run_count": len(tuple(run for run in runs if run["status"] == "posted")),
+        "payslip_count": len(payslips),
+        "gross_pay_total": round(sum(payslip["gross_pay"] for payslip in payslips), 2),
+        "net_pay_total": round(sum(payslip["net_pay"] for payslip in payslips), 2),
+        "deduction_count": len(tuple(item for item in state["deductions"].values() if item["tenant"] == tenant)),
+        "benefit_count": len(tuple(item for item in state["benefit_allocations"].values() if item["tenant"] == tenant)),
+        "filing_count": len(filings),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def payroll_engine_register_governed_model(name: str, metadata: dict) -> dict:

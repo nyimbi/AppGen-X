@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import PAYROLL_ENGINE_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import payroll_engine_allocate_benefit
 from pyAppGen.pbc import payroll_engine_apply_deduction
@@ -155,6 +157,9 @@ def test_payroll_engine_runtime_applies_rules_parameters_configuration_and_ui() 
     assert workbench["deduction_count"] == 1
     assert workbench["benefit_count"] == 1
     assert workbench["filing_count"] == 1
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 5
 
     ui_contract = payroll_engine_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
@@ -176,3 +181,21 @@ def test_payroll_engine_runtime_applies_rules_parameters_configuration_and_ui() 
     assert rendered["event_outbox_count"] == 7
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+
+def test_payroll_engine_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = payroll_engine_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        payroll_engine_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.payroll.events",
+                "retry_limit": 3,
+                "default_currency": "USD",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Payroll Engine parameter"):
+        payroll_engine_set_parameter(state, "stream_engine", "hidden_picker")

@@ -74,7 +74,7 @@ The PBC must understand and execute:
 - Parameters: standard pay period hours, overtime multiplier, supplemental rate, rounding precision, net pay floor, filing materiality threshold, and approval amount threshold.
 - Rules: pay eligibility, deduction limits, benefit classes, filing channels, approval requirements, country policy, off-cycle eligibility, and garnishment priority.
 
-Runtime behavior must compile rules into deterministic hashes, store parameters in owned state, and reject or flag operations that violate configuration or rule constraints.
+Runtime behavior must compile rules into deterministic hashes, store parameters in owned state, reject backend configuration outside PostgreSQL, MySQL, or MariaDB, bind eventing to the AppGen-X event contract without user-facing stream-engine selection, and reject or flag operations that violate configuration or rule constraints.
 
 ## UI Contract
 
