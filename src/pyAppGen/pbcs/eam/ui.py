@@ -103,6 +103,7 @@ def eam_ui_contract() -> dict:
             "event_contract": "AppGen-X",
             "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker": False,
+            "stream_engine_picker_visible": False,
             "user_selectable_eventing": False,
             "owned_tables": EAM_OWNED_TABLES,
         },

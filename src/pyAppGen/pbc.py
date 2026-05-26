@@ -4476,6 +4476,7 @@ def pbc_source_artifact_contract(key: str) -> dict:
     manifest_text = (source_dir / "manifest.py").read_text(encoding="utf-8") if (source_dir / "manifest.py").is_file() else ""
     service_text = (source_dir / "services.py").read_text(encoding="utf-8") if (source_dir / "services.py").is_file() else ""
     route_text = (source_dir / "routes.py").read_text(encoding="utf-8") if (source_dir / "routes.py").is_file() else ""
+    ui_text = (source_dir / "ui.py").read_text(encoding="utf-8") if (source_dir / "ui.py").is_file() else ""
     config_text = (source_dir / "config.py").read_text(encoding="utf-8") if (source_dir / "config.py").is_file() else ""
     permissions_text = (
         (source_dir / "permissions.py").read_text(encoding="utf-8")
@@ -4560,6 +4561,15 @@ def pbc_source_artifact_contract(key: str) -> dict:
                 f"{relative_dir}/permissions.py",
                 f"{relative_dir}/seed_data.py",
             ),
+        },
+        {
+            "id": "ui_workbench_surface_materialized",
+            "ok": f"def {key}_ui_contract(" in ui_text
+            and f"def {key}_render_workbench(" in ui_text
+            and "configuration_editor" in ui_text
+            and "stream_engine_picker_visible" in ui_text
+            and "action_permissions" in ui_text,
+            "path": f"{relative_dir}/ui.py",
         },
         {
             "id": "contract_tests_materialized",

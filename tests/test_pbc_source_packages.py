@@ -70,6 +70,10 @@ def test_release_audit_requires_builtin_pbc_source_packages():
                 item["id"] == "governance_hooks_materialized" and item["ok"]
                 for item in check["source_artifacts"]["checks"]
             )
+            assert any(
+                item["id"] == "ui_workbench_surface_materialized" and item["ok"]
+                for item in check["source_artifacts"]["checks"]
+            )
         if check["id"].endswith(":source_package_directory"):
             assert check["ok"] is True
         if check["id"].endswith(":table_stakes_evidence"):
@@ -106,6 +110,10 @@ def test_every_builtin_pbc_has_materialized_source_artifacts():
         )
         assert any(
             check["id"] == "governance_hooks_materialized" and check["ok"]
+            for check in contract["checks"]
+        )
+        assert any(
+            check["id"] == "ui_workbench_surface_materialized" and check["ok"]
             for check in contract["checks"]
         )
         assert not contract["blocking_gaps"]
