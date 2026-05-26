@@ -1650,6 +1650,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated smoke audits pass for prior failing PBCs, and the full PBC audit
   stack including all built-in generation smoke and `pbc_release_audit()` returns
   true. Commit: `42ff348`.
+- Current PBC governance runtime pass regenerates all built-in PBC directories
+  so `config.py` executes configuration validation, bounded parameter updates,
+  rule manifests, deterministic rule compilation, rule evaluation, and combined
+  governance smoke tests without side effects or stream-engine picker exposure.
+  Package-local tests now prove the governance smoke path for every PBC, source
+  artifact gates require those hooks, syntax checks pass, source/generated
+  package evidence tests pass (`8 passed`), all package-local PBC tests pass
+  (`322 passed`), and the full PBC audit stack including all built-in generation
+  smoke and `pbc_release_audit()` returns true. Commit: `bba1460`.
 
 ## Open Completion Areas
 
