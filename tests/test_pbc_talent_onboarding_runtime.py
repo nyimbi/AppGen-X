@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
@@ -153,6 +155,9 @@ def test_talent_onboarding_runtime_applies_rules_parameters_configuration_and_ui
     assert workbench["background_check_count"] == 1
     assert workbench["offer_count"] == 1
     assert workbench["completed_task_count"] == 1
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 5
 
     ui_contract = talent_onboarding_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
@@ -175,3 +180,21 @@ def test_talent_onboarding_runtime_applies_rules_parameters_configuration_and_ui
     assert rendered["event_outbox_count"] == 10
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+
+def test_talent_onboarding_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = talent_onboarding_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        talent_onboarding_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.talent.events",
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Talent Onboarding parameter"):
+        talent_onboarding_set_parameter(state, "stream_engine", "hidden_picker")

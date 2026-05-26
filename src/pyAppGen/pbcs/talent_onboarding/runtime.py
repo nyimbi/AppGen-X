@@ -246,16 +246,47 @@ def talent_onboarding_empty_state() -> dict:
 
 
 def talent_onboarding_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Talent Onboarding supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Talent Onboarding requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def talent_onboarding_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "minimum_match_score",
+        "offer_expiry_days",
+        "onboarding_sla_days",
+        "maximum_active_requisitions_per_manager",
+        "background_check_confidence_threshold",
+        "retention_days",
+        "candidate_review_sla_days",
+        "interview_panel_size",
+        "offer_approval_threshold",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported Talent Onboarding parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def talent_onboarding_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Talent Onboarding rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("Talent Onboarding rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -474,7 +505,21 @@ def talent_onboarding_build_workbench_view(state: dict, *, tenant: str) -> dict:
     requisitions = tuple(req for req in state["requisitions"].values() if req["tenant"] == tenant)
     candidates = tuple(candidate for candidate in state["candidates"].values() if candidate["tenant"] == tenant)
     tasks = tuple(task for task in state["tasks"].values() if task["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "requisition_count": len(requisitions), "candidate_count": len(candidates), "hired_count": len(tuple(candidate for candidate in candidates if candidate["stage"] == "hired")), "provisioned_count": len(tuple(candidate for candidate in candidates if candidate["status"] == "provisioned")), "background_check_count": len(tuple(check for check in state["checks"].values() if check["tenant"] == tenant)), "offer_count": len(tuple(offer for offer in state["offers"].values() if offer["tenant"] == tenant)), "open_task_count": len(tuple(task for task in tasks if task["status"] == "open")), "completed_task_count": len(tuple(task for task in tasks if task["status"] == "completed"))}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "requisition_count": len(requisitions),
+        "candidate_count": len(candidates),
+        "hired_count": len(tuple(candidate for candidate in candidates if candidate["stage"] == "hired")),
+        "provisioned_count": len(tuple(candidate for candidate in candidates if candidate["status"] == "provisioned")),
+        "background_check_count": len(tuple(check for check in state["checks"].values() if check["tenant"] == tenant)),
+        "offer_count": len(tuple(offer for offer in state["offers"].values() if offer["tenant"] == tenant)),
+        "open_task_count": len(tuple(task for task in tasks if task["status"] == "open")),
+        "completed_task_count": len(tuple(task for task in tasks if task["status"] == "completed")),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def talent_onboarding_register_governed_model(name: str, metadata: dict) -> dict:

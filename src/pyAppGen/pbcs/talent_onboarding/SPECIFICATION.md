@@ -73,7 +73,7 @@ The PBC must understand and execute:
 - Parameters: minimum match score, offer expiry days, onboarding SLA days, maximum active requisitions per manager, background check confidence threshold, and retention days.
 - Rules: job eligibility, candidate consent, stage progression, background check adjudication, offer approval, onboarding task templates, and provisioning eligibility.
 
-Rules are compiled into deterministic hashes, parameters are stored in owned runtime state, and configuration gates candidate, check, task, and provisioning operations.
+Rules are compiled into deterministic hashes, parameters are stored in owned runtime state, backend configuration rejects anything outside PostgreSQL, MySQL, or MariaDB, eventing remains bound to the AppGen-X event contract without user-facing stream-engine selection, and configuration gates candidate, check, task, and provisioning operations.
 
 ## UI Contract
 
