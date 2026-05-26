@@ -1547,7 +1547,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   artifacts under `archive/repo-cleanup-2026-05-26-4/`, records the cleanup
   scope and evidence in an archive manifest, and deliberately leaves `.venv`,
   tracked source/configuration, docs, tests, and unrelated dirty PBC work in
-  place because they were not proven unused. Commit: pending.
+  place because they were not proven unused. Commit: `5026a8f`.
 
 ## Open Completion Areas
 
