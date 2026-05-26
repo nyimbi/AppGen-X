@@ -841,6 +841,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   composition selection, implemented-capability audit, implementation release
   audit, `pbc_release_audit()`, all-46-PBC generation smoke audit, and the
   restricted legacy-name diff scan.
+- `e503bf1` normalizes `tax_localization` into the complete package surface:
+  package-local UI/workbench contract, executable configuration and parameter
+  operations, generic policy rules separated from jurisdiction tax rules,
+  central PBC exports, focused tax tests, and release-audit evidence.
+  Verification passed for tax focused tests, the 63-test PBC regression slice,
+  central enterprise composition selection, implemented-capability audit,
+  implementation release audit, `pbc_release_audit()`, all-46-PBC generation
+  smoke audit, and the restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
