@@ -898,6 +898,40 @@ SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "contract_mlops_governance",
 )
+WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_workflow_lifecycle",
+    "graph_relational_saga_topology",
+    "multi_tenant_workflow_isolation",
+    "schema_on_read_workflow_context",
+    "probabilistic_sla_breach_scoring",
+    "real_time_workflow_analytics",
+    "counterfactual_saga_policy_simulation",
+    "temporal_workflow_forecasting",
+    "autonomous_compensation_recommendation",
+    "semantic_workflow_intent_parsing",
+    "predictive_saga_risk_scoring",
+    "self_healing_workflow_route_selection",
+    "zero_knowledge_workflow_completion_proof",
+    "immutable_workflow_audit_trail",
+    "dynamic_workflow_policy_screening",
+    "automated_workflow_control_testing",
+    "universal_api_async_workflow_surface",
+    "cross_system_workflow_federation",
+    "gateway_schema_audit_identity_composition_integration",
+    "decentralized_workflow_actor_identity",
+    "chaos_engineered_workflow_tolerance",
+    "quantum_resistant_workflow_authorization",
+    "carbon_aware_workflow_scheduling",
+    "algebraic_state_machine_minimization",
+    "mechanism_design_saga_resource_allocation",
+    "information_theoretic_workflow_anomaly_detection",
+    "temporal_workflow_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_workflow_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "workflow_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -923,6 +957,7 @@ IMPLEMENTED_PBC_KEYS = (
     "federated_iam",
     "api_gateway_mesh",
     "schema_registry",
+    "workflow_orchestration",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3184,6 +3219,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = api_gateway_mesh_runtime_capabilities()
     elif key == "schema_registry":
         advanced_runtime = schema_registry_runtime_capabilities()
+    elif key == "workflow_orchestration":
+        advanced_runtime = workflow_orchestration_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3484,6 +3521,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
+        "workflow_orchestration": len(WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -5370,3 +5408,23 @@ from .pbcs.schema_registry import schema_registry_set_parameter  # noqa: E402,F4
 from .pbcs.schema_registry import schema_registry_submit_schema_version  # noqa: E402,F401
 from .pbcs.schema_registry import schema_registry_ui_contract  # noqa: E402,F401
 from .pbcs.schema_registry import schema_registry_validate_payload  # noqa: E402,F401
+from .pbcs.workflow_orchestration import WORKFLOW_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.workflow_orchestration import WORKFLOW_ORCHESTRATION_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.workflow_orchestration import WORKFLOW_ORCHESTRATION_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_build_workbench_view  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_complete_workflow  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_configure_runtime  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_define_workflow  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_empty_state  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_execute_compensation  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_record_step_result  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_register_rule  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_register_schema_extension  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_render_workbench  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_runtime_capabilities  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_runtime_smoke  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_schedule_timer  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_set_parameter  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_signal_instance  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_start_instance  # noqa: E402,F401
+from .pbcs.workflow_orchestration import workflow_orchestration_ui_contract  # noqa: E402,F401
