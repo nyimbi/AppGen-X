@@ -4869,6 +4869,8 @@ EXPECTED_EXPORTS = (
     "module_contract",
     "runtime_manifest",
     "run_design_operation",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -4949,22 +4951,79 @@ def runtime_manifest():
     }}
 
 
+def operation_steps():
+    """Return concrete side-effect-free UI chrome steps this module replays."""
+    steps = {{
+        "splash_screen": ("load_branding_contract", "validate_duration_window", "validate_motion_contract", "publish_target_matrix"),
+        "menu_editor": ("load_menu_catalog", "validate_edit_schema", "replay_valid_edit", "reject_unsafe_edit"),
+        "context_menu": ("load_context_catalog", "validate_context_triggers", "select_reviewed_action", "build_action_plan"),
+        "ui_fine_tuning": ("load_design_tokens", "load_layout_contract", "load_state_matrix", "load_viewport_contract"),
+    }}[SURFACE]
+    operation = run_design_operation()
+    return {{
+        "format": "appgen.ui-chrome-module-operation-steps.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "steps": steps,
+        "ok": operation["ok"] and bool(steps),
+        "side_effects": operation.get("side_effects", ()),
+    }}
+
+
+def validation_steps():
+    """Return validation steps proving this UI chrome module is usable."""
+    contract = module_contract()
+    operation = run_design_operation()
+    runtime = runtime_manifest()
+    steps = (
+        "module_contract_ok",
+        "design_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.ui-chrome-module-validation-steps.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "steps": steps,
+        "ok": contract["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not contract["side_effects"]
+        and not operation["side_effects"]
+        and not runtime["side_effects"],
+        "side_effects": (),
+    }}
+
+
 def smoke_test():
     """Run side-effect-free checks for this generated UI chrome module."""
     contract = module_contract()
     operation = run_design_operation()
+    operations = operation_steps()
+    validations = validation_steps()
     runtime = runtime_manifest()
     return {{
         "format": "appgen.ui-chrome-module-smoke-test.v1",
         "module": MODULE,
         "surface": SURFACE,
-        "ok": contract["ok"] and operation["ok"] and runtime["ok"] and not operation["side_effects"] and not runtime["side_effects"],
+        "ok": contract["ok"]
+        and operation["ok"]
+        and operations["ok"]
+        and validations["ok"]
+        and runtime["ok"]
+        and not operation["side_effects"]
+        and not runtime["side_effects"],
         "contract": contract,
         "operation": operation,
+        "operation_steps": operations,
+        "validation_steps": validations,
         "runtime": runtime,
         "checks": (
             "module_contract_resolves",
             "design_operation_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "ui_customization_runtime_ok",
             "no_side_effects",
         ),
@@ -5016,16 +5075,45 @@ def test_ui_chrome_module_smoke():
     assert result["checks"]
 
 
+def test_ui_chrome_module_operation_steps():
+    """Assert the module exposes concrete operation steps."""
+    module = load_ui_chrome_module()
+    result = module.operation_steps()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["steps"]
+    assert result["side_effects"] == ()
+
+
+def test_ui_chrome_module_validation_steps():
+    """Assert the module exposes concrete validation steps."""
+    module = load_ui_chrome_module()
+    result = module.validation_steps()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["steps"]
+    assert result["side_effects"] == ()
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_ui_chrome_module_contract()
     test_ui_chrome_module_smoke()
+    test_ui_chrome_module_operation_steps()
+    test_ui_chrome_module_validation_steps()
     return {{
         "format": "appgen.ui-chrome-module-generated-test-smoke.v1",
         "module": MODULE,
         "surface": SURFACE,
         "ok": True,
-        "tests": ("test_ui_chrome_module_contract", "test_ui_chrome_module_smoke"),
+        "tests": (
+            "test_ui_chrome_module_contract",
+            "test_ui_chrome_module_smoke",
+            "test_ui_chrome_module_operation_steps",
+            "test_ui_chrome_module_validation_steps",
+        ),
     }}
 '''
 
@@ -32511,7 +32599,14 @@ def ui_chrome_module_file_manifest():
         ("context_menu_module", "context_menu"),
         ("ui_fine_tuning_module", "ui_fine_tuning"),
     )
-    expected_exports = ("module_contract", "runtime_manifest", "run_design_operation", "smoke_test")
+    expected_exports = (
+        "module_contract",
+        "runtime_manifest",
+        "run_design_operation",
+        "operation_steps",
+        "validation_steps",
+        "smoke_test",
+    )
     module_dir = Path(__file__).with_name("ui_chrome_modules")
     entries = []
     for module_name, surface in modules:
@@ -32519,11 +32614,15 @@ def ui_chrome_module_file_manifest():
         exports = ()
         contract_ok = False
         smoke_ok = False
+        operation_steps_ok = False
+        validation_steps_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_ui_chrome_module_{{module_name}}")
             exports = tuple(name for name in expected_exports if hasattr(module, name))
             contract = module.module_contract()
             smoke = module.smoke_test()
+            operation_steps_ok = module.operation_steps()["ok"]
+            validation_steps_ok = module.validation_steps()["ok"]
             contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
             smoke_ok = smoke["ok"] and smoke["surface"] == surface
         entries.append(
@@ -32536,6 +32635,8 @@ def ui_chrome_module_file_manifest():
                 "expected_exports": expected_exports,
                 "contract_ok": contract_ok,
                 "smoke_ok": smoke_ok,
+                "operation_steps_ok": operation_steps_ok,
+                "validation_steps_ok": validation_steps_ok,
             }}
         )
     return {{
@@ -32545,11 +32646,19 @@ def ui_chrome_module_file_manifest():
             item["exists"]
             and item["contract_ok"]
             and item["smoke_ok"]
+            and item["operation_steps_ok"]
+            and item["validation_steps_ok"]
             and set(item["expected_exports"]) <= set(item["exports"])
             for item in entries
         ),
         "modules": tuple(entries),
-        "guards": ("one_file_per_ui_chrome_module", "declared_exports_present", "module_smoke_loads"),
+        "guards": (
+            "one_file_per_ui_chrome_module",
+            "declared_exports_present",
+            "module_smoke_loads",
+            "operation_steps_declared",
+            "validation_steps_declared",
+        ),
         "side_effects": (),
     }}
 
@@ -32561,6 +32670,8 @@ def ui_chrome_module_test_file_manifest():
         "load_ui_chrome_module",
         "test_ui_chrome_module_contract",
         "test_ui_chrome_module_smoke",
+        "test_ui_chrome_module_operation_steps",
+        "test_ui_chrome_module_validation_steps",
         "smoke_test",
     )
     test_dir = Path(__file__).with_name("ui_chrome_module_tests")
@@ -32591,7 +32702,11 @@ def ui_chrome_module_test_file_manifest():
         and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
         "tests": tuple(entries),
         "required_exports": required_exports,
-        "guards": ("one_test_file_per_ui_chrome_module", "contract_and_smoke_tests_exported"),
+        "guards": (
+            "one_test_file_per_ui_chrome_module",
+            "contract_and_smoke_tests_exported",
+            "operation_and_validation_tests_exported",
+        ),
         "side_effects": (),
     }}
 

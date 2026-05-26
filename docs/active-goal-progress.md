@@ -1210,6 +1210,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   pass together (`14 passed`), and implementation release, generation smoke,
   capability, full implementation release, and catalog release audits all
   return true for the implemented PBC set. Commit: `d11cc17`.
+- Current UI chrome design-surface pass adds standalone operation-step and
+  validation-step contracts to generated splash, menu editor, context-menu,
+  and UI fine-tuning modules. The generated chrome manifests and tests now fail
+  unless each module proves concrete side-effect-free design operations and
+  validation gates before UI customization readiness is trusted.
 
 ## Open Completion Areas
 
