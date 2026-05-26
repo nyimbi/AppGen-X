@@ -830,6 +830,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   compiler, and deep runtime modules now emit named operation or validation
   step evidence, and the generated runtime matrix fails when required replay
   paths or side-effect guards are missing.
+- Current visual depth pass tightens generated visual runtime pipeline replay:
+  style resolution, timeline playback, effect fallback, scene rendering, and
+  asset resolution modules now publish required pipeline steps, and generated
+  validation fails when any runtime operation coverage or side-effect guard is
+  missing.
 - `2eac7a8` normalizes `ar_credit` into the complete package surface used by
   implemented PBC slices: package-local `SPECIFICATION.md`, UI/workbench
   contract, executable configuration/rule/parameter operations, central PBC

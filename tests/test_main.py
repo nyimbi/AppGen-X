@@ -17144,6 +17144,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert visual_runtime_pipeline_runtime_matrix["ok"] is True
     assert len(visual_runtime_pipeline_runtime_matrix["pipeline_replays"]) == 5
+    assert "generated_pipeline_operation_contracts" in visual_runtime_pipeline_runtime_matrix["guards"]
+    assert {
+        "generated_visual_runtime_pipeline_operation_coverage",
+        "generated_visual_runtime_pipeline_replays_side_effect_free",
+    } <= {check["id"] for check in visual_runtime_pipeline_runtime_matrix["checks"] if check["ok"]}
+    assert all(
+        set(item["required_pipeline"]) <= set(item["pipeline"])
+        for item in visual_runtime_pipeline_runtime_matrix["pipeline_replays"]
+    )
+    assert {
+        "load_tokens",
+        "interpolate_values",
+        "select_fallback",
+        "raycast_hit_targets",
+        "verify_target_package",
+    } <= {
+        step
+        for item in visual_runtime_pipeline_runtime_matrix["pipeline_replays"]
+        for step in item["pipeline"]
+    }
     assert {item["component"] for item in visual_module_manifest["components"]} == {
         spec["component"] for spec in generated_visual_specs["specs"]
     }

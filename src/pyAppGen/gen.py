@@ -16458,6 +16458,13 @@ def visual_runtime_pipeline_runtime_replay_matrix():
         "scene_rendering",
         "asset_resolution",
     }
+    required_pipeline_by_surface = {
+        "style_resolution": {"load_tokens", "resolve_cascade", "publish_effective_value"},
+        "timeline_playback": {"load_timeline", "sample_keyframes", "interpolate_values", "export_runtime_timeline"},
+        "effect_fallback": {"load_effect_stack", "select_quality", "select_fallback", "emit_effect_plan"},
+        "scene_rendering": {"load_scene_graph", "raycast_hit_targets", "apply_transform", "sync_inspector"},
+        "asset_resolution": {"load_asset_manifest", "resolve_density", "resolve_scene_asset", "verify_target_package"},
+    }
     replays = []
     for item in modules["modules"]:
         module_path = module_dir / f"{item['module']}.py"
@@ -16472,11 +16479,14 @@ def visual_runtime_pipeline_runtime_replay_matrix():
                 "module": item["module"],
                 "surface": item["surface"],
                 "pipeline": tuple(operation.get("pipeline", ())) if isinstance(operation, dict) else (),
+                "required_pipeline": tuple(sorted(required_pipeline_by_surface[item["surface"]])),
                 "ok": item["exists"]
                 and item["contract_ok"]
                 and tests_by_module.get(item["module"], {}).get("exists", False)
                 and bool(smoke.get("ok"))
                 and bool(operation.get("ok"))
+                and required_pipeline_by_surface[item["surface"]]
+                <= set(operation.get("pipeline", ()) if isinstance(operation, dict) else ())
                 and not tuple(smoke.get("side_effects", ()))
                 and not tuple(operation.get("side_effects", ())),
                 "smoke": smoke,
@@ -16497,6 +16507,18 @@ def visual_runtime_pipeline_runtime_replay_matrix():
             "evidence": tuple((item["surface"], item["pipeline"]) for item in replays),
         },
         {
+            "id": "generated_visual_runtime_pipeline_operation_coverage",
+            "ok": all(set(item["required_pipeline"]) <= set(item["pipeline"]) for item in replays),
+            "evidence": tuple(
+                {
+                    "surface": item["surface"],
+                    "required_pipeline": item["required_pipeline"],
+                    "pipeline": item["pipeline"],
+                }
+                for item in replays
+            ),
+        },
+        {
             "id": "generated_visual_runtime_pipeline_replays_side_effect_free",
             "ok": all(
                 not tuple(item["smoke"].get("side_effects", ()))
@@ -16514,6 +16536,7 @@ def visual_runtime_pipeline_runtime_replay_matrix():
         "guards": (
             "generated_pipeline_modules_before_runtime_claim",
             "generated_pipeline_tests_before_release_claim",
+            "generated_pipeline_operation_contracts",
             "generated_pipeline_operations_side_effect_free",
         ),
         "side_effects": (),
