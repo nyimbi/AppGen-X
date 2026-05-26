@@ -13294,6 +13294,84 @@ def mobile_device_scenario_matrix_contract(target: str = "android") -> dict:
     }
 
 
+def mobile_device_target_scenario_matrix_contract() -> dict:
+    """Replay every device API against every runtime target with explicit unsupported-target fallbacks."""
+    specs = mobile_device_component_spec_contract()
+    targets = tuple(bridge["target"] for bridge in mobile_native_bridge_matrix_contract()["bridges"])
+    rows = tuple(
+        {
+            "api": spec["api"],
+            "target": target,
+            "supported": target in spec["targets"],
+            "scenario": mobile_run_device_scenario_operation(spec["api"], target),
+        }
+        for spec in specs["specs"]
+        for target in targets
+    )
+    supported_rows = tuple(row for row in rows if row["supported"])
+    unsupported_rows = tuple(row for row in rows if not row["supported"])
+    checks = (
+        {
+            "id": "all_device_targets_covered",
+            "ok": {"android", "ios", "desktop", "web-pwa"} <= set(targets)
+            and len(rows) == len(specs["specs"]) * len(targets),
+            "evidence": {"targets": targets, "row_count": len(rows)},
+        },
+        {
+            "id": "supported_targets_replayed",
+            "ok": bool(supported_rows)
+            and all(row["scenario"]["ok"] and row["scenario"]["decision"] == "scenario_replayed" for row in supported_rows),
+            "evidence": tuple((row["api"], row["target"], row["scenario"]["decision"]) for row in supported_rows),
+        },
+        {
+            "id": "unsupported_targets_blocked",
+            "ok": bool(unsupported_rows)
+            and all(
+                not row["scenario"]["ok"]
+                and row["scenario"]["decision"] == "blocked_unsupported_target"
+                and "disable_component_with_explanation" in row["scenario"]["pipeline"]
+                for row in unsupported_rows
+            ),
+            "evidence": tuple((row["api"], row["target"], row["scenario"]["decision"]) for row in unsupported_rows),
+        },
+        {
+            "id": "permission_before_bridge_per_supported_target",
+            "ok": all(
+                row["scenario"]["pipeline"].index("request_permission")
+                < row["scenario"]["pipeline"].index("invoke_target_bridge")
+                for row in supported_rows
+            ),
+            "evidence": tuple((row["api"], row["target"], row["scenario"]["pipeline"]) for row in supported_rows),
+        },
+        {
+            "id": "target_matrix_side_effect_free",
+            "ok": specs["side_effects"] == () and all(not row["scenario"]["side_effects"] for row in rows),
+            "evidence": (),
+        },
+    )
+    return {
+        "format": "appgen.mobile-device-target-scenario-matrix-contract.v1",
+        "ok": specs["ok"] and all(check["ok"] for check in checks),
+        "target_count": len(targets),
+        "api_count": len(specs["specs"]),
+        "row_count": len(rows),
+        "supported_count": len(supported_rows),
+        "unsupported_count": len(unsupported_rows),
+        "targets": targets,
+        "rows": rows,
+        "checks": checks,
+        "guards": (
+            "all_device_targets_covered",
+            "supported_targets_replayed",
+            "unsupported_targets_blocked",
+            "permission_before_bridge_per_supported_target",
+            "target_matrix_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def mobile_native_api_actionable_operations() -> dict:
     """Return callable mobile/native operations used by the generated IDE."""
     operations = {
@@ -14002,6 +14080,7 @@ def mobile_native_api_readiness_contract() -> dict:
     component_validation = mobile_validate_device_component_operation()
     runtime_replay = mobile_native_api_runtime_replay_contract()
     scenario_matrix = mobile_device_scenario_matrix_contract()
+    target_scenario_matrix = mobile_device_target_scenario_matrix_contract()
     designer_replay = mobile_device_designer_transaction_replay_contract()
     lifecycle = mobile_device_capability_lifecycle_replay_contract()
     actionable = mobile_native_api_actionable_operations()
@@ -14050,6 +14129,14 @@ def mobile_native_api_readiness_contract() -> dict:
             and scenario_matrix["unsupported_fallback"]["decision"] == "blocked_unsupported_target",
         },
         {
+            "phase": "replay_target_scenario_matrix",
+            "pipeline": tuple((row["api"], row["target"]) for row in target_scenario_matrix["rows"]),
+            "ok": target_scenario_matrix["ok"]
+            and target_scenario_matrix["api_count"] == len(contract["apis"])
+            and target_scenario_matrix["target_count"] >= 4
+            and target_scenario_matrix["unsupported_count"] > 0,
+        },
+        {
             "phase": "replay_designer_and_capabilities",
             "pipeline": tuple(item["phase"] for item in designer_replay["replay"])
             + tuple(check["id"] for check in lifecycle["checks"]),
@@ -14066,7 +14153,8 @@ def mobile_native_api_readiness_contract() -> dict:
         {"id": "fallback_lifecycle_ready", "ok": phases[3]["ok"], "evidence": {"fallback": fallback, "background": background}},
         {"id": "runtime_delivery_ready", "ok": phases[4]["ok"], "evidence": runtime_replay},
         {"id": "device_scenarios_ready", "ok": phases[5]["ok"], "evidence": scenario_matrix},
-        {"id": "designer_capability_ready", "ok": phases[6]["ok"], "evidence": {"designer": designer_replay, "lifecycle": lifecycle}},
+        {"id": "target_scenario_matrix_ready", "ok": phases[6]["ok"], "evidence": target_scenario_matrix},
+        {"id": "designer_capability_ready", "ok": phases[7]["ok"], "evidence": {"designer": designer_replay, "lifecycle": lifecycle}},
         {"id": "operation_surface_ready", "ok": actionable["ok"] and not actionable["side_effects"], "evidence": actionable},
         {
             "id": "phase_order_ready",
@@ -14078,6 +14166,7 @@ def mobile_native_api_readiness_contract() -> dict:
                 "review_fallbacks_and_lifecycle",
                 "replay_runtime_delivery",
                 "replay_device_scenarios",
+                "replay_target_scenario_matrix",
                 "replay_designer_and_capabilities",
             ),
             "evidence": tuple(item["phase"] for item in phases),
@@ -14093,6 +14182,8 @@ def mobile_native_api_readiness_contract() -> dict:
             "permission": runtime_replay["final_state"]["permission"],
             "runtime_replays": len(runtime_replay["replay"]),
             "device_scenarios": scenario_matrix["scenario_count"],
+            "target_scenarios": target_scenario_matrix["row_count"],
+            "unsupported_target_fallbacks": target_scenario_matrix["unsupported_count"],
             "bridge_recoveries": len(runtime_replay["bridge_recovery"]),
             "lifecycle_replays": len(runtime_replay["lifecycle_replay"]),
             "background_checkpoints": runtime_replay["final_state"]["checkpoints"],
@@ -14103,6 +14194,8 @@ def mobile_native_api_readiness_contract() -> dict:
             "simulator_before_bridge",
             "fallbacks_before_runtime",
             "runtime_before_device_scenarios",
+            "target_matrix_before_designer_claim",
+            "unsupported_targets_blocked_before_release",
             "runtime_before_designer_claim",
             "side_effect_free_readiness",
         ),
@@ -14140,6 +14233,7 @@ def mobile_native_api_workbench() -> dict:
     simulator_fixture_integrity = mobile_simulator_fixture_integrity_contract()
     runtime_replay = mobile_native_api_runtime_replay_contract()
     scenario_matrix = mobile_device_scenario_matrix_contract()
+    target_scenario_matrix = mobile_device_target_scenario_matrix_contract()
     designer_transaction_replay = mobile_device_designer_transaction_replay_contract()
     capability_lifecycle_replay = mobile_device_capability_lifecycle_replay_contract()
     device_component_module_artifacts = device_api_component_module_file_manifest()
@@ -14358,6 +14452,16 @@ def mobile_native_api_workbench() -> dict:
             "evidence": scenario_matrix,
         },
         {
+            "id": "device_target_scenario_matrix",
+            "ok": target_scenario_matrix["ok"]
+            and target_scenario_matrix["api_count"] == len(api_set)
+            and target_scenario_matrix["row_count"] == target_scenario_matrix["api_count"] * target_scenario_matrix["target_count"]
+            and {"supported_targets_replayed", "unsupported_targets_blocked"}
+            <= {check["id"] for check in target_scenario_matrix["checks"] if check["ok"]}
+            and not target_scenario_matrix["side_effects"],
+            "evidence": target_scenario_matrix,
+        },
+        {
             "id": "designer_transaction_replay",
             "ok": designer_transaction_replay["ok"]
             and {"permission_manifest_before_adapter_dispatch", "runtime_replay_covers_all_device_apis"} <= set(designer_transaction_replay["guards"])
@@ -14381,6 +14485,7 @@ def mobile_native_api_workbench() -> dict:
                 "fallback_lifecycle_ready",
                 "runtime_delivery_ready",
                 "device_scenarios_ready",
+                "target_scenario_matrix_ready",
                 "designer_capability_ready",
                 "operation_surface_ready",
                 "phase_order_ready",
@@ -14439,6 +14544,7 @@ def mobile_native_api_workbench() -> dict:
         "simulator_fixture_integrity": simulator_fixture_integrity,
         "runtime_replay": runtime_replay,
         "scenario_matrix": scenario_matrix,
+        "target_scenario_matrix": target_scenario_matrix,
         "designer_transaction_replay": designer_transaction_replay,
         "capability_lifecycle_replay": capability_lifecycle_replay,
         "device_component_module_artifacts": device_component_module_artifacts,
@@ -16558,6 +16664,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and {
                 "capability_lifecycle_replay",
                 "device_scenario_matrix",
+                "device_target_scenario_matrix",
                 "device_component_modules",
                 "device_component_module_tests",
             } <= mobile_passing_checks
@@ -17010,6 +17117,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "fallback_lifecycle_ready",
                 "runtime_delivery_ready",
                 "device_scenarios_ready",
+                "target_scenario_matrix_ready",
                 "designer_capability_ready",
                 "phase_order_ready",
             }
@@ -17019,14 +17127,17 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "device_component_modules",
                 "device_component_module_tests",
                 "device_scenario_matrix",
+                "device_target_scenario_matrix",
             } <= {check["id"] for check in mobile["checks"] if check["ok"]},
             "deep_checks": (
                 "privacy_permission_ready",
                 "bridge_component_ready",
                 "runtime_delivery_ready",
                 "device_scenarios_ready",
+                "target_scenario_matrix_ready",
                 "designer_capability_ready",
                 "device_scenario_matrix",
+                "device_target_scenario_matrix",
                 "device_component_modules",
                 "device_component_module_tests",
                 "phase_order_ready",
@@ -19109,6 +19220,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
+        "replay_device_scenarios",
+        "replay_target_scenario_matrix",
         "replay_designer_and_capabilities",
     )
     passing_mobile_readiness_phases = tuple(
@@ -19141,6 +19254,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "bridge_component_ready",
         "fallback_lifecycle_ready",
         "runtime_delivery_ready",
+        "device_scenarios_ready",
+        "target_scenario_matrix_ready",
         "designer_capability_ready",
         "operation_surface_ready",
         "phase_order_ready",

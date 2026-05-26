@@ -2839,6 +2839,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
         "device_scenario_matrix",
+        "device_target_scenario_matrix",
         "designer_transaction_replay",
         "capability_lifecycle_replay",
         "mobile_readiness_contract",
@@ -2922,6 +2923,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mobile_workbench["runtime_replay"]["final_state"]["checkpoints"] >= 1
     assert mobile_workbench["scenario_matrix"]["ok"] is True
     assert mobile_workbench["scenario_matrix"]["scenario_count"] == len(mobile_apis)
+    assert mobile_workbench["target_scenario_matrix"]["ok"] is True
+    assert mobile_workbench["target_scenario_matrix"]["api_count"] == len(mobile_apis)
+    assert mobile_workbench["target_scenario_matrix"]["target_count"] >= 4
+    assert mobile_workbench["target_scenario_matrix"]["row_count"] == (
+        mobile_workbench["target_scenario_matrix"]["api_count"]
+        * mobile_workbench["target_scenario_matrix"]["target_count"]
+    )
+    assert mobile_workbench["target_scenario_matrix"]["unsupported_count"] > 0
+    assert {
+        "supported_targets_replayed",
+        "unsupported_targets_blocked",
+    } <= {check["id"] for check in mobile_workbench["target_scenario_matrix"]["checks"] if check["ok"]}
     assert mobile_workbench["designer_transaction_replay"]["ok"] is True
     assert {
         "author_device_components",
@@ -2961,6 +2974,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
         "replay_device_scenarios",
+        "replay_target_scenario_matrix",
         "replay_designer_and_capabilities",
     } == {item["phase"] for item in mobile_readiness["phases"]}
     assert {
@@ -2970,6 +2984,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "fallback_lifecycle_ready",
         "runtime_delivery_ready",
         "device_scenarios_ready",
+        "target_scenario_matrix_ready",
         "designer_capability_ready",
         "operation_surface_ready",
         "phase_order_ready",
@@ -2977,6 +2992,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mobile_readiness["final_state"]["api_count"] == len(mobile_apis)
     assert mobile_readiness["final_state"]["runtime_replays"] == len(mobile_apis)
     assert mobile_readiness["final_state"]["device_scenarios"] == len(mobile_apis)
+    assert mobile_readiness["final_state"]["target_scenarios"] == mobile_workbench["target_scenario_matrix"]["row_count"]
+    assert mobile_readiness["final_state"]["unsupported_target_fallbacks"] == mobile_workbench["target_scenario_matrix"]["unsupported_count"]
     assert mobile_workbench["readiness"]["ok"] is True
     assert mobile_workbench["readiness"]["final_state"]["background_checkpoints"] >= 1
     assert len(mobile_workbench["device_component_module_artifacts"]) == len(mobile_apis)
@@ -5102,11 +5119,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
         "replay_device_scenarios",
+        "replay_target_scenario_matrix",
         "replay_designer_and_capabilities",
     )
     assert {
         "capability_lifecycle_replay",
         "device_scenario_matrix",
+        "device_target_scenario_matrix",
         "device_component_modules",
         "device_component_module_tests",
     } <= set(lifecycle_by_phase["validate_device_capabilities"]["evidence"]["passing_checks"])
@@ -15188,11 +15207,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
         "replay_device_scenarios",
+        "replay_target_scenario_matrix",
         "replay_designer_and_capabilities",
     )
     assert {
         "capability_lifecycle_replay",
         "device_scenario_matrix",
+        "device_target_scenario_matrix",
         "device_component_modules",
         "device_component_module_tests",
     } <= set(generated_lifecycle_by_phase["validate_device_capabilities"]["evidence"]["passing_checks"])
@@ -17389,6 +17410,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
         "device_scenario_matrix",
+        "device_target_scenario_matrix",
         "designer_transaction_replay",
         "capability_lifecycle_replay",
         "mobile_readiness_contract",
@@ -17478,6 +17500,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all(item["ok"] for item in generated_mobile["runtime_replay"]["bridge_recovery"])
     assert generated_mobile["scenario_matrix"]["ok"] is True
     assert generated_mobile["scenario_matrix"]["scenario_count"] == len(generated_mobile_apis)
+    assert generated_mobile["target_scenario_matrix"]["ok"] is True
+    assert generated_mobile["target_scenario_matrix"]["api_count"] == len(generated_mobile_apis)
+    assert generated_mobile["target_scenario_matrix"]["target_count"] >= 4
+    assert generated_mobile["target_scenario_matrix"]["row_count"] == (
+        generated_mobile["target_scenario_matrix"]["api_count"]
+        * generated_mobile["target_scenario_matrix"]["target_count"]
+    )
+    assert generated_mobile["target_scenario_matrix"]["unsupported_count"] > 0
+    assert {
+        "supported_targets_replayed",
+        "unsupported_targets_blocked",
+    } <= {check["id"] for check in generated_mobile["target_scenario_matrix"]["checks"] if check["ok"]}
     assert generated_mobile["designer_transaction_replay"]["ok"] is True
     assert {
         "author_device_components",
@@ -17510,6 +17544,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
         "replay_device_scenarios",
+        "replay_target_scenario_matrix",
         "replay_designer_and_capabilities",
     } == {item["phase"] for item in generated_mobile_readiness["phases"]}
     assert {
@@ -17519,6 +17554,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "fallback_lifecycle_ready",
         "runtime_delivery_ready",
         "device_scenarios_ready",
+        "target_scenario_matrix_ready",
         "designer_capability_ready",
         "operation_surface_ready",
         "phase_order_ready",
@@ -17526,6 +17562,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile_readiness["final_state"]["api_count"] == len(generated_mobile_apis)
     assert generated_mobile_readiness["final_state"]["runtime_replays"] == len(generated_mobile_apis)
     assert generated_mobile_readiness["final_state"]["device_scenarios"] == len(generated_mobile_apis)
+    assert generated_mobile_readiness["final_state"]["target_scenarios"] == generated_mobile["target_scenario_matrix"]["row_count"]
+    assert generated_mobile_readiness["final_state"]["unsupported_target_fallbacks"] == generated_mobile["target_scenario_matrix"]["unsupported_count"]
     assert generated_mobile["readiness"]["ok"] is True
     assert generated_mobile["readiness"]["final_state"]["background_checkpoints"] >= 1
     assert len(generated_mobile["device_component_module_artifacts"]) == len(generated_mobile_apis)
