@@ -5101,6 +5101,7 @@ def pbc_generation_smoke_audit(selected_pbcs: tuple[str, ...] | list[str] | None
         runtime_manifest = {}
         runtime_workbench = {}
         runtime_registration = {}
+        generated_contract_test_results = []
         runtime_path = output_dir / "pbc_runtime.py"
         if runtime_path.exists() and not any(item["path"] == "app/pbc_runtime.py" for item in compile_failures):
             try:
@@ -5121,6 +5122,48 @@ def pbc_generation_smoke_audit(selected_pbcs: tuple[str, ...] | list[str] | None
                 runtime_smoke = generated_pbc_runtime.smoke_test()
             except Exception as exc:  # pragma: no cover - reported in audit payload
                 runtime_smoke = {"ok": False, "error": str(exc)}
+        for key in selected:
+            test_path = output_dir / "pbcs" / key / "tests" / "test_contract.py"
+            if not test_path.exists():
+                generated_contract_test_results.append(
+                    {
+                        "pbc": key,
+                        "ok": False,
+                        "path": str(Path("app") / "pbcs" / key / "tests" / "test_contract.py"),
+                        "error": "missing generated contract test",
+                    }
+                )
+                continue
+            before_modules = set(sys.modules)
+            sys.path.insert(0, str(output_dir))
+            try:
+                module = importlib.import_module(f"pbcs.{key}.tests.test_contract")
+                executed = []
+                for name in sorted(item for item in dir(module) if item.startswith("test_")):
+                    getattr(module, name)()
+                    executed.append(name)
+                generated_contract_test_results.append(
+                    {
+                        "pbc": key,
+                        "ok": bool(executed),
+                        "path": str(Path("app") / "pbcs" / key / "tests" / "test_contract.py"),
+                        "executed": tuple(executed),
+                    }
+                )
+            except Exception as exc:  # pragma: no cover - reported in audit payload
+                generated_contract_test_results.append(
+                    {
+                        "pbc": key,
+                        "ok": False,
+                        "path": str(Path("app") / "pbcs" / key / "tests" / "test_contract.py"),
+                        "error": str(exc),
+                    }
+                )
+            finally:
+                sys.path.remove(str(output_dir))
+                for module_name in tuple(sys.modules):
+                    if module_name not in before_modules and (module_name == "pbcs" or module_name.startswith("pbcs.")):
+                        sys.modules.pop(module_name, None)
     checks = (
         {
             "id": "dsl_tables",
@@ -5159,6 +5202,12 @@ def pbc_generation_smoke_audit(selected_pbcs: tuple[str, ...] | list[str] | None
             "workbench": runtime_workbench,
             "registration": runtime_registration,
             "smoke": runtime_smoke,
+        },
+        {
+            "id": "generated_pbc_contract_tests",
+            "ok": len(generated_contract_test_results) == len(selected)
+            and all(result["ok"] for result in generated_contract_test_results),
+            "results": tuple(generated_contract_test_results),
         },
     )
     return {

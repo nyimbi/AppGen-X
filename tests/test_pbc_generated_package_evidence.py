@@ -74,11 +74,15 @@ def test_generated_pbc_packages_include_schema_service_and_release_evidence(tmp_
 
     smoke = pbc_generation_smoke_audit(selected)
     directory_check = next(check for check in smoke["checks"] if check["id"] == "generated_pbc_directories")
+    contract_test_check = next(check for check in smoke["checks"] if check["id"] == "generated_pbc_contract_tests")
     assert smoke["ok"] is True
     assert not directory_check["missing"]
     assert "schema_contract.py" in directory_check["required_artifacts"]
     assert "service_contract.py" in directory_check["required_artifacts"]
     assert "release_evidence.py" in directory_check["required_artifacts"]
+    assert contract_test_check["ok"] is True
+    assert {result["pbc"] for result in contract_test_check["results"]} == set(selected)
+    assert all("test_generated_schema_service_and_release_evidence" in result["executed"] for result in contract_test_check["results"])
 
 
 def _load_module(path, module_name):
