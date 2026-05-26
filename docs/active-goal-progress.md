@@ -980,6 +980,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   runtime tests, the 87-test PBC regression slice, implemented-capability audit,
   implementation release audit, `pbc_release_audit()`, three-PBC generation
   smoke audit, and the restricted legacy-name scan.
+- `28d0817` implements the formerly skeletal `payment_orchestration` package:
+  package-local specification, executable payment gateway/token/intent/fraud
+  runtime, UI/workbench contract, central audit wiring, and focused tests.
+  The package enforces PostgreSQL/MySQL/MariaDB datastore boundaries, AppGen-X
+  eventing without user-facing stream-engine selection, bounded rules and
+  parameters, idempotent consumed-event handling, retry/dead-letter evidence,
+  cryptographic and advanced runtime smoke evidence, and workbench binding
+  evidence. Verification passed for payment py-compile, focused runtime tests,
+  the 90-test PBC regression slice, implemented-capability audit,
+  implementation release audit, `pbc_release_audit()`, payment generation smoke
+  audit, and the restricted legacy-name scan.
 
 ## Open Completion Areas
 
