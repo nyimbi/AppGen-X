@@ -43,6 +43,9 @@ TREASURY_CASH_RUNTIME_CAPABILITY_KEYS = (
     "financial_mlops_governance",
 )
 TREASURY_CASH_STANDARD_FEATURE_KEYS = (
+    "configuration_schema",
+    "rule_engine",
+    "parameter_engine",
     "bank_account_master",
     "opening_balance_capture",
     "intraday_balance_capture",
@@ -77,6 +80,9 @@ def treasury_cash_runtime_capabilities() -> dict:
         "capabilities": TREASURY_CASH_RUNTIME_CAPABILITY_KEYS,
         "standard_features": TREASURY_CASH_STANDARD_FEATURE_KEYS,
         "operations": (
+            "configure_runtime",
+            "set_parameter",
+            "register_rule",
             "register_bank_account",
             "capture_bank_balance",
             "ingest_bank_statement",
@@ -115,6 +121,31 @@ def treasury_cash_runtime_capabilities() -> dict:
 
 def treasury_cash_runtime_smoke() -> dict:
     state = treasury_cash_empty_state()
+    state = treasury_cash_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.treasury.events",
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "allowed_payment_rails": ("ach", "wire", "instant_bank_api"),
+            "workbench_limit": 100,
+        },
+    )["state"]
+    state = treasury_cash_set_parameter(state, "minimum_liquidity_buffer", 2500)["state"]
+    state = treasury_cash_set_parameter(state, "counterparty_risk_threshold", 0.35)["state"]
+    state = treasury_cash_register_rule(
+        state,
+        {
+            "rule_id": "rule_treasury",
+            "tenant": "tenant_alpha",
+            "scope": "liquidity",
+            "minimum_liquidity_buffer": 2500,
+            "dual_approval_required": True,
+            "status": "active",
+        },
+    )["state"]
     state = treasury_cash_register_schema_extension(
         state,
         "cash_flow",
@@ -273,6 +304,9 @@ def treasury_cash_runtime_smoke() -> dict:
 
 def treasury_cash_empty_state() -> dict:
     return {
+        "configuration": {},
+        "parameters": {},
+        "rules": {},
         "events": (),
         "outbox": (),
         "bank_accounts": {},
@@ -284,6 +318,44 @@ def treasury_cash_empty_state() -> dict:
         "schema_extensions": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
     }
+
+
+def treasury_cash_configure_runtime(state: dict, configuration: dict) -> dict:
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Treasury Cash supports only PostgreSQL, MySQL, or MariaDB backends")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
+
+
+def treasury_cash_set_parameter(state: dict, key: str, value: int | float | str) -> dict:
+    allowed = {
+        "minimum_liquidity_buffer",
+        "counterparty_risk_threshold",
+        "cash_forecast_confidence_floor",
+        "funding_approval_limit",
+        "fx_exposure_threshold",
+        "workbench_limit",
+    }
+    if key not in allowed:
+        raise ValueError(f"Unsupported Treasury Cash parameter: {key}")
+    parameters = {**state.get("parameters", {}), key: value}
+    return {"ok": True, "state": {**state, "parameters": parameters}, "parameter": {"key": key, "value": value}}
+
+
+def treasury_cash_register_rule(state: dict, rule: dict) -> dict:
+    required = {"rule_id", "tenant", "scope", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Treasury Cash rule fields: {missing}")
+    stored = {**rule, "enabled": rule["status"] == "active"}
+    rules = {**state.get("rules", {}), rule["rule_id"]: stored}
+    return {"ok": True, "state": {**state, "rules": rules}, "rule": stored}
 
 
 def treasury_cash_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
@@ -478,7 +550,18 @@ def treasury_cash_recommend_hedge(exposure: dict) -> dict:
 
 def treasury_cash_build_workbench_view(state: dict, *, tenant: str, value_date: str) -> dict:
     position = treasury_cash_build_cash_position(state, tenant=tenant, value_date=value_date)
-    return {"ok": True, "tenant": tenant, "value_date": value_date, "available_cash": position["available_cash"], "bank_account_count": len(tuple(account for account in state["bank_accounts"].values() if account["tenant"] == tenant)), "investment_total": round(sum(item["amount"] for item in state["investments"].values() if item["tenant"] == tenant), 2), "debt_total": round(sum(item["amount"] for item in state["debt_draws"].values() if item["tenant"] == tenant), 2)}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "value_date": value_date,
+        "available_cash": position["available_cash"],
+        "bank_account_count": len(tuple(account for account in state["bank_accounts"].values() if account["tenant"] == tenant)),
+        "investment_total": round(sum(item["amount"] for item in state["investments"].values() if item["tenant"] == tenant), 2),
+        "debt_total": round(sum(item["amount"] for item in state["debt_draws"].values() if item["tenant"] == tenant), 2),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def treasury_cash_verify_formal_invariants(state: dict) -> dict:

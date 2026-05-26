@@ -31,6 +31,8 @@ tables with payables, receivables, ledger, or banking adapters.
   event contracts.
 - Configuration for currencies, calendars, liquidity thresholds, and risk
   appetite.
+- Executable treasury rules, runtime parameters, permission descriptors, seed
+  data, and workbench views for every operator-facing flow.
 
 ## Advanced Capabilities
 
@@ -76,3 +78,98 @@ All executable implementation lives in this directory. The catalog may re-export
 stable helpers for compatibility, but cash state, runtime smoke evidence,
 standard feature inventory, and advanced capability evidence are owned here.
 
+## Owned Datastore Boundary
+
+The PBC owns:
+
+- `treasury_cash_bank_account`: account, legal entity, currency, country, bank
+  identifier, signatory metadata, risk signals, identity, and status.
+- `treasury_cash_balance`: opening, intraday, and closing balances by value
+  date, account, currency, kind, source, and capture status.
+- `treasury_cash_statement`: statement header, immutable hash-chain lines,
+  narrative parse evidence, reconciliation status, and exception references.
+- `treasury_cash_cash_position`: tenant, entity, currency, account, value date,
+  available cash, restricted cash, forecast confidence, and source lineage.
+- `treasury_cash_liquidity_plan`: target balance, funding source, sweep,
+  concentration, intercompany netting, and in-house bank settlement evidence.
+- `treasury_cash_capital_action`: investment placement, debt draw, repayment,
+  fee analysis, hedge recommendation, approval evidence, and maturity schedule.
+- `treasury_cash_outbox`, `treasury_cash_inbox`, and
+  `treasury_cash_dead_letter`: AppGen-X event contract tables for exactly-once
+  handlers, retries, and dead-letter triage.
+
+Supported backing stores are PostgreSQL, MySQL, and MariaDB.
+
+## Rules, Parameters, and Configuration
+
+Rules are executable records with `rule_id`, tenant, scope, status, and
+scope-specific predicates such as minimum liquidity buffer, dual approval,
+counterparty risk threshold, funding authorization, rail availability,
+investment limits, debt draw limits, FX hedge trigger, and release-gate
+constraints.
+
+Parameters include `minimum_liquidity_buffer`,
+`counterparty_risk_threshold`, `cash_forecast_confidence_floor`,
+`funding_approval_limit`, `fx_exposure_threshold`, and `workbench_limit`.
+
+Configuration includes database backend, event topic, retry limit, default
+currency, default timezone, allowed payment rails, and workbench limits.
+Runtime configuration rejects unsupported databases and exposes the AppGen-X
+event contract as the ordinary eventing surface.
+
+## Public APIs
+
+- `POST /treasury/bank-accounts`
+- `POST /treasury/balances`
+- `POST /treasury/statements`
+- `POST /treasury/statements/{id}/reconcile`
+- `GET /treasury/cash-position`
+- `POST /treasury/forecasts`
+- `POST /treasury/liquidity/optimize`
+- `POST /treasury/payment-rails/route`
+- `POST /treasury/investments`
+- `POST /treasury/debt-draws`
+- `POST /treasury/fx/hedge-recommendations`
+- `GET /treasury/workbench`
+
+## Events
+
+Emitted events:
+
+- `BankAccountRegistered`
+- `BankBalanceCaptured`
+- `BankStatementIngested`
+- `CashPositionBuilt`
+- `PaymentFunded`
+- `InvestmentPlaced`
+- `DebtFacilityDrawn`
+
+Consumed events:
+
+- `PaymentFundingRequested`
+- `ReceivableCashForecasted`
+- `PayablePaymentScheduled`
+- `PayrollFundingRequested`
+- `TaxPaymentScheduled`
+- `FxRateChanged`
+- `AccessPolicyChanged`
+
+Handlers are idempotent by `treasury_cash:{event_type}:{event_id}`, retry at
+least three times, and write failures to `treasury_cash_dead_letter`.
+
+## UI and Workbench
+
+The UI exposes a treasury cash workbench, bank account console, balance capture
+board, bank statement reconciliation board, cash position view, liquidity
+forecast workbench, funding optimization console, payment-rail routing panel,
+intercompany netting view, FX exposure and hedge panel, debt facility console,
+investment placement console, counterparty risk panel, treasury rule studio,
+treasury parameter console, and configuration panel. Actions are
+permission-bound and rendered from package-owned state.
+
+## Release Evidence
+
+Release readiness requires passing runtime smoke, package-local UI contract,
+owned tables, API/event/handler surfaces, AppGen-X event contract evidence,
+configuration/rule/parameter execution, generated DSL compatibility, package
+metadata, workbench rendering, and focused unit tests.
