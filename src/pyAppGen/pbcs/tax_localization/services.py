@@ -9,11 +9,14 @@ class TaxLocalizationService:
     def _command(self, command_name, payload):
         event_type = EVENT_CONTRACT['emitted'][0]['event_type'] if EVENT_CONTRACT['emitted'] else 'CommandAccepted'
         return {
+            'ok': True,
+            'pbc': 'tax_localization',
             'command': command_name,
             'payload': dict(payload),
             'transaction_boundary': 'owned_datastore_plus_outbox',
             'outbox_table': EVENT_CONTRACT['outbox_table'],
             'emits': (event_type,),
+            'side_effects': (),
         }
 
     def command_tax_jurisdictions(self, payload=None):
@@ -36,3 +39,37 @@ class TaxLocalizationService:
 
     def query_tax_workbench(self, payload=None):
         return self._command('query_tax_workbench', payload or {})
+
+
+def service_operation_manifest():
+    """Return the executable service operation surface."""
+    service = TaxLocalizationService()
+    operations = tuple(
+        name
+        for name in dir(service)
+        if (name.startswith('command_') or name.startswith('query_'))
+        and callable(getattr(service, name))
+    )
+    return {
+        'ok': bool(operations),
+        'pbc': 'tax_localization',
+        'service_class': service.__class__.__name__,
+        'operations': operations,
+        'transaction_boundary': 'owned_datastore_plus_outbox',
+        'outbox_table': EVENT_CONTRACT['outbox_table'],
+        'side_effects': (),
+    }
+
+
+def smoke_test():
+    """Execute one side-effect-free service operation through the facade."""
+    manifest = service_operation_manifest()
+    service = TaxLocalizationService()
+    operation = manifest['operations'][0] if manifest['operations'] else None
+    result = getattr(service, operation)({'smoke': True}) if operation else {'ok': False}
+    return {
+        'ok': manifest['ok'] and result.get('ok') is True,
+        'manifest': manifest,
+        'result': result,
+        'side_effects': (),
+    }

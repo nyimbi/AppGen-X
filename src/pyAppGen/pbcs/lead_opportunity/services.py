@@ -9,11 +9,14 @@ class LeadOpportunityService:
     def _command(self, command_name, payload):
         event_type = EVENT_CONTRACT['emitted'][0]['event_type'] if EVENT_CONTRACT['emitted'] else 'CommandAccepted'
         return {
+            'ok': True,
+            'pbc': 'lead_opportunity',
             'command': command_name,
             'payload': dict(payload),
             'transaction_boundary': 'owned_datastore_plus_outbox',
             'outbox_table': EVENT_CONTRACT['outbox_table'],
             'emits': (event_type,),
+            'side_effects': (),
         }
 
     def command_leads(self, payload=None):
@@ -24,3 +27,37 @@ class LeadOpportunityService:
 
     def query_pipeline(self, payload=None):
         return self._command('query_pipeline', payload or {})
+
+
+def service_operation_manifest():
+    """Return the executable service operation surface."""
+    service = LeadOpportunityService()
+    operations = tuple(
+        name
+        for name in dir(service)
+        if (name.startswith('command_') or name.startswith('query_'))
+        and callable(getattr(service, name))
+    )
+    return {
+        'ok': bool(operations),
+        'pbc': 'lead_opportunity',
+        'service_class': service.__class__.__name__,
+        'operations': operations,
+        'transaction_boundary': 'owned_datastore_plus_outbox',
+        'outbox_table': EVENT_CONTRACT['outbox_table'],
+        'side_effects': (),
+    }
+
+
+def smoke_test():
+    """Execute one side-effect-free service operation through the facade."""
+    manifest = service_operation_manifest()
+    service = LeadOpportunityService()
+    operation = manifest['operations'][0] if manifest['operations'] else None
+    result = getattr(service, operation)({'smoke': True}) if operation else {'ok': False}
+    return {
+        'ok': manifest['ok'] and result.get('ok') is True,
+        'manifest': manifest,
+        'result': result,
+        'side_effects': (),
+    }

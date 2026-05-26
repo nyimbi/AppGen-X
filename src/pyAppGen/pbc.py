@@ -4475,6 +4475,7 @@ def pbc_source_artifact_contract(key: str) -> dict:
     migration_text = migration_path.read_text(encoding="utf-8") if migration_path.is_file() else ""
     manifest_text = (source_dir / "manifest.py").read_text(encoding="utf-8") if (source_dir / "manifest.py").is_file() else ""
     service_text = (source_dir / "services.py").read_text(encoding="utf-8") if (source_dir / "services.py").is_file() else ""
+    route_text = (source_dir / "routes.py").read_text(encoding="utf-8") if (source_dir / "routes.py").is_file() else ""
     release_text = (source_dir / "RELEASE_EVIDENCE.md").read_text(encoding="utf-8") if (source_dir / "RELEASE_EVIDENCE.md").is_file() else ""
     tests_text = (
         (source_dir / "tests" / "test_contract.py").read_text(encoding="utf-8")
@@ -4526,10 +4527,22 @@ def pbc_source_artifact_contract(key: str) -> dict:
             "path": f"{relative_dir}/services.py",
         },
         {
+            "id": "service_route_runtime_surface_materialized",
+            "ok": "def service_operation_manifest(" in service_text
+            and "def smoke_test(" in service_text
+            and "def dispatch_route(" in route_text
+            and "def smoke_test(" in route_text,
+            "paths": (
+                f"{relative_dir}/services.py",
+                f"{relative_dir}/routes.py",
+            ),
+        },
+        {
             "id": "contract_tests_materialized",
             "ok": "test_generated_schema_service_and_release_evidence" in tests_text
             and "test_manifest_and_event_contract" in tests_text
-            and "test_registration_plan_is_side_effect_free" in tests_text,
+            and "test_registration_plan_is_side_effect_free" in tests_text
+            and "test_service_and_route_surface_are_executable" in tests_text,
             "path": f"{relative_dir}/tests/test_contract.py",
         },
         {

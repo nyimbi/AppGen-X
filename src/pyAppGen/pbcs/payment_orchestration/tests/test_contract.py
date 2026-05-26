@@ -34,3 +34,14 @@ def test_registration_plan_is_side_effect_free():
     plan = registration_plan()
     assert plan['ok'] is True
     assert plan['catalog_patch']
+
+
+def test_service_and_route_surface_are_executable():
+    from .. import routes, services
+
+    service_smoke = services.smoke_test()
+    route_smoke = routes.smoke_test()
+    assert service_smoke['ok'] is True
+    assert route_smoke['ok'] is True
+    assert not service_smoke['side_effects']
+    assert not route_smoke['side_effects']
