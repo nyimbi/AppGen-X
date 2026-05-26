@@ -1586,6 +1586,22 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   current diff introduces no restricted legacy or stream-engine terms, and full
   generation, capability, implementation release, and catalog release audits all
   return true. Commit: `a8bd194`.
+- Current view-composition module contract pass hardens generated
+  master-detail, multiple-view, chart, and release-workbench modules so each
+  exposes reusable operation-step and validation-step contracts, generated
+  module tests assert those contracts, and the view-composition replay matrix
+  proves surface, operation-step, validation-step, and side-effect-free coverage
+  before generated view-composition readiness is trusted. Source syntax checks
+  and a direct generated-artifact probe pass. Commit: pending.
+- Current generated PBC contract-test execution pass strengthens
+  `pbc_generation_smoke_audit()` so generated PBC package tests are imported and
+  executed for each selected PBC, not only compiled. The generated package
+  evidence regression passes (`1 passed`), the sample audit proves
+  `test_generated_schema_service_and_release_evidence` and
+  `test_manifest_and_event_contract` execute for `gl_core`, `loyalty_rewards`,
+  and `enterprise_search_vector`, diff hygiene and restricted-term scans pass,
+  and full generation, capability, implementation release, and catalog release
+  audits all return true. Commit: `ccb9496`.
 
 ## Open Completion Areas
 

@@ -14624,10 +14624,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert view_composition_workbench["ok"] is True
     view_composition_module_files = view_composition.view_composition_module_file_manifest()
     view_composition_module_tests = view_composition.view_composition_module_test_file_manifest()
+    view_composition_replay = view_composition.view_composition_module_replay_matrix()
     assert view_composition_module_files["format"] == "appgen.view-composition-module-file-manifest.v1"
     assert view_composition_module_files["ok"] is True
     assert view_composition_module_tests["format"] == "appgen.view-composition-module-test-file-manifest.v1"
     assert view_composition_module_tests["ok"] is True
+    assert view_composition_replay["format"] == "appgen.view-composition-module-replay-matrix.v1"
+    assert view_composition_replay["ok"] is True
+    assert {
+        "view_composition_modules_replay",
+        "view_composition_surface_coverage",
+        "view_composition_operation_step_coverage",
+        "view_composition_validation_step_coverage",
+        "view_composition_replays_side_effect_free",
+    } == {check["id"] for check in view_composition_replay["checks"]}
     assert {
         "master_detail",
         "multiple_view",
@@ -14641,6 +14651,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         assert module.module_contract()["ok"] is True
         assert module.composition_manifest()["ok"] is True
         assert module.run_composition_operation()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
         assert module.release_context()["ok"] is True
         assert module.smoke_test()["ok"] is True
     for item in view_composition_module_tests["tests"]:
@@ -14648,6 +14660,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_view_composition_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
+        assert "test_view_composition_module_step_contracts" in module.smoke_test()["tests"]
     assert view_composition_workbench["decision"] == "approved"
     assert {
         "artifact_coverage",
