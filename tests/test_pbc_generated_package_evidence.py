@@ -50,6 +50,9 @@ def test_generated_pbc_packages_include_schema_service_and_release_evidence(tmp_
         schema_payload = schema_contract.build_schema_contract()
         service_payload = service_contract.build_service_contract()
         release_payload = release_evidence.build_release_evidence()
+        release_manifest = release_evidence.release_readiness_manifest()
+        release_validation = release_evidence.validate_release_evidence()
+        release_smoke = release_evidence.smoke_test()
 
         assert schema_payload["ok"] is True
         assert schema_payload["pbc"] == key
@@ -59,6 +62,12 @@ def test_generated_pbc_packages_include_schema_service_and_release_evidence(tmp_
         assert service_payload.get("shared_table_access") is False
         assert release_payload["ok"] is True
         assert release_payload["pbc"] == key
+        assert release_manifest["ok"] is True
+        assert release_validation["ok"] is True
+        assert release_smoke["ok"] is True
+        assert not release_validation["missing_sections"]
+        assert not release_validation["failed_checks"]
+        assert not release_validation["boundary_gaps"]
         sys.path.insert(0, str(output_dir))
         try:
             generated_test = importlib.import_module(f"pbcs.{key}.tests.test_contract")

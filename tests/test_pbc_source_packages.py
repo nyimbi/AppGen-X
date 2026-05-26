@@ -89,6 +89,10 @@ def test_release_audit_requires_builtin_pbc_source_packages():
                 for item in check["source_artifacts"]["checks"]
             )
             assert any(
+                item["id"] == "release_evidence_materialized" and item["ok"]
+                for item in check["source_artifacts"]["checks"]
+            )
+            assert any(
                 item["id"] == "ui_workbench_surface_materialized" and item["ok"]
                 for item in check["source_artifacts"]["checks"]
             )
@@ -141,6 +145,18 @@ def test_every_builtin_pbc_has_materialized_source_artifacts():
             check["id"] == "handler_runtime_surface_materialized" and check["ok"]
             for check in contract["checks"]
         )
+        release_module = import_module(f"pyAppGen.pbcs.{contract['pbc']}.release_evidence")
+        release_manifest = release_module.release_readiness_manifest()
+        release_validation = release_module.validate_release_evidence()
+        release_smoke = release_module.smoke_test()
+        assert release_manifest["ok"] is True
+        assert release_validation["ok"] is True
+        assert release_smoke["ok"] is True
+        assert not release_manifest["blocking_gaps"]
+        assert not release_validation["missing_sections"]
+        assert not release_validation["failed_checks"]
+        assert not release_validation["boundary_gaps"]
+        assert not release_smoke["side_effects"]
         event_module = import_module(f"pyAppGen.pbcs.{contract['pbc']}.events")
         event_manifest = event_module.event_contract_manifest()
         event_validation = event_module.validate_event_contract()

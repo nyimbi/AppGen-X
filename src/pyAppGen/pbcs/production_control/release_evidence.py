@@ -1,8 +1,109 @@
 """Generated release evidence for the production_control PBC."""
 
+import importlib.util
+from pathlib import Path
+
+
 RELEASE_EVIDENCE = {'ok': True, 'format': 'appgen.production-control-release-evidence.v1', 'checks': ({'id': 'owned_schema_depth', 'ok': True}, {'id': 'migration_per_owned_table', 'ok': True}, {'id': 'service_command_depth', 'ok': True}, {'id': 'api_event_contract', 'ok': True}, {'id': 'permissions_cover_commands', 'ok': True}, {'id': 'backend_allowlist', 'ok': True}, {'id': 'no_shared_table_access', 'ok': True}), 'schema': {'ok': True, 'format': 'appgen.production-control-owned-schema-contract.v1', 'tables': ({'table': 'work_center', 'fields': ('tenant', 'work_center_id', 'site', 'name', 'work_center_type', 'capacity_hours', 'efficiency', 'status', 'audit_hash'), 'primary_key': 'work_center_id', 'owned_by': 'production_control'}, {'table': 'production_order', 'fields': ('tenant', 'order_id', 'site', 'item', 'quantity', 'route', 'priority', 'planned_order_id', 'status', 'completed_qty', 'scrap_qty', 'audit_hash'), 'primary_key': 'order_id', 'owned_by': 'production_control'}, {'table': 'routing_step', 'fields': ('tenant', 'step_id', 'order_id', 'sequence', 'work_center_id', 'standard_minutes', 'setup_minutes', 'quality_gate', 'status', 'audit_hash'), 'primary_key': 'step_id', 'owned_by': 'production_control'}, {'table': 'downtime_event', 'fields': ('tenant', 'downtime_id', 'order_id', 'work_center_id', 'reason', 'minutes', 'severity', 'status', 'audit_hash'), 'primary_key': 'downtime_id', 'owned_by': 'production_control'}, {'table': 'production_rule', 'fields': ('tenant', 'rule_id', 'rule_type', 'scope', 'compiled_hash', 'enabled', 'status', 'audit_hash'), 'primary_key': 'rule_id', 'owned_by': 'production_control'}, {'table': 'production_parameter', 'fields': ('tenant', 'parameter_name', 'parameter_value', 'effective_at', 'changed_by', 'audit_hash'), 'primary_key': 'parameter_name', 'owned_by': 'production_control'}, {'table': 'production_configuration', 'fields': ('tenant', 'configuration_id', 'database_backend', 'event_topic', 'event_contract', 'default_timezone', 'workbench_limit', 'audit_hash'), 'primary_key': 'configuration_id', 'owned_by': 'production_control'}), 'runtime_tables': ({'table': 'production_control_appgen_outbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'idempotency_key', 'published_at', 'audit_hash')}, {'table': 'production_control_appgen_inbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'idempotency_key', 'attempts', 'audit_hash')}, {'table': 'production_control_dead_letter_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'reason', 'attempts', 'audit_hash')}), 'relationships': ({'from_table': 'routing_step', 'from_field': 'order_id', 'to_table': 'production_order', 'to_field': 'order_id'}, {'from_table': 'routing_step', 'from_field': 'work_center_id', 'to_table': 'work_center', 'to_field': 'work_center_id'}, {'from_table': 'downtime_event', 'from_field': 'order_id', 'to_table': 'production_order', 'to_field': 'order_id'}, {'from_table': 'downtime_event', 'from_field': 'work_center_id', 'to_table': 'work_center', 'to_field': 'work_center_id'}, {'from_table': 'production_parameter', 'from_field': 'tenant', 'to_table': 'production_configuration', 'to_field': 'tenant'}, {'from_table': 'production_rule', 'from_field': 'tenant', 'to_table': 'production_configuration', 'to_field': 'tenant'}), 'migrations': ({'path': 'pbcs/production_control/migrations/001_work_center.sql', 'table': 'work_center', 'operation': 'create_owned_table'}, {'path': 'pbcs/production_control/migrations/002_production_order.sql', 'table': 'production_order', 'operation': 'create_owned_table'}, {'path': 'pbcs/production_control/migrations/003_routing_step.sql', 'table': 'routing_step', 'operation': 'create_owned_table'}, {'path': 'pbcs/production_control/migrations/004_downtime_event.sql', 'table': 'downtime_event', 'operation': 'create_owned_table'}, {'path': 'pbcs/production_control/migrations/005_production_rule.sql', 'table': 'production_rule', 'operation': 'create_owned_table'}, {'path': 'pbcs/production_control/migrations/006_production_parameter.sql', 'table': 'production_parameter', 'operation': 'create_owned_table'}, {'path': 'pbcs/production_control/migrations/007_production_configuration.sql', 'table': 'production_configuration', 'operation': 'create_owned_table'}), 'models': ({'path': 'pbcs/production_control/models/work_center.py', 'table': 'work_center', 'class_name': 'WorkCenter'}, {'path': 'pbcs/production_control/models/production_order.py', 'table': 'production_order', 'class_name': 'ProductionOrder'}, {'path': 'pbcs/production_control/models/routing_step.py', 'table': 'routing_step', 'class_name': 'RoutingStep'}, {'path': 'pbcs/production_control/models/downtime_event.py', 'table': 'downtime_event', 'class_name': 'DowntimeEvent'}, {'path': 'pbcs/production_control/models/production_rule.py', 'table': 'production_rule', 'class_name': 'ProductionRule'}, {'path': 'pbcs/production_control/models/production_parameter.py', 'table': 'production_parameter', 'class_name': 'ProductionParameter'}, {'path': 'pbcs/production_control/models/production_configuration.py', 'table': 'production_configuration', 'class_name': 'ProductionConfiguration'}), 'allowed_prefixes': ('work_', 'production_', 'routing_', 'downtime_'), 'datastore_backends': ('postgresql', 'mysql', 'mariadb'), 'required_event_topic': 'appgen.production.events', 'shared_table_access': False, 'invalid_prefixes': ()}, 'service': {'ok': True, 'format': 'appgen.production-control-service-contract.v1', 'transaction_boundary': 'production_control_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'register_work_center', 'create_production_order', 'define_routing_step', 'schedule_order', 'start_operation', 'record_downtime', 'confirm_operation', 'complete_production_order', 'route_execution', 'generate_completion_proof', 'screen_policy', 'federate_execution_view', 'verify_work_center_identity', 'run_resilience_drill', 'rotate_crypto_epoch', 'schedule_carbon_aware_shift', 'optimize_schedule', 'allocate_capacity', 'run_control_tests', 'register_governed_model', 'verify_owned_table_boundary'), 'query_methods': ('build_workbench_view', 'simulate_dispatch_policy', 'forecast_throughput', 'parse_shop_floor_instruction', 'score_production_risk', 'recommend_exception_resolution', 'detect_downtime_anomaly', 'model_stochastic_production_exposure', 'build_api_contract', 'build_schema_contract', 'build_release_evidence'), 'mutates_only': ('work_center', 'production_order', 'routing_step', 'downtime_event', 'production_rule', 'production_parameter', 'production_configuration'), 'external_dependencies': {'apis': ('GET /planned-orders', 'GET /material-readiness', 'GET /quality-gates', 'GET /maintenance-completions', 'POST /inventory-receipts', 'POST /quality-completions', 'POST /asset-commissioning'), 'events': ('PlannedOrderReleased', 'MaintenanceCompleted'), 'api_projections': ('mrp_planned_order_projection', 'inventory_material_readiness_projection', 'quality_gate_projection', 'maintenance_completion_projection', 'asset_commissioning_projection', 'audit_ledger_projection'), 'shared_tables': ()}, 'idempotent_handlers': ('receive_event',), 'rules_parameters_configuration': ('register_rule', 'set_parameter', 'configure_runtime')}, 'api': {'format': 'appgen.production-control-api-contract.v1', 'ok': True, 'contract': 'AppGen-X', 'routes': ({'route': 'POST /production/work-centers', 'command': 'register_work_center', 'owned_tables': ('work_center',), 'emits': (), 'requires_permission': 'production_control.schedule', 'idempotency_key': 'work_center_id'}, {'route': 'POST /production/orders', 'command': 'create_production_order', 'owned_tables': ('production_order',), 'emits': (), 'requires_permission': 'production_control.schedule', 'idempotency_key': 'order_id'}, {'route': 'POST /production/routing-steps', 'command': 'define_routing_step', 'owned_tables': ('routing_step',), 'emits': (), 'requires_permission': 'production_control.schedule', 'idempotency_key': 'step_id'}, {'route': 'POST /production/orders/{id}/schedule', 'command': 'schedule_order', 'owned_tables': ('production_order',), 'emits': (), 'requires_permission': 'production_control.schedule', 'idempotency_key': 'order_id:scheduled_by'}, {'route': 'POST /production/operations/{id}/start', 'command': 'start_operation', 'owned_tables': ('routing_step',), 'emits': (), 'requires_permission': 'production_control.operate', 'idempotency_key': 'step_id:started_by'}, {'route': 'POST /production/downtime', 'command': 'record_downtime', 'owned_tables': ('downtime_event',), 'emits': ('DowntimeCaptured',), 'requires_permission': 'production_control.operate', 'idempotency_key': 'downtime_id'}, {'route': 'POST /production/operations/{id}/confirm', 'command': 'confirm_operation', 'owned_tables': ('routing_step', 'production_order'), 'emits': (), 'requires_permission': 'production_control.operate', 'idempotency_key': 'step_id:confirmed_by'}, {'route': 'POST /production/orders/{id}/complete', 'command': 'complete_production_order', 'owned_tables': ('production_order',), 'emits': ('AssetPlacedInService', 'ProductionCompleted'), 'requires_permission': 'production_control.complete', 'idempotency_key': 'order_id:completed_by'}, {'route': 'POST /production/events/inbox', 'command': 'receive_event', 'owned_tables': (), 'consumes': ('PlannedOrderReleased', 'MaintenanceCompleted'), 'requires_permission': 'production_control.event', 'idempotency_key': 'event_id'}, {'route': 'POST /production/rules', 'command': 'register_rule', 'owned_tables': ('production_rule',), 'requires_permission': 'production_control.configure', 'idempotency_key': 'rule_id'}, {'route': 'POST /production/parameters', 'command': 'set_parameter', 'owned_tables': ('production_parameter',), 'requires_permission': 'production_control.configure', 'idempotency_key': 'parameter_name'}, {'route': 'POST /production/configuration', 'command': 'configure_runtime', 'owned_tables': ('production_configuration',), 'requires_permission': 'production_control.configure', 'idempotency_key': 'tenant'}, {'route': 'GET /production/workbench', 'query': 'build_workbench_view', 'owned_tables': ('work_center', 'production_order', 'routing_step', 'downtime_event', 'production_rule', 'production_parameter', 'production_configuration'), 'requires_permission': 'production_control.audit'}, {'route': 'GET /production/schema-contract', 'query': 'build_schema_contract', 'owned_tables': ('work_center', 'production_order', 'routing_step', 'downtime_event', 'production_rule', 'production_parameter', 'production_configuration'), 'requires_permission': 'production_control.audit'}, {'route': 'GET /production/service-contract', 'query': 'build_service_contract', 'owned_tables': ('work_center', 'production_order', 'routing_step', 'downtime_event', 'production_rule', 'production_parameter', 'production_configuration'), 'requires_permission': 'production_control.audit'}, {'route': 'GET /production/release-evidence', 'query': 'build_release_evidence', 'owned_tables': ('work_center', 'production_order', 'routing_step', 'downtime_event', 'production_rule', 'production_parameter', 'production_configuration'), 'requires_permission': 'production_control.audit'}), 'declared_catalog_routes': ('POST /production-orders', 'POST /downtime', 'GET /schedule', 'POST /production-rules', 'POST /production-parameters', 'POST /production-configuration'), 'events': {'emits': ('ProductionCompleted', 'AssetPlacedInService', 'DowntimeCaptured'), 'consumes': ('PlannedOrderReleased', 'MaintenanceCompleted')}, 'emits': ('ProductionCompleted', 'AssetPlacedInService', 'DowntimeCaptured'), 'consumes': ('PlannedOrderReleased', 'MaintenanceCompleted'), 'permissions': ('production_control.audit', 'production_control.complete', 'production_control.configure', 'production_control.event', 'production_control.operate', 'production_control.read', 'production_control.schedule'), 'database_backends': ('postgresql', 'mysql', 'mariadb'), 'owned_tables': ('work_center', 'production_order', 'routing_step', 'downtime_event', 'production_rule', 'production_parameter', 'production_configuration'), 'shared_table_access': False, 'event_contract': 'AppGen-X', 'required_event_topic': 'appgen.production.events', 'stream_engine_picker_visible': False, 'configuration': ('PRODUCTION_CONTROL_DATABASE_URL', 'PRODUCTION_CONTROL_EVENT_TOPIC', 'PRODUCTION_CONTROL_RETRY_LIMIT', 'PRODUCTION_CONTROL_DEFAULT_TIMEZONE')}, 'permissions': {'format': 'appgen.production-control-permissions.v1', 'ok': True, 'permissions': ('production_control.read', 'production_control.schedule', 'production_control.operate', 'production_control.complete', 'production_control.event', 'production_control.configure', 'production_control.audit'), 'action_permissions': {'register_work_center': 'production_control.schedule', 'create_production_order': 'production_control.schedule', 'define_routing_step': 'production_control.schedule', 'schedule_order': 'production_control.schedule', 'start_operation': 'production_control.operate', 'record_downtime': 'production_control.operate', 'confirm_operation': 'production_control.operate', 'complete_production_order': 'production_control.complete', 'receive_event': 'production_control.event', 'register_rule': 'production_control.configure', 'register_schema_extension': 'production_control.configure', 'set_parameter': 'production_control.configure', 'configure_runtime': 'production_control.configure', 'build_workbench_view': 'production_control.audit', 'run_control_tests': 'production_control.audit', 'verify_owned_table_boundary': 'production_control.audit', 'build_schema_contract': 'production_control.audit', 'build_service_contract': 'production_control.audit', 'build_release_evidence': 'production_control.audit'}}, 'blocking_gaps': (), 'pbc': 'production_control'}
+
+
+def _load_sibling_module(module_name):
+    """Load a sibling generated module when this file is imported directly."""
+    path = Path(__file__).with_name(f'{module_name}.py')
+    spec = importlib.util.spec_from_file_location(f'_pbc_release_{module_name}', path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise ImportError(module_name)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _build_schema_contract():
+    try:
+        from .schema_contract import build_schema_contract
+    except ImportError:
+        return _load_sibling_module('schema_contract').build_schema_contract()
+    return build_schema_contract()
+
+
+def _build_service_contract():
+    try:
+        from .service_contract import build_service_contract
+    except ImportError:
+        return _load_sibling_module('service_contract').build_service_contract()
+    return build_service_contract()
 
 
 def build_release_evidence():
     """Return generated release audit evidence for this PBC."""
-    return dict(RELEASE_EVIDENCE)
+    evidence = dict(RELEASE_EVIDENCE)
+    evidence.setdefault('schema', _build_schema_contract())
+    evidence.setdefault('service', _build_service_contract())
+    evidence.setdefault('pbc', 'production_control')
+    return evidence
+
+
+def release_readiness_manifest():
+    """Return side-effect-free release evidence coverage and gate metadata."""
+    evidence = build_release_evidence()
+    sections = tuple(
+        name
+        for name in ('schema', 'service', 'api', 'permissions', 'ui', 'events')
+        if isinstance(evidence.get(name), dict)
+    )
+    checks = tuple(evidence.get('checks', ()))
+    return {
+        'ok': evidence.get('ok') is True and bool(checks),
+        'pbc': 'production_control',
+        'format': evidence.get('format'),
+        'sections': sections,
+        'checks': checks,
+        'blocking_gaps': tuple(evidence.get('blocking_gaps', ())),
+        'required_sections': ('schema', 'service'),
+        'side_effects': (),
+    }
+
+
+def validate_release_evidence():
+    """Validate release evidence, blocking gaps, and owned-boundary proof."""
+    evidence = build_release_evidence()
+    manifest = release_readiness_manifest()
+    missing_sections = tuple(section for section in manifest['required_sections'] if section not in manifest['sections'])
+    failed_checks = tuple(check for check in manifest['checks'] if check.get('ok') is not True)
+    schema = evidence.get('schema', {}) if isinstance(evidence.get('schema'), dict) else {}
+    service = evidence.get('service', {}) if isinstance(evidence.get('service'), dict) else {}
+    boundary_gaps = tuple(
+        gap
+        for gap, failed in (
+            ('schema_shared_table_access', schema.get('shared_table_access') is not False),
+            ('service_shared_table_access', service.get('shared_table_access') is True),
+            ('service_missing_command_methods', not bool(service.get('command_methods'))),
+        )
+        if failed
+    )
+    return {
+        'ok': manifest['ok']
+        and evidence.get('pbc') == manifest['pbc']
+        and not manifest['blocking_gaps']
+        and not missing_sections
+        and not failed_checks
+        and not boundary_gaps,
+        'pbc': 'production_control',
+        'manifest': manifest,
+        'missing_sections': missing_sections,
+        'failed_checks': failed_checks,
+        'boundary_gaps': boundary_gaps,
+        'side_effects': (),
+    }
+
+
+def smoke_test():
+    """Exercise release evidence readiness validation side-effect-free."""
+    validation = validate_release_evidence()
+    evidence = build_release_evidence()
+    return {
+        'ok': validation['ok'] and evidence.get('ok') is True,
+        'validation': validation,
+        'evidence': evidence,
+        'side_effects': (),
+    }

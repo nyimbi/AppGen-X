@@ -4478,6 +4478,11 @@ def pbc_source_artifact_contract(key: str) -> dict:
     route_text = (source_dir / "routes.py").read_text(encoding="utf-8") if (source_dir / "routes.py").is_file() else ""
     events_text = (source_dir / "events.py").read_text(encoding="utf-8") if (source_dir / "events.py").is_file() else ""
     handler_text = (source_dir / "handlers.py").read_text(encoding="utf-8") if (source_dir / "handlers.py").is_file() else ""
+    release_evidence_py_text = (
+        (source_dir / "release_evidence.py").read_text(encoding="utf-8")
+        if (source_dir / "release_evidence.py").is_file()
+        else ""
+    )
     ui_text = (source_dir / "ui.py").read_text(encoding="utf-8") if (source_dir / "ui.py").is_file() else ""
     config_text = (source_dir / "config.py").read_text(encoding="utf-8") if (source_dir / "config.py").is_file() else ""
     permissions_text = (
@@ -4615,6 +4620,8 @@ def pbc_source_artifact_contract(key: str) -> dict:
             and "test_manifest_and_event_contract" in tests_text
             and "validate_event_contract" in tests_text
             and "event_contract_manifest" in tests_text
+            and "release_readiness_manifest" in tests_text
+            and "validate_release_evidence" in tests_text
             and "test_registration_plan_is_side_effect_free" in tests_text
             and "test_service_and_route_surface_are_executable" in tests_text
             and "service_operation_contracts" in tests_text
@@ -4632,8 +4639,17 @@ def pbc_source_artifact_contract(key: str) -> dict:
         },
         {
             "id": "release_evidence_materialized",
-            "ok": "Release Evidence" in release_text and f"pbcs/{key}" in release_text,
-            "path": f"{relative_dir}/RELEASE_EVIDENCE.md",
+            "ok": "Release Evidence" in release_text
+            and f"pbcs/{key}" in release_text
+            and "def release_readiness_manifest(" in release_evidence_py_text
+            and "def validate_release_evidence(" in release_evidence_py_text
+            and "def smoke_test(" in release_evidence_py_text
+            and "blocking_gaps" in release_evidence_py_text
+            and "boundary_gaps" in release_evidence_py_text,
+            "paths": (
+                f"{relative_dir}/RELEASE_EVIDENCE.md",
+                f"{relative_dir}/release_evidence.py",
+            ),
         },
     )
     return {

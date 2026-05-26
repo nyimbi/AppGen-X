@@ -8,7 +8,7 @@ from ..release_evidence import RELEASE_EVIDENCE
 
 
 def test_generated_schema_service_and_release_evidence():
-    from .. import models, schema_contract
+    from .. import models, release_evidence, schema_contract
 
     assert SCHEMA_CONTRACT['pbc'] == 'service_ticketing'
     assert SCHEMA_CONTRACT['ok'] is True
@@ -24,6 +24,21 @@ def test_generated_schema_service_and_release_evidence():
     assert SERVICE_CONTRACT.get('shared_table_access') is False
     assert RELEASE_EVIDENCE['pbc'] == 'service_ticketing'
     assert RELEASE_EVIDENCE['ok'] is True
+
+
+    release_manifest = release_evidence.release_readiness_manifest()
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+    assert release_manifest['ok'] is True
+    assert release_validation['ok'] is True
+    assert release_smoke['ok'] is True
+    assert not release_manifest['blocking_gaps']
+    assert not release_validation['missing_sections']
+    assert not release_validation['failed_checks']
+    assert not release_validation['boundary_gaps']
+    assert not release_manifest['side_effects']
+    assert not release_validation['side_effects']
+    assert not release_smoke['side_effects']
 
 
 def test_manifest_and_event_contract():
