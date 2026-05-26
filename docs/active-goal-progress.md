@@ -803,6 +803,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - `09abad9` tightens generated visual design runtime replay by requiring each
   generated authoring surface to prove its expected operation pipeline steps
   before the runtime matrix can pass.
+- `41fcdbc` adds generated component-family runtime replay matrices: every
+  generated component family module and generated smoke-test module is loaded,
+  replayed, checked for required group coverage, and required by component
+  parity runtime validation.
 
 ## Open Completion Areas
 
