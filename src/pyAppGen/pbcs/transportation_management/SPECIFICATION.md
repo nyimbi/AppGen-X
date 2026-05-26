@@ -126,5 +126,9 @@ confirmation.
 The runtime must prove that rules, parameters, and configuration execute and
 influence carrier selection and ETA decisions; that transportation-owned state
 stays inside the package boundary; that AppGen-X outbox events are idempotent;
-and that every standard and advanced capability claim has testable release
-evidence.
+that backend configuration rejects anything outside PostgreSQL, MySQL, or
+MariaDB; that eventing remains bound to the AppGen-X event contract without
+user-facing stream-engine selection; that package-local UI fragments expose
+shipment execution, carrier selection, tracking, ETA, delivery proof, exception,
+freight-cost, carbon, rule, parameter, and configuration workbench surfaces; and
+that every standard and advanced capability claim has testable release evidence.

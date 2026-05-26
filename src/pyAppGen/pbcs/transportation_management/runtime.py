@@ -257,16 +257,48 @@ def transportation_management_empty_state() -> dict:
 
 
 def transportation_management_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Transportation Management supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Transportation Management requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def transportation_management_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "max_cost_per_mile",
+        "on_time_weight",
+        "carbon_weight",
+        "service_level_weight",
+        "tracking_staleness_minutes",
+        "eta_confidence_threshold",
+        "tender_timeout_minutes",
+        "consolidation_threshold",
+        "delay_risk_threshold",
+        "exception_escalation_minutes",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported Transportation Management parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def transportation_management_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Transportation Management rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("Transportation Management rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -493,7 +525,18 @@ def transportation_management_model_stochastic_transit_exposure(*, delay_path: t
 
 def transportation_management_build_workbench_view(state: dict, *, tenant: str) -> dict:
     shipments = tuple(shipment for shipment in state["shipments"].values() if shipment["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "shipment_count": len(shipments), "delivered_count": len(tuple(shipment for shipment in shipments if shipment["status"] == "delivered")), "carrier_count": len(tuple(carrier for carrier in state["carriers"].values() if carrier["tenant"] == tenant)), "route_count": len(tuple(route for route in state["routes"].values() if route["tenant"] == tenant)), "tracking_count": len(tuple(event for event in state["tracking_events"].values() if event["tenant"] == tenant))}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "shipment_count": len(shipments),
+        "delivered_count": len(tuple(shipment for shipment in shipments if shipment["status"] == "delivered")),
+        "carrier_count": len(tuple(carrier for carrier in state["carriers"].values() if carrier["tenant"] == tenant)),
+        "route_count": len(tuple(route for route in state["routes"].values() if route["tenant"] == tenant)),
+        "tracking_count": len(tuple(event for event in state["tracking_events"].values() if event["tenant"] == tenant)),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def transportation_management_register_governed_model(name: str, metadata: dict) -> dict:

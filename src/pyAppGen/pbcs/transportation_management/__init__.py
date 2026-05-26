@@ -3,6 +3,7 @@
 from ..source_contract import source_pbc_package_contract
 from .runtime import TRANSPORTATION_MANAGEMENT_RUNTIME_CAPABILITY_KEYS
 from .runtime import TRANSPORTATION_MANAGEMENT_STANDARD_FEATURE_KEYS
+from .runtime import transportation_management_build_workbench_view
 from .runtime import transportation_management_calculate_eta
 from .runtime import transportation_management_configure_runtime
 from .runtime import transportation_management_confirm_delivery
@@ -17,6 +18,9 @@ from .runtime import transportation_management_runtime_capabilities
 from .runtime import transportation_management_runtime_smoke
 from .runtime import transportation_management_select_carrier
 from .runtime import transportation_management_set_parameter
+from .ui import TRANSPORTATION_MANAGEMENT_UI_FRAGMENT_KEYS
+from .ui import transportation_management_render_workbench
+from .ui import transportation_management_ui_contract
 
 PBC_KEY = "transportation_management"
 
@@ -28,4 +32,5 @@ def implementation_contract() -> dict:
         **contract,
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
+        "ui_contract": transportation_management_ui_contract(),
     }

@@ -5246,6 +5246,8 @@ from .pbcs.procurement_sourcing import procurement_sourcing_set_parameter  # noq
 from .pbcs.procurement_sourcing import procurement_sourcing_ui_contract  # noqa: E402,F401
 from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_build_workbench_view  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_calculate_eta  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_configure_runtime  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_confirm_delivery  # noqa: E402,F401
@@ -5256,10 +5258,12 @@ from .pbcs.transportation_management import transportation_management_plan_route
 from .pbcs.transportation_management import transportation_management_record_tracking_event  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_register_carrier  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_register_rule  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_render_workbench  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_runtime_capabilities  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_runtime_smoke  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_select_carrier  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_set_parameter  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_ui_contract  # noqa: E402,F401
 from .pbcs.dom import DOM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.dom import DOM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.dom import dom_apply_inventory_allocation  # noqa: E402,F401

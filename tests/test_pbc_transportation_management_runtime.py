@@ -1,8 +1,11 @@
+import pytest
+
 from pyAppGen.pbc import TRANSPORTATION_MANAGEMENT_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbc import transportation_management_calculate_eta
+from pyAppGen.pbc import transportation_management_build_workbench_view
 from pyAppGen.pbc import transportation_management_configure_runtime
 from pyAppGen.pbc import transportation_management_confirm_delivery
 from pyAppGen.pbc import transportation_management_create_shipment
@@ -12,10 +15,12 @@ from pyAppGen.pbc import transportation_management_plan_route
 from pyAppGen.pbc import transportation_management_record_tracking_event
 from pyAppGen.pbc import transportation_management_register_carrier
 from pyAppGen.pbc import transportation_management_register_rule
+from pyAppGen.pbc import transportation_management_render_workbench
 from pyAppGen.pbc import transportation_management_runtime_capabilities
 from pyAppGen.pbc import transportation_management_runtime_smoke
 from pyAppGen.pbc import transportation_management_select_carrier
 from pyAppGen.pbc import transportation_management_set_parameter
+from pyAppGen.pbc import transportation_management_ui_contract
 
 
 def test_transportation_management_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -36,6 +41,8 @@ def test_transportation_management_runtime_executes_standard_and_advanced_capabi
     contract = pbc_implementation_contract("transportation_management")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert "TransportationConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(TRANSPORTATION_MANAGEMENT_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("transportation_management",))["ok"] is True
     assert pbc_implemented_capability_audit(("transportation_management",))["ok"] is True
@@ -142,3 +149,54 @@ def test_transportation_management_runtime_applies_rules_parameters_and_configur
     state = delivery["state"]
     assert delivery["shipment"]["status"] == "delivered"
     assert state["outbox"][-1]["idempotency_key"] == "transportation_management:ShipmentDelivered:transport_evt_000008"
+
+    workbench = transportation_management_build_workbench_view(state, tenant="tenant_ops")
+    assert workbench["shipment_count"] == 1
+    assert workbench["delivered_count"] == 1
+    assert workbench["carrier_count"] == 2
+    assert workbench["route_count"] == 1
+    assert workbench["tracking_count"] == 1
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 4
+
+    ui_contract = transportation_management_ui_contract()
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert "max_cost_per_mile" in ui_contract["parameter_editor"]["numeric_parameters"]
+    assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    rendered = transportation_management_render_workbench(
+        state,
+        tenant="tenant_ops",
+        principal_permissions=(
+            "transportation_management.plan",
+            "transportation_management.tender",
+            "transportation_management.dispatch",
+            "transportation_management.track",
+            "transportation_management.confirm",
+            "transportation_management.audit",
+            "transportation_management.configure",
+        ),
+    )
+    assert rendered["ok"] is True
+    assert rendered["configuration_bound"] is True
+    assert rendered["event_outbox_count"] == 8
+    assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
+    assert not rendered["locked_actions"]
+
+
+def test_transportation_management_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = transportation_management_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        transportation_management_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.transportation.events",
+                "retry_limit": 3,
+                "default_currency": "USD",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Transportation Management parameter"):
+        transportation_management_set_parameter(state, "stream_engine", "hidden_picker")
