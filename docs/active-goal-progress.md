@@ -840,6 +840,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   expose operation names, enterprise data modules expose surface pipelines, and
   generated validation fails when required operation, surface, replay-phase, or
   side-effect evidence is missing.
+- Current inspector pass tightens generated editor-family replay: property,
+  event, component, and custom designer family modules now surface operation
+  steps in generated runtime matrices, and generated validation fails when
+  family coverage, editor lifecycle steps, or side-effect evidence is missing.
 - `2eac7a8` normalizes `ar_credit` into the complete package surface used by
   implemented PBC slices: package-local `SPECIFICATION.md`, UI/workbench
   contract, executable configuration/rule/parameter operations, central PBC

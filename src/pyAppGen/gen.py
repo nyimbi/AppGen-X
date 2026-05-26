@@ -18651,16 +18651,63 @@ def inspector_family_runtime_replay_matrix(component="Grid"):
                 {
                     "family": item["family"],
                     "module": item["module"],
+                    "operation_steps": tuple(result.get("operation_steps", ())) if isinstance(result, dict) else (),
                     "ok": result["ok"] and not result.get("side_effects", ()),
                     "result": result,
                 }
             )
         replays_by_kind[kind] = tuple(family_replays)
+    required_family_coverage = {
+        "property": {"string", "number", "boolean", "choice", "collection", "binding", "color", "resource"},
+        "event": {"create_stub", "navigate_handler", "rename_handler", "detach_handler", "signature_validation", "orphan_cleanup"},
+        "component": {"selection", "dialog", "transaction", "layout", "binding", "preview"},
+        "custom": {"paint_overlay", "verb_menu", "selection_handles", "smart_tags", "alignment_guides", "inline_preview"},
+    }
+    required_step_coverage = {
+        "property": {"open_property_row", "mount_family_editor", "validate_value", "preview_change", "commit_or_revert", "record_undo"},
+        "event": {"select_component_event", "resolve_handler_reference", "preview_reference_update", "commit_or_cancel", "record_undo"},
+        "component": {"capture_selection", "open_component_editor", "stage_change", "validate_change", "apply_or_cancel", "record_undo"},
+        "custom": {"register_custom_designer", "activate_hook", "render_overlay", "publish_hit_targets", "commit_or_cancel", "unload_hook"},
+    }
     checks = (
         {"id": "generated_property_editor_families_replay", "ok": len(replays_by_kind["property"]) == 8 and all(item["ok"] for item in replays_by_kind["property"])},
         {"id": "generated_event_editor_families_replay", "ok": len(replays_by_kind["event"]) == 6 and all(item["ok"] for item in replays_by_kind["event"])},
         {"id": "generated_component_editor_families_replay", "ok": len(replays_by_kind["component"]) == 6 and all(item["ok"] for item in replays_by_kind["component"])},
         {"id": "generated_custom_designer_families_replay", "ok": len(replays_by_kind["custom"]) == 6 and all(item["ok"] for item in replays_by_kind["custom"])},
+        {
+            "id": "generated_inspector_family_coverage",
+            "ok": all(
+                required_family_coverage[kind] == {item["family"] for item in replays_by_kind[kind] if item["ok"]}
+                for kind in required_family_coverage
+            ),
+            "evidence": tuple(
+                {"kind": kind, "families": tuple(sorted(item["family"] for item in replays_by_kind[kind]))}
+                for kind in sorted(required_family_coverage)
+            ),
+        },
+        {
+            "id": "generated_inspector_family_operation_step_coverage",
+            "ok": all(
+                required_step_coverage[kind]
+                <= {step for item in replays_by_kind[kind] if item["ok"] for step in item["operation_steps"]}
+                for kind in required_step_coverage
+            ),
+            "evidence": tuple(
+                {
+                    "kind": kind,
+                    "steps": tuple(sorted({step for item in replays_by_kind[kind] for step in item["operation_steps"]})),
+                }
+                for kind in sorted(required_step_coverage)
+            ),
+        },
+        {
+            "id": "generated_inspector_family_replays_side_effect_free",
+            "ok": all(
+                not item["result"].get("side_effects", ())
+                for kind in replays_by_kind
+                for item in replays_by_kind[kind]
+            ),
+        },
     )
     return {
         "format": "appgen.generated-inspector-family-runtime-replay-matrix.v1",

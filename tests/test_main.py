@@ -16257,6 +16257,43 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(inspector_family_runtime_matrix["event_editor_replays"]) == 6
     assert len(inspector_family_runtime_matrix["component_editor_replays"]) == 6
     assert len(inspector_family_runtime_matrix["custom_designer_replays"]) == 6
+    assert {
+        "generated_inspector_family_coverage",
+        "generated_inspector_family_operation_step_coverage",
+        "generated_inspector_family_replays_side_effect_free",
+    } <= {check["id"] for check in inspector_family_runtime_matrix["checks"] if check["ok"]}
+    assert {"string", "binding", "resource"} <= {
+        item["family"] for item in inspector_family_runtime_matrix["property_editor_replays"]
+    }
+    assert {"create_stub", "rename_handler", "orphan_cleanup"} <= {
+        item["family"] for item in inspector_family_runtime_matrix["event_editor_replays"]
+    }
+    assert {"transaction", "binding", "preview"} <= {
+        item["family"] for item in inspector_family_runtime_matrix["component_editor_replays"]
+    }
+    assert {"paint_overlay", "smart_tags", "inline_preview"} <= {
+        item["family"] for item in inspector_family_runtime_matrix["custom_designer_replays"]
+    }
+    assert {"validate_value", "preview_change", "record_undo"} <= {
+        step
+        for item in inspector_family_runtime_matrix["property_editor_replays"]
+        for step in item["operation_steps"]
+    }
+    assert {"resolve_handler_reference", "preview_reference_update", "commit_or_cancel"} <= {
+        step
+        for item in inspector_family_runtime_matrix["event_editor_replays"]
+        for step in item["operation_steps"]
+    }
+    assert {"open_component_editor", "validate_change", "apply_or_cancel"} <= {
+        step
+        for item in inspector_family_runtime_matrix["component_editor_replays"]
+        for step in item["operation_steps"]
+    }
+    assert {"activate_hook", "publish_hit_targets", "unload_hook"} <= {
+        step
+        for item in inspector_family_runtime_matrix["custom_designer_replays"]
+        for step in item["operation_steps"]
+    }
     assert {item["module"] for item in inspector_module_files["modules"]} == {
         "property_editor_module",
         "event_editor_module",
