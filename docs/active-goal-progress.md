@@ -1238,7 +1238,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`19 passed`), all PBC packages now expose backend allowlists and
   owned-table boundary verifiers, and implementation release, generation
   smoke, capability, full implementation release, and catalog release audits
-  all return true for the implemented PBC set. Commit: pending this slice.
+  all return true for the implemented PBC set. Commit: `7a1d4fb`.
 
 ## Open Completion Areas
 
