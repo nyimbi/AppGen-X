@@ -890,6 +890,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   implemented-capability audit, implementation release audit,
   `pbc_release_audit()`, transportation generation smoke audit, py-compile, and
   the restricted legacy-name diff scan.
+- `3343b8e` normalizes `dom` into the complete package surface: package-local
+  distributed order management UI/workbench contract, stricter executable
+  configuration and parameter validation, source contract wiring, central PBC
+  exports, focused DOM tests, and release-audit evidence. Verification passed
+  for DOM focused tests, the 68-test PBC regression slice, central enterprise
+  composition selection, implemented-capability audit, implementation release
+  audit, `pbc_release_audit()`, DOM generation smoke audit, py-compile, and the
+  restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
