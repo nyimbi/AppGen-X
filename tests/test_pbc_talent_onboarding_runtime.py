@@ -12,6 +12,9 @@ from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbc import talent_onboarding_accept_offer
 from pyAppGen.pbc import talent_onboarding_advance_candidate_stage
 from pyAppGen.pbc import talent_onboarding_build_api_contract
+from pyAppGen.pbc import talent_onboarding_build_release_evidence
+from pyAppGen.pbc import talent_onboarding_build_schema_contract
+from pyAppGen.pbc import talent_onboarding_build_service_contract
 from pyAppGen.pbc import talent_onboarding_build_workbench_view
 from pyAppGen.pbc import talent_onboarding_complete_onboarding_task
 from pyAppGen.pbc import talent_onboarding_configure_runtime
@@ -42,10 +45,14 @@ def test_talent_onboarding_runtime_executes_standard_and_advanced_capabilities()
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/talent_onboarding"
     assert runtime["owned_tables"] == TALENT_ONBOARDING_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 24
+    assert len(runtime["owned_tables"]) >= 40
+    assert len(runtime["standard_features"]) >= 40
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
+    assert "appgen_x_outbox" in runtime["standard_features"]
+    assert "appgen_x_inbox" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert set(TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
@@ -57,7 +64,13 @@ def test_talent_onboarding_runtime_executes_standard_and_advanced_capabilities()
     assert contract["source_package"]["owned_tables"] == TALENT_ONBOARDING_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "talent_onboarding.event"
+    assert contract["source_package"]["required_event_topic"] == TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == TALENT_ONBOARDING_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == TALENT_ONBOARDING_EMITTED_EVENT_TYPES
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "TalentConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS)
@@ -65,6 +78,9 @@ def test_talent_onboarding_runtime_executes_standard_and_advanced_capabilities()
     assert pbc_implemented_capability_audit(("talent_onboarding",))["ok"] is True
 
     api = talent_onboarding_build_api_contract()
+    schema = talent_onboarding_build_schema_contract()
+    service = talent_onboarding_build_service_contract()
+    release = talent_onboarding_build_release_evidence()
     permissions = talent_onboarding_permissions_contract()
     assert api["format"] == "appgen.talent-onboarding-api-contract.v1"
     assert api["owned_tables"] == TALENT_ONBOARDING_OWNED_TABLES
@@ -75,6 +91,25 @@ def test_talent_onboarding_runtime_executes_standard_and_advanced_capabilities()
     assert api["stream_engine_picker_visible"] is False
     assert {route["route"] for route in api["routes"]} >= {"POST /candidates", "POST /talent/events/inbox", "GET /talent-workbench"}
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert schema["format"] == "appgen.talent-onboarding-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(TALENT_ONBOARDING_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(TALENT_ONBOARDING_OWNED_TABLES)
+    assert {
+        "job_requisition_approval",
+        "candidate_stage_history",
+        "interview_schedule",
+        "offer_acceptance",
+        "talent_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.talent-onboarding-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.talent-onboarding-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert permissions["action_permissions"]["provision_employee"] == "talent_onboarding.onboard"
 
 
@@ -223,6 +258,7 @@ def test_talent_onboarding_runtime_applies_rules_parameters_configuration_and_ui
             "talent_onboarding.event",
             "talent_onboarding.configure",
             "talent_onboarding.audit",
+            "talent_onboarding.read",
         ),
     )
     assert rendered["ok"] is True

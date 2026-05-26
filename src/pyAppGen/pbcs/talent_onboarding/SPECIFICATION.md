@@ -20,13 +20,56 @@ Package-local implementation contract for the Talent Onboarding PBC. The package
 Owned tables and generated model artifacts:
 
 - `job_requisition`
+- `job_requisition_approval`
+- `job_requisition_budget`
+- `job_requisition_skill`
+- `sourcing_campaign`
+- `candidate_source`
 - `candidate`
 - `candidate_consent`
+- `candidate_profile`
+- `candidate_skill`
+- `candidate_stage_history`
+- `candidate_duplicate_check`
+- `candidate_privacy_request`
 - `interview_plan`
+- `interview_panel`
+- `interview_schedule`
+- `interview_feedback`
 - `evaluation_evidence`
+- `candidate_scorecard`
 - `background_check`
+- `background_check_package`
+- `background_check_adjudication`
+- `adverse_action_notice`
 - `offer`
+- `offer_approval`
+- `offer_acceptance`
+- `compensation_projection`
 - `onboarding_task`
+- `onboarding_task_template`
+- `onboarding_checklist`
+- `equipment_request`
+- `access_preload_projection`
+- `welcome_notification_projection`
+- `personnel_identity_projection`
+- `payroll_worker_projection`
+- `role_projection`
+- `talent_policy_screening`
+- `talent_audit_trace`
+- `talent_candidate_proof`
+- `talent_federation_projection`
+- `talent_carbon_schedule_window`
+- `talent_pipeline_optimization`
+- `talent_interview_allocation`
+- `talent_anomaly_signal`
+- `talent_candidate_risk_model`
+- `talent_hiring_forecast`
+- `talent_parsed_instruction`
+- `talent_seed_data`
+- `talent_schema_extension`
+- `talent_control_assertion`
+- `talent_governed_model`
 - `talent_rule`
 - `talent_parameter`
 - `talent_configuration`
@@ -44,22 +87,62 @@ The PBC does not share personnel, payroll, access, notification, recruiting-prov
 ## Standard Capabilities
 
 - Job requisition creation, opening, pause/closure policy support, department, manager, location, budget, and headcount descriptors.
+- Requisition approvals, budget evidence, required skills, sourcing campaigns, and candidate source tracking.
 - Candidate capture with source, skills, country, match score, consent, identity, status, and stage.
 - Consent management and privacy/retention policy evidence.
+- Candidate profiles, skill evidence, stage history, duplicate checks, and candidate privacy requests.
 - Candidate pipeline from application through screening, interview, offer, hired, rejection, withdrawal, and provisioning.
-- Interview plan and evaluation evidence descriptors.
+- Interview plan, panel, schedule, feedback, evaluation evidence, and candidate scorecard descriptors.
 - Background check request, provider validation, result capture, confidence thresholding, adjudication, and adverse-action review evidence.
-- Offer creation, compensation projection, expiry policy, acceptance, decline, and blocked-offer evidence.
+- Background check packages, adjudications, adverse-action notices, offer approvals, offer acceptance records, compensation projection, expiry policy, acceptance, decline, and blocked-offer evidence.
 - Onboarding task generation by role, location, worker type, and jurisdiction.
-- Task assignment, due date, completion, exception, and HR/manager review evidence.
+- Task templates, onboarding checklists, equipment requests, task assignment, due date, completion, exception, and HR/manager review evidence.
 - Employee provisioning handoffs for personnel identity, access preload, and welcome notifications.
 - Candidate hire events for analytics and downstream workflows.
 - Role and worker-identity projection handling through AppGen-X inbox events.
+- Personnel identity, payroll worker, role, access preload, and welcome notification projections as package-local read models.
+- Policy screening, audit trace, candidate proof, federation projection, carbon-aware scheduling, pipeline optimization, interview allocation, anomaly, risk, forecast, parsed instruction, control assertion, governed-model, seed, and schema-extension artifacts.
 - Source-channel, cycle-time, conversion, hired, provisioned, and task-completion analytics.
 - Multi-tenant and multi-entity isolation.
 - AppGen-X inbox/outbox idempotency and dead-letter evidence.
 - RBAC descriptors for requisition, candidate, offer, onboarding, event, configuration, and audit actions.
 - Package-local workbench UI for requisitions, candidates, checks, offers, onboarding tasks, rules, parameters, configuration, and event evidence.
+
+## Generated Schema, Services, And Release Evidence
+
+`build_schema_contract` emits field definitions, relationships, migration paths
+under `pbcs/talent_onboarding/migrations/`, generated model names, backend
+allowlists, and `shared_table_access: false` for every owned table. The schema
+contract covers requisitions, approvals, budgets, skills, sourcing, candidate
+sources, candidate profiles, consents, skills, stage history, duplicate checks,
+privacy requests, interview plans, panels, schedules, feedback, evaluations,
+scorecards, background checks, adjudication, adverse action, offers, offer
+approvals, acceptances, compensation projections, onboarding tasks, templates,
+checklists, equipment, projections, policy screening, audit, proofs,
+federation, carbon scheduling, optimization, allocation, anomaly, risk,
+forecast, parsed instructions, seed data, extensions, controls, governed
+models, rules, parameters, configuration, outbox, inbox, and dead-letter
+artifacts.
+
+`build_service_contract` declares the transaction boundary as the Talent
+Onboarding owned datastore plus the AppGen-X outbox. Commands configure the
+runtime, set parameters, register rules and schema extensions, receive events,
+open requisitions, create candidates, move stages, record checks, extend and
+accept offers, create and complete onboarding tasks, provision employees, route
+screening/provisioning work, generate candidate proofs, screen policy, federate
+talent views, verify identities, run resilience drills, rotate crypto epochs,
+schedule carbon-aware interviews, optimize pipelines, allocate interviews, run
+controls, and register governed models. Query methods cover workbench views,
+hiring policy simulation, hiring-cycle forecasting, semantic instruction
+parsing, candidate-risk scoring, exception recommendations, anomaly detection,
+stochastic exposure, generated API/schema/release contracts, and boundary
+verification.
+
+`build_release_evidence` combines schema, service, API, and permissions
+checks: owned schema depth, per-table migration coverage, command depth, fixed
+AppGen-X eventing, key command permission coverage, backend allowlist, and no
+shared-table access. A Talent Onboarding release is valid only when every check
+passes and `blocking_gaps` is empty.
 
 ## Advanced Capabilities
 

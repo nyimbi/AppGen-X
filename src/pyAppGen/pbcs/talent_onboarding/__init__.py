@@ -11,6 +11,9 @@ from .runtime import TALENT_ONBOARDING_STANDARD_FEATURE_KEYS
 from .runtime import talent_onboarding_accept_offer
 from .runtime import talent_onboarding_advance_candidate_stage
 from .runtime import talent_onboarding_build_api_contract
+from .runtime import talent_onboarding_build_release_evidence
+from .runtime import talent_onboarding_build_schema_contract
+from .runtime import talent_onboarding_build_service_contract
 from .runtime import talent_onboarding_build_workbench_view
 from .runtime import talent_onboarding_complete_onboarding_task
 from .runtime import talent_onboarding_configure_runtime
@@ -45,7 +48,13 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": talent_onboarding_ui_contract(),
         "api_contract": talent_onboarding_build_api_contract(),
+        "schema_contract": talent_onboarding_build_schema_contract(),
+        "service_contract": talent_onboarding_build_service_contract(),
+        "release_evidence_contract": talent_onboarding_build_release_evidence(),
         "permissions_contract": talent_onboarding_permissions_contract(),
         "owned_tables": TALENT_ONBOARDING_OWNED_TABLES,
         "allowed_database_backends": TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC,
+        "consumes": TALENT_ONBOARDING_CONSUMED_EVENT_TYPES,
+        "emits": TALENT_ONBOARDING_EMITTED_EVENT_TYPES,
     }
