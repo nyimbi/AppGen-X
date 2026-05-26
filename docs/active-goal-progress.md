@@ -1348,6 +1348,25 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   implementation release, generation smoke, capability, full implementation
   release, and catalog release audits all return true for the implemented PBC
   set. Commit: `7987197`.
+- Current WMS Core PBC completion pass expands `wms_core` into a
+  package-local warehouse execution implementation with 54 owned tables,
+  schema/model/migration contract evidence, service and release evidence
+  contracts, AppGen-X eventing, UI/workbench binding, rules, parameters,
+  configuration, boundary checks, and a detailed package specification.
+  Focused WMS tests pass (`4 passed`), syntax and whitespace checks pass, the
+  restricted-name scan has no hits, and implementation release, generation
+  smoke, capability, full implementation release, and catalog release audits
+  all return true for the implemented PBC set. Commit: `f692949`.
+- Current visual binding runtime pass hardens generated binding module tests
+  and binding designer family modules so generated binding readiness fails
+  unless visual graph, expression, designer, runtime wiring, propagation, and
+  lifecycle modules plus all binding-designer families prove reusable
+  operation-step and validation-step contracts before runtime release.
+- Current repo cleanup pass archives active generated runtime/test cache
+  artifacts under `archive/repo-cleanup-2026-05-26-2/` and leaves tracked
+  source, docs, tests, package files, and unrelated dirty implementation work
+  untouched. No active `__pycache__` or `.pytest_cache` directories remain
+  outside `.venv`, `archive`, and ignored dependency folders.
 
 ## Open Completion Areas
 

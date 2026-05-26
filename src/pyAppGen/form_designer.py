@@ -9635,7 +9635,8 @@ def livebindings_workbench() -> dict:
             "id": "binding_generated_module_tests",
             "ok": len(binding_module_test_artifacts) == 6
             and all(
-                item["ok"] and "test_binding_module_smoke" in item["exports"]
+                item["ok"]
+                and {"test_binding_module_smoke", "test_binding_module_step_contracts"} <= set(item["exports"])
                 for item in binding_module_test_artifacts
             ),
             "evidence": binding_module_test_artifacts,
@@ -9653,7 +9654,14 @@ def livebindings_workbench() -> dict:
             "ok": len(binding_designer_family_artifacts) == 6
             and all(
                 item["ok"]
-                and {"binding_designer_family_manifest", "run_binding_designer_operation", "smoke_test"} <= set(item["exports"])
+                and {
+                    "binding_designer_family_manifest",
+                    "run_binding_designer_operation",
+                    "operation_steps",
+                    "validation_steps",
+                    "smoke_test",
+                }
+                <= set(item["exports"])
                 for item in binding_designer_family_artifacts
             ),
             "evidence": binding_designer_family_artifacts,
@@ -9662,7 +9670,12 @@ def livebindings_workbench() -> dict:
             "id": "binding_designer_family_module_tests",
             "ok": len(binding_designer_family_test_artifacts) == 6
             and all(
-                item["ok"] and "test_binding_designer_family_module_smoke" in item["exports"]
+                item["ok"]
+                and {
+                    "test_binding_designer_family_module_smoke",
+                    "test_binding_designer_family_module_step_contracts",
+                }
+                <= set(item["exports"])
                 for item in binding_designer_family_test_artifacts
             ),
             "evidence": binding_designer_family_test_artifacts,
@@ -24189,6 +24202,7 @@ def binding_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_binding_module",
                 "test_binding_module_contract",
                 "test_binding_module_smoke",
+                "test_binding_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
@@ -24317,6 +24331,8 @@ def binding_designer_family_module_file_manifest() -> tuple[dict, ...]:
         "binding_designer_family_manifest",
         "run_binding_designer_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -24346,6 +24362,7 @@ def binding_designer_family_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_binding_designer_family_module",
                 "test_binding_designer_family_module_contract",
                 "test_binding_designer_family_module_smoke",
+                "test_binding_designer_family_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
