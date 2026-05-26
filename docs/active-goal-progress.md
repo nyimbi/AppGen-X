@@ -1436,6 +1436,33 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generation smoke, capability, full implementation release, and catalog
   release audits all return true for the implemented PBC set.
   Commit: `23eb56c`.
+- Current Quality Assurance PBC completion pass exposes package-local
+  AppGen-X topic, emitted/consumed event sets, boundary evidence, UI binding
+  metadata, runtime event tables, rules, parameters, configuration, and API
+  evidence through the `quality_assurance` implementation contract. Focused
+  Quality Assurance tests pass (`3 passed`), syntax and whitespace checks
+  pass, the restricted-name scan has no hits, and implementation release,
+  generation smoke, capability, full implementation release, and catalog
+  release audits all return true for the implemented PBC set.
+  Commit: `4ba9719`.
+- Current Production Control PBC completion pass adds generated schema,
+  service, and release evidence builders plus API routes and audit
+  permissions for rules, parameters, configuration, boundary, and release
+  evidence. Focused Production Control tests pass (`5 passed`), syntax and
+  whitespace checks pass, the restricted-name scan has no hits, and
+  implementation release, generation smoke, capability, full implementation
+  release, and catalog release audits all return true for the implemented PBC
+  set. Commit: `66eb611`.
+- Current EAM PBC completion pass expands `eam` into a package-local
+  maintenance implementation with 16 owned tables, schema/model/migration
+  contract evidence, service and release evidence contracts, AppGen-X
+  eventing, UI/workbench binding, rules, parameters, configuration,
+  idempotent handler metadata, boundary checks, and focused runtime tests.
+  Focused EAM tests pass (`3 passed`), syntax and whitespace checks pass,
+  the restricted-name scan has no hits, and implementation release,
+  generation smoke, capability, full implementation release, and catalog
+  release audits all return true for the implemented PBC set.
+  Commit: `86c5544`.
 - Current visual binding runtime pass hardens generated binding module tests
   and binding designer family modules so generated binding readiness fails
   unless visual graph, expression, designer, runtime wiring, propagation, and
