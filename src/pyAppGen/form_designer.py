@@ -9536,6 +9536,7 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
     previews = binding_preview_evaluation_contract(design)
     runtime_wiring = binding_runtime_wiring_contract(design)
     preview_runtime_parity = binding_preview_runtime_parity_contract(design)
+    pipelines = binding_pipeline_contract(design)
     diagnostics = binding_diagnostics_contract(design)
     conflict_resolution = binding_conflict_resolution_workflow(design)
     offline_replay = binding_offline_replay_contract(design)
@@ -9611,6 +9612,16 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
         {"id": "graph_authoring_ready", "ok": phases[0]["ok"], "evidence": {"contract": contract, "graph": graph, "authoring": authoring}},
         {"id": "validation_transaction_ready", "ok": phases[1]["ok"], "evidence": {"graph_validation": graph_validation, "edit_transactions": edit_transactions}},
         {"id": "preview_runtime_ready", "ok": phases[2]["ok"], "evidence": {"previews": previews, "runtime_wiring": runtime_wiring, "parity": preview_runtime_parity}},
+        {
+            "id": "runtime_artifact_pipeline_ready",
+            "ok": {"binding_registry", "observer_hooks", "update_queue", "validation_pipeline", "converter_pipeline"} <= set(runtime_wiring["artifacts"])
+            and {"on_change", "on_validate"} <= set(runtime_wiring["triggers"])
+            and pipelines["ok"]
+            and all({"apply_converter", "run_validators", "write_target"} <= set(item["pipeline"]) for item in pipelines["pipelines"])
+            and not runtime_wiring["side_effects"]
+            and not pipelines["side_effects"],
+            "evidence": {"runtime_wiring": runtime_wiring, "pipelines": pipelines},
+        },
         {"id": "diagnostics_conflict_ready", "ok": phases[3]["ok"], "evidence": {"diagnostics": diagnostics, "conflict_resolution": conflict_resolution}},
         {"id": "offline_accessible_runtime_ready", "ok": phases[4]["ok"], "evidence": {"offline": offline_replay, "accessibility": accessibility, "runtime": runtime_propagation}},
         {"id": "designer_release_replay_ready", "ok": phases[5]["ok"], "evidence": {"design_runtime": design_runtime, "designer_transaction": designer_transaction, "lifecycle": lifecycle_release}},
@@ -9649,6 +9660,8 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
             "edge_count": len(graph["edges"]),
             "authoring_ops": len(authoring["operations"]),
             "runtime_bindings": len(livebindings_emit_runtime_wiring(graph)["bindings"]),
+            "runtime_artifacts": len(runtime_wiring["artifacts"]),
+            "converter_validator_pipelines": len(pipelines["pipelines"]),
             "offline_items": len(offline_replay["queue_items"]),
             "runtime_trace": len(runtime_propagation["trace"]),
             "release_phases": len(lifecycle_release["replay"]),
@@ -9966,6 +9979,7 @@ def livebindings_workbench() -> dict:
                 "graph_authoring_ready",
                 "validation_transaction_ready",
                 "preview_runtime_ready",
+                "runtime_artifact_pipeline_ready",
                 "diagnostics_conflict_ready",
                 "offline_accessible_runtime_ready",
                 "designer_release_replay_ready",
@@ -16827,6 +16841,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "graph_authoring_ready",
                 "validation_transaction_ready",
                 "preview_runtime_ready",
+                "runtime_artifact_pipeline_ready",
                 "diagnostics_conflict_ready",
                 "offline_accessible_runtime_ready",
                 "designer_release_replay_ready",
@@ -16851,6 +16866,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "binding_lifecycle_release_replay",
                 "design_runtime_session_replay",
                 "designer_transaction_replay",
+                "runtime_artifact_pipeline_ready",
                 "binding_designer_scenario",
                 "binding_generated_modules",
                 "binding_generated_module_tests",
@@ -18020,6 +18036,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "graph_authoring_ready",
         "validation_transaction_ready",
         "preview_runtime_ready",
+        "runtime_artifact_pipeline_ready",
         "diagnostics_conflict_ready",
         "offline_accessible_runtime_ready",
         "designer_release_replay_ready",

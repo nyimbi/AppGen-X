@@ -1775,6 +1775,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   pass (`396 passed`), source/generated package evidence tests pass
   (`8 passed`), and the full PBC audit stack including all built-in generation
   smoke and `pbc_release_audit()` returns true. Commit: `ae015be`.
+- Current visual binding designer readiness pass promotes runtime wiring
+  artifacts and converter/validator pipelines into first-class readiness
+  evidence for source and generated apps. Binding readiness now fails unless
+  the generated runtime exposes registry, observer hooks, update queue,
+  validation/converter pipelines, runtime triggers, and executable pipeline
+  stages before release claims. Commit: `pending`.
 
 ## Open Completion Areas
 

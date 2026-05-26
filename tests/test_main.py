@@ -2438,6 +2438,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "graph_authoring_ready",
         "validation_transaction_ready",
         "preview_runtime_ready",
+        "runtime_artifact_pipeline_ready",
         "diagnostics_conflict_ready",
         "offline_accessible_runtime_ready",
         "designer_release_replay_ready",
@@ -2449,6 +2450,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert binding_readiness["final_state"]["scenario_steps"] == len(binding_scenario["pipeline"])
     assert binding_readiness["final_state"]["node_count"] == len(binding_workbench["contract"]["graph"]["nodes"])
     assert binding_readiness["final_state"]["edge_count"] == len(binding_workbench["contract"]["graph"]["edges"])
+    assert binding_readiness["final_state"]["runtime_artifacts"] >= 5
+    assert binding_readiness["final_state"]["converter_validator_pipelines"] == len(binding_workbench["pipelines"]["pipelines"])
     assert binding_workbench["readiness"]["ok"] is True
     assert binding_workbench["readiness"]["final_state"]["runtime_trace"] > 0
     assert len(binding_workbench["binding_module_artifacts"]) == 6
@@ -5229,6 +5232,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "binding_generated_modules",
         "binding_generated_module_tests",
+        "runtime_artifact_pipeline_ready",
         "binding_designer_scenario",
         "binding_designer_family_contract",
         "binding_designer_family_modules",
@@ -15325,6 +15329,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "binding_generated_modules",
         "binding_generated_module_tests",
+        "runtime_artifact_pipeline_ready",
         "binding_designer_scenario",
         "binding_designer_family_contract",
         "binding_designer_family_modules",
@@ -16109,6 +16114,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "graph_authoring_ready",
         "validation_transaction_ready",
         "preview_runtime_ready",
+        "runtime_artifact_pipeline_ready",
         "diagnostics_conflict_ready",
         "offline_accessible_runtime_ready",
         "designer_release_replay_ready",
@@ -16120,6 +16126,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_binding_readiness["final_state"]["node_count"] == len(generated_bindings["contract"]["graph"]["nodes"])
     assert generated_binding_readiness["final_state"]["edge_count"] == len(generated_bindings["contract"]["graph"]["edges"])
     assert generated_binding_readiness["final_state"]["scenario_steps"] == len(generated_binding_scenario["pipeline"])
+    assert generated_binding_readiness["final_state"]["runtime_artifacts"] >= 5
+    assert generated_binding_readiness["final_state"]["converter_validator_pipelines"] == len(generated_bindings["pipelines"]["pipelines"])
     assert generated_bindings["readiness"]["ok"] is True
     assert generated_bindings["readiness"]["final_state"]["runtime_trace"] > 0
     generated_binding_families = form_designer.binding_designer_family_contract()
