@@ -1558,6 +1558,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   stream-engine scan has no hits, and batch plus full implemented-PBC
   generation, capability, implementation release, and catalog release audits all
   return true. Commit: `d766ad5`.
+- Current intelligence PBC strengthening pass closes the remaining
+  package-local schema/service/release builder gap for `loyalty_rewards`,
+  `streaming_analytics`, `enterprise_search_vector`, `predictive_demand`, and
+  `fraud_anomaly_detection`. Each package now exposes generated owned-schema,
+  service, release, runtime AppGen-X inbox/outbox/dead-letter, UI/workbench,
+  permissions, configuration, and boundary evidence through its own directory
+  plus central facade exports. Focused tests pass (`16 passed`), every one of
+  the 46 PBC runtimes now has package-local schema/service/release builders,
+  the restricted legacy and stream-engine scans over the five strengthened
+  slices have no hits, and full generation, capability, implementation release,
+  and catalog release audits all return true. Commit: `7169b36`.
 
 ## Open Completion Areas
 
