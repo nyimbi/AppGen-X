@@ -932,6 +932,40 @@ WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "workflow_mlops_governance",
 )
+AUDIT_LEDGER_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_audit_lifecycle",
+    "graph_relational_evidence_topology",
+    "multi_tenant_audit_isolation",
+    "schema_on_read_evidence_envelope",
+    "probabilistic_tamper_control_risk_scoring",
+    "real_time_audit_analytics",
+    "counterfactual_retention_disclosure_simulation",
+    "temporal_evidence_health_forecasting",
+    "autonomous_control_remediation",
+    "semantic_audit_query_parsing",
+    "predictive_audit_risk_scoring",
+    "self_healing_audit_ingestion_route_selection",
+    "zero_knowledge_event_disclosure_proof",
+    "immutable_regulatory_trail",
+    "dynamic_audit_policy_screening",
+    "automated_audit_control_testing",
+    "universal_api_async_audit_surface",
+    "cross_system_audit_federation",
+    "identity_gateway_schema_workflow_composition_integration",
+    "decentralized_actor_identity",
+    "chaos_engineered_audit_tolerance",
+    "quantum_resistant_audit_signing",
+    "carbon_aware_audit_processing",
+    "algebraic_evidence_minimization",
+    "mechanism_design_export_reviewer_allocation",
+    "information_theoretic_audit_anomaly_detection",
+    "temporal_evidence_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_audit_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "audit_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -958,6 +992,7 @@ IMPLEMENTED_PBC_KEYS = (
     "api_gateway_mesh",
     "schema_registry",
     "workflow_orchestration",
+    "audit_ledger",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3221,6 +3256,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = schema_registry_runtime_capabilities()
     elif key == "workflow_orchestration":
         advanced_runtime = workflow_orchestration_runtime_capabilities()
+    elif key == "audit_ledger":
+        advanced_runtime = audit_ledger_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3522,6 +3559,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
         "workflow_orchestration": len(WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS),
+        "audit_ledger": len(AUDIT_LEDGER_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -5428,3 +5466,22 @@ from .pbcs.workflow_orchestration import workflow_orchestration_set_parameter  #
 from .pbcs.workflow_orchestration import workflow_orchestration_signal_instance  # noqa: E402,F401
 from .pbcs.workflow_orchestration import workflow_orchestration_start_instance  # noqa: E402,F401
 from .pbcs.workflow_orchestration import workflow_orchestration_ui_contract  # noqa: E402,F401
+from .pbcs.audit_ledger import AUDIT_LEDGER_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.audit_ledger import AUDIT_LEDGER_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.audit_ledger import AUDIT_LEDGER_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_assert_control  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_build_workbench_view  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_configure_runtime  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_define_retention_policy  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_empty_state  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_prepare_forensic_export  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_publish_audit_projection  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_record_access_evidence  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_record_audit_event  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_register_rule  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_render_workbench  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_runtime_capabilities  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_runtime_smoke  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_set_parameter  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_ui_contract  # noqa: E402,F401
+from .pbcs.audit_ledger import audit_ledger_verify_signature_chain  # noqa: E402,F401
