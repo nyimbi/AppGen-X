@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from .runtime import SUBSCRIPTION_BILLING_CONSUMED_EVENT_TYPES
+from .runtime import SUBSCRIPTION_BILLING_EMITTED_EVENT_TYPES
+from .runtime import SUBSCRIPTION_BILLING_RUNTIME_TABLES
+from .runtime import subscription_billing_ui_binding_contract
+
 
 SUBSCRIPTION_BILLING_UI_FRAGMENT_KEYS = (
     "SubscriptionBillingWorkbench",
@@ -38,12 +43,15 @@ def subscription_billing_ui_contract() -> dict:
             "/workbench/pbcs/subscription_billing/rules",
             "/workbench/pbcs/subscription_billing/parameters",
             "/workbench/pbcs/subscription_billing/configuration",
+            "/workbench/pbcs/subscription_billing/events",
+            "/workbench/pbcs/subscription_billing/dead-letter",
         ),
         "panels": (
-            {"key": "subscriptions", "fragment": "SubscriptionRegistry", "binds_to": ("subscription", "billing_schedule"), "commands": ("register_plan", "create_subscription", "renew_subscription")},
-            {"key": "usage", "fragment": "UsageMeterConsole", "binds_to": ("usage_meter",), "commands": ("record_usage", "generate_invoice")},
-            {"key": "revenue", "fragment": "InvoiceApprovalWorkbench", "binds_to": ("billing_schedule", "subscription_billing_appgen_outbox_event"), "commands": ("generate_invoice", "receive_event")},
-            {"key": "governance", "fragment": "BillingRuleStudio", "binds_to": ("rule", "parameter", "configuration"), "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests")},
+            {"key": "subscriptions", "fragment": "SubscriptionRegistry", "binds_to": ("plan_catalog", "subscription", "billing_schedule"), "commands": ("register_plan", "create_subscription", "renew_subscription")},
+            {"key": "usage", "fragment": "UsageMeterConsole", "binds_to": ("usage_meter", "invoice"), "commands": ("record_usage", "generate_invoice")},
+            {"key": "revenue", "fragment": "InvoiceApprovalWorkbench", "binds_to": ("invoice", SUBSCRIPTION_BILLING_RUNTIME_TABLES[0], SUBSCRIPTION_BILLING_RUNTIME_TABLES[1]), "commands": ("generate_invoice", "receive_event", "score_revenue_exposure")},
+            {"key": "dunning", "fragment": "DunningBoard", "binds_to": ("dunning_notice", SUBSCRIPTION_BILLING_RUNTIME_TABLES[2]), "commands": ("create_dunning_notice", "run_control_tests")},
+            {"key": "governance", "fragment": "BillingRuleStudio", "binds_to": ("billing_rule", "billing_parameter", "billing_configuration", "billing_schema_extension"), "commands": ("register_rule", "set_parameter", "configure_runtime", "register_schema_extension", "run_control_tests")},
         ),
         "action_permissions": {
             "register_plan": "subscription_billing.configure",
@@ -53,9 +61,11 @@ def subscription_billing_ui_contract() -> dict:
             "renew_subscription": "subscription_billing.renewal",
             "create_dunning_notice": "subscription_billing.dunning",
             "receive_event": "subscription_billing.event",
+            "score_revenue_exposure": "subscription_billing.invoice",
             "register_rule": "subscription_billing.configure",
             "set_parameter": "subscription_billing.configure",
             "configure_runtime": "subscription_billing.configure",
+            "register_schema_extension": "subscription_billing.configure",
             "run_control_tests": "subscription_billing.audit",
         },
         "configuration_editor": {
@@ -63,6 +73,7 @@ def subscription_billing_ui_contract() -> dict:
             "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
             "event_contract": "AppGen-X",
             "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -83,11 +94,13 @@ def subscription_billing_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "rule_type", "allowed_plan_families", "allowed_currencies", "allowed_regions", "renewal_policy", "invoice_policy", "status"),
         },
         "event_surfaces": {
-            "emits": ("SubscriptionRenewed", "UsageRated", "InvoiceApproved"),
-            "consumes": ("PaymentCaptured", "PriceOptimized"),
+            "emits": SUBSCRIPTION_BILLING_EMITTED_EVENT_TYPES,
+            "consumes": SUBSCRIPTION_BILLING_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": subscription_billing_ui_binding_contract()["binding_evidence"],
     }
 
 
@@ -102,8 +115,10 @@ def subscription_billing_render_workbench(state: dict, *, tenant: str, principal
         {"key": "active", "value": view["active_count"], "fragment": "RenewalConsole"},
         {"key": "usage", "value": view["usage_count"], "fragment": "UsageMeterConsole"},
         {"key": "invoices", "value": view["invoice_count"], "fragment": "InvoiceApprovalWorkbench"},
+        {"key": "paid_invoices", "value": view["paid_invoice_count"], "fragment": "InvoiceApprovalWorkbench"},
         {"key": "dunning", "value": view["dunning_count"], "fragment": "DunningBoard"},
         {"key": "outbox", "value": view["outbox_count"], "fragment": "BillingEventOutbox"},
+        {"key": "inbox", "value": view["inbox_count"], "fragment": "BillingEventOutbox"},
         {"key": "dead_letter", "value": view["dead_letter_count"], "fragment": "BillingDeadLetterQueue"},
     )
     return {
@@ -119,6 +134,7 @@ def subscription_billing_render_workbench(state: dict, *, tenant: str, principal
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "event_inbox_count": len(state.get("inbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": view["binding_evidence"],
     }
@@ -134,13 +150,23 @@ def _view_counts(state: dict, tenant: str) -> dict:
         "active_count": len(tuple(item for item in subscriptions if item["status"] in {"active", "renewed"})),
         "usage_count": len(usage),
         "invoice_count": len(invoices),
+        "paid_invoice_count": len(tuple(item for item in invoices if item["status"] == "paid")),
         "dunning_count": len(dunning),
         "outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": {
+            **subscription_billing_ui_binding_contract()["binding_evidence"],
             "configuration": bool(state.get("configuration", {}).get("ok")),
             "rules": tuple(sorted(state.get("rules", {}))),
             "parameters": tuple(sorted(state.get("parameters", {}))),
-            "owned_tables": ("subscription", "usage_meter", "billing_schedule", "dunning_notice"),
+            "panel_bindings": tuple(
+                {
+                    "key": panel["key"],
+                    "binds_to": panel["binds_to"],
+                    "commands": panel["commands"],
+                }
+                for panel in subscription_billing_ui_contract()["panels"]
+            ),
         },
     }

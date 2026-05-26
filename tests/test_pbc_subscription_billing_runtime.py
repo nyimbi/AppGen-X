@@ -22,7 +22,15 @@ from pyAppGen.pbc import subscription_billing_permissions_contract
 from pyAppGen.pbc import subscription_billing_ui_contract
 from pyAppGen.pbc import subscription_billing_verify_owned_table_boundary
 from pyAppGen.pbcs.subscription_billing import SUBSCRIPTION_BILLING_OWNED_TABLES
+from pyAppGen.pbcs.subscription_billing import SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.subscription_billing import SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.subscription_billing import SUBSCRIPTION_BILLING_RUNTIME_TABLES
+from pyAppGen.pbcs.subscription_billing import subscription_billing_build_release_evidence
+from pyAppGen.pbcs.subscription_billing import subscription_billing_build_schema_contract
+from pyAppGen.pbcs.subscription_billing import subscription_billing_build_service_contract
+from pyAppGen.pbcs.subscription_billing import subscription_billing_score_revenue_exposure
+from pyAppGen.pbcs.subscription_billing import subscription_billing_simulate_proration_quote
+from pyAppGen.pbcs.subscription_billing import subscription_billing_ui_binding_contract
 
 
 def test_subscription_billing_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -32,10 +40,14 @@ def test_subscription_billing_runtime_executes_standard_and_advanced_capabilitie
     assert runtime["format"] == "appgen.subscription-billing-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/subscription_billing"
+    assert runtime["required_event_topic"] == SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC
+    assert runtime["runtime_tables"] == SUBSCRIPTION_BILLING_RUNTIME_TABLES
     assert len(runtime["standard_features"]) >= 18
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
+    assert {"build_schema_contract", "build_service_contract", "build_release_evidence", "run_control_tests"} <= set(runtime["operations"])
+    assert "InvoiceApprovalRequested" in runtime["emits"]
     assert smoke["ok"] is True
     assert {check["id"] for check in smoke["checks"]} == set(SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS)
     assert not smoke["blocking_gaps"]
@@ -46,10 +58,34 @@ def test_subscription_billing_runtime_executes_standard_and_advanced_capabilitie
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert contract["source_package"]["api_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["ok"] is True
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["owned_tables"] == SUBSCRIPTION_BILLING_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert contract["source_package"]["required_event_topic"] == SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC
     assert "BillingConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert pbc_implementation_release_audit(("subscription_billing",))["ok"] is True
+
+
+def test_subscription_billing_runtime_exposes_package_local_schema_service_release_and_ui_binding_contracts() -> None:
+    schema = subscription_billing_build_schema_contract()
+    service = subscription_billing_build_service_contract()
+    release = subscription_billing_build_release_evidence()
+    ui_binding = subscription_billing_ui_binding_contract()
+
+    assert schema["ok"] is True
+    assert len(schema["tables"]) >= 10
+    assert len(schema["migrations"]) == len(schema["tables"])
+    assert schema["runtime_tables"] == SUBSCRIPTION_BILLING_RUNTIME_TABLES
+    assert service["ok"] is True
+    assert {"run_control_tests", "receive_event"} <= set(service["command_methods"])
+    assert {"score_revenue_exposure", "simulate_proration_quote"} <= set(service["query_methods"])
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert ui_binding["ok"] is True
+    assert ui_binding["binding_evidence"]["runtime_tables"] == SUBSCRIPTION_BILLING_RUNTIME_TABLES
 
 
 def test_subscription_billing_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -58,7 +94,7 @@ def test_subscription_billing_runtime_applies_rules_parameters_configuration_and
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.subscription.events",
+            "event_topic": SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "supported_currencies": ("USD",),
@@ -151,10 +187,22 @@ def test_subscription_billing_runtime_applies_rules_parameters_configuration_and
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 10
+    assert workbench["binding_evidence"]["outbox_table"] == SUBSCRIPTION_BILLING_RUNTIME_TABLES[0]
+    assert workbench["binding_evidence"]["inbox_table"] == SUBSCRIPTION_BILLING_RUNTIME_TABLES[1]
+    assert workbench["binding_evidence"]["dead_letter_table"] == SUBSCRIPTION_BILLING_RUNTIME_TABLES[2]
+
+    exposure = subscription_billing_score_revenue_exposure(state, "sub_ops")
+    proration = subscription_billing_simulate_proration_quote(state, "sub_ops", target_seats=6, remaining_ratio=0.5)
+    assert exposure["ok"] is True
+    assert exposure["open_invoice_exposure"] == 0
+    assert proration["ok"] is True
+    assert proration["seat_delta"] == 2
 
     ui_contract = subscription_billing_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
+    assert ui_contract["configuration_editor"]["user_selectable_event_contract"] is False
+    assert ui_contract["event_surfaces"]["inbox_status"] == "visible"
     rendered = subscription_billing_render_workbench(
         state,
         tenant="tenant_ops",
@@ -172,22 +220,27 @@ def test_subscription_billing_runtime_applies_rules_parameters_configuration_and
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert not rendered["locked_actions"]
+    assert rendered["event_inbox_count"] == 2
 
     api_contract = subscription_billing_build_api_contract()
     assert api_contract["ok"] is True
     assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["event_contract"] == "AppGen-X"
+    assert api_contract["required_event_topic"] == SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC
     assert {route["command"] for route in api_contract["routes"]} >= {
         "create_subscription",
         "record_usage",
         "generate_invoice",
         "renew_subscription",
         "create_dunning_notice",
+        "receive_event",
     }
     permissions = subscription_billing_permissions_contract()
     assert "subscription_billing_admin" in permissions["roles"]
     assert "event_idempotency_required" in permissions["policy_controls"]
+    assert permissions["action_permissions"]["run_control_tests"] == "subscription_billing.audit"
     boundary = subscription_billing_verify_owned_table_boundary(
-        ("subscription", "billing_schedule", "payment_orchestration.PaymentCaptured", "tax_localization.POST /tax-quotes")
+        ("subscription", "billing_schedule", "payment_orchestration.PaymentCaptured", "tax_localization.POST /tax-quotes", "payment_capture_projection")
     )
     assert boundary["ok"] is True
     violated = subscription_billing_verify_owned_table_boundary(("customer",))
@@ -202,7 +255,7 @@ def test_subscription_billing_rejects_invalid_runtime_inputs_and_records_dead_le
             state,
             {
                 "database_backend": "stream_store",
-                "event_topic": "appgen.subscription.events",
+                "event_topic": SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "default_currency": "USD",
                 "supported_currencies": ("USD",),
@@ -217,8 +270,8 @@ def test_subscription_billing_rejects_invalid_runtime_inputs_and_records_dead_le
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.subscription.events",
-            "retry_limit": 1,
+            "event_topic": SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
             "default_currency": "USD",
             "supported_currencies": ("USD",),
             "supported_regions": ("US",),
@@ -238,5 +291,12 @@ def test_subscription_billing_rejects_invalid_runtime_inputs_and_records_dead_le
         simulate_failure=True,
     )
     assert failed["ok"] is False
-    assert failed["handler"]["status"] == "dead_letter"
-    assert len(failed["state"]["dead_letter"]) == 1
+    assert failed["handler"]["status"] == "retrying"
+    retried = subscription_billing_receive_event(
+        failed["state"],
+        {"event_id": "evt_fail", "event_type": "PaymentCaptured", "payload": {"tenant": "tenant_ops", "invoice_id": "inv_missing", "amount": 1, "currency": "USD"}},
+        simulate_failure=True,
+    )
+    assert retried["ok"] is False
+    assert retried["handler"]["status"] == "dead_letter"
+    assert len(retried["state"]["dead_letter"]) == 1

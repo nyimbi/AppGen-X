@@ -21,7 +21,7 @@ rules, configuration, parameters, tests, and release evidence.
 
 ## Owned Datastore Boundary
 
-The PBC owns exactly these domain tables:
+The PBC owns these core domain tables:
 
 - `subscription`: customer subscription identity, plan binding, tenant, region,
   currency, lifecycle state, renewal confidence, churn risk, MRR, and audit proof.
@@ -32,11 +32,21 @@ The PBC owns exactly these domain tables:
 - `dunning_notice`: open collection notices, reason, retry policy, risk score,
   customer reference, and dead-letter evidence.
 
+The executable schema contract also covers package-local support and evidence
+tables:
+
+- `plan_catalog`, `invoice`, `billing_rule`, `billing_parameter`,
+  `billing_configuration`, and `billing_schema_extension`.
+- AppGen-X evidence tables: `subscription_billing_appgen_outbox_event`,
+  `subscription_billing_appgen_inbox_event`, and
+  `subscription_billing_dead_letter_event`.
+
 Cross-PBC dependencies are represented only through API calls, events, and
 projections. The runtime boundary verifier accepts owned tables plus declared
 dependencies such as `payment_orchestration.PaymentCaptured`,
 `price_promotion_engine.PriceOptimized`, `tax_localization.POST /tax-quotes`,
-and `gl_core.POST /journals`; direct access to foreign tables is rejected.
+`gl_core.POST /journals`, `customer_projection`, and
+`entitlement_projection`; direct access to foreign tables is rejected.
 
 ## Standard Table-Stakes Capabilities
 
@@ -135,7 +145,13 @@ The service layer exposes these package-local command methods:
 - `renew_subscription(subscription_id)`.
 - `create_dunning_notice(subscription_id, reason=...)`.
 - `receive_event(event, simulate_failure=False)`.
+- `run_control_tests(state)`.
+- `simulate_proration_quote(subscription_id, target_seats=..., remaining_ratio=...)`.
+- `score_revenue_exposure(subscription_id)`.
 - `build_api_contract()`.
+- `build_schema_contract()`.
+- `build_service_contract()`.
+- `build_release_evidence()`.
 - `permissions_contract()`.
 - `build_workbench_view(tenant=...)`.
 - `verify_owned_table_boundary(references)`.
@@ -158,6 +174,10 @@ contract entries:
   emits `InvoiceApproved` or `InvoiceApprovalRequested`.
 - `POST /dunning-notices` maps to `create_dunning_notice`, owns
   `dunning_notice`, and emits `DunningNoticeCreated`.
+- `POST /subscription-billing/events/inbox` maps to `receive_event`, consumes
+  AppGen-X events with event ID idempotency.
+- `GET /subscription-billing/workbench` maps to `build_workbench_view` and
+  returns package-local UI/workbench binding evidence.
 
 ## Events And Handlers
 
@@ -166,18 +186,23 @@ payload, idempotency key, retry policy, dead-letter target, and audit hash.
 
 - Emitted: `SubscriptionActivated`, `SubscriptionRenewed`, `UsageRated`,
   `InvoiceApproved`, `InvoiceApprovalRequested`, and `DunningNoticeCreated`.
-- Catalog emitted: `SubscriptionRenewed`, `UsageRated`, and `InvoiceApproved`.
+- Catalog emitted: `SubscriptionActivated`, `SubscriptionRenewed`,
+  `UsageRated`, `InvoiceApproved`, `InvoiceApprovalRequested`, and
+  `DunningNoticeCreated`.
 - Consumed: `PaymentCaptured` and `PriceOptimized`.
 - Handler behavior: unsupported event types are rejected, missing event IDs are
   rejected, duplicate event IDs are idempotently ignored, simulated failures
-  create dead-letter records, and successful events are recorded in the inbox.
+  first produce retry evidence and then dead-letter records once the retry
+  limit is exhausted, and successful events are recorded in the inbox.
 
 ## Workbench
 
 The UI contract exposes route-backed fragments for subscription operations,
 usage, invoice approval, renewals, dunning, entitlement handoff, rules,
-parameters, configuration, event outbox, and dead-letter review. Rendering uses
-RBAC permissions to calculate visible and locked actions. The configuration
+parameters, configuration, event outbox, inbox, and dead-letter review.
+Rendering uses RBAC permissions to calculate visible and locked actions and
+returns explicit workbench binding evidence for owned tables, AppGen-X runtime
+tables, panel bindings, configuration, rules, and parameters. The configuration
 editor exposes only the AppGen-X event contract and supported SQL backends.
 
 ## Release Evidence
@@ -185,13 +210,16 @@ editor exposes only the AppGen-X event contract and supported SQL backends.
 Focused tests prove:
 
 - Runtime capabilities and smoke checks pass.
+- Package-local `build_schema_contract()`, `build_service_contract()`, and
+  `build_release_evidence()` expose executable implementation evidence.
 - Configuration, rules, parameters, schema extensions, plan registration,
   subscriptions, usage, invoices, payment events, dunning, and workbench
   rendering execute.
-- API and permission contracts are exposed.
+- API, UI binding, and permission contracts are exposed.
 - Owned-table boundary validation accepts declared dependencies and rejects
   foreign tables.
 - Invalid database backends, invalid parameters, non-owned schema extensions,
-  and handler failures are rejected or dead-lettered.
+  duplicate events, retry transitions, and handler dead-letter failures are
+  all evidenced.
 - The package participates in `pbc_implementation_release_audit()` and the
   all-PBC generation smoke audit through central exports.

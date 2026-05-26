@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
 
 
+SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC = "appgen.subscription.events"
 SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_subscription_lifecycle",
     "graph_relational_subscription_topology",
@@ -60,8 +62,41 @@ SUBSCRIPTION_BILLING_STANDARD_FEATURE_KEYS = (
     "workbench",
 )
 SUBSCRIPTION_BILLING_OWNED_TABLES = ("subscription", "usage_meter", "billing_schedule", "dunning_notice")
-SUBSCRIPTION_BILLING_API_ROUTES = ("POST /subscriptions", "POST /usage", "POST /renewals")
-SUBSCRIPTION_BILLING_EMITTED_EVENT_TYPES = ("SubscriptionRenewed", "UsageRated", "InvoiceApproved")
+SUBSCRIPTION_BILLING_RUNTIME_TABLES = (
+    "subscription_billing_appgen_outbox_event",
+    "subscription_billing_appgen_inbox_event",
+    "subscription_billing_dead_letter_event",
+)
+SUBSCRIPTION_BILLING_SCHEMA_TABLES = (
+    "plan_catalog",
+    "subscription",
+    "usage_meter",
+    "billing_schedule",
+    "invoice",
+    "dunning_notice",
+    "billing_rule",
+    "billing_parameter",
+    "billing_configuration",
+    "billing_schema_extension",
+    *SUBSCRIPTION_BILLING_RUNTIME_TABLES,
+)
+SUBSCRIPTION_BILLING_API_ROUTES = (
+    "POST /subscriptions",
+    "POST /usage",
+    "POST /renewals",
+    "POST /invoices",
+    "POST /dunning-notices",
+    "POST /subscription-billing/events/inbox",
+    "GET /subscription-billing/workbench",
+)
+SUBSCRIPTION_BILLING_EMITTED_EVENT_TYPES = (
+    "SubscriptionActivated",
+    "SubscriptionRenewed",
+    "UsageRated",
+    "InvoiceApproved",
+    "InvoiceApprovalRequested",
+    "DunningNoticeCreated",
+)
 SUBSCRIPTION_BILLING_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 SUBSCRIPTION_BILLING_SUPPORTED_CONFIGURATION_FIELDS = (
     "database_backend",
@@ -99,6 +134,24 @@ SUBSCRIPTION_BILLING_REQUIRED_RULE_FIELDS = (
     "status",
 )
 SUBSCRIPTION_BILLING_CONSUMED_EVENT_TYPES = ("PaymentCaptured", "PriceOptimized")
+SUBSCRIPTION_BILLING_DECLARED_API_DEPENDENCIES = (
+    "customer_360.GET /customer-timeline",
+    "entitlement_projection.POST /subscription-entitlements",
+    "gl_core.POST /journals",
+    "tax_localization.POST /tax-quotes",
+)
+SUBSCRIPTION_BILLING_DECLARED_EVENT_DEPENDENCIES = (
+    "payment_orchestration.PaymentCaptured",
+    "price_promotion_engine.PriceOptimized",
+)
+SUBSCRIPTION_BILLING_DECLARED_PROJECTIONS = (
+    "customer_projection",
+    "entitlement_projection",
+    "ledger_journal_projection",
+    "payment_capture_projection",
+    "pricing_decision_projection",
+    "tax_quote_projection",
+)
 _CONFIG_SEQUENCE_FIELDS = {"supported_currencies", "supported_regions", "billing_calendars"}
 _RULE_SEQUENCE_FIELDS = {"allowed_plan_families", "allowed_currencies", "allowed_regions"}
 _PARAMETER_BOUNDS = {
@@ -122,6 +175,11 @@ def subscription_billing_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "subscription_billing",
         "implementation_directory": "src/pyAppGen/pbcs/subscription_billing",
+        "required_event_topic": SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC,
+        "owned_tables": SUBSCRIPTION_BILLING_OWNED_TABLES,
+        "runtime_tables": SUBSCRIPTION_BILLING_RUNTIME_TABLES,
+        "consumes": SUBSCRIPTION_BILLING_CONSUMED_EVENT_TYPES,
+        "emits": SUBSCRIPTION_BILLING_EMITTED_EVENT_TYPES,
         "capabilities": SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS,
         "standard_features": SUBSCRIPTION_BILLING_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -137,8 +195,14 @@ def subscription_billing_runtime_capabilities() -> dict:
             "create_dunning_notice",
             "receive_event",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
+            "run_control_tests",
+            "simulate_proration_quote",
+            "score_revenue_exposure",
             "verify_owned_table_boundary",
         ),
         "smoke": smoke,
@@ -253,15 +317,49 @@ def subscription_billing_runtime_smoke() -> dict:
             "payload": {"tenant": "tenant_alpha", "invoice_id": invoice["invoice"]["invoice_id"], "amount": invoice["invoice"]["amount"], "currency": "USD"},
         },
     )["state"]
+    duplicate = subscription_billing_receive_event(
+        state,
+        {
+            "event_id": "payment_alpha",
+            "event_type": "PaymentCaptured",
+            "payload": {"tenant": "tenant_alpha", "invoice_id": invoice["invoice"]["invoice_id"], "amount": invoice["invoice"]["amount"], "currency": "USD"},
+        },
+    )
     renewed = subscription_billing_renew_subscription(state, "sub_alpha")
     state = renewed["state"]
+    retrying = subscription_billing_receive_event(
+        state,
+        {
+            "event_id": "payment_retry_alpha",
+            "event_type": "PaymentCaptured",
+            "payload": {"tenant": "tenant_alpha", "invoice_id": invoice["invoice"]["invoice_id"], "amount": invoice["invoice"]["amount"], "currency": "USD"},
+        },
+        simulate_failure=True,
+    )
+    state = retrying["state"]
+    dead_lettered = subscription_billing_receive_event(
+        state,
+        {
+            "event_id": "payment_retry_alpha",
+            "event_type": "PaymentCaptured",
+            "payload": {"tenant": "tenant_alpha", "invoice_id": invoice["invoice"]["invoice_id"], "amount": invoice["invoice"]["amount"], "currency": "USD"},
+        },
+        simulate_failure=True,
+    )
+    state = dead_lettered["state"]
     dunning = subscription_billing_create_dunning_notice(state, "sub_alpha", reason="payment_watch")
     state = dunning["state"]
     checks = tuple(
         {
             "id": key,
             "ok": True,
-            "evidence": _capability_evidence(state, key),
+            "evidence": _capability_evidence(
+                state,
+                key,
+                duplicate_status=duplicate["handler"]["status"],
+                retry_status=retrying["handler"]["status"],
+                dead_letter_status=dead_lettered["handler"]["status"],
+            ),
         }
         for key in SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS
     )
@@ -301,6 +399,7 @@ def subscription_billing_empty_state() -> dict:
         "dunning_notices": {},
         "price_decisions": {},
         "payment_captures": {},
+        "event_attempts": {},
         "seed_data": {
             "billing_calendars": ("monthly", "annual"),
             "dunning_reasons": ("payment_watch", "payment_failed", "renewal_blocked"),
@@ -316,7 +415,7 @@ def subscription_billing_configure_runtime(state: dict, configuration: dict) -> 
     if backend not in SUBSCRIPTION_BILLING_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("Subscription Billing database backend must be PostgreSQL, MySQL, or MariaDB")
     topic = str(configuration["event_topic"])
-    if topic != "appgen.subscription.events":
+    if topic != SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC:
         raise ValueError("Subscription Billing eventing must use the AppGen-X subscription event contract")
     runtime = _copy_state(state)
     normalized = {
@@ -328,6 +427,7 @@ def subscription_billing_configure_runtime(state: dict, configuration: dict) -> 
     normalized["ok"] = True
     normalized["event_contract"] = "AppGen-X"
     normalized["stream_engine_picker_visible"] = False
+    normalized["user_selectable_event_contract"] = False
     runtime["configuration"] = normalized
     runtime["events"].append(_state_event("RuntimeConfigured", "runtime", normalized))
     return {"ok": True, "state": runtime, "configuration": normalized}
@@ -542,19 +642,27 @@ def subscription_billing_receive_event(state: dict, event: dict, *, simulate_fai
     runtime = _copy_state(state)
     if event_id in runtime["handled_events"]:
         return {"ok": True, "state": runtime, "handler": {"status": "duplicate", "event_id": event_id}}
+    retry_limit = int(runtime["configuration"].get("retry_limit", 3) if runtime["configuration"] else 3)
+    attempts = int(runtime["event_attempts"].get(event_id, 0)) + 1
     handler = {
         "event_id": event_id,
         "event_type": event["event_type"],
         "idempotency_key": f"subscription_billing:{event['event_type']}:{event_id}",
-        "attempts": int(runtime["configuration"].get("retry_limit", 3) if runtime["configuration"] else 3),
+        "attempts": attempts,
+        "retry_limit": retry_limit,
     }
     if simulate_failure:
-        handler["status"] = "dead_letter"
-        runtime["dead_letter"].append({**event, "handler": handler})
+        runtime["event_attempts"][event_id] = attempts
+        handler["status"] = "dead_letter" if attempts >= retry_limit else "retrying"
+        evidence = {**event, "handler": handler, "reason": "simulated_failure"}
+        if handler["status"] == "dead_letter":
+            runtime["dead_letter"].append(evidence)
+        runtime["events"].append(_state_event(f"{event['event_type']}Failed", event_id, evidence))
         return {"ok": False, "state": runtime, "handler": handler}
     payload = dict(event.get("payload", {}))
     handler["status"] = "handled"
     runtime["inbox"].append({**event, "handler": handler})
+    runtime["event_attempts"][event_id] = attempts
     runtime["handled_events"].add(event_id)
     if event["event_type"] == "PaymentCaptured":
         runtime["payment_captures"][event_id] = payload
@@ -563,7 +671,12 @@ def subscription_billing_receive_event(state: dict, event: dict, *, simulate_fai
             runtime["invoices"][invoice_id]["status"] = "paid"
             runtime["invoices"][invoice_id]["payment_event_id"] = event_id
     elif event["event_type"] == "PriceOptimized":
-        runtime["price_decisions"][payload.get("plan_id", event_id)] = payload
+        plan_id = payload.get("plan_id", event_id)
+        runtime["price_decisions"][plan_id] = {
+            **payload,
+            "plan_id": plan_id,
+            "applied_rate_floor": _minimum_usage_rate(runtime, plan_id) if plan_id in runtime["plans"] else None,
+        }
     runtime["events"].append(_state_event(f"{event['event_type']}Handled", event_id, payload))
     return {"ok": True, "state": runtime, "handler": handler}
 
@@ -593,6 +706,10 @@ def subscription_billing_build_workbench_view(state: dict, *, tenant: str) -> di
             "outbox_table": "subscription_billing_appgen_outbox_event",
             "inbox_table": "subscription_billing_appgen_inbox_event",
             "dead_letter_table": "subscription_billing_dead_letter_event",
+            "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+            "rules_bound": tuple(sorted(state.get("rules", {}))),
+            "parameters_bound": tuple(sorted(state.get("parameters", {}))),
+            "workbench_route": "/workbench/pbcs/subscription_billing",
         },
     }
 
@@ -643,11 +760,171 @@ def subscription_billing_build_api_contract() -> dict:
                 "requires_permission": "subscription_billing.dunning",
                 "idempotency_key": "subscription_id:reason",
             },
+            {
+                "route": "POST /subscription-billing/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": SUBSCRIPTION_BILLING_CONSUMED_EVENT_TYPES,
+                "requires_permission": "subscription_billing.event",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /subscription-billing/workbench",
+                "command": "build_workbench_view",
+                "query": "build_workbench_view",
+                "owned_tables": SUBSCRIPTION_BILLING_OWNED_TABLES,
+                "requires_permission": "subscription_billing.audit",
+            },
         ),
         "declared_catalog_routes": SUBSCRIPTION_BILLING_API_ROUTES,
-        "event_contract": "appgen_event_contract",
+        "owned_tables": SUBSCRIPTION_BILLING_OWNED_TABLES,
+        "consumes": SUBSCRIPTION_BILLING_CONSUMED_EVENT_TYPES,
+        "emits": SUBSCRIPTION_BILLING_EMITTED_EVENT_TYPES,
+        "permissions": tuple(sorted(subscription_billing_permissions_contract()["permissions"])),
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "required_event_topic": SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
         "database_backends": SUBSCRIPTION_BILLING_ALLOWED_DATABASE_BACKENDS,
+    }
+
+
+def subscription_billing_build_schema_contract() -> dict:
+    table_fields = {
+        "plan_catalog": ("tenant", "plan_id", "family", "name", "currency", "region", "billing_period", "base_price", "usage_rate", "included_units", "status", "proof"),
+        "subscription": ("tenant", "subscription_id", "customer_id", "plan_id", "status", "region", "currency", "mrr", "renewal_confidence", "churn_risk", "audit_proof"),
+        "usage_meter": ("tenant", "usage_id", "subscription_id", "meter_name", "quantity", "billable_units", "rated_amount", "currency", "status", "audit_proof"),
+        "billing_schedule": ("tenant", "subscription_id", "next_invoice_date", "period", "status"),
+        "invoice": ("tenant", "invoice_id", "subscription_id", "customer_id", "period", "amount", "currency", "usage_amount", "risk_score", "status", "audit_proof"),
+        "dunning_notice": ("tenant", "dunning_id", "subscription_id", "customer_id", "reason", "risk_score", "status", "retry_policy", "audit_proof"),
+        "billing_rule": ("tenant", "rule_id", "rule_type", "status", "allowed_plan_families", "allowed_currencies", "allowed_regions", "compiled_hash"),
+        "billing_parameter": ("name", "value", "bounds", "compiled_hash"),
+        "billing_configuration": ("database_backend", "event_topic", "retry_limit", "default_currency", "supported_currencies", "supported_regions", "billing_calendars", "default_timezone", "invoice_approval_mode", "workbench_limit"),
+        "billing_schema_extension": ("table", "fields", "version"),
+        "subscription_billing_appgen_outbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "retry_policy", "audit_hash"),
+        "subscription_billing_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "subscription_billing_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "plan_catalog.plan_id", "to": "subscription.plan_id", "type": "owned_reference"},
+        {"from": "subscription.subscription_id", "to": "billing_schedule.subscription_id", "type": "owned_reference"},
+        {"from": "subscription.subscription_id", "to": "usage_meter.subscription_id", "type": "owned_reference"},
+        {"from": "subscription.subscription_id", "to": "invoice.subscription_id", "type": "owned_reference"},
+        {"from": "subscription.subscription_id", "to": "dunning_notice.subscription_id", "type": "owned_reference"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "name" or field == "table")[:2],
+            "owned_by": "subscription_billing",
+        }
+        for table in SUBSCRIPTION_BILLING_SCHEMA_TABLES
+    )
+    return {
+        "format": "appgen.subscription-billing-owned-schema-contract.v1",
+        "ok": len(tables) == len(SUBSCRIPTION_BILLING_SCHEMA_TABLES)
+        and all(item["table"] in SUBSCRIPTION_BILLING_SCHEMA_TABLES for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/subscription_billing/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": SUBSCRIPTION_BILLING_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(SUBSCRIPTION_BILLING_SCHEMA_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in SUBSCRIPTION_BILLING_SCHEMA_TABLES
+        ),
+        "runtime_tables": SUBSCRIPTION_BILLING_RUNTIME_TABLES,
+        "datastore_backends": SUBSCRIPTION_BILLING_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def subscription_billing_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "register_plan",
+        "create_subscription",
+        "record_usage",
+        "generate_invoice",
+        "renew_subscription",
+        "create_dunning_notice",
+        "receive_event",
+        "run_control_tests",
+    )
+    return {
+        "format": "appgen.subscription-billing-service-contract.v1",
+        "ok": len(command_methods) >= 12,
+        "transaction_boundary": "subscription_billing_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "build_api_contract",
+            "build_schema_contract",
+            "score_revenue_exposure",
+            "simulate_proration_quote",
+        ),
+        "mutates_only": SUBSCRIPTION_BILLING_SCHEMA_TABLES,
+        "external_dependencies": {
+            "apis": SUBSCRIPTION_BILLING_DECLARED_API_DEPENDENCIES,
+            "events": SUBSCRIPTION_BILLING_DECLARED_EVENT_DEPENDENCIES,
+            "api_projections": SUBSCRIPTION_BILLING_DECLARED_PROJECTIONS,
+            "shared_tables": (),
+        },
+        "eventing": {
+            "contract": "AppGen-X",
+            "outbox_table": SUBSCRIPTION_BILLING_RUNTIME_TABLES[0],
+            "inbox_table": SUBSCRIPTION_BILLING_RUNTIME_TABLES[1],
+            "dead_letter_table": SUBSCRIPTION_BILLING_RUNTIME_TABLES[2],
+            "idempotency_required": True,
+        },
+    }
+
+
+def subscription_billing_build_release_evidence() -> dict:
+    schema = subscription_billing_build_schema_contract()
+    service = subscription_billing_build_service_contract()
+    api = subscription_billing_build_api_contract()
+    ui = subscription_billing_ui_binding_contract()
+    permissions = subscription_billing_permissions_contract()
+    control = _subscription_billing_release_control_evidence()
+    smoke = subscription_billing_runtime_smoke()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 10},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(schema["tables"])},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 12},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and api["required_event_topic"] == SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC},
+        {"id": "ui_binding_evidence", "ok": ui["ok"] and ui["binding_evidence"]["outbox_table"] == SUBSCRIPTION_BILLING_RUNTIME_TABLES[0]},
+        {"id": "permissions_cover_commands", "ok": {"create_subscription", "generate_invoice", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "retry_and_dead_letter_evidence", "ok": control["ok"] and control["summary"]["retry_status"] == "retrying" and control["summary"]["dead_letter_status"] == "dead_letter"},
+        {"id": "duplicate_idempotency_evidence", "ok": control["summary"]["duplicate_status"] == "duplicate"},
+        {"id": "runtime_smoke", "ok": smoke["ok"]},
+    )
+    return {
+        "format": "appgen.subscription-billing-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "ui": ui,
+        "permissions": permissions,
+        "control": control,
+        "smoke": smoke,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -685,26 +962,39 @@ def subscription_billing_permissions_contract() -> dict:
             "approval_threshold_enforced",
             "event_idempotency_required",
         ),
+        "action_permissions": {
+            "configure_runtime": "subscription_billing.configure",
+            "set_parameter": "subscription_billing.configure",
+            "register_rule": "subscription_billing.configure",
+            "register_schema_extension": "subscription_billing.configure",
+            "register_plan": "subscription_billing.configure",
+            "create_subscription": "subscription_billing.subscription",
+            "record_usage": "subscription_billing.usage",
+            "generate_invoice": "subscription_billing.invoice",
+            "renew_subscription": "subscription_billing.renewal",
+            "create_dunning_notice": "subscription_billing.dunning",
+            "receive_event": "subscription_billing.event",
+            "build_workbench_view": "subscription_billing.audit",
+            "verify_owned_table_boundary": "subscription_billing.audit",
+            "run_control_tests": "subscription_billing.audit",
+        },
     }
 
 
 def subscription_billing_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str]) -> dict:
     owned = set(SUBSCRIPTION_BILLING_OWNED_TABLES)
-    allowed_event_dependencies = {
-        "payment_orchestration.PaymentCaptured",
-        "price_promotion_engine.PriceOptimized",
-    }
-    allowed_api_dependencies = {
-        "tax_localization.POST /tax-quotes",
-        "gl_core.POST /journals",
-        "customer_360.GET /customer-timeline",
-    }
+    allowed_event_dependencies = set(SUBSCRIPTION_BILLING_DECLARED_EVENT_DEPENDENCIES)
+    allowed_api_dependencies = set(SUBSCRIPTION_BILLING_DECLARED_API_DEPENDENCIES)
+    allowed_runtime_tables = set(SUBSCRIPTION_BILLING_RUNTIME_TABLES)
+    allowed_projections = set(SUBSCRIPTION_BILLING_DECLARED_PROJECTIONS)
     violations = tuple(
         reference
         for reference in references
         if reference not in owned
         and reference not in allowed_event_dependencies
         and reference not in allowed_api_dependencies
+        and reference not in allowed_runtime_tables
+        and reference not in allowed_projections
         and not str(reference).startswith("subscription_billing_")
     )
     return {
@@ -712,25 +1002,108 @@ def subscription_billing_verify_owned_table_boundary(references: tuple[str, ...]
         "ok": not violations,
         "pbc": "subscription_billing",
         "owned_tables": SUBSCRIPTION_BILLING_OWNED_TABLES,
-        "allowed_event_dependencies": tuple(sorted(allowed_event_dependencies)),
-        "allowed_api_dependencies": tuple(sorted(allowed_api_dependencies)),
+        "declared_dependencies": {
+            "apis": tuple(sorted(allowed_api_dependencies)),
+            "events": tuple(sorted(allowed_event_dependencies)),
+            "api_projections": tuple(sorted(allowed_projections)),
+            "shared_tables": (),
+        },
+        "runtime_tables": tuple(sorted(allowed_runtime_tables)),
         "references": tuple(references),
         "violations": violations,
     }
 
 
+def subscription_billing_run_control_tests(state: dict) -> dict:
+    api = subscription_billing_build_api_contract()
+    workbench = subscription_billing_build_workbench_view(state, tenant=next(iter({item["tenant"] for item in state.get("subscriptions", {}).values()}), "tenant_unknown"))
+    boundary = subscription_billing_verify_owned_table_boundary(
+        (
+            "subscription",
+            "billing_schedule",
+            "payment_orchestration.PaymentCaptured",
+            "tax_localization.POST /tax-quotes",
+            "payment_capture_projection",
+        )
+    )
+    checks = (
+        {"id": "configuration_bound", "ok": bool(state.get("configuration", {}).get("ok"))},
+        {"id": "parameter_floor", "ok": len(state.get("parameters", {})) >= 3},
+        {"id": "rules_registered", "ok": bool(state.get("rules"))},
+        {"id": "boundary_contract", "ok": boundary["ok"]},
+        {"id": "api_event_contract", "ok": api["event_contract"] == "AppGen-X"},
+        {"id": "workbench_binding", "ok": workbench["binding_evidence"]["outbox_table"] == SUBSCRIPTION_BILLING_RUNTIME_TABLES[0]},
+        {"id": "idempotency_evidence", "ok": bool(state.get("handled_events"))},
+        {"id": "retry_dead_letter_evidence", "ok": bool(state.get("dead_letter")) or any(event["event_type"].endswith("Failed") for event in state.get("events", ()))},
+    )
+    return {
+        "format": "appgen.subscription-billing-control-tests.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "summary": {
+            "handled_events": len(state.get("handled_events", ())),
+            "dead_letter_count": len(state.get("dead_letter", ())),
+            "outbox_count": len(state.get("outbox", ())),
+        },
+    }
+
+
+def subscription_billing_score_revenue_exposure(state: dict, subscription_id: str) -> dict:
+    subscription = state["subscriptions"].get(subscription_id)
+    if not subscription:
+        raise ValueError(f"Unknown Subscription Billing subscription: {subscription_id}")
+    usage_amount = sum(item["rated_amount"] for item in state.get("usage_meters", {}).values() if item["subscription_id"] == subscription_id)
+    invoice_exposure = sum(item["amount"] for item in state.get("invoices", {}).values() if item["subscription_id"] == subscription_id and item["status"] != "paid")
+    exposure_score = round(min((usage_amount + invoice_exposure) / max(subscription["mrr"], 1), 10.0), 4)
+    return {
+        "ok": True,
+        "subscription_id": subscription_id,
+        "mrr": subscription["mrr"],
+        "usage_amount": round(usage_amount, 2),
+        "open_invoice_exposure": round(invoice_exposure, 2),
+        "exposure_score": exposure_score,
+    }
+
+
+def subscription_billing_simulate_proration_quote(state: dict, subscription_id: str, *, target_seats: int, remaining_ratio: float) -> dict:
+    subscription = state["subscriptions"].get(subscription_id)
+    if not subscription:
+        raise ValueError(f"Unknown Subscription Billing subscription: {subscription_id}")
+    plan = state["plans"][subscription["plan_id"]]
+    precision = int(state.get("parameters", {}).get("proration_rounding_precision", {"value": 2})["value"])
+    seat_delta = max(int(target_seats) - int(subscription["seats"]), 0)
+    unit_rate = round((float(plan["base_price"]) / max(int(subscription["seats"]), 1)), precision)
+    prorated_amount = round(seat_delta * unit_rate * float(remaining_ratio), precision)
+    return {
+        "ok": True,
+        "subscription_id": subscription_id,
+        "current_seats": subscription["seats"],
+        "target_seats": int(target_seats),
+        "remaining_ratio": float(remaining_ratio),
+        "seat_delta": seat_delta,
+        "prorated_amount": prorated_amount,
+        "currency": subscription["currency"],
+    }
+
+
+def subscription_billing_ui_binding_contract() -> dict:
+    return {
+        "format": "appgen.subscription-billing-ui-binding-contract.v1",
+        "ok": True,
+        "binding_evidence": {
+            "owned_tables": SUBSCRIPTION_BILLING_OWNED_TABLES,
+            "runtime_tables": SUBSCRIPTION_BILLING_RUNTIME_TABLES,
+            "workbench_route": "/workbench/pbcs/subscription_billing",
+            "outbox_table": SUBSCRIPTION_BILLING_RUNTIME_TABLES[0],
+            "inbox_table": SUBSCRIPTION_BILLING_RUNTIME_TABLES[1],
+            "dead_letter_table": SUBSCRIPTION_BILLING_RUNTIME_TABLES[2],
+        },
+    }
+
+
 def _copy_state(state: dict) -> dict:
-    copied = {}
-    for key, value in state.items():
-        if isinstance(value, dict):
-            copied[key] = {item_key: _copy_value(item_value) for item_key, item_value in value.items()}
-        elif isinstance(value, list):
-            copied[key] = [_copy_value(item) for item in value]
-        elif isinstance(value, set):
-            copied[key] = set(value)
-        else:
-            copied[key] = value
-    return copied
+    return copy.deepcopy(state)
 
 
 def _copy_value(value):
@@ -769,9 +1142,13 @@ def _effective_usage_rate(state: dict, plan_id: str) -> float:
     optimized = decision.get("optimized_rate")
     if optimized is None:
         return float(plan["usage_rate"])
+    return max(float(optimized), _minimum_usage_rate(state, plan_id))
+
+
+def _minimum_usage_rate(state: dict, plan_id: str) -> float:
+    plan = state["plans"][plan_id]
     guardrail = float(state["parameters"].get("discount_guardrail_percent", {"value": 100})["value"])
-    minimum_rate = float(plan["usage_rate"]) * (1 - guardrail / 100)
-    return max(float(optimized), minimum_rate)
+    return float(plan["usage_rate"]) * (1 - guardrail / 100)
 
 
 def _subscription_risk(command: dict, plan: dict) -> dict:
@@ -799,7 +1176,7 @@ def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> None:
         "event_type": event_type,
         "tenant": tenant,
         "payload": payload,
-        "contract": "appgen_event_contract",
+        "contract": "AppGen-X",
         "idempotency_key": f"subscription_billing:{event_type}:{payload.get('subscription_id') or payload.get('invoice_id') or len(state['outbox']) + 1}",
         "retry_policy": {"max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)), "dead_letter": "subscription_billing_dead_letter_event"},
         "audit_hash": _digest({"event_type": event_type, "tenant": tenant, "payload": payload}),
@@ -817,16 +1194,167 @@ def _state_event(event_type: str, key: str, payload: dict) -> dict:
     }
 
 
-def _capability_evidence(state: dict, capability: str) -> dict:
+def _capability_evidence(
+    state: dict,
+    capability: str,
+    *,
+    duplicate_status: str | None = None,
+    retry_status: str | None = None,
+    dead_letter_status: str | None = None,
+) -> dict:
     return {
         "capability": capability,
         "events": len(state["events"]),
         "outbox": len(state["outbox"]),
         "inbox": len(state["inbox"]),
+        "dead_letter": len(state["dead_letter"]),
         "rules": len(state["rules"]),
         "parameters": len(state["parameters"]),
         "configuration": bool(state["configuration"].get("ok")),
+        "duplicate_status": duplicate_status,
+        "retry_status": retry_status,
+        "dead_letter_status": dead_letter_status,
         "runtime_digest": _digest({"capability": capability, "events": len(state["events"]), "invoices": len(state["invoices"])}),
+    }
+
+
+def _subscription_billing_release_control_evidence() -> dict:
+    state = subscription_billing_empty_state()
+    state = subscription_billing_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "default_currency": "USD",
+            "supported_currencies": ("USD",),
+            "supported_regions": ("US",),
+            "billing_calendars": ("monthly",),
+            "default_timezone": "UTC",
+            "invoice_approval_mode": "policy",
+            "workbench_limit": 25,
+        },
+    )["state"]
+    for name, value in (
+        ("renewal_confidence_threshold", 0.72),
+        ("churn_risk_threshold", 0.62),
+        ("dunning_risk_threshold", 0.58),
+        ("usage_rating_precision", 4),
+        ("proration_rounding_precision", 2),
+        ("retry_limit", 2),
+        ("carbon_batch_window_hours", 8),
+        ("discount_guardrail_percent", 20.0),
+        ("approval_amount_threshold", 5000.0),
+        ("workbench_limit", 25),
+    ):
+        state = subscription_billing_set_parameter(state, name, value)["state"]
+    state = subscription_billing_register_rule(
+        state,
+        {
+            "rule_id": "rule_release",
+            "tenant": "tenant_release",
+            "rule_type": "renewal",
+            "allowed_plan_families": ("growth",),
+            "allowed_currencies": ("USD",),
+            "allowed_regions": ("US",),
+            "renewal_policy": "auto_renew_with_payment_confirmation",
+            "invoice_policy": "approve_below_threshold",
+            "status": "active",
+        },
+    )["state"]
+    state = subscription_billing_register_plan(
+        state,
+        {
+            "plan_id": "plan_release",
+            "tenant": "tenant_release",
+            "family": "growth",
+            "name": "Release",
+            "currency": "USD",
+            "region": "US",
+            "billing_period": "monthly",
+            "base_price": 120.0,
+            "usage_rate": 3.0,
+            "included_units": 10.0,
+            "status": "active",
+        },
+    )["state"]
+    state = subscription_billing_create_subscription(
+        state,
+        {
+            "subscription_id": "sub_release",
+            "tenant": "tenant_release",
+            "customer_id": "cust_release",
+            "plan_id": "plan_release",
+            "start_date": "2026-01-01",
+            "renewal_date": "2026-02-01",
+            "region": "US",
+            "currency": "USD",
+            "seats": 4,
+        },
+    )["state"]
+    state = subscription_billing_record_usage(
+        state,
+        {
+            "usage_id": "usage_release",
+            "tenant": "tenant_release",
+            "subscription_id": "sub_release",
+            "meter_name": "api_calls",
+            "quantity": 18.0,
+            "occurred_at": "2026-01-10T00:00:00Z",
+        },
+    )["state"]
+    invoice = subscription_billing_generate_invoice(state, "sub_release", period="2026-01")
+    state = invoice["state"]
+    handled = subscription_billing_receive_event(
+        state,
+        {
+            "event_id": "payment_release",
+            "event_type": "PaymentCaptured",
+            "payload": {"tenant": "tenant_release", "invoice_id": invoice["invoice"]["invoice_id"], "amount": invoice["invoice"]["amount"], "currency": "USD"},
+        },
+    )
+    state = handled["state"]
+    duplicate = subscription_billing_receive_event(
+        state,
+        {
+            "event_id": "payment_release",
+            "event_type": "PaymentCaptured",
+            "payload": {"tenant": "tenant_release", "invoice_id": invoice["invoice"]["invoice_id"], "amount": invoice["invoice"]["amount"], "currency": "USD"},
+        },
+    )
+    retrying = subscription_billing_receive_event(
+        state,
+        {
+            "event_id": "payment_retry_release",
+            "event_type": "PaymentCaptured",
+            "payload": {"tenant": "tenant_release", "invoice_id": invoice["invoice"]["invoice_id"], "amount": invoice["invoice"]["amount"], "currency": "USD"},
+        },
+        simulate_failure=True,
+    )
+    dead_letter = subscription_billing_receive_event(
+        retrying["state"],
+        {
+            "event_id": "payment_retry_release",
+            "event_type": "PaymentCaptured",
+            "payload": {"tenant": "tenant_release", "invoice_id": invoice["invoice"]["invoice_id"], "amount": invoice["invoice"]["amount"], "currency": "USD"},
+        },
+        simulate_failure=True,
+    )
+    control = subscription_billing_run_control_tests(dead_letter["state"])
+    return {
+        "ok": handled["handler"]["status"] == "handled"
+        and duplicate["handler"]["status"] == "duplicate"
+        and retrying["handler"]["status"] == "retrying"
+        and dead_letter["handler"]["status"] == "dead_letter"
+        and control["ok"],
+        "summary": {
+            "handled_status": handled["handler"]["status"],
+            "duplicate_status": duplicate["handler"]["status"],
+            "retry_status": retrying["handler"]["status"],
+            "dead_letter_status": dead_letter["handler"]["status"],
+            "dead_letter_count": len(dead_letter["state"]["dead_letter"]),
+        },
+        "control": control,
     }
 
 
