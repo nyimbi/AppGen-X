@@ -3801,8 +3801,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "test_runtime_operation_module_smoke" in item["exports"]
         for item in runtime["runtime_operation_module_tests"]
     )
-    assert all("smoke_test" in item["exports"] for item in runtime["compiler_runtime_modules"])
-    assert all("test_deep_runtime_module_smoke" in item["exports"] for item in runtime["deep_runtime_module_tests"])
+    assert all(
+        {"smoke_test", "operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in runtime["compiler_runtime_modules"]
+    )
+    assert all(
+        {"test_compiler_runtime_module_smoke", "test_compiler_runtime_module_step_contracts"}
+        <= set(item["exports"])
+        for item in runtime["compiler_runtime_module_tests"]
+    )
+    assert all(
+        {"runtime_workbench", "operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in runtime["deep_runtime_modules"]
+    )
+    assert all(
+        {"test_deep_runtime_module_smoke", "test_deep_runtime_module_step_contracts"} <= set(item["exports"])
+        for item in runtime["deep_runtime_module_tests"]
+    )
     runtime_module_replay = pascal_runtime_module_replay_matrix(design)
     assert runtime_module_replay["format"] == "appgen.pascal-runtime-module-replay-matrix.v1"
     assert runtime_module_replay["ok"] is True
@@ -15527,6 +15542,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_runtime["runtime_operation_modules"]["modules"]) == 7
     assert len(generated_runtime["compiler_runtime_modules"]["modules"]) == 6
     assert len(generated_runtime["deep_runtime_modules"]["modules"]) == 8
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_runtime["compiler_runtime_modules"]["modules"]
+    )
+    assert all(
+        "test_compiler_runtime_module_step_contracts" in item["exports"]
+        for item in generated_runtime["compiler_runtime_module_tests"]["tests"]
+    )
+    assert all(
+        {"operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_runtime["deep_runtime_modules"]["modules"]
+    )
+    assert all(
+        "test_deep_runtime_module_step_contracts" in item["exports"]
+        for item in generated_runtime["deep_runtime_module_tests"]["tests"]
+    )
     generated_drop_wiring = form_designer.component_drop_wiring_handler_contract("Book")
     assert generated_drop_wiring["format"] == "appgen.generated-component-drop-wiring-handler-contract.v1"
     assert generated_drop_wiring["ok"] is True
@@ -16877,12 +16908,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"map_component_declarations", "sandbox_invocation"} <= {
         step
         for item in native_runtime_matrix["compiler_runtime_replays"]
-        for step in item["validation_steps"]
+        for step in item["operation_steps"]
     }
     assert {"verify_streamed_properties", "verify_release_hooks"} <= {
         step
         for item in native_runtime_matrix["deep_runtime_replays"]
-        for step in item["validation_steps"]
+        for step in item["operation_steps"]
     }
     assert {item["module"] for item in native_form_module_files["modules"]} == {
         "native_stream_module",
@@ -16937,6 +16968,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         module = _load_module(module_path, f"generated_compiler_runtime_module_{item['module']}")
         assert module.smoke_test("Book")["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps("Book")["ok"] is True
+        assert module.validation_steps("Book")["ok"] is True
     for item in compiler_runtime_module_tests["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
@@ -16972,6 +17005,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         module = _load_module(module_path, f"generated_deep_runtime_module_{item['module']}")
         assert module.smoke_test("Book")["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps("Book")["ok"] is True
+        assert module.validation_steps("Book")["ok"] is True
     for item in deep_runtime_module_tests["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)

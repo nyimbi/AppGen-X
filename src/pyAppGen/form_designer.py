@@ -5147,25 +5147,38 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         {
             "id": "compiler_runtime_modules",
             "ok": len(compiler_runtime_modules) == 6
-            and all(item["ok"] and "smoke_test" in item["exports"] for item in compiler_runtime_modules),
+            and all(
+                item["ok"] and {"smoke_test", "operation_steps", "validation_steps"} <= set(item["exports"])
+                for item in compiler_runtime_modules
+            ),
             "evidence": compiler_runtime_modules,
         },
         {
             "id": "compiler_runtime_module_tests",
             "ok": len(compiler_runtime_module_tests) == 6
-            and all(item["ok"] and "test_compiler_runtime_module_smoke" in item["exports"] for item in compiler_runtime_module_tests),
+            and all(
+                item["ok"]
+                and {"test_compiler_runtime_module_smoke", "test_compiler_runtime_module_step_contracts"} <= set(item["exports"])
+                for item in compiler_runtime_module_tests
+            ),
             "evidence": compiler_runtime_module_tests,
         },
         {
             "id": "deep_runtime_modules",
             "ok": len(deep_runtime_modules) == 8
-            and all(item["ok"] and "runtime_workbench" in item["exports"] for item in deep_runtime_modules),
+            and all(
+                item["ok"] and {"runtime_workbench", "operation_steps", "validation_steps"} <= set(item["exports"])
+                for item in deep_runtime_modules
+            ),
             "evidence": deep_runtime_modules,
         },
         {
             "id": "deep_runtime_module_tests",
             "ok": len(deep_runtime_module_tests) == 8
-            and all(item["ok"] and "test_deep_runtime_module_smoke" in item["exports"] for item in deep_runtime_module_tests),
+            and all(
+                item["ok"] and {"test_deep_runtime_module_smoke", "test_deep_runtime_module_step_contracts"} <= set(item["exports"])
+                for item in deep_runtime_module_tests
+            ),
             "evidence": deep_runtime_module_tests,
         },
         {
@@ -24748,6 +24761,8 @@ def compiler_runtime_module_file_manifest() -> tuple[dict, ...]:
         "compiler_manifest",
         "run_compiler_surface",
         "runtime_workbench",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -24774,6 +24789,7 @@ def compiler_runtime_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_compiler_runtime_module",
                 "test_compiler_runtime_module_contract",
                 "test_compiler_runtime_module_smoke",
+                "test_compiler_runtime_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
@@ -24799,6 +24815,8 @@ def deep_runtime_module_file_manifest() -> tuple[dict, ...]:
         "runtime_manifest",
         "run_runtime_surface",
         "runtime_workbench",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -24825,6 +24843,7 @@ def deep_runtime_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_deep_runtime_module",
                 "test_deep_runtime_module_contract",
                 "test_deep_runtime_module_smoke",
+                "test_deep_runtime_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],

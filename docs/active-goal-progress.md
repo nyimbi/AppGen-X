@@ -1307,6 +1307,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the diff-only restricted-name scan has no hits, and implementation release,
   generation smoke, capability, full implementation release, and catalog
   release audits all return true for the implemented PBC set. Commit: `09ab07f`.
+- Current native runtime contract pass hardens generated compiler/runtime and
+  deep runtime module families so generated manifests fail unless every
+  compiler/deep surface exports reusable operation-step and validation-step
+  contracts, and generated tests explicitly export step-contract probes before
+  native runtime readiness is trusted. The generated-app path also keeps the
+  asset lifecycle package contract aligned with schema, service, release,
+  backend, event, and owned-table evidence so the runtime aggregator remains
+  executable.
 - Current Asset Lifecycle PBC completion pass expands `asset_lifecycle` into a
   package-local fixed-asset implementation with 44 owned tables,
   schema/model/migration contract evidence, service and release evidence
