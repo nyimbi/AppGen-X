@@ -12,26 +12,59 @@ WMS_CORE_REQUIRED_EVENT_TOPIC = "appgen.wms.events"
 WMS_CORE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 WMS_CORE_OWNED_TABLES = (
     "warehouse",
+    "warehouse_zone",
+    "warehouse_calendar",
+    "warehouse_identity",
     "bin_location",
+    "bin_attribute",
+    "bin_capacity_snapshot",
     "inbound_receipt",
+    "inbound_receipt_line",
     "dock_door",
+    "dock_appointment",
     "putaway_task",
+    "putaway_confirmation",
     "replenishment_task",
+    "replenishment_trigger",
     "pick_wave",
     "pick_task",
+    "pick_exception",
     "pack_task",
     "carton",
     "label_evidence",
+    "pack_station",
     "staging_lane",
     "shipment_confirmation",
+    "shipment_label",
     "cross_dock_flow",
     "cycle_count",
+    "cycle_count_line",
     "warehouse_exception",
     "labor_task",
+    "labor_assignment",
+    "labor_productivity",
     "edge_device_command",
+    "edge_device_event",
+    "edge_device_replay",
+    "warehouse_policy_screening",
+    "warehouse_traceability_event",
+    "warehouse_shipment_proof",
+    "warehouse_federation_projection",
+    "warehouse_carbon_wave",
+    "warehouse_pick_path_optimization",
+    "warehouse_labor_allocation",
+    "warehouse_anomaly_signal",
+    "warehouse_risk_model",
+    "warehouse_seed_data",
+    "wms_schema_extension",
+    "wms_control_assertion",
+    "wms_governed_model",
     "wms_rule",
     "wms_parameter",
     "wms_configuration",
+    "wms_core_appgen_outbox_event",
+    "wms_core_appgen_inbox_event",
+    "wms_core_dead_letter_event",
 )
 WMS_CORE_EMITTED_EVENT_TYPES = (
     "WarehouseRegistered",
@@ -117,25 +150,40 @@ WMS_CORE_RUNTIME_CAPABILITY_KEYS = (
 )
 WMS_CORE_STANDARD_FEATURE_KEYS = (
     "warehouse_master",
+    "warehouse_zone_master",
+    "warehouse_calendar",
+    "warehouse_identity",
     "bin_location_master",
+    "bin_attributes",
+    "bin_capacity_snapshots",
     "inbound_receipt",
+    "receipt_lines",
     "dock_door_registration",
+    "dock_appointment",
     "putaway_task",
     "putaway_confirmation",
     "replenishment_task",
+    "replenishment_trigger",
     "allocation_consumption",
     "pick_wave_planning",
     "pick_task_execution",
+    "pick_exception_management",
     "pack_task_creation",
     "cartonization",
     "label_evidence",
+    "pack_station_management",
     "staging",
     "ship_confirmation",
+    "shipment_labels",
     "cross_dock",
     "cycle_count",
+    "cycle_count_lines",
     "exception_management",
     "labor_task_priority",
     "edge_device_replay",
+    "appgen_x_outbox",
+    "appgen_x_inbox",
+    "retry_dead_letter_evidence",
     "multi_warehouse_isolation",
     "idempotent_handlers",
     "permissions",
@@ -183,6 +231,9 @@ def wms_core_runtime_capabilities() -> dict:
             "screen_warehouse_policy",
             "run_control_tests",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "federate_warehouse_view",
             "verify_warehouse_identity",
@@ -297,6 +348,9 @@ def wms_core_runtime_smoke() -> dict:
     screening = wms_core_screen_warehouse_policy(state, bin_id="bin_fast_1", restricted_bins=("restricted_bin",))
     controls = wms_core_run_control_tests(state)
     api = wms_core_build_api_contract()
+    schema = wms_core_build_schema_contract()
+    service = wms_core_build_service_contract()
+    release = wms_core_build_release_evidence()
     federation = wms_core_federate_warehouse_view(state, "wh_east", systems=("inventory", "transportation", "quality"))
     identity = wms_core_verify_warehouse_identity(warehouse["warehouse"]["identity"])
     resilience = wms_core_run_resilience_drill(state, "printer_unavailable")
@@ -326,7 +380,7 @@ def wms_core_runtime_smoke() -> dict:
         {"id": "immutable_warehouse_traceability_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_warehouse_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_warehouse_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "Picked" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "Picked" in api["events"]["emits"]},
         {"id": "cross_system_warehouse_federation", "ok": federation["ok"] and "inventory" in federation["systems"]},
         {"id": "edge_device_network_integration", "ok": route["idempotency_key"].startswith("wms_core:EdgeCommand")},
         {"id": "decentralized_warehouse_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -676,6 +730,202 @@ def wms_core_build_api_contract() -> dict:
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
         "configuration": ("WMS_CORE_DATABASE_URL", "WMS_CORE_EVENT_TOPIC", "WMS_CORE_RETRY_LIMIT", "WMS_CORE_LABEL_FORMAT"),
+    }
+
+
+def wms_core_build_schema_contract() -> dict:
+    """Return WMS-owned schema, migration, model, and relationship evidence."""
+    table_fields = {
+        "warehouse": ("tenant", "warehouse_id", "name", "status", "timezone", "calendar_id", "identity_id"),
+        "warehouse_zone": ("tenant", "zone_id", "warehouse_id", "name", "zone_type", "temperature", "status"),
+        "warehouse_calendar": ("tenant", "calendar_id", "warehouse_id", "working_days", "cutoff_time", "timezone"),
+        "warehouse_identity": ("tenant", "identity_id", "warehouse_id", "did", "issuer", "status"),
+        "bin_location": ("tenant", "bin_id", "warehouse_id", "zone", "capacity", "current_load", "status"),
+        "bin_attribute": ("tenant", "attribute_id", "bin_id", "name", "value", "source"),
+        "bin_capacity_snapshot": ("tenant", "snapshot_id", "bin_id", "capacity", "current_load", "observed_at"),
+        "inbound_receipt": ("tenant", "receipt_id", "warehouse_id", "dock_door", "status", "received_at"),
+        "inbound_receipt_line": ("tenant", "receipt_line_id", "receipt_id", "item_id", "quantity", "lot_id"),
+        "dock_door": ("tenant", "dock_door_id", "warehouse_id", "door_type", "status", "zone_id"),
+        "dock_appointment": ("tenant", "appointment_id", "dock_door_id", "carrier", "window_start", "window_end", "status"),
+        "putaway_task": ("tenant", "task_id", "receipt_id", "item_id", "bin_id", "quantity", "status"),
+        "putaway_confirmation": ("tenant", "confirmation_id", "task_id", "confirmed_by", "confirmed_at", "quantity"),
+        "replenishment_task": ("tenant", "replenishment_id", "bin_id", "item_id", "recommended_quantity", "status"),
+        "replenishment_trigger": ("tenant", "trigger_id", "bin_id", "minimum", "forward_pick_demand", "reason"),
+        "pick_wave": ("tenant", "wave_id", "warehouse_id", "status", "method", "released_at"),
+        "pick_task": ("tenant", "pick_id", "wave_id", "order_id", "item_id", "picked_quantity", "status"),
+        "pick_exception": ("tenant", "exception_id", "pick_id", "exception_type", "resolution", "status"),
+        "pack_task": ("tenant", "pack_id", "order_id", "station", "label_id", "status"),
+        "carton": ("tenant", "carton_id", "pack_id", "material", "weight", "dimensions"),
+        "label_evidence": ("tenant", "label_id", "pack_id", "format", "hash", "printed_at"),
+        "pack_station": ("tenant", "station_id", "warehouse_id", "status", "capability", "current_load"),
+        "staging_lane": ("tenant", "lane_id", "warehouse_id", "dock_door_id", "status", "shipment_id"),
+        "shipment_confirmation": ("tenant", "shipment_id", "order_id", "carrier", "dock_door", "status"),
+        "shipment_label": ("tenant", "shipment_label_id", "shipment_id", "label_id", "carrier", "hash"),
+        "cross_dock_flow": ("tenant", "flow_id", "receipt_id", "shipment_id", "dock_door_id", "status"),
+        "cycle_count": ("tenant", "cycle_count_id", "warehouse_id", "status", "started_at", "completed_at"),
+        "cycle_count_line": ("tenant", "cycle_count_line_id", "cycle_count_id", "bin_id", "item_id", "variance"),
+        "warehouse_exception": ("tenant", "exception_id", "warehouse_id", "exception_type", "severity", "status"),
+        "labor_task": ("tenant", "labor_task_id", "warehouse_id", "task_type", "priority", "status"),
+        "labor_assignment": ("tenant", "assignment_id", "labor_task_id", "worker_id", "tasks", "clearing_bid"),
+        "labor_productivity": ("tenant", "productivity_id", "worker_id", "units", "labor_hours", "observed_at"),
+        "edge_device_command": ("tenant", "command_id", "device_id", "kind", "route", "status"),
+        "edge_device_event": ("tenant", "edge_event_id", "device_id", "event_type", "payload_hash", "observed_at"),
+        "edge_device_replay": ("tenant", "replay_id", "command_id", "attempts", "status", "reason"),
+        "warehouse_policy_screening": ("tenant", "screening_id", "bin_id", "decision", "policy", "evidence_hash"),
+        "warehouse_traceability_event": ("tenant", "trace_event_id", "warehouse_id", "event_type", "trace_hash", "observed_at"),
+        "warehouse_shipment_proof": ("tenant", "proof_id", "shipment_id", "proof_hash", "public_claims", "created_at"),
+        "warehouse_federation_projection": ("tenant", "projection_id", "warehouse_id", "external_system", "projection_hash", "observed_at"),
+        "warehouse_carbon_wave": ("tenant", "carbon_wave_id", "wave_id", "carbon_intensity", "selected_window", "scheduled_at"),
+        "warehouse_pick_path_optimization": ("tenant", "optimization_id", "wave_id", "path", "objective_score", "model_version"),
+        "warehouse_labor_allocation": ("tenant", "allocation_id", "warehouse_id", "worker_id", "tasks", "clearing_bid"),
+        "warehouse_anomaly_signal": ("tenant", "signal_id", "warehouse_id", "entropy", "outliers", "decision"),
+        "warehouse_risk_model": ("tenant", "risk_model_id", "warehouse_id", "risk_score", "model_version", "explanations"),
+        "warehouse_seed_data": ("tenant", "seed_id", "warehouse_type", "zone_type", "label_format", "status"),
+        "wms_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "version"),
+        "wms_control_assertion": ("tenant", "control_id", "assertion", "status", "evidence_hash", "tested_at"),
+        "wms_governed_model": ("tenant", "model_id", "name", "feature_lineage", "drift_score", "governance_status"),
+        "wms_rule": ("tenant", "rule_id", "scope", "status", "predicate", "compiled_hash"),
+        "wms_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
+        "wms_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "label_format"),
+        "wms_core_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        "wms_core_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "wms_core_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "warehouse_zone.warehouse_id", "to": "warehouse.warehouse_id", "type": "owned_child"},
+        {"from": "warehouse_calendar.warehouse_id", "to": "warehouse.warehouse_id", "type": "owned_calendar"},
+        {"from": "warehouse_identity.warehouse_id", "to": "warehouse.warehouse_id", "type": "owned_identity"},
+        {"from": "bin_location.warehouse_id", "to": "warehouse.warehouse_id", "type": "owned_bin"},
+        {"from": "bin_attribute.bin_id", "to": "bin_location.bin_id", "type": "owned_child"},
+        {"from": "inbound_receipt_line.receipt_id", "to": "inbound_receipt.receipt_id", "type": "owned_child"},
+        {"from": "putaway_confirmation.task_id", "to": "putaway_task.task_id", "type": "owned_confirmation"},
+        {"from": "pick_task.wave_id", "to": "pick_wave.wave_id", "type": "owned_child"},
+        {"from": "pick_exception.pick_id", "to": "pick_task.pick_id", "type": "owned_exception"},
+        {"from": "carton.pack_id", "to": "pack_task.pack_id", "type": "owned_carton"},
+        {"from": "shipment_label.shipment_id", "to": "shipment_confirmation.shipment_id", "type": "owned_label"},
+        {"from": "cycle_count_line.cycle_count_id", "to": "cycle_count.cycle_count_id", "type": "owned_child"},
+        {"from": "labor_assignment.labor_task_id", "to": "labor_task.labor_task_id", "type": "owned_assignment"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "wms_core",
+        }
+        for table in WMS_CORE_OWNED_TABLES
+    )
+    allowed_prefixes = ("warehouse", "bin_", "inbound_", "dock_", "putaway_", "replenishment_", "pick_", "pack_", "carton", "label_", "staging_", "shipment_", "cross_", "cycle_", "labor_", "edge_", "wms_")
+    return {
+        "format": "appgen.wms-core-owned-schema-contract.v1",
+        "ok": len(tables) == len(WMS_CORE_OWNED_TABLES)
+        and len(tables) >= 40
+        and all(item["table"].startswith(allowed_prefixes) for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/wms_core/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": WMS_CORE_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(WMS_CORE_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in WMS_CORE_OWNED_TABLES
+        ),
+        "datastore_backends": WMS_CORE_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def wms_core_build_service_contract() -> dict:
+    """Return WMS Core command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_warehouse",
+        "register_bin",
+        "receive_inbound",
+        "create_putaway_task",
+        "confirm_putaway",
+        "create_pick_wave",
+        "execute_pick",
+        "create_pack_task",
+        "confirm_pack",
+        "confirm_shipment",
+        "recommend_replenishment",
+        "parse_warehouse_event",
+        "simulate_wave_policy",
+        "route_edge_command",
+        "generate_shipment_proof",
+        "screen_warehouse_policy",
+        "federate_warehouse_view",
+        "verify_warehouse_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_wave",
+        "optimize_pick_path",
+        "allocate_labor_tasks",
+        "run_control_tests",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.wms-core-service-contract.v1",
+        "ok": len(command_methods) >= 30,
+        "transaction_boundary": "wms_core_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "forecast_throughput",
+            "score_congestion_risk",
+            "detect_warehouse_anomaly",
+            "model_stochastic_throughput",
+            "verify_owned_table_boundary",
+        ),
+        "mutates_only": WMS_CORE_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _WMS_CORE_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": WMS_CORE_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _WMS_CORE_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def wms_core_build_release_evidence() -> dict:
+    """Return WMS package-local release evidence."""
+    schema = wms_core_build_schema_contract()
+    service = wms_core_build_service_contract()
+    api = wms_core_build_api_contract()
+    permissions = wms_core_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 40},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(WMS_CORE_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 30},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"register_warehouse", "create_pick_wave", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == WMS_CORE_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.wms-core-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 

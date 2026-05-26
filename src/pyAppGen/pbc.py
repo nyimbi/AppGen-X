@@ -2458,10 +2458,29 @@ PBC_CATALOG: dict[str, dict] = {
         "label": "Warehouse Management Core",
         "mesh": "scl",
         "description": "Putaway, picking, packing, cross-docking, and warehouse edge workflows.",
-        "tables": ("warehouse", "bin_location", "pick_wave", "pack_task"),
-        "apis": ("POST /putaway", "POST /pick-waves", "POST /pack-tasks"),
-        "emits": ("Picked", "Packed", "GoodsReceiptPosted", "OrderShipped"),
-        "consumes": ("InventoryAllocated", "InboundArrived"),
+        "tables": (
+            "warehouse",
+            "warehouse_zone",
+            "bin_location",
+            "inbound_receipt",
+            "inbound_receipt_line",
+            "dock_door",
+            "dock_appointment",
+            "putaway_task",
+            "pick_wave",
+            "pick_task",
+            "pack_task",
+            "shipment_confirmation",
+            "cycle_count",
+            "labor_task",
+            "edge_device_command",
+            "wms_core_appgen_outbox_event",
+            "wms_core_appgen_inbox_event",
+            "wms_core_dead_letter_event",
+        ),
+        "apis": ("POST /wms/warehouses", "POST /wms/inbound", "POST /wms/putaway", "POST /wms/pick-waves", "POST /wms/pack-tasks", "POST /wms/shipments", "GET /wms/workbench"),
+        "emits": ("WarehouseRegistered", "BinRegistered", "GoodsReceiptPosted", "PutawayTaskCreated", "PutawayConfirmed", "PickWaveReleased", "Picked", "PackTaskCreated", "Packed", "OrderShipped"),
+        "consumes": ("InventoryAllocated", "InboundArrived", "QualityHoldReleased", "CarrierBooked", "AccessPolicyChanged"),
         "template": "warehouse_management",
     },
     "procurement_sourcing": {
@@ -5784,6 +5803,9 @@ from .pbcs.wms_core import WMS_CORE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.wms_core import WMS_CORE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.wms_core import WMS_CORE_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_build_api_contract  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_build_release_evidence  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_build_schema_contract  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_build_service_contract  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_build_workbench_view  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_configure_runtime  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_confirm_pack  # noqa: E402,F401

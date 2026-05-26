@@ -9,12 +9,25 @@ its implementation under `src/pyAppGen/pbcs/wms_core/`.
 
 - **PBC key:** `wms_core`
 - **Mesh:** `scl`
-- **Owned tables:** `warehouse`, `bin_location`, `inbound_receipt`,
-  `dock_door`, `putaway_task`, `replenishment_task`, `pick_wave`,
-  `pick_task`, `pack_task`, `carton`, `label_evidence`, `staging_lane`,
-  `shipment_confirmation`, `cross_dock_flow`, `cycle_count`,
-  `warehouse_exception`, `labor_task`, `edge_device_command`, `wms_rule`,
-  `wms_parameter`, and `wms_configuration`
+- **Owned tables:** `warehouse`, `warehouse_zone`, `warehouse_calendar`,
+  `warehouse_identity`, `bin_location`, `bin_attribute`,
+  `bin_capacity_snapshot`, `inbound_receipt`, `inbound_receipt_line`,
+  `dock_door`, `dock_appointment`, `putaway_task`,
+  `putaway_confirmation`, `replenishment_task`, `replenishment_trigger`,
+  `pick_wave`, `pick_task`, `pick_exception`, `pack_task`, `carton`,
+  `label_evidence`, `pack_station`, `staging_lane`,
+  `shipment_confirmation`, `shipment_label`, `cross_dock_flow`,
+  `cycle_count`, `cycle_count_line`, `warehouse_exception`, `labor_task`,
+  `labor_assignment`, `labor_productivity`, `edge_device_command`,
+  `edge_device_event`, `edge_device_replay`, `warehouse_policy_screening`,
+  `warehouse_traceability_event`, `warehouse_shipment_proof`,
+  `warehouse_federation_projection`, `warehouse_carbon_wave`,
+  `warehouse_pick_path_optimization`, `warehouse_labor_allocation`,
+  `warehouse_anomaly_signal`, `warehouse_risk_model`,
+  `warehouse_seed_data`, `wms_schema_extension`, `wms_control_assertion`,
+  `wms_governed_model`, `wms_rule`, `wms_parameter`,
+  `wms_configuration`, `wms_core_appgen_outbox_event`,
+  `wms_core_appgen_inbox_event`, and `wms_core_dead_letter_event`
 - **Allowed datastores:** PostgreSQL, MySQL, MariaDB
 - **Event contract:** AppGen-X outbox/inbox event contract only, fixed to
   `appgen.wms.events`
@@ -43,13 +56,15 @@ unless those references are represented by a declared API or event projection.
 ## Package Metadata and Registration
 
 The package exports a stable `PBC_KEY`, implementation contract, capability
-catalog, API descriptor, permission descriptor, UI contract, owned table list,
-database backend allowlist, emitted event list, and consumed event list from
-the package directory. Package discovery can load `pyAppGen.pbcs.wms_core`
-without causing side effects. The implementation contract is a read-only
-registration plan: it describes the source package, runtime capability proof,
-UI fragments, API descriptors, RBAC descriptors, owned tables, and datastore
-constraints without mutating application state.
+catalog, API descriptor, schema contract, service contract, release-evidence
+contract, permission descriptor, UI contract, owned table list, database
+backend allowlist, emitted event list, and consumed event list from the package
+directory. Package discovery can load `pyAppGen.pbcs.wms_core` without causing
+side effects. The implementation contract is a read-only registration plan: it
+describes the source package, runtime capability proof, UI fragments, API
+descriptors, generated migrations, generated model descriptors, service
+methods, RBAC descriptors, owned tables, and datastore constraints without
+mutating application state.
 
 Generated applications must include WMS-owned schema, migrations, models,
 services, routes, event contracts, handlers, and workbench fragments derived
@@ -104,19 +119,19 @@ violations.
    shared stock tables.
 7. Pick wave planning with grouping, path sequencing, labor assignment, and
    partial-pick handling.
-8. Pick task execution with scan validation, substitutions, short picks, and
-   exception capture.
+8. Pick task execution with scan validation, substitutions, short picks,
+   exception capture, and pick-exception owned evidence.
 9. Pack task creation with cartonization, material selection, weight checks, and
    label evidence.
-10. Staging and ship confirmation with carrier route, dock door, and order
-    shipment event evidence.
+10. Staging and ship confirmation with carrier route, dock door, shipment
+    label, shipment proof, and order shipment event evidence.
 11. Cross-dock flow from inbound to outbound staging.
 12. Cycle count and location audit workflows.
 13. Warehouse exception management for damaged goods, missing stock, blocked
     bins, short picks, and failed labels.
-14. Labor task prioritization and productivity metrics.
-15. Edge-device command replay for scanners, printers, scales, conveyors, and
-    sortation events.
+14. Labor task prioritization, labor assignment, and productivity metrics.
+15. Edge-device commands, edge events, and replay for scanners, printers,
+    scales, conveyors, and sortation events.
 16. Multi-tenant and multi-warehouse isolation.
 17. Retry, dead-letter, and idempotency evidence for consumed allocation and
     inbound events.
@@ -125,10 +140,15 @@ violations.
 19. Configuration schema and seed data for warehouse types, bin statuses, pick
     methods, pack materials, and default parameters.
 20. Workbench views for dock backlog, putaway tasks, waves, pack tasks, ship
-    queue, exceptions, and labor load.
-21. Release-audit evidence for package ownership, manifests, schema, migrations,
-    models, services, routes, events, handlers, UI, permissions, configuration,
-    tests, registration metadata, and generation smoke.
+    queue, exceptions, labor load, rules, parameters, and configuration.
+21. Schema-contract evidence for every owned table, including generated
+    migration paths and model descriptors.
+22. Service-contract evidence proving that command methods mutate only
+    WMS-owned tables and external state enters through declared APIs, events,
+    or projections.
+23. Release-audit evidence for package ownership, manifests, schema,
+    migrations, models, services, routes, events, handlers, UI, permissions,
+    configuration, tests, registration metadata, and generation smoke.
 
 ## Event Handling and Reliability
 
@@ -177,6 +197,30 @@ dead-letter tables. The workbench render contract reports visible and locked
 actions from RBAC, counts outbox/inbox/dead-letter records, and includes binding
 evidence proving that configuration and events use the package-local AppGen-X
 contract.
+
+## Generated Schema, Models, and Services
+
+`wms_core_build_schema_contract()` emits the package-owned schema plan. For
+each WMS table it declares fields, ownership, primary key evidence, generated
+migration path under `pbcs/wms_core/migrations/`, generated model class name,
+relationship descriptors, allowed datastore backends, and
+`shared_table_access: false`.
+
+`wms_core_build_service_contract()` emits command and query service evidence.
+Commands cover configuration, rules, schema extensions, inbound events,
+warehouse and bin registration, receiving, putaway, replenishment, wave
+release, picking, packing, shipping, edge routing, proofs, policy screening,
+federation, resilience, crypto epoch rotation, carbon scheduling, optimization,
+labor allocation, controls, and governed model registration. Queries cover the
+workbench, throughput forecasting, congestion risk, anomaly detection,
+stochastic exposure, and boundary verification. The contract sets the
+transaction boundary to the WMS-owned datastore plus AppGen-X outbox and lists
+only declared APIs, consumed events, and projections as external dependencies.
+
+`wms_core_build_release_evidence()` combines schema, service, API, permission,
+backend, and shared-table checks into a blocking release gate. A generated app
+must not consider WMS complete unless this release evidence returns `ok: true`
+with no blocking gaps.
 
 ## Advanced Capabilities
 

@@ -9,6 +9,9 @@ from .runtime import WMS_CORE_REQUIRED_EVENT_TOPIC
 from .runtime import WMS_CORE_RUNTIME_CAPABILITY_KEYS
 from .runtime import WMS_CORE_STANDARD_FEATURE_KEYS
 from .runtime import wms_core_build_api_contract
+from .runtime import wms_core_build_release_evidence
+from .runtime import wms_core_build_schema_contract
+from .runtime import wms_core_build_service_contract
 from .runtime import wms_core_build_workbench_view
 from .runtime import wms_core_configure_runtime
 from .runtime import wms_core_confirm_pack
@@ -43,10 +46,16 @@ def implementation_contract() -> dict:
     return {
         **contract,
         "standard_features": runtime["standard_features"],
-        "advanced_runtime": runtime,
-        "ui_contract": wms_core_ui_contract(),
-        "api_contract": wms_core_build_api_contract(),
-        "permissions_contract": wms_core_permissions_contract(),
         "owned_tables": WMS_CORE_OWNED_TABLES,
         "allowed_database_backends": WMS_CORE_ALLOWED_DATABASE_BACKENDS,
+        "api_contract": wms_core_build_api_contract(),
+        "schema_contract": wms_core_build_schema_contract(),
+        "service_contract": wms_core_build_service_contract(),
+        "release_evidence_contract": wms_core_build_release_evidence(),
+        "permissions_contract": wms_core_permissions_contract(),
+        "required_event_topic": WMS_CORE_REQUIRED_EVENT_TOPIC,
+        "consumes": WMS_CORE_CONSUMED_EVENT_TYPES,
+        "emits": WMS_CORE_EMITTED_EVENT_TYPES,
+        "advanced_runtime": runtime,
+        "ui_contract": wms_core_ui_contract(),
     }
