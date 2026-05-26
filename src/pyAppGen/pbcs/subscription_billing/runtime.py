@@ -59,6 +59,9 @@ SUBSCRIPTION_BILLING_STANDARD_FEATURE_KEYS = (
     "seed_data",
     "workbench",
 )
+SUBSCRIPTION_BILLING_OWNED_TABLES = ("subscription", "usage_meter", "billing_schedule", "dunning_notice")
+SUBSCRIPTION_BILLING_API_ROUTES = ("POST /subscriptions", "POST /usage", "POST /renewals")
+SUBSCRIPTION_BILLING_EMITTED_EVENT_TYPES = ("SubscriptionRenewed", "UsageRated", "InvoiceApproved")
 SUBSCRIPTION_BILLING_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 SUBSCRIPTION_BILLING_SUPPORTED_CONFIGURATION_FIELDS = (
     "database_backend",
@@ -125,6 +128,7 @@ def subscription_billing_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "register_plan",
             "create_subscription",
             "record_usage",
@@ -132,7 +136,10 @@ def subscription_billing_runtime_capabilities() -> dict:
             "renew_subscription",
             "create_dunning_notice",
             "receive_event",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -362,7 +369,7 @@ def subscription_billing_register_rule(state: dict, rule: dict) -> dict:
 
 
 def subscription_billing_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
-    if table not in {"subscription", "usage_meter", "billing_schedule", "dunning_notice"}:
+    if table not in set(SUBSCRIPTION_BILLING_OWNED_TABLES):
         raise ValueError(f"Subscription Billing cannot extend non-owned table: {table}")
     runtime = _copy_state(state)
     extension = {"table": table, "fields": dict(fields), "version": len(runtime["schema_extensions"].get(table, ())) + 1}
@@ -587,6 +594,128 @@ def subscription_billing_build_workbench_view(state: dict, *, tenant: str) -> di
             "inbox_table": "subscription_billing_appgen_inbox_event",
             "dead_letter_table": "subscription_billing_dead_letter_event",
         },
+    }
+
+
+def subscription_billing_build_api_contract() -> dict:
+    return {
+        "format": "appgen.subscription-billing-api-contract.v1",
+        "ok": True,
+        "pbc": "subscription_billing",
+        "routes": (
+            {
+                "route": "POST /subscriptions",
+                "command": "create_subscription",
+                "owned_tables": ("subscription", "billing_schedule"),
+                "emits": ("SubscriptionActivated",),
+                "requires_permission": "subscription_billing.subscription",
+                "idempotency_key": "subscription_id",
+            },
+            {
+                "route": "POST /usage",
+                "command": "record_usage",
+                "owned_tables": ("usage_meter",),
+                "emits": ("UsageRated",),
+                "requires_permission": "subscription_billing.usage",
+                "idempotency_key": "usage_id",
+            },
+            {
+                "route": "POST /renewals",
+                "command": "renew_subscription",
+                "owned_tables": ("subscription", "billing_schedule"),
+                "emits": ("SubscriptionRenewed",),
+                "requires_permission": "subscription_billing.renewal",
+                "idempotency_key": "subscription_id",
+            },
+            {
+                "route": "POST /invoices",
+                "command": "generate_invoice",
+                "owned_tables": ("billing_schedule",),
+                "emits": ("InvoiceApproved", "InvoiceApprovalRequested"),
+                "requires_permission": "subscription_billing.invoice",
+                "idempotency_key": "subscription_id:period",
+            },
+            {
+                "route": "POST /dunning-notices",
+                "command": "create_dunning_notice",
+                "owned_tables": ("dunning_notice",),
+                "emits": ("DunningNoticeCreated",),
+                "requires_permission": "subscription_billing.dunning",
+                "idempotency_key": "subscription_id:reason",
+            },
+        ),
+        "declared_catalog_routes": SUBSCRIPTION_BILLING_API_ROUTES,
+        "event_contract": "appgen_event_contract",
+        "stream_engine_picker_visible": False,
+        "database_backends": SUBSCRIPTION_BILLING_ALLOWED_DATABASE_BACKENDS,
+    }
+
+
+def subscription_billing_permissions_contract() -> dict:
+    permissions = (
+        "subscription_billing.configure",
+        "subscription_billing.subscription",
+        "subscription_billing.usage",
+        "subscription_billing.invoice",
+        "subscription_billing.renewal",
+        "subscription_billing.dunning",
+        "subscription_billing.event",
+        "subscription_billing.audit",
+    )
+    return {
+        "format": "appgen.subscription-billing-permissions-contract.v1",
+        "ok": True,
+        "pbc": "subscription_billing",
+        "permissions": permissions,
+        "roles": {
+            "subscription_billing_admin": permissions,
+            "subscription_billing_operator": (
+                "subscription_billing.subscription",
+                "subscription_billing.usage",
+                "subscription_billing.invoice",
+                "subscription_billing.renewal",
+                "subscription_billing.dunning",
+            ),
+            "subscription_billing_auditor": ("subscription_billing.audit", "subscription_billing.event"),
+        },
+        "policy_controls": (
+            "tenant_scope_required",
+            "plan_family_allowlist",
+            "currency_region_allowlist",
+            "approval_threshold_enforced",
+            "event_idempotency_required",
+        ),
+    }
+
+
+def subscription_billing_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str]) -> dict:
+    owned = set(SUBSCRIPTION_BILLING_OWNED_TABLES)
+    allowed_event_dependencies = {
+        "payment_orchestration.PaymentCaptured",
+        "price_promotion_engine.PriceOptimized",
+    }
+    allowed_api_dependencies = {
+        "tax_localization.POST /tax-quotes",
+        "gl_core.POST /journals",
+        "customer_360.GET /customer-timeline",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in owned
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_api_dependencies
+        and not str(reference).startswith("subscription_billing_")
+    )
+    return {
+        "format": "appgen.subscription-billing-owned-boundary-check.v1",
+        "ok": not violations,
+        "pbc": "subscription_billing",
+        "owned_tables": SUBSCRIPTION_BILLING_OWNED_TABLES,
+        "allowed_event_dependencies": tuple(sorted(allowed_event_dependencies)),
+        "allowed_api_dependencies": tuple(sorted(allowed_api_dependencies)),
+        "references": tuple(references),
+        "violations": violations,
     }
 
 

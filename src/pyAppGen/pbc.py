@@ -5635,6 +5635,7 @@ from .pbcs.payment_orchestration import payment_orchestration_void_payment  # no
 from .pbcs.subscription_billing import SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.subscription_billing import SUBSCRIPTION_BILLING_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.subscription_billing import SUBSCRIPTION_BILLING_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_build_api_contract  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_build_workbench_view  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_configure_runtime  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_create_dunning_notice  # noqa: E402,F401
@@ -5645,12 +5646,15 @@ from .pbcs.subscription_billing import subscription_billing_receive_event  # noq
 from .pbcs.subscription_billing import subscription_billing_record_usage  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_register_plan  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_register_rule  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_register_schema_extension  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_render_workbench  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_renew_subscription  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_permissions_contract  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_runtime_capabilities  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_runtime_smoke  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_set_parameter  # noqa: E402,F401
 from .pbcs.subscription_billing import subscription_billing_ui_contract  # noqa: E402,F401
+from .pbcs.subscription_billing import subscription_billing_verify_owned_table_boundary  # noqa: E402,F401
 from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_UI_FRAGMENT_KEYS  # noqa: E402,F401

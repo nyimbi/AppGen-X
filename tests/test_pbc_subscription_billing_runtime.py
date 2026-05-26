@@ -2,6 +2,7 @@ import pytest
 
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
+from pyAppGen.pbc import subscription_billing_build_api_contract
 from pyAppGen.pbc import subscription_billing_build_workbench_view
 from pyAppGen.pbc import subscription_billing_configure_runtime
 from pyAppGen.pbc import subscription_billing_create_dunning_notice
@@ -12,11 +13,15 @@ from pyAppGen.pbc import subscription_billing_receive_event
 from pyAppGen.pbc import subscription_billing_record_usage
 from pyAppGen.pbc import subscription_billing_register_plan
 from pyAppGen.pbc import subscription_billing_register_rule
+from pyAppGen.pbc import subscription_billing_register_schema_extension
 from pyAppGen.pbc import subscription_billing_render_workbench
 from pyAppGen.pbc import subscription_billing_runtime_capabilities
 from pyAppGen.pbc import subscription_billing_runtime_smoke
 from pyAppGen.pbc import subscription_billing_set_parameter
+from pyAppGen.pbc import subscription_billing_permissions_contract
 from pyAppGen.pbc import subscription_billing_ui_contract
+from pyAppGen.pbc import subscription_billing_verify_owned_table_boundary
+from pyAppGen.pbcs.subscription_billing import SUBSCRIPTION_BILLING_OWNED_TABLES
 from pyAppGen.pbcs.subscription_billing import SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS
 
 
@@ -39,6 +44,10 @@ def test_subscription_billing_runtime_executes_standard_and_advanced_capabilitie
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert contract["source_package"]["api_contract"]["ok"] is True
+    assert contract["source_package"]["permissions_contract"]["ok"] is True
+    assert contract["source_package"]["owned_tables"] == SUBSCRIPTION_BILLING_OWNED_TABLES
+    assert contract["source_package"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
     assert "BillingConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert pbc_implementation_release_audit(("subscription_billing",))["ok"] is True
 
@@ -89,6 +98,13 @@ def test_subscription_billing_runtime_applies_rules_parameters_configuration_and
     )
     state = rule["state"]
     assert rule["rule"]["compiled_hash"]
+    schema_extension = subscription_billing_register_schema_extension(
+        state,
+        "subscription",
+        {"renewal_terms": "jsonb"},
+    )
+    state = schema_extension["state"]
+    assert schema_extension["extension"]["version"] == 1
 
     state = subscription_billing_register_plan(
         state,
@@ -157,6 +173,27 @@ def test_subscription_billing_runtime_applies_rules_parameters_configuration_and
     assert rendered["configuration_bound"] is True
     assert not rendered["locked_actions"]
 
+    api_contract = subscription_billing_build_api_contract()
+    assert api_contract["ok"] is True
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert {route["command"] for route in api_contract["routes"]} >= {
+        "create_subscription",
+        "record_usage",
+        "generate_invoice",
+        "renew_subscription",
+        "create_dunning_notice",
+    }
+    permissions = subscription_billing_permissions_contract()
+    assert "subscription_billing_admin" in permissions["roles"]
+    assert "event_idempotency_required" in permissions["policy_controls"]
+    boundary = subscription_billing_verify_owned_table_boundary(
+        ("subscription", "billing_schedule", "payment_orchestration.PaymentCaptured", "tax_localization.POST /tax-quotes")
+    )
+    assert boundary["ok"] is True
+    violated = subscription_billing_verify_owned_table_boundary(("customer",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("customer",)
+
 
 def test_subscription_billing_rejects_invalid_runtime_inputs_and_records_dead_letters() -> None:
     state = subscription_billing_empty_state()
@@ -193,6 +230,8 @@ def test_subscription_billing_rejects_invalid_runtime_inputs_and_records_dead_le
     )["state"]
     with pytest.raises(ValueError, match="Unsupported Subscription Billing parameter"):
         subscription_billing_set_parameter(state, "stream_engine", 1)
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        subscription_billing_register_schema_extension(state, "customer", {"external_id": "text"})
     failed = subscription_billing_receive_event(
         state,
         {"event_id": "evt_fail", "event_type": "PaymentCaptured", "payload": {"tenant": "tenant_ops", "invoice_id": "inv_missing", "amount": 1, "currency": "USD"}},
