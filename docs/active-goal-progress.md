@@ -1602,6 +1602,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and `enterprise_search_vector`, diff hygiene and restricted-term scans pass,
   and full generation, capability, implementation release, and catalog release
   audits all return true. Commit: `ccb9496`.
+- Current PBC release-audit evidence gate pass strengthens
+  `pbc_implementation_release_audit()` so every built-in PBC must expose
+  source-package schema, service, and release evidence in addition to a source
+  package directory. The stricter gate exposed and fixed missing explicit
+  no-shared-table evidence in `price_promotion_engine` schema and service
+  builders. Focused source-package and Price Promotion Engine tests pass
+  (`5 passed`), and full generation, capability, implementation release, and
+  catalog release audits all return true. Commit: `2da8bd7`.
 
 ## Open Completion Areas
 
