@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS
+from .runtime import SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES
+from .runtime import SCHEMA_REGISTRY_EMITTED_EVENT_TYPES
+from .runtime import SCHEMA_REGISTRY_OWNED_TABLES
+from .runtime import SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC
+from .runtime import schema_registry_permissions_contract
+
 
 SCHEMA_REGISTRY_UI_FRAGMENT_KEYS = (
     "SchemaRegistryWorkbench",
@@ -65,24 +72,14 @@ def schema_registry_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": {
-            "register_subject": "schema_registry.register",
-            "submit_schema_version": "schema_registry.register",
-            "define_compatibility_rule": "schema_registry.approve",
-            "register_consumer_binding": "schema_registry.register",
-            "run_compatibility_check": "schema_registry.validate",
-            "validate_payload": "schema_registry.validate",
-            "record_contract_violation": "schema_registry.triage",
-            "publish_contract_projection": "schema_registry.publish",
-            "register_rule": "schema_registry.configure",
-            "set_parameter": "schema_registry.configure",
-            "configure_runtime": "schema_registry.configure",
-            "run_control_tests": "schema_registry.audit",
-        },
+        "action_permissions": schema_registry_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_compatibility", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -99,11 +96,13 @@ def schema_registry_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "mode", "classification", "severity", "status"),
         },
         "event_surfaces": {
-            "emits": ("SchemaSubjectRegistered", "SchemaAccepted", "BreakingSchemaBlocked", "PayloadValidated", "ContractViolationRecorded", "ContractProjectionPublished"),
-            "consumes": ("PbcDeployed", "EventContractProposed", "RoutePublished", "AccessPolicyChanged", "PackageRegistrationRequested"),
+            "emits": SCHEMA_REGISTRY_EMITTED_EVENT_TYPES,
+            "consumes": SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": SCHEMA_REGISTRY_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -141,4 +140,12 @@ def schema_registry_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": SCHEMA_REGISTRY_OWNED_TABLES,
+            "outbox_table": "schema_registry_appgen_outbox_event",
+            "inbox_table": "schema_registry_appgen_inbox_event",
+            "dead_letter_table": "schema_registry_dead_letter_event",
+        },
     }

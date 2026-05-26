@@ -8,6 +8,64 @@ import math
 import re
 
 
+SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC = "appgen.schema.events"
+SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+SCHEMA_REGISTRY_OWNED_TABLES = (
+    "schema_subject",
+    "schema_version",
+    "compatibility_rule",
+    "consumer_binding",
+    "validation_run",
+    "contract_violation",
+    "contract_projection",
+    "schema_rule",
+    "schema_parameter",
+    "schema_configuration",
+)
+SCHEMA_REGISTRY_EMITTED_EVENT_TYPES = (
+    "SchemaSubjectRegistered",
+    "SchemaAccepted",
+    "BreakingSchemaBlocked",
+    "PayloadValidated",
+    "ContractViolationRecorded",
+    "ContractProjectionPublished",
+)
+SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES = (
+    "PbcDeployed",
+    "EventContractProposed",
+    "RoutePublished",
+    "AccessPolicyChanged",
+    "PackageRegistrationRequested",
+)
+_SCHEMA_REGISTRY_RUNTIME_TABLES = (
+    "schema_registry_appgen_outbox_event",
+    "schema_registry_appgen_inbox_event",
+    "schema_registry_dead_letter_event",
+)
+_SCHEMA_REGISTRY_ALLOWED_DEPENDENCIES = (
+    "gateway_contract_projection",
+    "audit_contract_projection",
+    "composition_contract_projection",
+    "workflow_contract_projection",
+    "pbc_deployment_projection",
+    "route_contract_projection",
+    "access_policy_projection",
+    "package_registration_projection",
+    "GET /gateway/routes",
+    "GET /identity/policies",
+    "POST /audit/contract-events",
+    "POST /composition/contracts",
+)
+_SCHEMA_REGISTRY_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
 SCHEMA_REGISTRY_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_schema_lifecycle",
     "graph_relational_contract_topology",
@@ -81,6 +139,7 @@ def schema_registry_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "schema_registry",
         "implementation_directory": "src/pyAppGen/pbcs/schema_registry",
+        "owned_tables": SCHEMA_REGISTRY_OWNED_TABLES,
         "capabilities": SCHEMA_REGISTRY_RUNTIME_CAPABILITY_KEYS,
         "standard_features": SCHEMA_REGISTRY_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -88,6 +147,7 @@ def schema_registry_runtime_capabilities() -> dict:
             "set_parameter",
             "register_rule",
             "register_schema_extension",
+            "receive_event",
             "register_subject",
             "define_compatibility_rule",
             "register_consumer_binding",
@@ -96,7 +156,10 @@ def schema_registry_runtime_capabilities() -> dict:
             "validate_payload",
             "record_contract_violation",
             "publish_contract_projection",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -108,7 +171,7 @@ def schema_registry_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.schema.events",
+            "event_topic": SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_formats": ("json", "avro", "event", "api", "projection"),
             "default_compatibility": "backward_forward",
@@ -269,27 +332,43 @@ def schema_registry_empty_state() -> dict:
         "outbox": [],
         "inbox": [],
         "dead_letters": [],
+        "dead_letter": [],
+        "handled_events": {},
+        "retry_evidence": [],
+        "pbc_projections": {},
+        "event_contract_projections": {},
+        "route_projections": {},
+        "access_policy_projections": {},
+        "package_registration_projections": {},
         "crypto_epoch": 1,
     }
 
 
 def schema_registry_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    forbidden = tuple(sorted(field for field in _SCHEMA_REGISTRY_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Schema Registry uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    allowed_databases = set(SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS)
     database_backend = configuration.get("database_backend")
     if database_backend not in allowed_databases:
         raise ValueError("Schema Registry supports only PostgreSQL, MySQL, or MariaDB backends")
+    if configuration.get("event_topic") != SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Schema Registry requires AppGen-X event topic {SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC}")
     next_state = _copy_state(state)
     next_state["configuration"] = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": SCHEMA_REGISTRY_OWNED_TABLES,
     }
     return {"ok": True, "state": next_state, "configuration": next_state["configuration"]}
 
 
 def schema_registry_set_parameter(state: dict, key: str, value: int | float | str) -> dict:
-    allowed = {"compatibility_threshold", "max_schema_fields", "semantic_similarity_floor", "violation_risk_threshold", "review_sla_hours", "retention_days"}
+    allowed = {"compatibility_threshold", "max_schema_fields", "semantic_similarity_floor", "violation_risk_threshold", "review_sla_hours", "retention_days", "breaking_change_weight", "consumer_impact_weight", "payload_validation_sample_rate", "workbench_limit"}
     if key not in allowed:
         raise ValueError(f"Unsupported Schema Registry parameter: {key}")
     next_state = _copy_state(state)
@@ -307,9 +386,52 @@ def schema_registry_register_rule(state: dict, rule: dict) -> dict:
 
 
 def schema_registry_register_schema_extension(state: dict, target: str, fields: dict) -> dict:
+    if target not in SCHEMA_REGISTRY_OWNED_TABLES:
+        raise ValueError(f"Schema Registry schema extensions must target owned tables: {SCHEMA_REGISTRY_OWNED_TABLES}")
+    invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
+    if invalid:
+        return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
     next_state = _copy_state(state)
     next_state["schema_extensions"].setdefault(target, {}).update(fields)
-    return {"ok": True, "state": next_state, "target": target, "fields": next_state["schema_extensions"][target]}
+    return {"ok": True, "state": next_state, "schema_extension": {"table": target, "fields": dict(fields)}, "target": target, "fields": next_state["schema_extensions"][target]}
+
+
+def schema_registry_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    if key in state["handled_events"] and state["handled_events"][key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
+    attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {"event_id": event_id, "event_type": event_type, "tenant": payload.get("tenant"), "attempts": attempts, "idempotency_key": key}
+    next_state = _copy_state(state)
+    next_state["inbox"].append(inbox_entry)
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"].append(evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_schema_event"}
+            next_state["dead_letters"].append(dead)
+            next_state["dead_letter"].append(dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "PbcDeployed":
+        next_state["pbc_projections"][payload["pbc"]] = payload
+    elif event_type == "EventContractProposed":
+        next_state["event_contract_projections"][payload["contract_id"]] = payload
+    elif event_type == "RoutePublished":
+        next_state["route_projections"][payload["route_id"]] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload["policy_id"]] = payload
+    elif event_type == "PackageRegistrationRequested":
+        next_state["package_registration_projections"][payload["package_id"]] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def schema_registry_register_subject(state: dict, subject: dict) -> dict:
@@ -441,6 +563,23 @@ def schema_registry_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "consumer_binding_count": len(bindings),
         "release_blocking_count": len(tuple(item for item in violations if item["release_blocking"])),
         "latest_subjects": tuple(sorted(subject["subject_id"] for subject in subjects)),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": SCHEMA_REGISTRY_OWNED_TABLES,
+            "outbox_table": "schema_registry_appgen_outbox_event",
+            "inbox_table": "schema_registry_appgen_inbox_event",
+            "dead_letter_table": "schema_registry_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+        },
     }
 
 
@@ -497,19 +636,87 @@ def schema_registry_screen_policy(state: dict, subject_id: str, *, classificatio
 def schema_registry_run_control_tests(state: dict) -> dict:
     hash_chain_valid = all(event["hash"] == _event_hash(event) for event in state["events"])
     checks = {
-        "configuration": state["configuration"].get("event_contract") == "appgen_event_contract",
+        "configuration": state["configuration"].get("event_contract") == "AppGen-X",
         "database": state["configuration"].get("database_backend") in {"postgresql", "mysql", "mariadb"},
         "rules": bool(state["rules"]),
         "versions": bool(state["versions"]),
         "outbox": all(item["idempotency_key"].startswith("schema_registry:") for item in state["outbox"]),
-        "dead_letter": isinstance(state["dead_letters"], list),
+        "dead_letter": isinstance(state["dead_letters"], list) and isinstance(state.get("dead_letter", []), list),
         "hash_chain": hash_chain_valid,
     }
     return {"ok": all(checks.values()), "checks": checks, "hash_chain_valid": hash_chain_valid, "blocking_gaps": tuple(key for key, ok in checks.items() if not ok)}
 
 
 def schema_registry_build_api_contract() -> dict:
-    return {"ok": True, "format": "appgen.schema-registry-api-contract.v1", "routes": ("POST /schemas/subjects", "POST /schemas/versions", "POST /schemas/compatibility-checks", "POST /schemas/payload-validations", "GET /schemas/subjects"), "events": {"emits": ("SchemaAccepted", "BreakingSchemaBlocked", "PayloadValidated", "ContractViolationRecorded"), "consumes": ("PbcDeployed", "EventContractProposed", "RoutePublished")}}
+    return {
+        "format": "appgen.schema-registry-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {"route": "POST /schemas/subjects", "command": "register_subject", "owned_tables": ("schema_subject",), "emits": ("SchemaSubjectRegistered",), "requires_permission": "schema_registry.register", "idempotency_key": "subject_id"},
+            {"route": "POST /schemas/versions", "command": "submit_schema_version", "owned_tables": ("schema_version",), "emits": ("SchemaAccepted", "BreakingSchemaBlocked"), "requires_permission": "schema_registry.register", "idempotency_key": "version_id"},
+            {"route": "POST /schemas/compatibility-rules", "command": "define_compatibility_rule", "owned_tables": ("compatibility_rule",), "emits": (), "requires_permission": "schema_registry.approve", "idempotency_key": "rule_id"},
+            {"route": "POST /schemas/consumer-bindings", "command": "register_consumer_binding", "owned_tables": ("consumer_binding",), "emits": (), "requires_permission": "schema_registry.register", "idempotency_key": "binding_id"},
+            {"route": "POST /schemas/compatibility-checks", "command": "run_compatibility_check", "owned_tables": ("validation_run",), "emits": ("BreakingSchemaBlocked",), "requires_permission": "schema_registry.validate", "idempotency_key": "subject_id:proposed_schema"},
+            {"route": "POST /schemas/payload-validations", "command": "validate_payload", "owned_tables": ("validation_run",), "emits": ("PayloadValidated",), "requires_permission": "schema_registry.validate", "idempotency_key": "subject_id:payload_hash"},
+            {"route": "POST /schemas/violations", "command": "record_contract_violation", "owned_tables": ("contract_violation",), "emits": ("ContractViolationRecorded",), "requires_permission": "schema_registry.triage", "idempotency_key": "violation_id"},
+            {"route": "POST /schemas/projections", "command": "publish_contract_projection", "owned_tables": ("contract_projection",), "emits": ("ContractProjectionPublished",), "requires_permission": "schema_registry.publish", "idempotency_key": "subject_id:systems"},
+            {"route": "POST /schemas/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES, "requires_permission": "schema_registry.event", "idempotency_key": "event_id"},
+            {"route": "GET /schemas/subjects", "query": "build_workbench_view", "owned_tables": SCHEMA_REGISTRY_OWNED_TABLES, "requires_permission": "schema_registry.audit"},
+        ),
+        "declared_catalog_routes": ("POST /schemas/subjects", "POST /schemas/versions", "POST /schemas/compatibility-checks", "POST /schemas/payload-validations", "GET /schemas/subjects"),
+        "events": {"emits": SCHEMA_REGISTRY_EMITTED_EVENT_TYPES, "consumes": SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES},
+        "emits": SCHEMA_REGISTRY_EMITTED_EVENT_TYPES,
+        "consumes": SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(schema_registry_permissions_contract()["permissions"])),
+        "database_backends": SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": SCHEMA_REGISTRY_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("SCHEMA_REGISTRY_DATABASE_URL", "SCHEMA_REGISTRY_EVENT_TOPIC", "SCHEMA_REGISTRY_RETRY_LIMIT", "SCHEMA_REGISTRY_DEFAULT_TIMEZONE"),
+    }
+
+
+def schema_registry_permissions_contract() -> dict:
+    return {
+        "format": "appgen.schema-registry-permissions.v1",
+        "ok": True,
+        "permissions": ("schema_registry.read", "schema_registry.register", "schema_registry.approve", "schema_registry.validate", "schema_registry.triage", "schema_registry.publish", "schema_registry.event", "schema_registry.configure", "schema_registry.audit"),
+        "action_permissions": {
+            "register_subject": "schema_registry.register",
+            "submit_schema_version": "schema_registry.register",
+            "define_compatibility_rule": "schema_registry.approve",
+            "register_consumer_binding": "schema_registry.register",
+            "run_compatibility_check": "schema_registry.validate",
+            "validate_payload": "schema_registry.validate",
+            "record_contract_violation": "schema_registry.triage",
+            "publish_contract_projection": "schema_registry.publish",
+            "receive_event": "schema_registry.event",
+            "register_rule": "schema_registry.configure",
+            "register_schema_extension": "schema_registry.configure",
+            "set_parameter": "schema_registry.configure",
+            "configure_runtime": "schema_registry.configure",
+            "build_workbench_view": "schema_registry.audit",
+        },
+    }
+
+
+def schema_registry_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*SCHEMA_REGISTRY_OWNED_TABLES, *SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES, *_SCHEMA_REGISTRY_RUNTIME_TABLES, *_SCHEMA_REGISTRY_ALLOWED_DEPENDENCIES)
+    violations = tuple(reference for reference in references if reference not in set(allowed) and not str(reference).startswith("schema_registry_"))
+    return {
+        "format": "appgen.schema-registry-boundary.v1",
+        "ok": not violations,
+        "owned_tables": SCHEMA_REGISTRY_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /gateway/routes", "GET /identity/policies", "POST /audit/contract-events", "POST /composition/contracts"),
+            "events": SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES,
+            "api_projections": ("gateway_contract_projection", "audit_contract_projection", "composition_contract_projection", "workflow_contract_projection", "pbc_deployment_projection", "route_contract_projection", "access_policy_projection", "package_registration_projection"),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def schema_registry_federate_contract_view(state: dict, subject_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -582,6 +789,14 @@ def _copy_state(state: dict) -> dict:
         "outbox": [dict(item) for item in state["outbox"]],
         "inbox": [dict(item) for item in state["inbox"]],
         "dead_letters": [dict(item) for item in state["dead_letters"]],
+        "dead_letter": [dict(item) for item in state.get("dead_letter", state["dead_letters"])],
+        "handled_events": {key: dict(value) for key, value in state.get("handled_events", {}).items()},
+        "retry_evidence": [dict(item) for item in state.get("retry_evidence", [])],
+        "pbc_projections": {key: dict(value) for key, value in state.get("pbc_projections", {}).items()},
+        "event_contract_projections": {key: dict(value) for key, value in state.get("event_contract_projections", {}).items()},
+        "route_projections": {key: dict(value) for key, value in state.get("route_projections", {}).items()},
+        "access_policy_projections": {key: dict(value) for key, value in state.get("access_policy_projections", {}).items()},
+        "package_registration_projections": {key: dict(value) for key, value in state.get("package_registration_projections", {}).items()},
         "crypto_epoch": state.get("crypto_epoch", 1),
     }
 
