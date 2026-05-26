@@ -1884,7 +1884,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tests pass (`396 passed`), targeted PBC evidence tests pass (`25 passed`),
   and source/package/specification/implementation/capability, all built-in
   generation smoke, and `pbc_release_audit()` return true with zero blocking
-  gaps. Commit: `pending`.
+  gaps. Commit: `e7f7d31`.
 
 ## Open Completion Areas
 
