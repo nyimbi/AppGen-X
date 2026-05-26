@@ -3058,7 +3058,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     }
     assert all("replay" in item["exports"] for item in visual_depth["visual_component_module_artifacts"])
     assert all("run_scenario" in item["exports"] for item in visual_depth["visual_component_module_artifacts"])
+    assert all("operation_steps" in item["exports"] for item in visual_depth["visual_component_module_artifacts"])
+    assert all("validation_steps" in item["exports"] for item in visual_depth["visual_component_module_artifacts"])
     assert all("test_visual_component_smoke" in item["exports"] for item in visual_depth["visual_component_test_artifacts"])
+    assert all(
+        "test_visual_component_step_contracts" in item["exports"]
+        for item in visual_depth["visual_component_test_artifacts"]
+    )
     assert {
         "style_authoring",
         "timeline_authoring",
@@ -17411,7 +17417,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("replay" in item["exports"] for item in generated_visual_depth["visual_component_module_artifacts"])
     assert all("run_scenario" in item["exports"] for item in generated_visual_depth["visual_component_module_artifacts"])
     assert all(
+        "operation_steps" in item["exports"]
+        for item in generated_visual_depth["visual_component_module_artifacts"]
+    )
+    assert all(
+        "validation_steps" in item["exports"]
+        for item in generated_visual_depth["visual_component_module_artifacts"]
+    )
+    assert all(
         "test_visual_component_smoke" in item["exports"]
+        for item in generated_visual_depth["visual_component_test_artifacts"]
+    )
+    assert all(
+        "test_visual_component_step_contracts" in item["exports"]
         for item in generated_visual_depth["visual_component_test_artifacts"]
     )
     assert {
@@ -17541,6 +17559,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     visual_runtime_pipeline_runtime_matrix = visual_depth_runtime.visual_runtime_pipeline_runtime_replay_matrix()
     assert visual_module_manifest["ok"] is True
     assert visual_test_manifest["ok"] is True
+    assert {"operation_steps_declared", "validation_steps_declared"} <= set(visual_module_manifest["guards"])
+    assert "step_contract_tests_exported" in visual_test_manifest["guards"]
+    assert all(item["operation_steps_ok"] for item in visual_module_manifest["components"])
+    assert all(item["validation_steps_ok"] for item in visual_module_manifest["components"])
+    assert all(item["step_contracts_ok"] for item in visual_test_manifest["tests"])
     assert visual_design_manifest["ok"] is True
     assert visual_design_test_manifest["ok"] is True
     assert visual_design_runtime_matrix["format"] == "appgen.generated-visual-design-ide-runtime-replay-matrix.v1"
@@ -17667,6 +17690,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         py_compile.compile(str(component_path), doraise=True)
         module = _load_module(component_path, f"generated_visual_component_{item['component']}")
         assert module.smoke_test()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
     for item in visual_test_manifest["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)

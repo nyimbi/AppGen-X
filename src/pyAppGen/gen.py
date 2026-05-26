@@ -15708,6 +15708,64 @@ def design_tools():
     }}
 
 
+def operation_steps():
+    """Return reusable operation steps this visual component must replay."""
+    current = spec()["spec"]
+    steps = (
+        "load_visual_component_spec",
+        "render_preview_node",
+        "validate_properties",
+        "run_family_authoring_operation",
+        "verify_runtime_artifacts",
+        "package_target_runtime",
+        "replay_visual_runtime",
+        "sync_preview",
+    )
+    return {{
+        "format": "appgen.visual-component-operation-steps.v1",
+        "component": COMPONENT,
+        "family": current["family"],
+        "steps": steps,
+        "runtime_artifacts": current["runtime_artifacts"],
+        "ok": {{"validate_properties", "run_family_authoring_operation", "verify_runtime_artifacts", "replay_visual_runtime", "sync_preview"}}
+        <= set(steps)
+        and bool(current["runtime_artifacts"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps():
+    """Return reusable validation steps proving visual component usability."""
+    current = spec()["spec"]
+    rendered = render()
+    valid = validate_props(rendered["props"])
+    invalid = validate_props({{"__unknown__": True}})
+    tools = design_tools()
+    steps = (
+        "resolve_component_spec",
+        "validate_default_props",
+        "reject_unknown_props",
+        "verify_design_tools",
+        "verify_runtime_artifacts",
+        "verify_family_authoring_operation",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.visual-component-validation-steps.v1",
+        "component": COMPONENT,
+        "family": current["family"],
+        "steps": steps,
+        "ok": current is not None
+        and valid["ok"]
+        and not invalid["ok"]
+        and tools["ok"]
+        and bool(current["properties"])
+        and bool(current["runtime_artifacts"])
+        and bool(current["design_tools"]),
+        "side_effects": (),
+    }}
+
+
 def smoke_test():
     """Run side-effect-free checks proving this visual component is usable."""
     current = spec()
@@ -15719,6 +15777,8 @@ def smoke_test():
     replay_result = replay()
     scenario = run_scenario()
     tools = design_tools()
+    operations = operation_steps()
+    validations = validation_steps()
     return {{
         "format": "appgen.visual-component-smoke-test.v1",
         "component": COMPONENT,
@@ -15730,7 +15790,9 @@ def smoke_test():
         and authoring["ok"]
         and replay_result["ok"]
         and scenario["ok"]
-        and tools["ok"],
+        and tools["ok"]
+        and operations["ok"]
+        and validations["ok"],
         "checks": (
             "spec_resolves",
             "preview_renders",
@@ -15740,7 +15802,11 @@ def smoke_test():
             "runtime_replay_succeeds",
             "visual_component_scenario_replays",
             "design_tools_present",
+            "operation_steps_declared",
+            "validation_steps_declared",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -15778,6 +15844,8 @@ def test_visual_component_contract():
     assert module.render()["component"] == COMPONENT
     assert module.validation_operation()["ok"] is True
     assert module.run_scenario()["ok"] is True
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
 
 
 def test_visual_component_smoke():
@@ -15788,17 +15856,33 @@ def test_visual_component_smoke():
     assert result["component"] == COMPONENT
     assert result["checks"]
     assert "visual_component_scenario_replays" in result["checks"]
+    assert "operation_steps_declared" in result["checks"]
+    assert "validation_steps_declared" in result["checks"]
+
+
+def test_visual_component_step_contracts():
+    """Assert standalone operation and validation step contracts are reusable."""
+    module = load_visual_component_module()
+    operations = module.operation_steps()
+    validations = module.validation_steps()
+    assert operations["ok"] is True
+    assert validations["ok"] is True
+    assert {"validate_properties", "run_family_authoring_operation", "verify_runtime_artifacts", "replay_visual_runtime", "sync_preview"} <= set(operations["steps"])
+    assert {"resolve_component_spec", "validate_default_props", "reject_unknown_props", "verify_runtime_artifacts", "side_effects_disallowed"} <= set(validations["steps"])
+    assert operations["side_effects"] == ()
+    assert validations["side_effects"] == ()
 
 
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_visual_component_contract()
     test_visual_component_smoke()
+    test_visual_component_step_contracts()
     return {{
         "format": "appgen.visual-component-generated-test-smoke.v1",
         "component": COMPONENT,
         "ok": True,
-        "tests": ("test_visual_component_contract", "test_visual_component_smoke"),
+        "tests": ("test_visual_component_contract", "test_visual_component_smoke", "test_visual_component_step_contracts"),
     }}
 '''
 
@@ -17622,11 +17706,27 @@ def visual_component_module_manifest():
         module_path = component_dir / f"{module_name}.py"
         exports = ()
         contract_ok = False
+        operation_steps_ok = False
+        validation_steps_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_visual_component_{module_name}")
-            exports = tuple(name for name in ("spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "run_scenario", "design_tools", "smoke_test") if hasattr(module, name))
+            exports = tuple(name for name in ("spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "run_scenario", "design_tools", "operation_steps", "validation_steps", "smoke_test") if hasattr(module, name))
             contract = module.spec()
             contract_ok = contract["ok"] and contract["component"] == item["component"]
+            if hasattr(module, "operation_steps"):
+                operation_contract = module.operation_steps()
+                operation_steps_ok = (
+                    operation_contract["ok"]
+                    and {"validate_properties", "run_family_authoring_operation", "verify_runtime_artifacts", "replay_visual_runtime", "sync_preview"} <= set(operation_contract["steps"])
+                    and operation_contract["side_effects"] == ()
+                )
+            if hasattr(module, "validation_steps"):
+                validation_contract = module.validation_steps()
+                validation_steps_ok = (
+                    validation_contract["ok"]
+                    and {"resolve_component_spec", "validate_default_props", "reject_unknown_props", "verify_runtime_artifacts", "side_effects_disallowed"} <= set(validation_contract["steps"])
+                    and validation_contract["side_effects"] == ()
+                )
         entries.append(
             {
                 "component": item["component"],
@@ -17635,16 +17735,31 @@ def visual_component_module_manifest():
                 "exists": module_path.exists(),
                 "exports": exports,
                 "contract_ok": contract_ok,
+                "operation_steps_ok": operation_steps_ok,
+                "validation_steps_ok": validation_steps_ok,
             }
         )
-    required_exports = {"spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "run_scenario", "design_tools", "smoke_test"}
+    required_exports = {"spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "run_scenario", "design_tools", "operation_steps", "validation_steps", "smoke_test"}
     return {
         "format": "appgen.generated-visual-component-module-manifest.v1",
         "ok": bool(entries)
-        and all(item["exists"] and item["contract_ok"] and required_exports <= set(item["exports"]) for item in entries),
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["operation_steps_ok"]
+            and item["validation_steps_ok"]
+            and required_exports <= set(item["exports"])
+            for item in entries
+        ),
         "components": tuple(entries),
         "required_exports": tuple(sorted(required_exports)),
-        "guards": ("one_module_per_visual_component", "style_animation_effect_scene_specs_bound", "runtime_replay_exported"),
+        "guards": (
+            "one_module_per_visual_component",
+            "style_animation_effect_scene_specs_bound",
+            "runtime_replay_exported",
+            "operation_steps_declared",
+            "validation_steps_declared",
+        ),
         "side_effects": (),
     }
 
@@ -17659,9 +17774,11 @@ def visual_component_test_module_manifest():
         module_name = _module_name(item["component"])
         module_path = test_dir / f"test_{module_name}.py"
         exports = ()
+        step_contracts_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_visual_component_test_{module_name}")
-            exports = tuple(name for name in ("load_visual_component_module", "test_visual_component_contract", "test_visual_component_smoke", "smoke_test") if hasattr(module, name))
+            exports = tuple(name for name in ("load_visual_component_module", "test_visual_component_contract", "test_visual_component_smoke", "test_visual_component_step_contracts", "smoke_test") if hasattr(module, name))
+            step_contracts_ok = "test_visual_component_step_contracts" in exports
         entries.append(
             {
                 "component": item["component"],
@@ -17669,15 +17786,26 @@ def visual_component_test_module_manifest():
                 "path": f"app/visual_component_tests/test_{module_name}.py",
                 "exists": module_path.exists(),
                 "exports": exports,
+                "step_contracts_ok": step_contracts_ok,
             }
         )
-    required_exports = {"load_visual_component_module", "test_visual_component_contract", "test_visual_component_smoke", "smoke_test"}
+    required_exports = {"load_visual_component_module", "test_visual_component_contract", "test_visual_component_smoke", "test_visual_component_step_contracts", "smoke_test"}
     return {
         "format": "appgen.generated-visual-component-test-module-manifest.v1",
-        "ok": bool(entries) and all(item["exists"] and required_exports <= set(item["exports"]) for item in entries),
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["step_contracts_ok"]
+            and required_exports <= set(item["exports"])
+            for item in entries
+        ),
         "tests": tuple(entries),
         "required_exports": tuple(sorted(required_exports)),
-        "guards": ("one_test_module_per_visual_component", "contract_and_smoke_tests_exported"),
+        "guards": (
+            "one_test_module_per_visual_component",
+            "contract_and_smoke_tests_exported",
+            "step_contract_tests_exported",
+        ),
         "side_effects": (),
     }
 
@@ -63988,11 +64116,11 @@ def cross_target_visual_depth_workbench():
     actionable_operations = cross_target_visual_actionable_operations()
     visual_component_specs = cross_target_visual_component_spec_contract()
     visual_component_module_artifacts = tuple(
-        {{"component": item["component"], "family": item["family"], "path": f"app/visual_components/{{_module_name(item['component'])}}.py", "exports": ("spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "run_scenario", "design_tools", "smoke_test"), "ok": True}}
+        {{"component": item["component"], "family": item["family"], "path": f"app/visual_components/{{_module_name(item['component'])}}.py", "exports": ("spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "run_scenario", "design_tools", "operation_steps", "validation_steps", "smoke_test"), "ok": True}}
         for item in cross_target_visual_component_spec_contract()["specs"]
     )
     visual_component_test_artifacts = tuple(
-        {{"component": item["component"], "family": item["family"], "path": f"app/visual_component_tests/test_{{_module_name(item['component'])}}.py", "exports": ("load_visual_component_module", "test_visual_component_contract", "test_visual_component_smoke", "smoke_test"), "ok": True}}
+        {{"component": item["component"], "family": item["family"], "path": f"app/visual_component_tests/test_{{_module_name(item['component'])}}.py", "exports": ("load_visual_component_module", "test_visual_component_contract", "test_visual_component_smoke", "test_visual_component_step_contracts", "smoke_test"), "ok": True}}
         for item in cross_target_visual_component_spec_contract()["specs"]
     )
     visual_design_module_artifacts = (
@@ -64056,8 +64184,8 @@ def cross_target_visual_depth_workbench():
         {{"id": "visual_lifecycle_replay", "ok": lifecycle_replay["ok"] and {{"style_before_timeline", "hit_tests_before_designer_replay"}} <= set(lifecycle_replay["guards"]) and not lifecycle_replay["side_effects"], "evidence": lifecycle_replay}},
         {{"id": "visual_runtime_package", "ok": runtime_package["ok"] and {{"web", "mobile", "desktop", "pwa"}} <= set(runtime_package["targets"]) and {{"target_artifacts_complete", "scene_materials_packaged"}} <= set(runtime_package["guards"]) and not runtime_package["side_effects"], "evidence": runtime_package}},
         {{"id": "visual_component_specs", "ok": visual_component_specs["ok"] and {{"StyleBook", "FloatAnimation", "ColorAnimation", "PathAnimation", "Effect", "Viewport3D", "Camera3D", "Light3D", "Mesh3D"}} <= {{spec["component"] for spec in visual_component_specs["specs"]}} and all(spec["design_tools"] and spec["runtime_artifacts"] for spec in visual_component_specs["specs"]) and not visual_component_specs["side_effects"], "evidence": visual_component_specs}},
-        {{"id": "visual_component_modules", "ok": len(visual_component_module_artifacts) == len(visual_component_specs["specs"]) and {{item["component"] for item in visual_component_module_artifacts}} == {{spec["component"] for spec in visual_component_specs["specs"]}} and all(item["ok"] and "replay" in item["exports"] for item in visual_component_module_artifacts), "evidence": visual_component_module_artifacts}},
-        {{"id": "visual_component_module_tests", "ok": len(visual_component_test_artifacts) == len(visual_component_specs["specs"]) and {{item["component"] for item in visual_component_test_artifacts}} == {{spec["component"] for spec in visual_component_specs["specs"]}} and all("test_visual_component_smoke" in item["exports"] for item in visual_component_test_artifacts), "evidence": visual_component_test_artifacts}},
+        {{"id": "visual_component_modules", "ok": len(visual_component_module_artifacts) == len(visual_component_specs["specs"]) and {{item["component"] for item in visual_component_module_artifacts}} == {{spec["component"] for spec in visual_component_specs["specs"]}} and all(item["ok"] and {{"replay", "run_scenario", "operation_steps", "validation_steps"}} <= set(item["exports"]) for item in visual_component_module_artifacts), "evidence": visual_component_module_artifacts}},
+        {{"id": "visual_component_module_tests", "ok": len(visual_component_test_artifacts) == len(visual_component_specs["specs"]) and {{item["component"] for item in visual_component_test_artifacts}} == {{spec["component"] for spec in visual_component_specs["specs"]}} and all({{"test_visual_component_smoke", "test_visual_component_step_contracts"}} <= set(item["exports"]) for item in visual_component_test_artifacts), "evidence": visual_component_test_artifacts}},
         {{"id": "visual_design_modules", "ok": len(visual_design_module_artifacts) >= 6 and {{"style_authoring", "timeline_authoring", "effect_stack", "scene_authoring", "asset_import", "runtime_package"}} <= {{item["surface"] for item in visual_design_module_artifacts}} and all(item["ok"] and "run_visual_operation" in item["exports"] for item in visual_design_module_artifacts), "evidence": visual_design_module_artifacts}},
         {{"id": "visual_design_module_tests", "ok": len(visual_design_test_artifacts) == len(visual_design_module_artifacts) and {{item["surface"] for item in visual_design_test_artifacts}} == {{item["surface"] for item in visual_design_module_artifacts}} and all("test_visual_design_ide_module_smoke" in item["exports"] for item in visual_design_test_artifacts), "evidence": visual_design_test_artifacts}},
         {{"id": "visual_design_ide_replay_matrix", "ok": visual_design_replay["ok"] and {{"visual_design_ide_modules_replay", "visual_design_ide_surface_coverage", "visual_design_ide_runtime_alignment", "visual_design_ide_operation_step_coverage", "visual_design_ide_validation_step_coverage", "visual_design_ide_replays_side_effect_free"}} <= {{check["id"] for check in visual_design_replay["checks"] if check["ok"]}} and not visual_design_replay["side_effects"], "evidence": visual_design_replay}},

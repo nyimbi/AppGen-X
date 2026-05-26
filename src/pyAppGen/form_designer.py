@@ -15755,7 +15755,10 @@ def cross_target_visual_depth_workbench() -> dict:
             "ok": len(visual_component_module_artifacts) == len(visual_component_specs["specs"])
             and {item["component"] for item in visual_component_module_artifacts}
             == {spec["component"] for spec in visual_component_specs["specs"]}
-            and all(item["ok"] and "replay" in item["exports"] for item in visual_component_module_artifacts),
+            and all(
+                item["ok"] and {"replay", "run_scenario", "operation_steps", "validation_steps"} <= set(item["exports"])
+                for item in visual_component_module_artifacts
+            ),
             "evidence": visual_component_module_artifacts,
         },
         {
@@ -15763,7 +15766,10 @@ def cross_target_visual_depth_workbench() -> dict:
             "ok": len(visual_component_test_artifacts) == len(visual_component_specs["specs"])
             and {item["component"] for item in visual_component_test_artifacts}
             == {spec["component"] for spec in visual_component_specs["specs"]}
-            and all("test_visual_component_smoke" in item["exports"] for item in visual_component_test_artifacts),
+            and all(
+                {"test_visual_component_smoke", "test_visual_component_step_contracts"} <= set(item["exports"])
+                for item in visual_component_test_artifacts
+            ),
             "evidence": visual_component_test_artifacts,
         },
         {
@@ -22788,6 +22794,8 @@ def visual_component_file_manifest() -> tuple[dict, ...]:
         "replay",
         "run_scenario",
         "design_tools",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -22810,7 +22818,13 @@ def visual_component_test_file_manifest() -> tuple[dict, ...]:
             "family": item["family"],
             "path": item["path"].replace("app/visual_components/", "app/visual_component_tests/test_"),
             "target": item["path"],
-            "exports": ("load_visual_component_module", "test_visual_component_contract", "test_visual_component_smoke", "smoke_test"),
+            "exports": (
+                "load_visual_component_module",
+                "test_visual_component_contract",
+                "test_visual_component_smoke",
+                "test_visual_component_step_contracts",
+                "smoke_test",
+            ),
             "ok": item["ok"],
         }
         for item in visual_component_file_manifest()

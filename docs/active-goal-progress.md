@@ -1284,6 +1284,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   place for verification, and records the cleanup in an archive manifest. The
   post-move package import check passes and no active `.pytest_cache` or
   `__pycache__` directories remain outside `.venv`, `.git`, or `archive`.
+- Current visual component pass hardens generated styling, animation, effect,
+  and 3D component modules so visual-depth runtime manifests fail unless every
+  generated visual component proves reusable operation-step and validation-step
+  contracts, and generated component test modules explicitly export
+  step-contract tests before visual runtime readiness is trusted.
 - Current AR Credit PBC completion pass expands `ar_credit` into a package-local
   receivables implementation with 37 owned tables, schema/model/migration
   contract evidence, service and release evidence contracts, AppGen-X
@@ -1292,7 +1297,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`4 passed`), syntax and whitespace checks pass, the diff-only restricted
   name scan has no hits, and implementation release, generation smoke,
   capability, full implementation release, and catalog release audits all
-  return true for the implemented PBC set. Commit: pending.
+  return true for the implemented PBC set. Commit: `e6084f5`.
 
 ## Open Completion Areas
 
