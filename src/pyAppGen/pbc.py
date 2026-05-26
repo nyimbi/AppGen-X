@@ -4390,6 +4390,16 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
             contract["events"]["inbox_table"],
             contract["events"]["dead_letter_table"],
         }
+        source_package = contract["source_package"]
+        source_schema = source_package.get("schema_contract", {})
+        source_service = source_package.get("service_contract", {})
+        source_release = source_package.get("release_evidence") or source_package.get("release_evidence_contract") or {}
+        schema_shared_boundary_ok = source_schema.get("shared_table_access") is False or not tuple(
+            source_schema.get("dependencies", {}).get("shared_tables", ())
+        )
+        service_commands = tuple(source_service.get("command_methods", ()))
+        release_checks = tuple(source_release.get("checks", ()))
+        release_blocking_gaps = tuple(source_release.get("blocking_gaps", ()))
         checks.extend(
             (
                 {
@@ -4398,7 +4408,20 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                 },
                 {
                     "id": f"{contract['pbc']}:source_package_directory",
-                    "ok": contract["source_package"]["ok"],
+                    "ok": source_package["ok"],
+                },
+                {
+                    "id": f"{contract['pbc']}:source_package_schema_service_release",
+                    "ok": source_schema.get("ok") is True
+                    and source_service.get("ok") is True
+                    and source_release.get("ok") is True
+                    and bool(source_schema.get("tables"))
+                    and bool(source_schema.get("migrations"))
+                    and bool(source_schema.get("models"))
+                    and schema_shared_boundary_ok
+                    and bool(service_commands)
+                    and bool(release_checks)
+                    and not release_blocking_gaps,
                 },
                 {
                     "id": f"{contract['pbc']}:owned_tables",

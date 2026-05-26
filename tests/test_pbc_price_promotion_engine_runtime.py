@@ -60,10 +60,12 @@ def test_price_promotion_engine_runtime_exposes_hardened_contract_surface() -> N
     assert not smoke["blocking_gaps"]
 
     assert schema["ok"] is True
+    assert schema["shared_table_access"] is False
     assert len(schema["tables"]) == len(PRICE_PROMOTION_ENGINE_OWNED_TABLES)
     assert len(schema["migrations"]) == len(PRICE_PROMOTION_ENGINE_OWNED_TABLES)
     assert tuple(item["table"] for item in schema["runtime_tables"]) == PRICE_PROMOTION_ENGINE_RUNTIME_TABLES
     assert service["ok"] is True
+    assert service["shared_table_access"] is False
     assert "receive_event" in service["idempotent_handlers"]
     assert "build_release_evidence" in service["query_methods"]
     assert release["ok"] is True

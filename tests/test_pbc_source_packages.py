@@ -24,3 +24,8 @@ def test_release_audit_requires_builtin_pbc_source_packages():
         for check in audit["checks"]
         if check["id"].endswith(":source_package_directory")
     } == {f"{key}:source_package_directory" for key in PBC_CATALOG}
+    assert {
+        check["id"]
+        for check in audit["checks"]
+        if check["id"].endswith(":source_package_schema_service_release")
+    } == {f"{key}:source_package_schema_service_release" for key in PBC_CATALOG}

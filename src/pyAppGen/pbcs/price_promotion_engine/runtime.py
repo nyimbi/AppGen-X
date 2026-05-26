@@ -1468,6 +1468,7 @@ def price_promotion_engine_build_schema_contract() -> dict:
         "models": tuple(item["generated_model"] for item in tables),
         "relationships": relationships,
         "datastore_backends": PRICE_PROMOTION_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
         "eventing": {
             "contract": PRICE_PROMOTION_ENGINE_EVENT_CONTRACT,
             "topic": PRICE_PROMOTION_ENGINE_REQUIRED_EVENT_TOPIC,
@@ -1525,6 +1526,7 @@ def price_promotion_engine_build_service_contract() -> dict:
             "dead_letter_table": PRICE_PROMOTION_ENGINE_RUNTIME_TABLES[2],
             "retry_limit_source": "price_configuration.retry_limit",
         },
+        "shared_table_access": False,
         "rules_parameters_configuration": ("register_rule", "set_parameter", "configure_runtime"),
         "eventing": {
             "contract": PRICE_PROMOTION_ENGINE_EVENT_CONTRACT,
