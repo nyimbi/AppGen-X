@@ -190,6 +190,9 @@ def production_control_runtime_capabilities() -> dict:
             "confirm_operation",
             "complete_production_order",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
@@ -298,6 +301,9 @@ def production_control_runtime_smoke() -> dict:
     screening = production_control_screen_policy(state, "order_100", restricted_sites=("restricted_site",))
     controls = production_control_run_control_tests(state)
     api = production_control_build_api_contract()
+    schema = production_control_build_schema_contract()
+    service = production_control_build_service_contract()
+    release = production_control_build_release_evidence()
     federation = production_control_federate_execution_view(state, "order_100", systems=("mrp", "inventory", "quality", "asset"))
     identity = production_control_verify_work_center_identity(state["work_centers"]["wc_100"]["identity"])
     resilience = production_control_run_resilience_drill(state, "mes_api_timeout")
@@ -326,7 +332,7 @@ def production_control_runtime_smoke() -> dict:
         {"id": "immutable_production_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_production_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_production_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "ProductionCompleted" in api["events"]["emits"] and api["shared_table_access"] is False},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "ProductionCompleted" in api["events"]["emits"] and api["shared_table_access"] is False},
         {"id": "cross_system_production_federation", "ok": federation["ok"] and "quality" in federation["systems"]},
         {"id": "mrp_inventory_quality_asset_integration", "ok": completed["handoffs"] == ("inventory_receipt_projection", "quality_completion_projection", "asset_commissioning_projection") and "po_100" in state["planned_order_projections"]},
         {"id": "decentralized_work_center_asset_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -648,6 +654,163 @@ def production_control_run_control_tests(state: dict) -> dict:
     return {"ok": not gaps, "blocking_gaps": tuple(gaps), "hash_chain_valid": hash_chain_valid}
 
 
+def production_control_build_schema_contract() -> dict:
+    default_fields = ("tenant", "record_id", "status", "effective_at", "audit_hash")
+    table_fields = {table: default_fields for table in PRODUCTION_CONTROL_OWNED_TABLES}
+    table_fields.update(
+        {
+            "work_center": ("tenant", "work_center_id", "site", "name", "work_center_type", "capacity_hours", "efficiency", "status", "audit_hash"),
+            "production_order": ("tenant", "order_id", "site", "item", "quantity", "route", "priority", "planned_order_id", "status", "completed_qty", "scrap_qty", "audit_hash"),
+            "routing_step": ("tenant", "step_id", "order_id", "sequence", "work_center_id", "standard_minutes", "setup_minutes", "quality_gate", "status", "audit_hash"),
+            "downtime_event": ("tenant", "downtime_id", "order_id", "work_center_id", "reason", "minutes", "severity", "status", "audit_hash"),
+            "production_rule": ("tenant", "rule_id", "rule_type", "scope", "compiled_hash", "enabled", "status", "audit_hash"),
+            "production_parameter": ("tenant", "parameter_name", "parameter_value", "effective_at", "changed_by", "audit_hash"),
+            "production_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "event_contract", "default_timezone", "workbench_limit", "audit_hash"),
+        }
+    )
+    runtime_table_fields = (
+        {"table": "production_control_appgen_outbox_event", "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "published_at", "audit_hash")},
+        {"table": "production_control_appgen_inbox_event", "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "audit_hash")},
+        {"table": "production_control_dead_letter_event", "fields": ("tenant", "event_id", "event_type", "payload", "reason", "attempts", "audit_hash")},
+    )
+    relationships = (
+        {"from_table": "routing_step", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
+        {"from_table": "routing_step", "from_field": "work_center_id", "to_table": "work_center", "to_field": "work_center_id"},
+        {"from_table": "downtime_event", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
+        {"from_table": "downtime_event", "from_field": "work_center_id", "to_table": "work_center", "to_field": "work_center_id"},
+        {"from_table": "production_parameter", "from_field": "tenant", "to_table": "production_configuration", "to_field": "tenant"},
+        {"from_table": "production_rule", "from_field": "tenant", "to_table": "production_configuration", "to_field": "tenant"},
+    )
+    allowed_prefixes = ("work_", "production_", "routing_", "downtime_")
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields.get(table, default_fields),
+            "primary_key": table_fields.get(table, default_fields)[1],
+            "owned_by": "production_control",
+        }
+        for table in PRODUCTION_CONTROL_OWNED_TABLES
+    )
+    migrations = tuple(
+        {
+            "path": f"pbcs/production_control/migrations/{position + 1:03d}_{table}.sql",
+            "table": table,
+            "operation": "create_owned_table",
+        }
+        for position, table in enumerate(PRODUCTION_CONTROL_OWNED_TABLES)
+    )
+    models = tuple(
+        {
+            "path": f"pbcs/production_control/models/{table}.py",
+            "table": table,
+            "class_name": _class_name(table),
+        }
+        for table in PRODUCTION_CONTROL_OWNED_TABLES
+    )
+    invalid_prefixes = tuple(table for table in PRODUCTION_CONTROL_OWNED_TABLES if not table.startswith(allowed_prefixes))
+    return {
+        "ok": not invalid_prefixes and len(tables) == len(PRODUCTION_CONTROL_OWNED_TABLES) and len(migrations) == len(PRODUCTION_CONTROL_OWNED_TABLES),
+        "format": "appgen.production-control-owned-schema-contract.v1",
+        "tables": tables,
+        "runtime_tables": runtime_table_fields,
+        "relationships": relationships,
+        "migrations": migrations,
+        "models": models,
+        "allowed_prefixes": allowed_prefixes,
+        "datastore_backends": PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
+        "shared_table_access": False,
+        "invalid_prefixes": invalid_prefixes,
+    }
+
+
+def production_control_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_work_center",
+        "create_production_order",
+        "define_routing_step",
+        "schedule_order",
+        "start_operation",
+        "record_downtime",
+        "confirm_operation",
+        "complete_production_order",
+        "route_execution",
+        "generate_completion_proof",
+        "screen_policy",
+        "federate_execution_view",
+        "verify_work_center_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_shift",
+        "optimize_schedule",
+        "allocate_capacity",
+        "run_control_tests",
+        "register_governed_model",
+        "verify_owned_table_boundary",
+    )
+    query_methods = (
+        "build_workbench_view",
+        "simulate_dispatch_policy",
+        "forecast_throughput",
+        "parse_shop_floor_instruction",
+        "score_production_risk",
+        "recommend_exception_resolution",
+        "detect_downtime_anomaly",
+        "model_stochastic_production_exposure",
+        "build_api_contract",
+        "build_schema_contract",
+        "build_release_evidence",
+    )
+    return {
+        "ok": len(command_methods) >= 25 and not production_control_verify_owned_table_boundary(PRODUCTION_CONTROL_OWNED_TABLES)["violations"],
+        "format": "appgen.production-control-service-contract.v1",
+        "transaction_boundary": "production_control_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": query_methods,
+        "mutates_only": PRODUCTION_CONTROL_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _PRODUCTION_CONTROL_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _PRODUCTION_CONTROL_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+        "idempotent_handlers": ("receive_event",),
+        "rules_parameters_configuration": ("register_rule", "set_parameter", "configure_runtime"),
+    }
+
+
+def production_control_build_release_evidence() -> dict:
+    schema = production_control_build_schema_contract()
+    service = production_control_build_service_contract()
+    api = production_control_build_api_contract()
+    permissions = production_control_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) == len(PRODUCTION_CONTROL_OWNED_TABLES) and len(schema["relationships"]) >= 4},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(PRODUCTION_CONTROL_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 25},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and api["stream_engine_picker_visible"] is False},
+        {"id": "permissions_cover_commands", "ok": {"register_work_center", "complete_production_order", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"] and service["external_dependencies"]["shared_tables"] == ()},
+    )
+    blocking_gaps = tuple(check for check in checks if not check["ok"])
+    return {
+        "ok": not blocking_gaps,
+        "format": "appgen.production-control-release-evidence.v1",
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": blocking_gaps,
+    }
+
+
 def production_control_build_api_contract() -> dict:
     return {
         "format": "appgen.production-control-api-contract.v1",
@@ -663,7 +826,13 @@ def production_control_build_api_contract() -> dict:
             {"route": "POST /production/operations/{id}/confirm", "command": "confirm_operation", "owned_tables": ("routing_step", "production_order"), "emits": (), "requires_permission": "production_control.operate", "idempotency_key": "step_id:confirmed_by"},
             {"route": "POST /production/orders/{id}/complete", "command": "complete_production_order", "owned_tables": ("production_order",), "emits": ("AssetPlacedInService", "ProductionCompleted"), "requires_permission": "production_control.complete", "idempotency_key": "order_id:completed_by"},
             {"route": "POST /production/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES, "requires_permission": "production_control.event", "idempotency_key": "event_id"},
+            {"route": "POST /production/rules", "command": "register_rule", "owned_tables": ("production_rule",), "requires_permission": "production_control.configure", "idempotency_key": "rule_id"},
+            {"route": "POST /production/parameters", "command": "set_parameter", "owned_tables": ("production_parameter",), "requires_permission": "production_control.configure", "idempotency_key": "parameter_name"},
+            {"route": "POST /production/configuration", "command": "configure_runtime", "owned_tables": ("production_configuration",), "requires_permission": "production_control.configure", "idempotency_key": "tenant"},
             {"route": "GET /production/workbench", "query": "build_workbench_view", "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES, "requires_permission": "production_control.audit"},
+            {"route": "GET /production/schema-contract", "query": "build_schema_contract", "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES, "requires_permission": "production_control.audit"},
+            {"route": "GET /production/service-contract", "query": "build_service_contract", "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES, "requires_permission": "production_control.audit"},
+            {"route": "GET /production/release-evidence", "query": "build_release_evidence", "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES, "requires_permission": "production_control.audit"},
         ),
         "declared_catalog_routes": ("POST /production-orders", "POST /downtime", "GET /schedule", "POST /production-rules", "POST /production-parameters", "POST /production-configuration"),
         "events": {"emits": PRODUCTION_CONTROL_EMITTED_EVENT_TYPES, "consumes": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES},
@@ -709,6 +878,10 @@ def production_control_permissions_contract() -> dict:
             "configure_runtime": "production_control.configure",
             "build_workbench_view": "production_control.audit",
             "run_control_tests": "production_control.audit",
+            "verify_owned_table_boundary": "production_control.audit",
+            "build_schema_contract": "production_control.audit",
+            "build_service_contract": "production_control.audit",
+            "build_release_evidence": "production_control.audit",
         },
     }
 
@@ -890,3 +1063,7 @@ def _normalize_fields(values: dict, sequence_fields: set[str]) -> dict:
             if isinstance(value, list):
                 normalized[field] = tuple(value)
     return normalized
+
+
+def _class_name(table: str) -> str:
+    return "".join(part.capitalize() for part in table.split("_"))

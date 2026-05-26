@@ -27,6 +27,9 @@ from pyAppGen.pbcs.production_control import PRODUCTION_CONTROL_EMITTED_EVENT_TY
 from pyAppGen.pbcs.production_control import PRODUCTION_CONTROL_OWNED_TABLES
 from pyAppGen.pbcs.production_control import PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.production_control import production_control_build_api_contract
+from pyAppGen.pbcs.production_control import production_control_build_release_evidence
+from pyAppGen.pbcs.production_control import production_control_build_schema_contract
+from pyAppGen.pbcs.production_control import production_control_build_service_contract
 from pyAppGen.pbcs.production_control import production_control_permissions_contract
 from pyAppGen.pbcs.production_control import production_control_receive_event
 from pyAppGen.pbcs.production_control import production_control_register_schema_extension
@@ -59,9 +62,60 @@ def test_production_control_runtime_executes_standard_and_advanced_capabilities(
     assert contract["source_package"]["allowed_database_backends"] == PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS
     assert contract["source_package"]["required_event_topic"] == PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
     assert contract["source_package"]["api_contract"]["shared_table_access"] is False
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "production_control.event"
     assert pbc_implementation_release_audit(("production_control",))["ok"] is True
     assert pbc_implemented_capability_audit(("production_control",))["ok"] is True
+
+
+def test_production_control_package_schema_service_and_release_evidence_contracts() -> None:
+    schema = production_control_build_schema_contract()
+    service = production_control_build_service_contract()
+    release = production_control_build_release_evidence()
+    api = production_control_build_api_contract()
+
+    assert schema["format"] == "appgen.production-control-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(PRODUCTION_CONTROL_OWNED_TABLES)
+    assert schema["runtime_tables"] == (
+        {
+            "table": "production_control_appgen_outbox_event",
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "published_at", "audit_hash"),
+        },
+        {
+            "table": "production_control_appgen_inbox_event",
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "audit_hash"),
+        },
+        {
+            "table": "production_control_dead_letter_event",
+            "fields": ("tenant", "event_id", "event_type", "payload", "reason", "attempts", "audit_hash"),
+        },
+    )
+    assert schema["datastore_backends"] == PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS
+    assert schema["shared_table_access"] is False
+
+    assert service["format"] == "appgen.production-control-service-contract.v1"
+    assert service["ok"] is True
+    assert service["transaction_boundary"] == "production_control_owned_datastore_plus_appgen_outbox"
+    assert "receive_event" in service["idempotent_handlers"]
+    assert "build_release_evidence" in service["query_methods"]
+    assert service["external_dependencies"]["shared_tables"] == ()
+
+    assert any(route["command"] == "register_rule" for route in api["routes"])
+    assert any(route["command"] == "set_parameter" for route in api["routes"])
+    assert any(route["command"] == "configure_runtime" for route in api["routes"])
+    assert any(route.get("query") == "build_schema_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_service_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_release_evidence" for route in api["routes"])
+
+    assert release["format"] == "appgen.production-control-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert release["schema"]["format"] == schema["format"]
+    assert release["service"]["format"] == service["format"]
+    assert release["api"]["required_event_topic"] == PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
 
 
 def test_production_control_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -464,6 +518,10 @@ def test_production_control_package_contract_handles_events_schema_api_permissio
     permissions = production_control_permissions_contract()
     assert permissions["action_permissions"]["receive_event"] == "production_control.event"
     assert permissions["action_permissions"]["register_schema_extension"] == "production_control.configure"
+    assert permissions["action_permissions"]["verify_owned_table_boundary"] == "production_control.audit"
+    assert permissions["action_permissions"]["build_schema_contract"] == "production_control.audit"
+    assert permissions["action_permissions"]["build_service_contract"] == "production_control.audit"
+    assert permissions["action_permissions"]["build_release_evidence"] == "production_control.audit"
 
     valid_boundary = production_control_verify_owned_table_boundary(
         (

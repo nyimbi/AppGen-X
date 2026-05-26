@@ -9,6 +9,9 @@ from .runtime import PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
 from .runtime import PRODUCTION_CONTROL_RUNTIME_CAPABILITY_KEYS
 from .runtime import PRODUCTION_CONTROL_STANDARD_FEATURE_KEYS
 from .runtime import production_control_build_api_contract
+from .runtime import production_control_build_release_evidence
+from .runtime import production_control_build_schema_contract
+from .runtime import production_control_build_service_contract
 from .runtime import production_control_build_workbench_view
 from .runtime import production_control_complete_production_order
 from .runtime import production_control_configure_runtime
@@ -43,12 +46,17 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": production_control_ui_contract(),
+        "api_contract": production_control_build_api_contract(),
+        "schema_contract": production_control_build_schema_contract(),
+        "service_contract": production_control_build_service_contract(),
+        "release_evidence_contract": production_control_build_release_evidence(),
+        "permissions_contract": production_control_permissions_contract(),
         "owned_tables": PRODUCTION_CONTROL_OWNED_TABLES,
         "allowed_database_backends": PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS,
         "required_event_topic": PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC,
         "emitted_events": PRODUCTION_CONTROL_EMITTED_EVENT_TYPES,
         "consumed_events": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES,
-        "api_contract": production_control_build_api_contract(),
-        "permissions_contract": production_control_permissions_contract(),
+        "emits": PRODUCTION_CONTROL_EMITTED_EVENT_TYPES,
+        "consumes": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES,
         "boundary_contract": production_control_verify_owned_table_boundary(PRODUCTION_CONTROL_OWNED_TABLES),
     }
