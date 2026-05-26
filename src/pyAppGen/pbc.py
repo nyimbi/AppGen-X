@@ -1011,7 +1011,6 @@ IMPLEMENTED_PBC_KEYS = (
     "wms_core",
     "procurement_sourcing",
     "transportation_management",
-    "dom",
     "personnel_identity",
     "time_labor",
     "payroll_engine",
@@ -1020,9 +1019,15 @@ IMPLEMENTED_PBC_KEYS = (
     "production_control",
     "quality_assurance",
     "eam",
+    "dom",
     "product_catalog_pim",
     "customer_360",
-    "enterprise_pim",
+    "federated_iam",
+    "api_gateway_mesh",
+    "schema_registry",
+    "workflow_orchestration",
+    "audit_ledger",
+    "composition_engine",
     "global_inventory_visibility",
     "order_routing_optimization",
     "checkout_processing",
@@ -1030,12 +1035,7 @@ IMPLEMENTED_PBC_KEYS = (
     "subscription_billing",
     "returns_reverse_logistics",
     "cross_border_trade",
-    "federated_iam",
-    "api_gateway_mesh",
-    "schema_registry",
-    "workflow_orchestration",
-    "audit_ledger",
-    "composition_engine",
+    "enterprise_pim",
     "dam_core",
     "price_promotion_engine",
     "lead_opportunity",
@@ -1044,6 +1044,9 @@ IMPLEMENTED_PBC_KEYS = (
     "cdp_segmentation",
     "loyalty_rewards",
     "streaming_analytics",
+    "enterprise_search_vector",
+    "predictive_demand",
+    "fraud_anomaly_detection",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3331,6 +3334,12 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = loyalty_rewards_runtime_capabilities()
     elif key == "streaming_analytics":
         advanced_runtime = streaming_analytics_runtime_capabilities()
+    elif key == "enterprise_search_vector":
+        advanced_runtime = enterprise_search_vector_runtime_capabilities()
+    elif key == "predictive_demand":
+        advanced_runtime = predictive_demand_runtime_capabilities()
+    elif key == "fraud_anomaly_detection":
+        advanced_runtime = fraud_anomaly_detection_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
@@ -3656,6 +3665,9 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "cdp_segmentation": len(CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS),
         "loyalty_rewards": len(LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS),
         "streaming_analytics": len(STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS),
+        "enterprise_search_vector": len(ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS),
+        "predictive_demand": len(PREDICTIVE_DEMAND_RUNTIME_CAPABILITY_KEYS),
+        "fraud_anomaly_detection": len(FRAUD_ANOMALY_DETECTION_RUNTIME_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
@@ -5867,6 +5879,71 @@ from .pbcs.streaming_analytics import streaming_analytics_runtime_smoke  # noqa:
 from .pbcs.streaming_analytics import streaming_analytics_set_parameter  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_ui_contract  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_build_api_contract  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_build_workbench_view  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_configure_runtime  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_create_index  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_empty_state  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_ingest_document  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_permissions_contract  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_query  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_receive_event  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_refresh_index  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_record_feedback  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_register_rule  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_register_schema_extension  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_render_workbench  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_run_embedding_job  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_runtime_capabilities  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_runtime_smoke  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_set_parameter  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_ui_contract  # noqa: E402,F401
+from .pbcs.enterprise_search_vector import enterprise_search_vector_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.predictive_demand import PREDICTIVE_DEMAND_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.predictive_demand import PREDICTIVE_DEMAND_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.predictive_demand import PREDICTIVE_DEMAND_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_build_api_contract  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_build_workbench_view  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_configure_runtime  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_create_forecast_run  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_empty_state  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_ingest_demand_signal  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_permissions_contract  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_publish_forecast_result  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_receive_event  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_register_forecast_model  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_register_rule  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_register_schema_extension  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_render_workbench  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_runtime_capabilities  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_runtime_smoke  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_set_parameter  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_ui_contract  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import FRAUD_ANOMALY_DETECTION_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import FRAUD_ANOMALY_DETECTION_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import FRAUD_ANOMALY_DETECTION_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_api_contract  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_workbench_view  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_configure_runtime  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_empty_state  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_ingest_risk_signal  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_open_risk_case  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_permissions_contract  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_receive_event  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_register_fraud_rule  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_register_rule  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_register_schema_extension  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_render_workbench  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_runtime_capabilities  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_runtime_smoke  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_score_anomaly  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_set_parameter  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_ui_contract  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_verify_owned_table_boundary  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401

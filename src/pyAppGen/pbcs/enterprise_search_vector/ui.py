@@ -1,0 +1,155 @@
+"""UI contract for the Enterprise Search Vector PBC."""
+
+from __future__ import annotations
+
+from .runtime import ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS
+from .runtime import ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES
+
+
+ENTERPRISE_SEARCH_VECTOR_UI_FRAGMENT_KEYS = (
+    "EnterpriseSearchWorkbench",
+    "SearchIndexRegistry",
+    "VectorDocumentExplorer",
+    "EmbeddingJobConsole",
+    "HybridQueryWorkbench",
+    "QueryTraceExplorer",
+    "SearchIndexFreshnessBoard",
+    "AclFilteredResultsPanel",
+    "RelevanceFeedbackPanel",
+    "SearchRuleStudio",
+    "SearchParameterConsole",
+    "SearchConfigurationPanel",
+    "SearchEventOutbox",
+    "SearchDeadLetterQueue",
+)
+
+
+def enterprise_search_vector_ui_contract() -> dict:
+    return {
+        "format": "appgen.enterprise-search-vector-ui-contract.v1",
+        "ok": True,
+        "pbc": "enterprise_search_vector",
+        "implementation_directory": "src/pyAppGen/pbcs/enterprise_search_vector",
+        "fragments": ENTERPRISE_SEARCH_VECTOR_UI_FRAGMENT_KEYS,
+        "routes": (
+            "/workbench/pbcs/enterprise_search_vector",
+            "/workbench/pbcs/enterprise_search_vector/indexes",
+            "/workbench/pbcs/enterprise_search_vector/documents",
+            "/workbench/pbcs/enterprise_search_vector/jobs",
+            "/workbench/pbcs/enterprise_search_vector/queries",
+            "/workbench/pbcs/enterprise_search_vector/feedback",
+            "/workbench/pbcs/enterprise_search_vector/configuration",
+        ),
+        "action_permissions": {
+            "create_index": "enterprise_search_vector.index.write",
+            "refresh_index": "enterprise_search_vector.index.write",
+            "ingest_document": "enterprise_search_vector.document.write",
+            "run_embedding_job": "enterprise_search_vector.document.write",
+            "query": "enterprise_search_vector.query",
+            "record_feedback": "enterprise_search_vector.query",
+            "receive_event": "enterprise_search_vector.event.consume",
+            "register_rule": "enterprise_search_vector.configure",
+            "set_parameter": "enterprise_search_vector.configure",
+            "configure_runtime": "enterprise_search_vector.configure",
+            "run_control_tests": "enterprise_search_vector.audit",
+        },
+        "configuration_editor": {
+            "required_fields": (
+                "database_backend",
+                "event_topic",
+                "retry_limit",
+                "default_locale",
+                "ranking_mode",
+            ),
+            "allowed_database_backends": ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS,
+            "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "runtime_profile_badge": "read_only",
+        },
+        "parameter_editor": {
+            "numeric_parameters": (
+                "semantic_weight",
+                "keyword_weight",
+                "freshness_weight",
+                "authority_weight",
+                "feedback_weight",
+                "relevance_threshold",
+                "chunk_size_tokens",
+                "embedding_batch_limit",
+                "max_results",
+                "workbench_limit",
+            ),
+        },
+        "event_surfaces": {
+            "contract": "appgen_event_contract",
+            "emits": ("SearchIndexUpdated", "DiscoveryInsightGenerated"),
+            "consumes": ("ProductPublished", "CustomerUpdated", "AuditEventSealed"),
+            "outbox_status": "visible",
+            "dead_letter_status": "visible",
+        },
+    }
+
+
+def enterprise_search_vector_render_workbench(
+    state: dict,
+    *,
+    tenant: str,
+    principal_permissions: tuple[str, ...],
+) -> dict:
+    contract = enterprise_search_vector_ui_contract()
+    permissions = set(principal_permissions)
+    visible_actions = tuple(
+        action
+        for action, permission in contract["action_permissions"].items()
+        if permission in permissions
+    )
+    view = _view_counts(state, tenant)
+    return {
+        "format": "appgen.enterprise-search-vector-workbench-render.v1",
+        "ok": True,
+        "tenant": tenant,
+        "route": "/workbench/pbcs/enterprise_search_vector",
+        "fragments": contract["fragments"],
+        "cards": (
+            {"key": "indexes", "value": view["index_count"], "fragment": "SearchIndexRegistry"},
+            {"key": "documents", "value": view["document_count"], "fragment": "VectorDocumentExplorer"},
+            {"key": "jobs", "value": view["embedding_job_count"], "fragment": "EmbeddingJobConsole"},
+            {"key": "queries", "value": view["query_count"], "fragment": "QueryTraceExplorer"},
+            {"key": "feedback", "value": view["feedback_count"], "fragment": "RelevanceFeedbackPanel"},
+            {"key": "dead_letter", "value": view["dead_letter_count"], "fragment": "SearchDeadLetterQueue"},
+        ),
+        "visible_actions": visible_actions,
+        "locked_actions": tuple(
+            action for action in contract["action_permissions"] if action not in visible_actions
+        ),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rules_bound": tuple(sorted(state.get("rules", {}))),
+        "parameters_bound": tuple(sorted(state.get("parameters", {}))),
+        "event_outbox_count": len(state.get("outbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": view["binding_evidence"],
+    }
+
+
+def _view_counts(state: dict, tenant: str) -> dict:
+    indexes = tuple(item for item in state.get("search_indexes", {}).values() if item["tenant"] == tenant)
+    jobs = tuple(item for item in state.get("embedding_jobs", {}).values() if item["tenant"] == tenant)
+    docs = tuple(item for item in state.get("vector_documents", {}).values() if item["tenant"] == tenant)
+    queries = tuple(item for item in state.get("query_traces", {}).values() if item["tenant"] == tenant)
+    return {
+        "index_count": len(indexes),
+        "embedding_job_count": len(jobs),
+        "document_count": len(docs),
+        "query_count": len(queries),
+        "feedback_count": sum(int(item.get("feedback_count", 0)) for item in docs),
+        "ready_document_count": sum(1 for item in docs if item.get("embedding_job_id")),
+        "outbox_count": len(state.get("outbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "configuration": bool(state.get("configuration", {}).get("ok")),
+            "rules": tuple(sorted(state.get("rules", {}))),
+            "parameters": tuple(sorted(state.get("parameters", {}))),
+            "owned_tables": ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
+            "event_contract": "appgen_event_contract",
+        },
+    }
