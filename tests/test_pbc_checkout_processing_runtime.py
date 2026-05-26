@@ -1,9 +1,14 @@
 import pytest
 
+from pyAppGen.pbcs.checkout_processing import CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.checkout_processing import CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.checkout_processing import CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.checkout_processing import CHECKOUT_PROCESSING_OWNED_TABLES
 from pyAppGen.pbcs.checkout_processing import CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.checkout_processing import CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.checkout_processing import checkout_processing_apply_coupon
 from pyAppGen.pbcs.checkout_processing import checkout_processing_apply_tax_handoff
+from pyAppGen.pbcs.checkout_processing import checkout_processing_build_api_contract
 from pyAppGen.pbcs.checkout_processing import checkout_processing_build_workbench_view
 from pyAppGen.pbcs.checkout_processing import checkout_processing_complete_checkout
 from pyAppGen.pbcs.checkout_processing import checkout_processing_configure_runtime
@@ -11,7 +16,9 @@ from pyAppGen.pbcs.checkout_processing import checkout_processing_create_cart
 from pyAppGen.pbcs.checkout_processing import checkout_processing_create_payment_intent
 from pyAppGen.pbcs.checkout_processing import checkout_processing_empty_state
 from pyAppGen.pbcs.checkout_processing import checkout_processing_open_checkout_session
+from pyAppGen.pbcs.checkout_processing import checkout_processing_permissions_contract
 from pyAppGen.pbcs.checkout_processing import checkout_processing_receive_event
+from pyAppGen.pbcs.checkout_processing import checkout_processing_register_schema_extension
 from pyAppGen.pbcs.checkout_processing import checkout_processing_register_rule
 from pyAppGen.pbcs.checkout_processing import checkout_processing_render_workbench
 from pyAppGen.pbcs.checkout_processing import checkout_processing_reserve_inventory_handoff
@@ -21,6 +28,7 @@ from pyAppGen.pbcs.checkout_processing import checkout_processing_screen_risk
 from pyAppGen.pbcs.checkout_processing import checkout_processing_set_parameter
 from pyAppGen.pbcs.checkout_processing import checkout_processing_ui_contract
 from pyAppGen.pbcs.checkout_processing import checkout_processing_validate_shipping_address
+from pyAppGen.pbcs.checkout_processing import checkout_processing_verify_owned_table_boundary
 from pyAppGen.pbcs.checkout_processing import checkout_processing_add_cart_line
 from pyAppGen.pbcs.checkout_processing import implementation_contract
 
@@ -33,6 +41,7 @@ def test_checkout_processing_runtime_executes_standard_and_advanced_capabilities
     assert runtime["format"] == "appgen.checkout-processing-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/checkout_processing"
+    assert runtime["owned_tables"] == CHECKOUT_PROCESSING_OWNED_TABLES
     assert len(runtime["standard_features"]) >= 18
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
@@ -44,9 +53,32 @@ def test_checkout_processing_runtime_executes_standard_and_advanced_capabilities
     assert contract["pbc"] == "checkout_processing"
     assert contract["implementation_directory"] == "src/pyAppGen/pbcs/checkout_processing"
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["advanced_runtime"]["owned_tables"] == CHECKOUT_PROCESSING_OWNED_TABLES
     assert contract["ui_contract"]["ok"] is True
     assert "CheckoutConfigurationPanel" in contract["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS)
+
+    api = checkout_processing_build_api_contract()
+    permissions = checkout_processing_permissions_contract()
+    assert api["format"] == "appgen.checkout-processing-api-contract.v1"
+    assert api["owned_tables"] == CHECKOUT_PROCESSING_OWNED_TABLES
+    assert api["database_backends"] == CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS
+    assert api["emits"] == CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES
+    assert api["consumes"] == CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES
+    assert api["event_contract"] == "AppGen-X"
+    assert api["stream_engine_picker_visible"] is False
+    assert api["shared_table_access"] is False
+    assert {route["route"] for route in api["routes"]} >= {
+        "POST /carts",
+        "POST /cart-lines",
+        "POST /checkout",
+        "POST /checkout/completions",
+        "POST /checkout-processing/events/inbox",
+        "GET /checkout-workbench",
+    }
+    assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert permissions["action_permissions"]["complete_checkout"] == "checkout_processing.checkout"
+    assert permissions["action_permissions"]["receive_event"] == "checkout_processing.event.consume"
 
 
 def test_checkout_processing_runtime_handles_checkout_flow_and_workbench_evidence() -> None:
@@ -67,6 +99,14 @@ def test_checkout_processing_runtime_handles_checkout_flow_and_workbench_evidenc
     state = checkout_processing_set_parameter(state, "risk_threshold", 0.65)["state"]
     state = checkout_processing_set_parameter(state, "max_retry_attempts", 3)["state"]
     state = checkout_processing_set_parameter(state, "promotion_cap_rate", 0.15)["state"]
+    extension = checkout_processing_register_schema_extension(
+        state,
+        "checkout_session",
+        {"fraud_features": "jsonb", "delivery_promise_features": "jsonb"},
+    )
+    state = extension["state"]
+    assert extension["ok"] is True
+    assert state["schema_extensions"]["checkout_session"]["fraud_features"] == "jsonb"
 
     rule = checkout_processing_register_rule(
         state,
@@ -202,6 +242,7 @@ def test_checkout_processing_runtime_handles_checkout_flow_and_workbench_evidenc
     assert workbench["parameter_count"] == 3
     assert workbench["processed_event_count"] == 3
     assert workbench["rule_evidence"] == (rule["rule"]["compiled_hash"],)
+    assert workbench["binding_evidence"]["owned_tables"] == CHECKOUT_PROCESSING_OWNED_TABLES
 
     ui_contract = checkout_processing_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
@@ -231,6 +272,23 @@ def test_checkout_processing_runtime_handles_checkout_flow_and_workbench_evidenc
     assert rendered["event_inbox_count"] == 3
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+    boundary = checkout_processing_verify_owned_table_boundary(
+        (
+            "cart",
+            "checkout_session",
+            "ProductPublished",
+            "price_projection",
+            "POST /payment-intents",
+            "checkout_processing_appgen_outbox_event",
+        )
+    )
+    assert boundary["ok"] is True
+    assert boundary["declared_dependencies"]["shared_tables"] == ()
+
+    violation = checkout_processing_verify_owned_table_boundary(("customer",))
+    assert violation["ok"] is False
+    assert violation["violations"] == ("customer",)
 
 
 def test_checkout_processing_rejects_invalid_runtime_inputs_and_dead_letters_bad_events() -> None:
@@ -286,6 +344,9 @@ def test_checkout_processing_rejects_invalid_runtime_inputs_and_dead_letters_bad
 
     with pytest.raises(ValueError, match="Unsupported Checkout Processing parameter"):
         checkout_processing_set_parameter(state, "stream_engine", "forbidden_picker")
+
+    with pytest.raises(ValueError, match="schema extensions must target owned tables"):
+        checkout_processing_register_schema_extension(state, "customer", {"profile": "jsonb"})
 
     with pytest.raises(ValueError, match="Missing required Checkout Processing rule fields"):
         checkout_processing_register_rule(

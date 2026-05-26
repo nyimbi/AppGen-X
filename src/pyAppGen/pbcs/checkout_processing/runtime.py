@@ -9,6 +9,24 @@ import re
 
 
 CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC = "appgen.checkout.events"
+CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+CHECKOUT_PROCESSING_OWNED_TABLES = (
+    "cart",
+    "cart_line",
+    "checkout_session",
+    "promotion_redemption",
+    "checkout_pricing_handoff",
+    "checkout_tax_handoff",
+    "checkout_inventory_reservation_handoff",
+    "checkout_payment_intent_handoff",
+    "checkout_risk_screen",
+    "checkout_address_validation",
+    "checkout_rule",
+    "checkout_parameter",
+    "checkout_configuration",
+)
+CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES = ("ProductPublished", "PriceOptimized", "TaxCalculated")
+CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES = ("OrderPriced", "CheckoutCompleted")
 
 CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_checkout_lifecycle",
@@ -111,6 +129,7 @@ def checkout_processing_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "checkout_processing",
         "implementation_directory": "src/pyAppGen/pbcs/checkout_processing",
+        "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
         "capabilities": CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS,
         "standard_features": CHECKOUT_PROCESSING_STANDARD_FEATURE_KEYS,
         "operations": (
@@ -128,7 +147,10 @@ def checkout_processing_runtime_capabilities() -> dict:
             "screen_risk",
             "create_payment_intent",
             "complete_checkout",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -411,7 +433,7 @@ def checkout_processing_empty_state() -> dict:
 
 
 def checkout_processing_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    allowed_databases = set(CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS)
     if configuration.get("database_backend") not in allowed_databases:
         raise ValueError("Checkout Processing supports only PostgreSQL, MySQL, or MariaDB backends")
     if configuration.get("event_topic") != CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC:
@@ -453,6 +475,8 @@ def checkout_processing_register_rule(state: dict, rule: dict) -> dict:
 
 
 def checkout_processing_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in CHECKOUT_PROCESSING_OWNED_TABLES:
+        raise ValueError(f"Checkout Processing schema extensions must target owned tables: {CHECKOUT_PROCESSING_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
@@ -828,16 +852,119 @@ def checkout_processing_run_control_tests(state: dict) -> dict:
 
 def checkout_processing_build_api_contract() -> dict:
     return {
+        "format": "appgen.checkout-processing-api-contract.v1",
         "ok": True,
         "routes": (
-            "POST /carts",
-            "POST /checkout",
-            "POST /coupons",
-            "POST /checkout/risk",
-            "POST /checkout/payment-intents",
-            "POST /checkout/reservations",
+            {
+                "route": "POST /carts",
+                "command": "create_cart",
+                "owned_tables": ("cart",),
+                "emits": ("OrderPriced",),
+                "requires_permission": "checkout_processing.cart",
+                "idempotency_key": "cart_id",
+            },
+            {
+                "route": "POST /cart-lines",
+                "command": "add_cart_line",
+                "owned_tables": ("cart", "cart_line"),
+                "emits": ("OrderPriced",),
+                "requires_permission": "checkout_processing.cart",
+                "idempotency_key": "line_id",
+            },
+            {
+                "route": "POST /coupons",
+                "command": "apply_coupon",
+                "owned_tables": ("cart", "promotion_redemption"),
+                "emits": ("OrderPriced",),
+                "requires_permission": "checkout_processing.promotion",
+                "idempotency_key": "coupon_code:cart_id",
+            },
+            {
+                "route": "POST /checkout",
+                "command": "open_checkout_session",
+                "owned_tables": ("checkout_session",),
+                "emits": (),
+                "requires_permission": "checkout_processing.checkout",
+                "idempotency_key": "session_id",
+            },
+            {
+                "route": "POST /checkout/tax",
+                "command": "apply_tax_handoff",
+                "owned_tables": ("checkout_tax_handoff", "cart", "checkout_session"),
+                "declared_projection_dependencies": ("tax_quote_projection",),
+                "emits": ("OrderPriced",),
+                "requires_permission": "checkout_processing.pricing",
+                "idempotency_key": "session_id:tax_calculation_id",
+            },
+            {
+                "route": "POST /checkout/reservations",
+                "command": "reserve_inventory_handoff",
+                "owned_tables": ("checkout_inventory_reservation_handoff", "checkout_session"),
+                "declared_api_dependencies": ("POST /inventory-reservations",),
+                "requires_permission": "checkout_processing.inventory",
+                "idempotency_key": "reservation_id",
+            },
+            {
+                "route": "POST /checkout/risk",
+                "command": "screen_risk",
+                "owned_tables": ("checkout_risk_screen",),
+                "requires_permission": "checkout_processing.risk",
+                "idempotency_key": "session_id:risk",
+            },
+            {
+                "route": "POST /checkout/payment-intents",
+                "command": "create_payment_intent",
+                "owned_tables": ("checkout_payment_intent_handoff", "checkout_session"),
+                "declared_api_dependencies": ("POST /payment-intents",),
+                "requires_permission": "checkout_processing.payment",
+                "idempotency_key": "payment_intent_id",
+            },
+            {
+                "route": "POST /checkout/completions",
+                "command": "complete_checkout",
+                "owned_tables": ("checkout_session",),
+                "emits": ("CheckoutCompleted",),
+                "requires_permission": "checkout_processing.checkout",
+                "idempotency_key": "session_id",
+            },
+            {
+                "route": "POST /checkout-processing/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES,
+                "requires_permission": "checkout_processing.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /checkout-workbench",
+                "query": "build_workbench_view",
+                "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
+                "requires_permission": "checkout_processing.audit",
+            },
         ),
-        "events": {"emits": ("OrderPriced", "CheckoutCompleted"), "consumes": ("ProductPublished", "PriceOptimized", "TaxCalculated")},
+        "declared_catalog_routes": ("POST /carts", "POST /checkout", "POST /coupons"),
+        "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
+        "events": {"emits": CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES, "consumes": CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES},
+        "emits": CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES,
+        "consumes": CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES,
+        "database_backends": CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS,
+        "permissions": tuple(sorted(checkout_processing_permissions_contract()["permissions"])),
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": (
+            "CHECKOUT_PROCESSING_DATABASE_URL",
+            "CHECKOUT_PROCESSING_EVENT_TOPIC",
+            "CHECKOUT_PROCESSING_RETRY_LIMIT",
+            "CHECKOUT_PROCESSING_DEFAULT_CURRENCY",
+        ),
+    }
+
+
+def checkout_processing_permissions_contract() -> dict:
+    return {
+        "format": "appgen.checkout-processing-permissions.v1",
+        "ok": True,
         "permissions": (
             "checkout_processing.cart",
             "checkout_processing.checkout",
@@ -846,15 +973,89 @@ def checkout_processing_build_api_contract() -> dict:
             "checkout_processing.inventory",
             "checkout_processing.payment",
             "checkout_processing.risk",
+            "checkout_processing.event.consume",
             "checkout_processing.configure",
             "checkout_processing.audit",
         ),
-        "configuration": (
-            "CHECKOUT_PROCESSING_DATABASE_URL",
-            "CHECKOUT_PROCESSING_EVENT_TOPIC",
-            "CHECKOUT_PROCESSING_RETRY_LIMIT",
-            "CHECKOUT_PROCESSING_DEFAULT_CURRENCY",
-        ),
+        "action_permissions": {
+            "create_cart": "checkout_processing.cart",
+            "add_cart_line": "checkout_processing.cart",
+            "apply_coupon": "checkout_processing.promotion",
+            "validate_shipping_address": "checkout_processing.checkout",
+            "open_checkout_session": "checkout_processing.checkout",
+            "apply_tax_handoff": "checkout_processing.pricing",
+            "reserve_inventory_handoff": "checkout_processing.inventory",
+            "screen_risk": "checkout_processing.risk",
+            "create_payment_intent": "checkout_processing.payment",
+            "complete_checkout": "checkout_processing.checkout",
+            "receive_event": "checkout_processing.event.consume",
+            "register_rule": "checkout_processing.configure",
+            "register_schema_extension": "checkout_processing.configure",
+            "set_parameter": "checkout_processing.configure",
+            "configure_runtime": "checkout_processing.configure",
+            "build_workbench_view": "checkout_processing.audit",
+        },
+    }
+
+
+def checkout_processing_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "POST /inventory-reservations",
+        "POST /payment-intents",
+        "POST /tax-calculations",
+        "GET /product-catalog",
+        "GET /pricing",
+        "GET /fraud-screening",
+        "product_projection",
+        "price_projection",
+        "tax_quote_projection",
+        "inventory_reservation_projection",
+        "payment_intent_projection",
+        "customer_projection",
+    }
+    allowed_event_dependencies = set(CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES)
+    allowed_runtime_tables = {
+        "checkout_processing_appgen_outbox_event",
+        "checkout_processing_appgen_inbox_event",
+        "checkout_processing_dead_letter_event",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(CHECKOUT_PROCESSING_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("checkout_processing_")
+    )
+    return {
+        "format": "appgen.checkout-processing-boundary.v1",
+        "ok": not violations,
+        "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "POST /inventory-reservations",
+                "POST /payment-intents",
+                "POST /tax-calculations",
+                "GET /product-catalog",
+                "GET /pricing",
+                "GET /fraud-screening",
+            ),
+            "events": CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "product_projection",
+                "price_projection",
+                "tax_quote_projection",
+                "inventory_reservation_projection",
+                "payment_intent_projection",
+                "customer_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -972,6 +1173,12 @@ def checkout_processing_build_workbench_view(state: dict, *, tenant: str) -> dic
         "configuration_evidence": {"event_topic": state["configuration"].get("event_topic"), "event_contract": state["configuration"].get("event_contract")},
         "rule_evidence": tuple(sorted(rule["compiled_hash"] for rule in state["rules"].values() if rule["tenant"] == tenant)),
         "parameter_evidence": tuple(sorted(state["parameters"])),
+        "binding_evidence": {
+            "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
+            "outbox_table": "checkout_processing_appgen_outbox_event",
+            "inbox_table": "checkout_processing_appgen_inbox_event",
+            "dead_letter_table": "checkout_processing_dead_letter_event",
+        },
     }
 
 
