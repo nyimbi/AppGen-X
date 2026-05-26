@@ -1614,7 +1614,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `__pycache__` runtime/test debris under
   `archive/repo-cleanup-2026-05-26-5/`, keeps the payload ignored, and leaves
   `.venv`, tracked source, docs, configuration, tests, and existing archive
-  history in place because they were not proven unused. Commit: pending.
+  history in place because they were not proven unused. Commit: `f911d20`.
 
 ## Open Completion Areas
 
