@@ -1797,7 +1797,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   cleanup archived the initial cache sweep plus regenerated verification/cache
   sweeps, while leaving source, tests, docs, frontend files, package metadata,
   and in-flight PBC specification/traceability edits untouched. Commit:
-  pending.
+  `04d8f6c`.
 
 ## Open Completion Areas
 
