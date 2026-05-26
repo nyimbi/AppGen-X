@@ -157,6 +157,18 @@ The runtime must prove:
 - Tax calculations are idempotent and produce AppGen-X outbox evidence.
 - Filings are prepared from owned calculation state and emit
   `TaxFilingPrepared`.
+- Runtime configuration rejects unsupported backends and exposes only the
+  AppGen-X event contract.
+- Executable policy rules are distinct from jurisdictional tax rules and cover
+  filing, quote, exemption, cross-border, withholding, authority-route, and
+  release-gate behavior.
+- Runtime parameters cover quote precision, reconciliation tolerance, authority
+  retry limits, exemption expiry warning windows, nexus thresholds, and
+  workbench limits.
+- UI fragments expose jurisdiction, tax-rule authoring, classification, quote,
+  invoice tax, filing, exemption, cross-border, authority-channel,
+  reconciliation, document, risk, governance-rule, parameter, and configuration
+  workflows with permission-bound actions.
 - Rule, jurisdiction, calculation, and filing artifacts stay inside the
   `tax_localization` owned package boundary.
 - Release audits and generation smoke audits pass before the PBC is considered

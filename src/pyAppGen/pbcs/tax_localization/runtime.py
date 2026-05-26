@@ -65,6 +65,8 @@ TAX_LOCALIZATION_STANDARD_FEATURE_KEYS = (
     "retry_dead_letter",
     "permissions",
     "configuration_schema",
+    "rule_engine",
+    "parameter_engine",
     "seed_data",
     "workbench",
 )
@@ -80,6 +82,9 @@ def tax_localization_runtime_capabilities() -> dict:
         "capabilities": TAX_LOCALIZATION_RUNTIME_CAPABILITY_KEYS,
         "standard_features": TAX_LOCALIZATION_STANDARD_FEATURE_KEYS,
         "operations": (
+            "configure_runtime",
+            "set_parameter",
+            "register_rule",
             "register_jurisdiction",
             "register_tax_rule",
             "classify_product",
@@ -118,6 +123,31 @@ def tax_localization_runtime_capabilities() -> dict:
 
 def tax_localization_runtime_smoke() -> dict:
     state = tax_localization_empty_state()
+    state = tax_localization_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.tax.events",
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "authority_channels": ("authority_api", "secure_outbox"),
+            "workbench_limit": 100,
+        },
+    )["state"]
+    state = tax_localization_set_parameter(state, "tax_quote_precision", 2)["state"]
+    state = tax_localization_set_parameter(state, "filing_reconciliation_tolerance", 0.01)["state"]
+    state = tax_localization_register_rule(
+        state,
+        {
+            "rule_id": "rule_tax_governance",
+            "tenant": "tenant_alpha",
+            "scope": "filing",
+            "approval_required": True,
+            "reconciliation_tolerance": 0.01,
+            "status": "active",
+        },
+    )["state"]
     state = tax_localization_register_schema_extension(
         state,
         "tax_rule",
@@ -255,6 +285,9 @@ def tax_localization_runtime_smoke() -> dict:
 
 def tax_localization_empty_state() -> dict:
     return {
+        "configuration": {},
+        "parameters": {},
+        "policy_rules": {},
         "events": (),
         "outbox": (),
         "jurisdictions": {},
@@ -266,6 +299,44 @@ def tax_localization_empty_state() -> dict:
         "digital_documents": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
     }
+
+
+def tax_localization_configure_runtime(state: dict, configuration: dict) -> dict:
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Tax Localization supports only PostgreSQL, MySQL, or MariaDB backends")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
+
+
+def tax_localization_set_parameter(state: dict, key: str, value: int | float | str) -> dict:
+    allowed = {
+        "tax_quote_precision",
+        "filing_reconciliation_tolerance",
+        "authority_retry_limit",
+        "exemption_expiry_warning_days",
+        "nexus_sales_threshold",
+        "workbench_limit",
+    }
+    if key not in allowed:
+        raise ValueError(f"Unsupported Tax Localization parameter: {key}")
+    parameters = {**state.get("parameters", {}), key: value}
+    return {"ok": True, "state": {**state, "parameters": parameters}, "parameter": {"key": key, "value": value}}
+
+
+def tax_localization_register_rule(state: dict, rule: dict) -> dict:
+    required = {"rule_id", "tenant", "scope", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Tax Localization rule fields: {missing}")
+    stored = {**rule, "enabled": rule["status"] == "active"}
+    policy_rules = {**state.get("policy_rules", {}), rule["rule_id"]: stored}
+    return {"ok": True, "state": {**state, "policy_rules": policy_rules}, "rule": stored}
 
 
 def tax_localization_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
@@ -545,6 +616,9 @@ def tax_localization_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "filing_count": len(filings),
         "open_liability": round(sum(item["tax_total"] for item in calculations) - sum(item["liability"] for item in filings), 2),
         "due_filings": tuple(filing["filing_id"] for filing in filings if filing["status"] == "prepared"),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("policy_rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
     }
 
 

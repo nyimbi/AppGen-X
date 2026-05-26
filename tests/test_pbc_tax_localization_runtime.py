@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import TAX_LOCALIZATION_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
@@ -5,13 +7,18 @@ from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbc import tax_localization_build_workbench_view
 from pyAppGen.pbc import tax_localization_calculate_tax_quote
 from pyAppGen.pbc import tax_localization_classify_product
+from pyAppGen.pbc import tax_localization_configure_runtime
 from pyAppGen.pbc import tax_localization_empty_state
 from pyAppGen.pbc import tax_localization_prepare_tax_filing
 from pyAppGen.pbc import tax_localization_record_invoice_tax
 from pyAppGen.pbc import tax_localization_register_jurisdiction
+from pyAppGen.pbc import tax_localization_register_rule
+from pyAppGen.pbc import tax_localization_render_workbench
 from pyAppGen.pbc import tax_localization_register_tax_rule
 from pyAppGen.pbc import tax_localization_runtime_capabilities
 from pyAppGen.pbc import tax_localization_runtime_smoke
+from pyAppGen.pbc import tax_localization_set_parameter
+from pyAppGen.pbc import tax_localization_ui_contract
 from pyAppGen.pbc import tax_localization_validate_exemption_certificate
 
 
@@ -22,6 +29,10 @@ def test_tax_localization_runtime_executes_standard_and_advanced_capabilities() 
     assert runtime["format"] == "appgen.tax-localization-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/tax_localization"
+    assert "configuration_schema" in runtime["standard_features"]
+    assert "rule_engine" in runtime["standard_features"]
+    assert "parameter_engine" in runtime["standard_features"]
+    assert "workbench" in runtime["standard_features"]
     assert len(runtime["standard_features"]) >= 18
     assert smoke["ok"] is True
     assert set(TAX_LOCALIZATION_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
@@ -30,6 +41,8 @@ def test_tax_localization_runtime_executes_standard_and_advanced_capabilities() 
     contract = pbc_implementation_contract("tax_localization")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert "TaxConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(TAX_LOCALIZATION_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("tax_localization",))["ok"] is True
     assert pbc_implemented_capability_audit(("tax_localization",))["ok"] is True
@@ -37,6 +50,31 @@ def test_tax_localization_runtime_executes_standard_and_advanced_capabilities() 
 
 def test_tax_localization_runtime_handles_core_tax_workflows() -> None:
     state = tax_localization_empty_state()
+    state = tax_localization_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.tax.events",
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "authority_channels": ("authority_api", "secure_outbox"),
+            "workbench_limit": 50,
+        },
+    )["state"]
+    state = tax_localization_set_parameter(state, "tax_quote_precision", 2)["state"]
+    state = tax_localization_set_parameter(state, "filing_reconciliation_tolerance", 0.01)["state"]
+    state = tax_localization_register_rule(
+        state,
+        {
+            "rule_id": "rule_ops",
+            "tenant": "tenant_ops",
+            "scope": "filing",
+            "approval_required": True,
+            "reconciliation_tolerance": 0.01,
+            "status": "active",
+        },
+    )["state"]
     state = tax_localization_register_jurisdiction(
         state,
         {
@@ -120,3 +158,50 @@ def test_tax_localization_runtime_handles_core_tax_workflows() -> None:
     assert workbench["calculation_count"] == 1
     assert workbench["filing_count"] == 1
     assert workbench["open_liability"] == 0
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 2
+
+    ui_contract = tax_localization_ui_contract()
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert "tax_quote_precision" in ui_contract["parameter_editor"]["numeric_parameters"]
+    assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    rendered = tax_localization_render_workbench(
+        state,
+        tenant="tenant_ops",
+        principal_permissions=(
+            "tax_localization.jurisdiction",
+            "tax_localization.rule_admin",
+            "tax_localization.calculate",
+            "tax_localization.invoice",
+            "tax_localization.file",
+            "tax_localization.exemption",
+            "tax_localization.reconcile",
+            "tax_localization.audit",
+            "tax_localization.configure",
+        ),
+    )
+    assert rendered["ok"] is True
+    assert rendered["configuration_bound"] is True
+    assert rendered["event_outbox_count"] == 5
+    assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
+    assert not rendered["locked_actions"]
+
+
+def test_tax_localization_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = tax_localization_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        tax_localization_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.tax.events",
+                "retry_limit": 3,
+                "default_currency": "USD",
+                "default_timezone": "UTC",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Tax Localization parameter"):
+        tax_localization_set_parameter(state, "stream_engine", "hidden_picker")

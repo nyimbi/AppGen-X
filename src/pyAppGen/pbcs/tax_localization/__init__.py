@@ -6,14 +6,20 @@ from .runtime import TAX_LOCALIZATION_STANDARD_FEATURE_KEYS
 from .runtime import tax_localization_build_workbench_view
 from .runtime import tax_localization_calculate_tax_quote
 from .runtime import tax_localization_classify_product
+from .runtime import tax_localization_configure_runtime
 from .runtime import tax_localization_empty_state
 from .runtime import tax_localization_prepare_tax_filing
 from .runtime import tax_localization_record_invoice_tax
 from .runtime import tax_localization_register_jurisdiction
+from .runtime import tax_localization_register_rule
 from .runtime import tax_localization_register_tax_rule
 from .runtime import tax_localization_runtime_capabilities
 from .runtime import tax_localization_runtime_smoke
+from .runtime import tax_localization_set_parameter
 from .runtime import tax_localization_validate_exemption_certificate
+from .ui import TAX_LOCALIZATION_UI_FRAGMENT_KEYS
+from .ui import tax_localization_render_workbench
+from .ui import tax_localization_ui_contract
 
 PBC_KEY = "tax_localization"
 
@@ -25,4 +31,5 @@ def implementation_contract() -> dict:
         **contract,
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
+        "ui_contract": tax_localization_ui_contract(),
     }
