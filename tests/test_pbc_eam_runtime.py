@@ -1,6 +1,12 @@
 import pytest
 
 from pyAppGen.pbc import EAM_ADVANCED_CAPABILITY_KEYS
+from pyAppGen.pbc import EAM_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbc import EAM_CONSUMED_EVENT_TYPES
+from pyAppGen.pbc import EAM_EMITTED_EVENT_TYPES
+from pyAppGen.pbc import EAM_OWNED_TABLES
+from pyAppGen.pbc import EAM_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbc import eam_build_api_contract
 from pyAppGen.pbc import eam_build_workbench_view
 from pyAppGen.pbc import eam_complete_work_order
 from pyAppGen.pbc import eam_configure_runtime
@@ -9,16 +15,20 @@ from pyAppGen.pbc import eam_create_safety_permit
 from pyAppGen.pbc import eam_create_work_order
 from pyAppGen.pbc import eam_empty_state
 from pyAppGen.pbc import eam_issue_spare_part
+from pyAppGen.pbc import eam_permissions_contract
 from pyAppGen.pbc import eam_record_condition_reading
 from pyAppGen.pbc import eam_record_meter_reading
+from pyAppGen.pbc import eam_receive_event
 from pyAppGen.pbc import eam_register_equipment
 from pyAppGen.pbc import eam_register_rule
+from pyAppGen.pbc import eam_register_schema_extension
 from pyAppGen.pbc import eam_render_workbench
 from pyAppGen.pbc import eam_runtime_capabilities
 from pyAppGen.pbc import eam_runtime_smoke
 from pyAppGen.pbc import eam_schedule_work_order
 from pyAppGen.pbc import eam_set_parameter
 from pyAppGen.pbc import eam_ui_contract
+from pyAppGen.pbc import eam_verify_owned_table_boundary
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
@@ -42,6 +52,11 @@ def test_eam_runtime_executes_standard_and_advanced_capabilities() -> None:
 
     contract = pbc_implementation_contract("eam")
     assert contract["source_package"]["ok"] is True
+    assert contract["source_package"]["owned_tables"] == EAM_OWNED_TABLES
+    assert contract["source_package"]["allowed_database_backends"] == EAM_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["api_contract"]["shared_table_access"] is False
+    assert contract["source_package"]["permissions_contract"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "MaintenanceConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
@@ -231,6 +246,7 @@ def test_eam_runtime_applies_rules_parameters_configuration_and_ui() -> None:
 
     ui_contract = eam_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["required_event_topic"] == EAM_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["stream_engine_picker"] is False
     assert ui_contract["configuration_editor"]["user_selectable_eventing"] is False
     assert "failure_risk_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
@@ -250,6 +266,8 @@ def test_eam_runtime_applies_rules_parameters_configuration_and_ui() -> None:
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
+    assert rendered["event_inbox_count"] == 0
+    assert rendered["dead_letter_count"] == 0
     assert rendered["rules_bound"] == ("rule_ops",)
     assert rendered["parameters_bound"] == (
         "criticality_weight",
@@ -261,6 +279,110 @@ def test_eam_runtime_applies_rules_parameters_configuration_and_ui() -> None:
     assert rendered["event_outbox_count"] == 9
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+
+
+def test_eam_runtime_proves_owned_boundaries_and_idempotent_eventing() -> None:
+    state = eam_empty_state()
+    with pytest.raises(ValueError):
+        eam_configure_runtime(state, {"database_backend": "sqlite", "event_topic": EAM_REQUIRED_EVENT_TOPIC})
+    with pytest.raises(ValueError):
+        eam_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": "custom.topic",
+                "retry_limit": 3,
+                "allowed_sites": ("plant_ops",),
+                "allowed_priorities": ("low", "medium", "high", "critical"),
+                "allowed_work_types": ("preventive", "predictive", "corrective"),
+                "allowed_permit_types": ("electrical",),
+                "default_timezone": "UTC",
+                "workbench_limit": 50,
+            },
+        )
+    with pytest.raises(ValueError):
+        eam_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": EAM_REQUIRED_EVENT_TOPIC,
+                "retry_limit": 3,
+                "allowed_sites": ("plant_ops",),
+                "allowed_priorities": ("low", "medium", "high", "critical"),
+                "allowed_work_types": ("preventive", "predictive", "corrective"),
+                "allowed_permit_types": ("electrical",),
+                "default_timezone": "UTC",
+                "workbench_limit": 50,
+                "stream_engine": "picker",
+            },
+        )
+
+    state = eam_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": EAM_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "allowed_sites": ("plant_ops",),
+            "allowed_priorities": ("low", "medium", "high", "critical"),
+            "allowed_work_types": ("preventive", "predictive", "corrective"),
+            "allowed_permit_types": ("electrical",),
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+
+    assert eam_register_schema_extension(state, "equipment", {"inspection_payload": "jsonb"})["ok"] is True
+    assert eam_register_schema_extension(state, "inventory_lot", {"lot_payload": "jsonb"})["error"] == "table_not_owned"
+    assert eam_register_schema_extension(state, "equipment", {"InvalidField": "jsonb"})["error"] == "invalid_extension_field"
+
+    inbound = {
+        "event_id": "inventory_reservation_ops",
+        "event_type": "InventoryReservationConfirmed",
+        "tenant": "tenant_ops",
+        "payload": {"reservation_id": "res_ops", "work_order_id": "wo_ops", "part_number": "bearing_kit", "quantity": 2},
+    }
+    received = eam_receive_event(state, inbound)
+    assert received["ok"] is True
+    assert received["status"] == "processed"
+    assert received["projection"] == "inventory_spares_projection"
+    assert received["state"]["inventory_spares_projection"]["wo_ops"]["quantity"] == 2
+    duplicate = eam_receive_event(received["state"], inbound)
+    assert duplicate["status"] == "duplicate"
+    assert duplicate["state"] == received["state"]
+    dead_letter = eam_receive_event(
+        received["state"],
+        {"event_id": "bad_ops", "event_type": "UnknownMaintenanceEvent", "tenant": "tenant_ops", "payload": {}},
+    )
+    assert dead_letter["status"] == "dead_lettered"
+    assert dead_letter["state"]["dead_letters"][-1]["reason"] == "unsupported_event_type"
+    assert dead_letter["state"]["retry_evidence"][-1]["status"] == "dead_lettered"
+
+    api = eam_build_api_contract()
+    assert api["owned_tables"] == EAM_OWNED_TABLES
+    assert api["database_backends"] == EAM_ALLOWED_DATABASE_BACKENDS
+    assert api["required_event_topic"] == EAM_REQUIRED_EVENT_TOPIC
+    assert api["events"]["emits"] == EAM_EMITTED_EVENT_TYPES
+    assert api["events"]["consumes"] == EAM_CONSUMED_EVENT_TYPES
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False
+
+    permissions = eam_permissions_contract()
+    assert permissions["action_permissions"]["receive_event"] == "eam.execute"
+
+    allowed = eam_verify_owned_table_boundary(
+        (
+            "equipment",
+            "maintenance_plan",
+            "eam_appgen_outbox_event",
+            "inventory_spares_projection",
+            "GET /quality/nonconformances/{id}",
+        )
+    )
+    assert allowed["ok"] is True
+    rejected = eam_verify_owned_table_boundary(("inventory_lot", "supplier_master"))
+    assert rejected["ok"] is False
+    assert rejected["violations"] == ("inventory_lot", "supplier_master")
 
 
 def test_eam_rejects_unsupported_database_backends_and_unknown_parameters() -> None:

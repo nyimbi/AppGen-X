@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from .runtime import EAM_ALLOWED_DATABASE_BACKENDS
+from .runtime import EAM_CONSUMED_EVENT_TYPES
+from .runtime import EAM_EMITTED_EVENT_TYPES
+from .runtime import EAM_OWNED_TABLES
 from .runtime import EAM_REQUIRED_RULE_FIELDS
+from .runtime import EAM_REQUIRED_EVENT_TOPIC
 from .runtime import EAM_SUPPORTED_PARAMETERS
 
 EAM_UI_FRAGMENT_KEYS = (
@@ -30,6 +34,7 @@ def eam_ui_contract() -> dict:
         "ok": True,
         "pbc": "eam",
         "implementation_directory": "src/pyAppGen/pbcs/eam",
+        "owned_tables": EAM_OWNED_TABLES,
         "fragments": EAM_UI_FRAGMENT_KEYS,
         "routes": (
             "/workbench/pbcs/eam",
@@ -57,7 +62,7 @@ def eam_ui_contract() -> dict:
             {
                 "key": "execution",
                 "fragment": "WorkOrderBoard",
-                "binds_to": ("work_order", "safety_permit", "spare_part_usage", "outbox"),
+            "binds_to": ("work_order", "safety_permit", "spare_part_usage", "outbox"),
                 "commands": ("create_work_order", "schedule_work_order", "issue_spare_part", "complete_work_order"),
             },
             {
@@ -69,7 +74,7 @@ def eam_ui_contract() -> dict:
             {
                 "key": "governance_studio",
                 "fragment": "MaintenanceRuleStudio",
-                "binds_to": ("rule", "parameter", "configuration"),
+            "binds_to": ("rule", "parameter", "configuration"),
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
@@ -92,8 +97,10 @@ def eam_ui_contract() -> dict:
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
             "allowed_database_backends": EAM_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker": False,
             "user_selectable_eventing": False,
+            "owned_tables": EAM_OWNED_TABLES,
         },
         "parameter_editor": {
             "numeric_parameters": EAM_SUPPORTED_PARAMETERS,
@@ -104,9 +111,10 @@ def eam_ui_contract() -> dict:
             "compile_evidence_visible": True,
         },
         "event_surfaces": {
-            "emits": ("MaintenanceCompleted", "VendorPerformanceUpdated", "WorkOrderCreated"),
-            "consumes": ("DowntimeCaptured", "NonConformanceRaised", "InventoryReservationConfirmed", "PurchaseOrderAcknowledged"),
+            "emits": EAM_EMITTED_EVENT_TYPES,
+            "consumes": EAM_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
     }
@@ -147,4 +155,6 @@ def eam_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "event_inbox_count": len(state.get("inbox", {})),
+        "dead_letter_count": len(state.get("dead_letters", ())),
     }

@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import GL_CORE_ALLOWED_DATABASE_BACKENDS
+from .runtime import GL_CORE_CONSUMED_EVENT_TYPES
+from .runtime import GL_CORE_EMITTED_EVENT_TYPES
+from .runtime import GL_CORE_OWNED_TABLES
+from .runtime import GL_CORE_REQUIRED_EVENT_TOPIC
+from .runtime import gl_core_permissions_contract
+
 
 GL_CORE_UI_FRAGMENT_KEYS = (
     "GeneralLedgerWorkbench",
@@ -64,22 +71,14 @@ def gl_core_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": {
-            "append_ledger_event": "gl_core.post",
-            "predict_posting_validation": "gl_core.post",
-            "build_projection": "gl_core.read",
-            "create_continuous_close_snapshot": "gl_core.close",
-            "suggest_reconciliation": "gl_core.reconcile",
-            "generate_audit_proof": "gl_core.audit",
-            "register_rule": "gl_core.configure",
-            "set_parameter": "gl_core.configure",
-            "configure_runtime": "gl_core.configure",
-            "run_control_tests": "gl_core.audit",
-        },
+        "action_permissions": gl_core_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": GL_CORE_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": GL_CORE_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -96,11 +95,13 @@ def gl_core_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": ("JournalPosted", "CloseSnapshotCreated", "ReconciliationSuggested", "PostingPolicyChanged", "LedgerProjectionBuilt"),
-            "consumes": ("InvoiceApproved", "PaymentCaptured", "PayrollPosted", "AssetDepreciated", "TaxCalculated"),
+            "emits": GL_CORE_EMITTED_EVENT_TYPES,
+            "consumes": GL_CORE_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": GL_CORE_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -121,6 +122,8 @@ def gl_core_render_workbench(
         {"key": "trial_balance", "value": projection["trial_balance"], "fragment": "TrialBalanceView"},
         {"key": "rules", "value": len(state.get("rules", {})), "fragment": "PolicyRuleStudio"},
         {"key": "outbox_events", "value": len(state.get("outbox", ())), "fragment": "AuditProofViewer"},
+        {"key": "inbox_events", "value": len(state.get("inbox", ())), "fragment": "ControlsDashboard"},
+        {"key": "dead_letter_events", "value": len(state.get("dead_letter", state.get("dead_letters", ()))), "fragment": "ControlsDashboard"},
     )
     return {
         "format": "appgen.gl-core-workbench-render.v1",
@@ -135,6 +138,14 @@ def gl_core_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": GL_CORE_OWNED_TABLES,
+            "outbox_table": "gl_core_appgen_outbox_event",
+            "inbox_table": "gl_core_appgen_inbox_event",
+            "dead_letter_table": "gl_core_dead_letter_event",
+        },
     }
 
 

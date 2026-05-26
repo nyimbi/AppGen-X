@@ -1,6 +1,11 @@
 """Accounts Payable Automation PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import AP_AUTOMATION_CONSUMED_EVENT_TYPES
+from .runtime import AP_AUTOMATION_EMITTED_EVENT_TYPES
+from .runtime import AP_AUTOMATION_OWNED_TABLES
+from .runtime import AP_AUTOMATION_REQUIRED_EVENT_TOPIC
 from .runtime import AP_AUTOMATION_STANDARD_FEATURE_KEYS
 from .runtime import AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import ap_automation_align_contract_terms
@@ -26,10 +31,12 @@ from .runtime import ap_automation_record_goods_receipt
 from .runtime import ap_automation_register_governed_model
 from .runtime import ap_automation_register_rule
 from .runtime import ap_automation_register_schema_extension
+from .runtime import ap_automation_receive_event
 from .runtime import ap_automation_resolve_exception
 from .runtime import ap_automation_rotate_crypto_epoch
 from .runtime import ap_automation_run_control_tests
 from .runtime import ap_automation_run_resilience_drill
+from .runtime import ap_automation_permissions_contract
 from .runtime import ap_automation_runtime_capabilities
 from .runtime import ap_automation_runtime_smoke
 from .runtime import ap_automation_schedule_carbon_aware_settlement
@@ -40,6 +47,7 @@ from .runtime import ap_automation_set_parameter
 from .runtime import ap_automation_submit_e_invoice
 from .runtime import ap_automation_validate_tax_proof
 from .runtime import ap_automation_verify_formal_invariants
+from .runtime import ap_automation_verify_owned_table_boundary
 from .runtime import ap_automation_verify_vendor_identity
 from .ui import AP_AUTOMATION_UI_FRAGMENT_KEYS
 from .ui import ap_automation_render_workbench
@@ -56,4 +64,11 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": ap_automation_ui_contract(),
+        "api_contract": ap_automation_build_api_contract(),
+        "permissions_contract": ap_automation_permissions_contract(),
+        "owned_tables": AP_AUTOMATION_OWNED_TABLES,
+        "allowed_database_backends": AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": AP_AUTOMATION_REQUIRED_EVENT_TOPIC,
+        "consumes": AP_AUTOMATION_CONSUMED_EVENT_TYPES,
+        "emits": AP_AUTOMATION_EMITTED_EVENT_TYPES,
     }

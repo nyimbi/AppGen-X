@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+from .runtime import AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import AP_AUTOMATION_CONSUMED_EVENT_TYPES
+from .runtime import AP_AUTOMATION_EMITTED_EVENT_TYPES
+from .runtime import AP_AUTOMATION_OWNED_TABLES
+from .runtime import AP_AUTOMATION_REQUIRED_EVENT_TOPIC
+from .runtime import AP_AUTOMATION_RUNTIME_TABLES
+from .runtime import ap_automation_permissions_contract
+
 
 AP_AUTOMATION_UI_FRAGMENT_KEYS = (
     "AccountsPayableWorkbench",
@@ -21,6 +29,7 @@ AP_AUTOMATION_UI_FRAGMENT_KEYS = (
 
 
 def ap_automation_ui_contract() -> dict:
+    permissions = ap_automation_permissions_contract()
     return {
         "format": "appgen.ap-automation-ui-contract.v1",
         "ok": True,
@@ -52,38 +61,46 @@ def ap_automation_ui_contract() -> dict:
                 "key": "invoice",
                 "fragment": "InvoiceCaptureQueue",
                 "binds_to": ("purchase_order", "goods_receipt", "invoice"),
-                "commands": ("issue_purchase_order", "record_goods_receipt", "capture_invoice", "match_invoice"),
+                "commands": (
+                    "issue_purchase_order",
+                    "record_goods_receipt",
+                    "capture_invoice",
+                    "match_invoice",
+                ),
             },
             {
                 "key": "payment",
                 "fragment": "PaymentScheduleConsole",
-                "binds_to": ("payment_pool", "payment", "outbox"),
-                "commands": ("schedule_payments", "execute_payment", "optimize_payment_route"),
+                "binds_to": ("payment", "outbox", "inbox", "dead_letter"),
+                "commands": ("schedule_payments", "execute_payment", "receive_event"),
             },
             {
                 "key": "governance",
                 "fragment": "ApRuleStudio",
                 "binds_to": ("rule", "parameter", "configuration"),
-                "commands": ("register_rule", "set_parameter", "configure_runtime"),
+                "commands": (
+                    "register_rule",
+                    "register_schema_extension",
+                    "set_parameter",
+                    "configure_runtime",
+                ),
             },
         ),
-        "action_permissions": {
-            "onboard_vendor": "ap_automation.vendor",
-            "capture_invoice": "ap_automation.invoice",
-            "match_invoice": "ap_automation.match",
-            "resolve_exception": "ap_automation.exception",
-            "schedule_payments": "ap_automation.payment",
-            "execute_payment": "ap_automation.payment",
-            "validate_tax_proof": "ap_automation.tax",
-            "register_rule": "ap_automation.configure",
-            "set_parameter": "ap_automation.configure",
-            "configure_runtime": "ap_automation.configure",
-            "run_control_tests": "ap_automation.audit",
-        },
+        "action_permissions": permissions["action_permissions"],
+        "permissions_contract": permissions,
         "configuration_editor": {
-            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "required_fields": (
+                "database_backend",
+                "event_topic",
+                "retry_limit",
+                "default_currency",
+                "default_timezone",
+            ),
+            "allowed_database_backends": AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": AP_AUTOMATION_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_eventing_choice": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -96,14 +113,31 @@ def ap_automation_ui_contract() -> dict:
             ),
         },
         "rule_editor": {
-            "rule_types": ("invoice_match", "approval", "tax", "payment", "discount", "vendor_risk", "release_gate"),
+            "rule_types": (
+                "invoice_match",
+                "approval",
+                "tax",
+                "payment",
+                "discount",
+                "vendor_risk",
+                "release_gate",
+            ),
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": ("VendorOnboarded", "PurchaseOrderIssued", "GoodsReceiptRecorded", "InvoiceCaptured", "PaymentScheduled", "PaymentExecuted"),
-            "consumes": ("VendorApproved", "PurchaseOrderApproved", "GoodsReceiptPosted", "TaxPolicyChanged", "CashForecastUpdated"),
+            "contract": "AppGen-X",
+            "required_event_topic": AP_AUTOMATION_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "emits": AP_AUTOMATION_EMITTED_EVENT_TYPES,
+            "consumes": AP_AUTOMATION_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": AP_AUTOMATION_OWNED_TABLES,
+            "runtime_tables": AP_AUTOMATION_RUNTIME_TABLES,
+            "shared_tables": (),
         },
     }
 
@@ -116,16 +150,29 @@ def ap_automation_render_workbench(
 ) -> dict:
     contract = ap_automation_ui_contract()
     permissions = set(principal_permissions)
-    visible_actions = tuple(action for action, required in contract["action_permissions"].items() if required in permissions)
+    visible_actions = tuple(
+        action
+        for action, required in contract["action_permissions"].items()
+        if required in permissions
+    )
     vendors = tuple(vendor for vendor in state["vendors"].values() if vendor["tenant"] == tenant)
     invoices = tuple(invoice for invoice in state["invoices"].values() if invoice["tenant"] == tenant)
     payments = tuple(payment for payment in state["payments"].values() if payment["tenant"] == tenant)
     cards = (
         {"key": "vendors", "value": len(vendors), "fragment": "VendorOnboardingConsole"},
         {"key": "invoices", "value": len(invoices), "fragment": "InvoiceCaptureQueue"},
-        {"key": "open_total", "value": round(sum(invoice["total"] for invoice in invoices if invoice["status"] != "paid"), 2), "fragment": "InvoiceCaptureQueue"},
+        {
+            "key": "open_total",
+            "value": round(
+                sum(invoice["total"] for invoice in invoices if invoice["status"] != "paid"),
+                2,
+            ),
+            "fragment": "InvoiceCaptureQueue",
+        },
         {"key": "payments", "value": len(payments), "fragment": "PaymentScheduleConsole"},
         {"key": "rules", "value": len(state.get("rules", {})), "fragment": "ApRuleStudio"},
+        {"key": "inbox", "value": len(state.get("inbox", ())), "fragment": "PaymentScheduleConsole"},
+        {"key": "dead_letter", "value": len(state.get("dead_letter", ())), "fragment": "ExceptionTriageBoard"},
     )
     return {
         "format": "appgen.ap-automation-workbench-render.v1",
@@ -135,9 +182,14 @@ def ap_automation_render_workbench(
         "fragments": contract["fragments"],
         "cards": cards,
         "visible_actions": visible_actions,
-        "locked_actions": tuple(action for action in contract["action_permissions"] if action not in visible_actions),
+        "locked_actions": tuple(
+            action for action in contract["action_permissions"] if action not in visible_actions
+        ),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "event_inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": contract["binding_evidence"],
     }

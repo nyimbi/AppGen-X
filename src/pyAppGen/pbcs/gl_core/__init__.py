@@ -1,8 +1,14 @@
 """General Ledger Core PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import GL_CORE_ALLOWED_DATABASE_BACKENDS
+from .runtime import GL_CORE_CONSUMED_EVENT_TYPES
+from .runtime import GL_CORE_EMITTED_EVENT_TYPES
+from .runtime import GL_CORE_OWNED_TABLES
+from .runtime import GL_CORE_REQUIRED_EVENT_TOPIC
 from .runtime import GL_CORE_STANDARD_FEATURE_KEYS
 from .runtime import gl_core_append_ledger_event
+from .runtime import gl_core_build_api_contract
 from .runtime import gl_core_build_federated_view
 from .runtime import gl_core_build_projection
 from .runtime import gl_core_build_workbench_view
@@ -17,7 +23,9 @@ from .runtime import gl_core_generate_audit_proof
 from .runtime import gl_core_measure_information_auditability
 from .runtime import gl_core_predict_posting_validation
 from .runtime import gl_core_query_temporal_ledger
+from .runtime import gl_core_receive_event
 from .runtime import gl_core_register_financial_model
+from .runtime import gl_core_permissions_contract
 from .runtime import gl_core_register_rule
 from .runtime import gl_core_register_schema_extension
 from .runtime import gl_core_replicate_consensus
@@ -32,6 +40,7 @@ from .runtime import gl_core_schedule_carbon_aware_execution
 from .runtime import gl_core_set_parameter
 from .runtime import gl_core_simulate_probabilistic_posting
 from .runtime import gl_core_suggest_reconciliation
+from .runtime import gl_core_verify_owned_table_boundary
 from .runtime import gl_core_verify_formal_invariants
 from .runtime import gl_core_verify_identity_credential
 from .ui import GL_CORE_UI_FRAGMENT_KEYS
@@ -49,4 +58,11 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": gl_core_ui_contract(),
+        "api_contract": gl_core_build_api_contract(),
+        "permissions_contract": gl_core_permissions_contract(),
+        "owned_tables": GL_CORE_OWNED_TABLES,
+        "allowed_database_backends": GL_CORE_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": GL_CORE_REQUIRED_EVENT_TOPIC,
+        "emitted_event_types": GL_CORE_EMITTED_EVENT_TYPES,
+        "consumed_event_types": GL_CORE_CONSUMED_EVENT_TYPES,
     }

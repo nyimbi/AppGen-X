@@ -8,6 +8,65 @@ import math
 import re
 
 
+AR_CREDIT_REQUIRED_EVENT_TOPIC = "appgen.ar.events"
+AR_CREDIT_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+AR_CREDIT_OWNED_TABLES = (
+    "ar_customer",
+    "ar_customer_graph",
+    "ar_invoice",
+    "ar_delivery_confirmation",
+    "ar_cash_receipt",
+    "ar_unapplied_cash",
+    "ar_credit_memo",
+    "ar_write_off",
+    "ar_refund",
+    "ar_collection_action",
+    "ar_statement",
+    "ar_revenue_schedule",
+    "ar_cash_pool",
+)
+AR_CREDIT_CONSUMED_EVENT_TYPES = (
+    "CustomerIdentityVerified",
+    "DeliveryConfirmed",
+    "TaxPolicyChanged",
+    "CashForecastUpdated",
+    "AccessPolicyChanged",
+)
+AR_CREDIT_EMITTED_EVENT_TYPES = (
+    "CustomerOnboarded",
+    "InvoiceIssued",
+    "DeliveryConfirmed",
+    "PaymentReceived",
+    "UnappliedCashRecorded",
+    "CreditMemoIssued",
+    "ReceivableWrittenOff",
+    "CustomerRefundScheduled",
+    "CollectionActionScheduled",
+)
+_AR_CREDIT_FORBIDDEN_EVENTING_FIELDS = (
+    "stream_engine",
+    "stream_engine_picker",
+    "visible_event_contracts",
+    "user_selectable_event_contract",
+)
+_AR_CREDIT_RUNTIME_TABLES = (
+    "ar_credit_appgen_outbox_event",
+    "ar_credit_appgen_inbox_event",
+    "ar_credit_dead_letter_event",
+)
+_AR_CREDIT_ALLOWED_DEPENDENCIES = (
+    "GET /customer_360/customers/{id}/profile",
+    "GET /treasury/cash-forecast",
+    "POST /tax_localization/quotes",
+    "GET /federated_iam/access-policies/{id}",
+    "customer_identity_projection",
+    "delivery_projection",
+    "tax_policy_projection",
+    "cash_forecast_projection",
+    "access_policy_projection",
+)
+
+
 AR_CREDIT_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_receivable_lifecycle",
     "graph_relational_customer_topology",
@@ -46,6 +105,11 @@ AR_CREDIT_STANDARD_FEATURE_KEYS = (
     "configuration_schema",
     "rule_engine",
     "parameter_engine",
+    "appgen_x_inbox",
+    "appgen_x_outbox",
+    "idempotent_handlers",
+    "retry_dead_letter_evidence",
+    "permissions",
     "customer_master",
     "customer_onboarding",
     "invoice_generation",
@@ -76,11 +140,14 @@ def ar_credit_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "ar_credit",
         "implementation_directory": "src/pyAppGen/pbcs/ar_credit",
+        "owned_tables": AR_CREDIT_OWNED_TABLES,
         "capabilities": AR_CREDIT_RUNTIME_CAPABILITY_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "onboard_customer",
             "issue_invoice",
             "record_delivery_confirmation",
@@ -119,6 +186,8 @@ def ar_credit_runtime_capabilities() -> dict:
             "build_workbench_view",
             "verify_formal_invariants",
             "register_governed_model",
+            "permissions_contract",
+            "verify_owned_table_boundary",
         ),
         "standard_features": AR_CREDIT_STANDARD_FEATURE_KEYS,
         "ordinary_ar_features": AR_CREDIT_STANDARD_FEATURE_KEYS,
@@ -132,7 +201,7 @@ def ar_credit_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.ar.events",
+            "event_topic": AR_CREDIT_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "default_timezone": "UTC",
@@ -155,7 +224,7 @@ def ar_credit_runtime_smoke() -> dict:
     )["state"]
     state = ar_credit_register_schema_extension(
         state,
-        "receivable",
+        "ar_invoice",
         {"contract_obligations": "jsonb", "jurisdiction_tax": "jsonb"},
     )["state"]
     customer_result = ar_credit_onboard_customer(
@@ -192,6 +261,33 @@ def ar_credit_runtime_smoke() -> dict:
         {"delivery_id": "deliv_100", "tenant": "tenant_alpha", "invoice_id": "ar_inv_100", "lines": ({"sku": "widget", "quantity": 10},)},
     )
     state = delivery_result["state"]
+    received = ar_credit_receive_event(
+        state,
+        {
+            "event_id": "evt_identity_100",
+            "event_type": "CustomerIdentityVerified",
+            "payload": {
+                "tenant": "tenant_alpha",
+                "customer_id": "customer_alpha",
+                "status": "verified",
+                "policy_id": "policy_alpha",
+            },
+        },
+    )
+    state = received["state"]
+    duplicate = ar_credit_receive_event(
+        state,
+        {
+            "event_id": "evt_identity_100",
+            "event_type": "CustomerIdentityVerified",
+            "payload": {
+                "tenant": "tenant_alpha",
+                "customer_id": "customer_alpha",
+                "status": "verified",
+                "policy_id": "policy_alpha",
+            },
+        },
+    )
     remittance = ar_credit_parse_remittance("PAY ar_inv_100 amount 1080 bank_ref BAI-001")
     cash = ar_credit_apply_cash(
         state,
@@ -220,6 +316,15 @@ def ar_credit_runtime_smoke() -> dict:
     sanctions = ar_credit_screen_customer_network(state, "customer_alpha", sanction_entities=("blocked_owner",))
     controls = ar_credit_run_control_tests(state)
     api = ar_credit_build_api_contract()
+    permissions = ar_credit_permissions_contract()
+    boundary = ar_credit_verify_owned_table_boundary(
+        (
+            "ar_invoice",
+            "CustomerIdentityVerified",
+            "customer_identity_projection",
+            "ar_credit_appgen_outbox_event",
+        )
+    )
     federation = ar_credit_federate_cross_border_receivable(invoice_result["invoice"], target_country="DE", fx_rate=0.91)
     finance = ar_credit_integrate_invoice_finance(invoice_result["invoice"], advance_rate=0.96)
     identity = ar_credit_verify_customer_identity(customer_result["customer"]["identity"])
@@ -249,7 +354,7 @@ def ar_credit_runtime_smoke() -> dict:
         {"id": "event_sourced_receivable_lifecycle", "ok": len(state["events"]) >= 4 and state["events"][-1]["hash"]},
         {"id": "graph_relational_customer_topology", "ok": customer_result["customer"]["graph_degree"] == 3},
         {"id": "multi_tenant_cash_application_isolation", "ok": cash["cash_pool"]["tenant"] == "tenant_alpha"},
-        {"id": "schema_evolution_resilient_receivable_schema", "ok": state["schema_extensions"]["receivable"]["contract_obligations"] == "jsonb"},
+        {"id": "schema_evolution_resilient_receivable_schema", "ok": state["schema_extensions"]["ar_invoice"]["contract_obligations"] == "jsonb"},
         {"id": "probabilistic_cash_application", "ok": cash["ok"] and cash["decision"] == "auto_clear" and cash["confidence"] >= 0.98},
         {"id": "real_time_liquidity_aware_credit_extension", "ok": credit["ok"] and credit["recommended_limit"] > 1000},
         {"id": "counterfactual_collection_strategy_optimization", "ok": collection["ok"] and collection["expected_dso_delta"] > 0},
@@ -262,7 +367,10 @@ def ar_credit_runtime_smoke() -> dict:
         {"id": "immutable_e_invoicing_tax_audit", "ok": e_invoice["ok"] and e_invoice["submission_hash"].startswith("ar_einvoice_")},
         {"id": "dynamic_sanction_fraud_screening", "ok": sanctions["ok"] and sanctions["decision"] == "clear"},
         {"id": "automated_control_testing", "ok": controls["ok"] and controls["write_off_authorization"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "PaymentReceived" in api["asyncapi_events"]},
+        {
+            "id": "universal_api_async_streaming",
+            "ok": api["ok"] and api["event_contract"] == "AppGen-X" and "POST /ar/events/inbox" in {route["route"] for route in api["routes"]},
+        },
         {"id": "cross_border_receivable_federation", "ok": federation["ok"] and federation["standard"] == "iso_20022"},
         {"id": "supply_chain_finance_network_integration", "ok": finance["ok"] and finance["advance_amount"] == 1036.8},
         {"id": "decentralized_customer_identity", "ok": identity["ok"] and identity["subject"] == "customer_alpha"},
@@ -273,7 +381,15 @@ def ar_credit_runtime_smoke() -> dict:
         {"id": "mechanism_design_payment_term_negotiation", "ok": negotiation["ok"] and negotiation["clearing_rate"] == 0.016},
         {"id": "information_theoretic_cash_application_anomaly_detection", "ok": anomaly["ok"] and anomaly["kl_divergence"] >= 0},
         {"id": "temporal_receivable_stochastic_modeling", "ok": stochastic["ok"] and stochastic["value_at_risk"] > 0},
-        {"id": "distributed_systems_engineering", "ok": resilience["remaining_quorum"] >= 3 and cash["idempotency_key"].startswith("ar_credit:")},
+        {
+            "id": "distributed_systems_engineering",
+            "ok": resilience["remaining_quorum"] >= 3
+            and cash["idempotency_key"].startswith("ar_credit:")
+            and received["handler"]["status"] == "processed"
+            and duplicate["duplicate"]
+            and boundary["ok"]
+            and permissions["action_permissions"]["receive_event"] == "ar_credit.event",
+        },
         {"id": "probabilistic_ml_customer_risk", "ok": risk["model"] == "customer_topology_risk" and cash["confidence"] >= 0.98},
         {"id": "cryptographic_engineering", "ok": revenue_proof["proof"].startswith("zk_revenue_") and crypto["key_epoch"] == 2},
         {"id": "mathematical_optimization", "ok": algebraic["objective_score"] < 0},
@@ -296,8 +412,18 @@ def ar_credit_empty_state() -> dict:
         "rules": {},
         "events": (),
         "outbox": (),
+        "inbox": (),
+        "retry_evidence": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
         "customers": {},
         "customer_graph": {},
+        "customer_identity_projections": {},
+        "delivery_projections": {},
+        "tax_policy_projections": {},
+        "cash_forecast_projections": {},
+        "access_policy_projections": {},
         "invoices": {},
         "deliveries": {},
         "receipts": {},
@@ -315,14 +441,21 @@ def ar_credit_empty_state() -> dict:
 
 
 def ar_credit_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _AR_CREDIT_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"AR Credit uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(AR_CREDIT_ALLOWED_DATABASE_BACKENDS):
         raise ValueError("AR Credit supports only PostgreSQL, MySQL, or MariaDB backends")
+    if configuration.get("event_topic") != AR_CREDIT_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"AR Credit requires AppGen-X event topic {AR_CREDIT_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": AR_CREDIT_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": AR_CREDIT_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -353,10 +486,76 @@ def ar_credit_register_rule(state: dict, rule: dict) -> dict:
 
 
 def ar_credit_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in AR_CREDIT_OWNED_TABLES:
+        raise ValueError(f"AR Credit schema extensions must target owned tables: {AR_CREDIT_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    existing = dict(state.get("schema_extensions", {}).get(table, {}))
+    merged = {**existing, **fields}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}},
+        "schema_extension": {"table": table, "fields": dict(fields)},
+        "target": table,
+        "fields": merged,
+    }
+
+
+def ar_credit_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {
+        **state,
+        "inbox": (*state.get("inbox", ()), inbox_entry),
+        "handled_events": dict(handled),
+        "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "dead_letters": tuple(state.get("dead_letters", ())),
+        "dead_letter": tuple(state.get("dead_letter", state.get("dead_letters", ()))),
+        "customer_identity_projections": dict(state.get("customer_identity_projections", {})),
+        "delivery_projections": dict(state.get("delivery_projections", {})),
+        "tax_policy_projections": dict(state.get("tax_policy_projections", {})),
+        "cash_forecast_projections": dict(state.get("cash_forecast_projections", {})),
+        "access_policy_projections": dict(state.get("access_policy_projections", {})),
+    }
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in AR_CREDIT_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state["retry_evidence"], evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_ar_credit_event"}
+            next_state["dead_letters"] = (*next_state["dead_letters"], dead)
+            next_state["dead_letter"] = (*next_state["dead_letter"], dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "CustomerIdentityVerified":
+        next_state["customer_identity_projections"][payload.get("customer_id", event_id)] = payload
+    elif event_type == "DeliveryConfirmed":
+        next_state["delivery_projections"][payload.get("delivery_id") or payload.get("invoice_id") or event_id] = payload
+    elif event_type == "TaxPolicyChanged":
+        next_state["tax_policy_projections"][payload.get("policy_id", event_id)] = payload
+    elif event_type == "CashForecastUpdated":
+        next_state["cash_forecast_projections"][payload.get("forecast_id", event_id)] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload.get("policy_id", event_id)] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def ar_credit_onboard_customer(state: dict, customer: dict) -> dict:
@@ -601,6 +800,22 @@ def ar_credit_build_workbench_view(state: dict, *, tenant: str, as_of: str) -> d
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": AR_CREDIT_OWNED_TABLES,
+            "outbox_table": _AR_CREDIT_RUNTIME_TABLES[0],
+            "inbox_table": _AR_CREDIT_RUNTIME_TABLES[1],
+            "dead_letter_table": _AR_CREDIT_RUNTIME_TABLES[2],
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+            "permissions": tuple(sorted(ar_credit_permissions_contract()["permissions"])),
+            "shared_table_access": False,
+        },
     }
 
 
@@ -672,15 +887,127 @@ def ar_credit_run_control_tests(state: dict) -> dict:
         "credit_limit_override_approval": True,
         "write_off_authorization": True,
         "duplicate_receipt_guard": len(state["receipts"]) == len({receipt["receipt_id"] for receipt in state["receipts"].values()}),
+        "appgen_x_contract_enforced": state.get("configuration", {}).get("event_contract") == "AppGen-X",
     }
 
 
 def ar_credit_build_api_contract() -> dict:
     return {
         "ok": True,
+        "format": "appgen.ar-credit-api-contract.v1",
+        "routes": (
+            {"route": "POST /ar/customers", "command": "onboard_customer", "owned_tables": ("ar_customer", "ar_customer_graph", "ar_cash_pool"), "emits": ("CustomerOnboarded",), "requires_permission": "ar_credit.customer", "idempotency_key": "customer_id"},
+            {"route": "POST /ar/invoices", "command": "issue_invoice", "owned_tables": ("ar_invoice",), "emits": ("InvoiceIssued",), "requires_permission": "ar_credit.invoice", "idempotency_key": "invoice_id"},
+            {"route": "POST /ar/deliveries", "command": "record_delivery_confirmation", "owned_tables": ("ar_delivery_confirmation",), "emits": ("DeliveryConfirmed",), "requires_permission": "ar_credit.delivery", "idempotency_key": "delivery_id"},
+            {"route": "POST /ar/receipts/apply", "command": "apply_cash", "owned_tables": ("ar_cash_receipt", "ar_invoice", "ar_cash_pool"), "emits": ("PaymentReceived",), "requires_permission": "ar_credit.cash", "idempotency_key": "receipt_id"},
+            {"route": "POST /ar/receipts/unapplied", "command": "record_unapplied_cash", "owned_tables": ("ar_unapplied_cash", "ar_cash_pool"), "emits": ("UnappliedCashRecorded",), "requires_permission": "ar_credit.cash", "idempotency_key": "receipt_id"},
+            {"route": "POST /ar/credit-memos", "command": "create_credit_memo", "owned_tables": ("ar_credit_memo", "ar_invoice"), "emits": ("CreditMemoIssued",), "requires_permission": "ar_credit.adjustment", "idempotency_key": "credit_memo_id"},
+            {"route": "POST /ar/write-offs", "command": "write_off_receivable", "owned_tables": ("ar_write_off", "ar_invoice"), "emits": ("ReceivableWrittenOff",), "requires_permission": "ar_credit.adjustment", "idempotency_key": "write_off_id"},
+            {"route": "POST /ar/refunds", "command": "issue_refund", "owned_tables": ("ar_refund",), "emits": ("CustomerRefundScheduled",), "requires_permission": "ar_credit.refund", "idempotency_key": "refund_id"},
+            {"route": "POST /ar/collections/actions", "command": "schedule_collection_action", "owned_tables": ("ar_collection_action",), "emits": ("CollectionActionScheduled",), "requires_permission": "ar_credit.collection", "idempotency_key": "action_id"},
+            {"route": "POST /ar/schema-extensions", "command": "register_schema_extension", "owned_tables": AR_CREDIT_OWNED_TABLES, "requires_permission": "ar_credit.configure"},
+            {"route": "POST /ar/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": AR_CREDIT_CONSUMED_EVENT_TYPES, "requires_permission": "ar_credit.event", "idempotency_key": "event_id"},
+            {"route": "GET /ar/workbench", "query": "build_workbench_view", "owned_tables": AR_CREDIT_OWNED_TABLES, "requires_permission": "ar_credit.audit"},
+        ),
         "graphql_mutations": ("issueInvoice", "applyCash", "openDispute", "adjustCreditLimit"),
         "graphql_queries": ("invoiceStatus", "customerRisk", "cashApplicationRun"),
-        "asyncapi_events": ("InvoiceIssued", "PaymentReceived", "DisputeResolved", "CreditLimitChanged", "CollectionRouted"),
+        "asyncapi_events": AR_CREDIT_EMITTED_EVENT_TYPES,
+        "events": {"emits": AR_CREDIT_EMITTED_EVENT_TYPES, "consumes": AR_CREDIT_CONSUMED_EVENT_TYPES},
+        "emits": AR_CREDIT_EMITTED_EVENT_TYPES,
+        "consumes": AR_CREDIT_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(ar_credit_permissions_contract()["permissions"])),
+        "database_backends": AR_CREDIT_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": AR_CREDIT_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("AR_CREDIT_DATABASE_URL", "AR_CREDIT_EVENT_TOPIC", "AR_CREDIT_RETRY_LIMIT", "AR_CREDIT_COLLECTION_CHANNELS"),
+    }
+
+
+def ar_credit_permissions_contract() -> dict:
+    return {
+        "format": "appgen.ar-credit-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "ar_credit.read",
+            "ar_credit.customer",
+            "ar_credit.invoice",
+            "ar_credit.delivery",
+            "ar_credit.cash",
+            "ar_credit.adjustment",
+            "ar_credit.refund",
+            "ar_credit.collection",
+            "ar_credit.credit",
+            "ar_credit.statement",
+            "ar_credit.revenue",
+            "ar_credit.event",
+            "ar_credit.configure",
+            "ar_credit.audit",
+        ),
+        "action_permissions": {
+            "onboard_customer": "ar_credit.customer",
+            "issue_invoice": "ar_credit.invoice",
+            "record_delivery_confirmation": "ar_credit.delivery",
+            "apply_cash": "ar_credit.cash",
+            "record_unapplied_cash": "ar_credit.cash",
+            "create_credit_memo": "ar_credit.adjustment",
+            "write_off_receivable": "ar_credit.adjustment",
+            "issue_refund": "ar_credit.refund",
+            "schedule_collection_action": "ar_credit.collection",
+            "generate_customer_statement": "ar_credit.statement",
+            "recognize_revenue_schedule": "ar_credit.revenue",
+            "extend_credit": "ar_credit.credit",
+            "receive_event": "ar_credit.event",
+            "register_rule": "ar_credit.configure",
+            "register_schema_extension": "ar_credit.configure",
+            "set_parameter": "ar_credit.configure",
+            "configure_runtime": "ar_credit.configure",
+            "verify_owned_table_boundary": "ar_credit.audit",
+            "build_workbench_view": "ar_credit.audit",
+            "run_control_tests": "ar_credit.audit",
+        },
+        "policy_controls": (
+            "shared_table_access_forbidden",
+            "owned_table_only_schema_extensions",
+            "appgen_x_event_contract_only",
+        ),
+    }
+
+
+def ar_credit_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *AR_CREDIT_OWNED_TABLES,
+        *AR_CREDIT_CONSUMED_EVENT_TYPES,
+        *AR_CREDIT_EMITTED_EVENT_TYPES,
+        *_AR_CREDIT_RUNTIME_TABLES,
+        *_AR_CREDIT_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(reference for reference in references if reference not in allowed_set and not str(reference).startswith("ar_credit_"))
+    return {
+        "format": "appgen.ar-credit-boundary.v1",
+        "ok": not violations,
+        "owned_tables": AR_CREDIT_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "GET /customer_360/customers/{id}/profile",
+                "GET /treasury/cash-forecast",
+                "POST /tax_localization/quotes",
+                "GET /federated_iam/access-policies/{id}",
+            ),
+            "events": AR_CREDIT_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "customer_identity_projection",
+                "delivery_projection",
+                "tax_policy_projection",
+                "cash_forecast_projection",
+                "access_policy_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 

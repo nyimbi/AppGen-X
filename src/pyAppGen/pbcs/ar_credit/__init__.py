@@ -1,6 +1,11 @@
 """Accounts Receivable and Credit PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import AR_CREDIT_ALLOWED_DATABASE_BACKENDS
+from .runtime import AR_CREDIT_CONSUMED_EVENT_TYPES
+from .runtime import AR_CREDIT_EMITTED_EVENT_TYPES
+from .runtime import AR_CREDIT_OWNED_TABLES
+from .runtime import AR_CREDIT_REQUIRED_EVENT_TOPIC
 from .runtime import AR_CREDIT_STANDARD_FEATURE_KEYS
 from .runtime import AR_CREDIT_RUNTIME_CAPABILITY_KEYS
 from .runtime import ar_credit_apply_cash
@@ -25,6 +30,8 @@ from .runtime import ar_credit_onboard_customer
 from .runtime import ar_credit_optimize_algebraic_collection
 from .runtime import ar_credit_optimize_collection_strategy
 from .runtime import ar_credit_parse_remittance
+from .runtime import ar_credit_permissions_contract
+from .runtime import ar_credit_receive_event
 from .runtime import ar_credit_record_delivery_confirmation
 from .runtime import ar_credit_record_unapplied_cash
 from .runtime import ar_credit_recognize_revenue_schedule
@@ -46,6 +53,7 @@ from .runtime import ar_credit_set_parameter
 from .runtime import ar_credit_submit_e_invoice
 from .runtime import ar_credit_verify_customer_identity
 from .runtime import ar_credit_verify_formal_invariants
+from .runtime import ar_credit_verify_owned_table_boundary
 from .runtime import ar_credit_verify_revenue_proof
 from .runtime import ar_credit_write_off_receivable
 from .ui import AR_CREDIT_UI_FRAGMENT_KEYS
@@ -63,4 +71,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": ar_credit_ui_contract(),
+        "api_contract": ar_credit_build_api_contract(),
+        "permissions_contract": ar_credit_permissions_contract(),
+        "owned_tables": AR_CREDIT_OWNED_TABLES,
+        "allowed_database_backends": AR_CREDIT_ALLOWED_DATABASE_BACKENDS,
     }

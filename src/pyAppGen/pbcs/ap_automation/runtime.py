@@ -2,11 +2,44 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
 import re
 
+
+AP_AUTOMATION_REQUIRED_EVENT_TOPIC = "appgen.ap.events"
+AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+AP_AUTOMATION_OWNED_TABLES = (
+    "ap_automation_vendor",
+    "ap_automation_purchase_order",
+    "ap_automation_goods_receipt",
+    "ap_automation_invoice",
+    "ap_automation_payment",
+    "ap_automation_exception_case",
+)
+AP_AUTOMATION_RUNTIME_TABLES = (
+    "ap_automation_outbox",
+    "ap_automation_inbox",
+    "ap_automation_dead_letter",
+)
+AP_AUTOMATION_CONSUMED_EVENT_TYPES = (
+    "VendorApproved",
+    "PurchaseOrderApproved",
+    "GoodsReceiptPosted",
+    "TaxPolicyChanged",
+    "CashForecastUpdated",
+    "AccessPolicyChanged",
+)
+AP_AUTOMATION_EMITTED_EVENT_TYPES = (
+    "VendorOnboarded",
+    "PurchaseOrderIssued",
+    "GoodsReceiptRecorded",
+    "InvoiceCaptured",
+    "PaymentScheduled",
+    "PaymentExecuted",
+)
 
 AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_invoice_lifecycle",
@@ -66,8 +99,45 @@ AP_AUTOMATION_STANDARD_FEATURE_KEYS = (
     "bank_rail_routing",
     "audit_trail",
     "controls",
+    "appgen_x_outbox",
+    "appgen_x_inbox",
+    "idempotent_handlers",
+    "permissions",
+    "seed_data",
     "workbench",
 )
+
+AP_AUTOMATION_SUPPORTED_CONFIGURATION_FIELDS = (
+    "database_backend",
+    "event_topic",
+    "retry_limit",
+    "default_currency",
+    "default_timezone",
+    "allowed_payment_rails",
+    "workbench_limit",
+)
+AP_AUTOMATION_SUPPORTED_PARAMETER_KEYS = (
+    "auto_match_threshold",
+    "payment_approval_limit",
+    "discount_capture_floor",
+    "vendor_risk_threshold",
+    "liquidity_buffer",
+    "workbench_limit",
+)
+AP_AUTOMATION_REQUIRED_RULE_FIELDS = ("rule_id", "tenant", "scope", "status")
+
+_CONFIG_SEQUENCE_FIELDS = {"allowed_payment_rails"}
+_FORBIDDEN_EVENTING_FIELDS = frozenset(
+    {"stream_engine", "stream_engine_picker", "event_contract_selector", "eventing_backend"}
+)
+_PARAMETER_BOUNDS = {
+    "auto_match_threshold": (0.0, 1.0),
+    "payment_approval_limit": (1.0, 1_000_000.0),
+    "discount_capture_floor": (0.0, 1.0),
+    "vendor_risk_threshold": (0.0, 1.0),
+    "liquidity_buffer": (0.0, 1_000_000_000.0),
+    "workbench_limit": (1.0, 10_000.0),
+}
 
 
 def ap_automation_runtime_capabilities() -> dict:
@@ -77,18 +147,22 @@ def ap_automation_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "ap_automation",
         "implementation_directory": "src/pyAppGen/pbcs/ap_automation",
+        "owned_tables": AP_AUTOMATION_OWNED_TABLES,
+        "allowed_database_backends": AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS,
         "capabilities": AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS,
         "standard_features": AP_AUTOMATION_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "onboard_vendor",
             "issue_purchase_order",
             "record_goods_receipt",
             "capture_invoice",
             "match_invoice",
             "resolve_exception",
+            "receive_event",
             "align_contract_terms",
             "score_vendor_risk",
             "validate_tax_proof",
@@ -100,6 +174,8 @@ def ap_automation_runtime_capabilities() -> dict:
             "forecast_cash_flow",
             "analyze_discount_counterfactual",
             "build_api_contract",
+            "permissions_contract",
+            "verify_owned_table_boundary",
             "federate_cross_border_payment",
             "integrate_supply_chain_finance",
             "verify_vendor_identity",
@@ -123,7 +199,7 @@ def ap_automation_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.ap.events",
+            "event_topic": AP_AUTOMATION_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "default_timezone": "UTC",
@@ -131,8 +207,15 @@ def ap_automation_runtime_smoke() -> dict:
             "workbench_limit": 100,
         },
     )["state"]
-    state = ap_automation_set_parameter(state, "auto_match_threshold", 0.95)["state"]
-    state = ap_automation_set_parameter(state, "payment_approval_limit", 5000)["state"]
+    for name, value in (
+        ("auto_match_threshold", 0.95),
+        ("payment_approval_limit", 5000),
+        ("discount_capture_floor", 0.01),
+        ("vendor_risk_threshold", 0.7),
+        ("liquidity_buffer", 250),
+        ("workbench_limit", 100),
+    ):
+        state = ap_automation_set_parameter(state, name, value)["state"]
     state = ap_automation_register_rule(
         state,
         {
@@ -146,7 +229,7 @@ def ap_automation_runtime_smoke() -> dict:
     )["state"]
     state = ap_automation_register_schema_extension(
         state,
-        "invoice",
+        "ap_automation_invoice",
         {"jurisdiction_tax": "jsonb", "contract_clause": "text"},
     )["state"]
     vendor_result = ap_automation_onboard_vendor(
@@ -162,6 +245,30 @@ def ap_automation_runtime_smoke() -> dict:
         },
     )
     state = vendor_result["state"]
+    state = ap_automation_receive_event(
+        state,
+        {
+            "event_id": "vendor_approved_alpha",
+            "event_type": "VendorApproved",
+            "payload": {"tenant": "tenant_alpha", "vendor_id": "vendor_alpha", "approved_by": "controller_alpha"},
+        },
+    )["state"]
+    duplicate = ap_automation_receive_event(
+        state,
+        {
+            "event_id": "vendor_approved_alpha",
+            "event_type": "VendorApproved",
+            "payload": {"tenant": "tenant_alpha", "vendor_id": "vendor_alpha", "approved_by": "controller_alpha"},
+        },
+    )
+    state = ap_automation_receive_event(
+        state,
+        {
+            "event_id": "cash_alpha",
+            "event_type": "CashForecastUpdated",
+            "payload": {"tenant": "tenant_alpha", "available_cash": 1500, "currency": "USD"},
+        },
+    )["state"]
     po_result = ap_automation_issue_purchase_order(
         state,
         {
@@ -216,7 +323,9 @@ def ap_automation_runtime_smoke() -> dict:
     )
     state = payment["state"]
     forecast = ap_automation_forecast_cash_flow(state, "tenant_alpha")
-    discount = ap_automation_analyze_discount_counterfactual(1000, discount_rate=0.02, annual_capital_cost=0.12, days_early=20)
+    discount = ap_automation_analyze_discount_counterfactual(
+        1000, discount_rate=0.02, annual_capital_cost=0.12, days_early=20
+    )
     exception = ap_automation_resolve_exception(
         state,
         {"invoice_id": "inv_exception", "reason": "missing_receipt", "evidence_score": 0.82},
@@ -227,8 +336,23 @@ def ap_automation_runtime_smoke() -> dict:
     sanctions = ap_automation_screen_vendor_network(state, "vendor_alpha", sanction_entities=("blocked_owner",))
     controls = ap_automation_run_control_tests(state)
     api = ap_automation_build_api_contract()
-    federation = ap_automation_federate_cross_border_payment(payment["payment"], target_country="DE", fx_rate=0.91)
-    finance = ap_automation_integrate_supply_chain_finance(invoice_result["invoice"], program_rate=0.015)
+    permissions = ap_automation_permissions_contract()
+    boundary = ap_automation_verify_owned_table_boundary(
+        (
+            "ap_automation_vendor",
+            "ap_automation_invoice",
+            "ap_automation_payment",
+            "ap_automation_inbox",
+            "CashForecastUpdated",
+            "cash_forecast_projection",
+        )
+    )
+    federation = ap_automation_federate_cross_border_payment(
+        payment["payment"], target_country="DE", fx_rate=0.91
+    )
+    finance = ap_automation_integrate_supply_chain_finance(
+        invoice_result["invoice"], program_rate=0.015
+    )
     identity = ap_automation_verify_vendor_identity(vendor_result["vendor"]["identity"])
     resilience = ap_automation_run_resilience_drill(state, "bank_api_outage")
     crypto = ap_automation_rotate_crypto_epoch(state, "dilithium3_simulated")
@@ -249,6 +373,25 @@ def ap_automation_runtime_smoke() -> dict:
         vendor_ask=0.014,
         invoice_amount=1000,
     )
+    retrying = ap_automation_receive_event(
+        state,
+        {
+            "event_id": "evt_retry",
+            "event_type": "UnknownInboundEvent",
+            "payload": {"tenant": "tenant_alpha"},
+            "attempts": 1,
+        },
+    )
+    dead_letter = ap_automation_receive_event(
+        state,
+        {
+            "event_id": "evt_dead",
+            "event_type": "UnknownInboundEvent",
+            "payload": {"tenant": "tenant_alpha"},
+            "attempts": 3,
+        },
+    )
+    state = dead_letter["state"]
     fraud = ap_automation_detect_fraud_information_shift(state)
     temporal = ap_automation_model_temporal_liquidity((1000, 900, 700), volatility=0.08)
     invariants = ap_automation_verify_formal_invariants(state)
@@ -257,10 +400,10 @@ def ap_automation_runtime_smoke() -> dict:
         {"features": ("payment_history", "ownership_graph", "sanction_context"), "auc": 0.93, "drift_score": 0.02},
     )
     checks = (
-        {"id": "event_sourced_invoice_lifecycle", "ok": len(state["events"]) >= 5 and state["events"][-1]["hash"]},
+        {"id": "event_sourced_invoice_lifecycle", "ok": len(state["events"]) >= 5 and bool(state["outbox"])},
         {"id": "graph_relational_vendor_data_model", "ok": vendor_result["vendor"]["graph_degree"] == 2},
-        {"id": "multi_tenant_liquidity_isolation", "ok": schedule["pool"]["tenant"] == "tenant_alpha" and schedule["pool"]["available_cash"] == 1500},
-        {"id": "schema_evolution_resilient_invoice_schema", "ok": state["schema_extensions"]["invoice"]["jurisdiction_tax"] == "jsonb"},
+        {"id": "multi_tenant_liquidity_isolation", "ok": schedule["pool"]["tenant"] == "tenant_alpha" and schedule["pool"]["available_cash"] == 1500.0},
+        {"id": "schema_evolution_resilient_invoice_schema", "ok": state["schema_extensions"]["ap_automation_invoice"][-1]["fields"]["jurisdiction_tax"] == "jsonb"},
         {"id": "probabilistic_three_way_matching", "ok": match["ok"] and match["decision"] == "auto_approve" and match["confidence"] >= 0.95},
         {"id": "real_time_liquidity_aware_payment_scheduling", "ok": schedule["ok"] and schedule["payments"][0]["scheduled_date"] == "discount_window"},
         {"id": "counterfactual_discount_analysis", "ok": discount["ok"] and discount["net_benefit"] > 0},
@@ -273,7 +416,7 @@ def ap_automation_runtime_smoke() -> dict:
         {"id": "immutable_regulatory_e_invoicing", "ok": e_invoice["ok"] and e_invoice["submission_hash"].startswith("einvoice_")},
         {"id": "dynamic_sanction_aml_screening", "ok": sanctions["ok"] and sanctions["decision"] == "clear"},
         {"id": "automated_control_testing", "ok": controls["ok"] and controls["segregation_of_duties"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "InvoiceSubmitted" in api["asyncapi_events"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and any(route.get("command") == "receive_event" for route in api["routes"])},
         {"id": "cross_border_payment_federation", "ok": federation["ok"] and federation["standard"] == "iso_20022"},
         {"id": "supply_chain_finance_network_integration", "ok": finance["ok"] and finance["advance_amount"] == 985.0},
         {"id": "decentralized_vendor_identity", "ok": identity["ok"] and identity["subject"] == "vendor_alpha"},
@@ -284,11 +427,11 @@ def ap_automation_runtime_smoke() -> dict:
         {"id": "mechanism_design_dynamic_discounting", "ok": negotiation["ok"] and negotiation["clearing_rate"] == 0.016},
         {"id": "information_theoretic_fraud_detection", "ok": fraud["ok"] and fraud["kl_divergence"] >= 0},
         {"id": "temporal_liquidity_forecasting_construct", "ok": temporal["ok"] and temporal["value_at_risk"] > 0},
-        {"id": "distributed_systems_engineering", "ok": resilience["remaining_quorum"] >= 3 and payment["idempotency_key"].startswith("ap_automation:")},
+        {"id": "distributed_systems_engineering", "ok": duplicate["handler"]["status"] == "duplicate" and retrying["handler"]["status"] == "retrying" and len(state["dead_letter"]) == 1},
         {"id": "probabilistic_ml_vendor_risk", "ok": risk["model"] == "graph_risk_propagation" and match["confidence"] >= 0.95},
         {"id": "cryptographic_engineering", "ok": tax["proof"].startswith("zk_tax_") and crypto["key_epoch"] == 2},
         {"id": "mathematical_optimization", "ok": routing["objective_score"] < 2},
-        {"id": "financial_mlops_governance", "ok": model["ok"] and model["governance"]["regulated"]},
+        {"id": "financial_mlops_governance", "ok": model["ok"] and model["governance"]["regulated"] and permissions["ok"] and boundary["ok"]},
     )
     return {
         "format": "appgen.ap-automation-runtime-smoke.v1",
@@ -308,6 +451,9 @@ def ap_automation_empty_state() -> dict:
         "rules": {},
         "events": (),
         "outbox": (),
+        "inbox": (),
+        "dead_letter": (),
+        "handled_events": set(),
         "vendors": {},
         "vendor_graph": {},
         "purchase_orders": {},
@@ -315,99 +461,170 @@ def ap_automation_empty_state() -> dict:
         "invoices": {},
         "payment_pools": {},
         "payments": {},
+        "exceptions": {},
         "schema_extensions": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+        "seed_data": {
+            "payment_rails": ("ach", "wire", "instant_bank_api"),
+            "currencies": ("USD", "EUR"),
+        },
     }
 
 
 def ap_automation_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    missing = set(AP_AUTOMATION_SUPPORTED_CONFIGURATION_FIELDS) - set(configuration)
+    if missing:
+        raise ValueError(f"Missing AP Automation configuration fields: {tuple(sorted(missing))}")
+    forbidden = tuple(sorted(key for key in configuration if key in _FORBIDDEN_EVENTING_FIELDS))
+    if forbidden:
+        raise ValueError(
+            f"AP Automation does not expose stream-engine pickers or user-facing eventing choice: {forbidden}"
+        )
+    backend = str(configuration["database_backend"]).lower()
+    if backend not in AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("AP Automation supports only PostgreSQL, MySQL, or MariaDB backends")
-    configured = {
-        **configuration,
-        "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    if configuration["event_topic"] != AP_AUTOMATION_REQUIRED_EVENT_TOPIC:
+        raise ValueError("AP Automation eventing must use the AppGen-X accounts payable event contract")
+    runtime = _copy_state(state)
+    normalized = {
+        key: tuple(value) if key in _CONFIG_SEQUENCE_FIELDS else value
+        for key, value in configuration.items()
+        if key in AP_AUTOMATION_SUPPORTED_CONFIGURATION_FIELDS
     }
-    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
+    normalized["database_backend"] = backend
+    normalized["ok"] = True
+    normalized["event_contract"] = "AppGen-X"
+    normalized["allowed_database_backends"] = AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS
+    normalized["required_event_topic"] = AP_AUTOMATION_REQUIRED_EVENT_TOPIC
+    normalized["stream_engine_picker_visible"] = False
+    normalized["user_eventing_choice"] = False
+    runtime["configuration"] = normalized
+    return {"ok": True, "state": runtime, "configuration": normalized}
 
 
 def ap_automation_set_parameter(state: dict, key: str, value: int | float | str) -> dict:
-    allowed = {
-        "auto_match_threshold",
-        "payment_approval_limit",
-        "discount_capture_floor",
-        "vendor_risk_threshold",
-        "liquidity_buffer",
-        "workbench_limit",
-    }
-    if key not in allowed:
+    if key not in AP_AUTOMATION_SUPPORTED_PARAMETER_KEYS:
         raise ValueError(f"Unsupported AP Automation parameter: {key}")
-    parameters = {**state.get("parameters", {}), key: value}
-    return {"ok": True, "state": {**state, "parameters": parameters}, "parameter": {"key": key, "value": value}}
+    low, high = _PARAMETER_BOUNDS[key]
+    numeric_value = float(value)
+    if not low <= numeric_value <= high:
+        raise ValueError(f"AP Automation parameter {key} must be between {low} and {high}")
+    runtime = _copy_state(state)
+    parameter = {
+        "name": key,
+        "value": value,
+        "bounds": (low, high),
+        "compiled_hash": _digest({"name": key, "value": value, "bounds": (low, high)}),
+    }
+    runtime["parameters"][key] = parameter
+    return {"ok": True, "state": runtime, "parameter": parameter}
 
 
 def ap_automation_register_rule(state: dict, rule: dict) -> dict:
-    required = {"rule_id", "tenant", "scope", "status"}
-    missing = tuple(sorted(field for field in required if field not in rule))
+    missing = tuple(sorted(field for field in AP_AUTOMATION_REQUIRED_RULE_FIELDS if field not in rule))
     if missing:
         raise ValueError(f"Missing required AP rule fields: {missing}")
-    stored = {**rule, "enabled": rule["status"] == "active"}
-    rules = {**state.get("rules", {}), rule["rule_id"]: stored}
-    return {"ok": True, "state": {**state, "rules": rules}, "rule": stored}
+    runtime = _copy_state(state)
+    stored = {
+        **rule,
+        "enabled": rule["status"] == "active",
+        "compiled_hash": _digest(rule),
+        "policy_engine": "appgen_dynamic_policy",
+    }
+    runtime["rules"][rule["rule_id"]] = stored
+    return {"ok": True, "state": runtime, "rule": stored}
 
 
 def ap_automation_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in AP_AUTOMATION_OWNED_TABLES:
+        raise ValueError(f"AP Automation cannot extend non-owned table: {table}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
-        return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    next_state = {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}
-    return {"ok": True, "state": next_state}
+        raise ValueError(f"Invalid AP Automation schema extension fields: {invalid}")
+    runtime = _copy_state(state)
+    extension = {
+        "table": table,
+        "fields": dict(fields),
+        "version": len(runtime["schema_extensions"].get(table, ())) + 1,
+    }
+    runtime["schema_extensions"].setdefault(table, []).append(extension)
+    return {"ok": True, "state": runtime, "extension": extension}
 
 
 def ap_automation_onboard_vendor(state: dict, vendor: dict) -> dict:
+    _require_configured(state)
     vendor_id = vendor["vendor_id"]
     tenant = vendor["tenant"]
     owners = tuple(vendor.get("beneficial_owners", ()))
     risk = _vendor_risk_score(vendor.get("risk_signals", {}), owner_count=len(owners))
     enriched = {
         **vendor,
+        "beneficial_owners": owners,
         "status": "active",
+        "approval_status": "pending_approval",
         "risk_score": risk,
         "graph_degree": len(owners),
+        "audit_proof": _digest(vendor),
     }
-    next_state = {
-        **state,
-        "vendors": {**state["vendors"], vendor_id: enriched},
-        "vendor_graph": {**state["vendor_graph"], vendor_id: {"tenant": tenant, "owners": owners}},
-        "payment_pools": {
-            **state["payment_pools"],
-            tenant: state["payment_pools"].get(tenant, {"tenant": tenant, "available_cash": 0, "currency": "USD"}),
+    runtime = _copy_state(state)
+    runtime["vendors"][vendor_id] = enriched
+    runtime["vendor_graph"][vendor_id] = {"tenant": tenant, "owners": owners}
+    runtime["payment_pools"].setdefault(
+        tenant,
+        {
+            "tenant": tenant,
+            "available_cash": 0.0,
+            "currency": runtime["configuration"].get("default_currency", "USD"),
         },
-    }
-    next_state = _append_event(next_state, "VendorOnboarded", {"tenant": tenant, "vendor_id": vendor_id})
-    return {"ok": True, "state": next_state, "vendor": enriched}
+    )
+    runtime = _emit(runtime, "VendorOnboarded", tenant, {"vendor_id": vendor_id, "risk_score": risk})
+    return {"ok": True, "state": runtime, "vendor": enriched}
 
 
 def ap_automation_issue_purchase_order(state: dict, purchase_order: dict) -> dict:
+    _require_configured(state)
     total = _line_total(purchase_order["lines"])
-    po = {**purchase_order, "status": "issued", "total": total}
-    next_state = {**state, "purchase_orders": {**state["purchase_orders"], po["po_id"]: po}}
-    next_state = _append_event(next_state, "PurchaseOrderIssued", {"tenant": po["tenant"], "po_id": po["po_id"], "total": total})
-    return {"ok": True, "state": next_state, "purchase_order": po}
+    po = {
+        **purchase_order,
+        "status": "issued",
+        "total": total,
+        "audit_proof": _digest(purchase_order),
+    }
+    runtime = _copy_state(state)
+    runtime["purchase_orders"][po["po_id"]] = po
+    runtime = _emit(
+        runtime,
+        "PurchaseOrderIssued",
+        po["tenant"],
+        {"po_id": po["po_id"], "vendor_id": po["vendor_id"], "total": total},
+    )
+    return {"ok": True, "state": runtime, "purchase_order": po}
 
 
 def ap_automation_record_goods_receipt(state: dict, receipt: dict) -> dict:
-    gr = {**receipt, "status": "received"}
-    next_state = {**state, "receipts": {**state["receipts"], gr["receipt_id"]: gr}}
-    next_state = _append_event(next_state, "GoodsReceiptRecorded", {"tenant": gr["tenant"], "receipt_id": gr["receipt_id"], "po_id": gr["po_id"]})
-    return {"ok": True, "state": next_state, "receipt": gr}
+    _require_configured(state)
+    gr = {
+        **receipt,
+        "status": "received",
+        "audit_proof": _digest(receipt),
+    }
+    runtime = _copy_state(state)
+    runtime["receipts"][gr["receipt_id"]] = gr
+    runtime = _emit(
+        runtime,
+        "GoodsReceiptRecorded",
+        gr["tenant"],
+        {"receipt_id": gr["receipt_id"], "po_id": gr["po_id"]},
+    )
+    return {"ok": True, "state": runtime, "receipt": gr}
 
 
 def ap_automation_capture_invoice(state: dict, invoice: dict) -> dict:
+    _require_configured(state)
     if invoice["vendor_id"] not in state["vendors"]:
         return {"ok": False, "error": "unknown_vendor", "state": state}
+    if invoice["invoice_id"] in state["invoices"]:
+        return {"ok": False, "error": "duplicate_invoice", "state": state}
     subtotal = _line_total(invoice["lines"])
     tax_amount = float(invoice.get("tax", {}).get("amount", 0))
     captured = {
@@ -416,14 +633,18 @@ def ap_automation_capture_invoice(state: dict, invoice: dict) -> dict:
         "total": round(subtotal + tax_amount, 2),
         "status": "captured",
         "approval_status": "pending_match",
+        "payment_status": "unscheduled",
+        "audit_proof": _digest(invoice),
     }
-    next_state = {**state, "invoices": {**state["invoices"], captured["invoice_id"]: captured}}
-    next_state = _append_event(
-        next_state,
+    runtime = _copy_state(state)
+    runtime["invoices"][captured["invoice_id"]] = captured
+    runtime = _emit(
+        runtime,
         "InvoiceCaptured",
-        {"tenant": captured["tenant"], "invoice_id": captured["invoice_id"], "total": captured["total"]},
+        captured["tenant"],
+        {"invoice_id": captured["invoice_id"], "total": captured["total"]},
     )
-    return {"ok": True, "state": next_state, "invoice": captured}
+    return {"ok": True, "state": runtime, "invoice": captured}
 
 
 def ap_automation_match_invoice(state: dict, invoice_id: str) -> dict:
@@ -439,18 +660,88 @@ def ap_automation_match_invoice(state: dict, invoice_id: str) -> dict:
         po_quantities = _quantities_by_sku(po["lines"])
         invoice_quantities = _quantities_by_sku(invoice["lines"])
         receipt_quantities = _quantities_by_sku(receipt["lines"])
-        quantity_delta = sum(abs(invoice_quantities.get(sku, 0) - receipt_quantities.get(sku, 0)) for sku in invoice_quantities) / max(sum(invoice_quantities.values()), 1)
+        quantity_delta = sum(
+            abs(invoice_quantities.get(sku, 0) - receipt_quantities.get(sku, 0))
+            for sku in invoice_quantities
+        ) / max(sum(invoice_quantities.values()), 1)
         vendor_risk = state["vendors"][invoice["vendor_id"]]["risk_score"]
         confidence = max(0.0, min(0.99, 1.0 - amount_delta - quantity_delta - vendor_risk * 0.15))
         confidence = 0.99 if po_quantities == invoice_quantities == receipt_quantities and amount_delta == 0 else confidence
-    decision = "auto_approve" if confidence >= 0.95 else "route_exception"
+    decision = "auto_approve" if confidence >= _parameter_value(state, "auto_match_threshold", 0.95) else "route_exception"
     return {"ok": True, "invoice_id": invoice_id, "confidence": round(confidence, 4), "decision": decision}
 
 
 def ap_automation_resolve_exception(state: dict, exception: dict) -> dict:
     decision = "self_corrected" if exception.get("evidence_score", 0) >= 0.8 else "manual_review"
     suggestion = "accrue_receipt_and_continue_match" if exception.get("reason") == "missing_receipt" else "request_vendor_credit"
-    return {"ok": True, "decision": decision, "suggestion": suggestion, "audit_trace": _digest(exception)}
+    return {
+        "ok": True,
+        "decision": decision,
+        "suggestion": suggestion,
+        "audit_trace": _digest(exception),
+        "owned_table": "ap_automation_exception_case",
+    }
+
+
+def ap_automation_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    _require_appgen_x_event_contract(state)
+    event_id = event.get("event_id")
+    if not event_id:
+        raise ValueError("AP Automation consumed events require event_id")
+    runtime = _copy_state(state)
+    if event_id in runtime["handled_events"]:
+        return {
+            "ok": True,
+            "state": runtime,
+            "handler": {
+                "status": "duplicate",
+                "event_id": event_id,
+                "idempotency_key": f"ap_automation:{event.get('event_type')}:{event_id}",
+            },
+            "duplicate": True,
+            "dead_lettered": False,
+            "retrying": False,
+        }
+    event_type = event.get("event_type")
+    attempts = int(event.get("attempts", 1))
+    retry_limit = int(runtime["configuration"].get("retry_limit", 3))
+    payload = dict(event.get("payload", {}))
+    handler = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "idempotency_key": f"ap_automation:{event_type}:{event_id}",
+        "attempts": attempts,
+        "retry_limit": retry_limit,
+    }
+    if simulate_failure or event_type not in AP_AUTOMATION_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler["status"] = status
+        handler["failure_reason"] = (
+            "simulated_failure" if simulate_failure else f"unsupported_event:{event_type}"
+        )
+        evidence = {**event, "payload": payload, "handler": handler}
+        if status == "dead_letter":
+            runtime["dead_letter"] = (*runtime["dead_letter"], evidence)
+        return {
+            "ok": False,
+            "state": runtime,
+            "handler": handler,
+            "duplicate": False,
+            "dead_lettered": status == "dead_letter",
+            "retrying": status == "retrying",
+        }
+    handler["status"] = "handled"
+    runtime["inbox"] = (*runtime["inbox"], {**event, "payload": payload, "handler": handler})
+    runtime["handled_events"].add(event_id)
+    _apply_received_event(runtime, event_type, payload)
+    return {
+        "ok": True,
+        "state": runtime,
+        "handler": handler,
+        "duplicate": False,
+        "dead_lettered": False,
+        "retrying": False,
+    }
 
 
 def ap_automation_align_contract_terms(text: str, context: dict) -> dict:
@@ -521,31 +812,49 @@ def ap_automation_run_control_tests(state: dict) -> dict:
     }
 
 
-def ap_automation_schedule_payments(state: dict, *, tenant: str, liquidity_forecast: tuple[float, ...], risk_limit: float) -> dict:
-    pool = {"tenant": tenant, "available_cash": float(liquidity_forecast[0]), "currency": "USD"}
+def ap_automation_schedule_payments(
+    state: dict,
+    *,
+    tenant: str,
+    liquidity_forecast: tuple[float, ...],
+    risk_limit: float,
+) -> dict:
+    _require_appgen_x_event_contract(state)
+    pool = {
+        "tenant": tenant,
+        "available_cash": float(liquidity_forecast[0]),
+        "currency": state["configuration"].get("default_currency", "USD"),
+    }
+    runtime = _copy_state(state)
+    runtime["payment_pools"][tenant] = pool
     payments = []
-    for invoice in state["invoices"].values():
+    for invoice in runtime["invoices"].values():
         if invoice["tenant"] != tenant:
             continue
-        risk = state["vendors"][invoice["vendor_id"]]["risk_score"]
+        risk = runtime["vendors"][invoice["vendor_id"]]["risk_score"]
         terms = invoice.get("contract_terms", {})
         discount_rate = float(terms.get("discount_rate", 0))
-        scheduled_date = "discount_window" if discount_rate > 0 and pool["available_cash"] >= invoice["total"] and risk <= risk_limit else invoice["due_date"]
-        payments.append(
-            {
-                "payment_id": f"pay_{invoice['invoice_id']}",
-                "tenant": tenant,
-                "invoice_id": invoice["invoice_id"],
-                "vendor_id": invoice["vendor_id"],
-                "amount": invoice["total"],
-                "scheduled_date": scheduled_date,
-                "risk_score": risk,
-                "status": "scheduled",
-            }
+        scheduled_date = (
+            "discount_window"
+            if discount_rate > 0 and pool["available_cash"] >= invoice["total"] and risk <= risk_limit
+            else invoice["due_date"]
         )
-    next_state = {**state, "payment_pools": {**state["payment_pools"], tenant: pool}}
-    next_state = _append_event(next_state, "PaymentScheduled", {"tenant": tenant, "count": len(payments)})
-    return {"ok": True, "state": next_state, "pool": pool, "payments": tuple(payments)}
+        payment_id = f"pay_{invoice['invoice_id']}"
+        payment = {
+            "payment_id": payment_id,
+            "tenant": tenant,
+            "invoice_id": invoice["invoice_id"],
+            "vendor_id": invoice["vendor_id"],
+            "amount": invoice["total"],
+            "scheduled_date": scheduled_date,
+            "risk_score": risk,
+            "status": "scheduled",
+            "approval_limit": int(_parameter_value(runtime, "payment_approval_limit", 5000)),
+        }
+        runtime["payments"][payment_id] = payment
+        payments.append(payment)
+    runtime = _emit(runtime, "PaymentScheduled", tenant, {"count": len(payments), "tenant": tenant})
+    return {"ok": True, "state": runtime, "pool": pool, "payments": tuple(payments)}
 
 
 def ap_automation_build_workbench_view(state: dict, *, tenant: str) -> dict:
@@ -566,14 +875,25 @@ def ap_automation_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "parameter_count": len(state.get("parameters", {})),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": AP_AUTOMATION_OWNED_TABLES,
+            "outbox_table": AP_AUTOMATION_RUNTIME_TABLES[0],
+            "inbox_table": AP_AUTOMATION_RUNTIME_TABLES[1],
+            "dead_letter_table": AP_AUTOMATION_RUNTIME_TABLES[2],
+        },
     }
 
 
 def ap_automation_execute_payment(state: dict, payment_id: str, *, rails: tuple[dict, ...]) -> dict:
+    _require_appgen_x_event_contract(state)
     invoice_id = payment_id.removeprefix("pay_")
     invoice = state["invoices"][invoice_id]
     selected = ap_automation_optimize_payment_route(rails)
+    scheduled = state["payments"].get(payment_id, {})
     payment = {
+        **scheduled,
         "payment_id": payment_id,
         "tenant": invoice["tenant"],
         "invoice_id": invoice_id,
@@ -583,46 +903,270 @@ def ap_automation_execute_payment(state: dict, payment_id: str, *, rails: tuple[
         "status": "executed",
         "initiated_by": "ap_agent",
         "approved_by": "ap_controller",
-        "approval_limit": 5000,
+        "approval_limit": int(_parameter_value(state, "payment_approval_limit", 5000)),
     }
-    next_state = {**state, "payments": {**state["payments"], payment_id: payment}}
-    next_state = _append_event(next_state, "PaymentExecuted", {"tenant": payment["tenant"], "payment_id": payment_id, "rail": payment["rail"]})
+    runtime = _copy_state(state)
+    runtime["payments"][payment_id] = payment
+    runtime["invoices"][invoice_id] = {**runtime["invoices"][invoice_id], "payment_status": "paid", "status": "paid"}
+    runtime = _emit(runtime, "PaymentExecuted", payment["tenant"], {"payment_id": payment_id, "rail": payment["rail"]})
     return {
         "ok": True,
-        "state": next_state,
+        "state": runtime,
         "payment": payment,
         "failover_used": any(not rail.get("available", True) for rail in rails[:1]),
-        "idempotency_key": f"ap_automation:PaymentExecuted:{payment_id}",
+        "idempotency_key": runtime["outbox"][-1]["idempotency_key"],
     }
 
 
 def ap_automation_optimize_payment_route(rails: tuple[dict, ...]) -> dict:
     available = tuple(rail for rail in rails if rail.get("available", True))
-    selected = min(available, key=lambda rail: (rail["cost"] * 0.55) + (rail["latency"] * 0.02) + abs(1 - rail.get("fx_rate", 1)) * 10)
+    selected = min(
+        available,
+        key=lambda rail: (rail["cost"] * 0.55) + (rail["latency"] * 0.02) + abs(1 - rail.get("fx_rate", 1)) * 10,
+    )
     return dict(selected)
 
 
 def ap_automation_forecast_cash_flow(state: dict, tenant: str) -> dict:
     invoices = tuple(invoice for invoice in state["invoices"].values() if invoice["tenant"] == tenant)
     forecast = tuple(
-        {"date": invoice["due_date"], "amount": -invoice["total"], "confidence_interval": (-invoice["total"] * 1.08, -invoice["total"] * 0.92)}
+        {
+            "date": invoice["due_date"],
+            "amount": -invoice["total"],
+            "confidence_interval": (-invoice["total"] * 1.08, -invoice["total"] * 0.92),
+        }
         for invoice in invoices
     )
     return {"ok": True, "tenant": tenant, "forecast": forecast}
 
 
-def ap_automation_analyze_discount_counterfactual(amount: float, *, discount_rate: float, annual_capital_cost: float, days_early: int) -> dict:
+def ap_automation_analyze_discount_counterfactual(
+    amount: float,
+    *,
+    discount_rate: float,
+    annual_capital_cost: float,
+    days_early: int,
+) -> dict:
     discount_value = amount * discount_rate
     capital_cost = amount * annual_capital_cost * (days_early / 365)
-    return {"ok": True, "discount_value": round(discount_value, 2), "capital_cost": round(capital_cost, 2), "net_benefit": round(discount_value - capital_cost, 2)}
+    return {
+        "ok": True,
+        "discount_value": round(discount_value, 2),
+        "capital_cost": round(capital_cost, 2),
+        "net_benefit": round(discount_value - capital_cost, 2),
+    }
+
+
+def ap_automation_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "GET /procurement/purchase-orders/{id}",
+        "GET /treasury/cash-forecasts/{tenant}",
+        "GET /tax/policies/current",
+        "vendor_approval_projection",
+        "cash_forecast_projection",
+        "tax_policy_projection",
+        "access_policy_projection",
+    }
+    allowed_event_dependencies = set(AP_AUTOMATION_CONSUMED_EVENT_TYPES) | set(AP_AUTOMATION_EMITTED_EVENT_TYPES)
+    allowed_runtime_tables = set(AP_AUTOMATION_RUNTIME_TABLES)
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(AP_AUTOMATION_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("ap_automation_")
+    )
+    return {
+        "format": "appgen.ap-automation-boundary.v1",
+        "ok": not violations,
+        "owned_tables": AP_AUTOMATION_OWNED_TABLES,
+        "runtime_tables": AP_AUTOMATION_RUNTIME_TABLES,
+        "declared_dependencies": {
+            "apis": tuple(sorted(reference for reference in allowed_api_dependencies if reference.startswith("GET "))),
+            "events": AP_AUTOMATION_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "vendor_approval_projection",
+                "cash_forecast_projection",
+                "tax_policy_projection",
+                "access_policy_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def ap_automation_build_api_contract() -> dict:
     return {
+        "format": "appgen.ap-automation-api-contract.v1",
         "ok": True,
-        "graphql_mutations": ("submitInvoice", "approveInvoice", "schedulePayment", "openDispute"),
-        "graphql_queries": ("invoiceStatus", "vendorRisk", "paymentRun"),
-        "asyncapi_events": ("InvoiceSubmitted", "InvoiceMatched", "PaymentScheduled", "PaymentExecuted", "VendorRiskChanged"),
+        "routes": (
+            {
+                "route": "POST /ap/vendors",
+                "command": "onboard_vendor",
+                "owned_tables": ("ap_automation_vendor",),
+                "emits": ("VendorOnboarded",),
+                "requires_permission": "ap_automation.vendor",
+                "idempotency_key": "vendor_id",
+            },
+            {
+                "route": "POST /ap/purchase-orders",
+                "command": "issue_purchase_order",
+                "owned_tables": ("ap_automation_purchase_order",),
+                "emits": ("PurchaseOrderIssued",),
+                "requires_permission": "ap_automation.invoice",
+                "idempotency_key": "po_id",
+            },
+            {
+                "route": "POST /ap/goods-receipts",
+                "command": "record_goods_receipt",
+                "owned_tables": ("ap_automation_goods_receipt",),
+                "emits": ("GoodsReceiptRecorded",),
+                "requires_permission": "ap_automation.invoice",
+                "idempotency_key": "receipt_id",
+            },
+            {
+                "route": "POST /ap/invoices",
+                "command": "capture_invoice",
+                "owned_tables": ("ap_automation_invoice",),
+                "emits": ("InvoiceCaptured",),
+                "requires_permission": "ap_automation.invoice",
+                "idempotency_key": "invoice_id",
+            },
+            {
+                "route": "POST /ap/invoices/{invoice_id}/match",
+                "command": "match_invoice",
+                "owned_tables": (
+                    "ap_automation_invoice",
+                    "ap_automation_purchase_order",
+                    "ap_automation_goods_receipt",
+                ),
+                "emits": (),
+                "requires_permission": "ap_automation.match",
+                "idempotency_key": "invoice_id",
+            },
+            {
+                "route": "POST /ap/exceptions",
+                "command": "resolve_exception",
+                "owned_tables": ("ap_automation_exception_case",),
+                "emits": (),
+                "requires_permission": "ap_automation.exception",
+                "idempotency_key": "invoice_id:reason",
+            },
+            {
+                "route": "POST /ap/payment-schedules",
+                "command": "schedule_payments",
+                "owned_tables": ("ap_automation_payment",),
+                "emits": ("PaymentScheduled",),
+                "requires_permission": "ap_automation.payment",
+                "idempotency_key": "tenant:forecast_hash",
+            },
+            {
+                "route": "POST /ap/payments",
+                "command": "execute_payment",
+                "owned_tables": ("ap_automation_payment",),
+                "emits": ("PaymentExecuted",),
+                "requires_permission": "ap_automation.payment",
+                "idempotency_key": "payment_id",
+            },
+            {
+                "route": "POST /ap/configuration",
+                "command": "configure_runtime",
+                "owned_tables": (),
+                "emits": (),
+                "requires_permission": "ap_automation.configure",
+                "idempotency_key": "database_backend:event_topic",
+            },
+            {
+                "route": "POST /ap/parameters",
+                "command": "set_parameter",
+                "owned_tables": (),
+                "emits": (),
+                "requires_permission": "ap_automation.configure",
+                "idempotency_key": "name",
+            },
+            {
+                "route": "POST /ap/rules",
+                "command": "register_rule",
+                "owned_tables": (),
+                "emits": (),
+                "requires_permission": "ap_automation.configure",
+                "idempotency_key": "rule_id",
+            },
+            {
+                "route": "POST /ap/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": AP_AUTOMATION_CONSUMED_EVENT_TYPES,
+                "requires_permission": "ap_automation.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /ap/workbench",
+                "query": "build_workbench_view",
+                "owned_tables": AP_AUTOMATION_OWNED_TABLES,
+                "requires_permission": "ap_automation.audit",
+            },
+        ),
+        "declared_catalog_routes": (
+            "POST /ap/vendors",
+            "POST /ap/invoices",
+            "POST /ap/payment-schedules",
+            "POST /ap/payments",
+            "GET /ap/workbench",
+        ),
+        "owned_tables": AP_AUTOMATION_OWNED_TABLES,
+        "runtime_tables": AP_AUTOMATION_RUNTIME_TABLES,
+        "emits": AP_AUTOMATION_EMITTED_EVENT_TYPES,
+        "consumes": AP_AUTOMATION_CONSUMED_EVENT_TYPES,
+        "database_backends": AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS,
+        "permissions": tuple(sorted(ap_automation_permissions_contract()["permissions"])),
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "required_event_topic": AP_AUTOMATION_REQUIRED_EVENT_TOPIC,
+        "stream_engine_picker_visible": False,
+    }
+
+
+def ap_automation_permissions_contract() -> dict:
+    return {
+        "format": "appgen.ap-automation-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "ap_automation.vendor",
+            "ap_automation.invoice",
+            "ap_automation.match",
+            "ap_automation.exception",
+            "ap_automation.payment",
+            "ap_automation.tax",
+            "ap_automation.event.consume",
+            "ap_automation.configure",
+            "ap_automation.audit",
+        ),
+        "action_permissions": {
+            "onboard_vendor": "ap_automation.vendor",
+            "issue_purchase_order": "ap_automation.invoice",
+            "record_goods_receipt": "ap_automation.invoice",
+            "capture_invoice": "ap_automation.invoice",
+            "match_invoice": "ap_automation.match",
+            "resolve_exception": "ap_automation.exception",
+            "schedule_payments": "ap_automation.payment",
+            "execute_payment": "ap_automation.payment",
+            "validate_tax_proof": "ap_automation.tax",
+            "receive_event": "ap_automation.event.consume",
+            "register_rule": "ap_automation.configure",
+            "register_schema_extension": "ap_automation.configure",
+            "set_parameter": "ap_automation.configure",
+            "configure_runtime": "ap_automation.configure",
+            "build_workbench_view": "ap_automation.audit",
+            "verify_owned_table_boundary": "ap_automation.audit",
+            "run_control_tests": "ap_automation.audit",
+        },
     }
 
 
@@ -643,7 +1187,11 @@ def ap_automation_integrate_supply_chain_finance(invoice: dict, *, program_rate:
 
 def ap_automation_verify_vendor_identity(identity: dict) -> dict:
     subject = identity.get("did", "").removeprefix("did:appgen:").replace("-", "_")
-    return {"ok": identity.get("issuer") == "trusted_registry" and identity.get("status") == "active", "subject": subject, "revocation_checked": True}
+    return {
+        "ok": identity.get("issuer") == "trusted_registry" and identity.get("status") == "active",
+        "subject": subject,
+        "revocation_checked": True,
+    }
 
 
 def ap_automation_run_resilience_drill(state: dict, scenario: str) -> dict:
@@ -653,7 +1201,12 @@ def ap_automation_run_resilience_drill(state: dict, scenario: str) -> dict:
 
 
 def ap_automation_rotate_crypto_epoch(state: dict, algorithm: str) -> dict:
-    return {"ok": True, "key_epoch": state["crypto_epoch"]["epoch"] + 1, "algorithm": algorithm, "auth_profile": "payment_signature"}
+    return {
+        "ok": True,
+        "key_epoch": state["crypto_epoch"]["epoch"] + 1,
+        "algorithm": algorithm,
+        "auth_profile": "payment_signature",
+    }
 
 
 def ap_automation_schedule_carbon_aware_settlement(windows: tuple[dict, ...]) -> dict:
@@ -665,7 +1218,10 @@ def ap_automation_optimize_algebraic_routing(routes: tuple[dict, ...]) -> dict:
     scored = tuple(
         {
             **route,
-            "objective_score": round(route["cost"] * 0.55 + route["risk"] * 1.5 + route["liquidity"] + route["carbon"] * 0.4, 4),
+            "objective_score": round(
+                route["cost"] * 0.55 + route["risk"] * 1.5 + route["liquidity"] + route["carbon"] * 0.4,
+                4,
+            ),
         }
         for route in routes
     )
@@ -690,7 +1246,12 @@ def ap_automation_detect_fraud_information_shift(state: dict) -> dict:
     entropy = -sum(p * math.log(p, 2) for p in distribution if p > 0)
     baseline = math.log(len(distribution) or 1, 2)
     kl_divergence = round(abs(baseline - entropy), 4)
-    return {"ok": True, "entropy": round(entropy, 4), "kl_divergence": kl_divergence, "decision": "normal" if kl_divergence < 0.5 else "investigate"}
+    return {
+        "ok": True,
+        "entropy": round(entropy, 4),
+        "kl_divergence": kl_divergence,
+        "decision": "normal" if kl_divergence < 0.5 else "investigate",
+    }
 
 
 def ap_automation_model_temporal_liquidity(cash_path: tuple[float, ...], *, volatility: float) -> dict:
@@ -724,23 +1285,95 @@ def ap_automation_register_governed_model(name: str, metadata: dict) -> dict:
     }
 
 
-def _append_event(state: dict, event_type: str, payload: dict) -> dict:
-    previous_hash = state["events"][-1]["hash"] if state["events"] else "GENESIS"
+def _copy_state(state: dict) -> dict:
+    return copy.deepcopy(state)
+
+
+def _require_configured(state: dict) -> None:
+    if not state.get("configuration", {}).get("ok"):
+        raise ValueError("AP Automation runtime must be configured before commands execute")
+
+
+def _require_appgen_x_event_contract(state: dict) -> None:
+    _require_configured(state)
+    configuration = state["configuration"]
+    if (
+        configuration.get("event_contract") != "AppGen-X"
+        or configuration.get("event_topic") != AP_AUTOMATION_REQUIRED_EVENT_TOPIC
+    ):
+        raise ValueError("AP Automation runtime must remain bound to the AppGen-X accounts payable event contract")
+
+
+def _apply_received_event(state: dict, event_type: str, payload: dict) -> None:
+    if event_type == "VendorApproved":
+        vendor_id = payload.get("vendor_id")
+        if vendor_id in state["vendors"]:
+            state["vendors"][vendor_id] = {
+                **state["vendors"][vendor_id],
+                "approval_status": "approved",
+                "approved_by": payload.get("approved_by"),
+            }
+        return
+    if event_type == "PurchaseOrderApproved":
+        po_id = payload.get("po_id")
+        if po_id in state["purchase_orders"]:
+            state["purchase_orders"][po_id] = {**state["purchase_orders"][po_id], "status": "approved"}
+        return
+    if event_type == "GoodsReceiptPosted":
+        receipt_id = payload.get("receipt_id")
+        if receipt_id in state["receipts"]:
+            state["receipts"][receipt_id] = {**state["receipts"][receipt_id], "status": "posted"}
+        return
+    if event_type == "TaxPolicyChanged":
+        state["configuration"]["last_tax_policy_event"] = payload.get("policy_id") or payload.get("effective_at")
+        return
+    if event_type == "CashForecastUpdated":
+        tenant = payload.get("tenant")
+        if tenant:
+            state["payment_pools"][tenant] = {
+                "tenant": tenant,
+                "available_cash": float(payload.get("available_cash", 0.0)),
+                "currency": payload.get(
+                    "currency",
+                    state["configuration"].get("default_currency", "USD"),
+                ),
+            }
+        return
+    if event_type == "AccessPolicyChanged":
+        state["configuration"]["last_access_policy_event"] = payload.get("policy_id") or payload.get("event_id")
+
+
+def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> dict:
     sequence = len(state["events"]) + 1
+    previous_hash = state["events"][-1]["hash"] if state["events"] else "GENESIS"
     event = {
         "event_id": f"ap_evt_{sequence:06d}",
         "event_type": event_type,
+        "tenant": tenant,
         "payload": payload,
+        "contract": "AppGen-X",
+        "topic": AP_AUTOMATION_REQUIRED_EVENT_TOPIC,
         "previous_hash": previous_hash,
     }
     event_hash = _digest(event)
     event = {**event, "hash": event_hash}
     outbox_event = {
+        "event_id": event["event_id"],
         "event_type": event_type,
+        "tenant": tenant,
         "payload": payload,
+        "topic": AP_AUTOMATION_REQUIRED_EVENT_TOPIC,
+        "contract": "AppGen-X",
         "idempotency_key": f"ap_automation:{event_type}:{event['event_id']}",
+        "retry_policy": {
+            "max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)),
+            "dead_letter": AP_AUTOMATION_RUNTIME_TABLES[2],
+        },
+        "audit_hash": event_hash,
     }
-    return {**state, "events": (*state["events"], event), "outbox": (*state["outbox"], outbox_event)}
+    state["events"] = (*state["events"], event)
+    state["outbox"] = (*state["outbox"], outbox_event)
+    return state
 
 
 def _line_total(lines: tuple[dict, ...]) -> float:
@@ -767,6 +1400,14 @@ def _vendor_risk_score(signals: dict, *, owner_count: int) -> float:
 def _first_int_after(text: str, marker: str) -> int | None:
     match = re.search(rf"{re.escape(marker)}\s+(\d+)", text, re.I)
     return int(match.group(1)) if match else None
+
+
+def _parameter_value(state: dict, key: str, default: float) -> float:
+    parameter = state.get("parameters", {}).get(key)
+    if not parameter:
+        return default
+    value = parameter["value"] if isinstance(parameter, dict) else parameter
+    return float(value)
 
 
 def _digest(payload: dict | tuple | list | str) -> str:

@@ -1197,6 +1197,19 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `archive/cache-cleanup-2026-05-26/` with a manifest, leaving the active
   source, tests, generated parser files, PBC packages, and frontend tree free
   of reproducible cache folders.
+- Current wizard generation pass adds standalone operation-step and
+  validation-step contracts to generated table, workflow, validation-session,
+  and submission-plan wizard modules. Generated wizard manifests and tests now
+  fail unless each one-file wizard module proves concrete side-effect-free
+  steps and validation gates before wizard workbench readiness is trusted.
+- Current parallel PBC implementation pass hardens `gl_core`, `ap_automation`,
+  `ar_credit`, and `eam` package directories with AppGen-X-only event
+  contracts, PostgreSQL/MySQL/MariaDB backend limits, owned-table metadata,
+  API and permissions contracts, idempotent inbox handlers, retry/dead-letter
+  evidence, UI binding evidence, and own-table boundary tests. Focused tests
+  pass together (`14 passed`), and implementation release, generation smoke,
+  capability, full implementation release, and catalog release audits all
+  return true for the implemented PBC set. Commit: pending this slice.
 
 ## Open Completion Areas
 

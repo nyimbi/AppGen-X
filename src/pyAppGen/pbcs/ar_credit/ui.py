@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import AR_CREDIT_ALLOWED_DATABASE_BACKENDS
+from .runtime import AR_CREDIT_CONSUMED_EVENT_TYPES
+from .runtime import AR_CREDIT_EMITTED_EVENT_TYPES
+from .runtime import AR_CREDIT_OWNED_TABLES
+from .runtime import AR_CREDIT_REQUIRED_EVENT_TOPIC
+from .runtime import ar_credit_permissions_contract
+
 
 AR_CREDIT_UI_FRAGMENT_KEYS = (
     "AccountsReceivableWorkbench",
@@ -78,26 +85,14 @@ def ar_credit_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": {
-            "onboard_customer": "ar_credit.customer",
-            "issue_invoice": "ar_credit.invoice",
-            "record_delivery_confirmation": "ar_credit.delivery",
-            "apply_cash": "ar_credit.cash",
-            "record_unapplied_cash": "ar_credit.cash",
-            "create_credit_memo": "ar_credit.adjustment",
-            "write_off_receivable": "ar_credit.adjustment",
-            "issue_refund": "ar_credit.refund",
-            "schedule_collection_action": "ar_credit.collection",
-            "extend_credit": "ar_credit.credit",
-            "register_rule": "ar_credit.configure",
-            "set_parameter": "ar_credit.configure",
-            "configure_runtime": "ar_credit.configure",
-            "run_control_tests": "ar_credit.audit",
-        },
+        "action_permissions": ar_credit_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": AR_CREDIT_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": AR_CREDIT_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -114,24 +109,14 @@ def ar_credit_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": (
-                "CustomerOnboarded",
-                "InvoiceIssued",
-                "DeliveryConfirmed",
-                "PaymentReceived",
-                "UnappliedCashRecorded",
-                "CollectionActionScheduled",
-            ),
-            "consumes": (
-                "CustomerIdentityVerified",
-                "DeliveryConfirmed",
-                "TaxPolicyChanged",
-                "CashForecastUpdated",
-                "AccessPolicyChanged",
-            ),
+            "emits": AR_CREDIT_EMITTED_EVENT_TYPES,
+            "consumes": AR_CREDIT_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "permissions_contract": ar_credit_permissions_contract(),
+        "binding_evidence": {"owned_tables": AR_CREDIT_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -169,4 +154,20 @@ def ar_credit_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": AR_CREDIT_OWNED_TABLES,
+            "outbox_table": "ar_credit_appgen_outbox_event",
+            "inbox_table": "ar_credit_appgen_inbox_event",
+            "dead_letter_table": "ar_credit_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+            "permissions": tuple(sorted(ar_credit_permissions_contract()["permissions"])),
+            "shared_table_access": False,
+        },
     }

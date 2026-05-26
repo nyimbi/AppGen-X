@@ -9,6 +9,76 @@ import re
 
 EAM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 EAM_EVENT_CONTRACT = "appgen_event_contract"
+EAM_REQUIRED_EVENT_TOPIC = "appgen.maintenance.events"
+EAM_OWNED_TABLES = (
+    "equipment",
+    "maintenance_plan",
+    "work_order",
+    "spare_part_usage",
+    "condition_reading",
+    "meter_reading",
+    "failure_event",
+    "maintenance_schedule",
+    "service_vendor_event",
+    "safety_permit",
+    "maintenance_rule",
+    "maintenance_parameter",
+    "maintenance_configuration",
+)
+EAM_EMITTED_EVENT_TYPES = (
+    "EquipmentRegistered",
+    "MaintenancePlanReleased",
+    "ConditionReadingRecorded",
+    "MeterReadingRecorded",
+    "SafetyPermitApproved",
+    "WorkOrderCreated",
+    "WorkOrderScheduled",
+    "SparePartUsed",
+    "MaintenanceCompleted",
+    "VendorPerformanceUpdated",
+)
+EAM_CONSUMED_EVENT_TYPES = (
+    "DowntimeCaptured",
+    "NonConformanceRaised",
+    "InventoryReservationConfirmed",
+    "PurchaseOrderAcknowledged",
+    "AssetLifecycleUpdated",
+)
+_EAM_RUNTIME_TABLES = (
+    "eam_appgen_outbox_event",
+    "eam_appgen_inbox_event",
+    "eam_dead_letter_event",
+)
+_EAM_ALLOWED_DEPENDENCIES = (
+    "production_uptime_projection",
+    "quality_reliability_projection",
+    "inventory_spares_projection",
+    "procurement_vendor_projection",
+    "asset_lifecycle_projection",
+    "GET /production/orders/{id}",
+    "GET /quality/nonconformances/{id}",
+    "GET /inventory/spares/{id}",
+    "GET /procurement/vendors/{id}",
+    "POST /audit/maintenance-events",
+)
+EAM_REQUIRED_CONFIGURATION_FIELDS = (
+    "database_backend",
+    "event_topic",
+    "retry_limit",
+    "allowed_sites",
+    "allowed_priorities",
+    "allowed_work_types",
+    "allowed_permit_types",
+    "default_timezone",
+    "workbench_limit",
+)
+EAM_FORBIDDEN_EVENTING_FIELDS = (
+    "event_bus",
+    "event_engine",
+    "eventing_backend",
+    "eventing_mode",
+    "stream_engine",
+)
 EAM_SUPPORTED_PARAMETERS = (
     "default_pm_interval_days",
     "failure_risk_threshold",
@@ -101,12 +171,15 @@ def eam_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "eam",
         "implementation_directory": "src/pyAppGen/pbcs/eam",
+        "owned_tables": EAM_OWNED_TABLES,
         "capabilities": EAM_RUNTIME_CAPABILITY_KEYS,
         "standard_features": EAM_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_equipment",
             "create_maintenance_plan",
             "record_condition_reading",
@@ -116,6 +189,9 @@ def eam_runtime_capabilities() -> dict:
             "issue_spare_part",
             "complete_work_order",
             "build_workbench_view",
+            "build_api_contract",
+            "permissions_contract",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -156,6 +232,29 @@ def eam_runtime_smoke() -> dict:
             "status": "active",
         },
     )["state"]
+    received = eam_receive_event(
+        state,
+        {
+            "event_id": "external_inventory_reservation_100",
+            "event_type": "InventoryReservationConfirmed",
+            "tenant": "tenant_alpha",
+            "payload": {"reservation_id": "res_100", "work_order_id": "wo_100", "part_number": "bearing_kit", "quantity": 2},
+        },
+    )
+    state = received["state"]
+    duplicate = eam_receive_event(
+        state,
+        {
+            "event_id": "external_inventory_reservation_100",
+            "event_type": "InventoryReservationConfirmed",
+            "tenant": "tenant_alpha",
+            "payload": {"reservation_id": "res_100", "work_order_id": "wo_100", "part_number": "bearing_kit", "quantity": 2},
+        },
+    )
+    dead_letter = eam_receive_event(
+        state,
+        {"event_id": "unsupported_100", "event_type": "UnknownMaintenanceEvent", "tenant": "tenant_alpha", "payload": {}},
+    )
     state = eam_register_schema_extension(state, "work_order", {"vibration_payload": "jsonb"})["state"]
     equipment = eam_register_equipment(
         state,
@@ -262,6 +361,16 @@ def eam_runtime_smoke() -> dict:
     screening = eam_screen_policy(state, "wo_100", restricted_sites=("restricted_site",))
     controls = eam_run_control_tests(state)
     api = eam_build_api_contract()
+    permissions = eam_permissions_contract()
+    boundary = eam_verify_owned_table_boundary(
+        EAM_OWNED_TABLES
+        + _EAM_RUNTIME_TABLES
+        + (
+            "production_uptime_projection",
+            "inventory_spares_projection",
+            "GET /quality/nonconformances/{id}",
+        )
+    )
     federation = eam_federate_maintenance_view(state, "wo_100", systems=("production", "quality", "inventory", "procurement", "audit"))
     identity = eam_verify_equipment_identity({"did": "did:appgen:eq-100", "issuer": "trusted_registry", "status": "active"})
     resilience = eam_run_resilience_drill(state, "mobile_offline_queue")
@@ -290,7 +399,7 @@ def eam_runtime_smoke() -> dict:
         {"id": "immutable_maintenance_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_maintenance_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_maintenance_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "MaintenanceCompleted" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and "MaintenanceCompleted" in api["events"]["emits"] and received["status"] == "processed" and duplicate["status"] == "duplicate" and dead_letter["status"] == "dead_lettered"},
         {"id": "cross_system_maintenance_federation", "ok": federation["ok"] and "inventory" in federation["systems"]},
         {"id": "production_quality_inventory_procurement_integration", "ok": complete["handoffs"] == ("production_uptime_projection", "inventory_spares_projection", "procurement_vendor_projection", "quality_reliability_projection")},
         {"id": "decentralized_equipment_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -301,7 +410,7 @@ def eam_runtime_smoke() -> dict:
         {"id": "mechanism_design_labor_spare_allocation", "ok": allocation["ok"] and allocation["allocations"][0]["work_orders"] > allocation["allocations"][1]["work_orders"]},
         {"id": "information_theoretic_failure_anomaly_detection", "ok": anomaly["ok"] and anomaly["entropy"] >= 0},
         {"id": "temporal_maintenance_exposure_stochastic_modeling", "ok": stochastic["ok"] and stochastic["tail_risk"] > 0},
-        {"id": "distributed_systems_engineering", "ok": state["outbox"][-1]["idempotency_key"].startswith("eam:MaintenanceCompleted")},
+        {"id": "distributed_systems_engineering", "ok": state["outbox"][-1]["idempotency_key"].startswith("eam:MaintenanceCompleted") and boundary["ok"] and permissions["ok"]},
         {"id": "probabilistic_ml_maintenance_risk", "ok": model["ok"] and model["metadata"]["auc"] >= 0.9},
         {"id": "cryptographic_engineering", "ok": proof["hash"] and crypto["epoch"] == 2},
         {"id": "mathematical_optimization", "ok": optimization["objective_score"] > 0 and allocation["clearing_priority"] > 0},
@@ -315,6 +424,15 @@ def eam_empty_state() -> dict:
     return {
         "events": (),
         "outbox": (),
+        "inbox": {},
+        "dead_letters": (),
+        "handled_events": (),
+        "retry_evidence": (),
+        "production_uptime_projection": {},
+        "quality_reliability_projection": {},
+        "inventory_spares_projection": {},
+        "procurement_vendor_projection": {},
+        "asset_lifecycle_projection": {},
         "equipment": {},
         "plans": {},
         "condition_readings": {},
@@ -333,15 +451,22 @@ def eam_empty_state() -> dict:
 def eam_configure_runtime(state: dict, configuration: dict) -> dict:
     if configuration.get("database_backend") not in EAM_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("Enterprise Asset Management supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Enterprise Asset Management requires an AppGen-X event topic")
-    if configuration.get("stream_engine") or configuration.get("eventing_backend"):
+    missing = tuple(field for field in EAM_REQUIRED_CONFIGURATION_FIELDS if field not in configuration)
+    if missing:
+        raise ValueError(f"Missing Enterprise Asset Management configuration fields: {missing}")
+    if configuration.get("event_topic") != EAM_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Enterprise Asset Management requires AppGen-X event topic {EAM_REQUIRED_EVENT_TOPIC}")
+    forbidden = tuple(field for field in EAM_FORBIDDEN_EVENTING_FIELDS if field in configuration)
+    if forbidden:
         raise ValueError("Enterprise Asset Management uses the AppGen-X event contract and does not expose stream-engine selection")
     configured = {
         **configuration,
         "ok": True,
         "event_contract": EAM_EVENT_CONTRACT,
         "allowed_database_backends": EAM_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": EAM_OWNED_TABLES,
+        "stream_engine_picker_visible": False,
+        "user_selectable_eventing": False,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -372,6 +497,8 @@ def eam_register_rule(state: dict, rule: dict) -> dict:
 
 
 def eam_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in EAM_OWNED_TABLES:
+        return {"ok": False, "error": "table_not_owned", "table": table, "owned_tables": EAM_OWNED_TABLES, "state": state}
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
@@ -542,11 +669,104 @@ def eam_run_control_tests(state: dict) -> dict:
 
 def eam_build_api_contract() -> dict:
     return {
+        "format": "appgen.eam-api-contract.v1",
         "ok": True,
+        "pbc": "eam",
+        "owned_tables": EAM_OWNED_TABLES,
+        "database_backends": EAM_ALLOWED_DATABASE_BACKENDS,
+        "event_contract": "AppGen-X",
+        "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
         "routes": ("POST /equipment", "POST /maintenance-plans", "POST /work-orders", "POST /work-orders/{id}/schedule", "POST /work-orders/{id}/complete", "POST /condition-readings", "POST /meter-readings", "POST /spare-usage", "POST /safety-permits", "POST /maintenance-rules", "POST /maintenance-parameters", "POST /maintenance-configuration"),
-        "events": {"emits": ("MaintenanceCompleted", "VendorPerformanceUpdated", "WorkOrderCreated"), "consumes": ("DowntimeCaptured", "NonConformanceRaised", "InventoryReservationConfirmed", "PurchaseOrderAcknowledged")},
+        "events": {"emits": EAM_EMITTED_EVENT_TYPES, "consumes": EAM_CONSUMED_EVENT_TYPES},
+        "dependencies": {"apis": _EAM_ALLOWED_DEPENDENCIES, "projections": tuple(item for item in _EAM_ALLOWED_DEPENDENCIES if item.endswith("_projection"))},
         "permissions": ("eam.read", "eam.equipment", "eam.plan", "eam.execute", "eam.safety", "eam.configure", "eam.audit"),
         "configuration": ("EAM_DATABASE_URL", "EAM_EVENT_TOPIC", "EAM_RETRY_LIMIT", "EAM_DEFAULT_TIMEZONE"),
+    }
+
+
+def eam_permissions_contract() -> dict:
+    return {
+        "format": "appgen.eam-permissions.v1",
+        "ok": True,
+        "pbc": "eam",
+        "permissions": ("eam.read", "eam.equipment", "eam.plan", "eam.execute", "eam.safety", "eam.configure", "eam.audit"),
+        "action_permissions": {
+            "register_equipment": "eam.equipment",
+            "create_maintenance_plan": "eam.plan",
+            "record_condition_reading": "eam.execute",
+            "record_meter_reading": "eam.execute",
+            "create_safety_permit": "eam.safety",
+            "create_work_order": "eam.execute",
+            "schedule_work_order": "eam.execute",
+            "issue_spare_part": "eam.execute",
+            "complete_work_order": "eam.execute",
+            "register_rule": "eam.configure",
+            "set_parameter": "eam.configure",
+            "configure_runtime": "eam.configure",
+            "receive_event": "eam.execute",
+            "run_control_tests": "eam.audit",
+        },
+        "rbac_tables": ("maintenance_rule", "maintenance_parameter", "maintenance_configuration"),
+    }
+
+
+def eam_receive_event(state: dict, event: dict) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    if not event_id:
+        raise ValueError("Enterprise Asset Management inbound events require event_id")
+    idempotency_key = f"eam:{event_type}:{event_id}"
+    if idempotency_key in state.get("handled_events", ()):
+        return {"ok": True, "status": "duplicate", "idempotency_key": idempotency_key, "state": state}
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": event.get("tenant"),
+        "payload": dict(event.get("payload", {})),
+        "idempotency_key": idempotency_key,
+    }
+    if event_type not in EAM_CONSUMED_EVENT_TYPES:
+        dead_letter = {**inbox_entry, "status": "dead_lettered", "reason": "unsupported_event_type"}
+        next_state = {
+            **state,
+            "inbox": {**state.get("inbox", {}), event_id: {**inbox_entry, "status": "rejected"}},
+            "dead_letters": (*state.get("dead_letters", ()), dead_letter),
+            "retry_evidence": (*state.get("retry_evidence", ()), {"event_id": event_id, "attempts": state.get("configuration", {}).get("retry_limit", 3), "status": "dead_lettered"}),
+        }
+        return {"ok": False, "status": "dead_lettered", "reason": "unsupported_event_type", "idempotency_key": idempotency_key, "state": next_state}
+    projection_name = {
+        "DowntimeCaptured": "production_uptime_projection",
+        "NonConformanceRaised": "quality_reliability_projection",
+        "InventoryReservationConfirmed": "inventory_spares_projection",
+        "PurchaseOrderAcknowledged": "procurement_vendor_projection",
+        "AssetLifecycleUpdated": "asset_lifecycle_projection",
+    }[event_type]
+    payload = dict(event.get("payload", {}))
+    projection_key = payload.get("work_order_id") or payload.get("equipment_id") or payload.get("reservation_id") or event_id
+    next_state = {
+        **state,
+        "inbox": {**state.get("inbox", {}), event_id: {**inbox_entry, "status": "processed"}},
+        projection_name: {**state.get(projection_name, {}), projection_key: payload},
+        "handled_events": (*state.get("handled_events", ()), idempotency_key),
+        "retry_evidence": (*state.get("retry_evidence", ()), {"event_id": event_id, "attempts": 1, "status": "processed"}),
+    }
+    return {"ok": True, "status": "processed", "projection": projection_name, "idempotency_key": idempotency_key, "state": next_state}
+
+
+def eam_verify_owned_table_boundary(references: tuple[str, ...]) -> dict:
+    allowed = set(EAM_OWNED_TABLES) | set(_EAM_RUNTIME_TABLES) | set(_EAM_ALLOWED_DEPENDENCIES)
+    violations = tuple(sorted(reference for reference in references if reference not in allowed))
+    return {
+        "format": "appgen.eam-owned-boundary.v1",
+        "ok": not violations,
+        "pbc": "eam",
+        "owned_tables": EAM_OWNED_TABLES,
+        "runtime_tables": _EAM_RUNTIME_TABLES,
+        "allowed_dependencies": _EAM_ALLOWED_DEPENDENCIES,
+        "violations": violations,
+        "shared_table_access": False,
     }
 
 
