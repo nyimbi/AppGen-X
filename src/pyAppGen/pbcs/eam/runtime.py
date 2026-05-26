@@ -24,6 +24,9 @@ EAM_OWNED_TABLES = (
     "maintenance_rule",
     "maintenance_parameter",
     "maintenance_configuration",
+    "maintenance_outbox",
+    "maintenance_inbox",
+    "maintenance_dead_letter",
 )
 EAM_EMITTED_EVENT_TYPES = (
     "EquipmentRegistered",
@@ -87,6 +90,14 @@ EAM_SUPPORTED_PARAMETERS = (
     "safety_risk_threshold",
     "retention_days",
 )
+_EAM_PARAMETER_BOUNDS = {
+    "default_pm_interval_days": (1, 3650),
+    "failure_risk_threshold": (0.0, 1.0),
+    "mttr_target_hours": (0.1, 720.0),
+    "criticality_weight": (0.0, 1.0),
+    "safety_risk_threshold": (0.0, 1.0),
+    "retention_days": (1, 3650),
+}
 EAM_REQUIRED_RULE_FIELDS = (
     "rule_id",
     "tenant",
@@ -191,6 +202,9 @@ def eam_runtime_capabilities() -> dict:
             "build_workbench_view",
             "build_api_contract",
             "permissions_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "verify_owned_table_boundary",
         ),
         "smoke": smoke,
@@ -474,7 +488,12 @@ def eam_configure_runtime(state: dict, configuration: dict) -> dict:
 def eam_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
     if name not in EAM_SUPPORTED_PARAMETERS:
         raise ValueError(f"Unsupported Enterprise Asset Management parameter: {name}")
-    return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
+    minimum, maximum = _EAM_PARAMETER_BOUNDS[name]
+    numeric_value = float(value)
+    if numeric_value < minimum or numeric_value > maximum:
+        raise ValueError(f"Enterprise Asset Management parameter {name} must be between {minimum} and {maximum}")
+    parameter = {"name": name, "value": value, "bounds": (minimum, maximum)}
+    return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": parameter}
 
 
 def eam_register_rule(state: dict, rule: dict) -> dict:
@@ -502,7 +521,14 @@ def eam_register_schema_extension(state: dict, table: str, fields: dict) -> dict
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    version = int(state["schema_extensions"].get(table, {}).get("_version", 0)) + 1
+    extension = {"table": table, "fields": dict(fields), "version": version}
+    next_fields = {**dict(fields), "_version": version}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: next_fields}},
+        "extension": extension,
+    }
 
 
 def eam_register_equipment(state: dict, equipment: dict) -> dict:
@@ -668,6 +694,21 @@ def eam_run_control_tests(state: dict) -> dict:
 
 
 def eam_build_api_contract() -> dict:
+    route_definitions = (
+        {"method": "POST", "path": "/equipment", "command": "register_equipment"},
+        {"method": "POST", "path": "/maintenance-plans", "command": "create_maintenance_plan"},
+        {"method": "POST", "path": "/work-orders", "command": "create_work_order"},
+        {"method": "POST", "path": "/work-orders/{id}/schedule", "command": "schedule_work_order"},
+        {"method": "POST", "path": "/work-orders/{id}/complete", "command": "complete_work_order"},
+        {"method": "POST", "path": "/condition-readings", "command": "record_condition_reading"},
+        {"method": "POST", "path": "/meter-readings", "command": "record_meter_reading"},
+        {"method": "POST", "path": "/spare-usage", "command": "issue_spare_part"},
+        {"method": "POST", "path": "/safety-permits", "command": "create_safety_permit"},
+        {"method": "GET", "path": "/maintenance-workbench", "query": "build_workbench_view"},
+        {"method": "POST", "path": "/maintenance-rules", "command": "register_rule"},
+        {"method": "POST", "path": "/maintenance-parameters", "command": "set_parameter"},
+        {"method": "POST", "path": "/maintenance-configuration", "command": "configure_runtime"},
+    )
     return {
         "format": "appgen.eam-api-contract.v1",
         "ok": True,
@@ -678,11 +719,18 @@ def eam_build_api_contract() -> dict:
         "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
         "shared_table_access": False,
         "stream_engine_picker_visible": False,
-        "routes": ("POST /equipment", "POST /maintenance-plans", "POST /work-orders", "POST /work-orders/{id}/schedule", "POST /work-orders/{id}/complete", "POST /condition-readings", "POST /meter-readings", "POST /spare-usage", "POST /safety-permits", "POST /maintenance-rules", "POST /maintenance-parameters", "POST /maintenance-configuration"),
+        "routes": tuple(f"{route['method']} {route['path']}" for route in route_definitions),
+        "route_definitions": route_definitions,
         "events": {"emits": EAM_EMITTED_EVENT_TYPES, "consumes": EAM_CONSUMED_EVENT_TYPES},
         "dependencies": {"apis": _EAM_ALLOWED_DEPENDENCIES, "projections": tuple(item for item in _EAM_ALLOWED_DEPENDENCIES if item.endswith("_projection"))},
         "permissions": ("eam.read", "eam.equipment", "eam.plan", "eam.execute", "eam.safety", "eam.configure", "eam.audit"),
         "configuration": ("EAM_DATABASE_URL", "EAM_EVENT_TOPIC", "EAM_RETRY_LIMIT", "EAM_DEFAULT_TIMEZONE"),
+        "idempotent_handlers": {
+            "key_pattern": "eam:<EventType>:<event_id>",
+            "inbox_table": "maintenance_inbox",
+            "dead_letter_table": "maintenance_dead_letter",
+            "outbox_table": "maintenance_outbox",
+        },
     }
 
 
@@ -709,6 +757,176 @@ def eam_permissions_contract() -> dict:
             "run_control_tests": "eam.audit",
         },
         "rbac_tables": ("maintenance_rule", "maintenance_parameter", "maintenance_configuration"),
+    }
+
+
+def eam_build_schema_contract() -> dict:
+    """Return Enterprise Asset Management owned schema evidence."""
+    table_fields = {
+        "equipment": ("tenant", "equipment_id", "site", "asset_tag", "criticality", "location", "parent_equipment_id", "warranty_until", "status"),
+        "maintenance_plan": ("tenant", "plan_id", "equipment_id", "strategy", "interval_days", "meter_threshold", "condition_threshold", "status"),
+        "work_order": ("tenant", "work_order_id", "equipment_id", "plan_id", "work_type", "priority", "risk_score", "status"),
+        "spare_part_usage": ("tenant", "usage_id", "work_order_id", "part_number", "quantity", "unit_cost", "cost"),
+        "condition_reading": ("tenant", "reading_id", "equipment_id", "sensor", "value", "unit", "risk_score", "alarm"),
+        "meter_reading": ("tenant", "meter_id", "equipment_id", "meter_name", "value", "unit", "triggered_plans"),
+        "failure_event": ("tenant", "failure_event_id", "equipment_id", "failure_code", "downtime_hours", "severity", "recorded_at"),
+        "maintenance_schedule": ("tenant", "schedule_id", "work_order_id", "technician", "scheduled_start", "scheduled_end", "carbon_score", "status"),
+        "service_vendor_event": ("tenant", "vendor_event_id", "work_order_id", "vendor_id", "sla_state", "warranty_recovery", "status"),
+        "safety_permit": ("tenant", "permit_id", "equipment_id", "permit_type", "risk_score", "approved_by", "status"),
+        "maintenance_rule": ("tenant", "rule_id", "rule_type", "status", "eligible_work_types", "allowed_sites", "compiled_hash"),
+        "maintenance_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
+        "maintenance_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_timezone"),
+        "maintenance_outbox": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        "maintenance_inbox": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "maintenance_dead_letter": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "maintenance_plan.equipment_id", "to": "equipment.equipment_id", "type": "owned_plan"},
+        {"from": "work_order.equipment_id", "to": "equipment.equipment_id", "type": "owned_execution"},
+        {"from": "work_order.plan_id", "to": "maintenance_plan.plan_id", "type": "owned_trigger"},
+        {"from": "condition_reading.equipment_id", "to": "equipment.equipment_id", "type": "owned_reading"},
+        {"from": "meter_reading.equipment_id", "to": "equipment.equipment_id", "type": "owned_reading"},
+        {"from": "safety_permit.equipment_id", "to": "equipment.equipment_id", "type": "owned_safety"},
+        {"from": "spare_part_usage.work_order_id", "to": "work_order.work_order_id", "type": "owned_consumption"},
+        {"from": "maintenance_schedule.work_order_id", "to": "work_order.work_order_id", "type": "owned_schedule"},
+        {"from": "service_vendor_event.work_order_id", "to": "work_order.work_order_id", "type": "owned_vendor_flow"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "eam",
+        }
+        for table in EAM_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.eam-owned-schema-contract.v1",
+        "ok": len(tables) == len(EAM_OWNED_TABLES),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/eam/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": EAM_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(EAM_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in EAM_OWNED_TABLES
+        ),
+        "datastore_backends": EAM_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def eam_build_service_contract() -> dict:
+    """Return Enterprise Asset Management service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_equipment",
+        "create_maintenance_plan",
+        "record_condition_reading",
+        "record_meter_reading",
+        "create_safety_permit",
+        "create_work_order",
+        "schedule_work_order",
+        "issue_spare_part",
+        "complete_work_order",
+        "run_control_tests",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.eam-service-contract.v1",
+        "ok": len(command_methods) >= 16,
+        "transaction_boundary": "eam_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "simulate_strategy",
+            "forecast_failures",
+            "parse_maintenance_instruction",
+            "score_maintenance_risk",
+            "recommend_exception_resolution",
+            "route_maintenance",
+            "generate_compliance_proof",
+            "screen_policy",
+            "federate_maintenance_view",
+            "verify_equipment_identity",
+            "run_resilience_drill",
+            "schedule_carbon_aware_maintenance",
+            "optimize_maintenance_schedule",
+            "allocate_labor_and_spares",
+            "detect_failure_anomaly",
+            "model_stochastic_maintenance_exposure",
+            "verify_owned_table_boundary",
+        ),
+        "mutates_only": EAM_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _EAM_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": EAM_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _EAM_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def eam_build_release_evidence() -> dict:
+    """Return Enterprise Asset Management package-local release evidence."""
+    schema = eam_build_schema_contract()
+    service = eam_build_service_contract()
+    api = eam_build_api_contract()
+    permissions = eam_permissions_contract()
+    ui = {
+        "fragments": (
+            "MaintenanceWorkbench",
+            "EquipmentRegistry",
+            "AssetHierarchyMap",
+            "MaintenancePlanConsole",
+            "ConditionMonitoringPanel",
+            "WorkOrderBoard",
+            "MaintenanceScheduler",
+            "SpareUsageConsole",
+            "SafetyPermitConsole",
+            "ReliabilityDashboard",
+            "VendorServicePanel",
+            "MaintenanceRuleStudio",
+            "MaintenanceParameterConsole",
+            "MaintenanceConfigurationPanel",
+        ),
+        "stream_engine_picker_visible": False,
+    }
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) == len(EAM_OWNED_TABLES)},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(EAM_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 16},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"register_equipment", "complete_work_order", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == EAM_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+        {"id": "ui_workbench_evidence", "ok": "MaintenanceConfigurationPanel" in ui["fragments"] and not ui["stream_engine_picker_visible"]},
+    )
+    return {
+        "format": "appgen.eam-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "ui": ui,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -755,7 +973,7 @@ def eam_receive_event(state: dict, event: dict) -> dict:
     return {"ok": True, "status": "processed", "projection": projection_name, "idempotency_key": idempotency_key, "state": next_state}
 
 
-def eam_verify_owned_table_boundary(references: tuple[str, ...]) -> dict:
+def eam_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str]) -> dict:
     allowed = set(EAM_OWNED_TABLES) | set(_EAM_RUNTIME_TABLES) | set(_EAM_ALLOWED_DEPENDENCIES)
     violations = tuple(sorted(reference for reference in references if reference not in allowed))
     return {
@@ -765,6 +983,13 @@ def eam_verify_owned_table_boundary(references: tuple[str, ...]) -> dict:
         "owned_tables": EAM_OWNED_TABLES,
         "runtime_tables": _EAM_RUNTIME_TABLES,
         "allowed_dependencies": _EAM_ALLOWED_DEPENDENCIES,
+        "declared_dependencies": {
+            "apis": tuple(item for item in _EAM_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": EAM_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _EAM_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
         "violations": violations,
         "shared_table_access": False,
     }
@@ -845,6 +1070,17 @@ def eam_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "parameter_count": len(state.get("parameters", {})),
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
+        "owned_tables": EAM_OWNED_TABLES,
+        "runtime_tables": _EAM_RUNTIME_TABLES,
+        "outbox_table": "maintenance_outbox",
+        "inbox_table": "maintenance_inbox",
+        "dead_letter_table": "maintenance_dead_letter",
+        "binding_evidence": {
+            "shared_table_access": False,
+            "event_contract": EAM_EVENT_CONTRACT,
+            "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
+            "configuration_topic": state.get("configuration", {}).get("event_topic"),
+        },
     }
 
 

@@ -7,8 +7,11 @@ from .runtime import EAM_CONSUMED_EVENT_TYPES
 from .runtime import EAM_EMITTED_EVENT_TYPES
 from .runtime import EAM_OWNED_TABLES
 from .runtime import EAM_REQUIRED_RULE_FIELDS
+from .runtime import EAM_REQUIRED_CONFIGURATION_FIELDS
 from .runtime import EAM_REQUIRED_EVENT_TOPIC
 from .runtime import EAM_SUPPORTED_PARAMETERS
+from .runtime import EAM_EVENT_CONTRACT
+from .runtime import _EAM_RUNTIME_TABLES
 
 EAM_UI_FRAGMENT_KEYS = (
     "MaintenanceWorkbench",
@@ -62,7 +65,7 @@ def eam_ui_contract() -> dict:
             {
                 "key": "execution",
                 "fragment": "WorkOrderBoard",
-            "binds_to": ("work_order", "safety_permit", "spare_part_usage", "outbox"),
+                "binds_to": ("work_order", "safety_permit", "spare_part_usage", "maintenance_outbox"),
                 "commands": ("create_work_order", "schedule_work_order", "issue_spare_part", "complete_work_order"),
             },
             {
@@ -74,7 +77,7 @@ def eam_ui_contract() -> dict:
             {
                 "key": "governance_studio",
                 "fragment": "MaintenanceRuleStudio",
-            "binds_to": ("rule", "parameter", "configuration"),
+                "binds_to": ("maintenance_rule", "maintenance_parameter", "maintenance_configuration"),
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
@@ -94,7 +97,8 @@ def eam_ui_contract() -> dict:
             "run_control_tests": "eam.audit",
         },
         "configuration_editor": {
-            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
+            "required_fields": ("database_backend", "event_topic"),
+            "runtime_required_fields": EAM_REQUIRED_CONFIGURATION_FIELDS,
             "allowed_database_backends": EAM_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
             "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
@@ -116,6 +120,15 @@ def eam_ui_contract() -> dict:
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": EAM_OWNED_TABLES,
+            "runtime_tables": _EAM_RUNTIME_TABLES,
+            "required_rule_fields": EAM_REQUIRED_RULE_FIELDS,
+            "supported_parameters": EAM_SUPPORTED_PARAMETERS,
+            "event_contract": EAM_EVENT_CONTRACT,
+            "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
+            "shared_table_access": False,
         },
     }
 
@@ -157,4 +170,12 @@ def eam_render_workbench(
         "event_outbox_count": len(state["outbox"]),
         "event_inbox_count": len(state.get("inbox", {})),
         "dead_letter_count": len(state.get("dead_letters", ())),
+        "binding_evidence": {
+            "owned_tables": EAM_OWNED_TABLES,
+            "runtime_tables": _EAM_RUNTIME_TABLES,
+            "shared_table_access": False,
+            "event_contract": state.get("configuration", {}).get("event_contract"),
+            "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
+            "configuration_topic": state.get("configuration", {}).get("event_topic"),
+        },
     }
