@@ -801,6 +801,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `archive/unused-2026-05-26/` and records the cleanup manifest without
   adding bulky binaries, third-party example dumps, scratch generated files, or
   local IDE state to Git history.
+- Current cleanup pass moved local cache/build outputs into the ignored archive
+  tree: `.pytest_cache/`, Python bytecode caches, frontend `dist/`, and
+  frontend dependencies. Tracked generated fixtures, active PBC edits, and IDE
+  metadata changes were left untouched.
 - `191dfae` promotes visual design authoring modules into replay matrices:
   style authoring, timeline authoring, effect stack, scene authoring, asset
   import, and runtime package surfaces are now replayed as source and generated
