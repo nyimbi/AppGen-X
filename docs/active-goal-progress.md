@@ -1639,6 +1639,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   pass (`3 passed`), diff hygiene and restricted-term scans pass, and full
   generation, capability, implementation release, and catalog release audits all
   return true. Commit: `4dcb7a9`.
+- Current generated PBC model/schema execution pass makes generated PBC
+  packages expose executable `models.py` and `schema_contract.py` smoke
+  surfaces, canonicalizes generated schema evidence to the generated owned
+  tables/models/datastore backend, and extends generated package tests to prove
+  model coverage, schema validation, migrations, datastore allowlist, and
+  side-effect-free execution. Syntax checks pass, source-package tests pass
+  (`6 passed`), all package-local PBC tests pass (`322 passed`), targeted
+  generated smoke audits pass for prior failing PBCs, and the full PBC audit
+  stack including all built-in generation smoke and `pbc_release_audit()` returns
+  true. Commit: `42ff348`.
 
 ## Open Completion Areas
 
