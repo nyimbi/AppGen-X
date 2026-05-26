@@ -825,6 +825,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   composition selection, implemented-capability audit, implementation release
   audit, `pbc_release_audit()`, all-46-PBC generation smoke audit, and the
   restricted legacy-name diff scan.
+- `5882b8a` normalizes `treasury_cash` into the same complete package surface:
+  expanded package-local specification, executable configuration/rule/parameter
+  operations, treasury UI/workbench contract, central PBC exports, focused
+  treasury tests, and release-audit evidence. Verification passed for treasury
+  focused tests, the 61-test PBC regression slice, central enterprise
+  composition selection, implemented-capability audit, implementation release
+  audit, `pbc_release_audit()`, all-46-PBC generation smoke audit, and the
+  restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
