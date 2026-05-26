@@ -3,16 +3,20 @@ import pytest
 from pyAppGen.pbcs.loyalty_rewards import LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.loyalty_rewards import LOYALTY_REWARDS_OWNED_TABLES
 from pyAppGen.pbcs.loyalty_rewards import LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.loyalty_rewards import implementation_contract
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_adjust_points
+from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_build_api_contract
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_build_workbench_view
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_configure_runtime
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_create_redemption
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_empty_state
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_enroll_member
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_issue_points
+from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_permissions_contract
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_receive_event
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_register_earning_rule
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_register_rule
+from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_register_schema_extension
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_render_workbench
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_runtime_capabilities
 from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_runtime_smoke
@@ -24,6 +28,7 @@ from pyAppGen.pbcs.loyalty_rewards import loyalty_rewards_verify_owned_table_bou
 def test_loyalty_rewards_runtime_executes_standard_and_advanced_capabilities() -> None:
     runtime = loyalty_rewards_runtime_capabilities()
     smoke = loyalty_rewards_runtime_smoke()
+    contract = implementation_contract()
 
     assert runtime["format"] == "appgen.loyalty-rewards-runtime-capabilities.v1"
     assert runtime["ok"] is True
@@ -36,6 +41,9 @@ def test_loyalty_rewards_runtime_executes_standard_and_advanced_capabilities() -
     assert smoke["ok"] is True
     assert {check["id"] for check in smoke["checks"]} == set(LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS)
     assert not smoke["blocking_gaps"]
+    assert contract["advanced_runtime"]["ok"] is True
+    assert contract["api_contract"]["ok"] is True
+    assert contract["permissions_contract"]["action_permissions"]["create_redemption"] == "loyalty_rewards.redemption.write"
 
 
 def test_loyalty_rewards_runtime_applies_rules_parameters_configuration_events_and_ui() -> None:
@@ -52,6 +60,11 @@ def test_loyalty_rewards_runtime_applies_rules_parameters_configuration_events_a
             "status": "active",
         },
     )["state"]
+    extension = loyalty_rewards_register_schema_extension(
+        state, "reward_account", {"consent_evidence": "jsonb"}
+    )
+    state = extension["state"]
+    assert extension["extension"]["version"] == 1
     state = loyalty_rewards_enroll_member(
         state,
         {"account_id": "acct_ops", "tenant": "tenant_ops", "customer_id": "cust_ops", "currency": "USD", "region": "US", "tier": "gold", "status": "active"},
@@ -103,6 +116,21 @@ def test_loyalty_rewards_runtime_applies_rules_parameters_configuration_events_a
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == LOYALTY_REWARDS_OWNED_TABLES
 
+    api_contract = loyalty_rewards_build_api_contract()
+    assert api_contract["database_backends"] == LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS
+    assert api_contract["event_contract"] == "AppGen-X"
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["shared_table_access"] is False
+    assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
+        "enroll_member",
+        "issue_points",
+        "adjust_points",
+        "create_redemption",
+        "receive_event",
+    }
+    permissions = loyalty_rewards_permissions_contract()
+    assert permissions["action_permissions"]["verify_owned_table_boundary"] == "loyalty_rewards.audit"
+
 
 def test_loyalty_rewards_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
     state = loyalty_rewards_empty_state()
@@ -136,10 +164,26 @@ def test_loyalty_rewards_rejects_invalid_inputs_and_proves_boundary_and_dead_let
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
-    boundary = loyalty_rewards_verify_owned_table_boundary()
+    boundary = loyalty_rewards_verify_owned_table_boundary(
+        (
+            "reward_account",
+            "points_ledger",
+            "earning_rule",
+            "redemption",
+            "PaymentCaptured",
+            "promotion_projection",
+            "loyalty_rewards_appgen_outbox_event",
+        )
+    )
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == ("reward_account", "points_ledger", "earning_rule", "redemption")
     assert boundary["declared_dependencies"]["shared_tables"] == ()
+    assert "promotion_projection" in boundary["declared_dependencies"]["api_projections"]
+    violated = loyalty_rewards_verify_owned_table_boundary(("customer_account",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("customer_account",)
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        loyalty_rewards_register_schema_extension(state, "customer_account", {"tier": "text"})
 
 
 def _configured_state() -> dict:

@@ -155,7 +155,10 @@ def loyalty_rewards_runtime_capabilities() -> dict:
             "adjust_points",
             "create_redemption",
             "expire_points",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -458,16 +461,137 @@ def loyalty_rewards_build_workbench_view(state: dict, *, tenant: str) -> dict:
     }
 
 
-def loyalty_rewards_verify_owned_table_boundary() -> dict:
-    return {"format": "appgen.loyalty-rewards-boundary.v1", "ok": True, "owned_tables": LOYALTY_REWARDS_OWNED_TABLES, "declared_dependencies": {"apis": ("POST /points", "POST /redemptions", "GET /reward-accounts"), "events": LOYALTY_REWARDS_CONSUMED_EVENT_TYPES, "shared_tables": ()}}
+def loyalty_rewards_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed_api_dependencies = {
+        "POST /reward-accounts",
+        "POST /points",
+        "POST /redemptions",
+        "GET /reward-accounts",
+        "payment_projection",
+        "promotion_projection",
+        "customer_segment_projection",
+    }
+    allowed_event_dependencies = set(LOYALTY_REWARDS_CONSUMED_EVENT_TYPES)
+    allowed_runtime_tables = {
+        "loyalty_rewards_appgen_outbox_event",
+        "loyalty_rewards_appgen_inbox_event",
+        "loyalty_rewards_dead_letter_event",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(LOYALTY_REWARDS_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("loyalty_rewards_")
+    )
+    return {
+        "format": "appgen.loyalty-rewards-boundary.v1",
+        "ok": not violations,
+        "owned_tables": LOYALTY_REWARDS_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("POST /reward-accounts", "POST /points", "POST /redemptions", "GET /reward-accounts"),
+            "events": LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
+            "api_projections": ("payment_projection", "promotion_projection", "customer_segment_projection"),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def loyalty_rewards_build_api_contract() -> dict:
-    return {"format": "appgen.loyalty-rewards-api-contract.v1", "ok": True, "routes": ("POST /points", "POST /redemptions", "GET /reward-accounts"), "shared_table_access": False, "event_contract": "AppGen-X"}
+    return {
+        "format": "appgen.loyalty-rewards-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {
+                "route": "POST /reward-accounts",
+                "command": "enroll_member",
+                "owned_tables": ("reward_account",),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.account.write",
+                "idempotency_key": "account_id",
+            },
+            {
+                "route": "POST /points",
+                "command": "issue_points",
+                "owned_tables": ("points_ledger", "reward_account"),
+                "emits": LOYALTY_REWARDS_EMITTED_EVENT_TYPES,
+                "requires_permission": "loyalty_rewards.points.write",
+                "idempotency_key": "ledger_id",
+            },
+            {
+                "route": "POST /points/adjustments",
+                "command": "adjust_points",
+                "owned_tables": ("points_ledger", "reward_account"),
+                "emits": LOYALTY_REWARDS_EMITTED_EVENT_TYPES,
+                "requires_permission": "loyalty_rewards.points.write",
+                "idempotency_key": "ledger_id",
+            },
+            {
+                "route": "POST /redemptions",
+                "command": "create_redemption",
+                "owned_tables": ("redemption", "points_ledger", "reward_account"),
+                "emits": ("RewardBalanceChanged",),
+                "requires_permission": "loyalty_rewards.redemption.write",
+                "idempotency_key": "redemption_id",
+            },
+            {
+                "route": "POST /loyalty-rewards/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
+                "requires_permission": "loyalty_rewards.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /reward-accounts",
+                "query": "build_workbench_view",
+                "owned_tables": LOYALTY_REWARDS_OWNED_TABLES,
+                "requires_permission": "loyalty_rewards.audit",
+            },
+        ),
+        "declared_catalog_routes": ("POST /points", "POST /redemptions", "GET /reward-accounts"),
+        "owned_tables": LOYALTY_REWARDS_OWNED_TABLES,
+        "emits": LOYALTY_REWARDS_EMITTED_EVENT_TYPES,
+        "consumes": LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
+        "database_backends": LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS,
+        "permissions": tuple(sorted(loyalty_rewards_permissions_contract()["permissions"])),
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+    }
 
 
 def loyalty_rewards_permissions_contract() -> dict:
-    return {"format": "appgen.loyalty-rewards-permissions.v1", "ok": True, "permissions": ("loyalty_rewards.account.write", "loyalty_rewards.points.write", "loyalty_rewards.redemption.write", "loyalty_rewards.event.consume", "loyalty_rewards.configure", "loyalty_rewards.audit")}
+    return {
+        "format": "appgen.loyalty-rewards-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "loyalty_rewards.account.write",
+            "loyalty_rewards.points.write",
+            "loyalty_rewards.redemption.write",
+            "loyalty_rewards.event.consume",
+            "loyalty_rewards.configure",
+            "loyalty_rewards.audit",
+        ),
+        "action_permissions": {
+            "enroll_member": "loyalty_rewards.account.write",
+            "issue_points": "loyalty_rewards.points.write",
+            "adjust_points": "loyalty_rewards.points.write",
+            "expire_points": "loyalty_rewards.points.write",
+            "create_redemption": "loyalty_rewards.redemption.write",
+            "receive_event": "loyalty_rewards.event.consume",
+            "register_earning_rule": "loyalty_rewards.configure",
+            "register_rule": "loyalty_rewards.configure",
+            "set_parameter": "loyalty_rewards.configure",
+            "configure_runtime": "loyalty_rewards.configure",
+            "build_workbench_view": "loyalty_rewards.audit",
+            "verify_owned_table_boundary": "loyalty_rewards.audit",
+        },
+    }
 
 
 def _post_ledger(state: dict, command: dict, entry_type: str) -> dict:
