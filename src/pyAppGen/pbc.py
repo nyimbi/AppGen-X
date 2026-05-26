@@ -660,6 +660,40 @@ PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "production_mlops_governance",
 )
+QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_quality_lifecycle",
+    "graph_relational_quality_topology",
+    "multi_tenant_quality_isolation",
+    "schema_evolution_resilient_quality_schema",
+    "probabilistic_defect_escape_compliance_scoring",
+    "real_time_spc_quality_analytics",
+    "counterfactual_sampling_release_simulation",
+    "temporal_defect_escape_forecasting",
+    "autonomous_quality_exception_resolution",
+    "semantic_inspection_instruction_parsing",
+    "predictive_quality_compliance_risk",
+    "self_healing_quality_route_selection",
+    "zero_knowledge_quality_compliance_proof",
+    "immutable_quality_audit_trail",
+    "dynamic_quality_policy_screening",
+    "automated_quality_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_quality_federation",
+    "production_inventory_supplier_integration",
+    "decentralized_lot_item_identity",
+    "chaos_engineered_quality_tolerance",
+    "quantum_resistant_quality_authorization",
+    "carbon_aware_inspection_scheduling",
+    "algebraic_inspection_allocation",
+    "mechanism_design_disposition_allocation",
+    "information_theoretic_defect_anomaly_detection",
+    "temporal_quality_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_quality_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "quality_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -678,6 +712,7 @@ IMPLEMENTED_PBC_KEYS = (
     "talent_onboarding",
     "mrp_engine",
     "production_control",
+    "quality_assurance",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2925,6 +2960,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = mrp_engine_runtime_capabilities()
     elif key == "production_control":
         advanced_runtime = production_control_runtime_capabilities()
+    elif key == "quality_assurance":
+        advanced_runtime = quality_assurance_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3218,6 +3255,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "talent_onboarding": len(TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS),
         "mrp_engine": len(MRP_ENGINE_ADVANCED_CAPABILITY_KEYS),
         "production_control": len(PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS),
+        "quality_assurance": len(QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4963,3 +5001,21 @@ from .pbcs.production_control import production_control_schedule_order  # noqa: 
 from .pbcs.production_control import production_control_set_parameter  # noqa: E402,F401
 from .pbcs.production_control import production_control_start_operation  # noqa: E402,F401
 from .pbcs.production_control import production_control_ui_contract  # noqa: E402,F401
+from .pbcs.quality_assurance import QUALITY_ASSURANCE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.quality_assurance import QUALITY_ASSURANCE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.quality_assurance import QUALITY_ASSURANCE_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_build_workbench_view  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_configure_runtime  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_create_inspection_plan  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_create_quality_hold  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_disposition_nonconformance  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_empty_state  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_raise_nonconformance  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_record_inspection_result  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_register_rule  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_release_quality_hold  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_render_workbench  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_runtime_capabilities  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_runtime_smoke  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_set_parameter  # noqa: E402,F401
+from .pbcs.quality_assurance import quality_assurance_ui_contract  # noqa: E402,F401
