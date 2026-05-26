@@ -25,6 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
+| 2026-05-26 | `pending` | Archived regenerated Python bytecode cache directories from the active source and test trees after the handler-source replay work. | Moved 96 active `__pycache__` directories from `src/` and `tests/` into `archive/repo-cleanup-2026-05-26-12/runtime-cache/`; verification regenerated cache directories, so follow-up payloads were moved into `runtime-cache-regenerated-after-verify/` and `runtime-cache-final-pass/`; tracked a cleanup manifest and ignored the generated payloads; the final archive move reported zero active `__pycache__` directories under `src` or `tests`. |
 | 2026-05-26 | `4ec6c3d` | Added executable handler-source round-trip replay for Object Inspector event handlers. The package and generated-app form designer now prove handler source generation, user-code region round trips, handler rename and component-reference propagation, cross-handler call-graph refresh, breakpoint remapping, and side-effect-free source replay as a release-gated Object Inspector check. | Py compile passed for `src/pyAppGen/form_designer.py`, `src/pyAppGen/gen.py`, and `tests/test_main.py`; direct source probe returned ok for `handler_source_round_trip_replay_contract("Customer")` and `object_inspector_workbench()` with `handler_source_round_trip_replay` in the check set; direct generated SQLite app probe compiled generated `form_designer.py` and returned ok for generated `handler_source_round_trip_replay_contract("Book")` and generated `object_inspector_workbench()`. A broad generated form-designer pytest node was attempted but produced no output and was not used as completion evidence. |
 | 2026-05-26 | `59bb076` | Archived tracked legacy scaffold and one-off shell artifacts from the active repository tree. | Reference scan found no active source, docs, tests, frontend, or CI references to the root scaffold metadata file or the two hard-coded operational scripts; files were moved under `archive/repo-cleanup-2026-05-26-11/` with a restore manifest. |
 | 2026-05-26 | `5408002` | Required component-family parity modules to expose operation-step and validation-step contracts before component parity readiness can pass. Source and generated family modules now prove family manifest loading, component replay, target renderer checks, event dispatch, runtime adapter checks, readiness publication, validation checks, component counts, and side-effect guards across every component family. | Py compile passed for `src/pyAppGen/form_designer.py`, `src/pyAppGen/gen.py`, and `tests/test_main.py` with bytecode writing disabled; source probes returned ok for `component_family_runtime_replay_matrix()`, `component_parity_readiness_contract()`, `component_usability_workbench()`, `platform_parity_lifecycle_replay_contract()`, and `rad_parity_workbench()`; a generated app probe compiled generated `form_designer.py` and `component_parity_runtime.py`, then returned ok for generated component-family runtime replay with operation and validation step coverage. Focused pytest nodes were attempted but did not complete, so verification used the narrower direct source and generated probes. |
@@ -1692,6 +1693,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`8 passed`), all package-local PBC tests pass (`322 passed`), and the full
   PBC audit stack including all built-in generation smoke and
   `pbc_release_audit()` returns true. Commit: `5a9f335`.
+- Current PBC event-contract execution pass regenerates every built-in PBC
+  `events.py` so each package exposes an executable AppGen-X event manifest,
+  event-contract validator, typed envelope builder, emitted/consumed dispatch
+  plans, retry/dead-letter/idempotency evidence, and a side-effect-free smoke
+  path. Source artifact gates now require the event contract runtime surface,
+  package-local tests prove emitted and consumed event planning for every PBC,
+  source/generated package evidence tests pass (`8 passed`), all package-local
+  PBC tests pass (`322 passed`), syntax checks pass for the shared generator,
+  audit, and event modules, and the full PBC audit stack including all built-in
+  generation smoke and `pbc_release_audit()` returns true. Commit: `5a1ff9d`.
 
 ## Open Completion Areas
 
