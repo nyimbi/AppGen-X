@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from .runtime import TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS
+from .runtime import TALENT_ONBOARDING_OWNED_TABLES
+from .runtime import TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC
+from .runtime import talent_onboarding_permissions_contract
+
 
 TALENT_ONBOARDING_UI_FRAGMENT_KEYS = (
     "TalentOnboardingWorkbench",
@@ -60,25 +65,14 @@ def talent_onboarding_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "create_job_requisition": "talent_onboarding.requisition",
-            "create_candidate": "talent_onboarding.candidate",
-            "advance_candidate_stage": "talent_onboarding.candidate",
-            "record_background_check": "talent_onboarding.candidate",
-            "extend_offer": "talent_onboarding.offer",
-            "accept_offer": "talent_onboarding.offer",
-            "create_onboarding_task": "talent_onboarding.onboard",
-            "complete_onboarding_task": "talent_onboarding.onboard",
-            "provision_employee": "talent_onboarding.onboard",
-            "register_rule": "talent_onboarding.configure",
-            "set_parameter": "talent_onboarding.configure",
-            "configure_runtime": "talent_onboarding.configure",
-            "run_control_tests": "talent_onboarding.audit",
-        },
+        "action_permissions": talent_onboarding_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -95,10 +89,12 @@ def talent_onboarding_ui_contract() -> dict:
         },
         "event_surfaces": {
             "emits": ("EmployeeProvisioned", "CandidateHired"),
-            "consumes": ("RoleChanged",),
+            "consumes": ("RoleChanged", "WorkerIdentityVerified"),
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": TALENT_ONBOARDING_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -142,4 +138,12 @@ def talent_onboarding_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": TALENT_ONBOARDING_OWNED_TABLES,
+            "outbox_table": "talent_onboarding_appgen_outbox_event",
+            "inbox_table": "talent_onboarding_appgen_inbox_event",
+            "dead_letter_table": "talent_onboarding_dead_letter_event",
+        },
     }

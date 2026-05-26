@@ -8,6 +8,50 @@ import math
 import re
 
 
+TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC = "appgen.talent.events"
+TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+TALENT_ONBOARDING_OWNED_TABLES = (
+    "job_requisition",
+    "candidate",
+    "candidate_consent",
+    "interview_plan",
+    "evaluation_evidence",
+    "background_check",
+    "offer",
+    "onboarding_task",
+    "talent_rule",
+    "talent_parameter",
+    "talent_configuration",
+)
+TALENT_ONBOARDING_CONSUMED_EVENT_TYPES = ("RoleChanged", "WorkerIdentityVerified")
+TALENT_ONBOARDING_EMITTED_EVENT_TYPES = ("EmployeeProvisioned", "CandidateHired")
+_TALENT_ONBOARDING_RUNTIME_TABLES = (
+    "talent_onboarding_appgen_outbox_event",
+    "talent_onboarding_appgen_inbox_event",
+    "talent_onboarding_dead_letter_event",
+)
+_TALENT_ONBOARDING_ALLOWED_DEPENDENCIES = (
+    "personnel_identity_projection",
+    "access_preload_request",
+    "notification_welcome_sequence",
+    "payroll_worker_projection",
+    "role_projection",
+    "audit_ledger_projection",
+    "GET /roles",
+    "GET /identity-proofs",
+    "POST /access-preloads",
+    "POST /notifications",
+)
+_TALENT_ONBOARDING_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
 TALENT_ONBOARDING_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_talent_lifecycle",
     "graph_relational_hiring_topology",
@@ -78,12 +122,15 @@ def talent_onboarding_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "talent_onboarding",
         "implementation_directory": "src/pyAppGen/pbcs/talent_onboarding",
+        "owned_tables": TALENT_ONBOARDING_OWNED_TABLES,
         "capabilities": TALENT_ONBOARDING_RUNTIME_CAPABILITY_KEYS,
         "standard_features": TALENT_ONBOARDING_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "create_job_requisition",
             "create_candidate",
             "advance_candidate_stage",
@@ -93,7 +140,10 @@ def talent_onboarding_runtime_capabilities() -> dict:
             "create_onboarding_task",
             "complete_onboarding_task",
             "provision_employee",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -105,7 +155,7 @@ def talent_onboarding_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.talent.events",
+            "event_topic": TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_countries": ("US", "CA"),
             "allowed_candidate_sources": ("referral", "career_site", "agency"),
@@ -242,20 +292,26 @@ def talent_onboarding_runtime_smoke() -> dict:
 
 
 def talent_onboarding_empty_state() -> dict:
-    return {"events": (), "outbox": (), "requisitions": {}, "candidates": {}, "checks": {}, "offers": {}, "tasks": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {"events": (), "outbox": (), "inbox": (), "dead_letter": (), "handled_events": {}, "retry_evidence": (), "role_projections": {}, "identity_projections": {}, "requisitions": {}, "candidates": {}, "checks": {}, "offers": {}, "tasks": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
 
 
 def talent_onboarding_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    forbidden = tuple(sorted(field for field in _TALENT_ONBOARDING_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Talent Onboarding uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    allowed_databases = set(TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS)
     if configuration.get("database_backend") not in allowed_databases:
         raise ValueError("Talent Onboarding supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Talent Onboarding requires an AppGen-X event topic")
+    if configuration.get("event_topic") != TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Talent Onboarding requires AppGen-X event topic {TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": TALENT_ONBOARDING_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -291,10 +347,41 @@ def talent_onboarding_register_rule(state: dict, rule: dict) -> dict:
 
 
 def talent_onboarding_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in TALENT_ONBOARDING_OWNED_TABLES:
+        raise ValueError(f"Talent Onboarding schema extensions must target owned tables: {TALENT_ONBOARDING_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    extensions = {**state["schema_extensions"], table: {**state["schema_extensions"].get(table, {}), **dict(fields)}}
+    return {"ok": True, "state": {**state, "schema_extensions": extensions}, "schema_extension": {"table": table, "fields": dict(fields)}}
+
+
+def talent_onboarding_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    if key in state["handled_events"] and state["handled_events"][key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
+    attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {"event_id": event_id, "event_type": event_type, "tenant": payload.get("tenant"), "attempts": attempts, "idempotency_key": key}
+    next_state = {**state, "inbox": (*state["inbox"], inbox_entry)}
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in TALENT_ONBOARDING_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}, "retry_evidence": (*next_state["retry_evidence"], evidence)}
+        if status == "dead_letter":
+            next_state = {**next_state, "dead_letter": (*next_state["dead_letter"], {**inbox_entry, "reason": "unsupported_or_failed_talent_event"})}
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "RoleChanged":
+        next_state = {**next_state, "role_projections": {**next_state["role_projections"], payload["role_id"]: payload}}
+    elif event_type == "WorkerIdentityVerified":
+        next_state = {**next_state, "identity_projections": {**next_state["identity_projections"], payload["subject_id"]: payload}}
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}}
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def talent_onboarding_create_job_requisition(state: dict, requisition: dict) -> dict:
@@ -445,7 +532,80 @@ def talent_onboarding_run_control_tests(state: dict) -> dict:
 
 
 def talent_onboarding_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /candidates", "POST /offers", "POST /onboarding", "POST /talent-rules", "POST /talent-parameters", "POST /talent-configuration"), "events": {"emits": ("EmployeeProvisioned", "CandidateHired"), "consumes": ("RoleChanged",)}, "permissions": ("talent_onboarding.read", "talent_onboarding.requisition", "talent_onboarding.candidate", "talent_onboarding.offer", "talent_onboarding.onboard", "talent_onboarding.configure", "talent_onboarding.audit"), "configuration": ("TALENT_ONBOARDING_DATABASE_URL", "TALENT_ONBOARDING_EVENT_TOPIC", "TALENT_ONBOARDING_RETRY_LIMIT", "TALENT_ONBOARDING_DEFAULT_TIMEZONE")}
+    return {
+        "format": "appgen.talent-onboarding-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {"route": "POST /job-requisitions", "command": "create_job_requisition", "owned_tables": ("job_requisition",), "emits": (), "requires_permission": "talent_onboarding.requisition", "idempotency_key": "requisition_id"},
+            {"route": "POST /candidates", "command": "create_candidate", "owned_tables": ("candidate", "candidate_consent"), "emits": (), "requires_permission": "talent_onboarding.candidate", "idempotency_key": "candidate_id"},
+            {"route": "POST /candidates/{id}/stage", "command": "advance_candidate_stage", "owned_tables": ("candidate",), "emits": (), "requires_permission": "talent_onboarding.candidate", "idempotency_key": "candidate_id:stage"},
+            {"route": "POST /background-checks", "command": "record_background_check", "owned_tables": ("background_check",), "emits": (), "requires_permission": "talent_onboarding.candidate", "idempotency_key": "check_id"},
+            {"route": "POST /offers", "command": "extend_offer", "owned_tables": ("offer", "candidate"), "emits": (), "requires_permission": "talent_onboarding.offer", "idempotency_key": "offer_id"},
+            {"route": "POST /onboarding/tasks", "command": "create_onboarding_task", "owned_tables": ("onboarding_task",), "emits": (), "requires_permission": "talent_onboarding.onboard", "idempotency_key": "task_id"},
+            {"route": "POST /onboarding/provision", "command": "provision_employee", "owned_tables": ("candidate", "onboarding_task"), "emits": TALENT_ONBOARDING_EMITTED_EVENT_TYPES, "requires_permission": "talent_onboarding.onboard", "idempotency_key": "candidate_id:provisioned_by"},
+            {"route": "POST /talent/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": TALENT_ONBOARDING_CONSUMED_EVENT_TYPES, "requires_permission": "talent_onboarding.event", "idempotency_key": "event_id"},
+            {"route": "GET /talent-workbench", "query": "build_workbench_view", "owned_tables": TALENT_ONBOARDING_OWNED_TABLES, "requires_permission": "talent_onboarding.audit"},
+        ),
+        "declared_catalog_routes": ("POST /candidates", "POST /offers", "POST /onboarding", "POST /talent-rules", "POST /talent-parameters", "POST /talent-configuration"),
+        "events": {"emits": TALENT_ONBOARDING_EMITTED_EVENT_TYPES, "consumes": TALENT_ONBOARDING_CONSUMED_EVENT_TYPES},
+        "emits": TALENT_ONBOARDING_EMITTED_EVENT_TYPES,
+        "consumes": TALENT_ONBOARDING_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(talent_onboarding_permissions_contract()["permissions"])),
+        "database_backends": TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": TALENT_ONBOARDING_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("TALENT_ONBOARDING_DATABASE_URL", "TALENT_ONBOARDING_EVENT_TOPIC", "TALENT_ONBOARDING_RETRY_LIMIT", "TALENT_ONBOARDING_DEFAULT_TIMEZONE"),
+    }
+
+
+def talent_onboarding_permissions_contract() -> dict:
+    return {
+        "format": "appgen.talent-onboarding-permissions.v1",
+        "ok": True,
+        "permissions": ("talent_onboarding.read", "talent_onboarding.requisition", "talent_onboarding.candidate", "talent_onboarding.offer", "talent_onboarding.onboard", "talent_onboarding.event", "talent_onboarding.configure", "talent_onboarding.audit"),
+        "action_permissions": {
+            "create_job_requisition": "talent_onboarding.requisition",
+            "create_candidate": "talent_onboarding.candidate",
+            "advance_candidate_stage": "talent_onboarding.candidate",
+            "record_background_check": "talent_onboarding.candidate",
+            "extend_offer": "talent_onboarding.offer",
+            "accept_offer": "talent_onboarding.offer",
+            "create_onboarding_task": "talent_onboarding.onboard",
+            "complete_onboarding_task": "talent_onboarding.onboard",
+            "provision_employee": "talent_onboarding.onboard",
+            "receive_event": "talent_onboarding.event",
+            "register_rule": "talent_onboarding.configure",
+            "register_schema_extension": "talent_onboarding.configure",
+            "set_parameter": "talent_onboarding.configure",
+            "configure_runtime": "talent_onboarding.configure",
+            "build_workbench_view": "talent_onboarding.audit",
+        },
+    }
+
+
+def talent_onboarding_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*TALENT_ONBOARDING_OWNED_TABLES, *TALENT_ONBOARDING_CONSUMED_EVENT_TYPES, *_TALENT_ONBOARDING_RUNTIME_TABLES, *_TALENT_ONBOARDING_ALLOWED_DEPENDENCIES)
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(allowed)
+        and not str(reference).startswith("talent_onboarding_")
+    )
+    return {
+        "format": "appgen.talent-onboarding-boundary.v1",
+        "ok": not violations,
+        "owned_tables": TALENT_ONBOARDING_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /roles", "GET /identity-proofs", "POST /access-preloads", "POST /notifications"),
+            "events": TALENT_ONBOARDING_CONSUMED_EVENT_TYPES,
+            "api_projections": ("personnel_identity_projection", "access_preload_request", "notification_welcome_sequence", "payroll_worker_projection", "role_projection", "audit_ledger_projection"),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def talent_onboarding_federate_talent_view(state: dict, candidate_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -519,6 +679,20 @@ def talent_onboarding_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": TALENT_ONBOARDING_OWNED_TABLES,
+            "outbox_table": "talent_onboarding_appgen_outbox_event",
+            "inbox_table": "talent_onboarding_appgen_inbox_event",
+            "dead_letter_table": "talent_onboarding_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+        },
     }
 
 

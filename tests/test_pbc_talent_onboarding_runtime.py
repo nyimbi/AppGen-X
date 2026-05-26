@@ -1,11 +1,17 @@
 import pytest
 
 from pyAppGen.pbc import TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS
+from pyAppGen.pbc import TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbc import TALENT_ONBOARDING_CONSUMED_EVENT_TYPES
+from pyAppGen.pbc import TALENT_ONBOARDING_EMITTED_EVENT_TYPES
+from pyAppGen.pbc import TALENT_ONBOARDING_OWNED_TABLES
+from pyAppGen.pbc import TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbc import talent_onboarding_accept_offer
 from pyAppGen.pbc import talent_onboarding_advance_candidate_stage
+from pyAppGen.pbc import talent_onboarding_build_api_contract
 from pyAppGen.pbc import talent_onboarding_build_workbench_view
 from pyAppGen.pbc import talent_onboarding_complete_onboarding_task
 from pyAppGen.pbc import talent_onboarding_configure_runtime
@@ -15,13 +21,17 @@ from pyAppGen.pbc import talent_onboarding_create_onboarding_task
 from pyAppGen.pbc import talent_onboarding_empty_state
 from pyAppGen.pbc import talent_onboarding_extend_offer
 from pyAppGen.pbc import talent_onboarding_provision_employee
+from pyAppGen.pbc import talent_onboarding_permissions_contract
+from pyAppGen.pbc import talent_onboarding_receive_event
 from pyAppGen.pbc import talent_onboarding_record_background_check
 from pyAppGen.pbc import talent_onboarding_register_rule
+from pyAppGen.pbc import talent_onboarding_register_schema_extension
 from pyAppGen.pbc import talent_onboarding_render_workbench
 from pyAppGen.pbc import talent_onboarding_runtime_capabilities
 from pyAppGen.pbc import talent_onboarding_runtime_smoke
 from pyAppGen.pbc import talent_onboarding_set_parameter
 from pyAppGen.pbc import talent_onboarding_ui_contract
+from pyAppGen.pbc import talent_onboarding_verify_owned_table_boundary
 
 
 def test_talent_onboarding_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -31,6 +41,7 @@ def test_talent_onboarding_runtime_executes_standard_and_advanced_capabilities()
     assert runtime["format"] == "appgen.talent-onboarding-runtime-capabilities.v1"
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/talent_onboarding"
+    assert runtime["owned_tables"] == TALENT_ONBOARDING_OWNED_TABLES
     assert len(runtime["standard_features"]) >= 24
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
@@ -43,11 +54,28 @@ def test_talent_onboarding_runtime_executes_standard_and_advanced_capabilities()
     contract = pbc_implementation_contract("talent_onboarding")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["owned_tables"] == TALENT_ONBOARDING_OWNED_TABLES
+    assert contract["source_package"]["allowed_database_backends"] == TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "talent_onboarding.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "TalentConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("talent_onboarding",))["ok"] is True
     assert pbc_implemented_capability_audit(("talent_onboarding",))["ok"] is True
+
+    api = talent_onboarding_build_api_contract()
+    permissions = talent_onboarding_permissions_contract()
+    assert api["format"] == "appgen.talent-onboarding-api-contract.v1"
+    assert api["owned_tables"] == TALENT_ONBOARDING_OWNED_TABLES
+    assert api["database_backends"] == TALENT_ONBOARDING_ALLOWED_DATABASE_BACKENDS
+    assert api["emits"] == TALENT_ONBOARDING_EMITTED_EVENT_TYPES
+    assert api["consumes"] == TALENT_ONBOARDING_CONSUMED_EVENT_TYPES
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False
+    assert {route["route"] for route in api["routes"]} >= {"POST /candidates", "POST /talent/events/inbox", "GET /talent-workbench"}
+    assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert permissions["action_permissions"]["provision_employee"] == "talent_onboarding.onboard"
 
 
 def test_talent_onboarding_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -56,7 +84,7 @@ def test_talent_onboarding_runtime_applies_rules_parameters_configuration_and_ui
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.talent.events",
+            "event_topic": TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_countries": ("US",),
             "allowed_candidate_sources": ("referral", "career_site"),
@@ -86,6 +114,21 @@ def test_talent_onboarding_runtime_applies_rules_parameters_configuration_and_ui
             "status": "active",
         },
     )["state"]
+    extension = talent_onboarding_register_schema_extension(state, "candidate", {"portfolio_payload": "jsonb", "screening_features": "jsonb"})
+    state = extension["state"]
+    assert extension["ok"] is True
+    assert state["schema_extensions"]["candidate"]["screening_features"] == "jsonb"
+    role_event = talent_onboarding_receive_event(
+        state,
+        {"event_id": "evt_role_ops", "event_type": "RoleChanged", "payload": {"tenant": "tenant_ops", "role_id": "role_ops", "title": "Operations Analyst"}},
+    )
+    state = role_event["state"]
+    assert role_event["handler"]["status"] == "processed"
+    duplicate = talent_onboarding_receive_event(
+        state,
+        {"event_id": "evt_role_ops", "event_type": "RoleChanged", "payload": {"tenant": "tenant_ops", "role_id": "role_ops", "title": "Operations Analyst"}},
+    )
+    assert duplicate["duplicate"] is True
     requisition = talent_onboarding_create_job_requisition(
         state,
         {
@@ -158,9 +201,15 @@ def test_talent_onboarding_runtime_applies_rules_parameters_configuration_and_ui
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 5
+    assert workbench["inbox_count"] == 1
+    assert workbench["binding_evidence"]["owned_tables"] == TALENT_ONBOARDING_OWNED_TABLES
+    assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
 
     ui_contract = talent_onboarding_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["required_event_topic"] == TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC
+    assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
+    assert ui_contract["binding_evidence"]["owned_tables"] == TALENT_ONBOARDING_OWNED_TABLES
     assert "minimum_match_score" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     rendered = talent_onboarding_render_workbench(
@@ -171,6 +220,7 @@ def test_talent_onboarding_runtime_applies_rules_parameters_configuration_and_ui
             "talent_onboarding.candidate",
             "talent_onboarding.offer",
             "talent_onboarding.onboard",
+            "talent_onboarding.event",
             "talent_onboarding.configure",
             "talent_onboarding.audit",
         ),
@@ -178,8 +228,19 @@ def test_talent_onboarding_runtime_applies_rules_parameters_configuration_and_ui
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert rendered["event_outbox_count"] == 10
+    assert rendered["inbox_count"] == 1
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+    assert rendered["binding_evidence"]["owned_tables"] == TALENT_ONBOARDING_OWNED_TABLES
+
+    boundary = talent_onboarding_verify_owned_table_boundary(
+        ("candidate", "RoleChanged", "role_projection", "POST /notifications", "talent_onboarding_appgen_outbox_event")
+    )
+    assert boundary["ok"] is True
+    assert boundary["declared_dependencies"]["shared_tables"] == ()
+    violation = talent_onboarding_verify_owned_table_boundary(("personnel_identity",))
+    assert violation["ok"] is False
+    assert violation["violations"] == ("personnel_identity",)
 
 
 def test_talent_onboarding_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
@@ -190,11 +251,54 @@ def test_talent_onboarding_rejects_unsupported_database_backends_and_unknown_par
             state,
             {
                 "database_backend": "stream_store",
-                "event_topic": "appgen.talent.events",
+                "event_topic": TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC,
                 "retry_limit": 3,
                 "default_timezone": "UTC",
             },
         )
 
+    with pytest.raises(ValueError, match="unsupported eventing fields"):
+        talent_onboarding_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC,
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+                "stream_engine": "hidden_picker",
+            },
+        )
+
     with pytest.raises(ValueError, match="Unsupported Talent Onboarding parameter"):
         talent_onboarding_set_parameter(state, "stream_engine", "hidden_picker")
+
+    with pytest.raises(ValueError, match="schema extensions must target owned tables"):
+        talent_onboarding_register_schema_extension(state, "personnel_identity", {"candidate_ref": "jsonb"})
+
+    configured = talent_onboarding_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": TALENT_ONBOARDING_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 2,
+            "allowed_countries": ("US",),
+            "allowed_candidate_sources": ("referral",),
+            "allowed_check_providers": ("trusted_screen",),
+            "allowed_task_types": ("identity",),
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    retrying = talent_onboarding_receive_event(
+        configured,
+        {"event_id": "evt_bad", "event_type": "UnsupportedEvent", "payload": {"tenant": "tenant_ops"}},
+        simulate_failure=True,
+    )
+    dead_letter = talent_onboarding_receive_event(
+        retrying["state"],
+        {"event_id": "evt_bad", "event_type": "UnsupportedEvent", "payload": {"tenant": "tenant_ops"}},
+        simulate_failure=True,
+    )
+    assert retrying["handler"]["status"] == "retrying"
+    assert dead_letter["handler"]["status"] == "dead_letter"
+    assert len(dead_letter["state"]["dead_letter"]) == 1
