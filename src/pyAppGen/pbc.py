@@ -5769,6 +5769,7 @@ from .pbcs.lead_opportunity import lead_opportunity_qualify_lead  # noqa: E402,F
 from .pbcs.lead_opportunity import lead_opportunity_receive_event  # noqa: E402,F401
 from .pbcs.lead_opportunity import lead_opportunity_record_sales_activity  # noqa: E402,F401
 from .pbcs.lead_opportunity import lead_opportunity_register_rule  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_register_schema_extension  # noqa: E402,F401
 from .pbcs.lead_opportunity import lead_opportunity_render_workbench  # noqa: E402,F401
 from .pbcs.lead_opportunity import lead_opportunity_runtime_capabilities  # noqa: E402,F401
 from .pbcs.lead_opportunity import lead_opportunity_runtime_smoke  # noqa: E402,F401

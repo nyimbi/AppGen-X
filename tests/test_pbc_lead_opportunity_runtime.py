@@ -1,16 +1,19 @@
 import pytest
 
 from pyAppGen.pbc import lead_opportunity_advance_opportunity
+from pyAppGen.pbc import lead_opportunity_build_api_contract
 from pyAppGen.pbc import lead_opportunity_build_workbench_view
 from pyAppGen.pbc import lead_opportunity_configure_runtime
 from pyAppGen.pbc import lead_opportunity_create_account_hierarchy
 from pyAppGen.pbc import lead_opportunity_create_lead
 from pyAppGen.pbc import lead_opportunity_create_opportunity
 from pyAppGen.pbc import lead_opportunity_empty_state
+from pyAppGen.pbc import lead_opportunity_permissions_contract
 from pyAppGen.pbc import lead_opportunity_qualify_lead
 from pyAppGen.pbc import lead_opportunity_receive_event
 from pyAppGen.pbc import lead_opportunity_record_sales_activity
 from pyAppGen.pbc import lead_opportunity_register_rule
+from pyAppGen.pbc import lead_opportunity_register_schema_extension
 from pyAppGen.pbc import lead_opportunity_render_workbench
 from pyAppGen.pbc import lead_opportunity_runtime_capabilities
 from pyAppGen.pbc import lead_opportunity_runtime_smoke
@@ -44,6 +47,11 @@ def test_lead_opportunity_runtime_executes_standard_and_advanced_capabilities() 
     contract = pbc_implementation_contract("lead_opportunity")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["api_contract"]["ok"] is True
+    assert (
+        contract["source_package"]["permissions_contract"]["action_permissions"]["win_opportunity"]
+        == "lead_opportunity.opportunity.write"
+    )
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "RevenueConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert pbc_implementation_release_audit(("lead_opportunity",))["ok"] is True
@@ -51,6 +59,11 @@ def test_lead_opportunity_runtime_executes_standard_and_advanced_capabilities() 
 
 def test_lead_opportunity_runtime_applies_rules_parameters_configuration_events_and_ui() -> None:
     state = _configured_state()
+    extension = lead_opportunity_register_schema_extension(
+        state, "opportunity", {"mutual_action_plan": "jsonb"}
+    )
+    state = extension["state"]
+    assert extension["extension"]["version"] == 1
     state = lead_opportunity_receive_event(
         state,
         {"event_id": "segment_ops", "event_type": "CustomerSegmentUpdated", "payload": {"tenant": "tenant_ops", "customer_id": "cust_ops", "segment": "enterprise", "fit_score": 0.9}},
@@ -119,6 +132,24 @@ def test_lead_opportunity_runtime_applies_rules_parameters_configuration_events_
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == LEAD_OPPORTUNITY_OWNED_TABLES
 
+    api_contract = lead_opportunity_build_api_contract()
+    assert api_contract["database_backends"] == LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS
+    assert api_contract["event_contract"] == "AppGen-X"
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["shared_table_access"] is False
+    assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
+        "create_account_hierarchy",
+        "create_lead",
+        "qualify_lead",
+        "create_opportunity",
+        "record_sales_activity",
+        "advance_opportunity",
+        "win_opportunity",
+        "receive_event",
+    }
+    permissions = lead_opportunity_permissions_contract()
+    assert permissions["action_permissions"]["verify_owned_table_boundary"] == "lead_opportunity.audit"
+
 
 def test_lead_opportunity_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
     state = lead_opportunity_empty_state()
@@ -152,10 +183,26 @@ def test_lead_opportunity_rejects_invalid_inputs_and_proves_boundary_and_dead_le
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
-    boundary = lead_opportunity_verify_owned_table_boundary()
+    boundary = lead_opportunity_verify_owned_table_boundary(
+        (
+            "lead",
+            "opportunity",
+            "account_hierarchy",
+            "sales_activity",
+            "CustomerSegmentUpdated",
+            "customer_segment_projection",
+            "lead_opportunity_appgen_outbox_event",
+        )
+    )
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == ("lead", "opportunity", "account_hierarchy", "sales_activity")
     assert boundary["declared_dependencies"]["shared_tables"] == ()
+    assert "customer_segment_projection" in boundary["declared_dependencies"]["api_projections"]
+    violated = lead_opportunity_verify_owned_table_boundary(("customer",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("customer",)
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        lead_opportunity_register_schema_extension(state, "customer", {"email": "text"})
 
 
 def _configured_state() -> dict:

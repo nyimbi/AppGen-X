@@ -18,6 +18,7 @@ from .runtime import lead_opportunity_qualify_lead
 from .runtime import lead_opportunity_receive_event
 from .runtime import lead_opportunity_record_sales_activity
 from .runtime import lead_opportunity_register_rule
+from .runtime import lead_opportunity_register_schema_extension
 from .runtime import lead_opportunity_runtime_capabilities
 from .runtime import lead_opportunity_runtime_smoke
 from .runtime import lead_opportunity_set_parameter

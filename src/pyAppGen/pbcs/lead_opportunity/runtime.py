@@ -144,6 +144,7 @@ def lead_opportunity_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "receive_event",
             "create_account_hierarchy",
             "create_lead",
@@ -152,7 +153,10 @@ def lead_opportunity_runtime_capabilities() -> dict:
             "record_sales_activity",
             "advance_opportunity",
             "win_opportunity",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -557,16 +561,62 @@ def lead_opportunity_build_workbench_view(state: dict, *, tenant: str) -> dict:
     }
 
 
-def lead_opportunity_verify_owned_table_boundary() -> dict:
+def lead_opportunity_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "POST /accounts",
+        "POST /leads",
+        "POST /opportunities",
+        "POST /sales-activities",
+        "POST /opportunity-stage",
+        "POST /opportunity-wins",
+        "GET /pipeline",
+        "customer_segment_projection",
+        "customer_projection",
+        "billing_projection",
+        "territory_projection",
+    }
+    allowed_event_dependencies = set(LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES)
+    allowed_runtime_tables = {
+        "lead_opportunity_appgen_outbox_event",
+        "lead_opportunity_appgen_inbox_event",
+        "lead_opportunity_dead_letter_event",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(LEAD_OPPORTUNITY_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("lead_opportunity_")
+    )
     return {
         "format": "appgen.lead-opportunity-boundary.v1",
-        "ok": True,
+        "ok": not violations,
         "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
         "declared_dependencies": {
-            "apis": ("POST /leads", "POST /opportunities", "GET /pipeline"),
+            "apis": (
+                "POST /accounts",
+                "POST /leads",
+                "POST /opportunities",
+                "POST /sales-activities",
+                "POST /opportunity-stage",
+                "POST /opportunity-wins",
+                "GET /pipeline",
+            ),
             "events": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "customer_segment_projection",
+                "customer_projection",
+                "billing_projection",
+                "territory_projection",
+            ),
             "shared_tables": (),
         },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -574,9 +624,87 @@ def lead_opportunity_build_api_contract() -> dict:
     return {
         "format": "appgen.lead-opportunity-api-contract.v1",
         "ok": True,
-        "routes": ("POST /leads", "POST /opportunities", "GET /pipeline"),
+        "routes": (
+            {
+                "route": "POST /accounts",
+                "command": "create_account_hierarchy",
+                "owned_tables": ("account_hierarchy",),
+                "emits": (),
+                "requires_permission": "lead_opportunity.lead.write",
+                "idempotency_key": "account_id",
+            },
+            {
+                "route": "POST /leads",
+                "command": "create_lead",
+                "owned_tables": ("lead",),
+                "emits": (),
+                "requires_permission": "lead_opportunity.lead.write",
+                "idempotency_key": "lead_id",
+            },
+            {
+                "route": "POST /lead-qualifications",
+                "command": "qualify_lead",
+                "owned_tables": ("lead",),
+                "emits": ("LeadQualified",),
+                "requires_permission": "lead_opportunity.lead.write",
+                "idempotency_key": "lead_id",
+            },
+            {
+                "route": "POST /opportunities",
+                "command": "create_opportunity",
+                "owned_tables": ("opportunity",),
+                "emits": (),
+                "requires_permission": "lead_opportunity.opportunity.write",
+                "idempotency_key": "opportunity_id",
+            },
+            {
+                "route": "POST /sales-activities",
+                "command": "record_sales_activity",
+                "owned_tables": ("sales_activity",),
+                "emits": (),
+                "requires_permission": "lead_opportunity.activity.write",
+                "idempotency_key": "activity_id",
+            },
+            {
+                "route": "POST /opportunity-stage",
+                "command": "advance_opportunity",
+                "owned_tables": ("opportunity",),
+                "emits": (),
+                "requires_permission": "lead_opportunity.opportunity.write",
+                "idempotency_key": "opportunity_id:stage",
+            },
+            {
+                "route": "POST /opportunity-wins",
+                "command": "win_opportunity",
+                "owned_tables": ("opportunity",),
+                "emits": ("OpportunityWon", "CustomerUpdated"),
+                "requires_permission": "lead_opportunity.opportunity.write",
+                "idempotency_key": "opportunity_id",
+            },
+            {
+                "route": "POST /lead-opportunity/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES,
+                "requires_permission": "lead_opportunity.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /pipeline",
+                "query": "build_workbench_view",
+                "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+                "requires_permission": "lead_opportunity.audit",
+            },
+        ),
+        "declared_catalog_routes": ("POST /leads", "POST /opportunities", "GET /pipeline"),
+        "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
+        "emits": LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES,
+        "consumes": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES,
+        "database_backends": LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS,
+        "permissions": tuple(sorted(lead_opportunity_permissions_contract()["permissions"])),
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
     }
 
 
@@ -592,6 +720,22 @@ def lead_opportunity_permissions_contract() -> dict:
             "lead_opportunity.configure",
             "lead_opportunity.audit",
         ),
+        "action_permissions": {
+            "create_account_hierarchy": "lead_opportunity.lead.write",
+            "create_lead": "lead_opportunity.lead.write",
+            "qualify_lead": "lead_opportunity.lead.write",
+            "create_opportunity": "lead_opportunity.opportunity.write",
+            "advance_opportunity": "lead_opportunity.opportunity.write",
+            "win_opportunity": "lead_opportunity.opportunity.write",
+            "record_sales_activity": "lead_opportunity.activity.write",
+            "receive_event": "lead_opportunity.event.consume",
+            "register_rule": "lead_opportunity.configure",
+            "register_schema_extension": "lead_opportunity.configure",
+            "set_parameter": "lead_opportunity.configure",
+            "configure_runtime": "lead_opportunity.configure",
+            "build_workbench_view": "lead_opportunity.audit",
+            "verify_owned_table_boundary": "lead_opportunity.audit",
+        },
     }
 
 
