@@ -124,5 +124,11 @@ access-risk review.
 
 The runtime must prove that rules, parameters, and configuration execute and
 influence employee and role decisions; that personnel identity state stays
-inside the package boundary; that AppGen-X outbox events are idempotent; and
-that all standard and advanced capability claims have testable release evidence.
+inside the package boundary; that AppGen-X outbox events are idempotent; that
+backend configuration rejects anything outside PostgreSQL, MySQL, or MariaDB;
+that eventing remains bound to the AppGen-X event contract without user-facing
+stream-engine selection; that package-local UI fragments expose department,
+employee, lifecycle, manager hierarchy, org chart, role, identity attribute,
+segregation-of-duties, assurance, provisioning, privacy, directory search,
+approval, rule, parameter, and configuration workbench surfaces; and that all
+standard and advanced capability claims have testable release evidence.

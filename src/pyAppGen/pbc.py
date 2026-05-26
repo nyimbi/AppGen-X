@@ -5287,6 +5287,7 @@ from .pbcs.dom import dom_upsert_customer_projection  # noqa: E402,F401
 from .pbcs.dom import dom_verify_order  # noqa: E402,F401
 from .pbcs.personnel_identity import PERSONNEL_IDENTITY_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.personnel_identity import PERSONNEL_IDENTITY_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.personnel_identity import PERSONNEL_IDENTITY_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_assign_role  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_build_org_chart  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_build_workbench_view  # noqa: E402,F401
@@ -5295,10 +5296,12 @@ from .pbcs.personnel_identity import personnel_identity_create_employee  # noqa:
 from .pbcs.personnel_identity import personnel_identity_empty_state  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_register_department  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_register_rule  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_render_workbench  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_runtime_capabilities  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_runtime_smoke  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_set_parameter  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_transition_employee_status  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_ui_contract  # noqa: E402,F401
 from .pbcs.personnel_identity import personnel_identity_upsert_identity_attribute  # noqa: E402,F401
 from .pbcs.time_labor import TIME_LABOR_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.time_labor import TIME_LABOR_STANDARD_FEATURE_KEYS  # noqa: E402,F401

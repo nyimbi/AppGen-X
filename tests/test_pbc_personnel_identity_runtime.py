@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import PERSONNEL_IDENTITY_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
@@ -10,10 +12,12 @@ from pyAppGen.pbc import personnel_identity_create_employee
 from pyAppGen.pbc import personnel_identity_empty_state
 from pyAppGen.pbc import personnel_identity_register_department
 from pyAppGen.pbc import personnel_identity_register_rule
+from pyAppGen.pbc import personnel_identity_render_workbench
 from pyAppGen.pbc import personnel_identity_runtime_capabilities
 from pyAppGen.pbc import personnel_identity_runtime_smoke
 from pyAppGen.pbc import personnel_identity_set_parameter
 from pyAppGen.pbc import personnel_identity_transition_employee_status
+from pyAppGen.pbc import personnel_identity_ui_contract
 from pyAppGen.pbc import personnel_identity_upsert_identity_attribute
 
 
@@ -35,6 +39,8 @@ def test_personnel_identity_runtime_executes_standard_and_advanced_capabilities(
     contract = pbc_implementation_contract("personnel_identity")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert "PersonnelConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(PERSONNEL_IDENTITY_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("personnel_identity",))["ok"] is True
     assert pbc_implemented_capability_audit(("personnel_identity",))["ok"] is True
@@ -124,3 +130,47 @@ def test_personnel_identity_runtime_applies_rules_parameters_and_configuration()
     assert workbench["active_employee_count"] == 1
     assert workbench["role_assignment_count"] == 1
     assert workbench["attribute_count"] == 2
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 3
+
+    ui_contract = personnel_identity_ui_contract()
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert "max_roles_per_worker" in ui_contract["parameter_editor"]["numeric_parameters"]
+    assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    rendered = personnel_identity_render_workbench(
+        state,
+        tenant="tenant_ops",
+        principal_permissions=(
+            "personnel_identity.create",
+            "personnel_identity.update",
+            "personnel_identity.role",
+            "personnel_identity.attribute",
+            "personnel_identity.review",
+            "personnel_identity.audit",
+            "personnel_identity.configure",
+        ),
+    )
+    assert rendered["ok"] is True
+    assert rendered["configuration_bound"] is True
+    assert rendered["event_outbox_count"] == 6
+    assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
+    assert not rendered["locked_actions"]
+
+
+def test_personnel_identity_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = personnel_identity_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        personnel_identity_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.people.events",
+                "retry_limit": 3,
+                "default_country": "US",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Personnel Identity parameter"):
+        personnel_identity_set_parameter(state, "stream_engine", "hidden_picker")

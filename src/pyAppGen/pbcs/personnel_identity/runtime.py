@@ -246,16 +246,47 @@ def personnel_identity_empty_state() -> dict:
 
 
 def personnel_identity_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Personnel Identity supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Personnel Identity requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def personnel_identity_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "max_roles_per_worker",
+        "access_risk_threshold",
+        "manager_span_limit",
+        "identity_assurance_threshold",
+        "stale_attribute_age_days",
+        "review_cadence_days",
+        "lifecycle_grace_days",
+        "provisioning_retry_limit",
+        "org_depth_limit",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported Personnel Identity parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def personnel_identity_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Personnel Identity rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("Personnel Identity rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -448,7 +479,18 @@ def personnel_identity_model_stochastic_workforce_exposure(*, risk_path: tuple[f
 def personnel_identity_build_workbench_view(state: dict, *, tenant: str) -> dict:
     employees = tuple(employee for employee in state["employees"].values() if employee["tenant"] == tenant)
     roles = tuple(role for role in state["roles"].values() if role["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "department_count": len(tuple(dept for dept in state["departments"].values() if dept["tenant"] == tenant)), "employee_count": len(employees), "active_employee_count": len(tuple(employee for employee in employees if employee["status"] == "active")), "role_assignment_count": len(tuple(role for role in roles if role["status"] == "active")), "attribute_count": len(tuple(attribute for attribute in state["attributes"].values() if attribute["tenant"] == tenant))}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "department_count": len(tuple(dept for dept in state["departments"].values() if dept["tenant"] == tenant)),
+        "employee_count": len(employees),
+        "active_employee_count": len(tuple(employee for employee in employees if employee["status"] == "active")),
+        "role_assignment_count": len(tuple(role for role in roles if role["status"] == "active")),
+        "attribute_count": len(tuple(attribute for attribute in state["attributes"].values() if attribute["tenant"] == tenant)),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def personnel_identity_register_governed_model(name: str, metadata: dict) -> dict:

@@ -16,6 +16,9 @@ from .runtime import personnel_identity_runtime_smoke
 from .runtime import personnel_identity_set_parameter
 from .runtime import personnel_identity_transition_employee_status
 from .runtime import personnel_identity_upsert_identity_attribute
+from .ui import PERSONNEL_IDENTITY_UI_FRAGMENT_KEYS
+from .ui import personnel_identity_render_workbench
+from .ui import personnel_identity_ui_contract
 
 PBC_KEY = "personnel_identity"
 
@@ -27,4 +30,5 @@ def implementation_contract() -> dict:
         **contract,
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
+        "ui_contract": personnel_identity_ui_contract(),
     }
