@@ -1543,6 +1543,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   those contracts, and generated device API component tests preserve set-based
   release gate assertions. Focused source-side component package probes and
   generated-app regression pass. Commit: `8d151cf`.
+- Current repo cleanup pass archives active generated runtime/test cache
+  artifacts under `archive/repo-cleanup-2026-05-26-4/`, records the cleanup
+  scope and evidence in an archive manifest, and deliberately leaves `.venv`,
+  tracked source/configuration, docs, tests, and unrelated dirty PBC work in
+  place because they were not proven unused. Commit: pending.
 
 ## Open Completion Areas
 
