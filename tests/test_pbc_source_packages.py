@@ -63,6 +63,10 @@ def test_release_audit_requires_builtin_pbc_source_packages():
                 for item in check["source_artifacts"]["checks"]
             )
             assert any(
+                item["id"] == "capability_assurance_materialized" and item["ok"]
+                for item in check["source_artifacts"]["checks"]
+            )
+            assert any(
                 item["id"] == "service_route_runtime_surface_materialized" and item["ok"]
                 for item in check["source_artifacts"]["checks"]
             )
@@ -122,8 +126,13 @@ def test_every_builtin_pbc_has_materialized_source_artifacts():
             for file in contract["files"]
             if file["exists"]
         } == set(audit["required_artifacts"])
+        assert "capability_assurance.py" in audit["required_artifacts"]
         assert any(
             check["id"] == "manifest_capability_surface_materialized" and check["ok"]
+            for check in contract["checks"]
+        )
+        assert any(
+            check["id"] == "capability_assurance_materialized" and check["ok"]
             for check in contract["checks"]
         )
         assert any(

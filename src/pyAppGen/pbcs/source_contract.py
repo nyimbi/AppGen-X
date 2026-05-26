@@ -21,10 +21,10 @@ def source_package_metadata(
 ) -> dict:
     """Return executable package identity and discovery metadata."""
     from pyAppGen.pbc import PBC_ALLOWED_DATASTORE_BACKENDS
-    from pyAppGen.pbc import PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS
+    from pyAppGen.pbc import PBC_SOURCE_PACKAGE_REQUIRED_ARTIFACTS
 
     package = implementation or source_pbc_package_contract(pbc_key)
-    artifacts = tuple(PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS)
+    artifacts = tuple(PBC_SOURCE_PACKAGE_REQUIRED_ARTIFACTS)
     return {
         "format": "appgen.pbc-package-metadata.v1",
         "ok": True,
@@ -74,7 +74,7 @@ def validate_source_package_metadata(metadata: dict) -> dict:
     )
     missing_publish_artifacts = tuple(
         artifact
-        for artifact in ("__init__.py", "manifest.py", "tests/test_contract.py", "RELEASE_EVIDENCE.md")
+        for artifact in ("__init__.py", "manifest.py", "capability_assurance.py", "tests/test_contract.py", "RELEASE_EVIDENCE.md")
         if artifact not in tuple(metadata.get("artifacts", ()))
     )
     missing_capability_evidence = tuple(

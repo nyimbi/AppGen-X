@@ -68,6 +68,10 @@ PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS = (
     "tests/test_contract.py",
     "RELEASE_EVIDENCE.md",
 )
+PBC_SOURCE_PACKAGE_REQUIRED_ARTIFACTS = (
+    *PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
+    "capability_assurance.py",
+)
 PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS = (
     "capability_modules",
     "workflow_implementations",
@@ -4476,7 +4480,7 @@ def pbc_source_artifact_contract(key: str) -> dict:
     files = []
     missing = []
     compile_failures = []
-    for artifact in PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS:
+    for artifact in PBC_SOURCE_PACKAGE_REQUIRED_ARTIFACTS:
         path = source_dir / artifact
         exists = path.is_file()
         files.append(
@@ -4527,6 +4531,11 @@ def pbc_source_artifact_contract(key: str) -> dict:
         else ""
     )
     init_text = (source_dir / "__init__.py").read_text(encoding="utf-8") if (source_dir / "__init__.py").is_file() else ""
+    capability_assurance_text = (
+        (source_dir / "capability_assurance.py").read_text(encoding="utf-8")
+        if (source_dir / "capability_assurance.py").is_file()
+        else ""
+    )
     checks = (
         {
             "id": "required_source_artifacts_exist",
@@ -4555,6 +4564,16 @@ def pbc_source_artifact_contract(key: str) -> dict:
             and "advanced_capabilities': ()" not in manifest_text
             and '"advanced_capabilities": ()' not in manifest_text,
             "path": f"{relative_dir}/manifest.py",
+        },
+        {
+            "id": "capability_assurance_materialized",
+            "ok": "def table_stakes_capability_manifest(" in capability_assurance_text
+            and "def validate_table_stakes_capability_coverage(" in capability_assurance_text
+            and "def smoke_test(" in capability_assurance_text
+            and "event_contract" in capability_assurance_text
+            and "stream_picker_visible" in capability_assurance_text
+            and "invalid_backends" in capability_assurance_text,
+            "path": f"{relative_dir}/capability_assurance.py",
         },
         {
             "id": "self_registration_entrypoints_materialized",
@@ -4692,7 +4711,7 @@ def pbc_source_artifact_contract(key: str) -> dict:
         "ok": source_dir.is_dir() and all(check["ok"] for check in checks),
         "pbc": key,
         "directory": relative_dir,
-        "required_artifacts": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
+        "required_artifacts": PBC_SOURCE_PACKAGE_REQUIRED_ARTIFACTS,
         "files": tuple(files),
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -4707,7 +4726,7 @@ def pbc_source_artifact_release_audit(selected_pbcs: tuple[str, ...] | list[str]
         "format": "appgen.pbc-source-artifact-release-audit.v1",
         "ok": bool(contracts) and all(contract["ok"] for contract in contracts),
         "pbc_count": len(contracts),
-        "required_artifacts": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
+        "required_artifacts": PBC_SOURCE_PACKAGE_REQUIRED_ARTIFACTS,
         "contracts": contracts,
         "blocking_gaps": tuple(contract for contract in contracts if not contract["ok"]),
     }

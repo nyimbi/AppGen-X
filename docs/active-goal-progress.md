@@ -1826,6 +1826,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   editor generation for each relationship, lookup endpoint parity, design
   runtime replay ordering, and scenario final-state parity before release
   claims. Commit: `21f4a20`.
+- Current PBC source package artifact assurance pass makes
+  `capability_assurance.py` a required source-package artifact and publish
+  metadata artifact for every built-in PBC. Source artifact checks now prove
+  the assurance module materializes table-stakes manifest, validation, and
+  smoke-test entrypoints with AppGen-X eventing, hidden stream-picker, and
+  backend validation evidence. Focused source package and package assurance
+  tests pass (`9 passed`), targeted PBC evidence tests pass (`16 passed`),
+  all package-local PBC tests pass (`396 passed`), and the full PBC audit
+  stack including all built-in generation smoke and `pbc_release_audit()`
+  returns true. Commit: `pending`.
 
 ## Open Completion Areas
 
