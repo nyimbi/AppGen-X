@@ -1038,6 +1038,7 @@ IMPLEMENTED_PBC_KEYS = (
     "composition_engine",
     "dam_core",
     "price_promotion_engine",
+    "lead_opportunity",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3313,6 +3314,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = dam_core_runtime_capabilities()
     elif key == "price_promotion_engine":
         advanced_runtime = price_promotion_engine_runtime_capabilities()
+    elif key == "lead_opportunity":
+        advanced_runtime = lead_opportunity_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
@@ -3632,6 +3635,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "cross_border_trade": len(CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS),
         "dam_core": len(DAM_CORE_RUNTIME_CAPABILITY_KEYS),
         "price_promotion_engine": len(PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS),
+        "lead_opportunity": len(LEAD_OPPORTUNITY_RUNTIME_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
@@ -5713,6 +5717,29 @@ from .pbcs.price_promotion_engine import price_promotion_engine_runtime_smoke  #
 from .pbcs.price_promotion_engine import price_promotion_engine_set_parameter  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_ui_contract  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.lead_opportunity import LEAD_OPPORTUNITY_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.lead_opportunity import LEAD_OPPORTUNITY_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.lead_opportunity import LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_advance_opportunity  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_build_api_contract  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_build_workbench_view  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_configure_runtime  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_create_account_hierarchy  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_create_lead  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_create_opportunity  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_empty_state  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_permissions_contract  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_qualify_lead  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_receive_event  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_record_sales_activity  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_register_rule  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_render_workbench  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_runtime_capabilities  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_runtime_smoke  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_set_parameter  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_ui_contract  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.lead_opportunity import lead_opportunity_win_opportunity  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
