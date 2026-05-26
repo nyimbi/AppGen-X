@@ -230,3 +230,59 @@ Focused tests prove:
   dead-lettered.
 - The PBC participates in the all-PBC implementation release audit and
   all-built-in generation smoke audit.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `streaming_analytics`
+- Mesh: `intelligence`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `metric_stream`
+- `aggregation_window`
+- `kpi_snapshot`
+- `dashboard_projection`
+
+### API Routes
+
+- `POST /metric-streams`
+- `GET /kpis`
+- `GET /projections`
+
+### Emitted Events
+
+- `ForecastUpdated`
+- `OperationalKpiChanged`
+
+### Consumed Events
+
+- `AuditEventSealed`
+- `OrderShipped`
+- `PaymentCaptured`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -281,3 +281,105 @@ Release readiness requires:
   returning `ok: True`;
 - restricted-name scans over the AP package/test/spec files returning clean and
   no stream-engine or non-AppGen-X event picker exposed to ordinary users.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `ap_automation`
+- Mesh: `finops`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `vendor`
+- `vendor_site`
+- `vendor_bank_account`
+- `vendor_tax_profile`
+- `vendor_risk_signal`
+- `purchase_order`
+- `purchase_order_line`
+- `goods_receipt`
+- `goods_receipt_line`
+- `invoice`
+- `invoice_line`
+- `invoice_capture_artifact`
+- `invoice_match_result`
+- `payment`
+- `payment_batch`
+- `payment_rail_decision`
+- `discount_opportunity`
+- `vendor_statement`
+- `withholding_tax`
+- `e_invoice_submission`
+- `exception_case`
+- `approval_task`
+- `cash_forecast_projection`
+- `policy_rule`
+- `runtime_parameter`
+- `schema_extension`
+- `control_assertion`
+- `governed_model`
+
+### API Routes
+
+- `POST /ap/vendors`
+- `POST /ap/vendor-bank-accounts`
+- `POST /ap/vendor-tax-profiles`
+- `POST /ap/purchase-orders`
+- `POST /ap/goods-receipts`
+- `POST /ap/invoices`
+- `POST /ap/invoices/{invoice_id}/match`
+- `POST /ap/exceptions`
+- `POST /ap/approval-tasks`
+- `POST /ap/payment-schedules`
+- `POST /ap/payment-batches`
+- `POST /ap/payments`
+- `POST /ap/e-invoices`
+- `POST /ap/vendor-statements/reconcile`
+- `GET /ap/workbench`
+
+### Emitted Events
+
+- `VendorOnboarded`
+- `PurchaseOrderIssued`
+- `GoodsReceiptRecorded`
+- `InvoiceCaptured`
+- `PaymentScheduled`
+- `PaymentExecuted`
+- `InvoiceExceptionResolved`
+- `VendorRiskChanged`
+- `DiscountOpportunityCaptured`
+
+### Consumed Events
+
+- `VendorApproved`
+- `PurchaseOrderApproved`
+- `GoodsReceiptPosted`
+- `TaxPolicyChanged`
+- `CashForecastUpdated`
+- `AccessPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

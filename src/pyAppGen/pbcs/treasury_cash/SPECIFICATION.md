@@ -285,3 +285,113 @@ Release readiness requires:
   capability audit, and generation smoke audit pass for the implemented PBC
   set.
 - Diff scans contain no banned legacy product or framework names.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `treasury_cash`
+- Mesh: `finops`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `bank_account`
+- `bank_account_signatory`
+- `bank_counterparty`
+- `bank_topology`
+- `balance`
+- `intraday_balance`
+- `statement`
+- `statement_line`
+- `reconciliation_match`
+- `reconciliation_exception`
+- `cash_position`
+- `cash_forecast`
+- `cash_forecast_line`
+- `liquidity_pool`
+- `liquidity_plan`
+- `sweep_instruction`
+- `concentration_run`
+- `intercompany_netting`
+- `in_house_bank_account`
+- `payment_funding`
+- `payment_rail_route`
+- `fx_exposure`
+- `hedge_recommendation`
+- `capital_action`
+- `debt_facility`
+- `debt_draw`
+- `investment`
+- `bank_fee`
+- `covenant_proof`
+- `cross_border_liquidity`
+- `working_capital_finance`
+- `counterparty_risk_signal`
+- `policy_rule`
+- `rule`
+- `parameter`
+- `configuration`
+- `schema_extension`
+- `control_assertion`
+- `governed_model`
+
+### API Routes
+
+- `POST /treasury/bank-accounts`
+- `POST /treasury/balances`
+- `POST /treasury/statements`
+- `POST /treasury/statements/{id}/reconcile`
+- `GET /treasury/cash-position`
+- `POST /treasury/forecasts`
+- `POST /treasury/liquidity/optimize`
+- `POST /treasury/payment-rails/route`
+- `POST /treasury/investments`
+- `POST /treasury/debt-draws`
+- `POST /treasury/fx/hedge-recommendations`
+- `POST /treasury/events/inbox`
+- `GET /treasury/workbench`
+
+### Emitted Events
+
+- `BankAccountRegistered`
+- `BankBalanceCaptured`
+- `BankStatementIngested`
+- `CashPositionBuilt`
+- `PaymentFunded`
+- `InvestmentPlaced`
+- `DebtFacilityDrawn`
+
+### Consumed Events
+
+- `PaymentFundingRequested`
+- `ReceivableCashForecasted`
+- `PayablePaymentScheduled`
+- `PayrollFundingRequested`
+- `TaxPaymentScheduled`
+- `FxRateChanged`
+- `AccessPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

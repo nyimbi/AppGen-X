@@ -267,3 +267,88 @@ The renderer computes visible actions from RBAC permissions, separates locked
 actions, shows outbox/inbox/dead-letter counts, and carries configuration
 binding evidence so generated apps can prove that the UI is attached to the
 actual package runtime rather than a placeholder catalog entry.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `dom`
+- Mesh: `cx`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `sales_order`
+- `order_line`
+- `order_status`
+- `order_promise`
+- `customer_projection`
+- `tax_projection`
+- `fraud_screen`
+- `order_verification`
+- `order_price_component`
+- `inventory_allocation_projection`
+- `payment_authorization_projection`
+- `fulfillment_plan`
+- `fulfillment_plan_line`
+- `fulfillment_node_candidate`
+- `split_shipment`
+- `backorder`
+- `substitution`
+- `shipment_projection`
+- `dom_appgen_outbox_event`
+- `dom_appgen_inbox_event`
+- `dom_dead_letter_event`
+
+### API Routes
+
+- `POST /dom/orders`
+- `POST /dom/orders/{id}/verify`
+- `POST /dom/orders/{id}/price`
+- `POST /dom/orders/{id}/allocation`
+- `POST /dom/fulfillment-plans`
+- `POST /dom/shipments`
+- `GET /dom/workbench`
+
+### Emitted Events
+
+- `OrderCaptured`
+- `TaxProjectionApplied`
+- `FraudScreened`
+- `OrderVerified`
+- `OrderPriced`
+- `InventoryAllocationProjected`
+- `FulfillmentPlanCreated`
+- `OrderShipped`
+
+### Consumed Events
+
+- `InventoryAllocated`
+- `TaxCalculated`
+- `CustomerUpdated`
+- `PaymentAuthorized`
+- `ShipmentDelivered`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

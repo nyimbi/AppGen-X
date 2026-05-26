@@ -234,3 +234,58 @@ The focused test suite proves:
 - Configuration, parameters, rules, schema extensions, event handling, subject registration, compatibility rules, consumer binding, schema versions, compatibility checks, payload validation, violations, projections, UI, and workbench evidence execute.
 - Boundary validation accepts owned tables and declared API/event/projection dependencies, then rejects direct foreign-table references.
 - Invalid backend, stream-picker configuration, unsupported parameters, non-owned schema extensions, idempotent duplicates, retries, and dead letters are verified.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `schema_registry`
+- Mesh: `platform`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `schema_subject`
+- `schema_version`
+- `compatibility_rule`
+- `contract_violation`
+
+### API Routes
+
+- `POST /schemas`
+- `POST /compatibility-checks`
+- `GET /subjects`
+
+### Emitted Events
+
+- `SchemaAccepted`
+- `BreakingSchemaBlocked`
+
+### Consumed Events
+
+- `PbcDeployed`
+- `EventContractProposed`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -273,3 +273,59 @@ advanced capability coverage, package-local API and permissions contracts, UI
 binding evidence, idempotent receive-event tests, retry and dead-letter tests,
 owned-table-only boundary tests, and focused unit coverage for both standard and
 advanced customer workflows.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `customer_360`
+- Mesh: `cx`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `customer_profile`
+- `engagement_event`
+- `communication_preference`
+- `touchpoint`
+
+### API Routes
+
+- `POST /profiles`
+- `POST /touchpoints`
+- `GET /customer-timeline`
+
+### Emitted Events
+
+- `CustomerUpdated`
+- `PreferenceChanged`
+
+### Consumed Events
+
+- `InvoiceIssued`
+- `PaymentCaptured`
+- `CandidateHired`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

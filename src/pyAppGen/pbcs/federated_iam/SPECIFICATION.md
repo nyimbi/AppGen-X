@@ -221,3 +221,58 @@ identity assurance levels, provider trust classes, role templates, and privilege
 access review states. The seed descriptors are generated with the package and
 validated alongside schema, migration, model, service, route, event, handler,
 UI, RBAC, configuration, and release contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `federated_iam`
+- Mesh: `platform`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `tenant`
+- `principal`
+- `access_policy`
+- `token_grant`
+
+### API Routes
+
+- `POST /tokens`
+- `GET /principals`
+- `POST /policy-decisions`
+
+### Emitted Events
+
+- `AccessPolicyChanged`
+- `PrincipalVerified`
+
+### Consumed Events
+
+- `RoleChanged`
+- `TenantProvisioned`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

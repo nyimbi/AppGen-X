@@ -252,3 +252,59 @@ retention tiers, control assertion types, proof channels, and review queues.
 Generated applications validate those seed descriptors together with owned
 schema, migration, model, service, route, event, handler, UI, RBAC,
 configuration, and release contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `audit_ledger`
+- Mesh: `platform`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `audit_event`
+- `signature_chain`
+- `retention_policy`
+- `forensic_export`
+
+### API Routes
+
+- `POST /audit-events`
+- `GET /signature-chain`
+- `POST /exports`
+
+### Emitted Events
+
+- `AuditEventSealed`
+- `ForensicExportPrepared`
+
+### Consumed Events
+
+- `AccessPolicyChanged`
+- `WorkflowCompleted`
+- `RoutePublished`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

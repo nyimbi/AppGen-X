@@ -219,3 +219,111 @@ Release readiness requires:
   capability audit, and generation smoke audit pass for the implemented PBC
   set.
 - Diff scans contain no banned legacy product or framework names.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `tax_localization`
+- Mesh: `finops`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `tax_jurisdiction`
+- `tax_jurisdiction_topology`
+- `tax_authority_channel`
+- `tax_authority_submission`
+- `tax_filing_calendar`
+- `tax_nexus_profile`
+- `tax_rule`
+- `tax_rule_version`
+- `tax_rule_impact_analysis`
+- `product_taxability`
+- `counterparty_tax_profile`
+- `tax_exemption_review`
+- `tax_calculation`
+- `tax_calculation_line`
+- `invoice_tax_record`
+- `exemption_certificate`
+- `tax_reverse_charge_rule`
+- `tax_withholding_rule`
+- `tax_environmental_levy`
+- `cross_border_duty`
+- `tax_duty_classification`
+- `tax_landed_cost_component`
+- `tax_filing`
+- `tax_filing_line`
+- `tax_reconciliation`
+- `tax_remittance_batch`
+- `tax_payment_evidence`
+- `tax_refund_claim`
+- `tax_adjustment`
+- `tax_notice`
+- `digital_tax_document`
+- `tax_document_parse`
+- `tax_liability_forecast`
+- `tax_policy_simulation`
+- `tax_cross_border_federation`
+- `tax_identity_credential`
+- `tax_audit_proof`
+- `tax_allocation`
+- `tax_anomaly_signal`
+- `tax_model_registry`
+- `tax_seed_data`
+- `tax_policy_rule`
+- `tax_parameter`
+- `tax_configuration`
+- `tax_schema_extension`
+- `tax_control_assertion`
+- `tax_governed_model`
+
+### API Routes
+
+- `POST /tax/jurisdictions`
+- `POST /tax/rules`
+- `POST /tax/quotes`
+- `POST /tax/invoices/{id}/tax-records`
+- `POST /tax/filings`
+- `POST /tax/events/inbox`
+- `GET /tax/workbench`
+
+### Emitted Events
+
+- `TaxJurisdictionRegistered`
+- `TaxRuleActivated`
+- `TaxCalculated`
+- `InvoiceTaxRecorded`
+- `TaxFilingPrepared`
+
+### Consumed Events
+
+- `ProductClassified`
+- `InvoiceIssued`
+- `OrderPriced`
+- `PaymentCollected`
+- `AccessPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

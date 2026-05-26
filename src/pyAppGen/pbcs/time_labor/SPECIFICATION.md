@@ -280,3 +280,120 @@ user-facing stream-engine selection; that package-local UI fragments expose
 shift planning, clock exceptions, absences, labor approvals, rule, parameter,
 and configuration workbench surfaces; and that all standard and advanced
 capability claims have testable release evidence.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `time_labor`
+- Mesh: `hcm`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `shift`
+- `shift_pattern`
+- `shift_assignment`
+- `shift_swap_request`
+- `schedule_bid`
+- `labor_demand_forecast`
+- `clock_event`
+- `clock_device`
+- `clock_source_route`
+- `clock_exception`
+- `time_entry`
+- `time_entry_line`
+- `break_deduction`
+- `overtime_bucket`
+- `premium_calculation`
+- `holiday_calendar`
+- `absence`
+- `absence_balance`
+- `absence_entitlement`
+- `absence_approval`
+- `labor_summary`
+- `labor_summary_line`
+- `labor_cost_allocation`
+- `labor_distribution`
+- `approval_workflow`
+- `approval_task`
+- `employee_projection`
+- `role_projection`
+- `payroll_labor_projection`
+- `warehouse_site_projection`
+- `manufacturing_shift_projection`
+- `project_cost_projection`
+- `time_policy_screening`
+- `time_audit_trace`
+- `time_hours_proof`
+- `time_federation_projection`
+- `time_carbon_schedule_window`
+- `time_schedule_optimization`
+- `time_shift_allocation`
+- `time_anomaly_signal`
+- `time_labor_risk_model`
+- `time_labor_risk_forecast`
+- `time_parsed_event`
+- `time_seed_data`
+- `time_schema_extension`
+- `time_control_assertion`
+- `time_governed_model`
+- `time_rule`
+- `time_parameter`
+- `time_configuration`
+- `time_labor_appgen_outbox_event`
+- `time_labor_appgen_inbox_event`
+- `time_labor_dead_letter_event`
+
+### API Routes
+
+- `POST /shifts`
+- `POST /shift-patterns`
+- `POST /shift-swaps`
+- `POST /clock-events`
+- `POST /time-entries/calculate`
+- `POST /absences`
+- `POST /labor-summaries/{id}/approve`
+- `POST /time/events/inbox`
+- `POST /time/rules`
+- `POST /time/parameters`
+- `POST /time/configuration`
+- `GET /labor-summaries`
+- `GET /time-workbench`
+
+### Emitted Events
+
+- `ShiftCreated`
+- `ClockEventRecorded`
+- `TimeEntryCalculated`
+- `LaborHoursApproved`
+- `AbsenceRecorded`
+
+### Consumed Events
+
+- `EmployeeCreated`
+- `RoleChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

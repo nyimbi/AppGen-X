@@ -262,3 +262,58 @@ templates, package states, validation severities, deployment plan statuses, and
 view-slot policies. The package validates those seeds with schema, migration,
 model, service, route, event, handler, UI, RBAC, configuration, and release
 contracts before composition plans are approved.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `composition_engine`
+- Mesh: `platform`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `composition_workspace`
+- `ui_fragment`
+- `component_registry`
+- `layout_binding`
+
+### API Routes
+
+- `POST /compositions`
+- `POST /fragments`
+- `GET /component-registry`
+
+### Emitted Events
+
+- `CompositionPublished`
+- `PbcDeployed`
+
+### Consumed Events
+
+- `SchemaAccepted`
+- `RoutePublished`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

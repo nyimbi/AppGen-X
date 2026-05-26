@@ -257,3 +257,58 @@ Completion requires:
   depth, fixed AppGen-X contract, permission coverage, UI binding evidence, and
   duplicate plus dead-letter control evidence.
 - Focused Quality Assurance tests pass.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `quality_assurance`
+- Mesh: `opsmfg`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `inspection_plan`
+- `inspection_result`
+- `quality_hold`
+- `non_conformance`
+
+### API Routes
+
+- `POST /inspections`
+- `POST /non-conformances`
+- `POST /quality-holds`
+
+### Emitted Events
+
+- `QualityHoldReleased`
+- `NonConformanceRaised`
+
+### Consumed Events
+
+- `ProductionCompleted`
+- `GoodsReceiptPosted`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

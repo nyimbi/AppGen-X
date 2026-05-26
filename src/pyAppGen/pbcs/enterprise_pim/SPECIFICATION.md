@@ -243,3 +243,82 @@ The focused test suite proves:
 - Publication readiness uses locales, attributes, workflow approval, dependency projections, and channel policy.
 - Boundary validation accepts owned tables and declared API/event/projection dependencies while rejecting direct foreign-table references.
 - Invalid backend, stream picker fields, unsupported parameters, unsupported dependency events, non-owned schema extensions, and unsupported inbox events fail with evidence.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `enterprise_pim`
+- Mesh: `content`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `product_taxonomy`
+- `taxonomy_node`
+- `taxonomy_relationship`
+- `product_attribute`
+- `attribute_group`
+- `attribute_validation_rule`
+- `localized_content`
+- `localized_content_version`
+- `validation_workflow`
+- `validation_workflow_step`
+- `approval_decision`
+- `publication_readiness_check`
+- `dependency_schema`
+- `dependency_projection`
+- `pim_rule`
+- `pim_parameter`
+- `pim_configuration`
+
+### API Routes
+
+- `POST /product-taxonomies`
+- `POST /product-attributes`
+- `POST /localized-content`
+- `POST /validation-workflows`
+- `POST /validation-workflows/{id}/approve`
+- `POST /dependency-schemas`
+- `POST /pim-events`
+- `POST /pim-publications`
+- `GET /pim-workbench`
+
+### Emitted Events
+
+- `TaxonomyClassified`
+- `AttributeDefined`
+- `ContentLocalized`
+- `ValidationApproved`
+- `PimMasterDataReady`
+
+### Consumed Events
+
+- `InventoryPositionUpdated`
+- `MediaAssetApproved`
+- `PricePromotionApproved`
+- `TaxCalculated`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

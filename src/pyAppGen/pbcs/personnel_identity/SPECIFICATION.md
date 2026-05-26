@@ -285,3 +285,123 @@ employee, lifecycle, manager hierarchy, org chart, role, identity attribute,
 segregation-of-duties, assurance, provisioning, privacy, directory search,
 approval, rule, parameter, and configuration workbench surfaces; and that all
 standard and advanced capability claims have testable release evidence.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `personnel_identity`
+- Mesh: `hcm`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `personnel_department`
+- `personnel_department_hierarchy`
+- `personnel_position`
+- `personnel_job`
+- `personnel_employee`
+- `personnel_employee_contact`
+- `personnel_employee_document`
+- `personnel_employment_lifecycle`
+- `personnel_employment_status_history`
+- `personnel_manager_relationship`
+- `personnel_org_assignment`
+- `personnel_work_location`
+- `personnel_cost_center_assignment`
+- `personnel_role_assignment`
+- `personnel_role_catalog`
+- `personnel_role_review`
+- `personnel_role_separation_check`
+- `personnel_identity_attribute`
+- `personnel_identity_assurance`
+- `personnel_identity_verification`
+- `personnel_identity_proof`
+- `personnel_access_policy_projection`
+- `personnel_access_exception`
+- `personnel_provisioning_event`
+- `personnel_provisioning_replay`
+- `personnel_directory_projection`
+- `personnel_org_chart_projection`
+- `personnel_privacy_consent`
+- `personnel_residency_rule`
+- `personnel_retention_policy`
+- `personnel_policy_screening`
+- `personnel_audit_trace`
+- `personnel_federation_projection`
+- `personnel_carbon_processing_window`
+- `personnel_role_access_optimization`
+- `personnel_manager_capacity_allocation`
+- `personnel_identity_anomaly_signal`
+- `personnel_workforce_risk_model`
+- `personnel_workforce_risk_forecast`
+- `personnel_parsed_event`
+- `personnel_seed_data`
+- `personnel_schema_extension`
+- `personnel_control_assertion`
+- `personnel_governed_model`
+- `personnel_policy_rule`
+- `personnel_parameter`
+- `personnel_configuration`
+- `personnel_identity_appgen_outbox_event`
+- `personnel_identity_appgen_inbox_event`
+- `personnel_identity_dead_letter_event`
+
+### API Routes
+
+- `POST /personnel/departments`
+- `POST /personnel/departments/{id}/hierarchy`
+- `POST /personnel/employees`
+- `POST /personnel/employees/{id}/contacts`
+- `POST /personnel/employees/{id}/documents`
+- `POST /personnel/employees/{id}/status`
+- `POST /personnel/employees/{id}/roles`
+- `POST /personnel/employees/{id}/attributes`
+- `POST /personnel/employees/{id}/verification`
+- `POST /personnel/employees/{id}/proofs`
+- `POST /personnel/provisioning/routes`
+- `POST /personnel/events/inbox`
+- `POST /personnel/rules`
+- `POST /personnel/parameters`
+- `POST /personnel/configuration`
+- `GET /personnel/org-chart`
+- `GET /personnel/workbench`
+
+### Emitted Events
+
+- `DepartmentRegistered`
+- `EmployeeCreated`
+- `EmployeeStatusChanged`
+- `RoleChanged`
+- `IdentityAttributeChanged`
+
+### Consumed Events
+
+- `EmployeeProvisioned`
+- `AccessPolicyChanged`
+- `OrgUnitChanged`
+- `RoleReviewRequested`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

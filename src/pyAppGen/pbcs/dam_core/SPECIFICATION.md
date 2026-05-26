@@ -240,3 +240,57 @@ Focused tests prove:
   and simulated handler failures are rejected or dead-lettered.
 - The package participates in all-PBC implementation release and generation
   smoke audits.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `dam_core`
+- Mesh: `content`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `asset`
+- `asset_rendition`
+- `rights_policy`
+- `metadata_tag`
+
+### API Routes
+
+- `POST /assets`
+- `POST /renditions`
+- `GET /rights`
+
+### Emitted Events
+
+- `AssetPublished`
+- `RightsPolicyChanged`
+
+### Consumed Events
+
+- `ProductPublished`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

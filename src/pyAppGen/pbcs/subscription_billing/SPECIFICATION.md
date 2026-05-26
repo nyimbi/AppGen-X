@@ -230,3 +230,59 @@ Focused tests prove:
   all evidenced.
 - The package participates in `pbc_implementation_release_audit()` and the
   all-PBC generation smoke audit through central exports.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `subscription_billing`
+- Mesh: `commerce`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `subscription`
+- `usage_meter`
+- `billing_schedule`
+- `dunning_notice`
+
+### API Routes
+
+- `POST /subscriptions`
+- `POST /usage`
+- `POST /renewals`
+
+### Emitted Events
+
+- `SubscriptionRenewed`
+- `UsageRated`
+- `InvoiceApproved`
+
+### Consumed Events
+
+- `PaymentCaptured`
+- `PriceOptimized`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

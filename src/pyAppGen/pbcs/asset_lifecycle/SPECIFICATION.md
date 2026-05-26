@@ -226,3 +226,113 @@ Release readiness requires:
   capability audit, and generation smoke audit pass for the implemented PBC
   set.
 - Diff scans contain no banned legacy product or framework names.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `asset_lifecycle`
+- Mesh: `finops`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `fixed_asset`
+- `asset_component`
+- `asset_component_history`
+- `asset_book`
+- `asset_book_assignment`
+- `asset_acquisition`
+- `asset_capitalization`
+- `asset_lease_right_of_use`
+- `asset_depreciation_schedule`
+- `asset_depreciation_schedule_line`
+- `asset_depreciation_run`
+- `asset_depreciation_journal`
+- `asset_transfer`
+- `asset_valuation_adjustment`
+- `asset_impairment_indicator`
+- `asset_maintenance_adjustment`
+- `asset_insurance_warranty`
+- `asset_claim`
+- `asset_retirement`
+- `asset_disposal_proceeds`
+- `asset_physical_verification`
+- `asset_physical_verification_exception`
+- `asset_location_assignment`
+- `asset_custodian_assignment`
+- `asset_cost_center_assignment`
+- `asset_policy_screening`
+- `asset_audit_proof`
+- `asset_cross_system_federation`
+- `asset_identity_credential`
+- `asset_carbon_utilization`
+- `asset_portfolio_optimization`
+- `asset_allocation_mechanism`
+- `asset_anomaly_signal`
+- `asset_risk_model`
+- `asset_seed_data`
+- `asset_schema_extension`
+- `asset_control_assertion`
+- `asset_governed_model`
+- `asset_rule`
+- `asset_parameter`
+- `asset_configuration`
+
+### API Routes
+
+- `POST /assets`
+- `POST /assets/{asset_id}/service`
+- `POST /assets/{asset_id}/depreciation-schedules`
+- `POST /depreciation-runs`
+- `POST /assets/{asset_id}/transfers`
+- `POST /assets/{asset_id}/revaluations`
+- `POST /assets/{asset_id}/impairments`
+- `POST /assets/{asset_id}/maintenance-adjustments`
+- `POST /assets/{asset_id}/retirements`
+- `POST /assets/events/inbox`
+- `GET /assets`
+- `GET /assets/{asset_id}/risk`
+
+### Emitted Events
+
+- `AssetRegistered`
+- `AssetPlacedInService`
+- `DepreciationCalculated`
+- `AssetTransferred`
+- `AssetRevalued`
+- `AssetImpaired`
+- `MaintenanceAdjustedAssetLife`
+- `AssetRetired`
+
+### Consumed Events
+
+- `PurchaseReceiptCapitalized`
+- `MaintenanceCompleted`
+- `InsurancePolicyChanged`
+- `TaxBookChanged`
+- `AccessPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

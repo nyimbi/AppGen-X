@@ -233,3 +233,85 @@ The package is complete only when:
 - `pbc_implementation_release_audit(("mrp_engine",))` passes.
 - `pbc_implemented_capability_audit(("mrp_engine",))` passes.
 - Focused tests prove domain workflows, rules, parameters, configuration, UI binding, schema ownership, AppGen-X event handling, retry/dead-letter behavior, API/RBAC descriptors, and owned-table boundary enforcement.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `mrp_engine`
+- Mesh: `opsmfg`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `bill_of_material`
+- `bom_revision`
+- `bom_component`
+- `item_planning_profile`
+- `material_demand`
+- `inventory_projection`
+- `capacity_projection`
+- `mrp_run`
+- `mrp_run_item`
+- `planned_order`
+- `planned_purchase_suggestion`
+- `planned_production_order`
+- `material_shortage`
+- `shortage_pegging`
+- `planning_exception`
+- `mrp_rule`
+- `mrp_parameter`
+- `mrp_configuration`
+
+### API Routes
+
+- `POST /mrp/boms`
+- `POST /mrp/demand-projections`
+- `POST /mrp/inventory-projections`
+- `POST /mrp/runs`
+- `POST /mrp/runs/{id}/calculate`
+- `POST /mrp/planned-orders/{id}/release`
+- `POST /mrp/events/inbox`
+- `GET /mrp/workbench`
+
+### Emitted Events
+
+- `BomRegistered`
+- `DemandProjectionIngested`
+- `InventoryProjectionIngested`
+- `MrpRunStarted`
+- `MaterialShortageDetected`
+- `PlannedOrderReleased`
+
+### Consumed Events
+
+- `InventoryReleased`
+- `OrderVerified`
+- `ForecastUpdated`
+- `ProductionCapacityChanged`
+- `QualityHoldReleased`
+- `SupplierLeadTimeUpdated`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -215,3 +215,111 @@ Release readiness requires:
   capability audit, and generation smoke audit pass for the implemented PBC
   set.
 - Diff scans contain no banned legacy product or framework names.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `inventory_positioning`
+- Mesh: `scl`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `item`
+- `item_attribute`
+- `item_substitution`
+- `lot`
+- `serial`
+- `node`
+- `node_calendar`
+- `node_capacity`
+- `node_identity`
+- `inventory_position`
+- `position_snapshot`
+- `receipt`
+- `receipt_line`
+- `adjustment`
+- `cycle_count`
+- `reservation`
+- `allocation`
+- `allocation_line`
+- `allocation_expiry`
+- `quality_hold`
+- `quality_release`
+- `in_transit_projection`
+- `traceability_event`
+- `backorder`
+- `replenishment_signal`
+- `replenishment_plan`
+- `reconciliation`
+- `policy_screening`
+- `stock_proof`
+- `cross_node_federation`
+- `carbon_fulfillment`
+- `channel_allocation`
+- `anomaly_signal`
+- `stock_risk_model`
+- `seed_data`
+- `schema_extension`
+- `control_assertion`
+- `governed_model`
+- `rule`
+- `parameter`
+- `configuration`
+
+### API Routes
+
+- `POST /inventory/items`
+- `POST /inventory/nodes`
+- `POST /inventory/receipts`
+- `POST /inventory/adjustments`
+- `GET /inventory/availability`
+- `POST /inventory/allocations`
+- `POST /inventory/allocations/{id}/release`
+- `POST /inventory/quality-holds`
+- `POST /inventory/events/inbox`
+- `GET /inventory/workbench`
+
+### Emitted Events
+
+- `ItemRegistered`
+- `InventoryNodeRegistered`
+- `GoodsReceiptPosted`
+- `InventoryAdjusted`
+- `InventoryAllocated`
+- `InventoryReleased`
+- `QualityHoldApplied`
+
+### Consumed Events
+
+- `OrderVerified`
+- `ShipmentDelivered`
+- `QualityHoldReleased`
+- `PurchaseReceiptPosted`
+- `DemandForecastChanged`
+- `AccessPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -201,3 +201,60 @@ reject foreign tables, and focused tests to exercise the package. Generated
 applications should include this package as a self-registering PBC with models,
 services, routes, events, handlers, workbench fragments, permissions, seed
 data, and release audit evidence derived from these package-local contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `workflow_orchestration`
+- Mesh: `platform`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `workflow_definition`
+- `workflow_instance`
+- `saga_step`
+- `timer_task`
+
+### API Routes
+
+- `POST /workflows`
+- `POST /instances`
+- `POST /signals`
+
+### Emitted Events
+
+- `WorkflowStarted`
+- `SagaCompensated`
+- `WorkflowCompleted`
+
+### Consumed Events
+
+- `InvoiceApproved`
+- `OrderVerified`
+- `ShipmentDelivered`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -226,3 +226,58 @@ Focused validation for this package must include:
 - idempotent duplicate/retry/dead-letter evidence
 - package-local checks that no stream-engine picker or user eventing selector
   appears in the package contract surface
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `returns_reverse_logistics`
+- Mesh: `commerce`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `return_authorization`
+- `return_label`
+- `inspection_grade`
+- `credit_adjustment`
+
+### API Routes
+
+- `POST /returns`
+- `POST /labels`
+- `POST /inspection-grades`
+
+### Emitted Events
+
+- `ReturnAuthorized`
+- `CreditAdjustmentIssued`
+
+### Consumed Events
+
+- `OrderShipped`
+- `PaymentCaptured`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -193,3 +193,59 @@ The focused test suite proves:
 - Retry-first inbox handling produces retry evidence before dead-letter evidence, and dead-letter records stay package-owned.
 - Boundary validation accepts owned tables and declared dependencies, then rejects direct foreign-table references.
 - Invalid backend, wrong event topic, stream picker fields, unsupported parameters, invalid rules, unsupported events, and non-owned schema extensions fail.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `checkout_processing`
+- Mesh: `commerce`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `cart`
+- `cart_line`
+- `checkout_session`
+- `promotion_redemption`
+
+### API Routes
+
+- `POST /carts`
+- `POST /checkout`
+- `POST /coupons`
+
+### Emitted Events
+
+- `OrderPriced`
+- `CheckoutCompleted`
+
+### Consumed Events
+
+- `ProductPublished`
+- `PriceOptimized`
+- `TaxCalculated`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

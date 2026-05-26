@@ -262,3 +262,123 @@ The focused test suite proves:
 - Configuration, parameters, rules, schema extensions, event handling, requisitions, candidates, background checks, offers, tasks, provisioning, UI, and workbench evidence execute.
 - Boundary validation accepts owned tables and declared API/event/projection dependencies, then rejects direct foreign-table references.
 - Invalid backend, stream-picker configuration, unsupported parameters, non-owned schema extensions, idempotent duplicates, retries, and dead letters are verified.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `talent_onboarding`
+- Mesh: `hcm`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `job_requisition`
+- `job_requisition_approval`
+- `job_requisition_budget`
+- `job_requisition_skill`
+- `sourcing_campaign`
+- `candidate_source`
+- `candidate`
+- `candidate_consent`
+- `candidate_profile`
+- `candidate_skill`
+- `candidate_stage_history`
+- `candidate_duplicate_check`
+- `candidate_privacy_request`
+- `interview_plan`
+- `interview_panel`
+- `interview_schedule`
+- `interview_feedback`
+- `evaluation_evidence`
+- `candidate_scorecard`
+- `background_check`
+- `background_check_package`
+- `background_check_adjudication`
+- `adverse_action_notice`
+- `offer`
+- `offer_approval`
+- `offer_acceptance`
+- `compensation_projection`
+- `onboarding_task`
+- `onboarding_task_template`
+- `onboarding_checklist`
+- `equipment_request`
+- `access_preload_projection`
+- `welcome_notification_projection`
+- `personnel_identity_projection`
+- `payroll_worker_projection`
+- `role_projection`
+- `talent_policy_screening`
+- `talent_audit_trace`
+- `talent_candidate_proof`
+- `talent_federation_projection`
+- `talent_carbon_schedule_window`
+- `talent_pipeline_optimization`
+- `talent_interview_allocation`
+- `talent_anomaly_signal`
+- `talent_candidate_risk_model`
+- `talent_hiring_forecast`
+- `talent_parsed_instruction`
+- `talent_seed_data`
+- `talent_schema_extension`
+- `talent_control_assertion`
+- `talent_governed_model`
+- `talent_rule`
+- `talent_parameter`
+- `talent_configuration`
+- `talent_onboarding_appgen_outbox_event`
+- `talent_onboarding_appgen_inbox_event`
+- `talent_onboarding_dead_letter_event`
+
+### API Routes
+
+- `POST /job-requisitions`
+- `POST /job-requisitions/{id}/approvals`
+- `POST /candidates`
+- `POST /candidates/{id}/stage`
+- `POST /interviews`
+- `POST /background-checks`
+- `POST /offers`
+- `POST /offers/{id}/acceptance`
+- `POST /onboarding/tasks`
+- `POST /onboarding/provision`
+- `POST /talent/events/inbox`
+- `POST /talent-rules`
+- `POST /talent-parameters`
+- `POST /talent-configuration`
+- `GET /talent-workbench`
+
+### Emitted Events
+
+- `EmployeeProvisioned`
+- `CandidateHired`
+
+### Consumed Events
+
+- `RoleChanged`
+- `WorkerIdentityVerified`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

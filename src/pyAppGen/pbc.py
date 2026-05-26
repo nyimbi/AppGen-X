@@ -122,6 +122,17 @@ PBC_SPECIFICATION_REQUIRED_CONCEPTS = (
         "terms": (("postgresql",), ("mysql",), ("mariadb",), ("appgen-x",)),
     },
 )
+PBC_SPECIFICATION_TRACEABILITY_FIELDS = (
+    "tables",
+    "apis",
+    "emits",
+    "consumes",
+    "ui_fragments",
+    "permissions",
+    "configuration",
+    "standard_features",
+    "advanced_capabilities",
+)
 PBC_RESTRICTED_LEGACY_REFERENCES = (
     r"\b" + "S" + "AP" + r"\b",
     r"\b" + "S" + r"/4\b",
@@ -4886,6 +4897,43 @@ def _missing_specification_concepts(text: str, key: str) -> tuple[dict, ...]:
     return tuple(missing)
 
 
+def _normalized_specification_token(value: object) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(value).lower()).strip("_")
+
+
+def _pbc_specification_manifest_traceability(text: str, key: str) -> dict:
+    manifest = PBC_CATALOG[key]
+    normalized_text = _normalized_specification_token(text)
+    field_results = []
+    for field in PBC_SPECIFICATION_TRACEABILITY_FIELDS:
+        values = tuple(manifest.get(field, ()))
+        missing = []
+        for value in values:
+            normalized = _normalized_specification_token(value)
+            alternatives = {normalized}
+            if field == "tables":
+                alternatives.add(_normalized_specification_token(f"{key}_{value}"))
+            if not any(alternative and alternative in normalized_text for alternative in alternatives):
+                missing.append(value)
+        field_results.append(
+            {
+                "field": field,
+                "ok": not missing,
+                "declared_count": len(values),
+                "missing": tuple(missing),
+            }
+        )
+    appendix_present = "manifest traceability appendix" in text.lower()
+    return {
+        "format": "appgen.pbc-specification-manifest-traceability.v1",
+        "ok": appendix_present and all(result["ok"] for result in field_results),
+        "pbc": key,
+        "appendix_present": appendix_present,
+        "fields": tuple(field_results),
+        "blocking_gaps": tuple(result for result in field_results if not result["ok"]),
+    }
+
+
 def pbc_specification_contract(key: str) -> dict:
     """Return release evidence for the package-local PBC specification."""
     path = _pbc_specification_path(key)
@@ -4916,6 +4964,7 @@ def pbc_specification_contract(key: str) -> dict:
         for pattern in PBC_RESTRICTED_LEGACY_REFERENCES
         if re.search(pattern, text)
     )
+    manifest_traceability = _pbc_specification_manifest_traceability(text, key)
     checks = (
         {
             "id": "file_exists",
@@ -4938,6 +4987,11 @@ def pbc_specification_contract(key: str) -> dict:
             "ok": not restricted_references,
             "references": restricted_references,
         },
+        {
+            "id": "manifest_traceability",
+            "ok": manifest_traceability["ok"],
+            "traceability": manifest_traceability,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -4949,6 +5003,7 @@ def pbc_specification_contract(key: str) -> dict:
         "heading_count": heading_count,
         "required_concepts": PBC_SPECIFICATION_REQUIRED_CONCEPTS,
         "missing_concepts": missing_concepts,
+        "manifest_traceability": manifest_traceability,
         "restricted_legacy_references": restricted_references,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),

@@ -320,3 +320,58 @@ priority bands, queues, SLA policies, resolution reasons, escalation reasons,
 and knowledge-link classes. Generated applications validate those seed
 descriptors with schema, migration, model, service, route, event, handler, UI,
 RBAC, configuration, and release contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `service_ticketing`
+- Mesh: `relationship`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `support_ticket`
+- `sla_policy`
+- `case_assignment`
+- `escalation_event`
+
+### API Routes
+
+- `POST /tickets`
+- `POST /assignments`
+- `GET /sla-status`
+
+### Emitted Events
+
+- `SupportCaseOpened`
+- `SlaBreached`
+
+### Consumed Events
+
+- `CustomerUpdated`
+- `PreferenceChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

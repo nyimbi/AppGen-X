@@ -232,3 +232,58 @@ statuses, duty treatments, restricted-party decision classes, document types,
 and landed-cost reason codes. Generated packages validate those seed
 descriptors with schema, migration, model, service, route, event, handler, UI,
 RBAC, configuration, and release contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `cross_border_trade`
+- Mesh: `commerce`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `hs_classification`
+- `landed_cost_quote`
+- `export_control_check`
+- `customs_declaration`
+
+### API Routes
+
+- `POST /landed-cost`
+- `POST /export-checks`
+- `POST /declarations`
+
+### Emitted Events
+
+- `CustomsDeclarationPrepared`
+- `LandedCostCalculated`
+
+### Consumed Events
+
+- `ProductClassified`
+- `OrderPriced`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

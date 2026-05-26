@@ -237,3 +237,58 @@ safe HTTP methods, supported protocols, rate-limit bands, retry budgets, and
 health-state thresholds. Generated packages must validate those seed descriptors
 with the schema, migration, model, service, route, event, handler, UI, RBAC,
 configuration, and release evidence contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `api_gateway_mesh`
+- Mesh: `platform`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `service_route`
+- `rate_limit_policy`
+- `mtls_identity`
+- `traffic_sample`
+
+### API Routes
+
+- `POST /routes`
+- `POST /rate-limits`
+- `GET /service-map`
+
+### Emitted Events
+
+- `RoutePublished`
+- `ServiceHealthChanged`
+
+### Consumed Events
+
+- `PbcDeployed`
+- `AccessPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -273,3 +273,123 @@ The focused test suite proves:
 - Configuration, parameters, rules, schema extensions, event handling, worker projection, labor intake, payslip calculation, deductions, benefits, posting, filing, UI, and workbench evidence execute.
 - Boundary validation accepts owned tables and declared API/event/projection dependencies, then rejects direct foreign-table references.
 - Invalid backend, stream-picker configuration, unsupported parameters, non-owned schema extensions, idempotent duplicates, retries, and dead letters are verified.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `payroll_engine`
+- Mesh: `hcm`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `payroll_calendar`
+- `payroll_period`
+- `payroll_pay_group`
+- `payroll_legal_entity`
+- `payroll_run`
+- `payroll_run_worker`
+- `payroll_run_approval`
+- `payroll_run_lock`
+- `worker_projection`
+- `worker_pay_profile`
+- `worker_bank_instruction`
+- `labor_hours`
+- `labor_hours_line`
+- `earning_code`
+- `earning_calculation`
+- `overtime_calculation`
+- `gross_pay_component`
+- `payslip`
+- `payslip_line`
+- `tax_withholding_projection`
+- `deduction`
+- `deduction_rule`
+- `deduction_arrear`
+- `garnishment_order`
+- `benefit_allocation`
+- `benefit_plan`
+- `employer_contribution`
+- `net_pay_distribution`
+- `payment_instruction`
+- `payment_batch_projection`
+- `journal_request_projection`
+- `tax_wage_base_projection`
+- `payroll_filing`
+- `payroll_filing_line`
+- `payroll_correction`
+- `retro_adjustment`
+- `off_cycle_payment`
+- `payroll_exception`
+- `payroll_policy_screening`
+- `payroll_audit_trace`
+- `payroll_proof`
+- `payroll_federation_projection`
+- `payroll_carbon_batch_window`
+- `payroll_batch_optimization`
+- `payroll_cash_allocation`
+- `payroll_anomaly_signal`
+- `payroll_risk_model`
+- `payroll_cash_forecast`
+- `payroll_parsed_instruction`
+- `payroll_seed_data`
+- `payroll_schema_extension`
+- `payroll_control_assertion`
+- `payroll_governed_model`
+- `payroll_rule`
+- `payroll_parameter`
+- `payroll_configuration`
+- `payroll_engine_appgen_outbox_event`
+- `payroll_engine_appgen_inbox_event`
+- `payroll_engine_dead_letter_event`
+
+### API Routes
+
+- `POST /payroll-runs`
+- `POST /payroll-runs/{id}/workers`
+- `POST /payroll-runs/{id}/payslips`
+- `POST /payslips/{id}/deductions`
+- `POST /payslips/{id}/benefits`
+- `POST /payroll-runs/{id}/post`
+- `POST /payroll-filings`
+- `POST /payroll/events/inbox`
+- `POST /payroll-rules`
+- `POST /payroll-parameters`
+- `POST /payroll-configuration`
+- `GET /payslips`
+- `GET /payroll-workbench`
+
+### Emitted Events
+
+- `PayrollPosted`
+- `PayrollFilingPrepared`
+
+### Consumed Events
+
+- `LaborHoursApproved`
+- `TaxCalculated`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -263,3 +263,106 @@ Release readiness requires:
 - restricted-name scans over the changed GL package/test/spec files returning
   clean and no stream-engine or non-AppGen-X event picker exposed to ordinary
   users.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `gl_core`
+- Mesh: `finops`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `ledger_event_log`
+- `journal_entry`
+- `journal_line`
+- `ledger_account`
+- `accounting_period`
+- `ledger_projection`
+- `consensus_replica`
+- `schema_extension`
+- `tenant_ledger_partition`
+- `probabilistic_posting`
+- `close_snapshot`
+- `causal_scenario`
+- `reconciliation_case`
+- `semantic_source_document`
+- `regulatory_rule_version`
+- `predictive_validation_run`
+- `audit_proof`
+- `policy_decision`
+- `control_assertion`
+- `ledger_federation_link`
+- `identity_credential`
+- `resilience_drill`
+- `crypto_key_epoch`
+- `carbon_execution_window`
+
+### API Routes
+
+- `POST /journals`
+- `GET /trial-balance`
+- `GET /chart-of-accounts`
+- `GET /ledger-events`
+- `POST /ledger-projections`
+- `POST /consensus-commits`
+- `POST /schema-extensions`
+- `GET /temporal-ledger`
+- `POST /probabilistic-postings`
+- `POST /continuous-close-snapshots`
+- `POST /causal-scenarios`
+- `POST /reconciliation-cases`
+- `POST /semantic-documents`
+- `POST /regulatory-rules`
+- `POST /predictive-validations`
+- `POST /audit-proofs`
+- `POST /control-tests`
+- `POST /ledger-federation-links`
+- `POST /resilience-drills`
+- `POST /carbon-execution-windows`
+
+### Emitted Events
+
+- `JournalPosted`
+- `PeriodClosed`
+- `TrialBalanceCalculated`
+- `LedgerEventAppended`
+- `ConsensusCommitted`
+- `LedgerProjectionRebuilt`
+- `ContinuousCloseSnapshotCreated`
+- `ReconciliationSuggested`
+- `AuditProofGenerated`
+- `RegulatoryRuleCompiled`
+- `PostingValidationPredicted`
+
+### Consumed Events
+
+- `InvoiceApproved`
+- `PaymentCaptured`
+- `DepreciationCalculated`
+- `OrderShipped`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

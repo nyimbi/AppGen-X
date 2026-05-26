@@ -276,3 +276,59 @@ Focused tests prove:
   and simulated handler failures are rejected or dead-lettered.
 - The package participates in all-PBC implementation release and generation
   smoke audits.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `predictive_demand`
+- Mesh: `intelligence`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `forecast_model`
+- `forecast_run`
+- `demand_signal`
+- `forecast_result`
+
+### API Routes
+
+- `POST /forecast-runs`
+- `GET /forecast-results`
+- `POST /signals`
+
+### Emitted Events
+
+- `ForecastUpdated`
+- `MaterialShortageDetected`
+
+### Consumed Events
+
+- `OperationalKpiChanged`
+- `OrderShipped`
+- `InventoryPoolChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -271,3 +271,58 @@ Focused tests prove:
   and simulated handler failures are rejected or dead-lettered.
 - The package participates in all-PBC implementation release and generation
   smoke audits.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `loyalty_rewards`
+- Mesh: `relationship`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `reward_account`
+- `points_ledger`
+- `earning_rule`
+- `redemption`
+
+### API Routes
+
+- `POST /points`
+- `POST /redemptions`
+- `GET /reward-accounts`
+
+### Emitted Events
+
+- `RewardBalanceChanged`
+- `CustomerSegmentUpdated`
+
+### Consumed Events
+
+- `PaymentCaptured`
+- `PromotionApplied`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

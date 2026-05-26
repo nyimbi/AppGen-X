@@ -302,3 +302,85 @@ projected, and dead-lettered; that descriptor APIs and RBAC contracts are
 exported from the package; that package metadata declares owned tables and
 allowed backends; and that all standard and advanced capability claims have
 testable release evidence.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `procurement_sourcing`
+- Mesh: `scl`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `procurement_sourcing_purchase_requisition`
+- `procurement_sourcing_purchase_requisition_line`
+- `procurement_sourcing_requisition_approval`
+- `procurement_sourcing_category_strategy`
+- `procurement_sourcing_supplier_profile`
+- `procurement_sourcing_supplier_qualification`
+- `procurement_sourcing_rfq`
+- `procurement_sourcing_rfq_line`
+- `procurement_sourcing_supplier_invitation`
+- `procurement_sourcing_supplier_bid`
+- `procurement_sourcing_supplier_scorecard`
+- `procurement_sourcing_supplier_award`
+- `procurement_sourcing_vendor_contract`
+- `procurement_sourcing_purchase_order`
+- `procurement_sourcing_purchase_order_line`
+- `procurement_sourcing_appgen_outbox_event`
+- `procurement_sourcing_appgen_inbox_event`
+- `procurement_sourcing_dead_letter_event`
+
+### API Routes
+
+- `POST /procurement/requisitions`
+- `POST /procurement/rfqs`
+- `POST /procurement/rfqs/{id}/bids`
+- `POST /procurement/awards`
+- `POST /procurement/contracts`
+- `POST /procurement/purchase-orders`
+- `GET /procurement/workbench`
+
+### Emitted Events
+
+- `PurchaseRequisitionCreated`
+- `PurchaseRequisitionApproved`
+- `RfqCreated`
+- `SupplierBidCaptured`
+- `SupplierSelected`
+- `VendorContractCreated`
+- `PurchaseOrderIssued`
+
+### Consumed Events
+
+- `MaterialShortageDetected`
+- `VendorPerformanceUpdated`
+- `BudgetChanged`
+- `SupplierRiskChanged`
+- `ContractComplianceChanged`
+- `AccessPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

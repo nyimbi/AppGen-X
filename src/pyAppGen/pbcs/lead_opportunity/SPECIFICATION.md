@@ -274,3 +274,57 @@ Focused tests prove:
   boundary evidence without relying on shared-file edits.
 - The package participates in all-PBC implementation release and generation
   smoke audits.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `lead_opportunity`
+- Mesh: `relationship`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `lead`
+- `opportunity`
+- `account_hierarchy`
+- `sales_activity`
+
+### API Routes
+
+- `POST /leads`
+- `POST /opportunities`
+- `GET /pipeline`
+
+### Emitted Events
+
+- `OpportunityWon`
+- `CustomerUpdated`
+
+### Consumed Events
+
+- `CustomerSegmentUpdated`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

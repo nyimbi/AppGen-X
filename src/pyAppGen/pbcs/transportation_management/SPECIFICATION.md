@@ -269,3 +269,86 @@ declared dependency APIs, declared local projections, or
 references such as inventory balances or customer profiles are violations. This
 keeps cross-PBC composition explicit and preserves the transport package as a
 composable business capability rather than a shared database module.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `transportation_management`
+- Mesh: `scl`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `shipment`
+- `shipment_line`
+- `shipment_package`
+- `carrier`
+- `carrier_service_level`
+- `carrier_lane`
+- `freight_route`
+- `route_stop`
+- `route_leg`
+- `carrier_tender`
+- `dispatch_confirmation`
+- `tracking_event`
+- `eta_snapshot`
+- `inbound_arrival`
+- `delivery_proof`
+- `freight_cost_accrual`
+- `transportation_management_appgen_outbox_event`
+- `transportation_management_appgen_inbox_event`
+- `transportation_management_dead_letter_event`
+
+### API Routes
+
+- `POST /transportation/shipments`
+- `POST /transportation/carriers`
+- `POST /transportation/shipments/{id}/carrier-selection`
+- `POST /transportation/routes`
+- `POST /transportation/tracking-events`
+- `POST /transportation/shipments/{id}/delivery`
+- `GET /transportation/workbench`
+
+### Emitted Events
+
+- `CarrierRegistered`
+- `ShipmentCreated`
+- `CarrierSelected`
+- `FreightRoutePlanned`
+- `ShipmentDispatched`
+- `EtaUpdated`
+- `InboundArrived`
+- `ShipmentDelivered`
+
+### Consumed Events
+
+- `Packed`
+- `PurchaseOrderIssued`
+- `ReturnAuthorized`
+- `InventoryTransferRequested`
+- `AccessPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

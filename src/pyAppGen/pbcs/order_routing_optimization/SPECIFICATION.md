@@ -337,3 +337,59 @@ The focused package test covers:
 - Positive schema/service/release evidence with expanded owned tables and generated migration/model descriptors.
 - Configuration, parameters, rules, schema extensions, event handling, capacity, candidates, routing decisions, promises, approvals, feedback, workbench binding evidence, and UI rendering.
 - Invalid backends, unsupported configuration fields, unsupported parameters, out-of-range parameters, non-owned schema extensions, duplicate event handling, retries, and dead letters.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `order_routing_optimization`
+- Mesh: `commerce`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `routing_rule`
+- `route_candidate`
+- `capacity_snapshot`
+- `routing_decision`
+
+### API Routes
+
+- `POST /route-orders`
+- `GET /route-candidates`
+- `POST /capacity`
+
+### Emitted Events
+
+- `FulfillmentRouteSelected`
+- `NodeCapacityReserved`
+
+### Consumed Events
+
+- `OrderVerified`
+- `AvailabilityProjected`
+- `TaxCalculated`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

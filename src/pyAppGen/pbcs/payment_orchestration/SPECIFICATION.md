@@ -246,3 +246,59 @@ authorization states, settlement windows, retry reasons, reconciliation states,
 and exception queues. The package validates those seeds with schema, migration,
 model, service, route, event, handler, UI, RBAC, configuration, and release
 contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `payment_orchestration`
+- Mesh: `commerce`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `payment_gateway`
+- `payment_intent`
+- `payment_token`
+- `fraud_check`
+
+### API Routes
+
+- `POST /payment-intents`
+- `POST /gateway-routes`
+- `POST /tokens`
+
+### Emitted Events
+
+- `PaymentCaptured`
+- `PaymentFailed`
+- `FraudCheckRequested`
+
+### Consumed Events
+
+- `CheckoutCompleted`
+- `FraudRiskScored`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

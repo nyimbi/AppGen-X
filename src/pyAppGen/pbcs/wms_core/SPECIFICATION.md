@@ -271,3 +271,87 @@ exceptions, labor, edge-device replay, rules, parameters, and configuration,
 that WMS-owned state stays inside the package boundary, that AppGen-X outbox
 events are idempotent, and that every standard and advanced capability has
 testable release evidence.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `wms_core`
+- Mesh: `scl`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `warehouse`
+- `warehouse_zone`
+- `bin_location`
+- `inbound_receipt`
+- `inbound_receipt_line`
+- `dock_door`
+- `dock_appointment`
+- `putaway_task`
+- `pick_wave`
+- `pick_task`
+- `pack_task`
+- `shipment_confirmation`
+- `cycle_count`
+- `labor_task`
+- `edge_device_command`
+- `wms_core_appgen_outbox_event`
+- `wms_core_appgen_inbox_event`
+- `wms_core_dead_letter_event`
+
+### API Routes
+
+- `POST /wms/warehouses`
+- `POST /wms/inbound`
+- `POST /wms/putaway`
+- `POST /wms/pick-waves`
+- `POST /wms/pack-tasks`
+- `POST /wms/shipments`
+- `GET /wms/workbench`
+
+### Emitted Events
+
+- `WarehouseRegistered`
+- `BinRegistered`
+- `GoodsReceiptPosted`
+- `PutawayTaskCreated`
+- `PutawayConfirmed`
+- `PickWaveReleased`
+- `Picked`
+- `PackTaskCreated`
+- `Packed`
+- `OrderShipped`
+
+### Consumed Events
+
+- `InventoryAllocated`
+- `InboundArrived`
+- `QualityHoldReleased`
+- `CarrierBooked`
+- `AccessPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

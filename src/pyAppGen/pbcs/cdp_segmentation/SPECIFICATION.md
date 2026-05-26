@@ -259,3 +259,59 @@ Focused tests prove:
   and simulated handler failures are rejected or dead-lettered.
 - The package participates in all-PBC implementation release and generation
   smoke audits.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `cdp_segmentation`
+- Mesh: `relationship`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `customer_event`
+- `segment_definition`
+- `segment_membership`
+- `profile_property`
+
+### API Routes
+
+- `POST /events`
+- `POST /segments`
+- `GET /memberships`
+
+### Emitted Events
+
+- `CustomerSegmentUpdated`
+- `ProfileEnriched`
+
+### Consumed Events
+
+- `CustomerUpdated`
+- `PaymentCaptured`
+- `OrderShipped`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

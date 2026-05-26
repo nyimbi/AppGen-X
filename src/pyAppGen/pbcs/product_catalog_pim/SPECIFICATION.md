@@ -412,3 +412,58 @@ Focused verification for this package must prove:
 - focused runtime tests cover the package-local contract builders and runtime
   evidence
 - package-local `py_compile` and focused `pytest` succeed
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `product_catalog_pim`
+- Mesh: `cx`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `product`
+- `product_price`
+- `product_media`
+- `product_attribute`
+
+### API Routes
+
+- `POST /products`
+- `GET /product-read-models`
+- `POST /prices`
+
+### Emitted Events
+
+- `ProductClassified`
+- `ProductPublished`
+- `ForecastUpdated`
+
+### Consumed Events
+
+- `TaxCalculated`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

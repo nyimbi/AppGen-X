@@ -200,3 +200,59 @@ audits prove all of the following:
   return `ok: True`.
 - Restricted-name scans over the package and tests are clean, and ordinary users
   cannot choose stream engines or non-AppGen-X event contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `enterprise_search_vector`
+- Mesh: `intelligence`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `search_index`
+- `embedding_job`
+- `vector_document`
+- `query_trace`
+
+### API Routes
+
+- `POST /indexes`
+- `POST /embeddings`
+- `POST /search`
+
+### Emitted Events
+
+- `SearchIndexUpdated`
+- `DiscoveryInsightGenerated`
+
+### Consumed Events
+
+- `ProductPublished`
+- `CustomerUpdated`
+- `AuditEventSealed`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

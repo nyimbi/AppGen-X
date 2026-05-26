@@ -295,3 +295,112 @@ so generated applications can initialize an AR workbench without cross-PBC table
 reads. The focused tests verify those seed descriptors together with the schema,
 service, route, event, handler, UI, permission, configuration, and release
 contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `ar_credit`
+- Mesh: `finops`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `customer`
+- `customer_site`
+- `customer_graph`
+- `customer_credit_profile`
+- `customer_payment_terms`
+- `customer_risk_signal`
+- `invoice`
+- `invoice_line`
+- `invoice_tax`
+- `invoice_performance_obligation`
+- `delivery_confirmation`
+- `cash_receipt`
+- `remittance_advice`
+- `cash_application`
+- `unapplied_cash`
+- `credit_memo`
+- `write_off`
+- `refund`
+- `dispute_case`
+- `collection_action`
+- `dunning_notice`
+- `statement`
+- `revenue_schedule`
+- `revenue_schedule_line`
+- `cash_pool`
+- `credit_decision`
+- `e_invoice_submission`
+- `cross_border_receivable`
+- `invoice_finance_program`
+- `policy_rule`
+- `runtime_parameter`
+- `schema_extension`
+- `control_assertion`
+- `governed_model`
+
+### API Routes
+
+- `POST /ar/customers`
+- `POST /ar/invoices`
+- `POST /ar/deliveries`
+- `POST /ar/remittances/parse`
+- `POST /ar/cash-applications`
+- `POST /ar/unapplied-cash`
+- `POST /ar/credit-memos`
+- `POST /ar/write-offs`
+- `POST /ar/refunds`
+- `POST /ar/disputes`
+- `POST /ar/collections`
+- `POST /ar/e-invoices`
+- `GET /ar/aging`
+- `GET /ar/statements/{customer_id}`
+- `GET /ar/revenue-schedules/{invoice_id}`
+- `GET /ar/workbench`
+
+### Emitted Events
+
+- `CustomerOnboarded`
+- `InvoiceIssued`
+- `DeliveryConfirmed`
+- `PaymentReceived`
+- `UnappliedCashRecorded`
+- `CreditMemoIssued`
+- `ReceivableWrittenOff`
+- `CustomerRefundScheduled`
+- `CollectionActionScheduled`
+
+### Consumed Events
+
+- `CustomerIdentityVerified`
+- `DeliveryConfirmed`
+- `TaxPolicyChanged`
+- `CashForecastUpdated`
+- `AccessPolicyChanged`
+- `CollectionPolicyChanged`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

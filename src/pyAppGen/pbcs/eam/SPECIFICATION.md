@@ -177,3 +177,58 @@ work-order states, meter units, safety permit classes, spare-usage reasons,
 vendor service classes, and reliability risk bands. Focused tests validate the
 seed descriptors together with schema, migration, model, service, route, event,
 handler, UI, RBAC, configuration, and release contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `eam`
+- Mesh: `opsmfg`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `equipment`
+- `maintenance_plan`
+- `work_order`
+- `spare_part_usage`
+
+### API Routes
+
+- `POST /work-orders`
+- `GET /maintenance-plan`
+- `POST /asset-events`
+
+### Emitted Events
+
+- `MaintenanceCompleted`
+- `VendorPerformanceUpdated`
+
+### Consumed Events
+
+- `DowntimeCaptured`
+- `NonConformanceRaised`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

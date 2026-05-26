@@ -260,3 +260,59 @@ availability bands, source-system classes, freshness thresholds, and exception
 reasons. Generated applications validate those seed descriptors together with
 owned schema, migration, model, service, route, event, handler, UI, RBAC,
 configuration, and release contracts.
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:START -->
+
+## Manifest Traceability Appendix
+
+This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
+
+- PBC key: `global_inventory_visibility`
+- Mesh: `commerce`
+- Datastore backend: `None`
+
+### Owned Tables
+
+- `inventory_pool`
+- `inventory_projection`
+- `supply_node`
+- `availability_snapshot`
+
+### API Routes
+
+- `GET /global-availability`
+- `POST /pool-rules`
+- `GET /supply-nodes`
+
+### Emitted Events
+
+- `AvailabilityProjected`
+- `InventoryPoolChanged`
+
+### Consumed Events
+
+- `GoodsReceiptPosted`
+- `ShipmentDelivered`
+- `InventoryAllocated`
+
+### UI Fragments
+
+- None declared
+
+### Permissions
+
+- None declared
+
+### Configuration Keys
+
+- None declared
+
+### Standard Features
+
+- None declared
+
+### Advanced Capabilities
+
+- None declared
+
+<!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
