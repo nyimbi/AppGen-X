@@ -1192,6 +1192,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   component editor, and custom designer family modules. The generated family
   modules and tests now prove editor, event, component-verb, and designer-hook
   operations independently before Object Inspector readiness is trusted.
+- Current repository cache cleanup pass moves ignored generated pytest and
+  Python bytecode cache directories into
+  `archive/cache-cleanup-2026-05-26/` with a manifest, leaving the active
+  source, tests, generated parser files, PBC packages, and frontend tree free
+  of reproducible cache folders.
 
 ## Open Completion Areas
 
