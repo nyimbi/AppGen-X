@@ -132,3 +132,66 @@ user-facing stream-engine selection; that package-local UI fragments expose
 shipment execution, carrier selection, tracking, ETA, delivery proof, exception,
 freight-cost, carbon, rule, parameter, and configuration workbench surfaces; and
 that every standard and advanced capability claim has testable release evidence.
+
+## Package-Local Implementation Contract
+
+The executable package exports the fixed transportation contract so generated
+apps, audits, and package registries do not infer critical boundaries from
+free-form documentation. `TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS`
+is exactly PostgreSQL, MySQL, and MariaDB. `TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC`
+is the fixed AppGen-X topic `appgen.transportation.events`. The configuration
+operation rejects alternate topics and rejects user-selectable stream or
+eventing fields such as stream-engine pickers, eventing mode selectors, and
+transport overrides. That rejection is deliberate: ordinary PBC composition
+chooses AppGen-X event semantics at the platform layer, while this package owns
+only transportation behavior and its own inbox/outbox/dead-letter evidence.
+
+Owned tables are declared as package metadata and as runtime evidence:
+`shipment`, `carrier`, `freight_route`, `route_stop`, `carrier_tender`,
+`dispatch_confirmation`, `tracking_event`, `eta_snapshot`, `inbound_arrival`,
+`delivery_proof`, `transportation_exception`, `freight_cost_accrual`,
+`cross_border_document`, `temperature_hazard_control`, `carrier_scorecard`,
+`carbon_distance_metric`, `transportation_rule`, `transportation_parameter`, and
+`transportation_configuration`. Schema extensions must target only those tables
+and field names must be stable lowercase identifiers. Extensions merge with
+existing extension metadata so a package user can add telematics payloads,
+appointment attributes, exception classifications, or proof metadata without
+overwriting prior extension declarations.
+
+The API contract is descriptor-level rather than a list of strings. Each route
+declares its command or query, owned tables touched, event effects, required
+permission, and idempotency key. It includes shipment creation, carrier master
+maintenance, carrier selection, route planning, dispatch, tracking ingestion,
+arrival confirmation, delivery confirmation, inbox handling, and the workbench
+query. The contract explicitly states `shared_table_access: false`; integration
+with warehouse, procurement, returns, inventory, identity, and audit packages is
+through declared APIs, AppGen-X events, and local projections.
+
+Inbound event handling is idempotent and side-effect bounded. Consumed events
+are `Packed`, `PurchaseOrderIssued`, `ReturnAuthorized`,
+`InventoryTransferRequested`, and `AccessPolicyChanged`. The handler writes an
+inbox record, records handler attempts under an idempotency key, updates the
+appropriate local projection, and returns duplicate evidence without appending
+extra inbox rows after a processed event is replayed. Unsupported or simulated
+failed events produce retry evidence until the configured retry limit is
+reached, then move to the package-local dead-letter stream with a transportation
+reason. The handler never writes to source-package tables.
+
+The permissions contract covers read, master, plan, tender, dispatch, track,
+confirm, event, configure, and audit permissions. Each command exposed by the
+UI and API maps to a permission, including `receive_event`,
+`register_schema_extension`, `configure_runtime`, and audit/control operations.
+Workbench rendering exposes binding evidence for owned tables, the fixed
+configuration, AppGen-X outbox, inbox, dead-letter tables, and RBAC permission
+sets. This makes UI generation auditable: a generated transportation workbench
+must show operational shipments and carriers, but it must also expose the event
+contract, handler health, dead-letter counts, configuration lock, rules, and
+parameters required to operate the package.
+
+Boundary verification is executable. References are valid only when they are
+owned transportation tables, consumed event names, package runtime event tables,
+declared dependency APIs, declared local projections, or
+`transportation_management_`-prefixed package artifacts. Foreign shared-table
+references such as inventory balances or customer profiles are violations. This
+keeps cross-PBC composition explicit and preserves the transport package as a
+composable business capability rather than a shared database module.

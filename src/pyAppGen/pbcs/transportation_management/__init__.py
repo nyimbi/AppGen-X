@@ -1,8 +1,14 @@
 """Transportation Management PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS
+from .runtime import TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES
+from .runtime import TRANSPORTATION_MANAGEMENT_EMITTED_EVENT_TYPES
+from .runtime import TRANSPORTATION_MANAGEMENT_OWNED_TABLES
+from .runtime import TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC
 from .runtime import TRANSPORTATION_MANAGEMENT_RUNTIME_CAPABILITY_KEYS
 from .runtime import TRANSPORTATION_MANAGEMENT_STANDARD_FEATURE_KEYS
+from .runtime import transportation_management_build_api_contract
 from .runtime import transportation_management_build_workbench_view
 from .runtime import transportation_management_calculate_eta
 from .runtime import transportation_management_configure_runtime
@@ -14,10 +20,14 @@ from .runtime import transportation_management_plan_route
 from .runtime import transportation_management_record_tracking_event
 from .runtime import transportation_management_register_carrier
 from .runtime import transportation_management_register_rule
+from .runtime import transportation_management_register_schema_extension
+from .runtime import transportation_management_permissions_contract
+from .runtime import transportation_management_receive_event
 from .runtime import transportation_management_runtime_capabilities
 from .runtime import transportation_management_runtime_smoke
 from .runtime import transportation_management_select_carrier
 from .runtime import transportation_management_set_parameter
+from .runtime import transportation_management_verify_owned_table_boundary
 from .ui import TRANSPORTATION_MANAGEMENT_UI_FRAGMENT_KEYS
 from .ui import transportation_management_render_workbench
 from .ui import transportation_management_ui_contract
@@ -33,4 +43,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": transportation_management_ui_contract(),
+        "api_contract": transportation_management_build_api_contract(),
+        "permissions_contract": transportation_management_permissions_contract(),
+        "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
+        "allowed_database_backends": TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
     }

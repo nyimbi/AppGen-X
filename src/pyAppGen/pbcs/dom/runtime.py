@@ -8,6 +8,76 @@ import math
 import re
 
 
+DOM_REQUIRED_EVENT_TOPIC = "appgen.dom.events"
+DOM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+DOM_OWNED_TABLES = (
+    "sales_order",
+    "order_line",
+    "order_status",
+    "customer_projection",
+    "tax_projection",
+    "fraud_screen",
+    "inventory_allocation_projection",
+    "payment_authorization_projection",
+    "fulfillment_plan",
+    "split_shipment",
+    "backorder",
+    "substitution",
+    "cancellation_request",
+    "shipment_projection",
+    "order_exception",
+    "route_selection",
+    "risk_score",
+    "policy_rule",
+    "dom_parameter",
+    "dom_configuration",
+)
+DOM_EMITTED_EVENT_TYPES = (
+    "OrderCaptured",
+    "TaxProjectionApplied",
+    "FraudScreened",
+    "OrderVerified",
+    "OrderPriced",
+    "InventoryAllocationProjected",
+    "FulfillmentPlanCreated",
+    "OrderShipped",
+)
+DOM_CONSUMED_EVENT_TYPES = (
+    "InventoryAllocated",
+    "TaxCalculated",
+    "CustomerUpdated",
+    "PaymentAuthorized",
+    "ShipmentDelivered",
+)
+_DOM_RUNTIME_TABLES = (
+    "dom_appgen_outbox_event",
+    "dom_appgen_inbox_event",
+    "dom_dead_letter_event",
+)
+_DOM_ALLOWED_DEPENDENCIES = (
+    "inventory_allocation_projection",
+    "tax_calculation_projection",
+    "customer_profile_projection",
+    "payment_authorization_projection",
+    "shipment_delivery_projection",
+    "GET /inventory/allocations/{id}",
+    "GET /tax/calculations/{id}",
+    "GET /customers/{id}",
+    "GET /payments/authorizations/{id}",
+    "GET /shipments/{id}",
+    "POST /audit/order-events",
+)
+_DOM_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 DOM_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_order_lifecycle",
     "graph_relational_order_topology",
@@ -76,12 +146,15 @@ def dom_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "dom",
         "implementation_directory": "src/pyAppGen/pbcs/dom",
+        "owned_tables": DOM_OWNED_TABLES,
         "capabilities": DOM_RUNTIME_CAPABILITY_KEYS,
         "standard_features": DOM_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "capture_order",
             "upsert_customer_projection",
             "apply_tax_projection",
@@ -91,7 +164,10 @@ def dom_runtime_capabilities() -> dict:
             "apply_inventory_allocation",
             "create_fulfillment_plan",
             "confirm_order_shipped",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -103,7 +179,7 @@ def dom_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.dom.events",
+            "event_topic": DOM_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "allowed_channels": ("web", "store", "marketplace"),
@@ -223,20 +299,49 @@ def dom_runtime_smoke() -> dict:
 
 
 def dom_empty_state() -> dict:
-    return {"events": (), "outbox": (), "orders": {}, "customers": {}, "tax": {}, "fraud": {}, "allocations": {}, "fulfillment_plans": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "inventory_allocation_projections": {},
+        "tax_calculation_projections": {},
+        "customer_profile_projections": {},
+        "payment_authorization_projections": {},
+        "shipment_delivery_projections": {},
+        "orders": {},
+        "customers": {},
+        "tax": {},
+        "fraud": {},
+        "allocations": {},
+        "fulfillment_plans": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def dom_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _DOM_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Distributed Order Management uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(DOM_ALLOWED_DATABASE_BACKENDS):
         raise ValueError("Distributed Order Management supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Distributed Order Management requires an AppGen-X event topic")
+    if configuration.get("event_topic") != DOM_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Distributed Order Management requires AppGen-X event topic {DOM_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": DOM_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": DOM_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -273,10 +378,76 @@ def dom_register_rule(state: dict, rule: dict) -> dict:
 
 
 def dom_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in DOM_OWNED_TABLES:
+        raise ValueError(f"Distributed Order Management schema extensions must target owned tables: {DOM_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    existing = dict(state.get("schema_extensions", {}).get(table, {}))
+    merged = {**existing, **fields}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}},
+        "schema_extension": {"table": table, "fields": dict(fields)},
+        "target": table,
+        "fields": merged,
+    }
+
+
+def dom_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {
+        **state,
+        "inbox": (*state.get("inbox", ()), inbox_entry),
+        "handled_events": dict(handled),
+        "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "dead_letters": tuple(state.get("dead_letters", ())),
+        "dead_letter": tuple(state.get("dead_letter", ())),
+        "inventory_allocation_projections": dict(state.get("inventory_allocation_projections", {})),
+        "tax_calculation_projections": dict(state.get("tax_calculation_projections", {})),
+        "customer_profile_projections": dict(state.get("customer_profile_projections", {})),
+        "payment_authorization_projections": dict(state.get("payment_authorization_projections", {})),
+        "shipment_delivery_projections": dict(state.get("shipment_delivery_projections", {})),
+    }
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in DOM_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state["retry_evidence"], evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_dom_event"}
+            next_state["dead_letters"] = (*next_state["dead_letters"], dead)
+            next_state["dead_letter"] = (*next_state["dead_letter"], dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "InventoryAllocated":
+        next_state["inventory_allocation_projections"][payload.get("allocation_id", event_id)] = payload
+    elif event_type == "TaxCalculated":
+        next_state["tax_calculation_projections"][payload.get("calculation_id", event_id)] = payload
+    elif event_type == "CustomerUpdated":
+        next_state["customer_profile_projections"][payload.get("customer_id", event_id)] = payload
+    elif event_type == "PaymentAuthorized":
+        next_state["payment_authorization_projections"][payload.get("authorization_id", event_id)] = payload
+    elif event_type == "ShipmentDelivered":
+        next_state["shipment_delivery_projections"][payload.get("shipment_id", event_id)] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def dom_upsert_customer_projection(state: dict, customer: dict) -> dict:
@@ -420,7 +591,111 @@ def dom_run_control_tests(state: dict) -> dict:
 
 
 def dom_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /orders", "POST /allocation", "GET /fulfillment-plans", "POST /dom-rules", "POST /dom-parameters", "POST /dom-configuration"), "events": {"emits": ("OrderVerified", "OrderPriced", "OrderShipped"), "consumes": ("InventoryAllocated", "TaxCalculated", "CustomerUpdated")}, "permissions": ("dom.create", "dom.verify", "dom.price", "dom.allocate", "dom.plan", "dom.ship", "dom.configure", "dom.audit"), "configuration": ("DOM_DATABASE_URL", "DOM_EVENT_TOPIC", "DOM_RETRY_LIMIT", "DOM_DEFAULT_CURRENCY")}
+    return {
+        "ok": True,
+        "format": "appgen.dom-api-contract.v1",
+        "routes": (
+            {"route": "POST /dom/orders", "command": "capture_order", "owned_tables": ("sales_order", "order_line", "order_status"), "emits": ("OrderCaptured",), "requires_permission": "dom.create", "idempotency_key": "order_id"},
+            {"route": "POST /dom/orders/{id}/tax-projection", "command": "apply_tax_projection", "owned_tables": ("tax_projection",), "emits": ("TaxProjectionApplied",), "requires_permission": "dom.verify", "idempotency_key": "calculation_id"},
+            {"route": "POST /dom/orders/{id}/fraud-screen", "command": "screen_fraud", "owned_tables": ("fraud_screen", "risk_score"), "emits": ("FraudScreened",), "requires_permission": "dom.verify", "idempotency_key": "order_id:fraud"},
+            {"route": "POST /dom/orders/{id}/verify", "command": "verify_order", "owned_tables": ("sales_order", "order_status"), "emits": ("OrderVerified",), "requires_permission": "dom.verify", "idempotency_key": "order_id:verify"},
+            {"route": "POST /dom/orders/{id}/price", "command": "price_order", "owned_tables": ("sales_order",), "emits": ("OrderPriced",), "requires_permission": "dom.price", "idempotency_key": "order_id:price"},
+            {"route": "POST /dom/orders/{id}/allocation", "command": "apply_inventory_allocation", "owned_tables": ("inventory_allocation_projection",), "emits": ("InventoryAllocationProjected",), "requires_permission": "dom.allocate", "idempotency_key": "allocation_id"},
+            {"route": "POST /dom/fulfillment-plans", "command": "create_fulfillment_plan", "owned_tables": ("fulfillment_plan", "split_shipment", "route_selection"), "emits": ("FulfillmentPlanCreated",), "requires_permission": "dom.plan", "idempotency_key": "order_id:plan"},
+            {"route": "POST /dom/shipments", "command": "confirm_order_shipped", "owned_tables": ("shipment_projection", "sales_order"), "emits": ("OrderShipped",), "requires_permission": "dom.ship", "idempotency_key": "shipment_id"},
+            {"route": "POST /dom/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": DOM_CONSUMED_EVENT_TYPES, "requires_permission": "dom.event", "idempotency_key": "event_id"},
+            {"route": "GET /dom/workbench", "query": "build_workbench_view", "owned_tables": DOM_OWNED_TABLES, "requires_permission": "dom.audit"},
+        ),
+        "declared_catalog_routes": ("POST /orders", "POST /allocation", "GET /fulfillment-plans"),
+        "events": {"emits": DOM_EMITTED_EVENT_TYPES, "consumes": DOM_CONSUMED_EVENT_TYPES},
+        "emits": DOM_EMITTED_EVENT_TYPES,
+        "consumes": DOM_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(dom_permissions_contract()["permissions"])),
+        "database_backends": DOM_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": DOM_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("DOM_DATABASE_URL", "DOM_EVENT_TOPIC", "DOM_RETRY_LIMIT", "DOM_DEFAULT_CURRENCY"),
+    }
+
+
+def dom_permissions_contract() -> dict:
+    return {
+        "format": "appgen.dom-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "dom.read",
+            "dom.create",
+            "dom.verify",
+            "dom.price",
+            "dom.allocate",
+            "dom.plan",
+            "dom.ship",
+            "dom.cancel",
+            "dom.event",
+            "dom.configure",
+            "dom.audit",
+        ),
+        "action_permissions": {
+            "capture_order": "dom.create",
+            "upsert_customer_projection": "dom.create",
+            "apply_tax_projection": "dom.verify",
+            "screen_fraud": "dom.verify",
+            "verify_order": "dom.verify",
+            "price_order": "dom.price",
+            "apply_inventory_allocation": "dom.allocate",
+            "create_fulfillment_plan": "dom.plan",
+            "confirm_order_shipped": "dom.ship",
+            "route_fulfillment": "dom.plan",
+            "receive_event": "dom.event",
+            "register_rule": "dom.configure",
+            "register_schema_extension": "dom.configure",
+            "set_parameter": "dom.configure",
+            "configure_runtime": "dom.configure",
+            "screen_order_policy": "dom.audit",
+            "generate_order_verification_proof": "dom.audit",
+            "run_control_tests": "dom.audit",
+            "build_workbench_view": "dom.audit",
+        },
+    }
+
+
+def dom_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *DOM_OWNED_TABLES,
+        *DOM_CONSUMED_EVENT_TYPES,
+        *_DOM_RUNTIME_TABLES,
+        *_DOM_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(reference for reference in references if reference not in allowed_set and not str(reference).startswith("dom_"))
+    return {
+        "format": "appgen.dom-boundary.v1",
+        "ok": not violations,
+        "owned_tables": DOM_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "GET /inventory/allocations/{id}",
+                "GET /tax/calculations/{id}",
+                "GET /customers/{id}",
+                "GET /payments/authorizations/{id}",
+                "GET /shipments/{id}",
+                "POST /audit/order-events",
+            ),
+            "events": DOM_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "inventory_allocation_projection",
+                "tax_calculation_projection",
+                "customer_profile_projection",
+                "payment_authorization_projection",
+                "shipment_delivery_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def dom_federate_order_view(state: dict, order_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -489,6 +764,21 @@ def dom_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": DOM_OWNED_TABLES,
+            "outbox_table": "dom_appgen_outbox_event",
+            "inbox_table": "dom_appgen_inbox_event",
+            "dead_letter_table": "dom_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+            "permissions": tuple(sorted(dom_permissions_contract()["permissions"])),
+        },
     }
 
 

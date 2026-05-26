@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from .runtime import TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS
+from .runtime import TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES
+from .runtime import TRANSPORTATION_MANAGEMENT_EMITTED_EVENT_TYPES
+from .runtime import TRANSPORTATION_MANAGEMENT_OWNED_TABLES
+from .runtime import TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC
+
 
 TRANSPORTATION_MANAGEMENT_UI_FRAGMENT_KEYS = (
     "TransportationWorkbench",
@@ -87,6 +93,7 @@ def transportation_management_ui_contract() -> dict:
             },
         ),
         "action_permissions": {
+            "register_carrier": "transportation_management.master",
             "create_shipment": "transportation_management.plan",
             "select_carrier": "transportation_management.tender",
             "plan_route": "transportation_management.plan",
@@ -95,19 +102,24 @@ def transportation_management_ui_contract() -> dict:
             "calculate_eta": "transportation_management.track",
             "confirm_inbound_arrival": "transportation_management.confirm",
             "confirm_delivery": "transportation_management.confirm",
+            "receive_event": "transportation_management.event",
             "simulate_carrier_route": "transportation_management.audit",
             "optimize_route_carrier": "transportation_management.tender",
             "allocate_carrier_tender": "transportation_management.tender",
             "screen_policy": "transportation_management.audit",
             "run_control_tests": "transportation_management.audit",
             "register_rule": "transportation_management.configure",
+            "register_schema_extension": "transportation_management.configure",
             "set_parameter": "transportation_management.configure",
             "configure_runtime": "transportation_management.configure",
         },
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "allowed_modes"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "fixed_event_topic": TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -129,10 +141,29 @@ def transportation_management_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": ("ShipmentCreated", "CarrierSelected", "FreightRoutePlanned", "ShipmentDispatched", "EtaUpdated", "InboundArrived", "ShipmentDelivered"),
-            "consumes": ("Packed", "PurchaseOrderIssued", "ReturnAuthorized", "InventoryTransferRequested", "AccessPolicyChanged"),
+            "emits": TRANSPORTATION_MANAGEMENT_EMITTED_EVENT_TYPES,
+            "consumes": TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
+            "outbox_table": "transportation_management_appgen_outbox_event",
+            "inbox_table": "transportation_management_appgen_inbox_event",
+            "dead_letter_table": "transportation_management_dead_letter_event",
+            "rbac_permissions": (
+                "transportation_management.read",
+                "transportation_management.master",
+                "transportation_management.plan",
+                "transportation_management.tender",
+                "transportation_management.dispatch",
+                "transportation_management.track",
+                "transportation_management.confirm",
+                "transportation_management.event",
+                "transportation_management.configure",
+                "transportation_management.audit",
+            ),
         },
     }
 
@@ -173,4 +204,18 @@ def transportation_management_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "event_inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+            },
+            "outbox_table": "transportation_management_appgen_outbox_event",
+            "inbox_table": "transportation_management_appgen_inbox_event",
+            "dead_letter_table": "transportation_management_dead_letter_event",
+            "rbac_permissions": contract["binding_evidence"]["rbac_permissions"],
+        },
     }

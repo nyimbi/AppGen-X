@@ -8,6 +8,75 @@ import math
 import re
 
 
+TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC = "appgen.transportation.events"
+TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+TRANSPORTATION_MANAGEMENT_OWNED_TABLES = (
+    "shipment",
+    "carrier",
+    "freight_route",
+    "route_stop",
+    "carrier_tender",
+    "dispatch_confirmation",
+    "tracking_event",
+    "eta_snapshot",
+    "inbound_arrival",
+    "delivery_proof",
+    "transportation_exception",
+    "freight_cost_accrual",
+    "cross_border_document",
+    "temperature_hazard_control",
+    "carrier_scorecard",
+    "carbon_distance_metric",
+    "transportation_rule",
+    "transportation_parameter",
+    "transportation_configuration",
+)
+TRANSPORTATION_MANAGEMENT_EMITTED_EVENT_TYPES = (
+    "CarrierRegistered",
+    "ShipmentCreated",
+    "CarrierSelected",
+    "FreightRoutePlanned",
+    "ShipmentDispatched",
+    "EtaUpdated",
+    "InboundArrived",
+    "ShipmentDelivered",
+)
+TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES = (
+    "Packed",
+    "PurchaseOrderIssued",
+    "ReturnAuthorized",
+    "InventoryTransferRequested",
+    "AccessPolicyChanged",
+)
+_TRANSPORTATION_MANAGEMENT_RUNTIME_TABLES = (
+    "transportation_management_appgen_outbox_event",
+    "transportation_management_appgen_inbox_event",
+    "transportation_management_dead_letter_event",
+)
+_TRANSPORTATION_MANAGEMENT_ALLOWED_DEPENDENCIES = (
+    "packed_order_projection",
+    "purchase_order_projection",
+    "return_authorization_projection",
+    "inventory_transfer_projection",
+    "access_policy_projection",
+    "GET /wms/packed-orders/{id}",
+    "GET /procurement/purchase-orders/{id}",
+    "GET /returns/authorizations/{id}",
+    "GET /inventory/transfers/{id}",
+    "GET /identity/policies",
+    "POST /audit/transportation-events",
+)
+_TRANSPORTATION_MANAGEMENT_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
+
 TRANSPORTATION_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_shipment_lifecycle",
     "graph_relational_freight_topology",
@@ -78,12 +147,15 @@ def transportation_management_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "transportation_management",
         "implementation_directory": "src/pyAppGen/pbcs/transportation_management",
+        "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
         "capabilities": TRANSPORTATION_MANAGEMENT_RUNTIME_CAPABILITY_KEYS,
         "standard_features": TRANSPORTATION_MANAGEMENT_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_carrier",
             "create_shipment",
             "select_carrier",
@@ -93,7 +165,10 @@ def transportation_management_runtime_capabilities() -> dict:
             "confirm_inbound_arrival",
             "confirm_delivery",
             "calculate_eta",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -105,7 +180,7 @@ def transportation_management_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.transportation.events",
+            "event_topic": TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "allowed_modes": ("truckload", "ltl", "parcel"),
@@ -253,20 +328,47 @@ def transportation_management_runtime_smoke() -> dict:
 
 
 def transportation_management_empty_state() -> dict:
-    return {"events": (), "outbox": (), "shipments": {}, "carriers": {}, "routes": {}, "tracking_events": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "packed_order_projections": {},
+        "purchase_order_projections": {},
+        "return_authorization_projections": {},
+        "inventory_transfer_projections": {},
+        "access_policy_projections": {},
+        "shipments": {},
+        "carriers": {},
+        "routes": {},
+        "tracking_events": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def transportation_management_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _TRANSPORTATION_MANAGEMENT_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Transportation Management uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS):
         raise ValueError("Transportation Management supports only PostgreSQL, MySQL, or MariaDB backends")
-    if not configuration.get("event_topic"):
-        raise ValueError("Transportation Management requires an AppGen-X event topic")
+    if configuration.get("event_topic") != TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Transportation Management requires AppGen-X event topic {TRANSPORTATION_MANAGEMENT_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -303,10 +405,76 @@ def transportation_management_register_rule(state: dict, rule: dict) -> dict:
 
 
 def transportation_management_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in TRANSPORTATION_MANAGEMENT_OWNED_TABLES:
+        raise ValueError(f"Transportation Management schema extensions must target owned tables: {TRANSPORTATION_MANAGEMENT_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    existing = dict(state.get("schema_extensions", {}).get(table, {}))
+    merged = {**existing, **fields}
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}},
+        "schema_extension": {"table": table, "fields": dict(fields)},
+        "target": table,
+        "fields": merged,
+    }
+
+
+def transportation_management_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = {
+        **state,
+        "inbox": (*state.get("inbox", ()), inbox_entry),
+        "handled_events": dict(handled),
+        "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "dead_letters": tuple(state.get("dead_letters", ())),
+        "dead_letter": tuple(state.get("dead_letter", ())),
+        "packed_order_projections": dict(state.get("packed_order_projections", {})),
+        "purchase_order_projections": dict(state.get("purchase_order_projections", {})),
+        "return_authorization_projections": dict(state.get("return_authorization_projections", {})),
+        "inventory_transfer_projections": dict(state.get("inventory_transfer_projections", {})),
+        "access_policy_projections": dict(state.get("access_policy_projections", {})),
+    }
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state["retry_evidence"], evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_transportation_event"}
+            next_state["dead_letters"] = (*next_state["dead_letters"], dead)
+            next_state["dead_letter"] = (*next_state["dead_letter"], dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "Packed":
+        next_state["packed_order_projections"][payload.get("pack_id", event_id)] = payload
+    elif event_type == "PurchaseOrderIssued":
+        next_state["purchase_order_projections"][payload.get("purchase_order_id", event_id)] = payload
+    elif event_type == "ReturnAuthorized":
+        next_state["return_authorization_projections"][payload.get("return_id", event_id)] = payload
+    elif event_type == "InventoryTransferRequested":
+        next_state["inventory_transfer_projections"][payload.get("transfer_id", event_id)] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload.get("policy_id", event_id)] = payload
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def transportation_management_register_carrier(state: dict, carrier: dict) -> dict:
@@ -467,7 +635,120 @@ def transportation_management_run_control_tests(state: dict) -> dict:
 
 
 def transportation_management_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /shipments", "POST /carrier-selection", "GET /eta", "POST /transportation-rules", "POST /transportation-parameters", "POST /transportation-configuration"), "events": {"emits": ("InboundArrived", "ShipmentDelivered", "EtaUpdated"), "consumes": ("Packed", "PurchaseOrderIssued")}, "permissions": ("transportation_management.plan", "transportation_management.tender", "transportation_management.dispatch", "transportation_management.track", "transportation_management.confirm", "transportation_management.configure", "transportation_management.audit"), "configuration": ("TRANSPORTATION_MANAGEMENT_DATABASE_URL", "TRANSPORTATION_MANAGEMENT_EVENT_TOPIC", "TRANSPORTATION_MANAGEMENT_RETRY_LIMIT", "TRANSPORTATION_MANAGEMENT_DEFAULT_CURRENCY")}
+    return {
+        "ok": True,
+        "format": "appgen.transportation-management-api-contract.v1",
+        "routes": (
+            {"route": "POST /transportation/shipments", "command": "create_shipment", "owned_tables": ("shipment",), "emits": ("ShipmentCreated",), "requires_permission": "transportation_management.plan", "idempotency_key": "shipment_id"},
+            {"route": "POST /transportation/carriers", "command": "register_carrier", "owned_tables": ("carrier", "carrier_scorecard"), "emits": ("CarrierRegistered",), "requires_permission": "transportation_management.master", "idempotency_key": "carrier_id"},
+            {"route": "POST /transportation/shipments/{id}/carrier-selection", "command": "select_carrier", "owned_tables": ("shipment", "carrier_tender"), "emits": ("CarrierSelected",), "requires_permission": "transportation_management.tender", "idempotency_key": "shipment_id"},
+            {"route": "POST /transportation/routes", "command": "plan_route", "owned_tables": ("freight_route", "route_stop", "freight_cost_accrual", "carbon_distance_metric"), "emits": ("FreightRoutePlanned",), "requires_permission": "transportation_management.plan", "idempotency_key": "shipment_id"},
+            {"route": "POST /transportation/shipments/{id}/dispatch", "command": "dispatch_shipment", "owned_tables": ("dispatch_confirmation", "shipment"), "emits": ("ShipmentDispatched",), "requires_permission": "transportation_management.dispatch", "idempotency_key": "tender_id"},
+            {"route": "POST /transportation/tracking-events", "command": "record_tracking_event", "owned_tables": ("tracking_event", "eta_snapshot"), "emits": ("EtaUpdated",), "requires_permission": "transportation_management.track", "idempotency_key": "event_id"},
+            {"route": "POST /transportation/shipments/{id}/arrival", "command": "confirm_inbound_arrival", "owned_tables": ("inbound_arrival", "shipment"), "emits": ("InboundArrived",), "requires_permission": "transportation_management.confirm", "idempotency_key": "shipment_id:facility"},
+            {"route": "POST /transportation/shipments/{id}/delivery", "command": "confirm_delivery", "owned_tables": ("delivery_proof", "shipment"), "emits": ("ShipmentDelivered",), "requires_permission": "transportation_management.confirm", "idempotency_key": "proof_id"},
+            {"route": "POST /transportation/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES, "requires_permission": "transportation_management.event", "idempotency_key": "event_id"},
+            {"route": "GET /transportation/workbench", "query": "build_workbench_view", "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES, "requires_permission": "transportation_management.audit"},
+        ),
+        "declared_catalog_routes": ("POST /shipments", "POST /carrier-selection", "GET /eta"),
+        "events": {"emits": TRANSPORTATION_MANAGEMENT_EMITTED_EVENT_TYPES, "consumes": TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES},
+        "emits": TRANSPORTATION_MANAGEMENT_EMITTED_EVENT_TYPES,
+        "consumes": TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(transportation_management_permissions_contract()["permissions"])),
+        "database_backends": TRANSPORTATION_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": (
+            "TRANSPORTATION_MANAGEMENT_DATABASE_URL",
+            "TRANSPORTATION_MANAGEMENT_EVENT_TOPIC",
+            "TRANSPORTATION_MANAGEMENT_RETRY_LIMIT",
+            "TRANSPORTATION_MANAGEMENT_DEFAULT_CURRENCY",
+        ),
+    }
+
+
+def transportation_management_permissions_contract() -> dict:
+    return {
+        "format": "appgen.transportation-management-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "transportation_management.read",
+            "transportation_management.master",
+            "transportation_management.plan",
+            "transportation_management.tender",
+            "transportation_management.dispatch",
+            "transportation_management.track",
+            "transportation_management.confirm",
+            "transportation_management.event",
+            "transportation_management.configure",
+            "transportation_management.audit",
+        ),
+        "action_permissions": {
+            "register_carrier": "transportation_management.master",
+            "create_shipment": "transportation_management.plan",
+            "select_carrier": "transportation_management.tender",
+            "plan_route": "transportation_management.plan",
+            "dispatch_shipment": "transportation_management.dispatch",
+            "record_tracking_event": "transportation_management.track",
+            "calculate_eta": "transportation_management.track",
+            "confirm_inbound_arrival": "transportation_management.confirm",
+            "confirm_delivery": "transportation_management.confirm",
+            "receive_event": "transportation_management.event",
+            "simulate_carrier_route": "transportation_management.audit",
+            "optimize_route_carrier": "transportation_management.tender",
+            "allocate_carrier_tender": "transportation_management.tender",
+            "screen_policy": "transportation_management.audit",
+            "run_control_tests": "transportation_management.audit",
+            "register_rule": "transportation_management.configure",
+            "register_schema_extension": "transportation_management.configure",
+            "set_parameter": "transportation_management.configure",
+            "configure_runtime": "transportation_management.configure",
+            "build_workbench_view": "transportation_management.audit",
+        },
+    }
+
+
+def transportation_management_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (
+        *TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
+        *TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES,
+        *_TRANSPORTATION_MANAGEMENT_RUNTIME_TABLES,
+        *_TRANSPORTATION_MANAGEMENT_ALLOWED_DEPENDENCIES,
+    )
+    allowed_set = set(allowed)
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in allowed_set and not str(reference).startswith("transportation_management_")
+    )
+    return {
+        "format": "appgen.transportation-management-boundary.v1",
+        "ok": not violations,
+        "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "GET /wms/packed-orders/{id}",
+                "GET /procurement/purchase-orders/{id}",
+                "GET /returns/authorizations/{id}",
+                "GET /inventory/transfers/{id}",
+                "GET /identity/policies",
+                "POST /audit/transportation-events",
+            ),
+            "events": TRANSPORTATION_MANAGEMENT_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "packed_order_projection",
+                "purchase_order_projection",
+                "return_authorization_projection",
+                "inventory_transfer_projection",
+                "access_policy_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def transportation_management_federate_transportation_view(state: dict, shipment_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -536,6 +817,21 @@ def transportation_management_build_workbench_view(state: dict, *, tenant: str) 
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": TRANSPORTATION_MANAGEMENT_OWNED_TABLES,
+            "outbox_table": "transportation_management_appgen_outbox_event",
+            "inbox_table": "transportation_management_appgen_inbox_event",
+            "dead_letter_table": "transportation_management_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+            "permissions": tuple(sorted(transportation_management_permissions_contract()["permissions"])),
+        },
     }
 
 

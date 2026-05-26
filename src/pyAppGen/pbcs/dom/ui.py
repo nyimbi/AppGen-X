@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from .runtime import DOM_ALLOWED_DATABASE_BACKENDS
+from .runtime import DOM_CONSUMED_EVENT_TYPES
+from .runtime import DOM_EMITTED_EVENT_TYPES
+from .runtime import DOM_OWNED_TABLES
+from .runtime import DOM_REQUIRED_EVENT_TOPIC
+
 
 DOM_UI_FRAGMENT_KEYS = (
     "DomWorkbench",
@@ -97,17 +103,22 @@ def dom_ui_contract() -> dict:
             "create_fulfillment_plan": "dom.plan",
             "confirm_order_shipped": "dom.ship",
             "route_fulfillment": "dom.plan",
+            "receive_event": "dom.event",
             "screen_order_policy": "dom.audit",
             "generate_order_verification_proof": "dom.audit",
             "run_control_tests": "dom.audit",
+            "register_schema_extension": "dom.configure",
             "register_rule": "dom.configure",
             "set_parameter": "dom.configure",
             "configure_runtime": "dom.configure",
         },
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "allowed_channels", "allowed_statuses"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": DOM_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "fixed_event_topic": DOM_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -129,10 +140,30 @@ def dom_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": ("OrderCaptured", "TaxProjectionApplied", "FraudScreened", "OrderVerified", "OrderPriced", "InventoryAllocationProjected", "FulfillmentPlanCreated", "OrderShipped"),
-            "consumes": ("InventoryAllocated", "TaxCalculated", "CustomerUpdated", "PaymentAuthorized", "ShipmentDelivered"),
+            "emits": DOM_EMITTED_EVENT_TYPES,
+            "consumes": DOM_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": DOM_OWNED_TABLES,
+            "outbox_table": "dom_appgen_outbox_event",
+            "inbox_table": "dom_appgen_inbox_event",
+            "dead_letter_table": "dom_dead_letter_event",
+            "rbac_permissions": (
+                "dom.read",
+                "dom.create",
+                "dom.verify",
+                "dom.price",
+                "dom.allocate",
+                "dom.plan",
+                "dom.ship",
+                "dom.cancel",
+                "dom.event",
+                "dom.configure",
+                "dom.audit",
+            ),
         },
     }
 
@@ -171,4 +202,15 @@ def dom_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "event_inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": DOM_OWNED_TABLES,
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+            },
+            "rbac_permissions": contract["binding_evidence"]["rbac_permissions"],
+        },
     }
