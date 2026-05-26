@@ -12,6 +12,9 @@ The move preserved source-relative paths under:
 
 ```text
 archive/repo-cleanup-2026-05-27/runtime-cache/
+archive/repo-cleanup-2026-05-27/regenerated-runtime-cache-after-verify/
+archive/repo-cleanup-2026-05-27/final-runtime-cache-sweep/
+archive/repo-cleanup-2026-05-27/background-test-runtime-cache-sweep/
 ```
 
 ## Rationale
@@ -22,9 +25,16 @@ contracts.
 
 ## Evidence
 
-- Candidate count before move: 97 directories.
-- Active tree cache scan after move: no `.pytest_cache/` or `__pycache__/`
-  directories outside `archive/`.
+- Initial candidate count before move: 97 directories.
+- Verification regenerated 96 bytecode cache directories; those were archived in
+  a second pass.
+- A final sweep archived 25 additional bytecode cache directories created while
+  verification was still winding down.
+- A later background-test sweep archived 60 additional bytecode cache
+  directories that were recreated by a long-running focused test process.
+- Active tree scans were clean after the completed archive sweeps; a
+  long-running focused test process can recreate ignored `__pycache__/`
+  directories until it exits.
 - Existing source files and in-flight PBC release-evidence edits were not
   modified by this cleanup.
 
