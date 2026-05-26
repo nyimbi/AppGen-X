@@ -5,7 +5,9 @@ from .runtime import GL_CORE_STANDARD_FEATURE_KEYS
 from .runtime import gl_core_append_ledger_event
 from .runtime import gl_core_build_federated_view
 from .runtime import gl_core_build_projection
+from .runtime import gl_core_build_workbench_view
 from .runtime import gl_core_compile_regulatory_rules
+from .runtime import gl_core_configure_runtime
 from .runtime import gl_core_consolidate_private_balances
 from .runtime import gl_core_create_continuous_close_snapshot
 from .runtime import gl_core_derive_account_from_semantics
@@ -16,6 +18,7 @@ from .runtime import gl_core_measure_information_auditability
 from .runtime import gl_core_predict_posting_validation
 from .runtime import gl_core_query_temporal_ledger
 from .runtime import gl_core_register_financial_model
+from .runtime import gl_core_register_rule
 from .runtime import gl_core_register_schema_extension
 from .runtime import gl_core_replicate_consensus
 from .runtime import gl_core_resolve_reconciliation_game
@@ -26,10 +29,14 @@ from .runtime import gl_core_run_resilience_drill
 from .runtime import gl_core_runtime_capabilities
 from .runtime import gl_core_runtime_smoke
 from .runtime import gl_core_schedule_carbon_aware_execution
+from .runtime import gl_core_set_parameter
 from .runtime import gl_core_simulate_probabilistic_posting
 from .runtime import gl_core_suggest_reconciliation
 from .runtime import gl_core_verify_formal_invariants
 from .runtime import gl_core_verify_identity_credential
+from .ui import GL_CORE_UI_FRAGMENT_KEYS
+from .ui import gl_core_render_workbench
+from .ui import gl_core_ui_contract
 
 PBC_KEY = "gl_core"
 
@@ -41,4 +48,5 @@ def implementation_contract() -> dict:
         **contract,
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
+        "ui_contract": gl_core_ui_contract(),
     }

@@ -5046,10 +5046,13 @@ def _app_name_from_prompt(prompt: str) -> str:
 # These imports keep the historical pyAppGen.pbc API while implementation stays
 # inside the owning PBC package directory.
 from .pbcs.gl_core import GL_CORE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.gl_core import GL_CORE_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_append_ledger_event  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_build_federated_view  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_build_projection  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_build_workbench_view  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_compile_regulatory_rules  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_configure_runtime  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_consolidate_private_balances  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_create_continuous_close_snapshot  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_derive_account_from_semantics  # noqa: E402,F401
@@ -5060,6 +5063,7 @@ from .pbcs.gl_core import gl_core_measure_information_auditability  # noqa: E402
 from .pbcs.gl_core import gl_core_predict_posting_validation  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_query_temporal_ledger  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_register_financial_model  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_register_rule  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_register_schema_extension  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_replicate_consensus  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_resolve_reconciliation_game  # noqa: E402,F401
@@ -5070,8 +5074,11 @@ from .pbcs.gl_core import gl_core_run_resilience_drill  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_runtime_capabilities  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_runtime_smoke  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_schedule_carbon_aware_execution  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_set_parameter  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_simulate_probabilistic_posting  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_suggest_reconciliation  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_render_workbench  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_ui_contract  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_verify_formal_invariants  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_verify_identity_credential  # noqa: E402,F401
 from .pbcs.ap_automation import AP_AUTOMATION_STANDARD_FEATURE_KEYS  # noqa: E402,F401

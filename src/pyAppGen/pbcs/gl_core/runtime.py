@@ -43,6 +43,9 @@ GL_CORE_RUNTIME_CAPABILITY_KEYS = (
     "financial_mlops",
 )
 GL_CORE_STANDARD_FEATURE_KEYS = (
+    "configuration_schema",
+    "rule_engine",
+    "parameter_engine",
     "chart_of_accounts",
     "journal_entry",
     "journal_line_balancing",
@@ -61,6 +64,7 @@ GL_CORE_STANDARD_FEATURE_KEYS = (
     "subledger_integration",
     "budget_control",
     "attachments_and_source_documents",
+    "workbench",
 )
 
 
@@ -75,6 +79,9 @@ def gl_core_runtime_capabilities() -> dict:
         "capabilities": GL_CORE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": GL_CORE_STANDARD_FEATURE_KEYS,
         "operations": (
+            "configure_runtime",
+            "set_parameter",
+            "register_rule",
             "append_ledger_event",
             "replicate_consensus",
             "register_schema_extension",
@@ -108,6 +115,31 @@ def gl_core_runtime_capabilities() -> dict:
 def gl_core_runtime_smoke() -> dict:
     """Run deterministic side-effect-free checks for the executable GL core."""
     state = gl_core_empty_state()
+    state = gl_core_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.gl.events",
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "allowed_account_types": ("asset", "liability", "equity", "revenue", "expense"),
+            "workbench_limit": 100,
+        },
+    )["state"]
+    state = gl_core_set_parameter(state, "approval_threshold", 1000)["state"]
+    state = gl_core_set_parameter(state, "materiality_threshold", 0.05)["state"]
+    state = gl_core_register_rule(
+        state,
+        {
+            "rule_id": "rule_gl",
+            "tenant": "tenant_alpha",
+            "scope": "journal_posting",
+            "requires_balance": True,
+            "requires_approval_over": 1000,
+            "status": "active",
+        },
+    )["state"]
     state = gl_core_register_schema_extension(
         state,
         "journal_entry",
@@ -227,12 +259,56 @@ def gl_core_runtime_smoke() -> dict:
 def gl_core_empty_state() -> dict:
     """Create an empty in-memory GL runtime state."""
     return {
+        "configuration": {},
+        "parameters": {},
+        "rules": {},
         "events": (),
         "outbox": (),
         "schema_extensions": {},
         "tenant_keys": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
     }
+
+
+def gl_core_configure_runtime(state: dict, configuration: dict) -> dict:
+    """Configure the GL runtime with ordinary AppGen-X datastore and event policy."""
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("GL Core supports only PostgreSQL, MySQL, or MariaDB backends")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
+
+
+def gl_core_set_parameter(state: dict, key: str, value: int | float | str) -> dict:
+    """Set an audited GL operating parameter."""
+    allowed = {
+        "approval_threshold",
+        "materiality_threshold",
+        "close_tolerance",
+        "revaluation_threshold",
+        "retention_days",
+        "workbench_limit",
+    }
+    if key not in allowed:
+        raise ValueError(f"Unsupported GL Core parameter: {key}")
+    parameters = {**state.get("parameters", {}), key: value}
+    return {"ok": True, "state": {**state, "parameters": parameters}, "parameter": {"key": key, "value": value}}
+
+
+def gl_core_register_rule(state: dict, rule: dict) -> dict:
+    """Register an executable GL posting, close, reconciliation, or policy rule."""
+    required = {"rule_id", "tenant", "scope", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required GL rule fields: {missing}")
+    stored = {**rule, "enabled": rule["status"] == "active"}
+    rules = {**state.get("rules", {}), rule["rule_id"]: stored}
+    return {"ok": True, "state": {**state, "rules": rules}, "rule": stored}
 
 
 def gl_core_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
@@ -323,6 +399,28 @@ def gl_core_build_projection(state: dict, *, tenant: str | None = None) -> dict:
         "balances": balances,
         "trial_balance": round(sum(balances.values()), 6),
         "source_event_count": len(state.get("events", ())),
+    }
+
+
+def gl_core_build_workbench_view(state: dict, *, tenant: str | None = None) -> dict:
+    """Build an operational GL workbench projection from owned runtime state."""
+    projection = gl_core_build_projection(state, tenant=tenant)
+    controls = gl_core_run_control_tests(state)
+    close = gl_core_create_continuous_close_snapshot(state, tenant=tenant)
+    tenant_events = tuple(event for event in state.get("events", ()) if not tenant or event["tenant"] == tenant)
+    outbox = tuple(event for event in state.get("outbox", ()) if event["idempotency_key"].startswith("gl_core:"))
+    return {
+        "format": "appgen.gl-core-workbench-view.v1",
+        "tenant": tenant or "all",
+        "event_count": len(tenant_events),
+        "account_count": len(projection["balances"]),
+        "trial_balance": projection["trial_balance"],
+        "audit_ready": close["audit_ready"],
+        "control_ok": controls["ok"],
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "outbox_count": len(outbox),
     }
 
 
