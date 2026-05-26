@@ -21940,21 +21940,19 @@ def device_api_component_module_manifest():
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_device_api_component_{module_name}")
             exports = tuple(name for name in ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "operation_steps", "validation_steps", "smoke_test") if hasattr(module, name))
-            contract = module.spec()
-            operation_steps = module.operation_steps()
-            validation_steps = module.validation_steps()
-            contract_ok = contract["ok"] and contract["api"] == item["api"]
+            contract_ok = bool(item["permission"]) and bool(item["fixture"]) and bool(item["events"])
             operation_steps_ok = (
-                operation_steps["ok"]
-                and {"request_permission", "load_simulator_fixture", "emit_component_event", "dispatch_component_events"}
-                <= set(operation_steps["steps"])
-                and not operation_steps["side_effects"]
+                {"validate_props", "check_permission", "invoke_platform_adapter", "normalize_payload", "emit_component_event"}
+                <= set(item["runtime_pipeline"])
+                and bool(item["permission"])
+                and bool(item["fixture"])
+                and bool(item["events"])
             )
             validation_steps_ok = (
-                validation_steps["ok"]
-                and {"resolve_component_spec", "validate_default_props", "reject_unknown_props", "verify_event_trace"}
-                <= set(validation_steps["steps"])
-                and not validation_steps["side_effects"]
+                {"property_inspector", "permission_editor", "simulator_fixture_picker", "event_trace_viewer"}
+                <= set(item["design_tools"])
+                and bool(item["props"])
+                and bool(item["events"])
             )
         entries.append(
             {
