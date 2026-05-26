@@ -1197,6 +1197,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `archive/cache-cleanup-2026-05-26/` with a manifest, leaving the active
   source, tests, generated parser files, PBC packages, and frontend tree free
   of reproducible cache folders.
+- Current runtime-cache cleanup follow-up moves regenerated `src/pyAppGen`,
+  `tests`, generated parser, and PBC package bytecode caches from verification
+  into `archive/runtime-cache-cleanup-2026-05-26/` and records the move in
+  that archive manifest, keeping active source and tests free of local
+  bytecode artifacts.
 - Current wizard generation pass adds standalone operation-step and
   validation-step contracts to generated table, workflow, validation-session,
   and submission-plan wizard modules. Generated wizard manifests and tests now
