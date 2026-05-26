@@ -1412,7 +1412,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   modules so tool catalog, editor launch/run profiles, source maps, and
   release workbench surfaces prove reusable operation-step and validation-step
   contracts through an aggregate replay matrix before developer-tool readiness
-  is trusted. Commit: `e0225f3`.
+  is trusted. Commit: `7b28597`.
 
 ## Open Completion Areas
 
