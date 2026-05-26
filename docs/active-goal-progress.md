@@ -1160,6 +1160,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   lifecycle, update, and rollback modules expose one-file module contracts,
   side-effect-free operation steps, validation steps, and matching generated
   test exports.
+- Current Object Inspector parity pass adds standalone operation-step and
+  validation-step contracts to each generated inspector module. Generated
+  property editor, event editor, component editor, custom designer, handler
+  invocation, and binding bridge modules now expose one-file step contracts and
+  a runtime replay matrix that gates kind coverage, operation-step coverage,
+  validation-step coverage, and side-effect-free execution.
 
 ## Open Completion Areas
 

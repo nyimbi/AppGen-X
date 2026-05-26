@@ -2049,9 +2049,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert len(inspector_workbench["component_editor_family_test_artifacts"]) == 6
     assert len(inspector_workbench["custom_designer_family_artifacts"]) == 6
     assert len(inspector_workbench["custom_designer_family_test_artifacts"]) == 6
-    assert all("run_editor_operation" in item["exports"] for item in inspector_workbench["inspector_module_artifacts"])
+    assert all(
+        {"run_editor_operation", "operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in inspector_workbench["inspector_module_artifacts"]
+    )
     assert all(
         "test_inspector_module_smoke" in item["exports"]
+        for item in inspector_workbench["inspector_module_test_artifacts"]
+    )
+    assert all(
+        "test_inspector_module_step_contracts" in item["exports"]
         for item in inspector_workbench["inspector_module_test_artifacts"]
     )
     assert all(
@@ -5459,6 +5466,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "inspector_family_runtime_replay_matrix_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
+        "inspector_module_runtime_replay_matrix_ready",
         "runtime_replay",
     } <= set(inspector_runtime_smoke["passing_checks"])
     binding_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_binding_runtime")
@@ -16345,13 +16353,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "inspector_family_runtime_replay_matrix_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
+        "inspector_module_runtime_replay_matrix_ready",
         "runtime_replay",
     } <= set(inspector_runtime_smoke["checks"])
     inspector_module_files = inspector_runtime.inspector_module_file_manifest("Grid")
     inspector_module_tests = inspector_runtime.inspector_module_test_file_manifest("Grid")
+    inspector_module_runtime_matrix = inspector_runtime.inspector_module_runtime_replay_matrix("Grid")
     inspector_family_runtime_matrix = inspector_runtime.inspector_family_runtime_replay_matrix("Grid")
     assert inspector_module_files["ok"] is True
     assert inspector_module_tests["ok"] is True
+    assert inspector_module_runtime_matrix["format"] == "appgen.generated-inspector-module-runtime-replay-matrix.v1"
+    assert inspector_module_runtime_matrix["ok"] is True
+    assert len(inspector_module_runtime_matrix["module_replays"]) == 6
+    assert {
+        "generated_inspector_modules_replay",
+        "generated_inspector_module_kind_coverage",
+        "generated_inspector_module_operation_step_coverage",
+        "generated_inspector_module_validation_step_coverage",
+        "generated_inspector_module_replays_side_effect_free",
+    } <= {check["id"] for check in inspector_module_runtime_matrix["checks"] if check["ok"]}
     assert inspector_family_runtime_matrix["format"] == "appgen.generated-inspector-family-runtime-replay-matrix.v1"
     assert inspector_family_runtime_matrix["ok"] is True
     assert len(inspector_family_runtime_matrix["property_editor_replays"]) == 8
@@ -16417,6 +16437,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         module = _load_module(module_path, f"generated_inspector_module_{item['module']}")
         assert module.smoke_test("Grid")["ok"] is True
         assert module.module_contract()["ok"] is True
+        assert module.operation_steps("Grid")["ok"] is True
+        assert module.validation_steps("Grid")["ok"] is True
     for item in inspector_module_tests["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
@@ -17922,9 +17944,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_inspector["component_editor_family_test_artifacts"]) == 6
     assert len(generated_inspector["custom_designer_family_artifacts"]) == 6
     assert len(generated_inspector["custom_designer_family_test_artifacts"]) == 6
-    assert all("run_editor_operation" in item["exports"] for item in generated_inspector["inspector_module_artifacts"])
+    assert all(
+        {"run_editor_operation", "operation_steps", "validation_steps"} <= set(item["exports"])
+        for item in generated_inspector["inspector_module_artifacts"]
+    )
     assert all(
         "test_inspector_module_smoke" in item["exports"]
+        for item in generated_inspector["inspector_module_test_artifacts"]
+    )
+    assert all(
+        "test_inspector_module_step_contracts" in item["exports"]
         for item in generated_inspector["inspector_module_test_artifacts"]
     )
     generated_handler_architecture_files = form_designer.handler_architecture_module_file_manifest(

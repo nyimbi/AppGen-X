@@ -13573,6 +13573,8 @@ EXPECTED_EXPORTS = (
     "editor_manifest",
     "run_editor_operation",
     "runtime_manifest",
+    "operation_steps",
+    "validation_steps",
     "smoke_test",
 )
 
@@ -13659,12 +13661,62 @@ def run_editor_operation(component="Grid"):
         "handler_invocation": actionables["handler_invoke"],
         "binding_bridge": designer.inspector_binding_designer_bridge_contract(),
     }}[kind]
+    operation_steps_by_kind = {{
+        "property_editors": (
+            "select_component",
+            "locate_property_row",
+            "open_property_editor",
+            "validate_value",
+            "preview_change",
+            "commit_or_revert",
+            "record_undo",
+        ),
+        "event_editors": (
+            "select_event_row",
+            "resolve_handler_reference",
+            "create_or_rename_handler",
+            "preview_reference_update",
+            "commit_or_cancel",
+            "record_undo",
+        ),
+        "component_editors": (
+            "capture_selection",
+            "open_component_editor",
+            "stage_change",
+            "validate_change",
+            "apply_or_cancel",
+            "record_undo",
+        ),
+        "custom_designers": (
+            "register_custom_designer",
+            "activate_hook",
+            "render_overlay",
+            "publish_hit_targets",
+            "commit_or_cancel",
+            "unload_hook",
+        ),
+        "handler_invocation": (
+            "resolve_action_registry",
+            "check_cycle_guard",
+            "build_dispatch_context",
+            "invoke_handler",
+            "record_result",
+        ),
+        "binding_bridge": (
+            "read_property_change",
+            "author_binding_link",
+            "refresh_binding_runtime",
+            "surface_binding_errors",
+            "record_history",
+        ),
+    }}
     return {{
         "format": "appgen.inspector-module-operation.v1",
         "module": MODULE,
         "kind": kind,
         "component": component,
         "ok": operation["ok"] and not operation["side_effects"],
+        "operation_steps": operation_steps_by_kind[kind],
         "operation": operation,
         "side_effects": (),
     }}
@@ -13675,12 +13727,57 @@ def runtime_manifest(component="Grid"):
     return _runtime().inspector_runtime_manifest(component)
 
 
+def operation_steps(component="Grid"):
+    """Return concrete side-effect-free operation steps for this inspector module."""
+    operation = run_editor_operation(component)
+    return {{
+        "format": "appgen.inspector-module-operation-steps.v1",
+        "module": MODULE,
+        "kind": operation["kind"],
+        "component": component,
+        "ok": operation["ok"] and bool(operation["operation_steps"]),
+        "steps": tuple(operation["operation_steps"]),
+        "side_effects": (),
+    }}
+
+
+def validation_steps(component="Grid"):
+    """Return validation steps proving this inspector module is safe to load."""
+    contract = module_contract()
+    manifest = editor_manifest(component)
+    operation = run_editor_operation(component)
+    runtime = runtime_manifest(component)
+    steps = (
+        "module_contract_ok",
+        "editor_manifest_ok",
+        "editor_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    )
+    return {{
+        "format": "appgen.inspector-module-validation-steps.v1",
+        "module": MODULE,
+        "kind": contract["kind"],
+        "component": component,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "steps": steps,
+        "side_effects": (),
+    }}
+
+
 def smoke_test(component="Grid"):
     """Run side-effect-free checks for this generated inspector module."""
     contract = module_contract()
     manifest = editor_manifest(component)
     operation = run_editor_operation(component)
     runtime = runtime_manifest(component)
+    operation_step_contract = operation_steps(component)
+    validation_step_contract = validation_steps(component)
     return {{
         "format": "appgen.inspector-module-smoke-test.v1",
         "module": MODULE,
@@ -13689,6 +13786,8 @@ def smoke_test(component="Grid"):
         and manifest["ok"]
         and operation["ok"]
         and runtime["ok"]
+        and operation_step_contract["ok"]
+        and validation_step_contract["ok"]
         and not manifest["side_effects"]
         and not operation["side_effects"],
         "checks": (
@@ -13696,8 +13795,12 @@ def smoke_test(component="Grid"):
             "editor_manifest_resolves",
             "editor_operation_replays",
             "runtime_manifest_ok",
+            "operation_steps_declared",
+            "validation_steps_declared",
             "no_side_effects",
         ),
+        "operation_steps": operation_step_contract,
+        "validation_steps": validation_step_contract,
     }}
 '''
 
@@ -13742,15 +13845,28 @@ def test_inspector_module_smoke():
     assert result["checks"]
 
 
+def test_inspector_module_step_contracts():
+    """Assert standalone operation and validation step contracts pass."""
+    module = load_inspector_module()
+    assert module.operation_steps("Grid")["ok"] is True
+    assert module.validation_steps("Grid")["ok"] is True
+    assert "side_effects_disallowed" in module.validation_steps("Grid")["steps"]
+
+
 def smoke_test():
     """Run this generated test module in a side-effect-free way."""
     test_inspector_module_contract()
     test_inspector_module_smoke()
+    test_inspector_module_step_contracts()
     return {{
         "format": "appgen.inspector-module-generated-test-smoke.v1",
         "module": MODULE,
         "ok": True,
-        "tests": ("test_inspector_module_contract", "test_inspector_module_smoke"),
+        "tests": (
+            "test_inspector_module_contract",
+            "test_inspector_module_smoke",
+            "test_inspector_module_step_contracts",
+        ),
     }}
 '''
 
@@ -19199,6 +19315,8 @@ def inspector_module_file_manifest(component="Grid"):
         "editor_manifest",
         "run_editor_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     module_dir = Path(__file__).with_name("inspector_modules")
@@ -19208,13 +19326,19 @@ def inspector_module_file_manifest(component="Grid"):
         exports = ()
         contract_ok = False
         smoke_ok = False
+        operation_steps_ok = False
+        validation_steps_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_inspector_module_{module_name}")
             exports = tuple(name for name in required_exports if hasattr(module, name))
             contract = module.module_contract()
             smoke = module.smoke_test(component)
+            operation_step_contract = module.operation_steps(component)
+            validation_step_contract = module.validation_steps(component)
             contract_ok = contract["ok"] and contract["module"] == module_name
             smoke_ok = smoke["ok"] and smoke["module"] == module_name
+            operation_steps_ok = operation_step_contract["ok"] and operation_step_contract["module"] == module_name
+            validation_steps_ok = validation_step_contract["ok"] and validation_step_contract["module"] == module_name
         entries.append(
             {
                 "module": module_name,
@@ -19224,12 +19348,22 @@ def inspector_module_file_manifest(component="Grid"):
                 "expected_exports": required_exports,
                 "contract_ok": contract_ok,
                 "smoke_ok": smoke_ok,
+                "operation_steps_ok": operation_steps_ok,
+                "validation_steps_ok": validation_steps_ok,
             }
         )
     return {
         "format": "appgen.generated-inspector-module-file-manifest.v1",
         "ok": bool(entries)
-        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and item["operation_steps_ok"]
+            and item["validation_steps_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
         "modules": tuple(entries),
         "guards": ("one_file_per_inspector_surface", "declared_exports_present", "module_smoke_replays"),
         "side_effects": (),
@@ -19250,6 +19384,7 @@ def inspector_module_test_file_manifest(component="Grid"):
         "load_inspector_module",
         "test_inspector_module_contract",
         "test_inspector_module_smoke",
+        "test_inspector_module_step_contracts",
         "smoke_test",
     )
     test_dir = Path(__file__).with_name("inspector_module_tests")
@@ -19280,6 +19415,134 @@ def inspector_module_test_file_manifest(component="Grid"):
         "required_exports": required_exports,
         "guards": ("one_test_file_per_inspector_surface", "contract_and_smoke_tests_exported"),
         "side_effects": (),
+    }
+
+
+def inspector_module_runtime_replay_matrix(component="Grid"):
+    """Replay generated inspector modules through operation and validation contracts."""
+    module_files = inspector_module_file_manifest(component)
+    module_tests = inspector_module_test_file_manifest(component)
+    tests_by_module = {item["module"]: item for item in module_tests["tests"]}
+    module_dir = Path(__file__).with_name("inspector_modules")
+    replays = []
+    for item in module_files["modules"]:
+        module_path = module_dir / f"{item['module']}.py"
+        operation = {"ok": False, "operation_steps": (), "side_effects": (), "error": "missing_module"}
+        operation_step_contract = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
+        validation_step_contract = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_inspector_replay_{item['module']}")
+            operation = module.run_editor_operation(component)
+            operation_step_contract = module.operation_steps(component)
+            validation_step_contract = module.validation_steps(component)
+        replays.append(
+            {
+                "module": item["module"],
+                "kind": operation.get("kind", ""),
+                "operation_steps": tuple(operation_step_contract.get("steps", ())),
+                "validation_steps": tuple(validation_step_contract.get("steps", ())),
+                "ok": item["exists"]
+                and item["contract_ok"]
+                and item["smoke_ok"]
+                and item["operation_steps_ok"]
+                and item["validation_steps_ok"]
+                and tests_by_module.get(item["module"], {}).get("smoke_ok", False)
+                and bool(operation.get("ok"))
+                and bool(operation_step_contract.get("ok"))
+                and bool(validation_step_contract.get("ok"))
+                and not tuple(operation.get("side_effects", ()))
+                and not tuple(operation_step_contract.get("side_effects", ()))
+                and not tuple(validation_step_contract.get("side_effects", ())),
+                "operation": operation,
+                "operation_step_contract": operation_step_contract,
+                "validation_step_contract": validation_step_contract,
+                "test": tests_by_module.get(item["module"], {}),
+            }
+        )
+    required_kinds = {
+        "property_editors",
+        "event_editors",
+        "component_editors",
+        "custom_designers",
+        "handler_invocation",
+        "binding_bridge",
+    }
+    required_operation_steps = {
+        "select_component",
+        "locate_property_row",
+        "open_property_editor",
+        "validate_value",
+        "select_event_row",
+        "resolve_handler_reference",
+        "create_or_rename_handler",
+        "capture_selection",
+        "open_component_editor",
+        "validate_change",
+        "register_custom_designer",
+        "activate_hook",
+        "publish_hit_targets",
+        "check_cycle_guard",
+        "invoke_handler",
+        "author_binding_link",
+        "refresh_binding_runtime",
+        "surface_binding_errors",
+        "record_undo",
+    }
+    required_validation_steps = {
+        "module_contract_ok",
+        "editor_manifest_ok",
+        "editor_operation_ok",
+        "runtime_manifest_ok",
+        "side_effects_disallowed",
+    }
+    checks = (
+        {
+            "id": "generated_inspector_modules_replay",
+            "ok": len(replays) == 6 and all(item["ok"] for item in replays),
+            "evidence": tuple(item["module"] for item in replays),
+        },
+        {
+            "id": "generated_inspector_module_kind_coverage",
+            "ok": required_kinds <= {item["kind"] for item in replays if item["ok"]},
+            "evidence": tuple(sorted(item["kind"] for item in replays if item["kind"])),
+        },
+        {
+            "id": "generated_inspector_module_operation_step_coverage",
+            "ok": required_operation_steps
+            <= {step for item in replays if item["ok"] for step in item["operation_steps"]},
+            "evidence": tuple(sorted({step for item in replays for step in item["operation_steps"]})),
+        },
+        {
+            "id": "generated_inspector_module_validation_step_coverage",
+            "ok": required_validation_steps
+            <= {step for item in replays if item["ok"] for step in item["validation_steps"]},
+            "evidence": tuple(sorted({step for item in replays for step in item["validation_steps"]})),
+        },
+        {
+            "id": "generated_inspector_module_replays_side_effect_free",
+            "ok": all(
+                not tuple(item["operation"].get("side_effects", ()))
+                and not tuple(item["operation_step_contract"].get("side_effects", ()))
+                and not tuple(item["validation_step_contract"].get("side_effects", ()))
+                for item in replays
+            ),
+            "evidence": (),
+        },
+    )
+    return {
+        "format": "appgen.generated-inspector-module-runtime-replay-matrix.v1",
+        "ok": module_files["ok"] and module_tests["ok"] and all(check["ok"] for check in checks),
+        "component": component,
+        "module_replays": tuple(replays),
+        "checks": checks,
+        "guards": (
+            "generated_inspector_module_contracts_before_runtime_claim",
+            "generated_inspector_module_tests_before_release_claim",
+            "generated_inspector_module_step_contracts_before_release_claim",
+            "generated_inspector_operations_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -19518,6 +19781,7 @@ def validate_inspector_runtime(component="Grid"):
     replay = replay_inspector_runtime(component)
     module_files = inspector_module_file_manifest(component)
     module_tests = inspector_module_test_file_manifest(component)
+    module_runtime_matrix = inspector_module_runtime_replay_matrix(component)
     form_designer = _load_form_designer()
     handler_source_modules = form_designer.handler_source_ide_module_file_manifest()
     handler_source_tests = form_designer.handler_source_ide_module_test_file_manifest()
@@ -19560,6 +19824,7 @@ def validate_inspector_runtime(component="Grid"):
         {"id": "inspector_family_runtime_replay_matrix_ready", "ok": family_runtime_matrix["ok"] and not family_runtime_matrix["side_effects"]},
         {"id": "inspector_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
         {"id": "inspector_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
+        {"id": "inspector_module_runtime_replay_matrix_ready", "ok": module_runtime_matrix["ok"] and not module_runtime_matrix["side_effects"]},
         {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -19569,6 +19834,7 @@ def validate_inspector_runtime(component="Grid"):
         "manifest": manifest,
         "module_files": module_files,
         "module_tests": module_tests,
+        "module_runtime_matrix": module_runtime_matrix,
         "handler_source_modules": handler_source_modules,
         "handler_source_tests": handler_source_tests,
         "property_editor_modules": property_editor_modules,
@@ -53838,11 +54104,11 @@ def object_inspector_workbench():
     action_registry = inspector_action_registry_contract("Button")
     cross_handler_invocation = inspector_cross_handler_invocation_contract("Button")
     inspector_module_artifacts = tuple(
-        {{"module": module, "path": f"app/inspector_modules/{{module}}.py", "exports": ("module_contract", "editor_manifest", "run_editor_operation", "runtime_manifest", "smoke_test"), "ok": True}}
+        {{"module": module, "path": f"app/inspector_modules/{{module}}.py", "exports": ("module_contract", "editor_manifest", "run_editor_operation", "runtime_manifest", "operation_steps", "validation_steps", "smoke_test"), "ok": True}}
         for module in ("property_editor_module", "event_editor_module", "component_editor_module", "custom_designer_module", "handler_invocation_module", "binding_bridge_module")
     )
     inspector_module_test_artifacts = tuple(
-        {{"module": module, "path": f"app/inspector_module_tests/test_{{module}}.py", "exports": ("load_inspector_module", "test_inspector_module_contract", "test_inspector_module_smoke", "smoke_test"), "ok": True}}
+        {{"module": module, "path": f"app/inspector_module_tests/test_{{module}}.py", "exports": ("load_inspector_module", "test_inspector_module_contract", "test_inspector_module_smoke", "test_inspector_module_step_contracts", "smoke_test"), "ok": True}}
         for module in ("property_editor_module", "event_editor_module", "component_editor_module", "custom_designer_module", "handler_invocation_module", "binding_bridge_module")
     )
     handler_architecture_artifacts = handler_architecture_module_file_manifest(_local_component_paths())["modules"]
@@ -53942,8 +54208,8 @@ def object_inspector_workbench():
             }},
         }},
         {{"id": "inspector_readiness_contract", "ok": readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
-        {{"id": "inspector_generated_modules", "ok": len(inspector_module_artifacts) == 6 and all(item["ok"] and "run_editor_operation" in item["exports"] for item in inspector_module_artifacts), "evidence": inspector_module_artifacts}},
-        {{"id": "inspector_generated_module_tests", "ok": len(inspector_module_test_artifacts) == 6 and all(item["ok"] and "test_inspector_module_smoke" in item["exports"] for item in inspector_module_test_artifacts), "evidence": inspector_module_test_artifacts}},
+        {{"id": "inspector_generated_modules", "ok": len(inspector_module_artifacts) == 6 and all(item["ok"] and "run_editor_operation" in item["exports"] and "operation_steps" in item["exports"] and "validation_steps" in item["exports"] for item in inspector_module_artifacts), "evidence": inspector_module_artifacts}},
+        {{"id": "inspector_generated_module_tests", "ok": len(inspector_module_test_artifacts) == 6 and all(item["ok"] and "test_inspector_module_smoke" in item["exports"] and "test_inspector_module_step_contracts" in item["exports"] for item in inspector_module_test_artifacts), "evidence": inspector_module_test_artifacts}},
         {{"id": "handler_architecture_modules", "ok": len(handler_architecture_artifacts) == 4 and all(item["ok"] and {{"handler_architecture_manifest", "invoke_handler", "call_handler", "smoke_test"}} <= set(item["exports"]) for item in handler_architecture_artifacts), "evidence": handler_architecture_artifacts}},
         {{"id": "handler_architecture_module_tests", "ok": len(handler_architecture_test_artifacts) == 4 and all(item["ok"] and "test_handler_architecture_module_smoke" in item["exports"] for item in handler_architecture_test_artifacts), "evidence": handler_architecture_test_artifacts}},
         {{"id": "handler_source_ide_contract", "ok": handler_source_ide["ok"] and {{"navigation_to_handler_source", "handler_stubs_editable", "breakpoints_map_to_designer", "handler_refactors_propagate"}} <= {{check["id"] for check in handler_source_ide["checks"] if check["ok"]}} and not handler_source_ide["side_effects"], "evidence": handler_source_ide}},

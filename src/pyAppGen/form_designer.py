@@ -7253,14 +7253,22 @@ def object_inspector_workbench() -> dict:
         {
             "id": "inspector_generated_modules",
             "ok": len(inspector_module_artifacts) == 6
-            and all(item["ok"] and "run_editor_operation" in item["exports"] for item in inspector_module_artifacts),
+            and all(
+                item["ok"]
+                and "run_editor_operation" in item["exports"]
+                and "operation_steps" in item["exports"]
+                and "validation_steps" in item["exports"]
+                for item in inspector_module_artifacts
+            ),
             "evidence": inspector_module_artifacts,
         },
         {
             "id": "inspector_generated_module_tests",
             "ok": len(inspector_module_test_artifacts) == 6
             and all(
-                item["ok"] and "test_inspector_module_smoke" in item["exports"]
+                item["ok"]
+                and "test_inspector_module_smoke" in item["exports"]
+                and "test_inspector_module_step_contracts" in item["exports"]
                 for item in inspector_module_test_artifacts
             ),
             "evidence": inspector_module_test_artifacts,
@@ -23258,6 +23266,8 @@ def inspector_module_file_manifest() -> tuple[dict, ...]:
         "editor_manifest",
         "run_editor_operation",
         "runtime_manifest",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -23284,6 +23294,7 @@ def inspector_module_test_file_manifest() -> tuple[dict, ...]:
                 "load_inspector_module",
                 "test_inspector_module_contract",
                 "test_inspector_module_smoke",
+                "test_inspector_module_step_contracts",
                 "smoke_test",
             ),
             "ok": item["ok"],
