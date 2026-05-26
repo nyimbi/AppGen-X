@@ -1758,7 +1758,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   readiness evidence now requires hook activation before preview render,
   non-mutating overlays, hit-target routing, undoable overlay commits,
   cancel/rollback snapshot restoration, hook unload, and custom-designer
-  metadata round trips before release claims. Commit: `pending`.
+  metadata round trips before release claims. Commit: `553c0be`.
 
 ## Open Completion Areas
 
