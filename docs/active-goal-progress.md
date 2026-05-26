@@ -1548,6 +1548,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   scope and evidence in an archive manifest, and deliberately leaves `.venv`,
   tracked source/configuration, docs, tests, and unrelated dirty PBC work in
   place because they were not proven unused. Commit: `5026a8f`.
+- Current relationship and engagement PBC completion pass expands
+  `price_promotion_engine`, `lead_opportunity`, `service_ticketing`,
+  `notifications`, and `cdp_segmentation` into package-local implementations
+  with owned schema/service/release contracts, AppGen-X inbox/outbox/dead-letter
+  evidence, generated UI/workbench descriptors, rules, parameters,
+  configuration, focused tests, and central facade exports. Focused tests pass
+  (`16 passed`), syntax and whitespace checks pass, the restricted legacy and
+  stream-engine scan has no hits, and batch plus full implemented-PBC
+  generation, capability, implementation release, and catalog release audits all
+  return true. Commit: `d766ad5`.
 
 ## Open Completion Areas
 
