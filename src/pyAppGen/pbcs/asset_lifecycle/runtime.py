@@ -43,6 +43,9 @@ ASSET_LIFECYCLE_RUNTIME_CAPABILITY_KEYS = (
     "financial_mlops_governance",
 )
 ASSET_LIFECYCLE_STANDARD_FEATURE_KEYS = (
+    "configuration_schema",
+    "rule_engine",
+    "parameter_engine",
     "asset_master",
     "asset_register",
     "asset_acquisition",
@@ -82,6 +85,9 @@ def asset_lifecycle_runtime_capabilities() -> dict:
         "capabilities": ASSET_LIFECYCLE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": ASSET_LIFECYCLE_STANDARD_FEATURE_KEYS,
         "operations": (
+            "configure_runtime",
+            "set_parameter",
+            "register_rule",
             "register_asset",
             "place_asset_in_service",
             "build_depreciation_schedule",
@@ -121,6 +127,31 @@ def asset_lifecycle_runtime_capabilities() -> dict:
 
 def asset_lifecycle_runtime_smoke() -> dict:
     state = asset_lifecycle_empty_state()
+    state = asset_lifecycle_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.asset.events",
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "default_book": "corporate",
+            "workbench_limit": 100,
+        },
+    )["state"]
+    state = asset_lifecycle_set_parameter(state, "capitalization_threshold", 500)["state"]
+    state = asset_lifecycle_set_parameter(state, "impairment_indicator_threshold", 0.65)["state"]
+    state = asset_lifecycle_register_rule(
+        state,
+        {
+            "rule_id": "rule_asset",
+            "tenant": "tenant_alpha",
+            "scope": "capitalization",
+            "capitalization_threshold": 500,
+            "approval_required": True,
+            "status": "active",
+        },
+    )["state"]
     state = asset_lifecycle_register_schema_extension(
         state,
         "fixed_asset",
@@ -230,7 +261,57 @@ def asset_lifecycle_runtime_smoke() -> dict:
 
 
 def asset_lifecycle_empty_state() -> dict:
-    return {"events": (), "outbox": (), "assets": {}, "asset_graph": {}, "schedules": {}, "depreciation_runs": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "configuration": {},
+        "parameters": {},
+        "rules": {},
+        "events": (),
+        "outbox": (),
+        "assets": {},
+        "asset_graph": {},
+        "schedules": {},
+        "depreciation_runs": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
+
+
+def asset_lifecycle_configure_runtime(state: dict, configuration: dict) -> dict:
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Asset Lifecycle supports only PostgreSQL, MySQL, or MariaDB backends")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
+
+
+def asset_lifecycle_set_parameter(state: dict, key: str, value: int | float | str) -> dict:
+    allowed = {
+        "capitalization_threshold",
+        "impairment_indicator_threshold",
+        "physical_verification_interval_days",
+        "depreciation_batch_size",
+        "retirement_approval_limit",
+        "workbench_limit",
+    }
+    if key not in allowed:
+        raise ValueError(f"Unsupported Asset Lifecycle parameter: {key}")
+    parameters = {**state.get("parameters", {}), key: value}
+    return {"ok": True, "state": {**state, "parameters": parameters}, "parameter": {"key": key, "value": value}}
+
+
+def asset_lifecycle_register_rule(state: dict, rule: dict) -> dict:
+    required = {"rule_id", "tenant", "scope", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Asset Lifecycle rule fields: {missing}")
+    stored = {**rule, "enabled": rule["status"] == "active"}
+    rules = {**state.get("rules", {}), rule["rule_id"]: stored}
+    return {"ok": True, "state": {**state, "rules": rules}, "rule": stored}
 
 
 def asset_lifecycle_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
@@ -448,7 +529,17 @@ def asset_lifecycle_verify_formal_invariants(state: dict) -> dict:
 
 def asset_lifecycle_build_workbench_view(state: dict, *, tenant: str) -> dict:
     assets = tuple(asset for asset in state["assets"].values() if asset["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "asset_count": len(assets), "in_service_count": len(tuple(asset for asset in assets if asset["status"] == "in_service")), "retired_count": len(tuple(asset for asset in assets if asset["status"] == "retired")), "net_book_value": round(sum(asset["book_value"] for asset in assets), 2)}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "asset_count": len(assets),
+        "in_service_count": len(tuple(asset for asset in assets if asset["status"] == "in_service")),
+        "retired_count": len(tuple(asset for asset in assets if asset["status"] == "retired")),
+        "net_book_value": round(sum(asset["book_value"] for asset in assets), 2),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def asset_lifecycle_register_governed_model(name: str, metadata: dict) -> dict:
