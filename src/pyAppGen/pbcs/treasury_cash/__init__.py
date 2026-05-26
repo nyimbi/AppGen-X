@@ -10,6 +10,9 @@ from .runtime import TREASURY_CASH_RUNTIME_CAPABILITY_KEYS
 from .runtime import TREASURY_CASH_STANDARD_FEATURE_KEYS
 from .runtime import treasury_cash_build_api_contract
 from .runtime import treasury_cash_build_cash_position
+from .runtime import treasury_cash_build_release_evidence
+from .runtime import treasury_cash_build_schema_contract
+from .runtime import treasury_cash_build_service_contract
 from .runtime import treasury_cash_build_workbench_view
 from .runtime import treasury_cash_capture_bank_balance
 from .runtime import treasury_cash_configure_runtime
@@ -43,7 +46,13 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": treasury_cash_ui_contract(),
         "api_contract": treasury_cash_build_api_contract(),
+        "schema_contract": treasury_cash_build_schema_contract(),
+        "service_contract": treasury_cash_build_service_contract(),
+        "release_evidence_contract": treasury_cash_build_release_evidence(),
         "permissions_contract": treasury_cash_permissions_contract(),
         "owned_tables": TREASURY_CASH_OWNED_TABLES,
         "allowed_database_backends": TREASURY_CASH_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": TREASURY_CASH_REQUIRED_EVENT_TOPIC,
+        "consumes": TREASURY_CASH_CONSUMED_EVENT_TYPES,
+        "emits": TREASURY_CASH_EMITTED_EVENT_TYPES,
     }

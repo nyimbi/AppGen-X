@@ -2,6 +2,9 @@ import pytest
 
 from pyAppGen.pbc import TREASURY_CASH_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import treasury_cash_build_cash_position
+from pyAppGen.pbc import treasury_cash_build_release_evidence
+from pyAppGen.pbc import treasury_cash_build_schema_contract
+from pyAppGen.pbc import treasury_cash_build_service_contract
 from pyAppGen.pbc import treasury_cash_build_workbench_view
 from pyAppGen.pbc import treasury_cash_capture_bank_balance
 from pyAppGen.pbc import treasury_cash_configure_runtime
@@ -41,9 +44,17 @@ def test_treasury_cash_runtime_executes_standard_and_advanced_capabilities() -> 
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/treasury_cash"
     assert runtime["owned_tables"] == TREASURY_CASH_OWNED_TABLES
+    assert len(runtime["owned_tables"]) >= 35
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
+    assert "bank_signatory_management" in runtime["standard_features"]
+    assert "statement_line_hash_chain" in runtime["standard_features"]
+    assert "reconciliation_exception_management" in runtime["standard_features"]
+    assert "forecast_line_confidence_bands" in runtime["standard_features"]
+    assert "payment_rail_routing" in runtime["standard_features"]
+    assert "appgen_x_inbox" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert len(runtime["standard_features"]) >= 18
     assert smoke["ok"] is True
@@ -59,9 +70,38 @@ def test_treasury_cash_runtime_executes_standard_and_advanced_capabilities() -> 
 
     package_contract = treasury_cash_package_contract()
     assert package_contract["api_contract"]["event_contract"] == "AppGen-X"
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
     assert package_contract["permissions_contract"]["action_permissions"]["receive_event"] == "treasury_cash.event"
     assert package_contract["owned_tables"] == TREASURY_CASH_OWNED_TABLES
     assert package_contract["allowed_database_backends"] == TREASURY_CASH_ALLOWED_DATABASE_BACKENDS
+    assert package_contract["required_event_topic"] == TREASURY_CASH_REQUIRED_EVENT_TOPIC
+    assert package_contract["consumes"] == TREASURY_CASH_CONSUMED_EVENT_TYPES
+    assert package_contract["emits"] == TREASURY_CASH_EMITTED_EVENT_TYPES
+
+    schema = treasury_cash_build_schema_contract()
+    service = treasury_cash_build_service_contract()
+    release = treasury_cash_build_release_evidence()
+    assert schema["format"] == "appgen.treasury-cash-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(TREASURY_CASH_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(TREASURY_CASH_OWNED_TABLES)
+    assert {
+        "treasury_cash_bank_account_signatory",
+        "treasury_cash_statement_line",
+        "treasury_cash_cash_forecast_line",
+        "treasury_cash_payment_rail_route",
+        "treasury_cash_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.treasury-cash-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 28
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.treasury-cash-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert pbc_implementation_release_audit(("treasury_cash",))["ok"] is True
     assert pbc_implemented_capability_audit(("treasury_cash",))["ok"] is True
 

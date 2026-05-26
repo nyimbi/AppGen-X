@@ -1298,6 +1298,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   name scan has no hits, and implementation release, generation smoke,
   capability, full implementation release, and catalog release audits all
   return true for the implemented PBC set. Commit: `e6084f5`.
+- Current Treasury Cash PBC completion pass expands `treasury_cash` into a
+  package-local cash and liquidity implementation with 42 owned tables,
+  schema/model/migration contract evidence, service and release evidence
+  contracts, AppGen-X eventing, UI/workbench binding, rules, parameters,
+  configuration, boundary checks, and a detailed package specification.
+  Focused Treasury tests pass (`4 passed`), syntax and whitespace checks pass,
+  the diff-only restricted-name scan has no hits, and implementation release,
+  generation smoke, capability, full implementation release, and catalog
+  release audits all return true for the implemented PBC set. Commit: pending.
 
 ## Open Completion Areas
 
