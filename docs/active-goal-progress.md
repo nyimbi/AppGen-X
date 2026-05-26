@@ -1615,6 +1615,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `archive/repo-cleanup-2026-05-26-5/`, keeps the payload ignored, and leaves
   `.venv`, tracked source, docs, configuration, tests, and existing archive
   history in place because they were not proven unused. Commit: `f911d20`.
+- Current per-PBC release-audit regression pass adds focused coverage proving
+  every built-in PBC independently passes `pbc_implementation_release_audit`,
+  has no blocking gaps, and includes the package-local
+  `source_package_schema_service_release` gate. Focused source-package tests
+  pass (`3 passed`), diff hygiene and restricted-term scans pass, and full
+  generation, capability, implementation release, and catalog release audits all
+  return true. Commit: `4dcb7a9`.
 
 ## Open Completion Areas
 
