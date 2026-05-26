@@ -25458,6 +25458,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "component_tests_ready",
         "component_family_modules_ready",
         "component_family_module_tests_ready",
+        "component_family_runtime_replay_matrix_ready",
         "component_parity_scenario_ready",
         "runtime_replay_ready",
     )

@@ -17706,10 +17706,103 @@ def replay_component_parity_runtime():
     }
 
 
+def component_family_runtime_replay_matrix():
+    """Replay every generated component-family module and its generated smoke test."""
+    manifest = component_parity_runtime_manifest()
+    module_dir = Path(__file__).with_name("component_family_modules")
+    test_dir = Path(__file__).with_name("component_family_module_tests")
+    tests_by_module = {item["module"]: item for item in manifest["usability"]["component_family_module_tests"]}
+    required_groups = set(manifest["required_groups"])
+    replays = []
+    for item in manifest["usability"]["component_family_modules"]:
+        module_path = module_dir / f"{item['module']}.py"
+        test_path = test_dir / f"test_{item['module']}.py"
+        module_smoke = {"ok": False, "checks": (), "side_effects": (), "error": "missing_module"}
+        family_replay = {"ok": False, "replay": (), "side_effects": (), "error": "missing_module"}
+        test_smoke = {"ok": False, "tests": (), "error": "missing_test_module"}
+        if module_path.exists():
+            spec = importlib.util.spec_from_file_location(f"generated_component_family_runtime_{item['module']}", module_path)
+            module = importlib.util.module_from_spec(spec)
+            assert spec.loader is not None
+            spec.loader.exec_module(module)
+            module_smoke = module.smoke_test()
+            family_replay = module.run_family_replay()
+        if test_path.exists():
+            spec = importlib.util.spec_from_file_location(f"generated_component_family_runtime_test_{item['module']}", test_path)
+            test_module = importlib.util.module_from_spec(spec)
+            assert spec.loader is not None
+            spec.loader.exec_module(test_module)
+            test_smoke = test_module.smoke_test()
+        replay_components = tuple(component["component"] for component in family_replay.get("replay", ()))
+        replays.append(
+            {
+                "module": item["module"],
+                "group": item["group"],
+                "path": item["path"],
+                "test_path": tests_by_module.get(item["module"], {}).get("path"),
+                "components": replay_components,
+                "ok": item["exists"]
+                and item["ok"]
+                and tests_by_module.get(item["module"], {}).get("exists", False)
+                and tests_by_module.get(item["module"], {}).get("ok", False)
+                and bool(module_smoke.get("ok"))
+                and bool(family_replay.get("ok"))
+                and bool(test_smoke.get("ok"))
+                and bool(replay_components)
+                and not tuple(module_smoke.get("side_effects", ()))
+                and not tuple(family_replay.get("side_effects", ())),
+                "module_smoke": module_smoke,
+                "family_replay": family_replay,
+                "test_smoke": test_smoke,
+            }
+        )
+    checks = (
+        {
+            "id": "component_family_modules_replay",
+            "ok": len(replays) == len(required_groups) and all(item["ok"] for item in replays),
+            "evidence": tuple(item["module"] for item in replays),
+        },
+        {
+            "id": "component_family_group_coverage",
+            "ok": required_groups == {item["group"] for item in replays},
+            "evidence": tuple(sorted(item["group"] for item in replays)),
+        },
+        {
+            "id": "component_family_replays_have_components",
+            "ok": all(item["components"] for item in replays),
+            "evidence": tuple((item["group"], item["components"]) for item in replays),
+        },
+        {
+            "id": "component_family_replays_side_effect_free",
+            "ok": all(
+                not tuple(item["module_smoke"].get("side_effects", ()))
+                and not tuple(item["family_replay"].get("side_effects", ()))
+                for item in replays
+            ),
+            "evidence": (),
+        },
+    )
+    return {
+        "format": "appgen.generated-component-family-runtime-replay-matrix.v1",
+        "ok": manifest["ok"] and all(check["ok"] for check in checks),
+        "family_replays": tuple(replays),
+        "checks": checks,
+        "guards": (
+            "family_modules_before_runtime_claim",
+            "family_test_modules_before_runtime_claim",
+            "family_replays_cover_required_groups",
+            "family_replays_are_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def validate_component_parity_runtime():
     """Validate generated component parity runtime readiness."""
     manifest = component_parity_runtime_manifest()
     replay = replay_component_parity_runtime()
+    family_replay_matrix = component_family_runtime_replay_matrix()
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "requested_groups_ready", "ok": set(manifest["required_groups"]) <= set(replay["group_names"])},
@@ -17720,6 +17813,7 @@ def validate_component_parity_runtime():
         {"id": "component_tests_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_test_files"]) and all(item["ok"] for item in manifest["usability"]["package_test_files"])},
         {"id": "component_family_modules_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_family_modules"])},
         {"id": "component_family_module_tests_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_family_module_tests"])},
+        {"id": "component_family_runtime_replay_matrix_ready", "ok": family_replay_matrix["ok"] and not family_replay_matrix["side_effects"]},
         {"id": "component_parity_scenario_ready", "ok": manifest["parity_scenario"]["ok"] and "release_component_to_ide" in replay["scenario_steps"]},
         {"id": "runtime_replay_ready", "ok": replay["ok"] and not replay["side_effects"]},
     )
@@ -17729,6 +17823,7 @@ def validate_component_parity_runtime():
         "checks": checks,
         "manifest": manifest,
         "replay": replay,
+        "family_replay_matrix": family_replay_matrix,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 

@@ -5353,6 +5353,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "component_tests_ready",
         "component_family_modules_ready",
         "component_family_module_tests_ready",
+        "component_family_runtime_replay_matrix_ready",
         "runtime_replay_ready",
     } <= set(component_runtime_smoke["passing_checks"])
     inspector_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_inspector_runtime")
@@ -16152,6 +16153,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "component_tests_ready",
         "component_family_modules_ready",
         "component_family_module_tests_ready",
+        "component_family_runtime_replay_matrix_ready",
         "component_parity_scenario_ready",
         "runtime_replay_ready",
     } <= set(component_parity_smoke["checks"])
@@ -16160,6 +16162,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert REQUESTED_COMPONENT_ANALOGS == set(component_parity_replay["analog_components"])
     assert "release_component_to_ide" in component_parity_replay["scenario_steps"]
     assert component_parity_replay["side_effects"] == ()
+    component_family_runtime_matrix = component_parity_runtime.component_family_runtime_replay_matrix()
+    assert component_family_runtime_matrix["format"] == "appgen.generated-component-family-runtime-replay-matrix.v1"
+    assert component_family_runtime_matrix["ok"] is True
+    assert len(component_family_runtime_matrix["family_replays"]) == len(component_family_module_file_manifest())
+    assert {
+        "component_family_modules_replay",
+        "component_family_group_coverage",
+        "component_family_replays_have_components",
+        "component_family_replays_side_effect_free",
+    } <= {check["id"] for check in component_family_runtime_matrix["checks"] if check["ok"]}
+    assert all(item["components"] for item in component_family_runtime_matrix["family_replays"])
     inspector_runtime_file = output_dir / "inspector_runtime.py"
     assert inspector_runtime_file.exists()
     py_compile.compile(str(inspector_runtime_file), doraise=True)
