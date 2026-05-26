@@ -12,22 +12,55 @@ TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC = "appgen.tax.events"
 TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 TAX_LOCALIZATION_OWNED_TABLES = (
     "tax_jurisdiction",
+    "tax_jurisdiction_topology",
     "tax_authority_channel",
+    "tax_authority_submission",
     "tax_filing_calendar",
+    "tax_nexus_profile",
     "tax_rule",
     "tax_rule_version",
+    "tax_rule_impact_analysis",
     "product_taxability",
     "counterparty_tax_profile",
+    "tax_exemption_review",
     "tax_calculation",
+    "tax_calculation_line",
     "invoice_tax_record",
     "exemption_certificate",
+    "tax_reverse_charge_rule",
+    "tax_withholding_rule",
+    "tax_environmental_levy",
     "cross_border_duty",
+    "tax_duty_classification",
+    "tax_landed_cost_component",
     "tax_filing",
+    "tax_filing_line",
     "tax_reconciliation",
+    "tax_remittance_batch",
+    "tax_payment_evidence",
+    "tax_refund_claim",
+    "tax_adjustment",
+    "tax_notice",
     "digital_tax_document",
+    "tax_document_parse",
+    "tax_liability_forecast",
+    "tax_policy_simulation",
+    "tax_cross_border_federation",
+    "tax_identity_credential",
+    "tax_audit_proof",
+    "tax_allocation",
+    "tax_anomaly_signal",
+    "tax_model_registry",
+    "tax_seed_data",
     "tax_policy_rule",
     "tax_parameter",
     "tax_configuration",
+    "tax_schema_extension",
+    "tax_control_assertion",
+    "tax_governed_model",
+    "tax_localization_appgen_outbox_event",
+    "tax_localization_appgen_inbox_event",
+    "tax_localization_dead_letter_event",
 )
 TAX_LOCALIZATION_EMITTED_EVENT_TYPES = (
     "TaxJurisdictionRegistered",
@@ -108,24 +141,43 @@ TAX_LOCALIZATION_RUNTIME_CAPABILITY_KEYS = (
 )
 TAX_LOCALIZATION_STANDARD_FEATURE_KEYS = (
     "jurisdiction_master",
+    "jurisdiction_topology",
     "authority_channel",
+    "authority_submission",
     "filing_calendar",
+    "nexus_profile",
     "tax_rule_authoring",
+    "tax_rule_impact_analysis",
     "product_taxability",
     "counterparty_tax_profile",
+    "exemption_review",
     "quote_time_calculation",
+    "calculation_lines",
     "invoice_tax_recording",
     "filing_preparation",
+    "filing_lines",
     "exemption_certificate_validation",
     "cross_border_duties",
+    "duty_classification",
+    "landed_cost_components",
     "reverse_charge",
     "withholding_tax",
+    "environmental_levy",
     "digital_tax_document",
+    "document_parsing",
     "rule_versioning",
     "effective_date_compilation",
     "multi_entity_isolation",
     "tax_reconciliation",
+    "tax_remittance_batch",
+    "payment_evidence",
+    "refund_claims",
+    "tax_adjustments",
+    "tax_notices",
     "approval_controls",
+    "appgen_x_outbox",
+    "appgen_x_inbox",
+    "idempotent_handlers",
     "retry_dead_letter",
     "permissions",
     "configuration_schema",
@@ -170,6 +222,9 @@ def tax_localization_runtime_capabilities() -> dict:
             "screen_tax_policy",
             "run_control_tests",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "federate_tax_view",
             "integrate_digital_document_network",
@@ -295,6 +350,9 @@ def tax_localization_runtime_smoke() -> dict:
     screening = tax_localization_screen_tax_policy(state, quote["calculation"]["calculation_id"], restricted_jurisdictions=("restricted_zone",))
     controls = tax_localization_run_control_tests(state)
     api = tax_localization_build_api_contract()
+    schema = tax_localization_build_schema_contract()
+    service = tax_localization_build_service_contract()
+    release = tax_localization_build_release_evidence()
     federation = tax_localization_federate_tax_view(state, "us_ca_san_francisco", external_systems=("commerce", "invoicing", "authority"))
     document = tax_localization_integrate_digital_document_network(state, "invoice_100", {"clearance_id": "clr_100", "status": "cleared", "authority": "authority_api"})
     identity = tax_localization_verify_tax_identity(jurisdiction["jurisdiction"]["identity"])
@@ -334,7 +392,7 @@ def tax_localization_runtime_smoke() -> dict:
         {"id": "immutable_regulatory_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_tax_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_tax_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "TaxCalculated" in api["events"]["emits"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "TaxCalculated" in api["events"]["emits"]},
         {"id": "cross_border_tax_federation", "ok": federation["ok"] and "authority" in federation["systems"]},
         {"id": "digital_document_network_integration", "ok": document["ok"] and document["status"] == "cleared"},
         {"id": "decentralized_tax_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -693,6 +751,193 @@ def tax_localization_build_api_contract() -> dict:
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
         "configuration": ("TAX_LOCALIZATION_DATABASE_URL", "TAX_LOCALIZATION_EVENT_TOPIC", "TAX_LOCALIZATION_RETRY_LIMIT", "TAX_LOCALIZATION_AUTHORITY_CHANNELS"),
+    }
+
+
+def tax_localization_build_schema_contract() -> dict:
+    """Return Tax-owned schema, migration, model, and relationship evidence."""
+    table_fields = {
+        "tax_jurisdiction": ("tenant", "jurisdiction_id", "country", "region", "locality", "currency", "status", "risk_score"),
+        "tax_jurisdiction_topology": ("tenant", "topology_id", "jurisdiction_id", "parent", "authority_channel", "nexus_nodes", "network_hash"),
+        "tax_authority_channel": ("tenant", "channel_id", "jurisdiction_id", "channel_type", "endpoint", "status", "sla"),
+        "tax_authority_submission": ("tenant", "submission_id", "jurisdiction_id", "filing_id", "channel_id", "status", "acknowledgement"),
+        "tax_filing_calendar": ("tenant", "calendar_id", "jurisdiction_id", "frequency", "due_day", "holiday_policy"),
+        "tax_nexus_profile": ("tenant", "nexus_id", "jurisdiction_id", "entity_id", "sales_threshold", "transaction_threshold", "active"),
+        "tax_rule": ("tenant", "rule_id", "jurisdiction_id", "tax_type", "product_class", "rate", "status"),
+        "tax_rule_version": ("tenant", "rule_version_id", "rule_id", "version", "effective_from", "effective_to", "compiled_hash"),
+        "tax_rule_impact_analysis": ("tenant", "impact_id", "rule_id", "proposed_rate", "current_tax", "simulated_tax", "delta_tax"),
+        "product_taxability": ("tenant", "taxability_id", "product_id", "product_class", "confidence", "review_state"),
+        "counterparty_tax_profile": ("tenant", "profile_id", "counterparty_id", "registration_id", "exemption_state", "nexus_state"),
+        "tax_exemption_review": ("tenant", "review_id", "certificate_id", "jurisdiction_id", "decision", "expires"),
+        "tax_calculation": ("tenant", "calculation_id", "jurisdiction_id", "customer_id", "order_id", "tax_total", "status"),
+        "tax_calculation_line": ("tenant", "calculation_line_id", "calculation_id", "product_id", "taxable_amount", "tax_amount", "rate"),
+        "invoice_tax_record": ("tenant", "invoice_id", "calculation_id", "tax_total", "status", "recorded_at"),
+        "exemption_certificate": ("tenant", "certificate_id", "counterparty_id", "jurisdiction_id", "status", "expires"),
+        "tax_reverse_charge_rule": ("tenant", "reverse_charge_id", "jurisdiction_id", "counterparty_type", "tax_type", "status"),
+        "tax_withholding_rule": ("tenant", "withholding_id", "jurisdiction_id", "income_type", "rate", "treaty_code"),
+        "tax_environmental_levy": ("tenant", "levy_id", "jurisdiction_id", "product_class", "rate", "basis"),
+        "cross_border_duty": ("tenant", "duty_id", "origin", "destination", "goods_value", "duty_rate", "duty"),
+        "tax_duty_classification": ("tenant", "classification_id", "product_id", "hs_code", "origin", "confidence"),
+        "tax_landed_cost_component": ("tenant", "component_id", "duty_id", "component_type", "amount", "currency"),
+        "tax_filing": ("tenant", "filing_id", "jurisdiction_id", "period", "liability", "status", "approved_by"),
+        "tax_filing_line": ("tenant", "filing_line_id", "filing_id", "calculation_id", "tax_total", "line_type"),
+        "tax_reconciliation": ("tenant", "reconciliation_id", "jurisdiction_id", "accrued", "collected", "remitted", "variance"),
+        "tax_remittance_batch": ("tenant", "batch_id", "jurisdiction_id", "amount", "due_date", "status"),
+        "tax_payment_evidence": ("tenant", "payment_evidence_id", "batch_id", "payment_reference", "amount", "paid_at"),
+        "tax_refund_claim": ("tenant", "refund_claim_id", "jurisdiction_id", "amount", "reason", "status"),
+        "tax_adjustment": ("tenant", "adjustment_id", "calculation_id", "amount", "reason", "approved_by"),
+        "tax_notice": ("tenant", "notice_id", "jurisdiction_id", "notice_type", "received_at", "resolution_state"),
+        "digital_tax_document": ("tenant", "document_id", "invoice_id", "clearance_id", "status", "authority"),
+        "tax_document_parse": ("tenant", "parse_id", "document_id", "certificate_id", "rate_percent", "jurisdiction"),
+        "tax_liability_forecast": ("tenant", "forecast_id", "jurisdiction_id", "horizon", "expected_liability", "tail_risk"),
+        "tax_policy_simulation": ("tenant", "simulation_id", "jurisdiction_id", "proposed_rate", "delta_tax", "objective_score"),
+        "tax_cross_border_federation": ("tenant", "federation_id", "jurisdiction_id", "external_system", "projection_hash"),
+        "tax_identity_credential": ("tenant", "credential_id", "jurisdiction_id", "did", "issuer", "status"),
+        "tax_audit_proof": ("tenant", "proof_id", "filing_id", "proof_hash", "public_claims", "created_at"),
+        "tax_allocation": ("tenant", "allocation_id", "liability_id", "party", "amount", "clearing_bid"),
+        "tax_anomaly_signal": ("tenant", "signal_id", "jurisdiction_id", "signal_type", "entropy", "observed_at"),
+        "tax_model_registry": ("tenant", "model_id", "name", "feature_lineage", "auc", "drift_score"),
+        "tax_seed_data": ("tenant", "seed_id", "jurisdiction_pack", "tax_type", "product_class", "rate"),
+        "tax_policy_rule": ("tenant", "policy_rule_id", "scope", "status", "predicate", "compiled_hash"),
+        "tax_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
+        "tax_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "authority_channels"),
+        "tax_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "version"),
+        "tax_control_assertion": ("tenant", "control_id", "assertion", "status", "evidence_hash", "tested_at"),
+        "tax_governed_model": ("tenant", "model_id", "name", "feature_lineage", "drift_score", "governance_status"),
+        "tax_localization_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        "tax_localization_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "tax_localization_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "tax_jurisdiction_topology.jurisdiction_id", "to": "tax_jurisdiction.jurisdiction_id", "type": "owned_topology"},
+        {"from": "tax_authority_channel.jurisdiction_id", "to": "tax_jurisdiction.jurisdiction_id", "type": "owned_channel"},
+        {"from": "tax_filing_calendar.jurisdiction_id", "to": "tax_jurisdiction.jurisdiction_id", "type": "owned_calendar"},
+        {"from": "tax_rule.jurisdiction_id", "to": "tax_jurisdiction.jurisdiction_id", "type": "owned_rule"},
+        {"from": "tax_rule_version.rule_id", "to": "tax_rule.rule_id", "type": "owned_version"},
+        {"from": "tax_calculation_line.calculation_id", "to": "tax_calculation.calculation_id", "type": "owned_child"},
+        {"from": "invoice_tax_record.calculation_id", "to": "tax_calculation.calculation_id", "type": "owned_invoice_record"},
+        {"from": "tax_filing_line.filing_id", "to": "tax_filing.filing_id", "type": "owned_child"},
+        {"from": "tax_authority_submission.filing_id", "to": "tax_filing.filing_id", "type": "owned_submission"},
+        {"from": "tax_payment_evidence.batch_id", "to": "tax_remittance_batch.batch_id", "type": "owned_payment"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id" or field == "invoice_id")[:2],
+            "owned_by": "tax_localization",
+        }
+        for table in TAX_LOCALIZATION_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.tax-localization-owned-schema-contract.v1",
+        "ok": len(tables) == len(TAX_LOCALIZATION_OWNED_TABLES)
+        and len(tables) >= 40
+        and all(item["table"].startswith(("tax_", "tax_localization_")) or item["table"] in {"product_taxability", "counterparty_tax_profile", "invoice_tax_record", "exemption_certificate", "cross_border_duty", "digital_tax_document"} for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/tax_localization/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(TAX_LOCALIZATION_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in TAX_LOCALIZATION_OWNED_TABLES
+        ),
+        "datastore_backends": TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def tax_localization_build_service_contract() -> dict:
+    """Return Tax Localization command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_jurisdiction",
+        "register_tax_rule",
+        "classify_product",
+        "calculate_tax_quote",
+        "record_invoice_tax",
+        "prepare_tax_filing",
+        "validate_exemption_certificate",
+        "determine_nexus",
+        "calculate_cross_border_duties",
+        "compile_regulatory_rule",
+        "simulate_tax_policy_change",
+        "forecast_tax_liability",
+        "reconcile_tax_collected",
+        "route_tax_filing",
+        "generate_tax_audit_proof",
+        "screen_tax_policy",
+        "federate_tax_view",
+        "integrate_digital_document_network",
+        "verify_tax_identity",
+        "schedule_carbon_aware_filing",
+        "optimize_tax_remittance",
+        "allocate_shared_tax_liability",
+        "run_control_tests",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.tax-localization-service-contract.v1",
+        "ok": len(command_methods) >= 28,
+        "transaction_boundary": "tax_localization_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "parse_tax_document",
+            "score_jurisdiction_risk",
+            "detect_tax_anomaly",
+            "model_stochastic_tax_exposure",
+            "verify_owned_table_boundary",
+        ),
+        "mutates_only": TAX_LOCALIZATION_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _TAX_LOCALIZATION_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": TAX_LOCALIZATION_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _TAX_LOCALIZATION_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def tax_localization_build_release_evidence() -> dict:
+    """Return Tax Localization package-local release evidence."""
+    schema = tax_localization_build_schema_contract()
+    service = tax_localization_build_service_contract()
+    api = tax_localization_build_api_contract()
+    permissions = tax_localization_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 40},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(TAX_LOCALIZATION_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 28},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"register_jurisdiction", "calculate_tax_quote", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.tax-localization-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 

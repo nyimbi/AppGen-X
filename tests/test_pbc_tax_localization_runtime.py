@@ -6,6 +6,9 @@ from pyAppGen.pbcs.tax_localization import TAX_LOCALIZATION_EMITTED_EVENT_TYPES
 from pyAppGen.pbcs.tax_localization import TAX_LOCALIZATION_OWNED_TABLES
 from pyAppGen.pbcs.tax_localization import TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.tax_localization import tax_localization_build_api_contract
+from pyAppGen.pbcs.tax_localization import tax_localization_build_release_evidence
+from pyAppGen.pbcs.tax_localization import tax_localization_build_schema_contract
+from pyAppGen.pbcs.tax_localization import tax_localization_build_service_contract
 from pyAppGen.pbcs.tax_localization import tax_localization_permissions_contract
 from pyAppGen.pbcs.tax_localization import tax_localization_receive_event
 from pyAppGen.pbcs.tax_localization import tax_localization_register_schema_extension
@@ -40,9 +43,17 @@ def test_tax_localization_runtime_executes_standard_and_advanced_capabilities() 
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/tax_localization"
     assert runtime["owned_tables"] == TAX_LOCALIZATION_OWNED_TABLES
+    assert len(runtime["owned_tables"]) >= 40
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
+    assert "jurisdiction_topology" in runtime["standard_features"]
+    assert "tax_rule_impact_analysis" in runtime["standard_features"]
+    assert "calculation_lines" in runtime["standard_features"]
+    assert "filing_lines" in runtime["standard_features"]
+    assert "tax_remittance_batch" in runtime["standard_features"]
+    assert "payment_evidence" in runtime["standard_features"]
+    assert "appgen_x_inbox" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert len(runtime["standard_features"]) >= 18
     assert smoke["ok"] is True
@@ -55,6 +66,12 @@ def test_tax_localization_runtime_executes_standard_and_advanced_capabilities() 
     assert contract["source_package"]["owned_tables"] == TAX_LOCALIZATION_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
+    assert contract["source_package"]["required_event_topic"] == TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == TAX_LOCALIZATION_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == TAX_LOCALIZATION_EMITTED_EVENT_TYPES
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "tax_localization.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "TaxConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
@@ -63,6 +80,9 @@ def test_tax_localization_runtime_executes_standard_and_advanced_capabilities() 
     assert pbc_implemented_capability_audit(("tax_localization",))["ok"] is True
 
     api = tax_localization_build_api_contract()
+    schema = tax_localization_build_schema_contract()
+    service = tax_localization_build_service_contract()
+    release = tax_localization_build_release_evidence()
     permissions = tax_localization_permissions_contract()
     assert api["format"] == "appgen.tax-localization-api-contract.v1"
     assert api["owned_tables"] == TAX_LOCALIZATION_OWNED_TABLES
@@ -73,6 +93,25 @@ def test_tax_localization_runtime_executes_standard_and_advanced_capabilities() 
     assert api["stream_engine_picker_visible"] is False
     assert {route["route"] for route in api["routes"]} >= {"POST /tax/quotes", "POST /tax/events/inbox", "GET /tax/workbench"}
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert schema["format"] == "appgen.tax-localization-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(TAX_LOCALIZATION_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(TAX_LOCALIZATION_OWNED_TABLES)
+    assert {
+        "tax_jurisdiction_topology",
+        "tax_calculation_line",
+        "tax_filing_line",
+        "tax_remittance_batch",
+        "tax_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.tax-localization-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 28
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.tax-localization-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert permissions["action_permissions"]["receive_event"] == "tax_localization.event"
 
 

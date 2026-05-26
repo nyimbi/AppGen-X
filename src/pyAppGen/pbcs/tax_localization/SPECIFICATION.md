@@ -1,230 +1,221 @@
 # Tax Localization PBC Specification
 
-`tax_localization` is the AppGen-X packaged business capability for tax
-compliance, localization, indirect tax calculation, product taxability,
-jurisdictional rules, cross-border duties, filing preparation, and audit-ready
-tax evidence. The package owns its runtime, schema contract, events, API surface,
-configuration, permissions, workbench views, and release evidence under
-`src/pyAppGen/pbcs/tax_localization/`.
+## Purpose
 
-## Owned Boundary
+`tax_localization` owns tax compliance, localization, indirect tax
+calculation, jurisdiction topology, authority connectivity, nexus profiles,
+product taxability, counterparty tax profiles, exemption evidence, invoice tax,
+cross-border duties, reverse charge, withholding, environmental levies,
+filings, remittance, payment evidence, refunds, notices, digital tax
+documents, audit proofs, rules, parameters, configuration, UI fragments, and
+release evidence.
 
-- **PBC key:** `tax_localization`
-- **Mesh:** `finops`
-- **Owned tables:** `tax_jurisdiction`, `tax_authority_channel`,
-  `tax_filing_calendar`, `tax_rule`, `tax_rule_version`,
-  `product_taxability`, `counterparty_tax_profile`, `tax_calculation`,
-  `invoice_tax_record`, `exemption_certificate`, `cross_border_duty`,
-  `tax_filing`, `tax_reconciliation`, `digital_tax_document`,
-  `tax_policy_rule`, `tax_parameter`, and `tax_configuration`
-- **Allowed datastores:** PostgreSQL, MySQL, MariaDB
-- **Event contract:** AppGen-X outbox/inbox event contract only
-- **Required event topic:** `appgen.tax.events`
-- **Emits:** `TaxJurisdictionRegistered`, `TaxRuleActivated`,
-  `TaxCalculated`, `InvoiceTaxRecorded`, and `TaxFilingPrepared`
-- **Consumes:** `ProductClassified`, `InvoiceIssued`, `OrderPriced`,
-  `PaymentCollected`, and `AccessPolicyChanged`
-- **Primary APIs:** `POST /tax/jurisdictions`, `POST /tax/rules`,
-  `POST /tax/quotes`, `POST /tax/invoices/{id}/tax-records`,
-  `POST /tax/filings`, `POST /tax/events/inbox`, and
-  `GET /tax/workbench`
-- **UI artifacts:** tax workbench, jurisdiction rule editor, filing monitor,
-  calculation trace viewer, exemption review queue, configuration editor,
-  parameter console, inbox monitor, outbox monitor, and dead-letter panel
+The PBC integrates with commerce, invoicing, order, payment, identity, schema,
+audit, and authority-facing capabilities only through declared APIs, AppGen-X
+events, and read-only projections. It does not share tables with other PBCs.
 
-The PBC does not share tables with other packages. Cross-PBC interaction is
-through APIs, event payloads, and projection-friendly references such as
-`invoice_id`, `product_id`, `customer_id`, and `order_id`.
-Dependency data is stored only as package-owned projections:
-`product_taxability_projection`, `invoice_tax_projection`,
-`order_price_projection`, `payment_collection_projection`,
-`access_policy_projection`, and `authority_acknowledgement_projection`.
-The runtime boundary checker rejects undeclared foreign tables, and accepts only
-owned tables, AppGen-X runtime event tables, consumed event types, declared
-projection names, and declared dependency APIs.
+## Owned Datastore Boundary
 
-## Standard Table-Stakes Capabilities
+The runtime owns these tables, each with generated model and migration
+evidence:
 
-1. Jurisdiction master data for country, region, locality, currency, filing
-   calendar, authority channel, and effective-date windows.
-2. Tax rule authoring for sales tax, use tax, value-added tax, goods and service
-   tax, withholding, excise, import duties, reverse-charge, and environmental
-   levies.
-3. Product and service taxability classification with category inheritance,
-   rate overrides, exemption flags, and localized taxonomy aliases.
-4. Customer, vendor, and counterparty tax profile references, including nexus,
-   exemption certificates, registration identifiers, and filing obligations.
-5. Quote-time tax calculation from order, invoice, or price events with line,
-   jurisdiction, and summary trace output.
-6. Invoice tax recording with idempotent calculation identifiers and immutable
-   source references.
-7. Filing period close, tax return preparation, liability roll-forward, and
-   authority submission package generation.
-8. Exemption certificate validation, expiration tracking, and audit evidence
-   attachment.
-9. Cross-border duties, landed-cost tax, import classification, de minimis
-   thresholds, and origin/destination controls.
-10. Reverse-charge and self-assessed tax determination for business-to-business
-    transactions.
-11. Withholding tax calculation, remittance grouping, and payment evidence.
-12. Digital tax document validation, e-invoice clearance status, and local
-    invoice numbering rules.
-13. Regulatory rule versioning, effective-date compilation, rollback, and impact
-    analysis.
-14. Multi-entity and multi-tenant tax isolation with tenant-owned configurations,
-    encryption context, and filing calendars.
-15. Tax reconciliation against invoiced, collected, accrued, and remitted
-    amounts.
-16. Approval workflow for rule changes, filing preparation, exemptions, refunds,
-    and adjustments.
-17. Retry, dead-letter, and idempotency evidence for filing preparation and tax
-    calculation events.
-18. Permissions and ABAC descriptors for rule administration, quote generation,
-    filing approval, audit access, and configuration control.
-19. Configuration schema for database URLs, authority channels, filing retry
-    limits, jurisdiction packs, and evidence retention.
-20. Seed data for baseline jurisdictions, common rule types, filing frequencies,
-    and product taxability categories.
-21. Tax workbench views for due filings, calculation exceptions, rule drift,
-    exemption expirations, and jurisdiction coverage.
-22. Release-audit evidence for package ownership, manifests, schema, migrations,
-    models, services, routes, events, handlers, UI, permissions, configuration,
-    tests, registration metadata, and generation smoke.
+- `tax_jurisdiction`: country, region, locality, currency, status, and risk.
+- `tax_jurisdiction_topology`: parent jurisdiction, authority channel, nexus
+  nodes, and topology hash.
+- `tax_authority_channel`: authority endpoint, channel type, SLA, and status.
+- `tax_authority_submission`: filing submission, channel, status, and
+  acknowledgement.
+- `tax_filing_calendar`: filing frequency, due day, and holiday policy.
+- `tax_nexus_profile`: entity nexus thresholds and active state.
+- `tax_rule`: tax type, product class, jurisdiction, rate, and status.
+- `tax_rule_version`: effective dates, version, and compiled hash.
+- `tax_rule_impact_analysis`: proposed-rate simulation and delta tax.
+- `product_taxability`: product class, confidence, and review state.
+- `counterparty_tax_profile`: registration, exemption, and nexus state.
+- `tax_exemption_review`: certificate decision and expiry.
+- `tax_calculation`: quote or invoice calculation header and totals.
+- `tax_calculation_line`: taxable amount, tax amount, rule, and rate.
+- `invoice_tax_record`: invoice tax recording and status.
+- `exemption_certificate`: certificate, jurisdiction, status, and expiry.
+- `tax_reverse_charge_rule`: reverse-charge determination rule.
+- `tax_withholding_rule`: withholding income type, rate, and treaty code.
+- `tax_environmental_levy`: levy basis, product class, and rate.
+- `cross_border_duty`: origin, destination, goods value, rate, and duty.
+- `tax_duty_classification`: HS classification, origin, and confidence.
+- `tax_landed_cost_component`: landed-cost duty/tax component.
+- `tax_filing`: period filing liability, approval, and status.
+- `tax_filing_line`: calculation-backed filing line.
+- `tax_reconciliation`: accrued, collected, remitted, and variance evidence.
+- `tax_remittance_batch`: jurisdiction remittance batch and due date.
+- `tax_payment_evidence`: remittance payment reference and amount.
+- `tax_refund_claim`: refund claim amount, reason, and status.
+- `tax_adjustment`: calculation adjustment and approval.
+- `tax_notice`: authority notice and resolution state.
+- `digital_tax_document`: clearance document and authority status.
+- `tax_document_parse`: parsed certificate, rate, and jurisdiction evidence.
+- `tax_liability_forecast`: expected liability and tail risk.
+- `tax_policy_simulation`: policy simulation and objective score.
+- `tax_cross_border_federation`: external tax projection hash.
+- `tax_identity_credential`: authority or counterparty tax identity.
+- `tax_audit_proof`: disclosure-minimized proof and public claims.
+- `tax_allocation`: shared liability allocation and clearing bid.
+- `tax_anomaly_signal`: anomaly type, entropy, and observation time.
+- `tax_model_registry`: governed model lineage, performance, and drift.
+- `tax_seed_data`: jurisdiction pack, tax type, product class, and rate.
+- `tax_policy_rule`: executable governance policy rule.
+- `tax_parameter`: bounded runtime parameter.
+- `tax_configuration`: database backend, AppGen-X topic, retry limit, and
+  authority channels.
+- `tax_schema_extension`: owned schema extension metadata.
+- `tax_control_assertion`: continuous control assertion and evidence hash.
+- `tax_governed_model`: regulated model governance state.
+- `tax_localization_appgen_outbox_event`: emitted AppGen-X event evidence.
+- `tax_localization_appgen_inbox_event`: consumed AppGen-X event evidence.
+- `tax_localization_dead_letter_event`: exhausted retry evidence.
+
+Supported ordinary backends are PostgreSQL, MySQL, and MariaDB. Runtime
+configuration rejects unsupported backends.
+
+## Standard Capabilities
+
+The PBC implements jurisdiction master data, jurisdiction topology, authority
+channels, filing calendars, authority submissions, nexus profiles, tax rule
+authoring, tax rule versions, impact analysis, product taxability,
+counterparty tax profiles, quote-time calculation, calculation lines, invoice
+tax records, exemption certificate validation, exemption reviews,
+cross-border duties, duty classification, landed-cost components,
+reverse-charge rules, withholding tax, environmental levies, digital tax
+documents, document parsing, effective-date compilation, multi-tenant
+isolation, tax reconciliation, remittance batches, payment evidence, refund
+claims, tax adjustments, notices, approval controls, AppGen-X inbox/outbox,
+idempotent handlers, retry/dead-letter evidence, permissions, configuration,
+rules, parameters, seed data, and tax workbench views.
 
 ## Advanced Capabilities
 
-1. **Event-sourced tax lifecycle:** immutable tax events are the source of truth
-   for quote, invoice, adjustment, filing, and remittance projections.
-2. **Graph-relational jurisdiction topology:** tax obligations are resolved
-   through a graph of country, region, locality, authority, product taxonomy,
-   nexus, exemption, and filing-period nodes.
-3. **Multi-tenant compliance isolation:** tenant jurisdictions, rule versions,
-   encryption epochs, and filing calendars are isolated by design.
-4. **Schema-on-read tax extensibility:** jurisdiction-specific fields are
-   injected as governed JSON-compatible extensions without shared-table drift.
-5. **Probabilistic taxability classification:** ambiguous products receive
-   confidence-scored classifications and review queues.
-6. **Real-time tax quote convergence:** transactional quote generation returns
-   calculation, trace, jurisdiction, rate, exemption, and outbox evidence in one
-   runtime operation.
-7. **Counterfactual tax policy simulation:** rule changes can be simulated
-   against historical or proposed transactions before activation.
-8. **Temporal tax liability forecasting:** liability projections account for
-   filing calendars, seasonality, expected sales, exemptions, and cross-border
-   exposure.
-9. **Autonomous filing reconciliation:** collected, accrued, and filed amounts
-   are reconciled with explainable variances.
-10. **Semantic tax document parsing:** unstructured exemption, invoice, and
-    authority notices can be parsed into deterministic, audited fields.
-11. **Predictive jurisdiction risk scoring:** late filing, nexus drift,
-    authority-channel failure, and rule volatility risks are scored.
-12. **Self-healing filing route selection:** failing authority channels reroute
-    to available AppGen-X filing rails with idempotent event evidence.
-13. **Zero-knowledge tax audit proofs:** public claims can prove calculation and
-    filing integrity without exposing full transaction detail.
-14. **Immutable regulatory trail:** all rule and filing mutations are
-    hash-chained with tamper-evident event references.
-15. **Dynamic tax policy screening:** restricted jurisdictions, expired
-    exemptions, missing nexus, and invalid rule versions block calculation or
-    filing.
-16. **Automated tax controls:** continuous controls validate active rules,
-    period closure, filing approval, calculation traceability, and event chain
-    integrity.
-17. **Universal API and async contracts:** REST route definitions and AppGen-X
-    event contracts are generated as first-class package artifacts.
-18. **Cross-border tax federation:** jurisdiction views can project external
-    authority, commerce, invoice, and logistics references without shared
-    persistence.
-19. **Digital document network integration:** e-invoice, clearance, exemption,
-    and authority acknowledgment metadata are captured as side-effect-free
-    package evidence.
-20. **Decentralized tax identity:** authority and counterparty identifiers can
-    be verified as credential-style claims before use.
-21. **Chaos-engineered authority tolerance:** filing and quote paths expose
-    deterministic resilience drills and degraded-mode decisions.
-22. **Crypto-agile authorization:** calculation and filing authorization can
-    rotate signing algorithms and epochs without changing business APIs.
-23. **Carbon-aware filing scheduling:** bulk filing and reconciliation workloads
-    can be scheduled in lower-carbon processing windows.
-24. **Algebraic remittance optimization:** liabilities are optimized by due date,
-    penalty, cash impact, authority constraints, and available evidence.
-25. **Mechanism-design allocation:** shared marketplace or platform tax
-    liability can be allocated across parties using declared bids and exposure.
-26. **Information-theoretic anomaly detection:** entropy and divergence metrics
-    identify abnormal tax rates, exemptions, and filing variances.
-27. **Stochastic exposure modeling:** simulation summaries estimate expected tax
-    exposure and tail risk under volatile rules or transaction volumes.
-28. **Distributed systems engineering:** all handlers expose idempotency,
-    retry/dead-letter evidence, and partition-safe keys.
-29. **Probabilistic ML governance:** risk and classification models include
-    feature lineage, drift thresholds, confidence, and regulated-use metadata.
-30. **Cryptographic engineering:** proof, hash-chain, and crypto-epoch routines
-    are executable and side-effect-free.
-31. **Mathematical optimization:** filing, remittance, allocation, and policy
-    simulation return deterministic objective scores.
-32. **MLOps governance:** governed tax models carry performance, drift, feature
-    lineage, and explainability controls.
+The runtime proves event-sourced tax lifecycle, graph-relational jurisdiction
+topology, multi-tenant compliance isolation, schema-on-read tax extension,
+probabilistic taxability classification, real-time quote convergence,
+counterfactual tax policy simulation, temporal liability forecasting,
+autonomous filing reconciliation, semantic tax document parsing, jurisdiction
+risk scoring, self-healing filing route selection, disclosure-minimized tax
+audit proofs, immutable regulatory trail, dynamic policy screening, automated
+tax controls, universal API and AppGen-X events, cross-border tax federation,
+digital document network integration, decentralized tax identity, authority
+resilience drills, crypto-agile authorization, carbon-aware filing scheduling,
+algebraic remittance optimization, mechanism-design shared tax allocation,
+information-theoretic anomaly detection, stochastic exposure modeling,
+distributed idempotency, probabilistic ML governance, cryptographic evidence,
+mathematical optimization, and tax model governance.
 
-## Runtime Completeness Contract
+## Rules, Parameters, and Configuration
 
-The runtime must prove:
+Configuration is validated by `tax_localization_configure_runtime`. Required
+settings include `database_backend`, `event_topic`, `retry_limit`,
+`default_currency`, `default_timezone`, authority channels, and workbench
+limits. The ordinary topic is fixed to `appgen.tax.events`; user-facing
+stream-engine selection is rejected.
 
-- Standard features are represented by explicit feature keys.
-- Advanced capabilities are represented by one smoke check per capability key.
-- Tax calculations are idempotent and produce AppGen-X outbox evidence.
-- Filings are prepared from owned calculation state and emit
-  `TaxFilingPrepared`.
-- Runtime configuration rejects unsupported backends, rejects wrong event
-  topics, rejects stream-engine picker fields, and exposes only the AppGen-X
-  event contract.
-- Database backends are limited to PostgreSQL, MySQL, and MariaDB.
-- AppGen-X eventing is fixed to `appgen.tax.events`; users cannot select stream
-  engines or alternate event contracts.
-- `register_schema_extension` accepts only owned Tax Localization tables and
-  validates extension field names before merging jurisdiction-specific fields.
-- `receive_event` records inbox evidence, uses idempotency keys, projects
-  consumed events into package-owned projections, retries unsupported or failed
-  messages, and moves exhausted messages to the dead-letter table.
-- The API contract is descriptor-level evidence: each route declares command or
-  query handler, owned tables, emitted or consumed events, permission, and
-  idempotency key.
-- The permissions contract maps every command, handler, configuration action,
-  and audit surface to package-scoped RBAC actions.
-- The workbench and UI contract bind to owned tables, configuration metadata,
-  outbox, inbox, dead-letter evidence, event surfaces, and action permissions.
-- Executable policy rules are distinct from jurisdictional tax rules and cover
-  filing, quote, exemption, cross-border, withholding, authority-route, and
-  release-gate behavior.
-- Runtime parameters cover quote precision, reconciliation tolerance, authority
-  retry limits, exemption expiry warning windows, nexus thresholds, and
-  workbench limits.
-- UI fragments expose jurisdiction, tax-rule authoring, classification, quote,
-  invoice tax, filing, exemption, cross-border, authority-channel,
-  reconciliation, document, risk, governance-rule, parameter, and configuration
-  workflows with permission-bound actions.
-- Rule, jurisdiction, calculation, and filing artifacts stay inside the
-  `tax_localization` owned package boundary.
-- Release audits and generation smoke audits pass before the PBC is considered
-  implemented.
+Parameters are validated by `tax_localization_set_parameter`. Supported
+parameters include `tax_quote_precision`,
+`filing_reconciliation_tolerance`, `authority_retry_limit`,
+`exemption_expiry_warning_days`, `nexus_sales_threshold`, and
+`workbench_limit`.
 
-## Package-Local Hardening Evidence
+Executable governance rules are registered by `tax_localization_register_rule`.
+Tax calculation rules are registered by `tax_localization_register_tax_rule`
+and compiled with effective-date evidence. Rule scopes include filing,
+calculation, exemption, cross-border duty, reverse charge, withholding,
+authority routing, reconciliation, refund, adjustment, and release gates.
 
-The package exports constants for the required event topic, allowed database
-backends, owned tables, emitted events, and consumed events. These constants are
-used by runtime configuration, API descriptors, UI descriptors, package metadata,
-and focused tests so the contract cannot drift silently. The executable state
-contains the ordinary tax domain projections plus `inbox`, `outbox`,
-`dead_letter`, `dead_letters`, `handled_events`, and `retry_evidence` surfaces.
-Handlers are side-effect-free in the AppGen-X generator context: they return a
-new state object with projected evidence rather than reaching into external
-systems or shared tables.
+Schema extensions are accepted only for Tax-owned tables. Foreign table
+extension attempts fail boundary validation.
 
-The package-local API surface includes command routes for jurisdiction
-registration, rule activation, tax quotes, invoice tax recording, filing
-preparation, and event inbox handling. The workbench query exposes counts,
-configuration binding, RBAC-driven visible actions, owned-table binding
-evidence, and runtime event table binding evidence. The UI contract keeps the
-stream-engine picker hidden and declares the AppGen-X event contract explicitly.
-This means generated applications can render Tax Localization workbench
-fragments, route commands through package-owned services, and validate package
-composition without exposing infrastructure choices to users.
+## APIs
+
+- `POST /tax/jurisdictions`
+- `POST /tax/rules`
+- `POST /tax/quotes`
+- `POST /tax/invoices/{id}/tax-records`
+- `POST /tax/filings`
+- `POST /tax/events/inbox`
+- `GET /tax/workbench`
+
+Declared external dependencies are APIs and projections only:
+
+- `GET /products/taxability`
+- `GET /invoices/{id}`
+- `GET /orders/{id}/pricing`
+- `GET /identity/policies`
+- `POST /audit/tax-events`
+- `product_taxability_projection`
+- `invoice_tax_projection`
+- `order_price_projection`
+- `payment_collection_projection`
+- `access_policy_projection`
+- `authority_acknowledgement_projection`
+
+## Events and Handlers
+
+Emitted AppGen-X events:
+
+- `TaxJurisdictionRegistered`
+- `TaxRuleActivated`
+- `TaxCalculated`
+- `InvoiceTaxRecorded`
+- `TaxFilingPrepared`
+
+Consumed AppGen-X events:
+
+- `ProductClassified`
+- `InvoiceIssued`
+- `OrderPriced`
+- `PaymentCollected`
+- `AccessPolicyChanged`
+
+Handlers are idempotent by event id, record inbox evidence, update owned
+projections, retry failures according to configuration, and write terminal
+failures to `tax_localization_dead_letter_event`.
+
+## UI, Permissions, and Workbench
+
+The UI exposes the tax workbench, jurisdiction console, topology view,
+authority-channel panel, filing calendar, nexus profile panel, tax rule editor,
+rule version view, impact simulation panel, product taxability workbench,
+counterparty profile view, quote calculation trace, invoice tax panel,
+exemption review queue, duty and landed-cost panel, reverse-charge and
+withholding rule panels, digital tax document view, filing monitor,
+reconciliation panel, remittance batch view, payment evidence view, refund and
+adjustment board, notice queue, document parser, audit proof panel, risk and
+model governance panel, rule studio, parameter console, configuration editor,
+inbox/outbox monitor, dead-letter triage, and release evidence panel.
+
+The permission contract covers jurisdiction administration, rule
+administration, calculation, invoice tax, filing, exemptions, reconciliation,
+event handling, configuration, and audit access.
+
+## Package Metadata and Release Evidence
+
+The package key is `tax_localization`. Package metadata advertises the
+implementation directory, standard features, advanced capabilities, owned
+tables, database allowlist, fixed event topic, emitted events, consumed events,
+UI fragments, API contract, schema contract, service contract, permissions,
+and release evidence.
+
+Release readiness requires:
+
+- `tax_localization_runtime_smoke()` returns `ok`.
+- `implementation_contract()` includes runtime, UI, API, schema, service,
+  permissions, topic, events, and release evidence contracts.
+- `tax_localization_build_schema_contract()` proves all owned tables, models,
+  relationships, migrations, backend allowlist, and no shared table access.
+- `tax_localization_build_service_contract()` proves command and query
+  services, transaction boundary, owned mutations, and declared dependencies.
+- `tax_localization_build_release_evidence()` proves schema depth, migration
+  coverage, service depth, AppGen-X API/event contract, permission coverage,
+  backend allowlist, and shared-table isolation.
+- Focused Tax Localization tests pass.
+- The global PBC release audit, implementation release audit, implemented
+  capability audit, and generation smoke audit pass for the implemented PBC
+  set.
+- Diff scans contain no banned legacy product or framework names.

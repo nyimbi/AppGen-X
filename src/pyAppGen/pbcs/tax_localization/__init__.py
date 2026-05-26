@@ -9,6 +9,9 @@ from .runtime import TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC
 from .runtime import TAX_LOCALIZATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import TAX_LOCALIZATION_STANDARD_FEATURE_KEYS
 from .runtime import tax_localization_build_api_contract
+from .runtime import tax_localization_build_release_evidence
+from .runtime import tax_localization_build_schema_contract
+from .runtime import tax_localization_build_service_contract
 from .runtime import tax_localization_build_workbench_view
 from .runtime import tax_localization_calculate_tax_quote
 from .runtime import tax_localization_classify_product
@@ -43,7 +46,13 @@ def implementation_contract() -> dict:
         "owned_tables": TAX_LOCALIZATION_OWNED_TABLES,
         "allowed_database_backends": TAX_LOCALIZATION_ALLOWED_DATABASE_BACKENDS,
         "api_contract": tax_localization_build_api_contract(),
+        "schema_contract": tax_localization_build_schema_contract(),
+        "service_contract": tax_localization_build_service_contract(),
+        "release_evidence_contract": tax_localization_build_release_evidence(),
         "permissions_contract": tax_localization_permissions_contract(),
+        "required_event_topic": TAX_LOCALIZATION_REQUIRED_EVENT_TOPIC,
+        "consumes": TAX_LOCALIZATION_CONSUMED_EVENT_TYPES,
+        "emits": TAX_LOCALIZATION_EMITTED_EVENT_TYPES,
         "advanced_runtime": runtime,
         "ui_contract": tax_localization_ui_contract(),
     }
