@@ -789,6 +789,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `archive/unused-2026-05-26/` and records the cleanup manifest without
   adding bulky binaries, third-party example dumps, scratch generated files, or
   local IDE state to Git history.
+- `191dfae` promotes visual design authoring modules into replay matrices:
+  style authoring, timeline authoring, effect stack, scene authoring, asset
+  import, and runtime package surfaces are now replayed as source and generated
+  runtime evidence required by visual-depth readiness, platform lifecycle,
+  platform requirement, and generated runtime validation gates.
 
 ## Open Completion Areas
 
