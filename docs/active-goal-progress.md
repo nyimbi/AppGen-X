@@ -1679,6 +1679,18 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   package evidence tests pass (`8 passed`), all package-local PBC tests pass
   (`322 passed`), and the full PBC audit stack including all built-in generation
   smoke and `pbc_release_audit()` returns true. Commit: `7fde8c6`.
+- Current PBC API route-contract execution pass regenerates every built-in PBC
+  `routes.py` so each route exposes an executable API contract bound to its
+  service operation, permission, owned/read table scope, idempotency
+  requirement, AppGen-X event-contract evidence, owned-datastore-plus-outbox
+  transaction boundary, no shared-table access, and no stream-engine picker
+  exposure. The generator emits the same route contract surface for generated
+  apps, source artifact gates now require `api_route_contracts()` and
+  `validate_api_route_contracts()`, package-local tests prove the route
+  validation path for every PBC, source/generated package evidence tests pass
+  (`8 passed`), all package-local PBC tests pass (`322 passed`), and the full
+  PBC audit stack including all built-in generation smoke and
+  `pbc_release_audit()` returns true. Commit: `5a9f335`.
 
 ## Open Completion Areas
 
