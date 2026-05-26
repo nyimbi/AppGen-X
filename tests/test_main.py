@@ -16884,6 +16884,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {item["api"] for item in generated_mobile["device_component_test_artifacts"]} == generated_mobile_apis
     assert all("replay" in item["exports"] for item in generated_mobile["device_component_module_artifacts"])
     assert all("run_scenario" in item["exports"] for item in generated_mobile["device_component_module_artifacts"])
+    assert all("operation_steps" in item["exports"] for item in generated_mobile["device_component_module_artifacts"])
+    assert all("validation_steps" in item["exports"] for item in generated_mobile["device_component_module_artifacts"])
     assert all(
         "test_device_component_smoke" in item["exports"]
         for item in generated_mobile["device_component_test_artifacts"]
@@ -16927,11 +16929,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "device_component_modules_replay",
         "device_component_api_coverage",
         "device_component_event_pipeline_coverage",
+        "device_component_operation_step_coverage",
+        "device_component_validation_step_coverage",
         "device_component_unsupported_target_fallback",
         "device_component_replays_side_effect_free",
     } <= {check["id"] for check in generated_component_runtime_matrix["checks"] if check["ok"]}
     assert all(
         "emit_component_event" in item["scenario"]["pipeline"]
+        for item in generated_component_runtime_matrix["component_replays"]
+    )
+    assert all(
+        {"request_permission", "load_simulator_fixture", "emit_component_event", "dispatch_component_events"}
+        <= set(item["operation_steps"]["steps"])
+        for item in generated_component_runtime_matrix["component_replays"]
+    )
+    assert all(
+        {"resolve_component_spec", "validate_default_props", "reject_unknown_props", "verify_event_trace"}
+        <= set(item["validation_steps"]["steps"])
         for item in generated_component_runtime_matrix["component_replays"]
     )
     assert {item["api"] for item in device_module_manifest["components"]} == generated_mobile_apis
@@ -16944,7 +16958,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert camera_device_component.simulator_fixture()["api"] == "camera"
     assert camera_device_component.replay("android")["ok"] is True
     assert camera_device_component.run_scenario("android")["ok"] is True
+    assert camera_device_component.operation_steps()["ok"] is True
+    assert camera_device_component.validation_steps()["ok"] is True
     assert "device_scenario_replays" in camera_component_smoke["checks"]
+    assert "operation_steps_declared" in camera_component_smoke["checks"]
+    assert "validation_steps_declared" in camera_component_smoke["checks"]
     nfc_device_component = _load_module(output_dir / "device_api_components" / "nfc.py", "generated_nfc_device_component")
     assert nfc_device_component.replay("web-pwa")["decision"] == "blocked_unsupported_target"
     assert nfc_device_component.replay("web-pwa")["ok"] is False

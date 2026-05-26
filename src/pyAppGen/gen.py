@@ -15071,6 +15071,65 @@ def design_tools():
     }}
 
 
+def operation_steps():
+    """Return executable operation steps this component must replay."""
+    current = spec()["spec"]
+    steps = (
+        "load_component_spec",
+        "render_preview_node",
+        "validate_default_props",
+        "request_permission",
+        "load_simulator_fixture",
+        "check_target_bridge",
+        "invoke_platform_adapter",
+        "normalize_payload",
+        "emit_component_event",
+        "dispatch_component_events",
+    )
+    return {{
+        "format": "appgen.device-api-component-operation-steps.v1",
+        "api": API,
+        "component": current["component"],
+        "steps": steps,
+        "runtime_pipeline": current["runtime_pipeline"],
+        "ok": {{"validate_props", "check_permission", "invoke_platform_adapter", "normalize_payload", "emit_component_event"}}
+        <= set(current["runtime_pipeline"])
+        and {{"request_permission", "load_simulator_fixture", "emit_component_event", "dispatch_component_events"}}
+        <= set(steps),
+        "side_effects": (),
+    }}
+
+
+def validation_steps():
+    """Return validation steps that prove the component is design-time usable."""
+    current = spec()["spec"]
+    valid = validate_props(render()["props"])
+    invalid = validate_props({{"__unknown__": True}})
+    tools = design_tools()
+    steps = (
+        "resolve_component_spec",
+        "validate_default_props",
+        "reject_unknown_props",
+        "bind_permission_manifest",
+        "bind_simulator_fixture",
+        "verify_design_tools",
+        "verify_event_trace",
+    )
+    return {{
+        "format": "appgen.device-api-component-validation-steps.v1",
+        "api": API,
+        "steps": steps,
+        "ok": current is not None
+        and valid["ok"]
+        and not invalid["ok"]
+        and permission_manifest()["api"] == API
+        and simulator_fixture()["api"] == API
+        and tools["ok"]
+        and bool(current["events"]),
+        "side_effects": (),
+    }}
+
+
 def smoke_test():
     """Run side-effect-free checks proving this device API component is usable."""
     current = spec()
@@ -15082,6 +15141,8 @@ def smoke_test():
     scenario = run_scenario()
     dispatch = dispatch_event()
     tools = design_tools()
+    operations = operation_steps()
+    validations = validation_steps()
     return {{
         "format": "appgen.device-api-component-smoke-test.v1",
         "api": API,
@@ -15093,7 +15154,9 @@ def smoke_test():
         and replay_result["ok"]
         and scenario["ok"]
         and dispatch["ok"]
-        and tools["ok"],
+        and tools["ok"]
+        and operations["ok"]
+        and validations["ok"],
         "checks": (
             "spec_resolves",
             "permission_manifest_bound",
@@ -15105,7 +15168,11 @@ def smoke_test():
             "device_scenario_replays",
             "event_dispatch_declared",
             "design_tools_present",
+            "operation_steps_declared",
+            "validation_steps_declared",
         ),
+        "operation_steps": operations,
+        "validation_steps": validations,
     }}
 '''
 
@@ -15143,6 +15210,8 @@ def test_device_component_contract():
     assert module.permission_manifest()["api"] == API
     assert module.simulator_fixture()["api"] == API
     assert module.render()["api"] == API
+    assert module.operation_steps()["ok"] is True
+    assert module.validation_steps()["ok"] is True
     assert module.run_scenario()["ok"] is True
 
 
@@ -15154,6 +15223,8 @@ def test_device_component_smoke():
     assert result["api"] == API
     assert result["checks"]
     assert "device_scenario_replays" in result["checks"]
+    assert "operation_steps_declared" in result["checks"]
+    assert "validation_steps_declared" in result["checks"]
 
 
 def smoke_test():
@@ -19903,7 +19974,7 @@ def device_api_component_module_manifest():
         contract_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_device_api_component_{module_name}")
-            exports = tuple(name for name in ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "smoke_test") if hasattr(module, name))
+            exports = tuple(name for name in ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "operation_steps", "validation_steps", "smoke_test") if hasattr(module, name))
             contract = module.spec()
             contract_ok = contract["ok"] and contract["api"] == item["api"]
         entries.append(
@@ -19916,7 +19987,7 @@ def device_api_component_module_manifest():
                 "contract_ok": contract_ok,
             }
         )
-    required_exports = {"spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "smoke_test"}
+    required_exports = {"spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "operation_steps", "validation_steps", "smoke_test"}
     return {
         "format": "appgen.generated-device-api-component-module-manifest.v1",
         "ok": bool(entries)
@@ -20030,6 +20101,8 @@ def device_api_component_runtime_replay_matrix(target="android"):
         module_smoke = {"ok": False, "checks": (), "side_effects": (), "error": "missing_module"}
         replay = {"ok": False, "side_effects": (), "decision": "missing_module", "phases": ()}
         scenario = {"ok": False, "side_effects": (), "decision": "missing_module", "pipeline": ()}
+        operation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
+        validation_steps = {"ok": False, "steps": (), "side_effects": (), "error": "missing_module"}
         test_smoke = {"ok": False, "tests": (), "error": "missing_test_module"}
         selected_target = target if target in item["targets"] else item["targets"][0]
         if module_path.exists():
@@ -20037,6 +20110,8 @@ def device_api_component_runtime_replay_matrix(target="android"):
             module_smoke = module.smoke_test()
             replay = module.replay(selected_target)
             scenario = module.run_scenario(selected_target)
+            operation_steps = module.operation_steps()
+            validation_steps = module.validation_steps()
         if test_path.exists():
             test_module = _load_generated_module(test_path, f"generated_device_component_runtime_matrix_test_{module_name}")
             test_smoke = test_module.smoke_test()
@@ -20053,15 +20128,23 @@ def device_api_component_runtime_replay_matrix(target="android"):
                 and bool(module_smoke.get("ok"))
                 and bool(replay.get("ok"))
                 and bool(scenario.get("ok"))
+                and bool(operation_steps.get("ok"))
+                and bool(validation_steps.get("ok"))
                 and bool(test_smoke.get("ok"))
                 and "dispatch_component_events" in tuple(replay.get("phases", ()))
                 and "emit_component_event" in tuple(scenario.get("pipeline", ()))
+                and {"request_permission", "load_simulator_fixture", "emit_component_event", "dispatch_component_events"} <= set(operation_steps.get("steps", ()))
+                and {"resolve_component_spec", "validate_default_props", "reject_unknown_props", "verify_event_trace"} <= set(validation_steps.get("steps", ()))
                 and not tuple(module_smoke.get("side_effects", ()))
                 and not tuple(replay.get("side_effects", ()))
-                and not tuple(scenario.get("side_effects", ())),
+                and not tuple(scenario.get("side_effects", ()))
+                and not tuple(operation_steps.get("side_effects", ()))
+                and not tuple(validation_steps.get("side_effects", ())),
                 "module_smoke": module_smoke,
                 "replay": replay,
                 "scenario": scenario,
+                "operation_steps": operation_steps,
+                "validation_steps": validation_steps,
                 "test_smoke": test_smoke,
             }
         )
@@ -20094,6 +20177,30 @@ def device_api_component_runtime_replay_matrix(target="android"):
             ),
         },
         {
+            "id": "device_component_operation_step_coverage",
+            "ok": all(
+                item["operation_steps"].get("ok")
+                and {"request_permission", "load_simulator_fixture", "emit_component_event", "dispatch_component_events"} <= set(item["operation_steps"].get("steps", ()))
+                for item in replays
+            ),
+            "evidence": tuple(
+                {"api": item["api"], "steps": item["operation_steps"].get("steps", ())}
+                for item in replays
+            ),
+        },
+        {
+            "id": "device_component_validation_step_coverage",
+            "ok": all(
+                item["validation_steps"].get("ok")
+                and {"resolve_component_spec", "validate_default_props", "reject_unknown_props", "verify_event_trace"} <= set(item["validation_steps"].get("steps", ()))
+                for item in replays
+            ),
+            "evidence": tuple(
+                {"api": item["api"], "steps": item["validation_steps"].get("steps", ())}
+                for item in replays
+            ),
+        },
+        {
             "id": "device_component_unsupported_target_fallback",
             "ok": unsupported["decision"] == "blocked_unsupported_target"
             and not unsupported["ok"]
@@ -20106,6 +20213,8 @@ def device_api_component_runtime_replay_matrix(target="android"):
                 not tuple(item["module_smoke"].get("side_effects", ()))
                 and not tuple(item["replay"].get("side_effects", ()))
                 and not tuple(item["scenario"].get("side_effects", ()))
+                and not tuple(item["operation_steps"].get("side_effects", ()))
+                and not tuple(item["validation_steps"].get("side_effects", ()))
                 for item in replays
             )
             and not tuple(unsupported.get("side_effects", ())),
@@ -20123,6 +20232,8 @@ def device_api_component_runtime_replay_matrix(target="android"):
             "device_component_modules_before_runtime_claim",
             "device_component_tests_before_runtime_claim",
             "event_pipeline_required_before_release",
+            "operation_steps_required_before_release",
+            "validation_steps_required_before_release",
             "unsupported_targets_disable_component",
             "device_component_replays_are_side_effect_free",
         ),

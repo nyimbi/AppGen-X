@@ -1107,6 +1107,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   dependency dump, an unreferenced schema graph helper, and two unreferenced
   legacy package modules. Dirty IDE metadata, generated fixtures, and
   in-progress package work remain untouched.
+- Current mobile/native API runtime pass adds operation-step and validation-step
+  evidence to every generated device component replay. The runtime replay
+  matrix now fails unless each generated API module proves permission,
+  simulator, adapter, event dispatch, property validation, manifest binding,
+  design-tool, and event-trace steps in side-effect-free execution.
 
 ## Open Completion Areas
 
