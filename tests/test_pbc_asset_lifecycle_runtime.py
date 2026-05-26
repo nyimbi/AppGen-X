@@ -6,6 +6,9 @@ from pyAppGen.pbcs.asset_lifecycle import ASSET_LIFECYCLE_EMITTED_EVENT_TYPES
 from pyAppGen.pbcs.asset_lifecycle import ASSET_LIFECYCLE_OWNED_TABLES
 from pyAppGen.pbcs.asset_lifecycle import ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.asset_lifecycle import asset_lifecycle_build_api_contract
+from pyAppGen.pbcs.asset_lifecycle import asset_lifecycle_build_release_evidence
+from pyAppGen.pbcs.asset_lifecycle import asset_lifecycle_build_schema_contract
+from pyAppGen.pbcs.asset_lifecycle import asset_lifecycle_build_service_contract
 from pyAppGen.pbcs.asset_lifecycle import asset_lifecycle_permissions_contract
 from pyAppGen.pbcs.asset_lifecycle import asset_lifecycle_receive_event
 from pyAppGen.pbcs.asset_lifecycle import asset_lifecycle_register_schema_extension
@@ -39,9 +42,16 @@ def test_asset_lifecycle_runtime_executes_standard_and_advanced_capabilities() -
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/asset_lifecycle"
     assert runtime["owned_tables"] == ASSET_LIFECYCLE_OWNED_TABLES
+    assert len(runtime["owned_tables"]) >= 35
     assert "configuration_schema" in runtime["standard_features"]
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
+    assert "purchase_receipt_capitalization" in runtime["standard_features"]
+    assert "component_history" in runtime["standard_features"]
+    assert "book_assignment" in runtime["standard_features"]
+    assert "depreciation_schedule_lines" in runtime["standard_features"]
+    assert "depreciation_journal" in runtime["standard_features"]
+    assert "insurance_claims" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert len(runtime["standard_features"]) >= 18
     assert smoke["ok"] is True
@@ -54,6 +64,12 @@ def test_asset_lifecycle_runtime_executes_standard_and_advanced_capabilities() -
     assert contract["source_package"]["owned_tables"] == ASSET_LIFECYCLE_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
+    assert contract["source_package"]["required_event_topic"] == ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == ASSET_LIFECYCLE_EMITTED_EVENT_TYPES
     assert contract["source_package"]["api_contract"]["stream_engine_picker_visible"] is False
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "asset_lifecycle.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
@@ -63,6 +79,9 @@ def test_asset_lifecycle_runtime_executes_standard_and_advanced_capabilities() -
     assert pbc_implemented_capability_audit(("asset_lifecycle",))["ok"] is True
 
     api = asset_lifecycle_build_api_contract()
+    schema = asset_lifecycle_build_schema_contract()
+    service = asset_lifecycle_build_service_contract()
+    release = asset_lifecycle_build_release_evidence()
     permissions = asset_lifecycle_permissions_contract()
     assert api["format"] == "appgen.asset-lifecycle-api-contract.v1"
     assert api["owned_tables"] == ASSET_LIFECYCLE_OWNED_TABLES
@@ -72,6 +91,25 @@ def test_asset_lifecycle_runtime_executes_standard_and_advanced_capabilities() -
     assert api["shared_table_access"] is False
     assert {route["route"] for route in api["routes"]} >= {"POST /assets", "POST /assets/events/inbox", "GET /assets"}
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert schema["format"] == "appgen.asset-lifecycle-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(ASSET_LIFECYCLE_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(ASSET_LIFECYCLE_OWNED_TABLES)
+    assert {
+        "asset_component_history",
+        "asset_depreciation_schedule_line",
+        "asset_depreciation_journal",
+        "asset_physical_verification_exception",
+        "asset_governed_model",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.asset-lifecycle-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 28
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.asset-lifecycle-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert permissions["roles"]["asset_lifecycle_auditor"] == ("asset_lifecycle.read", "asset_lifecycle.audit")
 
 

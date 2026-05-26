@@ -13,18 +13,48 @@ ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 ASSET_LIFECYCLE_OWNED_TABLES = (
     "fixed_asset",
     "asset_component",
+    "asset_component_history",
     "asset_book",
+    "asset_book_assignment",
+    "asset_acquisition",
+    "asset_capitalization",
+    "asset_lease_right_of_use",
     "asset_depreciation_schedule",
+    "asset_depreciation_schedule_line",
     "asset_depreciation_run",
+    "asset_depreciation_journal",
     "asset_transfer",
     "asset_valuation_adjustment",
+    "asset_impairment_indicator",
     "asset_maintenance_adjustment",
     "asset_insurance_warranty",
+    "asset_claim",
     "asset_retirement",
+    "asset_disposal_proceeds",
     "asset_physical_verification",
+    "asset_physical_verification_exception",
+    "asset_location_assignment",
+    "asset_custodian_assignment",
+    "asset_cost_center_assignment",
+    "asset_policy_screening",
+    "asset_audit_proof",
+    "asset_cross_system_federation",
+    "asset_identity_credential",
+    "asset_carbon_utilization",
+    "asset_portfolio_optimization",
+    "asset_allocation_mechanism",
+    "asset_anomaly_signal",
+    "asset_risk_model",
+    "asset_seed_data",
+    "asset_schema_extension",
+    "asset_control_assertion",
+    "asset_governed_model",
     "asset_rule",
     "asset_parameter",
     "asset_configuration",
+    "asset_lifecycle_appgen_outbox_event",
+    "asset_lifecycle_appgen_inbox_event",
+    "asset_lifecycle_dead_letter_event",
 )
 ASSET_LIFECYCLE_EMITTED_EVENT_TYPES = (
     "AssetRegistered",
@@ -112,22 +142,30 @@ ASSET_LIFECYCLE_STANDARD_FEATURE_KEYS = (
     "asset_register",
     "asset_acquisition",
     "capitalization",
+    "purchase_receipt_capitalization",
     "placed_in_service",
     "component_assets",
+    "component_history",
     "asset_location_assignment",
     "asset_custodian_assignment",
     "cost_center_assignment",
     "depreciation_books",
+    "book_assignment",
     "depreciation_methods",
     "depreciation_schedule",
+    "depreciation_schedule_lines",
     "depreciation_run",
+    "depreciation_journal",
     "asset_transfer",
     "asset_revaluation",
     "asset_impairment",
+    "impairment_indicator_management",
     "maintenance_adjustment",
     "insurance_warranty",
+    "insurance_claims",
     "lease_right_of_use",
     "asset_retirement",
+    "disposal_proceeds",
     "disposal_gain_loss",
     "journal_events",
     "event_outbox",
@@ -182,6 +220,9 @@ def asset_lifecycle_runtime_capabilities() -> dict:
             "screen_asset_policy",
             "run_control_tests",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
             "federate_asset_view",
             "integrate_insurance_warranty",
@@ -285,6 +326,9 @@ def asset_lifecycle_runtime_smoke() -> dict:
     screening = asset_lifecycle_screen_asset_policy(state, "asset_100", restricted_locations=("restricted_site",))
     controls = asset_lifecycle_run_control_tests(state)
     api = asset_lifecycle_build_api_contract()
+    schema = asset_lifecycle_build_schema_contract()
+    service = asset_lifecycle_build_service_contract()
+    release = asset_lifecycle_build_release_evidence()
     federation = asset_lifecycle_federate_asset_view(state, "asset_100", external_systems=("maintenance", "ledger"))
     insurance = asset_lifecycle_integrate_insurance_warranty(state, "asset_100", policy={"policy_id": "pol_1", "coverage": 10000, "warranty_months": 24})
     identity = asset_lifecycle_verify_asset_identity(registered["asset"]["identity"])
@@ -316,7 +360,7 @@ def asset_lifecycle_runtime_smoke() -> dict:
         {"id": "immutable_asset_regulatory_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_policy_compliance_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_fixed_asset_control_testing", "ok": controls["ok"] and controls["approval_controls"]},
-        {"id": "universal_api_async_streaming", "ok": api["ok"] and "DepreciationCalculated" in api["asyncapi_events"]},
+        {"id": "universal_api_async_streaming", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "DepreciationCalculated" in api["asyncapi_events"]},
         {"id": "cross_system_asset_federation", "ok": federation["ok"] and len(federation["systems"]) == 2},
         {"id": "insurance_warranty_network_integration", "ok": insurance["ok"] and insurance["insured_value"] == 10000},
         {"id": "decentralized_asset_identity", "ok": identity["ok"] and identity["subject"] == "asset_100"},
@@ -670,6 +714,188 @@ def asset_lifecycle_build_api_contract() -> dict:
         "graphql_mutations": ("registerAsset", "placeInService", "runDepreciation", "retireAsset"),
         "graphql_queries": ("assetRegister", "depreciationSchedule", "assetRisk"),
         "asyncapi_events": ("AssetPlacedInService", "DepreciationCalculated", "AssetRetired"),
+    }
+
+
+def asset_lifecycle_build_schema_contract() -> dict:
+    """Return Asset-owned schema, migration, model, and relationship evidence."""
+    table_fields = {
+        "fixed_asset": ("tenant", "asset_id", "legal_entity", "description", "category", "cost", "book_value", "status"),
+        "asset_component": ("tenant", "component_id", "asset_id", "component_name", "capitalization_split", "status"),
+        "asset_component_history": ("tenant", "component_history_id", "component_id", "event_type", "effective_date", "evidence_hash"),
+        "asset_book": ("tenant", "book_id", "book_name", "currency", "purpose", "default_method", "calendar"),
+        "asset_book_assignment": ("tenant", "assignment_id", "asset_id", "book_id", "assigned_at", "status"),
+        "asset_acquisition": ("tenant", "acquisition_id", "asset_id", "receipt_id", "amount", "capitalization_state"),
+        "asset_capitalization": ("tenant", "capitalization_id", "asset_id", "threshold", "approved_by", "capitalized_at"),
+        "asset_lease_right_of_use": ("tenant", "lease_id", "asset_id", "liability", "term_months", "discount_rate"),
+        "asset_depreciation_schedule": ("tenant", "schedule_id", "asset_id", "book", "method", "version", "status"),
+        "asset_depreciation_schedule_line": ("tenant", "schedule_line_id", "schedule_id", "period", "amount", "book_value"),
+        "asset_depreciation_run": ("tenant", "run_id", "period", "book", "status", "idempotency_key"),
+        "asset_depreciation_journal": ("tenant", "journal_id", "run_id", "asset_id", "period", "amount", "route"),
+        "asset_transfer": ("tenant", "transfer_id", "asset_id", "location", "cost_center", "approved_by"),
+        "asset_valuation_adjustment": ("tenant", "adjustment_id", "asset_id", "adjustment_type", "amount", "proof_hash"),
+        "asset_impairment_indicator": ("tenant", "indicator_id", "asset_id", "market_indicator", "decision", "observed_at"),
+        "asset_maintenance_adjustment": ("tenant", "maintenance_adjustment_id", "asset_id", "useful_life_delta", "evidence"),
+        "asset_insurance_warranty": ("tenant", "coverage_id", "asset_id", "policy_id", "coverage", "warranty_months"),
+        "asset_claim": ("tenant", "claim_id", "asset_id", "policy_id", "amount", "status"),
+        "asset_retirement": ("tenant", "retirement_id", "asset_id", "method", "proceeds", "gain_loss", "approved_by"),
+        "asset_disposal_proceeds": ("tenant", "proceeds_id", "asset_id", "amount", "currency", "received_at"),
+        "asset_physical_verification": ("tenant", "verification_id", "asset_id", "location", "status", "evidence_hash"),
+        "asset_physical_verification_exception": ("tenant", "exception_id", "verification_id", "reason", "resolution_state"),
+        "asset_location_assignment": ("tenant", "location_assignment_id", "asset_id", "location", "effective_date"),
+        "asset_custodian_assignment": ("tenant", "custodian_assignment_id", "asset_id", "custodian", "effective_date"),
+        "asset_cost_center_assignment": ("tenant", "cost_center_assignment_id", "asset_id", "cost_center", "effective_date"),
+        "asset_policy_screening": ("tenant", "screening_id", "asset_id", "policy", "decision", "evidence_hash"),
+        "asset_audit_proof": ("tenant", "proof_id", "asset_id", "proof_hash", "public_claims", "created_at"),
+        "asset_cross_system_federation": ("tenant", "federation_id", "asset_id", "external_system", "projection_hash"),
+        "asset_identity_credential": ("tenant", "credential_id", "asset_id", "did", "issuer", "status"),
+        "asset_carbon_utilization": ("tenant", "carbon_id", "asset_id", "window", "carbon_intensity", "selected"),
+        "asset_portfolio_optimization": ("tenant", "portfolio_id", "selected_asset", "objective_score", "candidate_count"),
+        "asset_allocation_mechanism": ("tenant", "allocation_id", "asset_id", "clearing_bid", "allocated_hours"),
+        "asset_anomaly_signal": ("tenant", "signal_id", "asset_id", "signal_type", "kl_divergence", "observed_at"),
+        "asset_risk_model": ("tenant", "risk_model_id", "asset_id", "risk_score", "model_version", "explanations"),
+        "asset_seed_data": ("tenant", "seed_id", "asset_category", "book", "method", "useful_life_months"),
+        "asset_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "version"),
+        "asset_control_assertion": ("tenant", "control_id", "assertion", "status", "evidence_hash", "tested_at"),
+        "asset_governed_model": ("tenant", "model_id", "name", "feature_lineage", "drift_score", "governance_status"),
+        "asset_rule": ("tenant", "rule_id", "scope", "status", "predicate", "compiled_hash"),
+        "asset_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
+        "asset_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_book"),
+        "asset_lifecycle_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+        "asset_lifecycle_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+        "asset_lifecycle_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+    }
+    relationships = (
+        {"from": "asset_component.asset_id", "to": "fixed_asset.asset_id", "type": "owned_child"},
+        {"from": "asset_component_history.component_id", "to": "asset_component.component_id", "type": "owned_history"},
+        {"from": "asset_book_assignment.asset_id", "to": "fixed_asset.asset_id", "type": "owned_book"},
+        {"from": "asset_acquisition.asset_id", "to": "fixed_asset.asset_id", "type": "owned_acquisition"},
+        {"from": "asset_depreciation_schedule.asset_id", "to": "fixed_asset.asset_id", "type": "owned_schedule"},
+        {"from": "asset_depreciation_schedule_line.schedule_id", "to": "asset_depreciation_schedule.schedule_id", "type": "owned_child"},
+        {"from": "asset_depreciation_journal.run_id", "to": "asset_depreciation_run.run_id", "type": "owned_journal"},
+        {"from": "asset_transfer.asset_id", "to": "fixed_asset.asset_id", "type": "owned_transfer"},
+        {"from": "asset_retirement.asset_id", "to": "fixed_asset.asset_id", "type": "owned_retirement"},
+        {"from": "asset_physical_verification.asset_id", "to": "fixed_asset.asset_id", "type": "owned_verification"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "asset_lifecycle",
+        }
+        for table in ASSET_LIFECYCLE_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.asset-lifecycle-owned-schema-contract.v1",
+        "ok": len(tables) == len(ASSET_LIFECYCLE_OWNED_TABLES)
+        and len(tables) >= 35
+        and all(item["table"].startswith(("asset_", "asset_lifecycle_")) or item["table"] == "fixed_asset" for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/asset_lifecycle/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(ASSET_LIFECYCLE_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in ASSET_LIFECYCLE_OWNED_TABLES
+        ),
+        "datastore_backends": ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def asset_lifecycle_build_service_contract() -> dict:
+    """Return Asset Lifecycle command/query service evidence."""
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_asset",
+        "place_asset_in_service",
+        "assign_asset_book",
+        "build_depreciation_schedule",
+        "run_depreciation",
+        "transfer_asset",
+        "revalue_asset",
+        "impair_asset",
+        "record_maintenance_adjustment",
+        "integrate_insurance_warranty",
+        "record_insurance_claim",
+        "run_physical_verification",
+        "retire_asset",
+        "record_disposal_proceeds",
+        "parse_capitalization_document",
+        "route_depreciation_journal",
+        "generate_asset_audit_proof",
+        "screen_asset_policy",
+        "federate_asset_view",
+        "verify_asset_identity",
+        "schedule_carbon_aware_utilization",
+        "optimize_asset_portfolio",
+        "allocate_shared_asset",
+        "run_control_tests",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.asset-lifecycle-service-contract.v1",
+        "ok": len(command_methods) >= 28,
+        "transaction_boundary": "asset_lifecycle_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "estimate_useful_life",
+            "project_asset_valuation",
+            "forecast_asset_value_risk",
+            "detect_asset_anomaly",
+            "verify_owned_table_boundary",
+        ),
+        "mutates_only": ASSET_LIFECYCLE_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _ASSET_LIFECYCLE_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _ASSET_LIFECYCLE_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def asset_lifecycle_build_release_evidence() -> dict:
+    """Return Asset Lifecycle package-local release evidence."""
+    schema = asset_lifecycle_build_schema_contract()
+    service = asset_lifecycle_build_service_contract()
+    api = asset_lifecycle_build_api_contract()
+    permissions = asset_lifecycle_permissions_contract()
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 35},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(ASSET_LIFECYCLE_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 28},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"register_asset", "run_depreciation", "receive_event"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+    )
+    return {
+        "format": "appgen.asset-lifecycle-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 

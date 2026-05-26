@@ -10,6 +10,9 @@ from .runtime import ASSET_LIFECYCLE_RUNTIME_CAPABILITY_KEYS
 from .runtime import ASSET_LIFECYCLE_STANDARD_FEATURE_KEYS
 from .runtime import asset_lifecycle_build_api_contract
 from .runtime import asset_lifecycle_build_depreciation_schedule
+from .runtime import asset_lifecycle_build_release_evidence
+from .runtime import asset_lifecycle_build_schema_contract
+from .runtime import asset_lifecycle_build_service_contract
 from .runtime import asset_lifecycle_build_workbench_view
 from .runtime import asset_lifecycle_configure_runtime
 from .runtime import asset_lifecycle_empty_state
@@ -42,7 +45,13 @@ def implementation_contract() -> dict:
         "owned_tables": ASSET_LIFECYCLE_OWNED_TABLES,
         "allowed_database_backends": ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS,
         "api_contract": asset_lifecycle_build_api_contract(),
+        "schema_contract": asset_lifecycle_build_schema_contract(),
+        "service_contract": asset_lifecycle_build_service_contract(),
+        "release_evidence_contract": asset_lifecycle_build_release_evidence(),
         "permissions_contract": asset_lifecycle_permissions_contract(),
+        "required_event_topic": ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC,
+        "consumes": ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES,
+        "emits": ASSET_LIFECYCLE_EMITTED_EVENT_TYPES,
         "advanced_runtime": runtime,
         "ui_contract": asset_lifecycle_ui_contract(),
     }

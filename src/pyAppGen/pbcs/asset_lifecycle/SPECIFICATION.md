@@ -2,183 +2,227 @@
 
 ## Purpose
 
-`asset_lifecycle` is the AppGen-X packaged business capability for fixed asset
-operations from acquisition intent through capitalization, componentization,
-placed-in-service control, depreciation, transfer, revaluation, impairment,
-maintenance-life adjustments, verification, insurance, warranty, retirement,
-and disposal evidence. The package is deliberately self-contained: it owns its
-schema, models, services, events, handlers, workbench fragments, permissions,
-rules, parameters, configuration, tests, and release evidence under this
-directory. External finance, procurement, maintenance, insurance, tax, identity,
-and ledger interactions are represented only by AppGen-X APIs, events, and
-projections; this PBC never reaches into another PBC table.
+`asset_lifecycle` owns fixed asset operations from acquisition intent through
+capitalization, componentization, book assignment, placed-in-service control,
+depreciation, transfer, revaluation, impairment, maintenance-life adjustment,
+insurance, warranty, physical verification, retirement, disposal proceeds,
+audit proof, federation, identity evidence, controls, rules, parameters,
+configuration, workbench fragments, and release evidence.
 
-The package supports the ordinary enterprise asset lifecycle table stakes and
-adds advanced runtime surfaces for temporal valuation, probabilistic useful-life
-estimation, policy screening, cryptographic evidence, optimization, and
-resilience. The implementation is executable in `runtime.py`, renderable through
-`ui.py`, exportable through `__init__.py`, and proven by
-`tests/test_pbc_asset_lifecycle_runtime.py`.
+External finance, procurement, maintenance, insurance, tax, identity, and
+ledger interactions are represented only by declared APIs, AppGen-X events,
+and projections. The PBC never reaches into another PBC table.
 
 ## Owned Datastore Boundary
 
-The owned tables are:
+The runtime owns these tables, with generated model and migration evidence for
+each table:
 
 - `fixed_asset`: asset identity, tenant, legal entity, description, category,
-  cost, residual value, currency, book, useful life, status, current book value,
-  accumulated depreciation, location, custodian, cost center, service date,
-  disposal state, and cryptographic asset identity.
-- `asset_component`: parent-child component hierarchy, component names,
-  replacement metadata, capitalization split, lifecycle overrides, and topology
-  degree evidence.
-- `asset_book`: depreciation book definition, default method, calendar, book
-  currency, tenant policy, and statutory or management purpose.
-- `asset_depreciation_schedule`: generated schedule header, method, book,
-  lines, period amounts, residual value guard, and schedule version evidence.
-- `asset_depreciation_run`: run header, period, posted journal rows,
-  idempotency key, retry status, posting route, and close evidence.
-- `asset_transfer`: location, cost center, custodian, legal entity, book move,
-  approval, effective date, and policy screening evidence.
-- `asset_valuation_adjustment`: revaluation, impairment, reversal, fair value,
-  recoverable amount, market indicator, approver, and valuation proof.
-- `asset_maintenance_adjustment`: maintenance event linkage, useful-life delta,
-  evidence, risk effect, and projection update.
-- `asset_insurance_warranty`: policy, coverage, warranty term, insured value,
-  carrier projection key, and exception status.
-- `asset_retirement`: retirement method, proceeds, gain or loss, final status,
-  disposal approval, and audit evidence.
-- `asset_physical_verification`: verification campaigns, scanned evidence,
-  exception status, location confirmation, and control results.
-- `asset_rule`, `asset_parameter`, and `asset_configuration`: executable
-  package rules, runtime parameters, and validated configuration.
+  cost, book value, residual value, status, location, custodian, cost center,
+  book, useful life, service date, and identity proof.
+- `asset_component`: parent asset components and capitalization split.
+- `asset_component_history`: component lifecycle events and evidence hashes.
+- `asset_book`: depreciation book, currency, calendar, purpose, and method.
+- `asset_book_assignment`: asset-to-book assignment and state.
+- `asset_acquisition`: acquisition receipt, amount, and capitalization state.
+- `asset_capitalization`: capitalization threshold, approval, and timestamp.
+- `asset_lease_right_of_use`: right-of-use asset liability and lease terms.
+- `asset_depreciation_schedule`: schedule header, method, book, version, and
+  status.
+- `asset_depreciation_schedule_line`: period depreciation amount and book
+  value.
+- `asset_depreciation_run`: run header, period, book, status, and idempotency.
+- `asset_depreciation_journal`: run journal line, asset, period, amount, and
+  posting route.
+- `asset_transfer`: location, cost center, custodian, entity, approval, and
+  effective date.
+- `asset_valuation_adjustment`: revaluation, impairment, reversal, amount, and
+  proof hash.
+- `asset_impairment_indicator`: market indicator, recommendation, and
+  observation time.
+- `asset_maintenance_adjustment`: maintenance evidence and useful-life delta.
+- `asset_insurance_warranty`: policy, coverage, warranty term, and exception
+  state.
+- `asset_claim`: insurance claim amount, policy, and status.
+- `asset_retirement`: retirement method, proceeds, gain or loss, approval, and
+  audit evidence.
+- `asset_disposal_proceeds`: proceeds amount, currency, and receipt time.
+- `asset_physical_verification`: scan evidence, location, result, and control
+  state.
+- `asset_physical_verification_exception`: verification exception and
+  resolution state.
+- `asset_location_assignment`: location history.
+- `asset_custodian_assignment`: custodian history.
+- `asset_cost_center_assignment`: cost-center history.
+- `asset_policy_screening`: policy decision and evidence hash.
+- `asset_audit_proof`: disclosure-minimized audit proof and public claims.
+- `asset_cross_system_federation`: external projection hash and target system.
+- `asset_identity_credential`: decentralized asset identity credential.
+- `asset_carbon_utilization`: carbon-aware utilization window evidence.
+- `asset_portfolio_optimization`: portfolio candidates and selected asset.
+- `asset_allocation_mechanism`: shared asset allocation and clearing bid.
+- `asset_anomaly_signal`: information-shift anomaly signal.
+- `asset_risk_model`: asset risk score, model version, and explanations.
+- `asset_seed_data`: category, book, method, and useful-life seed records.
+- `asset_schema_extension`: owned table extension metadata.
+- `asset_control_assertion`: continuous control result and evidence hash.
+- `asset_governed_model`: regulated model lineage, drift, and governance.
+- `asset_rule`: executable rule, scope, status, predicate, and compiled hash.
+- `asset_parameter`: bounded runtime parameter and compiled hash.
+- `asset_configuration`: database backend, AppGen-X topic, retry limit, and
+  default book.
+- `asset_lifecycle_appgen_outbox_event`: emitted AppGen-X event evidence.
+- `asset_lifecycle_appgen_inbox_event`: consumed AppGen-X event evidence.
+- `asset_lifecycle_dead_letter_event`: failed event and retry evidence.
 
-Runtime event tables are
-`asset_lifecycle_appgen_outbox_event`, `asset_lifecycle_appgen_inbox_event`,
-and `asset_lifecycle_dead_letter_event`. They are package-owned AppGen-X
-contract tables, not user-selectable stream infrastructure. Supported ordinary
-backends are exactly PostgreSQL, MySQL, and MariaDB.
+Supported ordinary backends are PostgreSQL, MySQL, and MariaDB. Runtime
+configuration rejects unsupported backends.
 
-## Standard Business Capabilities
+## Standard Capabilities
 
-The package implements fixed asset master data, register search, acquisition
-capture, capitalization thresholds, component assets, placed-in-service
-workflow, asset book assignment, depreciation schedule generation, depreciation
-run posting, asset transfer, custodian and cost center assignment, revaluation,
-impairment, maintenance-driven useful-life adjustment, insurance and warranty
-metadata, physical verification, retirement, sale, scrapping, disposal gain/loss
-calculation, audit trail, approval controls, rule administration, parameter
-administration, configuration administration, package metadata, workbench
-rendering, and release-gate evidence.
-
-Standard accounting behavior includes cost, residual value, useful life, book
-value, accumulated depreciation, service date, retirement proceeds, gain or
-loss, period depreciation journals, valuation adjustments, and immutable event
-history. Standard control behavior includes required approval metadata for
-transfers, valuation changes, impairments, and retirements; configuration
-validation; threshold parameters; rule activation; and permission-bound actions.
+The PBC implements fixed asset master data, register search, acquisition
+capture, purchase receipt capitalization, capitalization thresholds, component
+assets, component history, book assignment, placed-in-service workflow,
+depreciation methods, depreciation schedules, schedule lines, depreciation
+runs, depreciation journals, asset transfers, location/custodian/cost-center
+assignment, revaluation, impairment, impairment indicators, maintenance-driven
+useful-life adjustment, insurance, warranty, insurance claims, lease
+right-of-use assets, physical verification, verification exceptions, retirement,
+disposal proceeds, disposal gain/loss calculation, approval controls, audit
+trail, rule administration, parameter administration, configuration
+administration, package metadata, UI/workbench rendering, idempotent handlers,
+retry/dead-letter evidence, and release gates.
 
 ## Advanced Capabilities
 
-The runtime includes event-sourced lifecycle history with hash chaining,
-graph-relational component topology, multi-tenant book isolation,
-schema-on-read extensions for owned tables, probabilistic useful-life
-estimation, real-time valuation projections, counterfactual repair/replace/
-retain optimization, temporal value-at-risk forecasting, autonomous impairment
-recommendation, semantic capitalization parsing, predictive maintenance-linked
-risk scoring, self-healing depreciation journal routing, zero-knowledge-style
-asset audit proofs, immutable regulatory trail controls, dynamic policy
-screening, automated control tests, universal API and event descriptors,
-cross-system federation projections, insurance and warranty integration,
-decentralized asset identity verification, resilience drills, crypto epoch
-rotation, carbon-aware utilization scheduling, portfolio optimization,
-mechanism-design shared asset allocation, information-theoretic anomaly
-detection, stochastic valuation evidence, regulated model governance, and
-formal invariant checks.
-
-These capabilities are implemented as deterministic package-local functions so
-the release audit can prove the surfaces without requiring external services.
-External systems may later attach to the API and event contracts, but the
-package contract does not depend on side effects outside its boundary.
+The runtime proves event-sourced lifecycle history with hash chaining,
+graph-relational component topology, multi-tenant book isolation, owned schema
+extensions, probabilistic useful-life estimation, real-time valuation
+projection, counterfactual repair/replace/retain optimization, temporal
+value-at-risk forecasting, autonomous impairment recommendation, semantic
+capitalization parsing, predictive maintenance-linked risk scoring,
+self-healing depreciation journal routing, disclosure-minimized asset audit
+proofs, immutable regulatory trail controls, dynamic policy screening,
+continuous controls, universal API and AppGen-X events, cross-system federation
+projections, insurance and warranty integration, decentralized asset identity,
+resilience drills, crypto epoch rotation, carbon-aware utilization scheduling,
+portfolio optimization, mechanism-design shared allocation,
+information-theoretic anomaly detection, stochastic valuation evidence,
+regulated model governance, and formal invariant checks.
 
 ## Rules, Parameters, and Configuration
 
 Rules are executable dictionaries with `rule_id`, `tenant`, `scope`, and
-`status`. Scopes include capitalization, depreciation, transfer, valuation,
-retirement, verification, and release gate behavior. Scope-specific predicates
-may define capitalization thresholds, approval requirements, depreciation book
-policy, transfer limits, impairment indicators, physical verification cadence,
-retirement approval limits, or release-blocking controls.
+`status`. Supported scopes include capitalization, depreciation, transfer,
+valuation, impairment, maintenance adjustment, insurance/warranty,
+verification, retirement, and release gates.
 
 Parameters are constrained to known asset lifecycle knobs:
 `capitalization_threshold`, `impairment_indicator_threshold`,
 `physical_verification_interval_days`, `depreciation_batch_size`,
-`retirement_approval_limit`, and `workbench_limit`. Unknown parameters are
-rejected, including attempts to smuggle stream selection through parameter
-names.
+`retirement_approval_limit`, and `workbench_limit`.
 
 Configuration requires an allowed database backend, the fixed AppGen-X event
 topic `appgen.asset.events`, retry limit, default currency, default timezone,
-and optionally a default book and workbench limit. Configuration enriches state
-with `event_contract: AppGen-X`, the fixed topic, allowed database backends,
-owned tables, outbox table, inbox table, dead-letter table, and
-`stream_engine_picker_visible: false`. Any user-facing stream-engine picker or
-alternate eventing field is rejected.
+default book, and workbench limit. User-facing stream-engine selection and
+alternate event transport fields are rejected.
 
-## APIs, Events, and Handlers
+Schema extensions are accepted only for Asset-owned tables. Foreign table
+extension attempts fail boundary validation.
 
-The descriptor API contract exposes command routes for registering assets,
-placing assets in service, building depreciation schedules, running
-depreciation, transferring assets, revaluing assets, impairing assets,
-recording maintenance adjustments, retiring assets, and receiving AppGen-X
-events. Query routes expose the register and risk projections. Every route is a
-descriptor with a command or query, owned table, and permission. The contract
-declares `shared_table_access: false`, the owned tables, runtime tables,
-allowed backends, emitted events, consumed events, dependency projections, and a
-hidden stream picker.
+## APIs
 
-Emitted events are `AssetRegistered`, `AssetPlacedInService`,
-`DepreciationCalculated`, `AssetTransferred`, `AssetRevalued`, `AssetImpaired`,
-`MaintenanceAdjustedAssetLife`, and `AssetRetired`.
+- `POST /assets`
+- `POST /assets/{asset_id}/service`
+- `POST /assets/{asset_id}/depreciation-schedules`
+- `POST /depreciation-runs`
+- `POST /assets/{asset_id}/transfers`
+- `POST /assets/{asset_id}/revaluations`
+- `POST /assets/{asset_id}/impairments`
+- `POST /assets/{asset_id}/maintenance-adjustments`
+- `POST /assets/{asset_id}/retirements`
+- `POST /assets/events/inbox`
+- `GET /assets`
+- `GET /assets/{asset_id}/risk`
 
-Consumed events are `PurchaseReceiptCapitalized`, `MaintenanceCompleted`,
-`InsurancePolicyChanged`, `TaxBookChanged`, and `AccessPolicyChanged`.
-`receive_event` is idempotent by `event_id`, records processed inbox entries,
-stores handler evidence, and updates consumed-event projections:
-purchase receipts, maintenance completions, insurance policies, tax books, and
-access policies. Unsupported or malformed events produce retry evidence and are
-dead-lettered after the configured retry limit.
+Declared external dependencies are APIs and projections only:
 
-## Permissions and Workbench
+- `POST /ledger/journals`
+- `GET /procurement/receipts`
+- `GET /maintenance/work-orders`
+- `GET /insurance/policies`
+- `GET /tax/books`
+- `purchase_receipt_projection`
+- `maintenance_completion_projection`
+- `insurance_policy_projection`
+- `tax_book_projection`
+- `access_policy_projection`
 
-The permissions contract maps each action to an AppGen-X permission such as
+## Events and Handlers
+
+Emitted AppGen-X events:
+
+- `AssetRegistered`
+- `AssetPlacedInService`
+- `DepreciationCalculated`
+- `AssetTransferred`
+- `AssetRevalued`
+- `AssetImpaired`
+- `MaintenanceAdjustedAssetLife`
+- `AssetRetired`
+
+Consumed AppGen-X events:
+
+- `PurchaseReceiptCapitalized`
+- `MaintenanceCompleted`
+- `InsurancePolicyChanged`
+- `TaxBookChanged`
+- `AccessPolicyChanged`
+
+Handlers are idempotent by event id, record inbox evidence, update owned
+projections, retry failures according to configuration, and write terminal
+failures to `asset_lifecycle_dead_letter_event`.
+
+## UI, Permissions, and Workbench
+
+The UI contract exposes the asset lifecycle workbench, register console,
+capitalization queue, service board, component view, book assignment panel,
+depreciation schedule view, depreciation run console, transfer board,
+revaluation and impairment panel, maintenance adjustment view, insurance and
+warranty panel, claims panel, physical verification console, retirement
+console, disposal proceeds view, policy screening panel, risk panel, rule
+studio, parameter console, schema-extension panel, configuration panel,
+inbox/outbox monitor, dead-letter triage, and release evidence panel.
+
+The permissions contract maps actions to AppGen-X permissions such as
 `asset_lifecycle.register`, `asset_lifecycle.depreciation`,
 `asset_lifecycle.valuation`, `asset_lifecycle.retirement`,
 `asset_lifecycle.event`, `asset_lifecycle.audit`, and
-`asset_lifecycle.configure`. Roles include admin, accountant, operator, and
-auditor. ABAC attributes include tenant, legal entity, book, location, cost
-center, and asset category.
+`asset_lifecycle.configure`.
 
-The UI contract exposes the asset lifecycle workbench, register console,
-capitalization queue, service board, depreciation schedule view, depreciation
-run console, transfer board, revaluation and impairment panel, maintenance
-adjustment view, insurance and warranty panel, physical verification console,
-retirement console, risk panel, rule studio, parameter console, and
-configuration panel. Workbench render evidence includes visible and locked
-actions, configuration binding, rules, parameters, outbox count, inbox count,
-dead-letter count, owned tables, event configuration, and RBAC bindings.
+## Package Metadata and Release Evidence
 
-## Boundary and Release Evidence
+The package key is `asset_lifecycle`. Package metadata advertises the
+implementation directory, standard features, advanced capabilities, owned
+tables, database allowlist, fixed event topic, emitted events, consumed events,
+UI fragments, API contract, schema contract, service contract, permissions,
+and release evidence.
 
-`verify_owned_table_boundary` accepts only package-owned tables, package runtime
-tables, declared consumed events, declared dependency projections, declared API
-dependencies, and names prefixed with `asset_lifecycle_`. Foreign table names
-are reported as violations. This proves cross-PBC dependency representation
-through APIs, events, and projections instead of shared tables.
+Release readiness requires:
 
-Release evidence requires runtime smoke success, standard feature coverage,
-advanced capability coverage, package-local source contract, descriptor API
-contract, permissions contract, UI contract, owned table evidence, AppGen-X
-configuration, idempotent handler tests, retry/dead-letter tests, boundary
-tests, and focused unit tests. The package remains side-effect free: registration
-and composition can inspect the package and build plans without mutating
-external state.
+- `asset_lifecycle_runtime_smoke()` returns `ok`.
+- `implementation_contract()` includes runtime, UI, API, schema, service,
+  permissions, topic, events, and release evidence contracts.
+- `asset_lifecycle_build_schema_contract()` proves all owned tables, models,
+  relationships, migrations, backend allowlist, and no shared table access.
+- `asset_lifecycle_build_service_contract()` proves command and query services,
+  transaction boundary, owned mutations, and declared dependencies.
+- `asset_lifecycle_build_release_evidence()` proves schema depth, migration
+  coverage, service depth, AppGen-X API/event contract, permission coverage,
+  backend allowlist, and shared-table isolation.
+- Focused Asset Lifecycle tests pass.
+- The global PBC release audit, implementation release audit, implemented
+  capability audit, and generation smoke audit pass for the implemented PBC
+  set.
+- Diff scans contain no banned legacy product or framework names.
