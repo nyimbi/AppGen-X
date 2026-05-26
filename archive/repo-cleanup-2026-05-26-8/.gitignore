@@ -1,0 +1,7 @@
+*
+!.gitignore
+!MANIFEST.md
+!runtime-cache/
+!regenerated-runtime-cache/
+!final-runtime-cache/
+!*/.gitkeep
