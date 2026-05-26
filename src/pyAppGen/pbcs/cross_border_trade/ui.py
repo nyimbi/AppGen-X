@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .runtime import CROSS_BORDER_TRADE_ALLOWED_DATABASE_BACKENDS
 from .runtime import CROSS_BORDER_TRADE_REQUIRED_EVENT_TOPIC
 from .runtime import cross_border_trade_build_workbench_view
 from .runtime import cross_border_trade_permissions_contract
@@ -27,6 +28,7 @@ CROSS_BORDER_TRADE_UI_FRAGMENT_KEYS = (
 
 
 def cross_border_trade_ui_contract() -> dict:
+    permissions = cross_border_trade_permissions_contract()
     return {
         "format": "appgen.cross-border-trade-ui-contract.v1",
         "ok": True,
@@ -87,7 +89,8 @@ def cross_border_trade_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": cross_border_trade_permissions_contract(),
+        "action_permissions": permissions["action_permissions"],
+        "permissions_contract": permissions,
         "configuration_editor": {
             "required_fields": (
                 "database_backend",
@@ -97,10 +100,11 @@ def cross_border_trade_ui_contract() -> dict:
                 "supported_countries",
                 "supported_incoterms",
             ),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": CROSS_BORDER_TRADE_ALLOWED_DATABASE_BACKENDS,
             "required_event_topic": CROSS_BORDER_TRADE_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
             "user_eventing_choice": False,
+            "stream_engine_picker_visible": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -213,4 +217,5 @@ def cross_border_trade_render_workbench(
         "event_inbox_count": snapshot["inbox_count"],
         "dead_letter_count": snapshot["dead_letter_count"],
         "owned_tables": snapshot["owned_tables"],
+        "binding_evidence": snapshot["binding_evidence"],
     }

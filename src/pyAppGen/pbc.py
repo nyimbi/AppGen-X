@@ -5658,6 +5658,8 @@ from .pbcs.subscription_billing import subscription_billing_verify_owned_table_b
 from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_ALLOWED_DATABASE_BACKENDS  # noqa: E402,F401
+from .pbcs.cross_border_trade import CROSS_BORDER_TRADE_OWNED_TABLES  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_build_api_contract  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_build_workbench_view  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_classify_product  # noqa: E402,F401
@@ -5668,12 +5670,14 @@ from .pbcs.cross_border_trade import cross_border_trade_permissions_contract  # 
 from .pbcs.cross_border_trade import cross_border_trade_quote_landed_cost  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_receive_event  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_register_rule  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_register_schema_extension  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_render_workbench  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_runtime_capabilities  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_runtime_smoke  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_screen_export_control  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_set_parameter  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_ui_contract  # noqa: E402,F401
+from .pbcs.cross_border_trade import cross_border_trade_verify_owned_table_boundary  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_UI_FRAGMENT_KEYS  # noqa: E402,F401
@@ -5791,6 +5795,7 @@ from .pbcs.service_ticketing import service_ticketing_permissions_contract  # no
 from .pbcs.service_ticketing import service_ticketing_receive_event  # noqa: E402,F401
 from .pbcs.service_ticketing import service_ticketing_record_escalation  # noqa: E402,F401
 from .pbcs.service_ticketing import service_ticketing_register_rule  # noqa: E402,F401
+from .pbcs.service_ticketing import service_ticketing_register_schema_extension  # noqa: E402,F401
 from .pbcs.service_ticketing import service_ticketing_render_workbench  # noqa: E402,F401
 from .pbcs.service_ticketing import service_ticketing_resolve_ticket  # noqa: E402,F401
 from .pbcs.service_ticketing import service_ticketing_runtime_capabilities  # noqa: E402,F401
@@ -5810,6 +5815,7 @@ from .pbcs.notifications import notifications_receive_event  # noqa: E402,F401
 from .pbcs.notifications import notifications_record_delivery_attempt  # noqa: E402,F401
 from .pbcs.notifications import notifications_register_channel  # noqa: E402,F401
 from .pbcs.notifications import notifications_register_rule  # noqa: E402,F401
+from .pbcs.notifications import notifications_register_schema_extension  # noqa: E402,F401
 from .pbcs.notifications import notifications_register_template  # noqa: E402,F401
 from .pbcs.notifications import notifications_render_workbench  # noqa: E402,F401
 from .pbcs.notifications import notifications_runtime_capabilities  # noqa: E402,F401

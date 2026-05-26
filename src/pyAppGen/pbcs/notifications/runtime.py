@@ -117,6 +117,7 @@ NOTIFICATIONS_CONSUMED_EVENT_TYPES = ("PreferenceChanged", "SlaBreached", "Workf
 NOTIFICATIONS_EMITTED_EVENT_TYPES = ("MessageDelivered", "MessageFailed")
 _CONFIG_SEQUENCE_FIELDS = {"supported_locales", "supported_channels", "quiet_hours"}
 _RULE_SEQUENCE_FIELDS = {"allowed_channels", "allowed_locales", "allowed_message_types"}
+_FORBIDDEN_EVENTING_FIELDS = frozenset({"stream_engine", "stream_engine_picker", "event_contract_selector", "eventing_backend"})
 _PARAMETER_BOUNDS = {
     "delivery_success_threshold": (0.0, 1.0),
     "fatigue_risk_threshold": (0.0, 1.0),
@@ -145,12 +146,16 @@ def notifications_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "register_template",
             "register_channel",
             "receive_event",
             "send_message",
             "record_delivery_attempt",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -308,6 +313,9 @@ def notifications_configure_runtime(state: dict, configuration: dict) -> dict:
     missing = set(NOTIFICATIONS_SUPPORTED_CONFIGURATION_FIELDS) - set(configuration)
     if missing:
         raise ValueError(f"Missing Notifications configuration fields: {tuple(sorted(missing))}")
+    forbidden = tuple(sorted(key for key in configuration if key in _FORBIDDEN_EVENTING_FIELDS))
+    if forbidden:
+        raise ValueError(f"Notifications does not expose stream-engine pickers or user-facing eventing choice: {forbidden}")
     backend = str(configuration["database_backend"]).lower()
     if backend not in NOTIFICATIONS_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("Notifications database backend must be PostgreSQL, MySQL, or MariaDB")
@@ -322,7 +330,10 @@ def notifications_configure_runtime(state: dict, configuration: dict) -> dict:
     normalized["database_backend"] = backend
     normalized["ok"] = True
     normalized["event_contract"] = "AppGen-X"
+    normalized["allowed_database_backends"] = NOTIFICATIONS_ALLOWED_DATABASE_BACKENDS
+    normalized["required_event_topic"] = NOTIFICATIONS_REQUIRED_EVENT_TOPIC
     normalized["stream_engine_picker_visible"] = False
+    normalized["user_eventing_choice"] = False
     runtime["configuration"] = normalized
     runtime["events"].append(_state_event("RuntimeConfigured", "runtime", normalized))
     return {"ok": True, "state": runtime, "configuration": normalized}
@@ -398,6 +409,7 @@ def notifications_register_channel(state: dict, command: dict) -> dict:
 
 
 def notifications_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    _require_appgen_x_event_contract(state)
     if event.get("event_type") not in NOTIFICATIONS_CONSUMED_EVENT_TYPES:
         raise ValueError(f"Unsupported Notifications consumed event: {event.get('event_type')}")
     event_id = event.get("event_id")
@@ -442,7 +454,7 @@ def notifications_send_message(state: dict, command: dict) -> dict:
     missing = required - set(command)
     if missing:
         raise ValueError(f"Missing Notifications send fields: {tuple(sorted(missing))}")
-    _require_configured(state)
+    _require_appgen_x_event_contract(state)
     template = state["notification_templates"].get(command["template_id"])
     if not template or template["status"] != "active":
         raise ValueError(f"Unknown active Notifications template: {command['template_id']}")
@@ -474,6 +486,7 @@ def notifications_send_message(state: dict, command: dict) -> dict:
 
 
 def notifications_record_delivery_attempt(state: dict, delivery_id: str, *, provider_status: str) -> dict:
+    _require_appgen_x_event_contract(state)
     delivery = state["message_deliveries"].get(delivery_id)
     if not delivery:
         raise ValueError(f"Unknown Notifications delivery: {delivery_id}")
@@ -515,16 +528,52 @@ def notifications_build_workbench_view(state: dict, *, tenant: str) -> dict:
     }
 
 
-def notifications_verify_owned_table_boundary() -> dict:
+def notifications_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "POST /templates",
+        "POST /delivery-channels",
+        "POST /messages",
+        "POST /delivery-attempts",
+        "GET /delivery-status",
+        "preference_projection",
+        "sla_projection",
+        "workflow_projection",
+    }
+    allowed_event_dependencies = set(NOTIFICATIONS_CONSUMED_EVENT_TYPES)
+    allowed_runtime_tables = {
+        "notifications_appgen_outbox_event",
+        "notifications_appgen_inbox_event",
+        "notifications_dead_letter_event",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(NOTIFICATIONS_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("notifications_")
+    )
     return {
         "format": "appgen.notifications-boundary.v1",
-        "ok": True,
+        "ok": not violations,
         "owned_tables": NOTIFICATIONS_OWNED_TABLES,
         "declared_dependencies": {
-            "apis": ("POST /messages", "POST /templates", "GET /delivery-status"),
+            "apis": (
+                "POST /templates",
+                "POST /delivery-channels",
+                "POST /messages",
+                "POST /delivery-attempts",
+                "GET /delivery-status",
+            ),
             "events": NOTIFICATIONS_CONSUMED_EVENT_TYPES,
+            "api_projections": ("preference_projection", "sla_projection", "workflow_projection"),
             "shared_tables": (),
         },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -532,9 +581,63 @@ def notifications_build_api_contract() -> dict:
     return {
         "format": "appgen.notifications-api-contract.v1",
         "ok": True,
-        "routes": ("POST /messages", "POST /templates", "GET /delivery-status"),
+        "routes": (
+            {
+                "route": "POST /templates",
+                "command": "register_template",
+                "owned_tables": ("notification_template",),
+                "emits": (),
+                "requires_permission": "notifications.template.write",
+                "idempotency_key": "template_id",
+            },
+            {
+                "route": "POST /delivery-channels",
+                "command": "register_channel",
+                "owned_tables": ("delivery_channel",),
+                "emits": (),
+                "requires_permission": "notifications.channel.write",
+                "idempotency_key": "channel_id",
+            },
+            {
+                "route": "POST /messages",
+                "command": "send_message",
+                "owned_tables": ("message_delivery",),
+                "emits": (),
+                "requires_permission": "notifications.message.send",
+                "idempotency_key": "delivery_id",
+            },
+            {
+                "route": "POST /delivery-attempts",
+                "command": "record_delivery_attempt",
+                "owned_tables": ("message_delivery",),
+                "emits": NOTIFICATIONS_EMITTED_EVENT_TYPES,
+                "requires_permission": "notifications.message.send",
+                "idempotency_key": "delivery_id:provider_status",
+            },
+            {
+                "route": "POST /notifications/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": NOTIFICATIONS_CONSUMED_EVENT_TYPES,
+                "requires_permission": "notifications.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /delivery-status",
+                "query": "build_workbench_view",
+                "owned_tables": NOTIFICATIONS_OWNED_TABLES,
+                "requires_permission": "notifications.audit",
+            },
+        ),
+        "declared_catalog_routes": ("POST /messages", "POST /templates", "GET /delivery-status"),
+        "owned_tables": NOTIFICATIONS_OWNED_TABLES,
+        "emits": NOTIFICATIONS_EMITTED_EVENT_TYPES,
+        "consumes": NOTIFICATIONS_CONSUMED_EVENT_TYPES,
+        "database_backends": NOTIFICATIONS_ALLOWED_DATABASE_BACKENDS,
+        "permissions": tuple(sorted(notifications_permissions_contract()["permissions"])),
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
     }
 
 
@@ -550,6 +653,19 @@ def notifications_permissions_contract() -> dict:
             "notifications.configure",
             "notifications.audit",
         ),
+        "action_permissions": {
+            "register_template": "notifications.template.write",
+            "register_channel": "notifications.channel.write",
+            "send_message": "notifications.message.send",
+            "record_delivery_attempt": "notifications.message.send",
+            "receive_event": "notifications.event.consume",
+            "register_rule": "notifications.configure",
+            "register_schema_extension": "notifications.configure",
+            "set_parameter": "notifications.configure",
+            "configure_runtime": "notifications.configure",
+            "build_workbench_view": "notifications.audit",
+            "verify_owned_table_boundary": "notifications.audit",
+        },
     }
 
 
@@ -560,6 +676,13 @@ def _copy_state(state: dict) -> dict:
 def _require_configured(state: dict) -> None:
     if not state.get("configuration", {}).get("ok"):
         raise ValueError("Notifications runtime must be configured before commands execute")
+
+
+def _require_appgen_x_event_contract(state: dict) -> None:
+    _require_configured(state)
+    configuration = state["configuration"]
+    if configuration.get("event_contract") != "AppGen-X" or configuration.get("event_topic") != NOTIFICATIONS_REQUIRED_EVENT_TOPIC:
+        raise ValueError("Notifications runtime must remain bound to the AppGen-X notifications event contract")
 
 
 def _assert_supported_locale(state: dict, locale: str) -> None:

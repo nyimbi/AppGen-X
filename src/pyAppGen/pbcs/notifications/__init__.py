@@ -14,6 +14,7 @@ from .runtime import notifications_receive_event
 from .runtime import notifications_record_delivery_attempt
 from .runtime import notifications_register_channel
 from .runtime import notifications_register_rule
+from .runtime import notifications_register_schema_extension
 from .runtime import notifications_register_template
 from .runtime import notifications_runtime_capabilities
 from .runtime import notifications_runtime_smoke

@@ -1,8 +1,10 @@
 import pytest
 
+from pyAppGen.pbc import notifications_build_api_contract
 from pyAppGen.pbc import notifications_build_workbench_view
 from pyAppGen.pbc import notifications_configure_runtime
 from pyAppGen.pbc import notifications_empty_state
+from pyAppGen.pbc import notifications_permissions_contract
 from pyAppGen.pbc import notifications_receive_event
 from pyAppGen.pbc import notifications_record_delivery_attempt
 from pyAppGen.pbc import notifications_register_channel
@@ -20,6 +22,7 @@ from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbcs.notifications import NOTIFICATIONS_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.notifications import NOTIFICATIONS_OWNED_TABLES
 from pyAppGen.pbcs.notifications import NOTIFICATIONS_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.notifications import notifications_register_schema_extension
 
 
 def test_notifications_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -41,6 +44,11 @@ def test_notifications_runtime_executes_standard_and_advanced_capabilities() -> 
     contract = pbc_implementation_contract("notifications")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["api_contract"]["ok"] is True
+    assert (
+        contract["source_package"]["permissions_contract"]["action_permissions"]["send_message"]
+        == "notifications.message.send"
+    )
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "NotificationConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert pbc_implementation_release_audit(("notifications",))["ok"] is True
@@ -48,6 +56,11 @@ def test_notifications_runtime_executes_standard_and_advanced_capabilities() -> 
 
 def test_notifications_runtime_applies_rules_parameters_configuration_events_and_ui() -> None:
     state = _configured_state()
+    extension = notifications_register_schema_extension(
+        state, "message_delivery", {"provider_receipt": "jsonb"}
+    )
+    state = extension["state"]
+    assert extension["extension"]["version"] == 1
     state = notifications_register_channel(
         state,
         {"channel_id": "channel_email", "tenant": "tenant_ops", "channel_type": "email", "provider": "email_primary", "health_score": 0.96, "cost_score": 0.2, "status": "active"},
@@ -111,6 +124,21 @@ def test_notifications_runtime_applies_rules_parameters_configuration_events_and
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == NOTIFICATIONS_OWNED_TABLES
 
+    api_contract = notifications_build_api_contract()
+    assert api_contract["database_backends"] == NOTIFICATIONS_ALLOWED_DATABASE_BACKENDS
+    assert api_contract["event_contract"] == "AppGen-X"
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["shared_table_access"] is False
+    assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
+        "register_template",
+        "register_channel",
+        "send_message",
+        "record_delivery_attempt",
+        "receive_event",
+    }
+    permissions = notifications_permissions_contract()
+    assert permissions["action_permissions"]["verify_owned_table_boundary"] == "notifications.audit"
+
 
 def test_notifications_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
     state = notifications_empty_state()
@@ -130,6 +158,39 @@ def test_notifications_rejects_invalid_inputs_and_proves_boundary_and_dead_lette
                 "workbench_limit": 50,
             },
         )
+    with pytest.raises(ValueError, match="AppGen-X notifications event contract"):
+        notifications_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": "appgen.notifications.legacy",
+                "retry_limit": 3,
+                "default_locale": "en-US",
+                "supported_locales": ("en-US",),
+                "supported_channels": ("email",),
+                "default_timezone": "UTC",
+                "delivery_mode": "policy",
+                "quiet_hours": ("22:00-06:00",),
+                "workbench_limit": 50,
+            },
+        )
+    with pytest.raises(ValueError, match="stream-engine pickers"):
+        notifications_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": "appgen.notifications.events",
+                "retry_limit": 3,
+                "default_locale": "en-US",
+                "supported_locales": ("en-US",),
+                "supported_channels": ("email",),
+                "default_timezone": "UTC",
+                "delivery_mode": "policy",
+                "quiet_hours": ("22:00-06:00",),
+                "workbench_limit": 50,
+                "stream_engine": "legacy_stream",
+            },
+        )
 
     state = _configured_state()
     with pytest.raises(ValueError, match="Unsupported Notifications parameter"):
@@ -144,10 +205,26 @@ def test_notifications_rejects_invalid_inputs_and_proves_boundary_and_dead_lette
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
-    boundary = notifications_verify_owned_table_boundary()
+    boundary = notifications_verify_owned_table_boundary(
+        (
+            "notification_template",
+            "delivery_channel",
+            "message_delivery",
+            "preference_snapshot",
+            "PreferenceChanged",
+            "workflow_projection",
+            "notifications_appgen_outbox_event",
+        )
+    )
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == ("notification_template", "delivery_channel", "message_delivery", "preference_snapshot")
     assert boundary["declared_dependencies"]["shared_tables"] == ()
+    assert "workflow_projection" in boundary["declared_dependencies"]["api_projections"]
+    violated = notifications_verify_owned_table_boundary(("customer_profile",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("customer_profile",)
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        notifications_register_schema_extension(state, "customer_profile", {"email": "text"})
 
 
 def _configured_state() -> dict:

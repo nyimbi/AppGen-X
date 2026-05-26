@@ -3,11 +3,13 @@ import pytest
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbc import service_ticketing_assign_ticket
+from pyAppGen.pbc import service_ticketing_build_api_contract
 from pyAppGen.pbc import service_ticketing_build_workbench_view
 from pyAppGen.pbc import service_ticketing_configure_runtime
 from pyAppGen.pbc import service_ticketing_create_sla_policy
 from pyAppGen.pbc import service_ticketing_empty_state
 from pyAppGen.pbc import service_ticketing_open_ticket
+from pyAppGen.pbc import service_ticketing_permissions_contract
 from pyAppGen.pbc import service_ticketing_receive_event
 from pyAppGen.pbc import service_ticketing_record_escalation
 from pyAppGen.pbc import service_ticketing_register_rule
@@ -21,11 +23,14 @@ from pyAppGen.pbc import service_ticketing_verify_owned_table_boundary
 from pyAppGen.pbcs.service_ticketing import SERVICE_TICKETING_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.service_ticketing import SERVICE_TICKETING_OWNED_TABLES
 from pyAppGen.pbcs.service_ticketing import SERVICE_TICKETING_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.service_ticketing import implementation_contract
+from pyAppGen.pbcs.service_ticketing import service_ticketing_register_schema_extension
 
 
 def test_service_ticketing_runtime_executes_standard_and_advanced_capabilities() -> None:
     runtime = service_ticketing_runtime_capabilities()
     smoke = service_ticketing_runtime_smoke()
+    contract = implementation_contract()
 
     assert runtime["format"] == "appgen.service-ticketing-runtime-capabilities.v1"
     assert runtime["ok"] is True
@@ -38,10 +43,21 @@ def test_service_ticketing_runtime_executes_standard_and_advanced_capabilities()
     assert smoke["ok"] is True
     assert {check["id"] for check in smoke["checks"]} == set(SERVICE_TICKETING_RUNTIME_CAPABILITY_KEYS)
     assert not smoke["blocking_gaps"]
+    assert contract["advanced_runtime"]["ok"] is True
+    assert contract["api_contract"]["ok"] is True
+    assert (
+        contract["permissions_contract"]["action_permissions"]["record_escalation"]
+        == "service_ticketing.escalation.write"
+    )
 
     contract = pbc_implementation_contract("service_ticketing")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["api_contract"]["ok"] is True
+    assert (
+        contract["source_package"]["permissions_contract"]["action_permissions"]["assign_ticket"]
+        == "service_ticketing.assignment.write"
+    )
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "ServiceConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert pbc_implementation_release_audit(("service_ticketing",))["ok"] is True
@@ -49,6 +65,13 @@ def test_service_ticketing_runtime_executes_standard_and_advanced_capabilities()
 
 def test_service_ticketing_runtime_applies_rules_parameters_configuration_events_and_ui() -> None:
     state = _configured_state()
+    extension = service_ticketing_register_schema_extension(
+        state,
+        "support_ticket",
+        {"conversation_summary": "jsonb"},
+    )
+    state = extension["state"]
+    assert extension["extension"]["version"] == 1
     state = service_ticketing_receive_event(
         state,
         {"event_id": "customer_ops", "event_type": "CustomerUpdated", "payload": {"tenant": "tenant_ops", "customer_id": "cust_ops", "tier": "enterprise", "health_score": 0.7}},
@@ -115,6 +138,23 @@ def test_service_ticketing_runtime_applies_rules_parameters_configuration_events
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == SERVICE_TICKETING_OWNED_TABLES
 
+    api_contract = service_ticketing_build_api_contract()
+    assert api_contract["database_backends"] == SERVICE_TICKETING_ALLOWED_DATABASE_BACKENDS
+    assert api_contract["event_contract"] == "AppGen-X"
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["shared_table_access"] is False
+    assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
+        "create_sla_policy",
+        "open_ticket",
+        "assign_ticket",
+        "record_escalation",
+        "resolve_ticket",
+        "receive_event",
+    }
+    permissions = service_ticketing_permissions_contract()
+    assert permissions["action_permissions"]["register_schema_extension"] == "service_ticketing.configure"
+    assert permissions["action_permissions"]["verify_owned_table_boundary"] == "service_ticketing.audit"
+
 
 def test_service_ticketing_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
     state = service_ticketing_empty_state()
@@ -148,10 +188,26 @@ def test_service_ticketing_rejects_invalid_inputs_and_proves_boundary_and_dead_l
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
-    boundary = service_ticketing_verify_owned_table_boundary()
+    boundary = service_ticketing_verify_owned_table_boundary(
+        (
+            "support_ticket",
+            "sla_policy",
+            "case_assignment",
+            "escalation_event",
+            "CustomerUpdated",
+            "preference_projection",
+            "service_ticketing_appgen_outbox_event",
+        )
+    )
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == ("support_ticket", "sla_policy", "case_assignment", "escalation_event")
     assert boundary["declared_dependencies"]["shared_tables"] == ()
+    assert "preference_projection" in boundary["declared_dependencies"]["api_projections"]
+    violated = service_ticketing_verify_owned_table_boundary(("customer_profile",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("customer_profile",)
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        service_ticketing_register_schema_extension(state, "customer_profile", {"email": "text"})
 
 
 def _configured_state() -> dict:

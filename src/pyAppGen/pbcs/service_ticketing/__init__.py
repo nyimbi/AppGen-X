@@ -16,6 +16,7 @@ from .runtime import service_ticketing_permissions_contract
 from .runtime import service_ticketing_receive_event
 from .runtime import service_ticketing_record_escalation
 from .runtime import service_ticketing_register_rule
+from .runtime import service_ticketing_register_schema_extension
 from .runtime import service_ticketing_resolve_ticket
 from .runtime import service_ticketing_runtime_capabilities
 from .runtime import service_ticketing_runtime_smoke

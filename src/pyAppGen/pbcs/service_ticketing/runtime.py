@@ -144,13 +144,17 @@ def service_ticketing_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "receive_event",
             "create_sla_policy",
             "open_ticket",
             "assign_ticket",
             "record_escalation",
             "resolve_ticket",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -504,16 +508,55 @@ def service_ticketing_build_workbench_view(state: dict, *, tenant: str) -> dict:
     }
 
 
-def service_ticketing_verify_owned_table_boundary() -> dict:
+def service_ticketing_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "POST /sla-policies",
+        "POST /tickets",
+        "POST /assignments",
+        "POST /escalations",
+        "POST /resolutions",
+        "POST /service-ticketing/events/inbox",
+        "GET /sla-status",
+        "customer_context_projection",
+        "preference_projection",
+    }
+    allowed_event_dependencies = set(SERVICE_TICKETING_CONSUMED_EVENT_TYPES)
+    allowed_runtime_tables = {
+        "service_ticketing_appgen_outbox_event",
+        "service_ticketing_appgen_inbox_event",
+        "service_ticketing_dead_letter_event",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(SERVICE_TICKETING_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("service_ticketing_")
+    )
     return {
         "format": "appgen.service-ticketing-boundary.v1",
-        "ok": True,
+        "ok": not violations,
         "owned_tables": SERVICE_TICKETING_OWNED_TABLES,
         "declared_dependencies": {
-            "apis": ("POST /tickets", "POST /assignments", "GET /sla-status"),
+            "apis": (
+                "POST /sla-policies",
+                "POST /tickets",
+                "POST /assignments",
+                "POST /escalations",
+                "POST /resolutions",
+                "GET /sla-status",
+            ),
             "events": SERVICE_TICKETING_CONSUMED_EVENT_TYPES,
+            "api_projections": ("customer_context_projection", "preference_projection"),
+            "catalog_routes": ("POST /tickets", "POST /assignments", "GET /sla-status"),
             "shared_tables": (),
         },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -521,9 +564,71 @@ def service_ticketing_build_api_contract() -> dict:
     return {
         "format": "appgen.service-ticketing-api-contract.v1",
         "ok": True,
-        "routes": ("POST /tickets", "POST /assignments", "GET /sla-status"),
+        "routes": (
+            {
+                "route": "POST /sla-policies",
+                "command": "create_sla_policy",
+                "owned_tables": ("sla_policy",),
+                "emits": (),
+                "requires_permission": "service_ticketing.configure",
+                "idempotency_key": "sla_policy_id",
+            },
+            {
+                "route": "POST /tickets",
+                "command": "open_ticket",
+                "owned_tables": ("support_ticket",),
+                "emits": ("SupportCaseOpened", "SlaBreached"),
+                "requires_permission": "service_ticketing.ticket.write",
+                "idempotency_key": "ticket_id",
+            },
+            {
+                "route": "POST /assignments",
+                "command": "assign_ticket",
+                "owned_tables": ("case_assignment", "support_ticket"),
+                "emits": (),
+                "requires_permission": "service_ticketing.assignment.write",
+                "idempotency_key": "assignment_id",
+            },
+            {
+                "route": "POST /escalations",
+                "command": "record_escalation",
+                "owned_tables": ("escalation_event", "support_ticket"),
+                "emits": ("SlaBreached",),
+                "requires_permission": "service_ticketing.escalation.write",
+                "idempotency_key": "ticket_id:reason",
+            },
+            {
+                "route": "POST /resolutions",
+                "command": "resolve_ticket",
+                "owned_tables": ("support_ticket",),
+                "emits": ("CustomerUpdated",),
+                "requires_permission": "service_ticketing.ticket.write",
+                "idempotency_key": "ticket_id",
+            },
+            {
+                "route": "POST /service-ticketing/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": SERVICE_TICKETING_CONSUMED_EVENT_TYPES,
+                "requires_permission": "service_ticketing.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /sla-status",
+                "query": "build_workbench_view",
+                "owned_tables": SERVICE_TICKETING_OWNED_TABLES,
+                "requires_permission": "service_ticketing.audit",
+            },
+        ),
+        "declared_catalog_routes": ("POST /tickets", "POST /assignments", "GET /sla-status"),
+        "owned_tables": SERVICE_TICKETING_OWNED_TABLES,
+        "emits": SERVICE_TICKETING_EMITTED_EVENT_TYPES,
+        "consumes": SERVICE_TICKETING_CONSUMED_EVENT_TYPES,
+        "database_backends": SERVICE_TICKETING_ALLOWED_DATABASE_BACKENDS,
+        "permissions": tuple(sorted(service_ticketing_permissions_contract()["permissions"])),
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
     }
 
 
@@ -539,6 +644,20 @@ def service_ticketing_permissions_contract() -> dict:
             "service_ticketing.configure",
             "service_ticketing.audit",
         ),
+        "action_permissions": {
+            "create_sla_policy": "service_ticketing.configure",
+            "open_ticket": "service_ticketing.ticket.write",
+            "assign_ticket": "service_ticketing.assignment.write",
+            "record_escalation": "service_ticketing.escalation.write",
+            "resolve_ticket": "service_ticketing.ticket.write",
+            "receive_event": "service_ticketing.event.consume",
+            "register_rule": "service_ticketing.configure",
+            "register_schema_extension": "service_ticketing.configure",
+            "set_parameter": "service_ticketing.configure",
+            "configure_runtime": "service_ticketing.configure",
+            "build_workbench_view": "service_ticketing.audit",
+            "verify_owned_table_boundary": "service_ticketing.audit",
+        },
     }
 
 
