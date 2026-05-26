@@ -1026,6 +1026,7 @@ IMPLEMENTED_PBC_KEYS = (
     "order_routing_optimization",
     "checkout_processing",
     "payment_orchestration",
+    "returns_reverse_logistics",
     "federated_iam",
     "api_gateway_mesh",
     "schema_registry",
@@ -3295,6 +3296,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = checkout_processing_runtime_capabilities()
     elif key == "payment_orchestration":
         advanced_runtime = payment_orchestration_runtime_capabilities()
+    elif key == "returns_reverse_logistics":
+        advanced_runtime = returns_reverse_logistics_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
@@ -3608,6 +3611,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "order_routing_optimization": len(ORDER_ROUTING_OPTIMIZATION_RUNTIME_CAPABILITY_KEYS),
         "checkout_processing": len(CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS),
         "payment_orchestration": len(PAYMENT_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS),
+        "returns_reverse_logistics": len(RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
@@ -5572,6 +5576,23 @@ from .pbcs.payment_orchestration import payment_orchestration_set_parameter  # n
 from .pbcs.payment_orchestration import payment_orchestration_tokenize_payment_method  # noqa: E402,F401
 from .pbcs.payment_orchestration import payment_orchestration_ui_contract  # noqa: E402,F401
 from .pbcs.payment_orchestration import payment_orchestration_void_payment  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_authorize_return  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_build_workbench_view  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_configure_runtime  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_create_return_label  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_empty_state  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_issue_credit_adjustment  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_receive_event  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_record_inspection_grade  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_register_rule  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_render_workbench  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_runtime_capabilities  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_runtime_smoke  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_set_parameter  # noqa: E402,F401
+from .pbcs.returns_reverse_logistics import returns_reverse_logistics_ui_contract  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
