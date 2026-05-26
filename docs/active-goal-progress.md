@@ -1825,7 +1825,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated readiness blockers. Data tooling readiness now requires lookup
   editor generation for each relationship, lookup endpoint parity, design
   runtime replay ordering, and scenario final-state parity before release
-  claims. Commit: pending.
+  claims. Commit: `21f4a20`.
 
 ## Open Completion Areas
 
