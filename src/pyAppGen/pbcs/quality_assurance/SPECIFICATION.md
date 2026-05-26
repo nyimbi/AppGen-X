@@ -10,7 +10,7 @@
 - Mesh: `opsmfg`
 - Owned datastore backends: PostgreSQL, MySQL, or MariaDB
 - Owned tables: `inspection_plan`, `inspection_result`, `quality_hold`, `non_conformance`, `quality_rule`, `quality_parameter`, `quality_configuration`, `quality_capa`, `quality_compliance_package`
-- Owned event tables: `quality_assurance_outbox`, `quality_assurance_inbox`, `quality_assurance_dead_letter`
+- Runtime event tables: `quality_assurance_appgen_outbox_event`, `quality_assurance_appgen_inbox_event`, `quality_assurance_dead_letter_event`
 - Fixed AppGen-X event topic: `appgen.quality.events`
 - Consumed events: `ProductionCompleted`, `GoodsReceiptPosted`, `InventoryLotMoved`, `SupplierScoreChanged`
 - Emitted events: `InspectionPlanCreated`, `InspectionResultRecorded`, `QualityHoldCreated`, `NonConformanceRaised`, `NonConformanceDispositioned`, `QualityHoldReleased`
@@ -24,7 +24,7 @@ Schema extension is package-local. `quality_assurance_register_schema_extension`
 
 Inbound AppGen-X events are handled through `quality_assurance_receive_event`. The handler writes inbox evidence, uses an idempotency key, detects duplicates without replaying side effects, projects supported consumed events into package-local projection stores, records retry evidence for failed or unsupported events, and moves exhausted events into dead-letter evidence. Production completions are projected by order, goods receipts by receipt, inventory movements by lot, and supplier score updates by supplier. These projections are read models owned by the Quality Assurance PBC; they are not shared source tables.
 
-The descriptor API contract returned by `quality_assurance_build_api_contract` exposes command/query route descriptors with owned-table write surfaces, emitted/consumed event metadata, permission requirements, and idempotency keys. `quality_assurance_permissions_contract` describes the action-level RBAC surface for inspectors, quality engineers, hold/release users, disposition approvers, configuration administrators, auditors, and event consumers. `quality_assurance_verify_owned_table_boundary` proves that generated code and workbench bindings reference only owned tables, runtime event tables, declared dependency APIs, declared projections, or consumed event names.
+The descriptor API contract returned by `quality_assurance_build_api_contract` exposes command/query route descriptors with owned-table write surfaces, emitted/consumed event metadata, permission requirements, idempotency keys, and the fixed AppGen-X event topic. `quality_assurance_permissions_contract` describes the action-level RBAC surface for inspectors, quality engineers, hold/release users, disposition approvers, configuration administrators, auditors, and event consumers. `quality_assurance_verify_owned_table_boundary` proves that generated code and workbench bindings reference only owned tables, runtime event tables, declared dependency APIs, declared projections, or consumed event names. The package-level `implementation_contract()` publishes the same required event topic, emitted/consumed event sets, and boundary evidence for release-audit consumers.
 
 ## Standard Table-Stakes Capabilities
 
@@ -112,7 +112,7 @@ Rules are compiled into deterministic hashes and evidence, parameters are stored
 
 UI actions are RBAC-gated and bind only to owned tables, projections, and AppGen-X event surfaces.
 The UI must keep AppGen-X eventing fixed and surface explicit configuration/rule/parameter binding evidence on the package-local workbench.
-The workbench also surfaces owned table names, AppGen-X outbox/inbox/dead-letter tables, inbox/dead-letter counts, and the active RBAC action map so a generated application can prove UI fragments are wired to the package-local runtime contract.
+The UI contract also exposes static binding evidence for owned tables, runtime event tables, and shared-table isolation. The workbench surfaces owned table names, AppGen-X outbox/inbox/dead-letter tables, inbox/dead-letter counts, and the active RBAC action map so a generated application can prove UI fragments are wired to the package-local runtime contract.
 
 ## Release Evidence
 

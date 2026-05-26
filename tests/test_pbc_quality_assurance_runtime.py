@@ -53,10 +53,14 @@ def test_quality_assurance_runtime_executes_standard_and_advanced_capabilities()
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["required_event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["emitted_events"] == QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
+    assert contract["source_package"]["consumed_events"] == QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
     assert contract["source_package"]["api_contract"]["shared_table_access"] is False
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "quality_assurance.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert contract["source_package"]["boundary_contract"]["ok"] is True
     assert "QualityConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("quality_assurance",))["ok"] is True
@@ -67,6 +71,7 @@ def test_quality_assurance_runtime_executes_standard_and_advanced_capabilities()
     assert api["format"] == "appgen.quality-assurance-api-contract.v1"
     assert api["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
     assert api["database_backends"] == QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS
+    assert api["required_event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
     assert api["emits"] == QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
     assert api["consumes"] == QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
     assert api["shared_table_access"] is False
@@ -309,18 +314,29 @@ def test_quality_assurance_runtime_applies_rules_parameters_configuration_and_ui
     assert ui_contract["owned_tables"] == QUALITY_ASSURANCE_OWNED_TABLES
     assert ui_contract["runtime_tables"]["inbox"] == "quality_assurance_appgen_inbox_event"
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert ui_contract["configuration_editor"]["required_event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["event_topic"] == QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC
+    assert ui_contract["configuration_editor"]["visible_event_contracts"] == ("AppGen-X",)
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["configuration_editor"]["user_eventing_choice_visible"] is False
     assert "default_sample_size" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "release_approval_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
+    assert ui_contract["parameter_editor"]["supported_parameters"] == ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     assert "required_measurements" in ui_contract["rule_editor"]["required_fields"]
     assert "quality" not in ui_contract["rule_editor"]["rule_types"]
     assert ui_contract["rule_editor"]["legacy_rule_type_aliases"] == ("quality",)
+    assert ui_contract["rule_editor"]["compiled_evidence_fields"] == ("compiled_hash", "compile_evidence")
     assert ui_contract["event_surfaces"]["emits"] == QUALITY_ASSURANCE_EMITTED_EVENT_TYPES
     assert ui_contract["event_surfaces"]["consumes"] == QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES
     assert ui_contract["event_surfaces"]["stream_engine_picker_visible"] is False
+    assert ui_contract["binding_evidence"] == {
+        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
+        "outbox_table": "quality_assurance_appgen_outbox_event",
+        "inbox_table": "quality_assurance_appgen_inbox_event",
+        "dead_letter_table": "quality_assurance_dead_letter_event",
+        "shared_table_access": False,
+    }
     rendered = quality_assurance_render_workbench(
         state,
         tenant="tenant_ops",

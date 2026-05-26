@@ -39,10 +39,14 @@ def implementation_contract() -> dict:
     return {
         **contract,
         "standard_features": runtime["standard_features"],
-        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
-        "allowed_database_backends": QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS,
-        "api_contract": quality_assurance_build_api_contract(),
-        "permissions_contract": quality_assurance_permissions_contract(),
         "advanced_runtime": runtime,
         "ui_contract": quality_assurance_ui_contract(),
+        "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
+        "allowed_database_backends": QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC,
+        "emitted_events": QUALITY_ASSURANCE_EMITTED_EVENT_TYPES,
+        "consumed_events": QUALITY_ASSURANCE_CONSUMED_EVENT_TYPES,
+        "api_contract": quality_assurance_build_api_contract(),
+        "permissions_contract": quality_assurance_permissions_contract(),
+        "boundary_contract": quality_assurance_verify_owned_table_boundary(QUALITY_ASSURANCE_OWNED_TABLES),
     }

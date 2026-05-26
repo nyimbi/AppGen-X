@@ -86,17 +86,21 @@ def quality_assurance_ui_contract() -> dict:
             "supported_fields": QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS,
             "allowed_database_backends": QUALITY_ASSURANCE_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "required_event_topic": QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC,
             "event_topic": QUALITY_ASSURANCE_REQUIRED_EVENT_TOPIC,
+            "visible_event_contracts": ("AppGen-X",),
             "stream_engine_picker_visible": False,
             "user_eventing_choice_visible": False,
         },
         "parameter_editor": {
             "numeric_parameters": QUALITY_ASSURANCE_SUPPORTED_PARAMETER_NAMES,
+            "supported_parameters": QUALITY_ASSURANCE_SUPPORTED_PARAMETER_NAMES,
         },
         "rule_editor": {
             "rule_types": tuple(rule_type for rule_type in QUALITY_ASSURANCE_SUPPORTED_RULE_TYPES if rule_type != "quality"),
             "legacy_rule_type_aliases": ("quality",),
             "required_fields": QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS,
+            "compiled_evidence_fields": ("compiled_hash", "compile_evidence"),
         },
         "event_surfaces": {
             "emits": QUALITY_ASSURANCE_EMITTED_EVENT_TYPES,
@@ -105,6 +109,13 @@ def quality_assurance_ui_contract() -> dict:
             "inbox_status": "visible",
             "dead_letter_status": "visible",
             "stream_engine_picker_visible": False,
+        },
+        "binding_evidence": {
+            "owned_tables": QUALITY_ASSURANCE_OWNED_TABLES,
+            "outbox_table": "quality_assurance_appgen_outbox_event",
+            "inbox_table": "quality_assurance_appgen_inbox_event",
+            "dead_letter_table": "quality_assurance_dead_letter_event",
+            "shared_table_access": False,
         },
     }
 
