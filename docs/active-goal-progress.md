@@ -1578,13 +1578,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated-artifact probe pass. Commit: `c110d2d`.
 - Current generated PBC package evidence pass makes generated app PBC
   directories carry importable `schema_contract.py`, `service_contract.py`, and
-  `release_evidence.py` artifacts derived from each package-local PBC builder,
-  keeps generated `pbcs/` importable, and extends generated contract tests to
-  prove schema, service, release, AppGen-X event, and no-shared-table evidence.
-  Focused generated package evidence test passes (`1 passed`), syntax checks
-  pass, the current diff introduces no restricted legacy or stream-engine terms,
-  and full generation, capability, implementation release, and catalog release
-  audits all return true. Commit: `a8bd194`.
+  `release_evidence.py` artifacts plus executable generated contract-test
+  packages derived from each package-local PBC builder, keeps generated
+  `pbcs/` importable, and extends generated contract tests to prove schema,
+  service, release, AppGen-X event, and no-shared-table evidence. Focused
+  generated package evidence test passes (`1 passed`), syntax checks pass, the
+  current diff introduces no restricted legacy or stream-engine terms, and full
+  generation, capability, implementation release, and catalog release audits all
+  return true. Commit: `a8bd194`.
 
 ## Open Completion Areas
 
