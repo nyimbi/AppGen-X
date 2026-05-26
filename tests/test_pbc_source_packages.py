@@ -77,6 +77,10 @@ def test_release_audit_requires_builtin_pbc_source_packages():
                 for item in check["source_artifacts"]["checks"]
             )
             assert any(
+                item["id"] == "event_contract_runtime_surface_materialized" and item["ok"]
+                for item in check["source_artifacts"]["checks"]
+            )
+            assert any(
                 item["id"] == "governance_hooks_materialized" and item["ok"]
                 for item in check["source_artifacts"]["checks"]
             )
@@ -137,6 +141,22 @@ def test_every_builtin_pbc_has_materialized_source_artifacts():
             check["id"] == "handler_runtime_surface_materialized" and check["ok"]
             for check in contract["checks"]
         )
+        event_module = import_module(f"pyAppGen.pbcs.{contract['pbc']}.events")
+        event_manifest = event_module.event_contract_manifest()
+        event_validation = event_module.validate_event_contract()
+        event_smoke = event_module.smoke_test()
+        assert event_manifest["ok"] is True
+        assert event_validation["ok"] is True
+        assert event_smoke["ok"] is True
+        assert event_manifest["stream_engine_picker_visible"] is False
+        assert event_smoke["emitted"]["table"].startswith(f"{contract['pbc']}_")
+        assert event_smoke["consumed"]["table"].startswith(f"{contract['pbc']}_")
+        assert event_smoke["emitted"]["retry_policy"]["max_attempts"] >= 3
+        assert event_smoke["consumed"]["dead_letter_table"].startswith(f"{contract['pbc']}_")
+        assert not event_validation["invalid_tables"]
+        assert not event_validation["invalid_emitted"]
+        assert not event_validation["invalid_consumed"]
+        assert not event_smoke["side_effects"]
         assert any(
             check["id"] == "governance_hooks_materialized" and check["ok"]
             for check in contract["checks"]

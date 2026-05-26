@@ -27,12 +27,31 @@ def test_generated_schema_service_and_release_evidence():
 
 
 def test_manifest_and_event_contract():
+    from .. import events
+
     assert PBC_MANIFEST['pbc'] == 'enterprise_search_vector'
     assert PBC_MANIFEST['standard_features']
     assert PBC_MANIFEST['advanced_capabilities']
     assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'
     assert EVENT_CONTRACT['outbox_table'].startswith('enterprise_search_vector_')
     assert EVENT_CONTRACT['inbox_table'].startswith('enterprise_search_vector_')
+    manifest = events.event_contract_manifest()
+    validation = events.validate_event_contract()
+    smoke = events.smoke_test()
+    assert manifest['ok'] is True
+    assert validation['ok'] is True
+    assert smoke['ok'] is True
+    assert manifest['stream_engine_picker_visible'] is False
+    assert not validation['invalid_tables']
+    assert not validation['invalid_emitted']
+    assert not validation['invalid_consumed']
+    assert smoke['emitted']['table'] == EVENT_CONTRACT['outbox_table']
+    assert smoke['consumed']['table'] == EVENT_CONTRACT['inbox_table']
+    assert smoke['emitted']['retry_policy']['max_attempts'] >= 3
+    assert smoke['consumed']['dead_letter_table'].startswith(PBC_MANIFEST['pbc'] + '_')
+    assert not manifest['side_effects']
+    assert not validation['side_effects']
+    assert not smoke['side_effects']
 
 
 def test_registration_plan_is_side_effect_free():

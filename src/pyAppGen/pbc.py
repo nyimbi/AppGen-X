@@ -4476,6 +4476,7 @@ def pbc_source_artifact_contract(key: str) -> dict:
     manifest_text = (source_dir / "manifest.py").read_text(encoding="utf-8") if (source_dir / "manifest.py").is_file() else ""
     service_text = (source_dir / "services.py").read_text(encoding="utf-8") if (source_dir / "services.py").is_file() else ""
     route_text = (source_dir / "routes.py").read_text(encoding="utf-8") if (source_dir / "routes.py").is_file() else ""
+    events_text = (source_dir / "events.py").read_text(encoding="utf-8") if (source_dir / "events.py").is_file() else ""
     handler_text = (source_dir / "handlers.py").read_text(encoding="utf-8") if (source_dir / "handlers.py").is_file() else ""
     ui_text = (source_dir / "ui.py").read_text(encoding="utf-8") if (source_dir / "ui.py").is_file() else ""
     config_text = (source_dir / "config.py").read_text(encoding="utf-8") if (source_dir / "config.py").is_file() else ""
@@ -4564,6 +4565,18 @@ def pbc_source_artifact_contract(key: str) -> dict:
             "path": f"{relative_dir}/handlers.py",
         },
         {
+            "id": "event_contract_runtime_surface_materialized",
+            "ok": "def event_contract_manifest(" in events_text
+            and "def validate_event_contract(" in events_text
+            and "def build_event_envelope(" in events_text
+            and "def event_dispatch_plan(" in events_text
+            and "def smoke_test(" in events_text
+            and "stream_engine_picker_visible" in events_text
+            and "dead_letter_table" in events_text
+            and "idempotency" in events_text,
+            "path": f"{relative_dir}/events.py",
+        },
+        {
             "id": "governance_hooks_materialized",
             "ok": "def validate_configuration(" in config_text
             and "def configuration_manifest(" in config_text
@@ -4600,6 +4613,8 @@ def pbc_source_artifact_contract(key: str) -> dict:
             "id": "contract_tests_materialized",
             "ok": "test_generated_schema_service_and_release_evidence" in tests_text
             and "test_manifest_and_event_contract" in tests_text
+            and "validate_event_contract" in tests_text
+            and "event_contract_manifest" in tests_text
             and "test_registration_plan_is_side_effect_free" in tests_text
             and "test_service_and_route_surface_are_executable" in tests_text
             and "service_operation_contracts" in tests_text
