@@ -7072,6 +7072,7 @@ def object_inspector_workbench() -> dict:
     handler_architecture_artifacts = handler_architecture_module_file_manifest()
     handler_architecture_test_artifacts = handler_architecture_module_test_file_manifest()
     handler_source_ide = handler_source_ide_contract("Customer")
+    handler_source_round_trip = handler_source_round_trip_replay_contract("Customer")
     handler_source_ide_artifacts = handler_source_ide_module_file_manifest()
     handler_source_ide_test_artifacts = handler_source_ide_module_test_file_manifest()
     property_editor_families = property_editor_family_contract()
@@ -7446,6 +7447,21 @@ def object_inspector_workbench() -> dict:
             "evidence": handler_source_ide,
         },
         {
+            "id": "handler_source_round_trip_replay",
+            "ok": handler_source_round_trip["ok"]
+            and {
+                "handler_source_generated",
+                "user_code_regions_round_trip",
+                "refactor_updates_component_references",
+                "cross_handler_call_graph_refreshed",
+                "breakpoints_remap_to_designer",
+                "source_round_trip_side_effect_free",
+            }
+            <= {check["id"] for check in handler_source_round_trip["checks"] if check["ok"]}
+            and not handler_source_round_trip["side_effects"],
+            "evidence": handler_source_round_trip,
+        },
+        {
             "id": "handler_source_ide_modules",
             "ok": len(handler_source_ide_artifacts) == 5
             and all(
@@ -7673,6 +7689,7 @@ def object_inspector_workbench() -> dict:
         "handler_architecture_artifacts": handler_architecture_artifacts,
         "handler_architecture_test_artifacts": handler_architecture_test_artifacts,
         "handler_source_ide": handler_source_ide,
+        "handler_source_round_trip": handler_source_round_trip,
         "handler_source_ide_artifacts": handler_source_ide_artifacts,
         "handler_source_ide_test_artifacts": handler_source_ide_test_artifacts,
         "property_editor_families": property_editor_families,
@@ -23855,6 +23872,133 @@ def handler_source_ide_contract(table_name=None) -> dict:
             "user_code_regions_preserved",
             "breakpoints_follow_renames",
             "cross_handler_call_graph_refreshed",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def handler_source_round_trip_replay_contract(table_name=None) -> dict:
+    """Replay generated handler source edits, refactors, breakpoints, and design references."""
+    source = handler_source_ide_contract(table_name)
+    handler_architecture = inspector_cross_handler_invocation_contract("Button")
+    source_documents = tuple(
+        {
+            "handler": stub["handler"],
+            "before": (
+                f"def {stub['handler']}(sender, context):",
+                "    # <appgen:user-code>",
+                f"    return context['action_registry'].call('{stub['handler']}', sender, context)",
+                "    # </appgen:user-code>",
+            ),
+            "after": (
+                f"def {stub['handler']}_renamed(sender, context):",
+                "    # <appgen:user-code>",
+                f"    return context['action_registry'].call('{stub['handler']}', sender, context)",
+                "    # </appgen:user-code>",
+            ),
+            "user_code_region": stub["body_regions"][0] if stub["body_regions"] else "main",
+            "signature": stub["signature"],
+        }
+        for stub in source["stubs"]
+    )
+    replay = (
+        {
+            "phase": "generate_handler_source",
+            "pipeline": tuple(document["handler"] for document in source_documents),
+            "ok": bool(source_documents)
+            and all(document["signature"] == "sender, context" for document in source_documents)
+            and all(any(line.strip() == "# <appgen:user-code>" for line in document["before"]) for document in source_documents),
+        },
+        {
+            "phase": "round_trip_user_code_regions",
+            "pipeline": tuple(document["user_code_region"] for document in source_documents),
+            "ok": bool(source["user_code_regions"])
+            and all(region["round_trip_safe"] for region in source["user_code_regions"])
+            and all("preserve_user_code" in region["merge_policy"] for region in source["user_code_regions"]),
+        },
+        {
+            "phase": "rename_handler_and_component_reference",
+            "pipeline": tuple(step for item in source["refactor_operations"] for step in item["operations"]),
+            "ok": bool(source["refactor_operations"])
+            and all({"rename_handler", "update_component_reference", "refresh_call_graph"} <= set(item["operations"]) for item in source["refactor_operations"]),
+        },
+        {
+            "phase": "refresh_cross_handler_call_graph",
+            "pipeline": tuple(route for item in source["refactor_operations"] for route in item["cross_handler_routes"]),
+            "ok": handler_architecture["ok"]
+            and all("cycle_guard" in route["route"] for route in handler_architecture["routes"])
+            and all(item["undoable"] for item in source["refactor_operations"]),
+        },
+        {
+            "phase": "remap_breakpoints_and_designer_badges",
+            "pipeline": tuple(span["source_span"] for span in source["breakpoints"]),
+            "ok": bool(source["breakpoints"])
+            and all({"source_editor", "form_designer", "debug_preview"} <= set(span["maps_to"]) for span in source["breakpoints"]),
+        },
+        {
+            "phase": "prove_source_round_trip",
+            "pipeline": tuple((document["before"], document["after"]) for document in source_documents),
+            "ok": bool(source_documents)
+            and all(document["before"][1:3] == document["after"][1:3] for document in source_documents)
+            and source["ok"]
+            and not source["side_effects"],
+        },
+    )
+    checks = (
+        {
+            "id": "handler_source_generated",
+            "ok": replay[0]["ok"],
+            "evidence": tuple(document["handler"] for document in source_documents),
+        },
+        {
+            "id": "user_code_regions_round_trip",
+            "ok": replay[1]["ok"] and replay[5]["ok"],
+            "evidence": source["user_code_regions"],
+        },
+        {
+            "id": "refactor_updates_component_references",
+            "ok": replay[2]["ok"],
+            "evidence": source["refactor_operations"],
+        },
+        {
+            "id": "cross_handler_call_graph_refreshed",
+            "ok": replay[3]["ok"],
+            "evidence": handler_architecture["routes"],
+        },
+        {
+            "id": "breakpoints_remap_to_designer",
+            "ok": replay[4]["ok"],
+            "evidence": source["breakpoints"],
+        },
+        {
+            "id": "source_round_trip_side_effect_free",
+            "ok": not source["side_effects"] and handler_architecture["side_effects"] == (),
+            "evidence": (),
+        },
+    )
+    ok = all(item["ok"] for item in replay) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.handler-source-round-trip-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "source_documents": source_documents,
+        "replay": replay,
+        "checks": checks,
+        "final_state": {
+            "handler_count": len(source_documents),
+            "round_tripped_user_regions": sum(1 for region in source["user_code_regions"] if region["round_trip_safe"]),
+            "refactor_operations": len(source["refactor_operations"]),
+            "breakpoints": len(source["breakpoints"]),
+            "cross_handler_routes": len(handler_architecture["routes"]),
+        },
+        "guards": (
+            "handler_source_generated_before_refactor",
+            "user_code_regions_preserved_during_round_trip",
+            "component_references_update_after_handler_rename",
+            "cross_handler_call_graph_refreshes_after_refactor",
+            "breakpoints_remap_to_designer_after_rename",
+            "source_round_trip_has_no_side_effects",
         ),
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),

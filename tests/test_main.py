@@ -125,6 +125,7 @@ from pyAppGen.form_designer import form_interaction_family_module_test_file_mani
 from pyAppGen.form_designer import handler_architecture_module_file_manifest
 from pyAppGen.form_designer import handler_architecture_module_test_file_manifest
 from pyAppGen.form_designer import handler_source_ide_contract
+from pyAppGen.form_designer import handler_source_round_trip_replay_contract
 from pyAppGen.form_designer import handler_source_ide_module_file_manifest
 from pyAppGen.form_designer import handler_source_ide_module_test_file_manifest
 from pyAppGen.form_designer import property_editor_family_contract
@@ -1830,6 +1831,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "handler_architecture_modules",
         "handler_architecture_module_tests",
         "handler_source_ide_contract",
+        "handler_source_round_trip_replay",
         "handler_source_ide_modules",
         "handler_source_ide_module_tests",
         "property_editor_family_contract",
@@ -1973,6 +1975,28 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     }
     assert all("focus_handler" in item["open_actions"] for item in handler_source["navigation"])
     assert all("preserve_user_code" in item["merge_policy"] for item in handler_source["user_code_regions"])
+    source_round_trip = handler_source_round_trip_replay_contract("Customer")
+    assert source_round_trip["format"] == "appgen.handler-source-round-trip-replay.v1"
+    assert source_round_trip["ok"] is True
+    assert {
+        "generate_handler_source",
+        "round_trip_user_code_regions",
+        "rename_handler_and_component_reference",
+        "refresh_cross_handler_call_graph",
+        "remap_breakpoints_and_designer_badges",
+        "prove_source_round_trip",
+    } <= {item["phase"] for item in source_round_trip["replay"]}
+    assert {
+        "handler_source_generated",
+        "user_code_regions_round_trip",
+        "refactor_updates_component_references",
+        "cross_handler_call_graph_refreshed",
+        "breakpoints_remap_to_designer",
+        "source_round_trip_side_effect_free",
+    } <= {check["id"] for check in source_round_trip["checks"] if check["ok"]}
+    assert source_round_trip["final_state"]["round_tripped_user_regions"] == source_round_trip["final_state"]["handler_count"]
+    assert inspector_workbench["handler_source_round_trip"]["ok"] is True
+    assert inspector_workbench["handler_source_round_trip"]["final_state"]["breakpoints"] > 0
     property_families = property_editor_family_contract()
     assert property_families["format"] == "appgen.property-editor-family-contract.v1"
     assert property_families["ok"] is True
@@ -18129,6 +18153,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "handler_architecture_modules",
         "handler_architecture_module_tests",
         "handler_source_ide_contract",
+        "handler_source_round_trip_replay",
         "handler_source_ide_modules",
         "handler_source_ide_module_tests",
         "property_editor_family_contract",
@@ -18276,6 +18301,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_handler_source["ok"] is True
     assert all("focus_handler" in item["open_actions"] for item in generated_handler_source["navigation"])
     assert all("preserve_user_code" in item["merge_policy"] for item in generated_handler_source["user_code_regions"])
+    generated_source_round_trip = form_designer.handler_source_round_trip_replay_contract("Book")
+    assert generated_source_round_trip["format"] == "appgen.generated-handler-source-round-trip-replay.v1"
+    assert generated_source_round_trip["ok"] is True
+    assert "prove_source_round_trip" in {item["phase"] for item in generated_source_round_trip["replay"]}
+    assert generated_source_round_trip["final_state"]["round_tripped_user_regions"] == generated_source_round_trip["final_state"]["handler_count"]
+    assert generated_inspector["handler_source_round_trip"]["ok"] is True
     generated_property_families = form_designer.property_editor_family_contract()
     assert generated_property_families["format"] == "appgen.generated-property-editor-family-contract.v1"
     assert generated_property_families["ok"] is True
