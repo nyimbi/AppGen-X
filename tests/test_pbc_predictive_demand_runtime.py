@@ -4,15 +4,18 @@ from pyAppGen.pbcs.predictive_demand import PREDICTIVE_DEMAND_ALLOWED_DATABASE_B
 from pyAppGen.pbcs.predictive_demand import PREDICTIVE_DEMAND_OWNED_TABLES
 from pyAppGen.pbcs.predictive_demand import PREDICTIVE_DEMAND_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.predictive_demand import implementation_contract
+from pyAppGen.pbcs.predictive_demand import predictive_demand_build_api_contract
 from pyAppGen.pbcs.predictive_demand import predictive_demand_build_workbench_view
 from pyAppGen.pbcs.predictive_demand import predictive_demand_configure_runtime
 from pyAppGen.pbcs.predictive_demand import predictive_demand_create_forecast_run
 from pyAppGen.pbcs.predictive_demand import predictive_demand_empty_state
 from pyAppGen.pbcs.predictive_demand import predictive_demand_ingest_demand_signal
+from pyAppGen.pbcs.predictive_demand import predictive_demand_permissions_contract
 from pyAppGen.pbcs.predictive_demand import predictive_demand_publish_forecast_result
 from pyAppGen.pbcs.predictive_demand import predictive_demand_receive_event
 from pyAppGen.pbcs.predictive_demand import predictive_demand_register_forecast_model
 from pyAppGen.pbcs.predictive_demand import predictive_demand_register_rule
+from pyAppGen.pbcs.predictive_demand import predictive_demand_register_schema_extension
 from pyAppGen.pbcs.predictive_demand import predictive_demand_render_workbench
 from pyAppGen.pbcs.predictive_demand import predictive_demand_runtime_capabilities
 from pyAppGen.pbcs.predictive_demand import predictive_demand_runtime_smoke
@@ -41,6 +44,11 @@ def test_predictive_demand_runtime_executes_standard_and_advanced_capabilities()
     assert not smoke["blocking_gaps"]
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["ui_contract"]["ok"] is True
+    assert contract["api_contract"]["ok"] is True
+    assert (
+        contract["permissions_contract"]["action_permissions"]["publish_forecast_result"]
+        == "predictive_demand.result.write"
+    )
     assert "DemandConfigurationPanel" in contract["ui_contract"]["fragments"]
 
 
@@ -58,6 +66,11 @@ def test_predictive_demand_runtime_applies_rules_parameters_events_and_ui() -> N
             "status": "active",
         },
     )["state"]
+    extension = predictive_demand_register_schema_extension(
+        state, "forecast_result", {"planner_commentary": "jsonb"}
+    )
+    state = extension["state"]
+    assert extension["extension"]["version"] == 1
     state = predictive_demand_receive_event(
         state,
         {
@@ -182,6 +195,21 @@ def test_predictive_demand_runtime_applies_rules_parameters_events_and_ui() -> N
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == PREDICTIVE_DEMAND_OWNED_TABLES
 
+    api_contract = predictive_demand_build_api_contract()
+    assert api_contract["database_backends"] == PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS
+    assert api_contract["event_contract"] == "AppGen-X"
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["shared_table_access"] is False
+    assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
+        "register_forecast_model",
+        "ingest_demand_signal",
+        "create_forecast_run",
+        "publish_forecast_result",
+        "receive_event",
+    }
+    permissions = predictive_demand_permissions_contract()
+    assert permissions["action_permissions"]["verify_owned_table_boundary"] == "predictive_demand.audit"
+
 
 def test_predictive_demand_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
     state = predictive_demand_empty_state()
@@ -225,7 +253,17 @@ def test_predictive_demand_rejects_invalid_inputs_and_proves_boundary_and_dead_l
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
-    boundary = predictive_demand_verify_owned_table_boundary()
+    boundary = predictive_demand_verify_owned_table_boundary(
+        (
+            "forecast_model",
+            "forecast_run",
+            "demand_signal",
+            "forecast_result",
+            "OrderShipped",
+            "inventory_pool_projection",
+            "predictive_demand_appgen_outbox_event",
+        )
+    )
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == (
         "forecast_model",
@@ -234,6 +272,12 @@ def test_predictive_demand_rejects_invalid_inputs_and_proves_boundary_and_dead_l
         "forecast_result",
     )
     assert boundary["declared_dependencies"]["shared_tables"] == ()
+    assert "inventory_pool_projection" in boundary["declared_dependencies"]["api_projections"]
+    violated = predictive_demand_verify_owned_table_boundary(("inventory_pool",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("inventory_pool",)
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        predictive_demand_register_schema_extension(state, "inventory_pool", {"quantity": "numeric"})
 
 
 def _configured_state() -> dict:

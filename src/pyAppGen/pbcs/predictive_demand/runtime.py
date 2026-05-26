@@ -185,7 +185,10 @@ def predictive_demand_runtime_capabilities() -> dict:
             "ingest_demand_signal",
             "create_forecast_run",
             "publish_forecast_result",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -804,10 +807,36 @@ def predictive_demand_build_workbench_view(state: dict, *, tenant: str) -> dict:
     }
 
 
-def predictive_demand_verify_owned_table_boundary() -> dict:
+def predictive_demand_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "POST /forecast-models",
+        "POST /forecast-runs",
+        "POST /demand-signals",
+        "GET /forecast-results",
+        "inventory_pool_projection",
+        "shipment_projection",
+        "operational_kpi_projection",
+    }
+    allowed_event_dependencies = set(PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES)
+    allowed_runtime_tables = {
+        "predictive_demand_appgen_outbox_event",
+        "predictive_demand_appgen_inbox_event",
+        "predictive_demand_dead_letter_event",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(PREDICTIVE_DEMAND_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("predictive_demand_")
+    )
     return {
         "format": "appgen.predictive-demand-boundary.v1",
-        "ok": True,
+        "ok": not violations,
         "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
         "declared_dependencies": {
             "apis": (
@@ -817,8 +846,15 @@ def predictive_demand_verify_owned_table_boundary() -> dict:
                 "GET /forecast-results",
             ),
             "events": PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "inventory_pool_projection",
+                "shipment_projection",
+                "operational_kpi_projection",
+            ),
             "shared_tables": (),
         },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -827,13 +863,67 @@ def predictive_demand_build_api_contract() -> dict:
         "format": "appgen.predictive-demand-api-contract.v1",
         "ok": True,
         "routes": (
+            {
+                "route": "POST /forecast-models",
+                "command": "register_forecast_model",
+                "owned_tables": ("forecast_model",),
+                "emits": (),
+                "requires_permission": "predictive_demand.model.write",
+                "idempotency_key": "model_id",
+            },
+            {
+                "route": "POST /forecast-runs",
+                "command": "create_forecast_run",
+                "owned_tables": ("forecast_run",),
+                "emits": (),
+                "requires_permission": "predictive_demand.run.write",
+                "idempotency_key": "run_id",
+            },
+            {
+                "route": "POST /demand-signals",
+                "command": "ingest_demand_signal",
+                "owned_tables": ("demand_signal",),
+                "emits": (),
+                "requires_permission": "predictive_demand.signal.write",
+                "idempotency_key": "signal_id",
+            },
+            {
+                "route": "POST /forecast-results",
+                "command": "publish_forecast_result",
+                "owned_tables": ("forecast_result",),
+                "emits": PREDICTIVE_DEMAND_EMITTED_EVENT_TYPES,
+                "requires_permission": "predictive_demand.result.write",
+                "idempotency_key": "result_id",
+            },
+            {
+                "route": "POST /predictive-demand/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES,
+                "requires_permission": "predictive_demand.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /forecast-results",
+                "query": "build_workbench_view",
+                "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+                "requires_permission": "predictive_demand.audit",
+            },
+        ),
+        "declared_catalog_routes": (
             "POST /forecast-models",
             "POST /forecast-runs",
             "POST /demand-signals",
             "GET /forecast-results",
         ),
+        "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
+        "emits": PREDICTIVE_DEMAND_EMITTED_EVENT_TYPES,
+        "consumes": PREDICTIVE_DEMAND_CONSUMED_EVENT_TYPES,
+        "database_backends": PREDICTIVE_DEMAND_ALLOWED_DATABASE_BACKENDS,
+        "permissions": tuple(sorted(predictive_demand_permissions_contract()["permissions"])),
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
     }
 
 
@@ -850,6 +940,18 @@ def predictive_demand_permissions_contract() -> dict:
             "predictive_demand.configure",
             "predictive_demand.audit",
         ),
+        "action_permissions": {
+            "register_forecast_model": "predictive_demand.model.write",
+            "ingest_demand_signal": "predictive_demand.signal.write",
+            "create_forecast_run": "predictive_demand.run.write",
+            "publish_forecast_result": "predictive_demand.result.write",
+            "receive_event": "predictive_demand.event.consume",
+            "register_rule": "predictive_demand.configure",
+            "set_parameter": "predictive_demand.configure",
+            "configure_runtime": "predictive_demand.configure",
+            "build_workbench_view": "predictive_demand.audit",
+            "verify_owned_table_boundary": "predictive_demand.audit",
+        },
     }
 
 
