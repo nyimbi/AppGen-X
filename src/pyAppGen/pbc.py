@@ -830,6 +830,40 @@ FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "identity_mlops_governance",
 )
+API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_gateway_lifecycle",
+    "graph_relational_service_topology",
+    "multi_tenant_gateway_isolation",
+    "schema_evolution_resilient_route_schema",
+    "probabilistic_latency_saturation_failure_scoring",
+    "real_time_mesh_analytics",
+    "counterfactual_traffic_policy_simulation",
+    "temporal_route_health_forecasting",
+    "autonomous_gateway_exception_resolution",
+    "semantic_route_request_parsing",
+    "predictive_route_risk_scoring",
+    "self_healing_mesh_route_selection",
+    "zero_knowledge_route_publication_proof",
+    "immutable_gateway_audit_trail",
+    "dynamic_gateway_policy_screening",
+    "automated_gateway_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_gateway_federation",
+    "identity_schema_audit_composition_integration",
+    "decentralized_service_identity",
+    "chaos_engineered_gateway_tolerance",
+    "quantum_resistant_route_authorization",
+    "carbon_aware_gateway_routing",
+    "algebraic_route_optimization",
+    "mechanism_design_traffic_allocation",
+    "information_theoretic_traffic_anomaly_detection",
+    "temporal_traffic_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_route_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "gateway_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -853,6 +887,7 @@ IMPLEMENTED_PBC_KEYS = (
     "product_catalog_pim",
     "customer_360",
     "federated_iam",
+    "api_gateway_mesh",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3110,6 +3145,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = customer_360_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
+    elif key == "api_gateway_mesh":
+        advanced_runtime = api_gateway_mesh_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3408,6 +3445,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "product_catalog_pim": len(PRODUCT_CATALOG_PIM_ADVANCED_CAPABILITY_KEYS),
         "customer_360": len(CUSTOMER_360_ADVANCED_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
+        "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -5255,3 +5293,22 @@ from .pbcs.federated_iam import federated_iam_runtime_smoke  # noqa: E402,F401
 from .pbcs.federated_iam import federated_iam_set_parameter  # noqa: E402,F401
 from .pbcs.federated_iam import federated_iam_ui_contract  # noqa: E402,F401
 from .pbcs.federated_iam import federated_iam_verify_credential  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import API_GATEWAY_MESH_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import API_GATEWAY_MESH_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_apply_rate_limit  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_build_service_map  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_build_workbench_view  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_configure_runtime  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_empty_state  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_publish_route  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_record_health  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_record_traffic_sample  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_register_mtls_identity  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_register_rule  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_register_service  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_render_workbench  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_runtime_capabilities  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_runtime_smoke  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_set_parameter  # noqa: E402,F401
+from .pbcs.api_gateway_mesh import api_gateway_mesh_ui_contract  # noqa: E402,F401
