@@ -1037,6 +1037,20 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   scan, and the 104-test PBC runtime regression slice. Full `tests/test_main.py`
   remains blocked by the existing `ideas_release_audit` / `palette_breadth`
   gate mismatch outside this slice.
+- `f5a6c1c` implements the formerly skeletal `lead_opportunity` package:
+  package-local specification, executable lead, opportunity, account hierarchy,
+  sales activity, customer-segment projection, qualification, forecasting, and
+  opportunity-win runtime, UI/workbench contract, central audit wiring, and
+  focused tests. The package enforces PostgreSQL/MySQL/MariaDB datastore
+  boundaries, AppGen-X eventing without user-facing stream-engine selection,
+  bounded rules and parameters, idempotent consumed-event handling,
+  retry/dead-letter evidence, advanced runtime smoke evidence, owned-table
+  boundary evidence, and workbench binding evidence. Verification passed for
+  lead opportunity py-compile, focused runtime tests, implemented-capability
+  audit, implementation release audit, `pbc_release_audit()`, generation smoke
+  audit, the restricted legacy-name scan, and the 107-test PBC runtime
+  regression slice. Full `tests/test_main.py` remains blocked by the existing
+  `ideas_release_audit` / `palette_breadth` gate mismatch outside this slice.
 
 ## Open Completion Areas
 
