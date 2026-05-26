@@ -216,6 +216,7 @@ from pyAppGen.form_designer import inspector_apply_property_edit
 from pyAppGen.form_designer import inspector_action_registry_contract
 from pyAppGen.form_designer import inspector_create_event_handler
 from pyAppGen.form_designer import inspector_cross_handler_invocation_contract
+from pyAppGen.form_designer import inspector_custom_designer_transaction_replay_contract
 from pyAppGen.form_designer import inspector_editor_lifecycle_replay_contract
 from pyAppGen.form_designer import inspector_execute_component_editor
 from pyAppGen.form_designer import inspector_invoke_component_handler
@@ -1820,6 +1821,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "cross_component_session_replay",
         "design_surface_transaction_replay",
         "custom_designer_registration_replay",
+        "custom_designer_transaction_replay",
         "editor_lifecycle_replay",
         "inspector_binding_bridge",
         "handler_action_registry",
@@ -1932,6 +1934,33 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_workbench["custom_designer_registration_replay"]["final_state"]["registered_hooks"] > 0
     assert inspector_workbench["custom_designer_registration_replay"]["final_state"]["metadata_round_trips"] == len(
         inspector_workbench["custom_designer_registration_replay"]["components"]
+    )
+    custom_transaction_replay = inspector_custom_designer_transaction_replay_contract()
+    assert custom_transaction_replay["format"] == "appgen.inspector-custom-designer-transaction-replay.v1"
+    assert custom_transaction_replay["ok"] is True
+    assert {
+        "activate_hook_transactions",
+        "snapshot_design_state",
+        "render_preview_overlays",
+        "route_hit_targets",
+        "stage_and_commit_overlay_intents",
+        "cancel_and_rollback_preview_probe",
+        "unload_hooks",
+        "round_trip_custom_designer_metadata",
+    } <= {item["phase"] for item in custom_transaction_replay["replay"]}
+    assert {
+        "hook_transactions_activate_before_render",
+        "preview_overlays_are_non_mutating",
+        "overlay_commits_record_undo",
+        "cancel_restores_design_snapshot",
+        "custom_designer_metadata_round_trips",
+        "custom_designer_transactions_side_effect_free",
+    } <= {check["id"] for check in custom_transaction_replay["checks"] if check["ok"]}
+    assert custom_transaction_replay["final_state"]["hook_transactions"] > 0
+    assert custom_transaction_replay["final_state"]["rollback_steps"] >= custom_transaction_replay["final_state"]["hook_transactions"]
+    assert inspector_workbench["custom_designer_transaction_replay"]["ok"] is True
+    assert inspector_workbench["custom_designer_transaction_replay"]["final_state"]["metadata_round_trips"] == len(
+        inspector_workbench["custom_designer_transaction_replay"]["components"]
     )
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
     assert inspector_binding_bridge["ok"] is True
@@ -18142,6 +18171,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "cross_component_session_replay",
         "design_surface_transaction_replay",
         "custom_designer_registration_replay",
+        "custom_designer_transaction_replay",
         "editor_lifecycle_replay",
         "inspector_binding_bridge",
         "handler_action_registry",
@@ -18292,6 +18322,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_inspector["custom_designer_registration_replay"]["replay"]}
     assert generated_inspector["custom_designer_registration_replay"]["final_state"]["hit_targets"] > 0
     assert generated_inspector["custom_designer_registration_replay"]["final_state"]["lifecycle_hooks"] == generated_inspector["custom_designer_registration_replay"]["final_state"]["registered_hooks"]
+    generated_custom_transaction_replay = form_designer.inspector_custom_designer_transaction_replay_contract()
+    assert generated_custom_transaction_replay["format"] == "appgen.generated-inspector-custom-designer-transaction-replay.v1"
+    assert generated_custom_transaction_replay["ok"] is True
+    assert {
+        "activate_hook_transactions",
+        "snapshot_design_state",
+        "render_preview_overlays",
+        "route_hit_targets",
+        "stage_and_commit_overlay_intents",
+        "cancel_and_rollback_preview_probe",
+        "unload_hooks",
+        "round_trip_custom_designer_metadata",
+    } <= {item["phase"] for item in generated_custom_transaction_replay["replay"]}
+    assert {
+        "hook_transactions_activate_before_render",
+        "preview_overlays_are_non_mutating",
+        "overlay_commits_record_undo",
+        "cancel_restores_design_snapshot",
+        "custom_designer_metadata_round_trips",
+        "custom_designer_transactions_side_effect_free",
+    } <= {check["id"] for check in generated_custom_transaction_replay["checks"] if check["ok"]}
+    assert generated_custom_transaction_replay["final_state"]["hook_transactions"] > 0
+    assert generated_custom_transaction_replay["final_state"]["rollback_steps"] >= generated_custom_transaction_replay["final_state"]["hook_transactions"]
+    assert generated_inspector["custom_designer_transaction_replay"]["ok"] is True
     assert generated_inspector["editor_lifecycle_replay"]["format"] == "appgen.generated-inspector-editor-lifecycle-replay.v1"
     assert generated_inspector["editor_lifecycle_replay"]["ok"] is True
     assert generated_inspector["action_registry"]["ok"] is True

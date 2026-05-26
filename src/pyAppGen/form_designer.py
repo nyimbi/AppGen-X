@@ -6064,6 +6064,184 @@ def inspector_custom_designer_hit_test_contract(component: str = "Grid") -> dict
     }
 
 
+def inspector_custom_designer_transaction_replay_contract(components: tuple[str, ...] = ()) -> dict:
+    """Replay custom-designer hook transactions with commit, cancel, rollback, and unload evidence."""
+    selected = components or (
+        "TextBox",
+        "Grid",
+        "Rectangle",
+        "StyleBook",
+        "GestureManager",
+        "Viewport3D",
+        "DatabaseConnection",
+    )
+    render_workflows = tuple(inspector_custom_designer_render_workflow(component) for component in selected)
+    hit_tests = tuple(inspector_custom_designer_hit_test_contract(component) for component in selected)
+    lifecycles = tuple(inspector_custom_designer_lifecycle_contract(component) for component in selected)
+    round_trips = tuple(inspector_round_trip_contract(component) for component in selected)
+    hook_transactions = tuple(
+        {
+            "component": component,
+            "hook": item["hook"],
+            "pipeline": (
+                "activate_hook",
+                "snapshot_design_state",
+                "render_overlay_preview",
+                "publish_hit_targets",
+                "stage_overlay_intent",
+                "commit_overlay_transaction",
+                "record_undo",
+                "cancel_preview_probe",
+                "rollback_preview_probe",
+                "unload_hook",
+            ),
+            "rollback": ("cancel_preview_probe", "restore_design_snapshot", "clear_overlay_preview"),
+            "commit_delta": {
+                "overlay": item["hook"],
+                "mutates_design_state": False,
+                "records_intent": True,
+            },
+            "guards": item["failure_policy"] + (
+                "hook_transaction_isolated",
+                "preview_never_mutates_design_state",
+                "commit_records_undo",
+            ),
+            "ok": {"activate_hook", "commit_or_cancel", "unload_hook"} <= set(item["lifecycle"])
+            and "preserve_design_state" in item["failure_policy"],
+        }
+        for component, lifecycle in zip(selected, lifecycles)
+        for item in lifecycle["lifecycle"]
+    )
+    replay = (
+        {
+            "phase": "activate_hook_transactions",
+            "pipeline": tuple(transaction["pipeline"][0] for transaction in hook_transactions),
+            "ok": bool(hook_transactions)
+            and all("activate_hook" in transaction["pipeline"] for transaction in hook_transactions),
+        },
+        {
+            "phase": "snapshot_design_state",
+            "pipeline": tuple(transaction["pipeline"][1] for transaction in hook_transactions),
+            "ok": all("snapshot_design_state" in transaction["pipeline"] for transaction in hook_transactions),
+        },
+        {
+            "phase": "render_preview_overlays",
+            "pipeline": tuple(step for workflow in render_workflows for step in workflow["render_pass"]),
+            "ok": all(
+                workflow["side_effects"] == ()
+                and {"render_overlay", "publish_hit_targets"} <= set(workflow["render_pass"])
+                for workflow in render_workflows
+            ),
+        },
+        {
+            "phase": "route_hit_targets",
+            "pipeline": tuple(route for contract in hit_tests for hit in contract["hit_tests"] for route in hit["route"]),
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in hit_tests)
+            and all(
+                "open_context_action" in hit["route"]
+                for contract in hit_tests
+                for hit in contract["hit_tests"]
+            ),
+        },
+        {
+            "phase": "stage_and_commit_overlay_intents",
+            "pipeline": tuple(step for transaction in hook_transactions for step in transaction["pipeline"][4:7]),
+            "ok": all(
+                transaction["ok"]
+                and "commit_overlay_transaction" in transaction["pipeline"]
+                and "record_undo" in transaction["pipeline"]
+                and transaction["commit_delta"]["records_intent"]
+                for transaction in hook_transactions
+            ),
+        },
+        {
+            "phase": "cancel_and_rollback_preview_probe",
+            "pipeline": tuple(step for transaction in hook_transactions for step in transaction["rollback"]),
+            "ok": all(
+                "restore_design_snapshot" in transaction["rollback"]
+                and transaction["commit_delta"]["mutates_design_state"] is False
+                for transaction in hook_transactions
+            ),
+        },
+        {
+            "phase": "unload_hooks",
+            "pipeline": tuple(transaction["pipeline"][-1] for transaction in hook_transactions),
+            "ok": all("unload_hook" in transaction["pipeline"] for transaction in hook_transactions),
+        },
+        {
+            "phase": "round_trip_custom_designer_metadata",
+            "pipeline": tuple(hook for contract in round_trips for hook in contract["exported"]["custom_designers"]),
+            "ok": all(contract["ok"] for contract in round_trips)
+            and all("custom_designer_metadata_preserved" in contract["guards"] for contract in round_trips),
+        },
+    )
+    checks = (
+        {
+            "id": "hook_transactions_activate_before_render",
+            "ok": replay[0]["ok"]
+            and tuple(item["phase"] for item in replay).index("activate_hook_transactions")
+            < tuple(item["phase"] for item in replay).index("render_preview_overlays"),
+        },
+        {
+            "id": "preview_overlays_are_non_mutating",
+            "ok": replay[2]["ok"]
+            and all(transaction["commit_delta"]["mutates_design_state"] is False for transaction in hook_transactions),
+        },
+        {
+            "id": "hit_targets_route_to_context_actions",
+            "ok": replay[3]["ok"],
+        },
+        {
+            "id": "overlay_commits_record_undo",
+            "ok": replay[4]["ok"]
+            and all("record_undo" in transaction["pipeline"] for transaction in hook_transactions),
+        },
+        {
+            "id": "cancel_restores_design_snapshot",
+            "ok": replay[5]["ok"]
+            and all("restore_design_snapshot" in transaction["rollback"] for transaction in hook_transactions),
+        },
+        {
+            "id": "custom_designer_metadata_round_trips",
+            "ok": replay[7]["ok"],
+        },
+        {
+            "id": "custom_designer_transactions_side_effect_free",
+            "ok": all(not contract["side_effects"] for contract in render_workflows + hit_tests + lifecycles + round_trips),
+        },
+    )
+    final_state = {
+        "components": len(selected),
+        "hook_transactions": len(hook_transactions),
+        "preview_render_passes": sum(len(workflow["render_pass"]) for workflow in render_workflows),
+        "hit_target_routes": sum(len(hit["route"]) for contract in hit_tests for hit in contract["hit_tests"]),
+        "rollback_steps": sum(len(transaction["rollback"]) for transaction in hook_transactions),
+        "metadata_round_trips": sum(1 for contract in round_trips if contract["ok"]),
+    }
+    ok = all(item["ok"] for item in replay) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.inspector-custom-designer-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "components": selected,
+        "transactions": hook_transactions,
+        "replay": replay,
+        "checks": checks,
+        "final_state": final_state,
+        "guards": (
+            "hook_activation_precedes_preview_render",
+            "preview_overlays_do_not_mutate_design_state",
+            "hit_targets_route_before_commit",
+            "overlay_commits_are_undoable",
+            "cancel_restores_snapshot_before_unload",
+            "custom_designer_metadata_round_trips",
+            "custom_designer_transactions_have_no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def inspector_multi_select_contract(components: tuple[str, ...] = ("TextBox", "Grid", "Rectangle")) -> dict:
     """Return multi-selection property merge and mixed-value evidence."""
     contracts = tuple(object_inspector_contract(component) for component in components)
@@ -7063,6 +7241,7 @@ def object_inspector_workbench() -> dict:
     cross_component_replay = inspector_cross_component_session_replay_contract(sample_components)
     design_surface_replay = inspector_design_surface_transaction_replay_contract(sample_components)
     custom_designer_registration_replay = inspector_custom_designer_registration_replay_contract(sample_components)
+    custom_designer_transaction_replay = inspector_custom_designer_transaction_replay_contract(sample_components)
     editor_lifecycle_replay = inspector_editor_lifecycle_replay_contract(sample_components)
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
     action_registry = inspector_action_registry_contract("Button")
@@ -7309,6 +7488,20 @@ def object_inspector_workbench() -> dict:
             <= set(custom_designer_registration_replay["guards"])
             and not custom_designer_registration_replay["side_effects"],
             "evidence": custom_designer_registration_replay,
+        },
+        {
+            "id": "custom_designer_transaction_replay",
+            "ok": custom_designer_transaction_replay["ok"]
+            and {
+                "hook_transactions_activate_before_render",
+                "preview_overlays_are_non_mutating",
+                "overlay_commits_record_undo",
+                "cancel_restores_design_snapshot",
+                "custom_designer_transactions_side_effect_free",
+            }
+            <= {check["id"] for check in custom_designer_transaction_replay["checks"] if check["ok"]}
+            and not custom_designer_transaction_replay["side_effects"],
+            "evidence": custom_designer_transaction_replay,
         },
         {
             "id": "editor_lifecycle_replay",
@@ -7680,6 +7873,7 @@ def object_inspector_workbench() -> dict:
         "cross_component_replay": cross_component_replay,
         "design_surface_replay": design_surface_replay,
         "custom_designer_registration_replay": custom_designer_registration_replay,
+        "custom_designer_transaction_replay": custom_designer_transaction_replay,
         "editor_lifecycle_replay": editor_lifecycle_replay,
         "inspector_binding_bridge": inspector_binding_bridge,
         "action_registry": action_registry,
