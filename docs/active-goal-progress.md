@@ -1398,7 +1398,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   submission plans are replayed through an aggregate matrix that proves
   operation-step coverage, validation-step coverage, surface coverage, and
   side-effect-free module execution before generated wizard readiness is
-  trusted.
+  trusted. Commit: `5e97eaa`.
 
 ## Open Completion Areas
 

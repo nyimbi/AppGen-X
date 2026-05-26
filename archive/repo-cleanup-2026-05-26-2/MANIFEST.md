@@ -39,6 +39,11 @@ Wizard verification cleanup:
 - Regenerated cache artifacts moved to `post-wizard-cache` and
   `post-wizard-cache-2`.
 
+Final verification cleanup:
+
+- Final post-push cache scan regenerated ignored cache folders.
+- Regenerated cache artifacts moved to `post-final-cache`.
+
 ## Rationale
 
 These files are generated interpreter/test-run artifacts. They are not source
