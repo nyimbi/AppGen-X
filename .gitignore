@@ -12,3 +12,4 @@
 /src/*.egg-info/
 /appgen-frontend/browser-smoke-report.json
 __pycache__/
+/archive/unused-2026-05-26/**
