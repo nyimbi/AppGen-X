@@ -1,14 +1,17 @@
 import pytest
 
 from pyAppGen.pbc import cdp_segmentation_activate_segment
+from pyAppGen.pbc import cdp_segmentation_build_api_contract
 from pyAppGen.pbc import cdp_segmentation_build_workbench_view
 from pyAppGen.pbc import cdp_segmentation_configure_runtime
 from pyAppGen.pbc import cdp_segmentation_define_segment
 from pyAppGen.pbc import cdp_segmentation_empty_state
 from pyAppGen.pbc import cdp_segmentation_evaluate_segments
 from pyAppGen.pbc import cdp_segmentation_ingest_customer_event
+from pyAppGen.pbc import cdp_segmentation_permissions_contract
 from pyAppGen.pbc import cdp_segmentation_receive_event
 from pyAppGen.pbc import cdp_segmentation_register_rule
+from pyAppGen.pbc import cdp_segmentation_register_schema_extension
 from pyAppGen.pbc import cdp_segmentation_render_workbench
 from pyAppGen.pbc import cdp_segmentation_runtime_capabilities
 from pyAppGen.pbc import cdp_segmentation_runtime_smoke
@@ -41,6 +44,11 @@ def test_cdp_segmentation_runtime_executes_standard_and_advanced_capabilities() 
     contract = pbc_implementation_contract("cdp_segmentation")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["api_contract"]["ok"] is True
+    assert (
+        contract["source_package"]["permissions_contract"]["action_permissions"]["evaluate_segments"]
+        == "cdp_segmentation.membership.evaluate"
+    )
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "CdpConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert pbc_implementation_release_audit(("cdp_segmentation",))["ok"] is True
@@ -48,6 +56,11 @@ def test_cdp_segmentation_runtime_executes_standard_and_advanced_capabilities() 
 
 def test_cdp_segmentation_runtime_applies_rules_parameters_configuration_events_and_ui() -> None:
     state = _configured_state()
+    extension = cdp_segmentation_register_schema_extension(
+        state, "profile_property", {"identity_confidence": "numeric"}
+    )
+    state = extension["state"]
+    assert extension["extension"]["version"] == 1
     state = cdp_segmentation_receive_event(
         state,
         {"event_id": "customer_ops", "event_type": "CustomerUpdated", "payload": {"tenant": "tenant_ops", "customer_id": "cust_ops", "email": "buyer@example.com", "region": "US", "opt_in": True}},
@@ -98,6 +111,22 @@ def test_cdp_segmentation_runtime_applies_rules_parameters_configuration_events_
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == CDP_SEGMENTATION_OWNED_TABLES
 
+    api_contract = cdp_segmentation_build_api_contract()
+    assert api_contract["database_backends"] == CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS
+    assert api_contract["event_contract"] == "AppGen-X"
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["shared_table_access"] is False
+    assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
+        "ingest_customer_event",
+        "upsert_profile_property",
+        "define_segment",
+        "evaluate_segments",
+        "activate_segment",
+        "receive_event",
+    }
+    permissions = cdp_segmentation_permissions_contract()
+    assert permissions["action_permissions"]["verify_owned_table_boundary"] == "cdp_segmentation.audit"
+
 
 def test_cdp_segmentation_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
     state = cdp_segmentation_empty_state()
@@ -131,10 +160,26 @@ def test_cdp_segmentation_rejects_invalid_inputs_and_proves_boundary_and_dead_le
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
-    boundary = cdp_segmentation_verify_owned_table_boundary()
+    boundary = cdp_segmentation_verify_owned_table_boundary(
+        (
+            "customer_event",
+            "segment_definition",
+            "segment_membership",
+            "profile_property",
+            "CustomerUpdated",
+            "payment_projection",
+            "cdp_segmentation_appgen_outbox_event",
+        )
+    )
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == ("customer_event", "segment_definition", "segment_membership", "profile_property")
     assert boundary["declared_dependencies"]["shared_tables"] == ()
+    assert "payment_projection" in boundary["declared_dependencies"]["api_projections"]
+    violated = cdp_segmentation_verify_owned_table_boundary(("customer",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("customer",)
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        cdp_segmentation_register_schema_extension(state, "customer", {"email": "text"})
 
 
 def _configured_state() -> dict:

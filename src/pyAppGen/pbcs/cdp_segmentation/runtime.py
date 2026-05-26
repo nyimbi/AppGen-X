@@ -143,13 +143,17 @@ def cdp_segmentation_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "receive_event",
             "ingest_customer_event",
             "upsert_profile_property",
             "define_segment",
             "evaluate_segments",
             "activate_segment",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -434,16 +438,162 @@ def cdp_segmentation_build_workbench_view(state: dict, *, tenant: str) -> dict:
     }
 
 
-def cdp_segmentation_verify_owned_table_boundary() -> dict:
-    return {"format": "appgen.cdp-segmentation-boundary.v1", "ok": True, "owned_tables": CDP_SEGMENTATION_OWNED_TABLES, "declared_dependencies": {"apis": ("POST /events", "POST /segments", "GET /memberships"), "events": CDP_SEGMENTATION_CONSUMED_EVENT_TYPES, "shared_tables": ()}}
+def cdp_segmentation_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "POST /events",
+        "POST /profile-properties",
+        "POST /segments",
+        "POST /segment-evaluations",
+        "POST /segment-activations",
+        "GET /memberships",
+        "customer_projection",
+        "payment_projection",
+        "order_projection",
+        "activation_destination_projection",
+    }
+    allowed_event_dependencies = set(CDP_SEGMENTATION_CONSUMED_EVENT_TYPES)
+    allowed_runtime_tables = {
+        "cdp_segmentation_appgen_outbox_event",
+        "cdp_segmentation_appgen_inbox_event",
+        "cdp_segmentation_dead_letter_event",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(CDP_SEGMENTATION_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("cdp_segmentation_")
+    )
+    return {
+        "format": "appgen.cdp-segmentation-boundary.v1",
+        "ok": not violations,
+        "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "POST /events",
+                "POST /profile-properties",
+                "POST /segments",
+                "POST /segment-evaluations",
+                "POST /segment-activations",
+                "GET /memberships",
+            ),
+            "events": CDP_SEGMENTATION_CONSUMED_EVENT_TYPES,
+            "api_projections": (
+                "customer_projection",
+                "payment_projection",
+                "order_projection",
+                "activation_destination_projection",
+            ),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def cdp_segmentation_build_api_contract() -> dict:
-    return {"format": "appgen.cdp-segmentation-api-contract.v1", "ok": True, "routes": ("POST /events", "POST /segments", "GET /memberships"), "shared_table_access": False, "event_contract": "AppGen-X"}
+    return {
+        "format": "appgen.cdp-segmentation-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {
+                "route": "POST /events",
+                "command": "ingest_customer_event",
+                "owned_tables": ("customer_event", "profile_property"),
+                "emits": (),
+                "requires_permission": "cdp_segmentation.event.write",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "POST /profile-properties",
+                "command": "upsert_profile_property",
+                "owned_tables": ("profile_property",),
+                "emits": (),
+                "requires_permission": "cdp_segmentation.event.write",
+                "idempotency_key": "property_id",
+            },
+            {
+                "route": "POST /segments",
+                "command": "define_segment",
+                "owned_tables": ("segment_definition",),
+                "emits": (),
+                "requires_permission": "cdp_segmentation.segment.write",
+                "idempotency_key": "segment_id",
+            },
+            {
+                "route": "POST /segment-evaluations",
+                "command": "evaluate_segments",
+                "owned_tables": ("segment_membership",),
+                "emits": CDP_SEGMENTATION_EMITTED_EVENT_TYPES,
+                "requires_permission": "cdp_segmentation.membership.evaluate",
+                "idempotency_key": "customer_id",
+            },
+            {
+                "route": "POST /segment-activations",
+                "command": "activate_segment",
+                "owned_tables": ("segment_definition", "segment_membership"),
+                "emits": (),
+                "requires_permission": "cdp_segmentation.membership.evaluate",
+                "idempotency_key": "segment_id",
+            },
+            {
+                "route": "POST /cdp-segmentation/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": CDP_SEGMENTATION_CONSUMED_EVENT_TYPES,
+                "requires_permission": "cdp_segmentation.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /memberships",
+                "query": "build_workbench_view",
+                "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+                "requires_permission": "cdp_segmentation.audit",
+            },
+        ),
+        "declared_catalog_routes": ("POST /events", "POST /segments", "GET /memberships"),
+        "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
+        "emits": CDP_SEGMENTATION_EMITTED_EVENT_TYPES,
+        "consumes": CDP_SEGMENTATION_CONSUMED_EVENT_TYPES,
+        "database_backends": CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS,
+        "permissions": tuple(sorted(cdp_segmentation_permissions_contract()["permissions"])),
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+    }
 
 
 def cdp_segmentation_permissions_contract() -> dict:
-    return {"format": "appgen.cdp-segmentation-permissions.v1", "ok": True, "permissions": ("cdp_segmentation.event.write", "cdp_segmentation.segment.write", "cdp_segmentation.membership.evaluate", "cdp_segmentation.event.consume", "cdp_segmentation.configure", "cdp_segmentation.audit")}
+    return {
+        "format": "appgen.cdp-segmentation-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "cdp_segmentation.event.write",
+            "cdp_segmentation.segment.write",
+            "cdp_segmentation.membership.evaluate",
+            "cdp_segmentation.event.consume",
+            "cdp_segmentation.configure",
+            "cdp_segmentation.audit",
+        ),
+        "action_permissions": {
+            "ingest_customer_event": "cdp_segmentation.event.write",
+            "upsert_profile_property": "cdp_segmentation.event.write",
+            "define_segment": "cdp_segmentation.segment.write",
+            "evaluate_segments": "cdp_segmentation.membership.evaluate",
+            "activate_segment": "cdp_segmentation.membership.evaluate",
+            "receive_event": "cdp_segmentation.event.consume",
+            "register_rule": "cdp_segmentation.configure",
+            "register_schema_extension": "cdp_segmentation.configure",
+            "set_parameter": "cdp_segmentation.configure",
+            "configure_runtime": "cdp_segmentation.configure",
+            "build_workbench_view": "cdp_segmentation.audit",
+            "verify_owned_table_boundary": "cdp_segmentation.audit",
+        },
+    }
 
 
 def _copy_state(state: dict) -> dict:
