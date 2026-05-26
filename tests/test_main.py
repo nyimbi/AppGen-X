@@ -16517,8 +16517,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "generated_inspector_family_coverage",
         "generated_inspector_family_operation_step_coverage",
+        "generated_inspector_family_validation_step_coverage",
         "generated_inspector_family_replays_side_effect_free",
     } <= {check["id"] for check in inspector_family_runtime_matrix["checks"] if check["ok"]}
+    assert {
+        "generated_family_operation_steps_required",
+        "generated_family_validation_steps_required",
+    } <= set(inspector_family_runtime_matrix["guards"])
     assert {"string", "binding", "resource"} <= {
         item["family"] for item in inspector_family_runtime_matrix["property_editor_replays"]
     }
@@ -16551,6 +16556,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for item in inspector_family_runtime_matrix["custom_designer_replays"]
         for step in item["operation_steps"]
     }
+    assert all(
+        "side_effects_disallowed" in item["validation_steps"]
+        for collection in (
+            inspector_family_runtime_matrix["property_editor_replays"],
+            inspector_family_runtime_matrix["event_editor_replays"],
+            inspector_family_runtime_matrix["component_editor_replays"],
+            inspector_family_runtime_matrix["custom_designer_replays"],
+        )
+        for item in collection
+    )
+    assert all(
+        item["operation_step_contract"]["ok"] and item["validation_step_contract"]["ok"]
+        for collection in (
+            inspector_family_runtime_matrix["property_editor_replays"],
+            inspector_family_runtime_matrix["event_editor_replays"],
+            inspector_family_runtime_matrix["component_editor_replays"],
+            inspector_family_runtime_matrix["custom_designer_replays"],
+        )
+        for item in collection
+    )
     assert {item["module"] for item in inspector_module_files["modules"]} == {
         "property_editor_module",
         "event_editor_module",

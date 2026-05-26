@@ -1324,6 +1324,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the diff-only restricted-name scan has no hits, and implementation release,
   generation smoke, capability, full implementation release, and catalog
   release audits all return true for the implemented PBC set. Commit: `081d4b8`.
+- Current inspector/editor runtime pass hardens generated property-editor,
+  event-editor, component-editor, and custom-designer family replay matrices so
+  generated inspector readiness fails unless every family module proves both
+  operation-step and validation-step contracts, including side-effect-free
+  validation gates and exported step-contract tests.
 - Current Tax Localization PBC completion pass expands `tax_localization` into
   a package-local tax compliance implementation with 50 owned tables,
   schema/model/migration contract evidence, service and release evidence
@@ -1332,7 +1337,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Focused Tax tests pass (`3 passed`), syntax and whitespace checks pass, the
   diff-only restricted-name scan has no hits, and implementation release,
   generation smoke, capability, full implementation release, and catalog
-  release audits all return true for the implemented PBC set. Commit: pending.
+  release audits all return true for the implemented PBC set. Commit: `4854811`.
 
 ## Open Completion Areas
 
