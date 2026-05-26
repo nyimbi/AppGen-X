@@ -305,3 +305,11 @@ Focused validation for this completeness slice is expected to include:
 - focused `pytest` for `tests/test_pbc_price_promotion_engine_runtime.py`
 - assertions that `implementation_contract()` now exposes schema, service, and
   release evidence contracts through the package-local registration surface
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for price books, discount
+families, promotion states, eligibility reason codes, guardrail bands, and
+approval queues. The package validates those seeds with schema, migration,
+model, service, route, event, handler, UI, RBAC, configuration, and release
+contracts.

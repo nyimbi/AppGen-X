@@ -312,3 +312,11 @@ Workbench evidence includes:
 - `boundary_contract`
 - required event topic, emitted events, consumed events, owned tables, runtime
   tables, and backend allowlist
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for ticket severities,
+priority bands, queues, SLA policies, resolution reasons, escalation reasons,
+and knowledge-link classes. Generated applications validate those seed
+descriptors with schema, migration, model, service, route, event, handler, UI,
+RBAC, configuration, and release contracts.

@@ -229,3 +229,11 @@ The focused test suite proves:
 - Configuration, parameters, rules, schema extensions, event handling, service registration, mTLS identity, route publication, rate limits, service health, traffic samples, service map, UI, and workbench evidence execute.
 - Boundary validation accepts owned tables and declared API/event/projection dependencies, then rejects direct foreign-table references.
 - Invalid backend, stream-picker configuration, unsupported parameters, non-owned schema extensions, idempotent duplicates, retries, and dead letters are verified.
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for default gateway policies,
+safe HTTP methods, supported protocols, rate-limit bands, retry budgets, and
+health-state thresholds. Generated packages must validate those seed descriptors
+with the schema, migration, model, service, route, event, handler, UI, RBAC,
+configuration, and release evidence contracts.

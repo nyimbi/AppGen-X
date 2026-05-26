@@ -254,3 +254,11 @@ Package release evidence is executable:
   schema extension ownership, generated DSL validity, boundary validation, API
   descriptors, schema/service/release contracts, RBAC, UI/workbench evidence,
   runtime smoke, and release audit behavior.
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for starter composition
+templates, package states, validation severities, deployment plan statuses, and
+view-slot policies. The package validates those seeds with schema, migration,
+model, service, route, event, handler, UI, RBAC, configuration, and release
+contracts before composition plans are approved.

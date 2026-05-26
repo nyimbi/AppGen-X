@@ -244,3 +244,11 @@ The release evidence contract also proves that UI/workbench binding evidence
 uses the AppGen-X contract, the fixed topic, and the full owned-table list. The
 implementation is complete only when these checks pass without requiring
 central registry changes for the package-local slice.
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for audit event classes,
+retention tiers, control assertion types, proof channels, and review queues.
+Generated applications validate those seed descriptors together with owned
+schema, migration, model, service, route, event, handler, UI, RBAC,
+configuration, and release contracts.

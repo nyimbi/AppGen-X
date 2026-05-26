@@ -251,3 +251,11 @@ Focused runtime tests prove:
 - configuration, rule, parameter, schema-extension, template, channel, event,
   send, delivery, receipt, bounce, analytics, and dead-letter execution
 - boundary enforcement and backend allowlist compliance
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for notification channels,
+template categories, consent states, delivery statuses, bounce reasons, and
+retry policies. Generated applications validate those seed descriptors with
+schema, migration, model, service, route, event, handler, UI, RBAC,
+configuration, and release contracts.

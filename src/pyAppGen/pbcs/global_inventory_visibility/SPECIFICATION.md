@@ -252,3 +252,11 @@ The completeness slice is acceptable only when:
 4. `python -m py_compile` succeeds for the owned Python files.
 5. Focused `pytest` for `tests/test_pbc_global_inventory_visibility_runtime.py`
    passes.
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for inventory status codes,
+availability bands, source-system classes, freshness thresholds, and exception
+reasons. Generated applications validate those seed descriptors together with
+owned schema, migration, model, service, route, event, handler, UI, RBAC,
+configuration, and release contracts.

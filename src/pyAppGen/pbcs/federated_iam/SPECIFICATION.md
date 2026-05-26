@@ -213,3 +213,11 @@ The focused test suite proves:
 - Configuration, parameters, rules, schema extensions, event handling, tenant provisioning, principal/provider registration, identity linking, credential verification, role assignment, policy decisions, token grants, privileged access, UI, and workbench evidence execute.
 - Boundary validation accepts owned tables and declared API/event/projection dependencies, then rejects direct foreign-table references.
 - Invalid backend, stream-picker configuration, unsupported parameters, non-owned schema extensions, idempotent duplicates, retries, and dead letters are verified.
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for default tenant policies,
+identity assurance levels, provider trust classes, role templates, and privileged
+access review states. The seed descriptors are generated with the package and
+validated alongside schema, migration, model, service, route, event, handler,
+UI, RBAC, configuration, and release contracts.

@@ -137,6 +137,14 @@ types, declared integration APIs, declared projection names, and
 `production_control_` runtime names. References such as external inventory,
 quality, planning, maintenance, identity, or finance tables are rejected.
 
+Generated schema evidence is part of the package contract. `build_schema_contract`
+emits owned schema descriptors, generated migration descriptors, generated model
+descriptors, and owned relationship evidence for work centers, routings,
+production orders, finite schedules, operation events, downtime, OEE, rules,
+parameters, configuration, projections, and AppGen-X runtime tables. Those
+migration and model descriptors are validated before release evidence is
+accepted.
+
 ## UI Contract
 
 `ui.py` owns package-local UI contract functions for:

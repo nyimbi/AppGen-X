@@ -77,6 +77,56 @@ PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS = (
     "release_gates",
 )
 PBC_DOMAIN_DEPTH_LEVEL = "enterprise_suite_displacement"
+PBC_SPECIFICATION_MIN_WORDS = 650
+PBC_SPECIFICATION_REQUIRED_CONCEPTS = (
+    {
+        "id": "stable_identity",
+        "terms": (("pbc",),),
+    },
+    {
+        "id": "owned_boundary",
+        "terms": (("owned",), ("table",), ("shared", "foreign")),
+    },
+    {
+        "id": "schema_generation",
+        "terms": (("schema",), ("migration",), ("model",)),
+    },
+    {
+        "id": "service_api_contract",
+        "terms": (("service",), ("api", "route"), ("command", "query")),
+    },
+    {
+        "id": "events_handlers",
+        "terms": (("event",), ("outbox",), ("inbox",), ("dead-letter",), ("idempot",), ("retry",)),
+    },
+    {
+        "id": "ui_permissions",
+        "terms": (("ui",), ("workbench",), ("permission", "rbac")),
+    },
+    {
+        "id": "rules_parameters_configuration",
+        "terms": (("rule",), ("parameter",), ("configuration",)),
+    },
+    {
+        "id": "standard_and_advanced_capabilities",
+        "terms": (("standard",), ("advanced",)),
+    },
+    {
+        "id": "package_release_evidence",
+        "terms": (("release",), ("test",), ("seed",)),
+    },
+    {
+        "id": "datastore_and_event_policy",
+        "terms": (("postgresql",), ("mysql",), ("mariadb",), ("appgen-x",)),
+    },
+)
+PBC_RESTRICTED_LEGACY_REFERENCES = (
+    r"\b" + "S" + "AP" + r"\b",
+    r"\b" + "S" + r"/4\b",
+    r"\b" + "S" + "4" + r"\b",
+    r"\b" + "Sales" + "force" + r"\b",
+    r"\b" + "Quick" + "Books" + r"\b",
+)
 PBC_ADVANCED_DOMAIN_REQUIRED_AREAS = (
     "foundational_architecture",
     "computational_analytics",
@@ -4066,6 +4116,115 @@ def _pbc_source_package_contract(key: str) -> dict:
     }
 
 
+def _pbc_specification_path(key: str) -> Path:
+    return Path(__file__).resolve().parent / "pbcs" / key / "SPECIFICATION.md"
+
+
+def _missing_specification_concepts(text: str, key: str) -> tuple[dict, ...]:
+    lowered = text.lower()
+    missing = []
+    for concept in PBC_SPECIFICATION_REQUIRED_CONCEPTS:
+        missing_terms = tuple(
+            alternatives
+            for alternatives in concept["terms"]
+            if not any(term.lower() in lowered for term in alternatives)
+        )
+        if missing_terms:
+            missing.append(
+                {
+                    "id": concept["id"],
+                    "missing_terms": missing_terms,
+                }
+            )
+    if key.lower() not in lowered:
+        missing.append({"id": "stable_pbc_key", "missing_terms": ((key,),)})
+    return tuple(missing)
+
+
+def pbc_specification_contract(key: str) -> dict:
+    """Return release evidence for the package-local PBC specification."""
+    path = _pbc_specification_path(key)
+    relative_path = f"src/pyAppGen/pbcs/{key}/SPECIFICATION.md"
+    if key not in PBC_CATALOG:
+        return {
+            "format": "appgen.pbc-specification-contract.v1",
+            "ok": False,
+            "pbc": key,
+            "path": relative_path,
+            "error": "unknown PBC",
+        }
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {
+            "format": "appgen.pbc-specification-contract.v1",
+            "ok": False,
+            "pbc": key,
+            "path": relative_path,
+            "error": str(exc),
+        }
+    word_count = len(re.findall(r"\b[\w-]+\b", text))
+    heading_count = len(re.findall(r"^##\s+", text, flags=re.MULTILINE))
+    missing_concepts = _missing_specification_concepts(text, key)
+    restricted_references = tuple(
+        pattern
+        for pattern in PBC_RESTRICTED_LEGACY_REFERENCES
+        if re.search(pattern, text)
+    )
+    checks = (
+        {
+            "id": "file_exists",
+            "ok": path.is_file(),
+        },
+        {
+            "id": "minimum_depth",
+            "ok": word_count >= PBC_SPECIFICATION_MIN_WORDS and heading_count >= 6,
+            "word_count": word_count,
+            "heading_count": heading_count,
+            "minimum_words": PBC_SPECIFICATION_MIN_WORDS,
+        },
+        {
+            "id": "implementation_concepts",
+            "ok": not missing_concepts,
+            "missing_concepts": missing_concepts,
+        },
+        {
+            "id": "restricted_legacy_references",
+            "ok": not restricted_references,
+            "references": restricted_references,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.pbc-specification-contract.v1",
+        "ok": ok,
+        "pbc": key,
+        "path": relative_path,
+        "word_count": word_count,
+        "heading_count": heading_count,
+        "required_concepts": PBC_SPECIFICATION_REQUIRED_CONCEPTS,
+        "missing_concepts": missing_concepts,
+        "restricted_legacy_references": restricted_references,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def pbc_specification_release_audit(selected_pbcs: tuple[str, ...] | list[str] | None = None) -> dict:
+    """Verify every requested built-in PBC has a comprehensive package-local specification."""
+    selected = tuple(dict.fromkeys(selected_pbcs or tuple(PBC_CATALOG)))
+    contracts = tuple(pbc_specification_contract(key) for key in selected)
+    return {
+        "format": "appgen.pbc-specification-release-audit.v1",
+        "ok": bool(contracts) and all(contract["ok"] for contract in contracts),
+        "pbc_count": len(contracts),
+        "minimum_words": PBC_SPECIFICATION_MIN_WORDS,
+        "required_concepts": PBC_SPECIFICATION_REQUIRED_CONCEPTS,
+        "contracts": contracts,
+        "blocking_gaps": tuple(contract for contract in contracts if not contract["ok"]),
+    }
+
+
 def pbc_implementation_contract(key: str) -> dict:
     """Return the generated implementation contract for one built-in PBC."""
     if key not in PBC_CATALOG:
@@ -4390,6 +4549,7 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
             contract["events"]["inbox_table"],
             contract["events"]["dead_letter_table"],
         }
+        specification = pbc_specification_contract(contract["pbc"])
         source_package = contract["source_package"]
         source_schema = source_package.get("schema_contract", {})
         source_service = source_package.get("service_contract", {})
@@ -4409,6 +4569,11 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                 {
                     "id": f"{contract['pbc']}:source_package_directory",
                     "ok": source_package["ok"],
+                },
+                {
+                    "id": f"{contract['pbc']}:specification_completeness",
+                    "ok": specification["ok"],
+                    "specification": specification,
                 },
                 {
                     "id": f"{contract['pbc']}:source_package_schema_service_release",
@@ -4931,6 +5096,7 @@ def pbc_release_audit() -> dict:
         generated_imports=("faust_streaming",),
     )
     package_loading = pbc_package_loading_smoke_audit()
+    specification_audit = pbc_specification_release_audit()
     implementation_audit = pbc_implementation_release_audit()
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
@@ -4958,8 +5124,18 @@ def pbc_release_audit() -> dict:
         },
         {
             "id": "pbc_implementation_contracts",
-            "ok": implementation_audit["ok"]
+            "ok": specification_audit["ok"]
+            and implementation_audit["ok"]
             and implementation_audit["pbc_count"] == len(PBC_CATALOG),
+            "specification_checks": tuple(
+                {
+                    "pbc": contract["pbc"],
+                    "ok": contract["ok"],
+                    "word_count": contract["word_count"],
+                    "missing_concepts": contract["missing_concepts"],
+                }
+                for contract in specification_audit["contracts"]
+            ),
             "checks": implementation_audit["checks"],
         },
         {
@@ -5071,6 +5247,7 @@ def pbc_release_audit() -> dict:
         "manifest_schema": pbc_manifest_schema(),
         "example_registration": register_pbc_manifest(example_pbc_manifest()),
         "package_loading": package_loading,
+        "specification_audit": specification_audit,
         "implementation_audit": implementation_audit,
         "sample_composition": composition,
         "nl_selection": nl_selection,

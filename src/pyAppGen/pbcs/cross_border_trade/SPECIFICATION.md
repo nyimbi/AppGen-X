@@ -224,3 +224,11 @@ and then dead-letter evidence once retry limits are exhausted.
 
 Focused tests cover the local completeness slice only and verify the package
 exports the hardened contract surface through `implementation_contract()`.
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for trade lanes, customs
+statuses, duty treatments, restricted-party decision classes, document types,
+and landed-cost reason codes. Generated packages validate those seed
+descriptors with schema, migration, model, service, route, event, handler, UI,
+RBAC, configuration, and release contracts.

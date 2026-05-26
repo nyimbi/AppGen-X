@@ -1,6 +1,10 @@
 from importlib import import_module
 
-from pyAppGen.pbc import PBC_CATALOG, pbc_implementation_release_audit
+from pyAppGen.pbc import (
+    PBC_CATALOG,
+    pbc_implementation_release_audit,
+    pbc_specification_release_audit,
+)
 
 
 def test_every_builtin_pbc_has_its_own_source_package_directory():
@@ -29,6 +33,24 @@ def test_release_audit_requires_builtin_pbc_source_packages():
         for check in audit["checks"]
         if check["id"].endswith(":source_package_schema_service_release")
     } == {f"{key}:source_package_schema_service_release" for key in PBC_CATALOG}
+    assert {
+        check["id"]
+        for check in audit["checks"]
+        if check["id"].endswith(":specification_completeness")
+    } == {f"{key}:specification_completeness" for key in PBC_CATALOG}
+
+
+def test_every_builtin_pbc_has_comprehensive_package_specification():
+    audit = pbc_specification_release_audit(tuple(PBC_CATALOG))
+
+    assert audit["ok"] is True
+    assert audit["pbc_count"] == len(PBC_CATALOG)
+    assert not audit["blocking_gaps"]
+    for contract in audit["contracts"]:
+        assert contract["path"].endswith(f"{contract['pbc']}/SPECIFICATION.md")
+        assert contract["word_count"] >= audit["minimum_words"]
+        assert not contract["missing_concepts"]
+        assert not contract["restricted_legacy_references"]
 
 
 def test_each_builtin_pbc_passes_release_audit_independently():

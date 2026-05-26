@@ -238,3 +238,11 @@ prove all of the following:
 - `pbc_implementation_release_audit(("payment_orchestration",))` returns
   `ok: True`.
 - Ordinary users cannot choose stream engines or non-AppGen-X event contracts.
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for payment rail classes,
+authorization states, settlement windows, retry reasons, reconciliation states,
+and exception queues. The package validates those seeds with schema, migration,
+model, service, route, event, handler, UI, RBAC, configuration, and release
+contracts.

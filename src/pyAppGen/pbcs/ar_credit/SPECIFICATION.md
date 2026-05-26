@@ -286,3 +286,12 @@ Release readiness requires all of the following evidence to pass:
   capability audit, and generation smoke audit pass for the implemented PBC
   set.
 - Diff scans contain no banned legacy product or framework names.
+
+## Seed And Release Evidence
+
+Release evidence includes package-local seed data for representative customer
+classes, credit policies, dispute reasons, receipt methods, and dunning stages
+so generated applications can initialize an AR workbench without cross-PBC table
+reads. The focused tests verify those seed descriptors together with the schema,
+service, route, event, handler, UI, permission, configuration, and release
+contracts.

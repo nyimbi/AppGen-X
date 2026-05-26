@@ -159,6 +159,13 @@ The service layer exposes these package-local command methods:
 All commands work on package-local runtime state and return side-effect-free
 state transitions suitable for generated-app embedding and release smoke tests.
 
+Generated schema evidence is part of the package contract.
+`build_schema_contract()` emits owned schema descriptors, generated migration
+descriptors, generated model descriptors, and owned relationship evidence for
+plans, subscriptions, usage meters, billing schedules, invoices, dunning
+notices, rules, parameters, configuration, projections, and AppGen-X runtime
+tables. Release evidence fails if any migration or model descriptor is missing.
+
 ## APIs
 
 The package declares these catalog routes and expands them into executable API

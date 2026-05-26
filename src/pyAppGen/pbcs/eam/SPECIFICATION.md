@@ -153,3 +153,27 @@ The configuration editor exposes only datastore and AppGen-X event topic
 controls. The workbench must surface configuration binding status, bound rule
 identifiers, and bound parameter identifiers without presenting a stream-engine
 selector or alternative user-facing eventing mode.
+
+## Schema, Service, And Release Evidence
+
+The implementation directory is `src/pyAppGen/pbcs/eam`, and the package
+exports side-effect-free registration through `implementation_contract()`.
+`eam_build_schema_contract()` emits owned schema descriptors, generated
+migration descriptors, generated model descriptors, and owned relationships for
+equipment, meters, maintenance plans, work orders, safety permits, spare usage,
+service-vendor events, reliability signals, and AppGen-X runtime tables.
+
+`eam_build_service_contract()` proves command and query methods for runtime
+configuration, rule and parameter registration, schema extension ownership,
+equipment registration, plan release, work-order scheduling and completion,
+condition/meter readings, spare usage, service-vendor evidence, event inbox
+handling, UI/workbench reads, API descriptors, permissions, boundary checks,
+and release evidence. The owned boundary rejects shared or foreign tables and
+allows cross-PBC dependencies only through declared APIs, AppGen-X events, and
+package-local projections.
+
+Release evidence includes package-local seed data for maintenance priorities,
+work-order states, meter units, safety permit classes, spare-usage reasons,
+vendor service classes, and reliability risk bands. Focused tests validate the
+seed descriptors together with schema, migration, model, service, route, event,
+handler, UI, RBAC, configuration, and release contracts.
