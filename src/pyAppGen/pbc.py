@@ -762,6 +762,40 @@ PRODUCT_CATALOG_PIM_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "product_mlops_governance",
 )
+CUSTOMER_360_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_customer_lifecycle",
+    "graph_relational_customer_topology",
+    "multi_tenant_customer_isolation",
+    "schema_evolution_resilient_customer_schema",
+    "probabilistic_identity_consent_engagement_scoring",
+    "real_time_customer_timeline_analytics",
+    "counterfactual_preference_segment_simulation",
+    "temporal_customer_value_churn_forecasting",
+    "autonomous_customer_data_exception_resolution",
+    "semantic_customer_instruction_parsing",
+    "predictive_customer_health_risk",
+    "self_healing_customer_event_route_selection",
+    "zero_knowledge_customer_profile_proof",
+    "immutable_customer_audit_trail",
+    "dynamic_customer_privacy_policy_screening",
+    "automated_customer_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_customer_federation",
+    "commerce_billing_service_loyalty_integration",
+    "decentralized_customer_identity",
+    "chaos_engineered_customer_tolerance",
+    "quantum_resistant_customer_authorization",
+    "carbon_aware_customer_processing",
+    "algebraic_customer_segment_optimization",
+    "mechanism_design_channel_allocation",
+    "information_theoretic_engagement_anomaly_detection",
+    "temporal_customer_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_customer_health",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "customer_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -783,6 +817,7 @@ IMPLEMENTED_PBC_KEYS = (
     "quality_assurance",
     "eam",
     "product_catalog_pim",
+    "customer_360",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3036,6 +3071,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = eam_runtime_capabilities()
     elif key == "product_catalog_pim":
         advanced_runtime = product_catalog_pim_runtime_capabilities()
+    elif key == "customer_360":
+        advanced_runtime = customer_360_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3332,6 +3369,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "quality_assurance": len(QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS),
         "eam": len(EAM_ADVANCED_CAPABILITY_KEYS),
         "product_catalog_pim": len(PRODUCT_CATALOG_PIM_ADVANCED_CAPABILITY_KEYS),
+        "customer_360": len(CUSTOMER_360_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -5137,3 +5175,24 @@ from .pbcs.product_catalog_pim import product_catalog_pim_runtime_smoke  # noqa:
 from .pbcs.product_catalog_pim import product_catalog_pim_set_parameter  # noqa: E402,F401
 from .pbcs.product_catalog_pim import product_catalog_pim_set_product_attribute  # noqa: E402,F401
 from .pbcs.product_catalog_pim import product_catalog_pim_ui_contract  # noqa: E402,F401
+from .pbcs.customer_360 import CUSTOMER_360_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.customer_360 import CUSTOMER_360_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.customer_360 import CUSTOMER_360_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_build_timeline  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_build_workbench_view  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_capture_touchpoint  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_configure_runtime  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_create_profile  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_empty_state  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_ingest_engagement_event  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_link_identity  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_open_merge_case  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_record_consent  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_register_rule  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_render_workbench  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_resolve_merge_case  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_runtime_capabilities  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_runtime_smoke  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_set_parameter  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_set_preference  # noqa: E402,F401
+from .pbcs.customer_360 import customer_360_ui_contract  # noqa: E402,F401
