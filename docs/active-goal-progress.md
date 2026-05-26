@@ -1278,6 +1278,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   backend metadata, and implementation release, generation smoke, capability,
   full implementation release, and catalog release audits all return true.
   Commit: `652f24f`.
+- Current repository hygiene pass archives reproducible Python and pytest
+  runtime caches out of active source and test paths under
+  `archive/runtime-cache-cleanup-2026-05-26-2/`, leaves the local virtualenv in
+  place for verification, and records the cleanup in an archive manifest. The
+  post-move package import check passes and no active `.pytest_cache` or
+  `__pycache__` directories remain outside `.venv`, `.git`, or `archive`.
 
 ## Open Completion Areas
 
