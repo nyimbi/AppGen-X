@@ -694,6 +694,40 @@ QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "quality_mlops_governance",
 )
+EAM_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_maintenance_lifecycle",
+    "graph_relational_asset_topology",
+    "multi_tenant_maintenance_isolation",
+    "schema_evolution_resilient_maintenance_schema",
+    "probabilistic_failure_safety_cost_scoring",
+    "real_time_reliability_analytics",
+    "counterfactual_strategy_simulation",
+    "temporal_failure_forecasting",
+    "autonomous_maintenance_exception_resolution",
+    "semantic_maintenance_instruction_parsing",
+    "predictive_maintenance_risk_scoring",
+    "self_healing_maintenance_route_selection",
+    "zero_knowledge_maintenance_compliance_proof",
+    "immutable_maintenance_audit_trail",
+    "dynamic_maintenance_policy_screening",
+    "automated_maintenance_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_maintenance_federation",
+    "production_quality_inventory_procurement_integration",
+    "decentralized_equipment_identity",
+    "chaos_engineered_maintenance_tolerance",
+    "quantum_resistant_maintenance_authorization",
+    "carbon_aware_maintenance_scheduling",
+    "algebraic_maintenance_schedule_optimization",
+    "mechanism_design_labor_spare_allocation",
+    "information_theoretic_failure_anomaly_detection",
+    "temporal_maintenance_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_maintenance_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "maintenance_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -713,6 +747,7 @@ IMPLEMENTED_PBC_KEYS = (
     "mrp_engine",
     "production_control",
     "quality_assurance",
+    "eam",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2962,6 +2997,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = production_control_runtime_capabilities()
     elif key == "quality_assurance":
         advanced_runtime = quality_assurance_runtime_capabilities()
+    elif key == "eam":
+        advanced_runtime = eam_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3256,6 +3293,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "mrp_engine": len(MRP_ENGINE_ADVANCED_CAPABILITY_KEYS),
         "production_control": len(PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS),
         "quality_assurance": len(QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS),
+        "eam": len(EAM_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -5019,3 +5057,24 @@ from .pbcs.quality_assurance import quality_assurance_runtime_capabilities  # no
 from .pbcs.quality_assurance import quality_assurance_runtime_smoke  # noqa: E402,F401
 from .pbcs.quality_assurance import quality_assurance_set_parameter  # noqa: E402,F401
 from .pbcs.quality_assurance import quality_assurance_ui_contract  # noqa: E402,F401
+from .pbcs.eam import EAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.eam import EAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.eam import EAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.eam import eam_build_workbench_view  # noqa: E402,F401
+from .pbcs.eam import eam_complete_work_order  # noqa: E402,F401
+from .pbcs.eam import eam_configure_runtime  # noqa: E402,F401
+from .pbcs.eam import eam_create_maintenance_plan  # noqa: E402,F401
+from .pbcs.eam import eam_create_safety_permit  # noqa: E402,F401
+from .pbcs.eam import eam_create_work_order  # noqa: E402,F401
+from .pbcs.eam import eam_empty_state  # noqa: E402,F401
+from .pbcs.eam import eam_issue_spare_part  # noqa: E402,F401
+from .pbcs.eam import eam_record_condition_reading  # noqa: E402,F401
+from .pbcs.eam import eam_record_meter_reading  # noqa: E402,F401
+from .pbcs.eam import eam_register_equipment  # noqa: E402,F401
+from .pbcs.eam import eam_register_rule  # noqa: E402,F401
+from .pbcs.eam import eam_render_workbench  # noqa: E402,F401
+from .pbcs.eam import eam_runtime_capabilities  # noqa: E402,F401
+from .pbcs.eam import eam_runtime_smoke  # noqa: E402,F401
+from .pbcs.eam import eam_schedule_work_order  # noqa: E402,F401
+from .pbcs.eam import eam_set_parameter  # noqa: E402,F401
+from .pbcs.eam import eam_ui_contract  # noqa: E402,F401
