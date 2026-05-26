@@ -72,6 +72,12 @@ def loyalty_rewards_ui_contract() -> dict:
                 "workbench_limit",
             ),
         },
+        "rule_editor": {
+            "rule_types": ("configuration", "parameter", "release_gate", "domain_policy"),
+            "required_fields": ("rule_id", "tenant", "rule_type", "status"),
+            "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+        },
         "event_surfaces": {
             "emits": ("RewardBalanceChanged", "CustomerSegmentUpdated"),
             "consumes": ("PaymentCaptured", "PromotionApplied"),

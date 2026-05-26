@@ -82,6 +82,12 @@ def cdp_segmentation_ui_contract() -> dict:
                 "workbench_limit",
             ),
         },
+        "rule_editor": {
+            "rule_types": ("configuration", "parameter", "release_gate", "domain_policy"),
+            "required_fields": ("rule_id", "tenant", "rule_type", "status"),
+            "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+        },
         "event_surfaces": {
             "emits": ("CustomerSegmentUpdated", "ProfileEnriched"),
             "consumes": ("CustomerUpdated", "PaymentCaptured", "OrderShipped"),

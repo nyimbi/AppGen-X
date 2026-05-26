@@ -154,6 +154,7 @@ def loyalty_rewards_runtime_capabilities() -> dict:
             "set_parameter",
             "register_rule",
             "register_earning_rule",
+            "register_schema_extension",
             "enroll_member",
             "receive_event",
             "issue_points",

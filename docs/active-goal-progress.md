@@ -1759,6 +1759,22 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   non-mutating overlays, hit-target routing, undoable overlay commits,
   cancel/rollback snapshot restoration, hook unload, and custom-designer
   metadata round trips before release claims. Commit: `553c0be`.
+- Current people/manufacturing and commerce/intelligence assurance pass adds
+  executable capability assurance for `personnel_identity`, `time_labor`,
+  `payroll_engine`, `talent_onboarding`, `mrp_engine`, `production_control`,
+  `quality_assurance`, `eam`, `product_catalog_pim`, `customer_360`,
+  `checkout_processing`, `payment_orchestration`, `subscription_billing`,
+  `cross_border_trade`, `enterprise_pim`, `dam_core`,
+  `price_promotion_engine`, `lead_opportunity`, `service_ticketing`,
+  `notifications`, `cdp_segmentation`, `loyalty_rewards`,
+  `streaming_analytics`, `enterprise_search_vector`, `predictive_demand`, and
+  `fraud_anomaly_detection`. The pass also fills package-local runtime/UI gaps
+  where assurance exposed missing operation or rule-editor evidence. Focused
+  people/manufacturing tests pass (`64 passed`), focused
+  commerce/intelligence tests pass (`144 passed`), all package-local PBC tests
+  pass (`396 passed`), source/generated package evidence tests pass
+  (`8 passed`), and the full PBC audit stack including all built-in generation
+  smoke and `pbc_release_audit()` returns true. Commit: `pending`.
 
 ## Open Completion Areas
 

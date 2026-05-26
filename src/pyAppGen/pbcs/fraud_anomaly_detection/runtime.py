@@ -172,10 +172,13 @@ def fraud_anomaly_detection_runtime_capabilities() -> dict:
             "score_anomaly",
             "open_risk_case",
             "receive_event",
+            "build_api_contract",
             "build_workbench_view",
             "build_schema_contract",
             "build_service_contract",
             "build_release_evidence",
+            "permissions_contract",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }

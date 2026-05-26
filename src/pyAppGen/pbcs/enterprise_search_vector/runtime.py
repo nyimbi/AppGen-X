@@ -163,6 +163,7 @@ def enterprise_search_vector_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "create_index",
             "ingest_document",
             "run_embedding_job",
@@ -170,10 +171,13 @@ def enterprise_search_vector_runtime_capabilities() -> dict:
             "query",
             "record_feedback",
             "receive_event",
+            "build_api_contract",
             "build_workbench_view",
             "build_schema_contract",
             "build_service_contract",
             "build_release_evidence",
+            "permissions_contract",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -840,12 +844,33 @@ def enterprise_search_vector_build_workbench_view(state: dict, *, tenant: str) -
     }
 
 
-def enterprise_search_vector_verify_owned_table_boundary() -> dict:
+def enterprise_search_vector_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed = (
+        *ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
+        *ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES,
+        *ENTERPRISE_SEARCH_VECTOR_CONSUMED_EVENT_TYPES,
+        *ENTERPRISE_SEARCH_VECTOR_EMITTED_EVENT_TYPES,
+        "POST /indexes",
+        "POST /indexes/{id}/refresh",
+        "POST /embeddings",
+        "POST /search",
+        "POST /query-feedback",
+        "GET /query-traces",
+    )
+    allowed_set = set(allowed)
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in allowed_set and not str(reference).startswith("enterprise_search_vector_")
+    )
     return {
         "format": "appgen.enterprise-search-vector-boundary.v1",
-        "ok": True,
+        "ok": not violations,
         "owned_tables": ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
         "runtime_tables": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES,
+        "violations": violations,
         "declared_dependencies": {
             "apis": (
                 "POST /indexes",
