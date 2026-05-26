@@ -8,9 +8,17 @@ from ..release_evidence import RELEASE_EVIDENCE
 
 
 def test_generated_schema_service_and_release_evidence():
+    from .. import models, schema_contract
+
     assert SCHEMA_CONTRACT['pbc'] == 'mrp_engine'
     assert SCHEMA_CONTRACT['ok'] is True
     assert SCHEMA_CONTRACT['owned_tables']
+    schema_smoke = schema_contract.smoke_test()
+    model_smoke = models.smoke_test()
+    assert schema_smoke['ok'] is True
+    assert model_smoke['ok'] is True
+    assert not schema_smoke['side_effects']
+    assert not model_smoke['side_effects']
     assert SERVICE_CONTRACT['pbc'] == 'mrp_engine'
     assert SERVICE_CONTRACT['ok'] is True
     assert SERVICE_CONTRACT.get('shared_table_access') is False
@@ -51,12 +59,18 @@ def test_configuration_permissions_and_seed_hooks_are_executable():
     from .. import config, permissions, seed_data
 
     config_smoke = config.smoke_test()
+    governance_smoke = config.governance_smoke_test()
     permission_smoke = permissions.smoke_test()
     seed_smoke = seed_data.smoke_test()
     assert config_smoke['ok'] is True
+    assert governance_smoke['ok'] is True
+    assert governance_smoke['parameter']['accepted'] is True
+    assert governance_smoke['compiled_rule']['compiled'] is True
+    assert governance_smoke['rule_decision']['allowed'] is True
     assert permission_smoke['ok'] is True
     assert seed_smoke['ok'] is True
     assert not config_smoke['side_effects']
+    assert not governance_smoke['side_effects']
     assert not permission_smoke['side_effects']
     assert not seed_smoke['side_effects']
 

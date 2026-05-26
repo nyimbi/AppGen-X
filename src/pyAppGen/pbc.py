@@ -4560,6 +4560,12 @@ def pbc_source_artifact_contract(key: str) -> dict:
             "id": "governance_hooks_materialized",
             "ok": "def validate_configuration(" in config_text
             and "def configuration_manifest(" in config_text
+            and "def parameter_manifest(" in config_text
+            and "def set_parameter(" in config_text
+            and "def rule_manifest(" in config_text
+            and "def compile_rule(" in config_text
+            and "def evaluate_rule(" in config_text
+            and "def governance_smoke_test(" in config_text
             and "def authorize(" in permissions_text
             and "def permission_manifest(" in permissions_text
             and "def validate_seed_data(" in seed_text
@@ -4588,7 +4594,8 @@ def pbc_source_artifact_contract(key: str) -> dict:
             and "test_manifest_and_event_contract" in tests_text
             and "test_registration_plan_is_side_effect_free" in tests_text
             and "test_service_and_route_surface_are_executable" in tests_text
-            and "test_configuration_permissions_and_seed_hooks_are_executable" in tests_text,
+            and "test_configuration_permissions_and_seed_hooks_are_executable" in tests_text
+            and "governance_smoke_test" in tests_text,
             "path": f"{relative_dir}/tests/test_contract.py",
         },
         {
