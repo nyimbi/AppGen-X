@@ -164,6 +164,7 @@ from pyAppGen.form_designer import cross_target_visual_depth_workbench
 from pyAppGen.form_designer import cross_target_visual_lifecycle_replay_contract
 from pyAppGen.form_designer import cross_target_visual_readiness_contract
 from pyAppGen.form_designer import cross_target_visual_runtime_package_contract
+from pyAppGen.form_designer import visual_design_ide_replay_matrix
 from pyAppGen.form_designer import visual_runtime_pipeline_replay_matrix
 from pyAppGen.form_designer import visual_runtime_pipeline_module_file_manifest
 from pyAppGen.form_designer import visual_runtime_pipeline_test_module_file_manifest
@@ -2859,6 +2860,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_design_ide_replay_matrix",
         "visual_runtime_pipeline_modules",
         "visual_runtime_pipeline_module_tests",
         "visual_runtime_pipeline_replay_matrix",
@@ -2993,6 +2995,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "test_visual_design_ide_module_smoke" in item["exports"]
         for item in visual_depth["visual_design_test_artifacts"]
     )
+    visual_design_replay = visual_design_ide_replay_matrix()
+    assert visual_design_replay["format"] == "appgen.visual-design-ide-replay-matrix.v1"
+    assert visual_design_replay["ok"] is True
+    assert len(visual_design_replay["design_replays"]) == 6
+    assert visual_depth["visual_design_replay"]["ok"] is True
+    assert {
+        "visual_design_ide_modules_replay",
+        "visual_design_ide_surface_coverage",
+        "visual_design_ide_runtime_alignment",
+        "visual_design_ide_replays_side_effect_free",
+    } <= {check["id"] for check in visual_depth["visual_design_replay"]["checks"] if check["ok"]}
     assert len(visual_depth["visual_runtime_pipeline_artifacts"]) == 5
     assert {
         "style_resolution",
@@ -4789,6 +4802,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_lifecycle_replay",
         "visual_component_modules",
         "visual_design_modules",
+        "visual_design_ide_replay_matrix",
         "visual_runtime_pipeline_replay_matrix",
     } <= set(lifecycle_by_phase["validate_visual_depth"]["evidence"]["passing_checks"])
     requirement_audit = platform_parity_requirement_audit_contract()
@@ -4928,6 +4942,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_design_ide_replay_matrix",
         "visual_runtime_pipeline_modules",
         "visual_runtime_pipeline_module_tests",
         "visual_runtime_pipeline_replay_matrix",
@@ -5012,6 +5027,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
                 "visual_runtime_replay",
                 "visual_component_modules",
                 "visual_design_modules",
+                "visual_design_ide_replay_matrix",
                 "visual_runtime_pipeline_replay_matrix",
             },
         ),
@@ -5424,6 +5440,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_component_tests_ready",
         "visual_design_modules_ready",
         "visual_design_tests_ready",
+        "visual_design_ide_runtime_replay_matrix_ready",
         "visual_runtime_pipeline_modules_ready",
         "visual_runtime_pipeline_tests_ready",
         "visual_runtime_pipeline_runtime_replay_matrix_ready",
@@ -14790,6 +14807,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_lifecycle_replay",
         "visual_component_modules",
         "visual_design_modules",
+        "visual_design_ide_replay_matrix",
         "visual_runtime_pipeline_replay_matrix",
     } <= set(generated_lifecycle_by_phase["validate_visual_depth"]["evidence"]["passing_checks"])
     assert generated_rad["requirement_audit"]["format"] == "appgen.generated-platform-parity-requirement-audit.v1"
@@ -14940,6 +14958,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_design_ide_replay_matrix",
         "visual_runtime_pipeline_modules",
         "visual_runtime_pipeline_module_tests",
         "visual_runtime_pipeline_replay_matrix",
@@ -15024,6 +15043,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
                 "visual_runtime_replay",
                 "visual_component_modules",
                 "visual_design_modules",
+                "visual_design_ide_replay_matrix",
                 "visual_runtime_pipeline_replay_matrix",
             },
         ),
@@ -16819,6 +16839,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_design_ide_replay_matrix",
         "visual_runtime_pipeline_modules",
         "visual_runtime_pipeline_module_tests",
         "visual_runtime_pipeline_replay_matrix",
@@ -16941,6 +16962,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "test_visual_design_ide_module_smoke" in item["exports"]
         for item in generated_visual_depth["visual_design_test_artifacts"]
     )
+    generated_visual_design_replay = form_designer.visual_design_ide_replay_matrix()
+    assert generated_visual_design_replay["format"] == "appgen.generated-visual-design-ide-replay-matrix.v1"
+    assert generated_visual_design_replay["ok"] is True
+    assert len(generated_visual_design_replay["design_replays"]) == 6
+    assert generated_visual_depth["visual_design_replay"]["ok"] is True
     assert len(generated_visual_depth["visual_runtime_pipeline_artifacts"]) == 5
     generated_visual_pipeline_replay = form_designer.visual_runtime_pipeline_replay_matrix()
     assert generated_visual_pipeline_replay["format"] == (
@@ -17011,6 +17037,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_component_tests_ready",
         "visual_design_modules_ready",
         "visual_design_tests_ready",
+        "visual_design_ide_runtime_replay_matrix_ready",
         "visual_runtime_pipeline_modules_ready",
         "visual_runtime_pipeline_tests_ready",
         "visual_runtime_pipeline_runtime_replay_matrix_ready",
@@ -17021,6 +17048,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     visual_test_manifest = visual_depth_runtime.visual_component_test_module_manifest()
     visual_design_manifest = visual_depth_runtime.visual_design_ide_module_manifest()
     visual_design_test_manifest = visual_depth_runtime.visual_design_ide_test_module_manifest()
+    visual_design_runtime_matrix = visual_depth_runtime.visual_design_ide_runtime_replay_matrix()
     visual_runtime_pipeline_manifest = visual_depth_runtime.visual_runtime_pipeline_module_manifest()
     visual_runtime_pipeline_test_manifest = visual_depth_runtime.visual_runtime_pipeline_test_module_manifest()
     visual_runtime_pipeline_runtime_matrix = visual_depth_runtime.visual_runtime_pipeline_runtime_replay_matrix()
@@ -17028,6 +17056,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert visual_test_manifest["ok"] is True
     assert visual_design_manifest["ok"] is True
     assert visual_design_test_manifest["ok"] is True
+    assert visual_design_runtime_matrix["format"] == "appgen.generated-visual-design-ide-runtime-replay-matrix.v1"
+    assert visual_design_runtime_matrix["ok"] is True
+    assert len(visual_design_runtime_matrix["design_replays"]) == 6
     assert visual_runtime_pipeline_manifest["ok"] is True
     assert visual_runtime_pipeline_test_manifest["ok"] is True
     assert visual_runtime_pipeline_runtime_matrix["format"] == (

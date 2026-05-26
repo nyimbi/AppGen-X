@@ -16220,6 +16220,84 @@ def visual_design_ide_test_module_manifest():
     }
 
 
+def visual_design_ide_runtime_replay_matrix():
+    """Replay generated visual design IDE modules through their authoring operations."""
+    modules = visual_design_ide_module_manifest()
+    tests = visual_design_ide_test_module_manifest()
+    tests_by_module = {item["module"]: item for item in tests["tests"]}
+    module_dir = Path(__file__).with_name("visual_design_ide_modules")
+    expected_surfaces = {
+        "style_authoring",
+        "timeline_authoring",
+        "effect_stack",
+        "scene_authoring",
+        "asset_import",
+        "runtime_package",
+    }
+    replays = []
+    for item in modules["modules"]:
+        module_path = module_dir / f"{item['module']}.py"
+        smoke = {"ok": False, "side_effects": (), "error": "missing_module"}
+        operation = {"ok": False, "side_effects": (), "error": "missing_module", "pipeline": ()}
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_visual_design_ide_replay_{item['module']}")
+            smoke = module.smoke_test()
+            operation = module.run_visual_operation()
+        replays.append(
+            {
+                "module": item["module"],
+                "surface": item["surface"],
+                "pipeline": tuple(operation.get("pipeline", ())) if isinstance(operation, dict) else (),
+                "ok": item["exists"]
+                and item["contract_ok"]
+                and item["smoke_ok"]
+                and tests_by_module.get(item["module"], {}).get("smoke_ok", False)
+                and bool(smoke.get("ok"))
+                and bool(operation.get("ok"))
+                and not tuple(smoke.get("side_effects", ()))
+                and not tuple(operation.get("side_effects", ())),
+                "smoke": smoke,
+                "operation": operation,
+                "test": tests_by_module.get(item["module"], {}),
+            }
+        )
+    checks = (
+        {
+            "id": "generated_visual_design_ide_modules_replay",
+            "ok": len(replays) == 6 and all(item["ok"] for item in replays),
+            "evidence": tuple(item["module"] for item in replays),
+        },
+        {
+            "id": "generated_visual_design_ide_surface_coverage",
+            "ok": expected_surfaces == {item["surface"] for item in replays}
+            and all(item["pipeline"] for item in replays),
+            "evidence": tuple((item["surface"], item["pipeline"]) for item in replays),
+        },
+        {
+            "id": "generated_visual_design_ide_replays_side_effect_free",
+            "ok": all(
+                not tuple(item["smoke"].get("side_effects", ()))
+                and not tuple(item["operation"].get("side_effects", ()))
+                for item in replays
+            ),
+            "evidence": (),
+        },
+    )
+    return {
+        "format": "appgen.generated-visual-design-ide-runtime-replay-matrix.v1",
+        "ok": modules["ok"] and tests["ok"] and all(check["ok"] for check in checks),
+        "design_replays": tuple(replays),
+        "checks": checks,
+        "guards": (
+            "generated_design_modules_before_runtime_claim",
+            "generated_design_tests_before_release_claim",
+            "generated_design_operations_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def visual_runtime_pipeline_module_manifest():
     """Return file-level evidence for generated visual runtime pipeline modules."""
     module_map = {
@@ -16421,6 +16499,7 @@ def visual_depth_runtime_manifest():
         "visual_runtime_package",
         "visual_component_specs",
         "actionable_visual_operations",
+        "visual_design_ide_replay_matrix",
         "visual_runtime_pipeline_modules",
         "visual_runtime_pipeline_module_tests",
         "visual_runtime_pipeline_replay_matrix",
@@ -16505,6 +16584,7 @@ def validate_visual_depth_runtime():
     """Validate generated visual depth runtime readiness."""
     manifest = visual_depth_runtime_manifest()
     replay = replay_visual_depth_runtime()
+    design_replay_matrix = visual_design_ide_runtime_replay_matrix()
     pipeline_replay_matrix = visual_runtime_pipeline_runtime_replay_matrix()
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
@@ -16517,6 +16597,7 @@ def validate_visual_depth_runtime():
         {"id": "visual_component_tests_ready", "ok": manifest["visual_component_tests"]["ok"]},
         {"id": "visual_design_modules_ready", "ok": manifest["visual_design_modules"]["ok"]},
         {"id": "visual_design_tests_ready", "ok": manifest["visual_design_tests"]["ok"]},
+        {"id": "visual_design_ide_runtime_replay_matrix_ready", "ok": design_replay_matrix["ok"] and not design_replay_matrix["side_effects"]},
         {"id": "visual_runtime_pipeline_modules_ready", "ok": manifest["visual_runtime_pipeline_modules"]["ok"]},
         {"id": "visual_runtime_pipeline_tests_ready", "ok": manifest["visual_runtime_pipeline_tests"]["ok"]},
         {"id": "visual_runtime_pipeline_runtime_replay_matrix_ready", "ok": pipeline_replay_matrix["ok"] and not pipeline_replay_matrix["side_effects"]},
@@ -16529,6 +16610,7 @@ def validate_visual_depth_runtime():
         "checks": checks,
         "manifest": manifest,
         "replay": replay,
+        "design_replay_matrix": design_replay_matrix,
         "pipeline_replay_matrix": pipeline_replay_matrix,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -60675,6 +60757,69 @@ def cross_target_visual_readiness_contract():
     }}
 
 
+def visual_design_ide_replay_matrix():
+    """Replay generated visual design IDE modules as one authoring release gate."""
+    visual_design_module_artifacts = (
+        {{"module": "style_author_module", "surface": "style_authoring", "path": "app/visual_design_ide_modules/style_author_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
+        {{"module": "timeline_author_module", "surface": "timeline_authoring", "path": "app/visual_design_ide_modules/timeline_author_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
+        {{"module": "effect_stack_module", "surface": "effect_stack", "path": "app/visual_design_ide_modules/effect_stack_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
+        {{"module": "scene_author_module", "surface": "scene_authoring", "path": "app/visual_design_ide_modules/scene_author_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
+        {{"module": "asset_import_module", "surface": "asset_import", "path": "app/visual_design_ide_modules/asset_import_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
+        {{"module": "runtime_package_module", "surface": "runtime_package", "path": "app/visual_design_ide_modules/runtime_package_module.py", "exports": ("module_contract", "visual_surface_manifest", "run_visual_operation", "runtime_context", "smoke_test"), "ok": True}},
+    )
+    visual_design_test_artifacts = tuple(
+        {{"module": item["module"], "surface": item["surface"], "path": item["path"].replace("app/visual_design_ide_modules/", "app/visual_design_ide_module_tests/test_"), "exports": ("load_visual_design_ide_module", "test_visual_design_ide_module_contract", "test_visual_design_ide_module_smoke", "smoke_test"), "ok": item["ok"]}}
+        for item in visual_design_module_artifacts
+    )
+    tests_by_module = {{item["module"]: item for item in visual_design_test_artifacts}}
+    operations_by_surface = {{
+        "style_authoring": cross_target_author_style_operation(),
+        "timeline_authoring": cross_target_author_timeline_operation(),
+        "effect_stack": cross_target_validate_effect_stack_operation(),
+        "scene_authoring": cross_target_author_scene_operation(),
+        "asset_import": cross_target_import_visual_asset_operation(),
+        "runtime_package": cross_target_visual_runtime_package_contract(),
+    }}
+    required_pipeline_by_surface = {{
+        "style_authoring": {{"inspect_effective_value", "publish_effective_value"}},
+        "timeline_authoring": {{"scrub_preview", "export_runtime_timeline"}},
+        "effect_stack": {{"validate_budget", "compile_fallback"}},
+        "scene_authoring": {{"assign_material", "validate_scene"}},
+        "asset_import": {{"write_asset_manifest", "generate_fallback_thumbnail"}},
+        "runtime_package": {{"target_artifacts_complete", "scene_materials_packaged"}},
+    }}
+    design_replays = tuple(
+        {{
+            "module": item["module"],
+            "surface": item["surface"],
+            "pipeline": tuple(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
+            "ok": item["ok"] and "run_visual_operation" in item["exports"] and item["module"] in tests_by_module and tests_by_module[item["module"]]["ok"] and "test_visual_design_ide_module_smoke" in tests_by_module[item["module"]]["exports"] and operations_by_surface[item["surface"]]["ok"] and required_pipeline_by_surface[item["surface"]] <= set(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
+            "exports": item["exports"],
+            "test_exports": tests_by_module[item["module"]]["exports"],
+        }}
+        for item in visual_design_module_artifacts
+    )
+    designer_transaction = cross_target_visual_designer_transaction_replay_contract()
+    lifecycle_replay = cross_target_visual_lifecycle_replay_contract()
+    checks = (
+        {{"id": "visual_design_ide_modules_replay", "ok": len(design_replays) == 6 and all(item["ok"] for item in design_replays), "evidence": design_replays}},
+        {{"id": "visual_design_ide_surface_coverage", "ok": {{"style_authoring", "timeline_authoring", "effect_stack", "scene_authoring", "asset_import", "runtime_package"}} == {{item["surface"] for item in design_replays}} and all(item["pipeline"] for item in design_replays), "evidence": tuple((item["surface"], item["pipeline"]) for item in design_replays)}},
+        {{"id": "visual_design_ide_runtime_alignment", "ok": designer_transaction["ok"] and lifecycle_replay["ok"] and {{"author_style_override", "author_timeline", "validate_effect_stack", "author_scene_graph", "import_assets_and_preview", "hit_test_and_transform", "runtime_replay"}} <= {{item["phase"] for item in designer_transaction["replay"]}} and {{"validate_style_tokens", "export_timeline_runtime", "assign_effect_fallbacks", "validate_scene_materials", "import_assets_and_diff_preview", "runtime_and_designer_replay"}} <= {{item["phase"] for item in lifecycle_replay["replay"]}}, "evidence": {{"designer_transaction": designer_transaction, "lifecycle_replay": lifecycle_replay}}}},
+        {{"id": "visual_design_ide_replays_side_effect_free", "ok": all(not operation.get("side_effects", ()) for operation in operations_by_surface.values()) and not designer_transaction["side_effects"] and not lifecycle_replay["side_effects"], "evidence": {{"operations": tuple(operation.get("side_effects", ()) for operation in operations_by_surface.values()), "designer_transaction": designer_transaction["side_effects"], "lifecycle_replay": lifecycle_replay["side_effects"]}}}},
+    )
+    return {{
+        "format": "appgen.generated-visual-design-ide-replay-matrix.v1",
+        "ok": all(check["ok"] for check in checks),
+        "design_replays": design_replays,
+        "designer_transaction": designer_transaction,
+        "lifecycle_replay": lifecycle_replay,
+        "checks": checks,
+        "guards": ("design_modules_before_runtime_claim", "design_tests_before_release_claim", "designer_transaction_aligned", "side_effect_free_authoring"),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def visual_runtime_pipeline_replay_matrix():
     """Replay generated visual runtime pipeline modules as one release gate."""
     visual_runtime_pipeline_artifacts = (
@@ -60777,6 +60922,7 @@ def cross_target_visual_depth_workbench():
         {{"module": item["module"], "surface": item["surface"], "path": item["path"].replace("app/visual_design_ide_modules/", "app/visual_design_ide_module_tests/test_"), "exports": ("load_visual_design_ide_module", "test_visual_design_ide_module_contract", "test_visual_design_ide_module_smoke", "smoke_test"), "ok": item["ok"]}}
         for item in visual_design_module_artifacts
     )
+    visual_design_replay = visual_design_ide_replay_matrix()
     visual_runtime_pipeline_artifacts = (
         {{"module": "style_resolver_module", "surface": "style_resolution", "path": "app/visual_runtime_pipeline_modules/style_resolver_module.py", "exports": ("module_contract", "visual_runtime_pipeline_manifest", "run_runtime_pipeline", "runtime_context", "asset_context", "smoke_test"), "ok": True}},
         {{"module": "timeline_player_module", "surface": "timeline_playback", "path": "app/visual_runtime_pipeline_modules/timeline_player_module.py", "exports": ("module_contract", "visual_runtime_pipeline_manifest", "run_runtime_pipeline", "runtime_context", "asset_context", "smoke_test"), "ok": True}},
@@ -60829,6 +60975,7 @@ def cross_target_visual_depth_workbench():
         {{"id": "visual_component_module_tests", "ok": len(visual_component_test_artifacts) == len(visual_component_specs["specs"]) and {{item["component"] for item in visual_component_test_artifacts}} == {{spec["component"] for spec in visual_component_specs["specs"]}} and all("test_visual_component_smoke" in item["exports"] for item in visual_component_test_artifacts), "evidence": visual_component_test_artifacts}},
         {{"id": "visual_design_modules", "ok": len(visual_design_module_artifacts) >= 6 and {{"style_authoring", "timeline_authoring", "effect_stack", "scene_authoring", "asset_import", "runtime_package"}} <= {{item["surface"] for item in visual_design_module_artifacts}} and all(item["ok"] and "run_visual_operation" in item["exports"] for item in visual_design_module_artifacts), "evidence": visual_design_module_artifacts}},
         {{"id": "visual_design_module_tests", "ok": len(visual_design_test_artifacts) == len(visual_design_module_artifacts) and {{item["surface"] for item in visual_design_test_artifacts}} == {{item["surface"] for item in visual_design_module_artifacts}} and all("test_visual_design_ide_module_smoke" in item["exports"] for item in visual_design_test_artifacts), "evidence": visual_design_test_artifacts}},
+        {{"id": "visual_design_ide_replay_matrix", "ok": visual_design_replay["ok"] and {{"visual_design_ide_modules_replay", "visual_design_ide_surface_coverage", "visual_design_ide_runtime_alignment", "visual_design_ide_replays_side_effect_free"}} <= {{check["id"] for check in visual_design_replay["checks"] if check["ok"]}} and not visual_design_replay["side_effects"], "evidence": visual_design_replay}},
         {{"id": "visual_runtime_pipeline_modules", "ok": len(visual_runtime_pipeline_artifacts) == 5 and {{"style_resolution", "timeline_playback", "effect_fallback", "scene_rendering", "asset_resolution"}} <= {{item["surface"] for item in visual_runtime_pipeline_artifacts}} and all(item["ok"] and "run_runtime_pipeline" in item["exports"] for item in visual_runtime_pipeline_artifacts), "evidence": visual_runtime_pipeline_artifacts}},
         {{"id": "visual_runtime_pipeline_module_tests", "ok": len(visual_runtime_pipeline_test_artifacts) == len(visual_runtime_pipeline_artifacts) and {{item["surface"] for item in visual_runtime_pipeline_test_artifacts}} == {{item["surface"] for item in visual_runtime_pipeline_artifacts}} and all("test_visual_runtime_pipeline_module_smoke" in item["exports"] for item in visual_runtime_pipeline_test_artifacts), "evidence": visual_runtime_pipeline_test_artifacts}},
         {{"id": "visual_runtime_pipeline_replay_matrix", "ok": visual_runtime_pipeline_replay["ok"] and {{"visual_runtime_pipeline_modules_replay", "visual_runtime_pipeline_surface_coverage", "visual_runtime_pipeline_runtime_alignment", "visual_runtime_pipeline_replays_side_effect_free"}} <= {{check["id"] for check in visual_runtime_pipeline_replay["checks"] if check["ok"]}} and not visual_runtime_pipeline_replay["side_effects"], "evidence": visual_runtime_pipeline_replay}},
@@ -60836,7 +60983,7 @@ def cross_target_visual_depth_workbench():
         {{"id": "visual_readiness_contract", "ok": readiness["ok"] and {{"style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "hit_test_component_ready", "runtime_designer_replay_ready", "runtime_package_ready", "operation_surface_ready", "phase_order_ready"}} <= set(check["id"] for check in readiness["checks"] if check["ok"]) and not readiness["side_effects"], "evidence": readiness}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "style_inheritance_trace": style_inheritance_trace, "timeline_interpolation": timeline_interpolation, "effect_fallback_matrix": effect_fallback_matrix, "scene_transform_gizmos": scene_transform_gizmos, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_replay": lifecycle_replay, "runtime_package": runtime_package, "visual_component_specs": visual_component_specs, "visual_component_module_artifacts": visual_component_module_artifacts, "visual_component_test_artifacts": visual_component_test_artifacts, "visual_design_module_artifacts": visual_design_module_artifacts, "visual_design_test_artifacts": visual_design_test_artifacts, "visual_runtime_pipeline_artifacts": visual_runtime_pipeline_artifacts, "visual_runtime_pipeline_test_artifacts": visual_runtime_pipeline_test_artifacts, "visual_runtime_pipeline_replay": visual_runtime_pipeline_replay, "actionable_operations": actionable_operations, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "style_inheritance_trace": style_inheritance_trace, "timeline_interpolation": timeline_interpolation, "effect_fallback_matrix": effect_fallback_matrix, "scene_transform_gizmos": scene_transform_gizmos, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_replay": lifecycle_replay, "runtime_package": runtime_package, "visual_component_specs": visual_component_specs, "visual_component_module_artifacts": visual_component_module_artifacts, "visual_component_test_artifacts": visual_component_test_artifacts, "visual_design_module_artifacts": visual_design_module_artifacts, "visual_design_test_artifacts": visual_design_test_artifacts, "visual_design_replay": visual_design_replay, "visual_runtime_pipeline_artifacts": visual_runtime_pipeline_artifacts, "visual_runtime_pipeline_test_artifacts": visual_runtime_pipeline_test_artifacts, "visual_runtime_pipeline_replay": visual_runtime_pipeline_replay, "actionable_operations": actionable_operations, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def snap_to_grid(value, minimum=0):
@@ -61478,7 +61625,7 @@ def platform_parity_lifecycle_replay_contract():
         {{"phase": "publish_data_services", "ok": data_tooling["ok"] and data_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["publish_transaction_replay"]["ok"] and data_tooling["ide_scenario"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "data_tooling_ide_scenario"}} <= data_tooling_passing_checks and {{"schema_rehearsal_before_dataset_publish", "service_contract_tests_before_resource_publish", "offline_integrity_before_runtime_replay"}} <= set(data_tooling["publish_transaction_replay"]["guards"]), "evidence": {{"checks": tuple(check["id"] for check in data_tooling["checks"]), "passing_checks": tuple(sorted(data_tooling_passing_checks)), "publish_state": data_tooling["publish_transaction_replay"]["final_state"], "scenario_state": data_tooling["ide_scenario"]["final_state"], "readiness_phases": tuple(phase["phase"] for phase in data_readiness["phases"])}}}},
         {{"phase": "install_component_packages", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "actionable_package_operations", "marketplace_publication", "package_manager_modules", "package_manager_module_replay_matrix"}} <= package_manager_passing_checks and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]), "evidence": {{"manager_checks": tuple(check["id"] for check in package_manager["checks"]), "manager_passing_checks": tuple(sorted(package_manager_passing_checks)), "packages": package_lifecycle["packages"], "readiness_phases": tuple(phase["phase"] for phase in package_readiness["phases"])}}}},
         {{"phase": "validate_device_capabilities", "ok": mobile["ok"] and mobile_readiness["ok"] and mobile_lifecycle["ok"] and "phase_order_ready" in {{check["id"] for check in mobile_readiness["checks"] if check["ok"]}} and {{"capability_lifecycle_replay", "device_scenario_matrix", "device_component_modules", "device_component_module_tests"}} <= mobile_passing_checks and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"], "evidence": {{"apis": tuple(adapter["api"] for adapter in mobile["contract"]["component_adapters"]["adapters"]), "passing_checks": tuple(sorted(mobile_passing_checks)), "lifecycle_phases": mobile_lifecycle_phases, "readiness_phases": tuple(phase["phase"] for phase in mobile_readiness["phases"])}}}},
-        {{"phase": "validate_visual_depth", "ok": visual["ok"] and visual_readiness["ok"] and visual_lifecycle["ok"] and "phase_order_ready" in {{check["id"] for check in visual_readiness["checks"] if check["ok"]}} and {{"visual_runtime_replay", "visual_lifecycle_replay", "visual_component_modules", "visual_design_modules", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_replay_matrix"}} <= visual_passing_checks and "hit_tests_before_designer_replay" in visual_lifecycle["guards"], "evidence": {{"checks": tuple(check["id"] for check in visual["checks"]), "passing_checks": tuple(sorted(visual_passing_checks)), "lifecycle_phases": tuple(item["phase"] for item in visual_lifecycle["replay"]), "readiness_phases": tuple(phase["phase"] for phase in visual_readiness["phases"])}}}},
+        {{"phase": "validate_visual_depth", "ok": visual["ok"] and visual_readiness["ok"] and visual_lifecycle["ok"] and "phase_order_ready" in {{check["id"] for check in visual_readiness["checks"] if check["ok"]}} and {{"visual_runtime_replay", "visual_lifecycle_replay", "visual_component_modules", "visual_design_modules", "visual_design_ide_replay_matrix", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_replay_matrix"}} <= visual_passing_checks and "hit_tests_before_designer_replay" in visual_lifecycle["guards"], "evidence": {{"checks": tuple(check["id"] for check in visual["checks"]), "passing_checks": tuple(sorted(visual_passing_checks)), "lifecycle_phases": tuple(item["phase"] for item in visual_lifecycle["replay"]), "readiness_phases": tuple(phase["phase"] for phase in visual_readiness["phases"])}}}},
     )
     phase_names = tuple(item["phase"] for item in replay)
     checks = (
@@ -61545,7 +61692,7 @@ def platform_parity_requirement_audit_contract():
         {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "ide_scenario_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and data_tooling["ide_scenario"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_ide_scenario", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests", "data_tooling_module_replay_matrix"}} <= {{check["id"] for check in data_tooling["checks"] if check["ok"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_ide_scenario", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests", "data_tooling_module_replay_matrix", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},
         {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "marketplace_publication_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "marketplace_publication", "package_manager_modules", "package_manager_module_tests", "package_manager_module_replay_matrix"}} <= {{check["id"] for check in package_manager["checks"] if check["ok"]}}, "deep_checks": ("trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "marketplace_publication_ready", "marketplace_publication", "package_manager_modules", "package_manager_module_tests", "package_manager_module_replay_matrix", "phase_order_ready"), "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness}}}},
         {{"id": "device_api_component_coverage", "ok": mobile["ok"] and mobile_readiness["ok"] and mobile_lifecycle["ok"] and {{"privacy_permission_ready", "simulator_ready", "bridge_component_ready", "fallback_lifecycle_ready", "runtime_delivery_ready", "device_scenarios_ready", "designer_capability_ready", "phase_order_ready"}} <= {{check["id"] for check in mobile_readiness["checks"] if check["ok"]}} and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"] and {{"device_scenario_matrix", "device_component_modules", "device_component_module_tests"}} <= {{check["id"] for check in mobile["checks"] if check["ok"]}}, "deep_checks": ("privacy_permission_ready", "bridge_component_ready", "runtime_delivery_ready", "device_scenarios_ready", "designer_capability_ready", "device_scenario_matrix", "device_component_modules", "device_component_module_tests", "phase_order_ready"), "evidence": {{"workbench": mobile, "lifecycle": mobile_lifecycle, "readiness": mobile_readiness}}}},
-        {{"id": "cross_target_visual_depth", "ok": visual["ok"] and visual_readiness["ok"] and visual_lifecycle["ok"] and {{"style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "hit_test_component_ready", "runtime_designer_replay_ready", "runtime_package_ready", "phase_order_ready"}} <= {{check["id"] for check in visual_readiness["checks"] if check["ok"]}} and {{"visual_runtime_replay", "visual_lifecycle_replay", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_module_tests", "visual_runtime_pipeline_replay_matrix"}} <= {{check["id"] for check in visual["checks"] if check["ok"]}}, "deep_checks": ("style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "runtime_designer_replay_ready", "runtime_package_ready", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_module_tests", "visual_runtime_pipeline_replay_matrix", "phase_order_ready"), "evidence": {{"workbench": visual, "lifecycle": visual_lifecycle, "readiness": visual_readiness}}}},
+        {{"id": "cross_target_visual_depth", "ok": visual["ok"] and visual_readiness["ok"] and visual_lifecycle["ok"] and {{"style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "hit_test_component_ready", "runtime_designer_replay_ready", "runtime_package_ready", "phase_order_ready"}} <= {{check["id"] for check in visual_readiness["checks"] if check["ok"]}} and {{"visual_runtime_replay", "visual_lifecycle_replay", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests", "visual_design_ide_replay_matrix", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_module_tests", "visual_runtime_pipeline_replay_matrix"}} <= {{check["id"] for check in visual["checks"] if check["ok"]}}, "deep_checks": ("style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "runtime_designer_replay_ready", "runtime_package_ready", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests", "visual_design_ide_replay_matrix", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_module_tests", "visual_runtime_pipeline_replay_matrix", "phase_order_ready"), "evidence": {{"workbench": visual, "lifecycle": visual_lifecycle, "readiness": visual_readiness}}}},
     )
     deep_check_coverage = tuple(
         {{

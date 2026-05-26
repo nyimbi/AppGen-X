@@ -15370,6 +15370,7 @@ def cross_target_visual_depth_workbench() -> dict:
     visual_component_test_artifacts = visual_component_test_file_manifest()
     visual_design_module_artifacts = visual_design_ide_module_file_manifest()
     visual_design_test_artifacts = visual_design_ide_test_module_file_manifest()
+    visual_design_replay = visual_design_ide_replay_matrix()
     visual_runtime_pipeline_artifacts = visual_runtime_pipeline_module_file_manifest()
     visual_runtime_pipeline_test_artifacts = visual_runtime_pipeline_test_module_file_manifest()
     visual_runtime_pipeline_replay = visual_runtime_pipeline_replay_matrix()
@@ -15635,6 +15636,19 @@ def cross_target_visual_depth_workbench() -> dict:
             "evidence": visual_design_test_artifacts,
         },
         {
+            "id": "visual_design_ide_replay_matrix",
+            "ok": visual_design_replay["ok"]
+            and {
+                "visual_design_ide_modules_replay",
+                "visual_design_ide_surface_coverage",
+                "visual_design_ide_runtime_alignment",
+                "visual_design_ide_replays_side_effect_free",
+            }
+            <= {check["id"] for check in visual_design_replay["checks"] if check["ok"]}
+            and not visual_design_replay["side_effects"],
+            "evidence": visual_design_replay,
+        },
+        {
             "id": "visual_runtime_pipeline_modules",
             "ok": len(visual_runtime_pipeline_artifacts) == 5
             and {
@@ -15741,6 +15755,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "visual_component_test_artifacts": visual_component_test_artifacts,
         "visual_design_module_artifacts": visual_design_module_artifacts,
         "visual_design_test_artifacts": visual_design_test_artifacts,
+        "visual_design_replay": visual_design_replay,
         "visual_runtime_pipeline_artifacts": visual_runtime_pipeline_artifacts,
         "visual_runtime_pipeline_test_artifacts": visual_runtime_pipeline_test_artifacts,
         "visual_runtime_pipeline_replay": visual_runtime_pipeline_replay,
@@ -15944,6 +15959,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "visual_lifecycle_replay",
                 "visual_component_modules",
                 "visual_design_modules",
+                "visual_design_ide_replay_matrix",
                 "visual_runtime_pipeline_modules",
                 "visual_runtime_pipeline_replay_matrix",
             } <= visual_passing_checks
@@ -16412,6 +16428,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "visual_component_module_tests",
                 "visual_design_modules",
                 "visual_design_module_tests",
+                "visual_design_ide_replay_matrix",
                 "visual_runtime_pipeline_modules",
                 "visual_runtime_pipeline_module_tests",
                 "visual_runtime_pipeline_replay_matrix",
@@ -16427,6 +16444,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "visual_component_module_tests",
                 "visual_design_modules",
                 "visual_design_module_tests",
+                "visual_design_ide_replay_matrix",
                 "visual_runtime_pipeline_modules",
                 "visual_runtime_pipeline_module_tests",
                 "visual_runtime_pipeline_replay_matrix",
@@ -18855,6 +18873,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_design_ide_replay_matrix",
         "visual_runtime_pipeline_modules",
         "visual_runtime_pipeline_module_tests",
         "visual_runtime_pipeline_replay_matrix",
@@ -22684,6 +22703,108 @@ def visual_design_ide_test_module_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def visual_design_ide_replay_matrix() -> dict:
+    """Replay generated visual design IDE modules as one authoring release gate."""
+    module_artifacts = visual_design_ide_module_file_manifest()
+    test_artifacts = visual_design_ide_test_module_file_manifest()
+    tests_by_module = {item["module"]: item for item in test_artifacts}
+    operations_by_surface = {
+        "style_authoring": cross_target_author_style_operation(),
+        "timeline_authoring": cross_target_author_timeline_operation(),
+        "effect_stack": cross_target_validate_effect_stack_operation(),
+        "scene_authoring": cross_target_author_scene_operation(),
+        "asset_import": cross_target_import_visual_asset_operation(),
+        "runtime_package": cross_target_visual_runtime_package_contract(),
+    }
+    required_pipeline_by_surface = {
+        "style_authoring": {"inspect_effective_value", "publish_effective_value"},
+        "timeline_authoring": {"scrub_preview", "export_runtime_timeline"},
+        "effect_stack": {"validate_budget", "compile_fallback"},
+        "scene_authoring": {"assign_material", "validate_scene"},
+        "asset_import": {"write_asset_manifest", "generate_fallback_thumbnail"},
+        "runtime_package": {"target_artifacts_complete", "scene_materials_packaged"},
+    }
+    design_replays = tuple(
+        {
+            "module": item["module"],
+            "surface": item["surface"],
+            "pipeline": tuple(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
+            "ok": item["ok"]
+            and "run_visual_operation" in item["exports"]
+            and item["module"] in tests_by_module
+            and tests_by_module[item["module"]]["ok"]
+            and "test_visual_design_ide_module_smoke" in tests_by_module[item["module"]]["exports"]
+            and operations_by_surface[item["surface"]]["ok"]
+            and required_pipeline_by_surface[item["surface"]]
+            <= set(operations_by_surface[item["surface"]].get("pipeline", operations_by_surface[item["surface"]].get("guards", ()))),
+            "exports": item["exports"],
+            "test_exports": tests_by_module.get(item["module"], {}).get("exports", ()),
+        }
+        for item in module_artifacts
+    )
+    designer_transaction = cross_target_visual_designer_transaction_replay_contract()
+    lifecycle_replay = cross_target_visual_lifecycle_replay_contract()
+    required_surfaces = {
+        "style_authoring",
+        "timeline_authoring",
+        "effect_stack",
+        "scene_authoring",
+        "asset_import",
+        "runtime_package",
+    }
+    checks = (
+        {
+            "id": "visual_design_ide_modules_replay",
+            "ok": len(design_replays) == 6 and all(item["ok"] for item in design_replays),
+            "evidence": design_replays,
+        },
+        {
+            "id": "visual_design_ide_surface_coverage",
+            "ok": required_surfaces == {item["surface"] for item in design_replays}
+            and all(item["pipeline"] for item in design_replays),
+            "evidence": tuple((item["surface"], item["pipeline"]) for item in design_replays),
+        },
+        {
+            "id": "visual_design_ide_runtime_alignment",
+            "ok": designer_transaction["ok"]
+            and lifecycle_replay["ok"]
+            and {"author_style_override", "author_timeline", "validate_effect_stack", "author_scene_graph", "import_assets_and_preview", "hit_test_and_transform", "runtime_replay"}
+            <= {item["phase"] for item in designer_transaction["replay"]}
+            and {"validate_style_tokens", "export_timeline_runtime", "assign_effect_fallbacks", "validate_scene_materials", "import_assets_and_diff_preview", "runtime_and_designer_replay"}
+            <= {item["phase"] for item in lifecycle_replay["replay"]},
+            "evidence": {"designer_transaction": designer_transaction, "lifecycle_replay": lifecycle_replay},
+        },
+        {
+            "id": "visual_design_ide_replays_side_effect_free",
+            "ok": all(not operation.get("side_effects", ()) for operation in operations_by_surface.values())
+            and not designer_transaction["side_effects"]
+            and not lifecycle_replay["side_effects"],
+            "evidence": {
+                "operations": tuple(operation.get("side_effects", ()) for operation in operations_by_surface.values()),
+                "designer_transaction": designer_transaction["side_effects"],
+                "lifecycle_replay": lifecycle_replay["side_effects"],
+            },
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.visual-design-ide-replay-matrix.v1",
+        "ok": ok,
+        "design_replays": design_replays,
+        "designer_transaction": designer_transaction,
+        "lifecycle_replay": lifecycle_replay,
+        "checks": checks,
+        "guards": (
+            "design_modules_before_runtime_claim",
+            "design_tests_before_release_claim",
+            "designer_transaction_aligned",
+            "side_effect_free_authoring",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def visual_runtime_pipeline_module_file_manifest() -> tuple[dict, ...]:
     """Return visual runtime pipeline modules expected in generated apps."""
     modules = (
@@ -25413,6 +25534,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "visual_component_tests_ready",
         "visual_design_modules_ready",
         "visual_design_tests_ready",
+        "visual_design_ide_runtime_replay_matrix_ready",
         "visual_runtime_pipeline_modules_ready",
         "visual_runtime_pipeline_tests_ready",
         "visual_runtime_pipeline_runtime_replay_matrix_ready",
