@@ -1,7 +1,10 @@
+import pytest
+
 from pyAppGen.pbc import WMS_CORE_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
+from pyAppGen.pbc import wms_core_build_workbench_view
 from pyAppGen.pbc import wms_core_configure_runtime
 from pyAppGen.pbc import wms_core_confirm_pack
 from pyAppGen.pbc import wms_core_confirm_putaway
@@ -15,9 +18,11 @@ from pyAppGen.pbc import wms_core_receive_inbound
 from pyAppGen.pbc import wms_core_register_bin
 from pyAppGen.pbc import wms_core_register_rule
 from pyAppGen.pbc import wms_core_register_warehouse
+from pyAppGen.pbc import wms_core_render_workbench
 from pyAppGen.pbc import wms_core_runtime_capabilities
 from pyAppGen.pbc import wms_core_runtime_smoke
 from pyAppGen.pbc import wms_core_set_parameter
+from pyAppGen.pbc import wms_core_ui_contract
 
 
 def test_wms_core_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -38,6 +43,8 @@ def test_wms_core_runtime_executes_standard_and_advanced_capabilities() -> None:
     contract = pbc_implementation_contract("wms_core")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert "WmsConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(WMS_CORE_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("wms_core",))["ok"] is True
     assert pbc_implemented_capability_audit(("wms_core",))["ok"] is True
@@ -147,3 +154,57 @@ def test_wms_core_runtime_applies_rules_parameters_and_configuration() -> None:
     state = shipped["state"]
     assert state["outbox"][-1]["idempotency_key"] == "wms_core:OrderShipped:wms_evt_000010"
     assert shipped["shipment"]["status"] == "shipped"
+
+    workbench = wms_core_build_workbench_view(state, tenant="tenant_ops")
+    assert workbench["warehouse_count"] == 1
+    assert workbench["bin_count"] == 1
+    assert workbench["picked_count"] == 1
+    assert workbench["packed_count"] == 1
+    assert workbench["shipment_count"] == 1
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 3
+
+    ui_contract = wms_core_ui_contract()
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert "bin_capacity_tolerance" in ui_contract["parameter_editor"]["numeric_parameters"]
+    assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    rendered = wms_core_render_workbench(
+        state,
+        tenant="tenant_ops",
+        principal_permissions=(
+            "wms_core.master",
+            "wms_core.receive",
+            "wms_core.putaway",
+            "wms_core.pick",
+            "wms_core.pack",
+            "wms_core.ship",
+            "wms_core.edge",
+            "wms_core.audit",
+            "wms_core.configure",
+        ),
+    )
+    assert rendered["ok"] is True
+    assert rendered["configuration_bound"] is True
+    assert rendered["event_outbox_count"] == 10
+    assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
+    assert not rendered["locked_actions"]
+
+
+def test_wms_core_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = wms_core_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        wms_core_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.wms.events",
+                "retry_limit": 3,
+                "timezone": "UTC",
+                "label_format": "zpl",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported WMS Core parameter"):
+        wms_core_set_parameter(state, "stream_engine", "hidden_picker")

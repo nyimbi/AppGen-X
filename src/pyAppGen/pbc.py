@@ -5204,6 +5204,8 @@ from .pbcs.inventory_positioning import inventory_positioning_set_parameter  # n
 from .pbcs.inventory_positioning import inventory_positioning_ui_contract  # noqa: E402,F401
 from .pbcs.wms_core import WMS_CORE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.wms_core import WMS_CORE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.wms_core import WMS_CORE_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_build_workbench_view  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_configure_runtime  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_confirm_pack  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_confirm_putaway  # noqa: E402,F401
@@ -5217,9 +5219,11 @@ from .pbcs.wms_core import wms_core_receive_inbound  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_register_bin  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_register_rule  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_register_warehouse  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_render_workbench  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_runtime_capabilities  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_runtime_smoke  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_set_parameter  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_ui_contract  # noqa: E402,F401
 from .pbcs.procurement_sourcing import PROCUREMENT_SOURCING_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.procurement_sourcing import PROCUREMENT_SOURCING_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_approve_requisition  # noqa: E402,F401

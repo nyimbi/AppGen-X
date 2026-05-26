@@ -274,16 +274,43 @@ def wms_core_empty_state() -> dict:
 
 
 def wms_core_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("WMS Core supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("WMS Core requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def wms_core_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "bin_capacity_tolerance",
+        "pick_wave_size",
+        "partial_pick_threshold",
+        "dock_queue_warning",
+        "labor_utilization_target",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported WMS Core parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def wms_core_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required WMS Core rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("WMS Core rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -511,7 +538,20 @@ def wms_core_verify_formal_invariants(state: dict) -> dict:
 
 def wms_core_build_workbench_view(state: dict, *, tenant: str) -> dict:
     warehouses = tuple(item for item in state["warehouses"].values() if item["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "warehouse_count": len(warehouses), "bin_count": len(tuple(item for item in state["bins"].values() if item["tenant"] == tenant)), "putaway_count": len(tuple(item for item in state["putaway_tasks"].values() if item["tenant"] == tenant)), "wave_count": len(tuple(item for item in state["waves"].values() if item["tenant"] == tenant)), "picked_count": len(tuple(item for item in state["picks"].values() if item["tenant"] == tenant and item["status"] == "picked")), "packed_count": len(tuple(item for item in state["pack_tasks"].values() if item["tenant"] == tenant and item["status"] == "packed")), "shipment_count": len(tuple(item for item in state["shipments"].values() if item["tenant"] == tenant))}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "warehouse_count": len(warehouses),
+        "bin_count": len(tuple(item for item in state["bins"].values() if item["tenant"] == tenant)),
+        "putaway_count": len(tuple(item for item in state["putaway_tasks"].values() if item["tenant"] == tenant)),
+        "wave_count": len(tuple(item for item in state["waves"].values() if item["tenant"] == tenant)),
+        "picked_count": len(tuple(item for item in state["picks"].values() if item["tenant"] == tenant and item["status"] == "picked")),
+        "packed_count": len(tuple(item for item in state["pack_tasks"].values() if item["tenant"] == tenant and item["status"] == "packed")),
+        "shipment_count": len(tuple(item for item in state["shipments"].values() if item["tenant"] == tenant)),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def wms_core_register_governed_model(name: str, metadata: dict) -> dict:

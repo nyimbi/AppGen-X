@@ -124,6 +124,10 @@ and shipping.
 ## Runtime Completeness Contract
 
 The runtime must prove that rules, parameters, and configuration are executable
-and influence task decisions, that WMS-owned state stays inside the package
-boundary, that AppGen-X outbox events are idempotent, and that every standard
-and advanced capability has testable release evidence.
+and influence task decisions, that runtime configuration rejects unsupported
+backends while exposing only the AppGen-X event contract, that package-local UI
+fragments cover master data, inbound, putaway, picking, packing, shipping,
+exceptions, labor, edge-device replay, rules, parameters, and configuration,
+that WMS-owned state stays inside the package boundary, that AppGen-X outbox
+events are idempotent, and that every standard and advanced capability has
+testable release evidence.

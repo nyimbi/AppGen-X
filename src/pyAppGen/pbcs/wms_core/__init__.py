@@ -3,6 +3,7 @@
 from ..source_contract import source_pbc_package_contract
 from .runtime import WMS_CORE_RUNTIME_CAPABILITY_KEYS
 from .runtime import WMS_CORE_STANDARD_FEATURE_KEYS
+from .runtime import wms_core_build_workbench_view
 from .runtime import wms_core_configure_runtime
 from .runtime import wms_core_confirm_pack
 from .runtime import wms_core_confirm_putaway
@@ -19,6 +20,9 @@ from .runtime import wms_core_register_warehouse
 from .runtime import wms_core_runtime_capabilities
 from .runtime import wms_core_runtime_smoke
 from .runtime import wms_core_set_parameter
+from .ui import WMS_CORE_UI_FRAGMENT_KEYS
+from .ui import wms_core_render_workbench
+from .ui import wms_core_ui_contract
 
 PBC_KEY = "wms_core"
 
@@ -30,4 +34,5 @@ def implementation_contract() -> dict:
         **contract,
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
+        "ui_contract": wms_core_ui_contract(),
     }
