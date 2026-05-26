@@ -3057,8 +3057,25 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_runtime_pipeline_modules_replay",
         "visual_runtime_pipeline_surface_coverage",
         "visual_runtime_pipeline_runtime_alignment",
+        "visual_runtime_pipeline_operation_step_coverage",
+        "visual_runtime_pipeline_validation_step_coverage",
         "visual_runtime_pipeline_replays_side_effect_free",
     } <= {check["id"] for check in visual_depth["visual_runtime_pipeline_replay"]["checks"] if check["ok"]}
+    assert all(
+        set(item["pipeline"]) <= set(item["operation_steps"])
+        for item in visual_pipeline_replay["pipeline_replays"]
+    )
+    assert all(
+        {
+            "runtime_pipeline_manifest_ok",
+            "pipeline_operation_ok",
+            "runtime_context_ok",
+            "asset_context_ok",
+            "side_effects_disallowed",
+        }
+        <= set(item["validation_steps"])
+        for item in visual_pipeline_replay["pipeline_replays"]
+    )
     visual_readiness = cross_target_visual_readiness_contract()
     assert visual_readiness["format"] == "appgen.cross-target-visual-readiness-contract.v1"
     assert visual_readiness["ok"] is True
@@ -17201,6 +17218,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_visual_pipeline_replay["pipeline_replays"]) == 5
     assert generated_visual_depth["visual_runtime_pipeline_replay"]["ok"] is True
     assert {
+        "visual_runtime_pipeline_operation_step_coverage",
+        "visual_runtime_pipeline_validation_step_coverage",
+        "visual_runtime_pipeline_replays_side_effect_free",
+    } <= {check["id"] for check in generated_visual_pipeline_replay["checks"] if check["ok"]}
+    assert {
         "style_resolution",
         "timeline_playback",
         "effect_fallback",
@@ -17314,12 +17336,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert visual_runtime_pipeline_runtime_matrix["ok"] is True
     assert len(visual_runtime_pipeline_runtime_matrix["pipeline_replays"]) == 5
     assert "generated_pipeline_operation_contracts" in visual_runtime_pipeline_runtime_matrix["guards"]
+    assert "generated_pipeline_operation_steps_required" in visual_runtime_pipeline_runtime_matrix["guards"]
+    assert "generated_pipeline_validation_steps_required" in visual_runtime_pipeline_runtime_matrix["guards"]
     assert {
         "generated_visual_runtime_pipeline_operation_coverage",
+        "generated_visual_runtime_pipeline_operation_step_coverage",
+        "generated_visual_runtime_pipeline_validation_step_coverage",
         "generated_visual_runtime_pipeline_replays_side_effect_free",
     } <= {check["id"] for check in visual_runtime_pipeline_runtime_matrix["checks"] if check["ok"]}
     assert all(
         set(item["required_pipeline"]) <= set(item["pipeline"])
+        for item in visual_runtime_pipeline_runtime_matrix["pipeline_replays"]
+    )
+    assert all(
+        set(item["required_pipeline"]) <= set(item["operation_steps"])
+        for item in visual_runtime_pipeline_runtime_matrix["pipeline_replays"]
+    )
+    assert all(
+        {
+            "runtime_pipeline_manifest_ok",
+            "pipeline_operation_ok",
+            "runtime_context_ok",
+            "asset_context_ok",
+            "side_effects_disallowed",
+        }
+        <= set(item["validation_steps"])
         for item in visual_runtime_pipeline_runtime_matrix["pipeline_replays"]
     )
     assert {
@@ -17416,6 +17457,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         assert module.run_runtime_pipeline()["ok"] is True
         assert module.runtime_context()["ok"] is True
         assert module.asset_context()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
         assert module.smoke_test()["ok"] is True
     for item in visual_runtime_pipeline_test_manifest["tests"]:
         test_path = output_dir / item["path"].replace("app/", "")

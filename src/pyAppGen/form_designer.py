@@ -15757,6 +15757,8 @@ def cross_target_visual_depth_workbench() -> dict:
                 "visual_runtime_pipeline_modules_replay",
                 "visual_runtime_pipeline_surface_coverage",
                 "visual_runtime_pipeline_runtime_alignment",
+                "visual_runtime_pipeline_operation_step_coverage",
+                "visual_runtime_pipeline_validation_step_coverage",
                 "visual_runtime_pipeline_replays_side_effect_free",
             }
             <= {check["id"] for check in visual_runtime_pipeline_replay["checks"] if check["ok"]}
@@ -22927,6 +22929,8 @@ def visual_runtime_pipeline_module_file_manifest() -> tuple[dict, ...]:
         "run_runtime_pipeline",
         "runtime_context",
         "asset_context",
+        "operation_steps",
+        "validation_steps",
         "smoke_test",
     )
     return tuple(
@@ -22978,8 +22982,18 @@ def visual_runtime_pipeline_replay_matrix() -> dict:
             "module": item["module"],
             "surface": item["surface"],
             "pipeline": operation_by_surface[item["surface"]],
+            "operation_steps": operation_by_surface[item["surface"]],
+            "validation_steps": (
+                "runtime_pipeline_manifest_ok",
+                "pipeline_operation_ok",
+                "runtime_context_ok",
+                "asset_context_ok",
+                "side_effects_disallowed",
+            ),
             "ok": item["ok"]
             and "run_runtime_pipeline" in item["exports"]
+            and "operation_steps" in item["exports"]
+            and "validation_steps" in item["exports"]
             and item["module"] in tests_by_module
             and tests_by_module[item["module"]]["ok"]
             and "test_visual_runtime_pipeline_module_smoke" in tests_by_module[item["module"]]["exports"],
@@ -23027,6 +23041,26 @@ def visual_runtime_pipeline_replay_matrix() -> dict:
             },
         },
         {
+            "id": "visual_runtime_pipeline_operation_step_coverage",
+            "ok": all(set(item["pipeline"]) <= set(item["operation_steps"]) for item in pipeline_replays),
+            "evidence": tuple((item["surface"], item["operation_steps"]) for item in pipeline_replays),
+        },
+        {
+            "id": "visual_runtime_pipeline_validation_step_coverage",
+            "ok": all(
+                {
+                    "runtime_pipeline_manifest_ok",
+                    "pipeline_operation_ok",
+                    "runtime_context_ok",
+                    "asset_context_ok",
+                    "side_effects_disallowed",
+                }
+                <= set(item["validation_steps"])
+                for item in pipeline_replays
+            ),
+            "evidence": tuple((item["surface"], item["validation_steps"]) for item in pipeline_replays),
+        },
+        {
             "id": "visual_runtime_pipeline_replays_side_effect_free",
             "ok": not runtime_replay["side_effects"]
             and not lifecycle_replay["side_effects"]
@@ -23050,6 +23084,8 @@ def visual_runtime_pipeline_replay_matrix() -> dict:
         "guards": (
             "pipeline_modules_before_runtime_claim",
             "pipeline_tests_before_release_claim",
+            "pipeline_operation_steps_required",
+            "pipeline_validation_steps_required",
             "runtime_replay_aligned",
             "target_package_aligned",
             "side_effect_free_replay",
