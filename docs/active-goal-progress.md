@@ -903,6 +903,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   composition selection, implemented-capability audit, implementation release
   audit, `pbc_release_audit()`, DOM generation smoke audit, py-compile, and the
   restricted legacy-name diff scan.
+- `c6d0ddd` normalizes `personnel_identity` into the complete package surface:
+  package-local personnel identity UI/workbench contract, stricter executable
+  configuration and parameter validation, source contract wiring, central PBC
+  exports, focused personnel tests, and release-audit evidence. Verification
+  passed for personnel focused tests, the 69-test PBC regression slice, central
+  enterprise composition selection, implemented-capability audit,
+  implementation release audit, `pbc_release_audit()`, personnel generation
+  smoke audit, py-compile, and the restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
