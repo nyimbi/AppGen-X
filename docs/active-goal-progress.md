@@ -1255,7 +1255,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `fraud_anomaly_detection`, tying each package specification to runtime smoke,
   implementation contract, focused workflow/idempotency/dead-letter/boundary
   tests, full PBC generation/capability/implementation/catalog audits, and
-  restricted-name/event-contract checks. Commit: pending this slice.
+  restricted-name/event-contract checks. Commit: `ec23f6b`.
 - Current commerce and customer PBC boundary pass hardens `customer_360`,
   `product_catalog_pim`, `global_inventory_visibility`,
   `payment_orchestration`, and `returns_reverse_logistics` with
