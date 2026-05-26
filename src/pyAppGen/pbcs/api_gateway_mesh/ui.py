@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS
+from .runtime import API_GATEWAY_MESH_CONSUMED_EVENT_TYPES
+from .runtime import API_GATEWAY_MESH_EMITTED_EVENT_TYPES
+from .runtime import API_GATEWAY_MESH_OWNED_TABLES
+from .runtime import API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
+from .runtime import api_gateway_mesh_permissions_contract
+
 
 API_GATEWAY_MESH_UI_FRAGMENT_KEYS = (
     "GatewayMeshWorkbench",
@@ -68,22 +75,14 @@ def api_gateway_mesh_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "register_service": "api_gateway_mesh.service",
-            "publish_route": "api_gateway_mesh.route",
-            "apply_rate_limit": "api_gateway_mesh.policy",
-            "register_mtls_identity": "api_gateway_mesh.identity",
-            "record_health": "api_gateway_mesh.service",
-            "record_traffic_sample": "api_gateway_mesh.read",
-            "register_rule": "api_gateway_mesh.configure",
-            "set_parameter": "api_gateway_mesh.configure",
-            "configure_runtime": "api_gateway_mesh.configure",
-            "run_control_tests": "api_gateway_mesh.audit",
-        },
+        "action_permissions": api_gateway_mesh_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -100,11 +99,13 @@ def api_gateway_mesh_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "rule_type", "allowed_methods", "allowed_protocols", "status"),
         },
         "event_surfaces": {
-            "emits": ("ServiceRegistered", "RoutePublished", "RateLimitApplied", "ServiceHealthChanged", "MeshPolicyChanged"),
-            "consumes": ("PbcDeployed", "AccessPolicyChanged", "SchemaAccepted", "AuditEventSealed", "TenantProvisioned"),
+            "emits": API_GATEWAY_MESH_EMITTED_EVENT_TYPES,
+            "consumes": API_GATEWAY_MESH_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": API_GATEWAY_MESH_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -144,4 +145,12 @@ def api_gateway_mesh_render_workbench(
         "rules_bound": tuple(sorted(state["rules"])),
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": API_GATEWAY_MESH_OWNED_TABLES,
+            "outbox_table": "api_gateway_mesh_appgen_outbox_event",
+            "inbox_table": "api_gateway_mesh_appgen_inbox_event",
+            "dead_letter_table": "api_gateway_mesh_dead_letter_event",
+        },
     }

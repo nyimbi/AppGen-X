@@ -8,6 +8,67 @@ import math
 import re
 
 
+API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC = "appgen.gateway.events"
+API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+API_GATEWAY_MESH_OWNED_TABLES = (
+    "service_registration",
+    "endpoint_catalog",
+    "service_route",
+    "route_version",
+    "rate_limit_policy",
+    "mtls_identity",
+    "traffic_policy",
+    "retry_budget",
+    "circuit_breaker",
+    "fallback_route",
+    "service_health",
+    "traffic_sample",
+    "gateway_rule",
+    "gateway_parameter",
+    "gateway_configuration",
+)
+API_GATEWAY_MESH_EMITTED_EVENT_TYPES = (
+    "ServiceRegistered",
+    "RoutePublished",
+    "RateLimitApplied",
+    "ServiceHealthChanged",
+    "MeshPolicyChanged",
+    "TrafficSampleRecorded",
+)
+API_GATEWAY_MESH_CONSUMED_EVENT_TYPES = (
+    "PbcDeployed",
+    "AccessPolicyChanged",
+    "SchemaAccepted",
+    "AuditEventSealed",
+    "TenantProvisioned",
+)
+_API_GATEWAY_MESH_RUNTIME_TABLES = (
+    "api_gateway_mesh_appgen_outbox_event",
+    "api_gateway_mesh_appgen_inbox_event",
+    "api_gateway_mesh_dead_letter_event",
+)
+_API_GATEWAY_MESH_ALLOWED_DEPENDENCIES = (
+    "identity_policy_projection",
+    "schema_contract_projection",
+    "audit_route_projection",
+    "composition_service_projection",
+    "pbc_deployment_projection",
+    "tenant_gateway_projection",
+    "GET /identity/policies",
+    "GET /schemas/routes",
+    "POST /audit/route-events",
+    "POST /composition/services",
+)
+_API_GATEWAY_MESH_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
 API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_gateway_lifecycle",
     "graph_relational_service_topology",
@@ -81,12 +142,15 @@ def api_gateway_mesh_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "api_gateway_mesh",
         "implementation_directory": "src/pyAppGen/pbcs/api_gateway_mesh",
+        "owned_tables": API_GATEWAY_MESH_OWNED_TABLES,
         "capabilities": API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS,
         "standard_features": API_GATEWAY_MESH_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_service",
             "publish_route",
             "apply_rate_limit",
@@ -94,7 +158,10 @@ def api_gateway_mesh_runtime_capabilities() -> dict:
             "record_health",
             "record_traffic_sample",
             "build_service_map",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -106,7 +173,7 @@ def api_gateway_mesh_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.gateway.events",
+            "event_topic": API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "allowed_methods": ("GET", "POST", "PUT"),
             "allowed_protocols": ("http", "grpc"),
@@ -225,28 +292,124 @@ def api_gateway_mesh_runtime_smoke() -> dict:
 
 
 def api_gateway_mesh_empty_state() -> dict:
-    return {"events": (), "outbox": (), "services": {}, "routes": {}, "rate_limits": {}, "identities": {}, "health": {}, "traffic": {}, "rules": {}, "parameters": {}, "configuration": {}, "schema_extensions": {}, "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"}}
+    return {
+        "events": (),
+        "outbox": (),
+        "inbox": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "pbc_projections": {},
+        "access_policy_projections": {},
+        "schema_projections": {},
+        "audit_projections": {},
+        "tenant_projections": {},
+        "services": {},
+        "routes": {},
+        "rate_limits": {},
+        "identities": {},
+        "health": {},
+        "traffic": {},
+        "rules": {},
+        "parameters": {},
+        "configuration": {},
+        "schema_extensions": {},
+        "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+    }
 
 
 def api_gateway_mesh_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    forbidden = tuple(sorted(field for field in _API_GATEWAY_MESH_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"API Gateway Mesh uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS):
+        raise ValueError("API Gateway Mesh supports only PostgreSQL, MySQL, or MariaDB backends")
+    if configuration.get("event_topic") != API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"API Gateway Mesh requires AppGen-X event topic {API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC}")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": API_GATEWAY_MESH_OWNED_TABLES,
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def api_gateway_mesh_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "default_rate_limit_per_minute",
+        "latency_slo_ms",
+        "error_rate_threshold",
+        "canary_percent",
+        "retry_budget",
+        "retention_days",
+        "circuit_breaker_error_threshold",
+        "fallback_latency_budget_ms",
+        "traffic_sample_percent",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported API Gateway Mesh parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def api_gateway_mesh_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required API Gateway Mesh rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("API Gateway Mesh rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
 def api_gateway_mesh_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in API_GATEWAY_MESH_OWNED_TABLES:
+        raise ValueError(f"API Gateway Mesh schema extensions must target owned tables: {API_GATEWAY_MESH_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    extensions = {**state["schema_extensions"], table: {**state["schema_extensions"].get(table, {}), **dict(fields)}}
+    return {"ok": True, "state": {**state, "schema_extensions": extensions}, "schema_extension": {"table": table, "fields": dict(fields)}}
+
+
+def api_gateway_mesh_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    if key in state["handled_events"] and state["handled_events"][key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
+    attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {"event_id": event_id, "event_type": event_type, "tenant": payload.get("tenant"), "attempts": attempts, "idempotency_key": key}
+    next_state = {**state, "inbox": (*state["inbox"], inbox_entry)}
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in API_GATEWAY_MESH_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}, "retry_evidence": (*next_state["retry_evidence"], evidence)}
+        if status == "dead_letter":
+            next_state = {**next_state, "dead_letter": (*next_state["dead_letter"], {**inbox_entry, "reason": "unsupported_or_failed_gateway_event"})}
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+    if event_type == "PbcDeployed":
+        next_state = {**next_state, "pbc_projections": {**next_state["pbc_projections"], payload["pbc"]: payload}}
+    elif event_type == "AccessPolicyChanged":
+        next_state = {**next_state, "access_policy_projections": {**next_state["access_policy_projections"], payload["policy_id"]: payload}}
+    elif event_type == "SchemaAccepted":
+        next_state = {**next_state, "schema_projections": {**next_state["schema_projections"], payload["schema_id"]: payload}}
+    elif event_type == "AuditEventSealed":
+        next_state = {**next_state, "audit_projections": {**next_state["audit_projections"], payload["audit_id"]: payload}}
+    elif event_type == "TenantProvisioned":
+        next_state = {**next_state, "tenant_projections": {**next_state["tenant_projections"], payload["tenant_id"]: payload}}
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state = {**next_state, "handled_events": {**next_state["handled_events"], key: handler}}
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def api_gateway_mesh_register_service(state: dict, service: dict) -> dict:
@@ -370,7 +533,73 @@ def api_gateway_mesh_run_control_tests(state: dict) -> dict:
 
 
 def api_gateway_mesh_build_api_contract() -> dict:
-    return {"ok": True, "routes": ("POST /services", "POST /routes", "POST /routes/{id}/publish", "POST /rate-limits", "POST /mtls-identities", "POST /traffic-policies", "POST /traffic-samples", "POST /service-health", "GET /service-map", "GET /route-telemetry", "POST /gateway-rules", "POST /gateway-parameters", "POST /gateway-configuration"), "events": {"emits": ("ServiceRegistered", "RoutePublished", "RateLimitApplied", "ServiceHealthChanged", "MeshPolicyChanged"), "consumes": ("PbcDeployed", "AccessPolicyChanged", "SchemaAccepted", "AuditEventSealed", "TenantProvisioned")}, "permissions": ("api_gateway_mesh.read", "api_gateway_mesh.service", "api_gateway_mesh.route", "api_gateway_mesh.policy", "api_gateway_mesh.identity", "api_gateway_mesh.configure", "api_gateway_mesh.audit"), "configuration": ("API_GATEWAY_MESH_DATABASE_URL", "API_GATEWAY_MESH_EVENT_TOPIC", "API_GATEWAY_MESH_RETRY_LIMIT", "API_GATEWAY_MESH_DEFAULT_TIMEZONE")}
+    return {
+        "format": "appgen.api-gateway-mesh-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {"route": "POST /services", "command": "register_service", "owned_tables": ("service_registration", "endpoint_catalog"), "emits": ("ServiceRegistered",), "requires_permission": "api_gateway_mesh.service", "idempotency_key": "service_id"},
+            {"route": "POST /routes", "command": "publish_route", "owned_tables": ("service_route", "route_version", "traffic_policy"), "emits": ("RoutePublished",), "requires_permission": "api_gateway_mesh.route", "idempotency_key": "route_id"},
+            {"route": "POST /rate-limits", "command": "apply_rate_limit", "owned_tables": ("rate_limit_policy",), "emits": ("RateLimitApplied",), "requires_permission": "api_gateway_mesh.policy", "idempotency_key": "policy_id"},
+            {"route": "POST /mtls-identities", "command": "register_mtls_identity", "owned_tables": ("mtls_identity",), "emits": ("MeshPolicyChanged",), "requires_permission": "api_gateway_mesh.identity", "idempotency_key": "identity_id"},
+            {"route": "POST /service-health", "command": "record_health", "owned_tables": ("service_health",), "emits": ("ServiceHealthChanged",), "requires_permission": "api_gateway_mesh.service", "idempotency_key": "health_id"},
+            {"route": "POST /traffic-samples", "command": "record_traffic_sample", "owned_tables": ("traffic_sample",), "emits": ("TrafficSampleRecorded",), "requires_permission": "api_gateway_mesh.read", "idempotency_key": "sample_id"},
+            {"route": "POST /gateway/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": API_GATEWAY_MESH_CONSUMED_EVENT_TYPES, "requires_permission": "api_gateway_mesh.event", "idempotency_key": "event_id"},
+            {"route": "GET /service-map", "query": "build_service_map", "owned_tables": API_GATEWAY_MESH_OWNED_TABLES, "requires_permission": "api_gateway_mesh.read"},
+            {"route": "GET /gateway-workbench", "query": "build_workbench_view", "owned_tables": API_GATEWAY_MESH_OWNED_TABLES, "requires_permission": "api_gateway_mesh.audit"},
+        ),
+        "declared_catalog_routes": ("POST /services", "POST /routes", "POST /routes/{id}/publish", "POST /rate-limits", "POST /mtls-identities", "POST /traffic-policies", "POST /traffic-samples", "POST /service-health", "GET /service-map", "GET /route-telemetry", "POST /gateway-rules", "POST /gateway-parameters", "POST /gateway-configuration"),
+        "events": {"emits": API_GATEWAY_MESH_EMITTED_EVENT_TYPES, "consumes": API_GATEWAY_MESH_CONSUMED_EVENT_TYPES},
+        "emits": API_GATEWAY_MESH_EMITTED_EVENT_TYPES,
+        "consumes": API_GATEWAY_MESH_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(api_gateway_mesh_permissions_contract()["permissions"])),
+        "database_backends": API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": API_GATEWAY_MESH_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": ("API_GATEWAY_MESH_DATABASE_URL", "API_GATEWAY_MESH_EVENT_TOPIC", "API_GATEWAY_MESH_RETRY_LIMIT", "API_GATEWAY_MESH_DEFAULT_TIMEZONE"),
+    }
+
+
+def api_gateway_mesh_permissions_contract() -> dict:
+    return {
+        "format": "appgen.api-gateway-mesh-permissions.v1",
+        "ok": True,
+        "permissions": ("api_gateway_mesh.read", "api_gateway_mesh.service", "api_gateway_mesh.route", "api_gateway_mesh.policy", "api_gateway_mesh.identity", "api_gateway_mesh.event", "api_gateway_mesh.configure", "api_gateway_mesh.audit"),
+        "action_permissions": {
+            "register_service": "api_gateway_mesh.service",
+            "publish_route": "api_gateway_mesh.route",
+            "apply_rate_limit": "api_gateway_mesh.policy",
+            "register_mtls_identity": "api_gateway_mesh.identity",
+            "record_health": "api_gateway_mesh.service",
+            "record_traffic_sample": "api_gateway_mesh.read",
+            "receive_event": "api_gateway_mesh.event",
+            "register_rule": "api_gateway_mesh.configure",
+            "register_schema_extension": "api_gateway_mesh.configure",
+            "set_parameter": "api_gateway_mesh.configure",
+            "configure_runtime": "api_gateway_mesh.configure",
+            "build_service_map": "api_gateway_mesh.read",
+            "build_workbench_view": "api_gateway_mesh.audit",
+        },
+    }
+
+
+def api_gateway_mesh_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*API_GATEWAY_MESH_OWNED_TABLES, *API_GATEWAY_MESH_CONSUMED_EVENT_TYPES, *_API_GATEWAY_MESH_RUNTIME_TABLES, *_API_GATEWAY_MESH_ALLOWED_DEPENDENCIES)
+    violations = tuple(reference for reference in references if reference not in set(allowed) and not str(reference).startswith("api_gateway_mesh_"))
+    return {
+        "format": "appgen.api-gateway-mesh-boundary.v1",
+        "ok": not violations,
+        "owned_tables": API_GATEWAY_MESH_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /identity/policies", "GET /schemas/routes", "POST /audit/route-events", "POST /composition/services"),
+            "events": API_GATEWAY_MESH_CONSUMED_EVENT_TYPES,
+            "api_projections": ("identity_policy_projection", "schema_contract_projection", "audit_route_projection", "composition_service_projection", "pbc_deployment_projection", "tenant_gateway_projection"),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
 
 
 def api_gateway_mesh_federate_service_view(state: dict, route_id: str, *, systems: tuple[str, ...]) -> dict:
@@ -432,7 +661,35 @@ def api_gateway_mesh_build_workbench_view(state: dict, *, tenant: str) -> dict:
     rate_limits = tuple(policy for policy in state["rate_limits"].values() if policy["tenant"] == tenant)
     identities = tuple(identity for identity in state["identities"].values() if identity["tenant"] == tenant)
     samples = tuple(sample for sample in state["traffic"].values() if sample["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "service_count": len(services), "route_count": len(routes), "published_route_count": len(tuple(route for route in routes if route["status"] == "published")), "rate_limit_count": len(rate_limits), "mtls_identity_count": len(identities), "traffic_sample_count": len(samples), "request_count": sum(sample["requests"] for sample in samples), "average_p95_ms": round(sum(sample["p95_ms"] for sample in samples) / max(len(samples), 1), 2)}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "service_count": len(services),
+        "route_count": len(routes),
+        "published_route_count": len(tuple(route for route in routes if route["status"] == "published")),
+        "rate_limit_count": len(rate_limits),
+        "mtls_identity_count": len(identities),
+        "traffic_sample_count": len(samples),
+        "request_count": sum(sample["requests"] for sample in samples),
+        "average_p95_ms": round(sum(sample["p95_ms"] for sample in samples) / max(len(samples), 1), 2),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", ())),
+        "binding_evidence": {
+            "owned_tables": API_GATEWAY_MESH_OWNED_TABLES,
+            "outbox_table": "api_gateway_mesh_appgen_outbox_event",
+            "inbox_table": "api_gateway_mesh_appgen_inbox_event",
+            "dead_letter_table": "api_gateway_mesh_dead_letter_event",
+            "configuration": {
+                "event_contract": state.get("configuration", {}).get("event_contract"),
+                "event_topic": state.get("configuration", {}).get("event_topic"),
+                "stream_engine_picker_visible": state.get("configuration", {}).get("stream_engine_picker_visible"),
+                "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
+            },
+        },
+    }
 
 
 def api_gateway_mesh_register_governed_model(name: str, metadata: dict) -> dict:
