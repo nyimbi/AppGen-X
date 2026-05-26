@@ -112,3 +112,26 @@ The runtime must prove that:
 - Inventory pool, supply-node, snapshot, projection, ATP, reservation,
   in-transit, freshness, node-health, federation, and audit evidence stay
   package-local and testable.
+
+## Release Evidence
+
+Release is acceptable only when the package-local evidence and central PBC
+audits prove all of the following:
+
+- `global_inventory_visibility_runtime_smoke()` returns `ok: True` and covers
+  every documented advanced global-visibility capability key.
+- `implementation_contract()` exposes standard features, advanced runtime,
+  UI contract, API contract, permissions contract, owned tables, allowed
+  PostgreSQL/MySQL/MariaDB backends, consumed/emitted event types, and the fixed
+  AppGen-X event topic.
+- Focused runtime tests prove pool and supply-node registration, availability
+  snapshots, projection, ATP, reservation, consumed event ingestion,
+  idempotency, retry/dead-letter behavior, schema-extension ownership, API and
+  permissions contracts, workbench binding evidence, and foreign-table
+  rejection.
+- `pbc_implementation_release_audit(("global_inventory_visibility",))`,
+  `pbc_generation_smoke_audit(...)`, `pbc_implemented_capability_audit(...)`,
+  full `pbc_implementation_release_audit(...)`, and `pbc_release_audit()` all
+  return `ok: True`.
+- Restricted-name scans over the package and tests are clean, and ordinary users
+  cannot choose stream engines or non-AppGen-X event contracts.

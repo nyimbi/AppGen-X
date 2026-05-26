@@ -109,3 +109,26 @@ The package exports a workbench UI contract with fragments for payment intents,
 gateway routing, token vault state, fraud checks, capture/refund actions,
 settlement evidence, rules, parameters, configuration, outbox, inbox, and
 dead-letter evidence.
+
+## Release Evidence
+
+Release is acceptable only when the package-local evidence and central PBC
+audits prove all of the following:
+
+- `payment_orchestration_runtime_smoke()` returns `ok: True` and covers every
+  documented advanced payment capability key.
+- `implementation_contract()` exposes standard features, advanced runtime,
+  UI contract, API contract, permissions contract, owned tables, allowed
+  PostgreSQL/MySQL/MariaDB backends, consumed/emitted event types, and the fixed
+  AppGen-X event topic.
+- Focused runtime tests prove gateway registration, tokenization, payment intent
+  creation, gateway routing, fraud handoff, capture, refund/void behavior where
+  applicable, idempotent consumed events, retry/dead-letter behavior,
+  schema-extension ownership, API and permissions contracts, workbench binding
+  evidence, and foreign-table rejection.
+- `pbc_implementation_release_audit(("payment_orchestration",))`,
+  `pbc_generation_smoke_audit(...)`, `pbc_implemented_capability_audit(...)`,
+  full `pbc_implementation_release_audit(...)`, and `pbc_release_audit()` all
+  return `ok: True`.
+- Restricted-name scans over the package and tests are clean, and ordinary users
+  cannot choose stream engines or non-AppGen-X event contracts.

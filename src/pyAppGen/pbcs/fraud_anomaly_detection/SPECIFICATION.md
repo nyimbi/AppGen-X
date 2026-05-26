@@ -103,3 +103,25 @@ The package exports a workbench UI contract with fragments for risk signals,
 anomaly scores, fraud rules, risk cases, identity-link analysis, explainability,
 loss-exposure monitoring, configuration, parameters, inbox/outbox evidence, and
 dead-letter evidence.
+
+## Release Evidence
+
+Release is acceptable only when the package-local evidence and central PBC
+audits prove all of the following:
+
+- `fraud_anomaly_detection_runtime_smoke()` returns `ok: True` and covers every
+  documented advanced fraud/anomaly capability key.
+- `implementation_contract()` exposes standard features, advanced runtime,
+  UI contract, API contract, permissions contract, owned tables, allowed
+  PostgreSQL/MySQL/MariaDB backends, consumed/emitted event types, and the fixed
+  AppGen-X event topic.
+- Focused runtime tests prove risk-signal ingestion, fraud-rule registration,
+  anomaly scoring, fraud-check decisioning, case opening, idempotent event
+  handling, retry/dead-letter behavior, workbench binding evidence, and
+  owned-table boundary rejection.
+- `pbc_implementation_release_audit(("fraud_anomaly_detection",))`,
+  `pbc_generation_smoke_audit(...)`, `pbc_implemented_capability_audit(...)`,
+  full `pbc_implementation_release_audit(...)`, and `pbc_release_audit()` all
+  return `ok: True`.
+- Restricted-name scans over the package and tests are clean, and ordinary users
+  cannot choose stream engines or non-AppGen-X event contracts.

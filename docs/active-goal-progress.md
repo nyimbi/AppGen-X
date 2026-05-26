@@ -1249,6 +1249,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   reusable operation-step and validation-step contracts, and generated component
   test modules explicitly export step-contract tests before mobile/device
   readiness is trusted. Commit: `b860cb8`.
+- Current PBC release-evidence specification pass adds explicit release gates
+  for `product_catalog_pim`, `global_inventory_visibility`,
+  `payment_orchestration`, `enterprise_search_vector`, and
+  `fraud_anomaly_detection`, tying each package specification to runtime smoke,
+  implementation contract, focused workflow/idempotency/dead-letter/boundary
+  tests, full PBC generation/capability/implementation/catalog audits, and
+  restricted-name/event-contract checks. Commit: pending this slice.
 - Current commerce and customer PBC boundary pass hardens `customer_360`,
   `product_catalog_pim`, `global_inventory_visibility`,
   `payment_orchestration`, and `returns_reverse_logistics` with
