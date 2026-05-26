@@ -1041,6 +1041,7 @@ IMPLEMENTED_PBC_KEYS = (
     "lead_opportunity",
     "service_ticketing",
     "notifications",
+    "cdp_segmentation",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -3322,6 +3323,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = service_ticketing_runtime_capabilities()
     elif key == "notifications":
         advanced_runtime = notifications_runtime_capabilities()
+    elif key == "cdp_segmentation":
+        advanced_runtime = cdp_segmentation_runtime_capabilities()
     elif key == "federated_iam":
         advanced_runtime = federated_iam_runtime_capabilities()
     elif key == "api_gateway_mesh":
@@ -3644,6 +3647,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "lead_opportunity": len(LEAD_OPPORTUNITY_RUNTIME_CAPABILITY_KEYS),
         "service_ticketing": len(SERVICE_TICKETING_RUNTIME_CAPABILITY_KEYS),
         "notifications": len(NOTIFICATIONS_RUNTIME_CAPABILITY_KEYS),
+        "cdp_segmentation": len(CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS),
         "federated_iam": len(FEDERATED_IAM_ADVANCED_CAPABILITY_KEYS),
         "api_gateway_mesh": len(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS),
         "schema_registry": len(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS),
@@ -5789,6 +5793,28 @@ from .pbcs.notifications import notifications_send_message  # noqa: E402,F401
 from .pbcs.notifications import notifications_set_parameter  # noqa: E402,F401
 from .pbcs.notifications import notifications_ui_contract  # noqa: E402,F401
 from .pbcs.notifications import notifications_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.cdp_segmentation import CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.cdp_segmentation import CDP_SEGMENTATION_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.cdp_segmentation import CDP_SEGMENTATION_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_activate_segment  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_build_api_contract  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_build_workbench_view  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_configure_runtime  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_define_segment  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_empty_state  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_evaluate_segments  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_ingest_customer_event  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_permissions_contract  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_receive_event  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_register_rule  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_register_schema_extension  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_render_workbench  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_runtime_capabilities  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_runtime_smoke  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_set_parameter  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_ui_contract  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_upsert_profile_property  # noqa: E402,F401
+from .pbcs.cdp_segmentation import cdp_segmentation_verify_owned_table_boundary  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_UI_FRAGMENT_KEYS  # noqa: E402,F401
