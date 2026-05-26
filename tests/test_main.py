@@ -14506,10 +14506,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert component_gate["ok"] is True
     component_module_files = components.component_module_file_manifest()
     component_module_tests = components.component_module_test_file_manifest()
+    component_module_replay = components.component_module_replay_matrix()
     assert component_module_files["format"] == "appgen.component-module-file-manifest.v1"
     assert component_module_files["ok"] is True
     assert component_module_tests["format"] == "appgen.component-module-test-file-manifest.v1"
     assert component_module_tests["ok"] is True
+    assert component_module_replay["format"] == "appgen.component-module-replay-matrix.v1"
+    assert component_module_replay["ok"] is True
+    assert {
+        "component_modules_replay",
+        "component_surface_coverage",
+        "component_operation_step_coverage",
+        "component_validation_step_coverage",
+        "component_replays_side_effect_free",
+    } == {check["id"] for check in component_module_replay["checks"]}
     assert {
         "widget_registry",
         "lookup_contracts",
@@ -14525,6 +14535,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         assert module.module_contract()["ok"] is True
         assert module.component_manifest()["ok"] is True
         assert module.run_component_operation()["ok"] is True
+        assert module.operation_steps()["ok"] is True
+        assert module.validation_steps()["ok"] is True
         assert module.release_context()["ok"] is True
         assert module.smoke_test()["ok"] is True
     for item in component_module_tests["tests"]:
@@ -14532,6 +14544,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_component_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
+        assert "test_component_surface_module_step_contracts" in module.smoke_test()["tests"]
     assert {
         "artifact_coverage",
         "component_catalog",
