@@ -162,7 +162,10 @@ def dam_core_runtime_capabilities() -> dict:
             "request_rendition",
             "complete_rendition",
             "enforce_rights",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -462,11 +465,23 @@ def dam_core_register_rule(state: dict, rule: dict) -> dict:
 
 def dam_core_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
     if table not in DAM_CORE_OWNED_TABLES:
-        return {"ok": False, "error": "outside_owned_table_boundary", "state": state}
+        raise ValueError("cannot extend non-owned table")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    table_extensions = {**state["schema_extensions"].get(table, {}), **dict(fields)}
+    extension = {
+        "table": table,
+        "fields": dict(fields),
+        "version": len(state["schema_extensions"].get(table, {})) + 1,
+        "owned_table": True,
+        "migration_artifact": f"dam_core_{table}_extension_v{len(state['schema_extensions'].get(table, {})) + 1}",
+    }
+    return {
+        "ok": True,
+        "state": {**state, "schema_extensions": {**state["schema_extensions"], table: table_extensions}},
+        "extension": extension,
+    }
 
 
 def dam_core_receive_event(state: dict, envelope: dict, *, simulate_failure: bool = False) -> dict:
@@ -699,18 +714,63 @@ def dam_core_build_api_contract() -> dict:
         "format": "appgen.dam-core-api-contract.v1",
         "ok": True,
         "routes": (
-            "POST /dam/assets",
-            "POST /dam/assets/{asset_id}/renditions",
-            "POST /dam/assets/{asset_id}/rights",
-            "POST /dam/assets/{asset_id}/tags",
-            "POST /dam/events/inbox",
-            "GET /dam/workbench",
+            {
+                "route": "POST /dam/assets",
+                "command": "register_asset",
+                "owned_tables": ("asset",),
+                "emits": ("AssetRegistered",),
+                "requires_permission": "dam_core.asset.write",
+                "idempotency_key": "asset_id",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/renditions",
+                "command": "request_rendition",
+                "owned_tables": ("asset_rendition",),
+                "emits": ("AssetRenditionRequested",),
+                "requires_permission": "dam_core.rendition.write",
+                "idempotency_key": "rendition_id",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/rights",
+                "command": "attach_rights_policy",
+                "owned_tables": ("rights_policy",),
+                "emits": ("AssetRightsPolicyAttached",),
+                "requires_permission": "dam_core.rights.manage",
+                "idempotency_key": "policy_id",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/tags",
+                "command": "add_metadata_tag",
+                "owned_tables": ("metadata_tag",),
+                "emits": ("AssetMetadataTagged",),
+                "requires_permission": "dam_core.metadata.write",
+                "idempotency_key": "tag_id",
+            },
+            {
+                "route": "POST /dam/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": DAM_CORE_CONSUMED_EVENT_TYPES,
+                "requires_permission": "dam_core.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /dam/workbench",
+                "query": "build_workbench_view",
+                "owned_tables": DAM_CORE_OWNED_TABLES,
+                "requires_permission": "dam_core.audit",
+            },
         ),
+        "declared_catalog_routes": ("POST /assets", "POST /renditions", "GET /assets"),
         "emits": DAM_CORE_EMITTED_EVENT_TYPES,
         "consumes": DAM_CORE_CONSUMED_EVENT_TYPES,
         "owned_tables": DAM_CORE_OWNED_TABLES,
         "dependencies": {"events": DAM_CORE_CONSUMED_EVENT_TYPES, "api_projections": ("product_projection",), "shared_tables": ()},
         "permissions": tuple(sorted(set(dam_core_permissions_contract().values()))),
+        "database_backends": DAM_CORE_ALLOWED_DATABASE_BACKENDS,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
     }
 
 
@@ -834,15 +894,30 @@ def dam_core_run_control_tests(state: dict) -> dict:
     }
 
 
-def dam_core_verify_owned_table_boundary() -> dict:
+def dam_core_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed_event_dependencies = {"enterprise_pim.ProductPublished"}
+    allowed_api_dependencies = {"product_projection", "POST /assets", "POST /renditions", "GET /assets"}
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(DAM_CORE_OWNED_TABLES)
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_api_dependencies
+        and not str(reference).startswith("dam_core_")
+    )
     return {
-        "ok": True,
+        "format": "appgen.dam-core-owned-boundary-check.v1",
+        "ok": not violations,
         "owned_tables": DAM_CORE_OWNED_TABLES,
         "declared_dependencies": {
             "events": DAM_CORE_CONSUMED_EVENT_TYPES,
+            "event_providers": tuple(sorted(allowed_event_dependencies)),
             "api_projections": ("product_projection",),
+            "apis": tuple(sorted(allowed_api_dependencies - {"product_projection"})),
             "shared_tables": (),
         },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 

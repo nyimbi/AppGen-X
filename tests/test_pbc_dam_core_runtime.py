@@ -5,6 +5,7 @@ from pyAppGen.pbcs.dam_core import DAM_CORE_OWNED_TABLES
 from pyAppGen.pbcs.dam_core import DAM_CORE_RUNTIME_CAPABILITY_KEYS
 from pyAppGen.pbcs.dam_core import dam_core_add_metadata_tag
 from pyAppGen.pbcs.dam_core import dam_core_attach_rights_policy
+from pyAppGen.pbcs.dam_core import dam_core_build_api_contract
 from pyAppGen.pbcs.dam_core import dam_core_build_workbench_view
 from pyAppGen.pbcs.dam_core import dam_core_complete_rendition
 from pyAppGen.pbcs.dam_core import dam_core_configure_runtime
@@ -13,6 +14,7 @@ from pyAppGen.pbcs.dam_core import dam_core_enforce_rights
 from pyAppGen.pbcs.dam_core import dam_core_receive_event
 from pyAppGen.pbcs.dam_core import dam_core_register_asset
 from pyAppGen.pbcs.dam_core import dam_core_register_rule
+from pyAppGen.pbcs.dam_core import dam_core_register_schema_extension
 from pyAppGen.pbcs.dam_core import dam_core_render_workbench
 from pyAppGen.pbcs.dam_core import dam_core_request_rendition
 from pyAppGen.pbcs.dam_core import dam_core_runtime_capabilities
@@ -42,6 +44,8 @@ def test_dam_core_runtime_executes_standard_and_advanced_capabilities() -> None:
     assert contract["side_effect_free"] is True
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["ui_contract"]["ok"] is True
+    assert contract["api_contract"]["ok"] is True
+    assert contract["permissions_contract"]["register_asset"] == "dam_core.asset.write"
     assert "DamConfigurationPanel" in contract["ui_contract"]["fragments"]
 
 
@@ -56,6 +60,9 @@ def test_dam_core_runtime_applies_rules_parameters_configuration_events_and_ui()
             "payload": {"tenant": "tenant_ops", "product_id": "sku_ops", "name": "Catalog Hero"},
         },
     )["state"]
+    extension = dam_core_register_schema_extension(state, "asset", {"moderation_labels": "jsonb"})
+    state = extension["state"]
+    assert extension["extension"]["version"] == 1
     asset = dam_core_register_asset(
         state,
         {
@@ -155,6 +162,18 @@ def test_dam_core_runtime_applies_rules_parameters_configuration_events_and_ui()
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == DAM_CORE_OWNED_TABLES
 
+    api_contract = dam_core_build_api_contract()
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["shared_table_access"] is False
+    assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
+        "register_asset",
+        "request_rendition",
+        "attach_rights_policy",
+        "add_metadata_tag",
+        "receive_event",
+    }
+    assert api_contract["database_backends"] == DAM_CORE_ALLOWED_DATABASE_BACKENDS
+
 
 def test_dam_core_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
     state = dam_core_empty_state()
@@ -188,10 +207,15 @@ def test_dam_core_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() 
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
-    boundary = dam_core_verify_owned_table_boundary()
+    boundary = dam_core_verify_owned_table_boundary(("asset", "asset_rendition", "enterprise_pim.ProductPublished", "product_projection"))
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == ("asset", "asset_rendition", "rights_policy", "metadata_tag")
     assert boundary["declared_dependencies"]["shared_tables"] == ()
+    violated = dam_core_verify_owned_table_boundary(("product",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("product",)
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        dam_core_register_schema_extension(state, "product", {"sku": "text"})
 
 
 def _configured_state() -> dict:

@@ -38,6 +38,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": dam_core_ui_contract(),
+        "api_contract": dam_core_build_api_contract(),
+        "permissions_contract": dam_core_permissions_contract(),
         "owned_tables": DAM_CORE_OWNED_TABLES,
         "allowed_database_backends": DAM_CORE_ALLOWED_DATABASE_BACKENDS,
     }
