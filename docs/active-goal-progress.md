@@ -881,6 +881,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   central enterprise composition selection, implemented-capability audit,
   implementation release audit, `pbc_release_audit()`, all-46-PBC generation
   smoke audit, and the restricted legacy-name diff scan.
+- `40e5b6b` normalizes `transportation_management` into the complete package
+  surface: package-local transportation UI/workbench contract, stricter
+  executable configuration and parameter validation, source contract wiring,
+  central PBC exports, focused transportation tests, and release-audit evidence.
+  Verification passed for transportation focused tests, the 67-test PBC
+  regression slice, central enterprise composition selection,
+  implemented-capability audit, implementation release audit,
+  `pbc_release_audit()`, transportation generation smoke audit, py-compile, and
+  the restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
