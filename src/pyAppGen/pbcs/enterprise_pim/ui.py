@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from .runtime import ENTERPRISE_PIM_OWNED_TABLES
+from .runtime import ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC
+from .runtime import enterprise_pim_permissions_contract
+
 
 ENTERPRISE_PIM_UI_FRAGMENT_KEYS = (
     "EnterprisePimWorkbench",
@@ -66,22 +70,11 @@ def enterprise_pim_ui_contract() -> dict:
                 "commands": ("accept_dependency_schema", "receive_event", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "create_taxonomy": "enterprise_pim.taxonomy",
-            "define_attribute": "enterprise_pim.attribute",
-            "upsert_localized_content": "enterprise_pim.localization",
-            "start_validation_workflow": "enterprise_pim.workflow",
-            "approve_validation_workflow": "enterprise_pim.approve",
-            "accept_dependency_schema": "enterprise_pim.integrate",
-            "receive_event": "enterprise_pim.integrate",
-            "register_rule": "enterprise_pim.configure",
-            "set_parameter": "enterprise_pim.configure",
-            "configure_runtime": "enterprise_pim.configure",
-            "run_control_tests": "enterprise_pim.audit",
-        },
+        "action_permissions": enterprise_pim_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_locale", "allowed_locales"),
             "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "required_event_topic": ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
             "stream_engine_picker_visible": False,
         },
@@ -104,6 +97,10 @@ def enterprise_pim_ui_contract() -> dict:
             "consumes": ("MediaAssetApproved", "PricePromotionApproved", "TaxCalculated", "InventoryPositionUpdated"),
             "outbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "binding_evidence": {
+            "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
+            "shared_table_access": False,
         },
     }
 
@@ -144,4 +141,10 @@ def enterprise_pim_render_workbench(
         "parameters_bound": tuple(sorted(state["parameters"])),
         "dependency_schemas_bound": tuple(sorted(state["dependency_schemas"])),
         "event_outbox_count": len(state["outbox"]),
+        "binding_evidence": {
+            "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
+            "outbox_table": "enterprise_pim_appgen_outbox_event",
+            "inbox_table": "enterprise_pim_appgen_inbox_event",
+            "dead_letter_table": "enterprise_pim_dead_letter_event",
+        },
     }

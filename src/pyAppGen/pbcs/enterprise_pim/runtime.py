@@ -9,6 +9,31 @@ import re
 
 
 ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC = "appgen.enterprise-pim.events"
+ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+ENTERPRISE_PIM_OWNED_TABLES = (
+    "product_taxonomy",
+    "product_attribute",
+    "localized_content",
+    "validation_workflow",
+    "dependency_schema",
+    "dependency_projection",
+    "pim_rule",
+    "pim_parameter",
+    "pim_configuration",
+)
+ENTERPRISE_PIM_CONSUMED_EVENT_TYPES = (
+    "InventoryPositionUpdated",
+    "MediaAssetApproved",
+    "PricePromotionApproved",
+    "TaxCalculated",
+)
+ENTERPRISE_PIM_EMITTED_EVENT_TYPES = (
+    "TaxonomyClassified",
+    "AttributeDefined",
+    "ContentLocalized",
+    "ValidationApproved",
+    "PimMasterDataReady",
+)
 
 ENTERPRISE_PIM_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_enterprise_pim_lifecycle",
@@ -71,7 +96,7 @@ ENTERPRISE_PIM_STANDARD_FEATURE_KEYS = (
     "governed_model_evidence",
 )
 
-_SUPPORTED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+_SUPPORTED_DATABASE_BACKENDS = ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS
 _SUPPORTED_PARAMETERS = {
     "minimum_completeness",
     "minimum_translation_quality",
@@ -105,19 +130,8 @@ _REQUIRED_RULE_FIELDS = (
     "required_attributes",
     "validation_policy",
 )
-_CONSUMED_EVENT_TYPES = {
-    "MediaAssetApproved",
-    "PricePromotionApproved",
-    "TaxCalculated",
-    "InventoryPositionUpdated",
-}
-_EMITTED_EVENT_TYPES = (
-    "TaxonomyClassified",
-    "AttributeDefined",
-    "ContentLocalized",
-    "ValidationApproved",
-    "PimMasterDataReady",
-)
+_CONSUMED_EVENT_TYPES = set(ENTERPRISE_PIM_CONSUMED_EVENT_TYPES)
+_EMITTED_EVENT_TYPES = ENTERPRISE_PIM_EMITTED_EVENT_TYPES
 _API_SURFACES = (
     "POST /product-taxonomies",
     "POST /product-attributes",
@@ -137,12 +151,14 @@ def enterprise_pim_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "enterprise_pim",
         "implementation_directory": "src/pyAppGen/pbcs/enterprise_pim",
+        "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
         "capabilities": ENTERPRISE_PIM_RUNTIME_CAPABILITY_KEYS,
         "standard_features": ENTERPRISE_PIM_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "accept_dependency_schema",
             "receive_event",
             "create_taxonomy",
@@ -150,7 +166,10 @@ def enterprise_pim_runtime_capabilities() -> dict:
             "upsert_localized_content",
             "start_validation_workflow",
             "approve_validation_workflow",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -384,6 +403,7 @@ def enterprise_pim_empty_state() -> dict:
         "rules": {},
         "parameters": {},
         "configuration": {},
+        "schema_extensions": {},
         "seed_data": {"default_locales": ("en-US",), "default_workflow_steps": ("data_steward",)},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
     }
@@ -403,12 +423,12 @@ def enterprise_pim_configure_runtime(state: dict, configuration: dict) -> dict:
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
+        "event_contract": "AppGen-X",
         "allowed_database_backends": _SUPPORTED_DATABASE_BACKENDS,
         "stream_engine_picker_visible": False,
         "configuration_schema": {
             "required": ("database_backend", "event_topic", "retry_limit", "default_locale", "allowed_locales"),
-            "owned_tables": ("product_taxonomy", "product_attribute", "localized_content", "validation_workflow"),
+            "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
         },
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
@@ -436,6 +456,16 @@ def enterprise_pim_register_rule(state: dict, rule: dict) -> dict:
         "deterministic": True,
     }
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
+
+
+def enterprise_pim_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in ENTERPRISE_PIM_OWNED_TABLES:
+        raise ValueError(f"Enterprise PIM schema extensions must target owned tables: {ENTERPRISE_PIM_OWNED_TABLES}")
+    invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
+    if invalid:
+        return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
+    extensions = {**state["schema_extensions"], table: {**state["schema_extensions"].get(table, {}), **dict(fields)}}
+    return {"ok": True, "state": {**state, "schema_extensions": extensions}, "schema_extension": {"table": table, "fields": dict(fields)}}
 
 
 def enterprise_pim_accept_dependency_schema(state: dict, dependency: str, contract: dict) -> dict:
@@ -600,6 +630,12 @@ def enterprise_pim_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "parameter_count": len(state["parameters"]),
         "outbox_count": len(state["outbox"]),
         "dead_letter_count": len(state["dead_letter"]),
+        "binding_evidence": {
+            "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
+            "outbox_table": "enterprise_pim_appgen_outbox_event",
+            "inbox_table": "enterprise_pim_appgen_inbox_event",
+            "dead_letter_table": "enterprise_pim_dead_letter_event",
+        },
     }
 
 
@@ -670,9 +706,103 @@ def enterprise_pim_run_control_tests(state: dict) -> dict:
 
 def enterprise_pim_build_api_contract() -> dict:
     return {
+        "format": "appgen.enterprise-pim-api-contract.v1",
         "ok": True,
-        "routes": _API_SURFACES,
+        "routes": (
+            {
+                "route": "POST /product-taxonomies",
+                "command": "create_taxonomy",
+                "owned_tables": ("product_taxonomy",),
+                "emits": ("TaxonomyClassified",),
+                "requires_permission": "enterprise_pim.taxonomy",
+                "idempotency_key": "taxonomy_id",
+            },
+            {
+                "route": "POST /product-attributes",
+                "command": "define_attribute",
+                "owned_tables": ("product_attribute",),
+                "emits": ("AttributeDefined",),
+                "requires_permission": "enterprise_pim.attribute",
+                "idempotency_key": "attribute_id",
+            },
+            {
+                "route": "POST /localized-content",
+                "command": "upsert_localized_content",
+                "owned_tables": ("localized_content",),
+                "emits": ("ContentLocalized",),
+                "requires_permission": "enterprise_pim.localization",
+                "idempotency_key": "content_id",
+            },
+            {
+                "route": "POST /validation-workflows",
+                "command": "start_validation_workflow",
+                "owned_tables": ("validation_workflow",),
+                "emits": (),
+                "requires_permission": "enterprise_pim.workflow",
+                "idempotency_key": "workflow_id",
+            },
+            {
+                "route": "POST /validation-workflows/{id}/approve",
+                "command": "approve_validation_workflow",
+                "owned_tables": ("validation_workflow", "product_taxonomy"),
+                "emits": ("ValidationApproved",),
+                "requires_permission": "enterprise_pim.approve",
+                "idempotency_key": "workflow_id:approver",
+            },
+            {
+                "route": "POST /dependency-schemas",
+                "command": "accept_dependency_schema",
+                "owned_tables": ("dependency_schema",),
+                "declared_api_dependencies": ("GET /media-assets", "GET /prices", "GET /tax-calculations", "GET /inventory-positions"),
+                "requires_permission": "enterprise_pim.integrate",
+                "idempotency_key": "dependency:schema_version",
+            },
+            {
+                "route": "POST /pim-events",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": ENTERPRISE_PIM_CONSUMED_EVENT_TYPES,
+                "requires_permission": "enterprise_pim.integrate",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "POST /pim-publications",
+                "command": "publish_master_data",
+                "owned_tables": ("product_taxonomy",),
+                "emits": ("PimMasterDataReady",),
+                "requires_permission": "enterprise_pim.workflow",
+                "idempotency_key": "taxonomy_id:channels",
+            },
+            {
+                "route": "GET /pim-workbench",
+                "query": "build_workbench_view",
+                "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
+                "requires_permission": "enterprise_pim.audit",
+            },
+        ),
+        "declared_catalog_routes": _API_SURFACES,
         "events": {"emits": _EMITTED_EVENT_TYPES, "consumes": tuple(sorted(_CONSUMED_EVENT_TYPES))},
+        "emits": ENTERPRISE_PIM_EMITTED_EVENT_TYPES,
+        "consumes": ENTERPRISE_PIM_CONSUMED_EVENT_TYPES,
+        "permissions": tuple(sorted(enterprise_pim_permissions_contract()["permissions"])),
+        "database_backends": ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "configuration": (
+            "ENTERPRISE_PIM_DATABASE_URL",
+            "ENTERPRISE_PIM_EVENT_TOPIC",
+            "ENTERPRISE_PIM_RETRY_LIMIT",
+            "ENTERPRISE_PIM_DEFAULT_LOCALE",
+        ),
+        "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
+    }
+
+
+def enterprise_pim_permissions_contract() -> dict:
+    return {
+        "format": "appgen.enterprise-pim-permissions.v1",
+        "ok": True,
         "permissions": (
             "enterprise_pim.read",
             "enterprise_pim.taxonomy",
@@ -684,13 +814,65 @@ def enterprise_pim_build_api_contract() -> dict:
             "enterprise_pim.configure",
             "enterprise_pim.audit",
         ),
-        "configuration": (
-            "ENTERPRISE_PIM_DATABASE_URL",
-            "ENTERPRISE_PIM_EVENT_TOPIC",
-            "ENTERPRISE_PIM_RETRY_LIMIT",
-            "ENTERPRISE_PIM_DEFAULT_LOCALE",
-        ),
-        "owned_tables": ("product_taxonomy", "product_attribute", "localized_content", "validation_workflow"),
+        "action_permissions": {
+            "create_taxonomy": "enterprise_pim.taxonomy",
+            "define_attribute": "enterprise_pim.attribute",
+            "upsert_localized_content": "enterprise_pim.localization",
+            "start_validation_workflow": "enterprise_pim.workflow",
+            "approve_validation_workflow": "enterprise_pim.approve",
+            "publish_master_data": "enterprise_pim.workflow",
+            "accept_dependency_schema": "enterprise_pim.integrate",
+            "receive_event": "enterprise_pim.integrate",
+            "register_rule": "enterprise_pim.configure",
+            "register_schema_extension": "enterprise_pim.configure",
+            "set_parameter": "enterprise_pim.configure",
+            "configure_runtime": "enterprise_pim.configure",
+            "build_workbench_view": "enterprise_pim.audit",
+        },
+    }
+
+
+def enterprise_pim_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "GET /media-assets",
+        "GET /prices",
+        "GET /tax-calculations",
+        "GET /inventory-positions",
+        "catalog_projection",
+        "media_projection",
+        "pricing_projection",
+        "tax_projection",
+        "inventory_projection",
+        "search_projection",
+    }
+    allowed_runtime_tables = {
+        "enterprise_pim_appgen_outbox_event",
+        "enterprise_pim_appgen_inbox_event",
+        "enterprise_pim_dead_letter_event",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(ENTERPRISE_PIM_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in set(ENTERPRISE_PIM_CONSUMED_EVENT_TYPES)
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("enterprise_pim_")
+    )
+    return {
+        "format": "appgen.enterprise-pim-boundary.v1",
+        "ok": not violations,
+        "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /media-assets", "GET /prices", "GET /tax-calculations", "GET /inventory-positions"),
+            "events": ENTERPRISE_PIM_CONSUMED_EVENT_TYPES,
+            "api_projections": ("catalog_projection", "media_projection", "pricing_projection", "tax_projection", "inventory_projection", "search_projection"),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
