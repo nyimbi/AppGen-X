@@ -28,6 +28,11 @@ Generated history verification cleanup:
 - Focused generated-app verification regenerated the same cache family.
 - Regenerated cache artifacts moved to `post-version-history-cache`.
 
+Procurement verification cleanup:
+
+- Follow-on PBC verification regenerated a small cache subset.
+- Regenerated cache artifacts moved to `post-procurement-cache`.
+
 ## Rationale
 
 These files are generated interpreter/test-run artifacts. They are not source

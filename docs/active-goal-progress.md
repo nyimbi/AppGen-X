@@ -1366,7 +1366,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   whitespace checks pass, the restricted-name scan has no hits, and
   implementation release, generation smoke, capability, full implementation
   release, and catalog release audits all return true for the implemented PBC
-  set. Commit: `pending`.
+  set. Commit: `9fbb80f`.
 - Current visual binding runtime pass hardens generated binding module tests
   and binding designer family modules so generated binding readiness fails
   unless visual graph, expression, designer, runtime wiring, propagation, and
@@ -1382,7 +1382,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   resource catalog, snapshot history, schema diff, branch plan, rollback plan,
   and release workbench module exposes reusable operation-step and
   validation-step contracts, generated tests assert those contracts, and the
-  replay matrix proves step coverage without side effects.
+  replay matrix proves step coverage without side effects. Commit: `b155502`.
 
 ## Open Completion Areas
 
