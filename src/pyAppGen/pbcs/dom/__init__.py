@@ -19,6 +19,9 @@ from .runtime import dom_screen_fraud
 from .runtime import dom_set_parameter
 from .runtime import dom_upsert_customer_projection
 from .runtime import dom_verify_order
+from .ui import DOM_UI_FRAGMENT_KEYS
+from .ui import dom_render_workbench
+from .ui import dom_ui_contract
 
 PBC_KEY = "dom"
 
@@ -30,4 +33,5 @@ def implementation_contract() -> dict:
         **contract,
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
+        "ui_contract": dom_ui_contract(),
     }

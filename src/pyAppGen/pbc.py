@@ -5266,6 +5266,7 @@ from .pbcs.transportation_management import transportation_management_set_parame
 from .pbcs.transportation_management import transportation_management_ui_contract  # noqa: E402,F401
 from .pbcs.dom import DOM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.dom import DOM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.dom import DOM_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.dom import dom_apply_inventory_allocation  # noqa: E402,F401
 from .pbcs.dom import dom_apply_tax_projection  # noqa: E402,F401
 from .pbcs.dom import dom_build_workbench_view  # noqa: E402,F401
@@ -5276,10 +5277,12 @@ from .pbcs.dom import dom_create_fulfillment_plan  # noqa: E402,F401
 from .pbcs.dom import dom_empty_state  # noqa: E402,F401
 from .pbcs.dom import dom_price_order  # noqa: E402,F401
 from .pbcs.dom import dom_register_rule  # noqa: E402,F401
+from .pbcs.dom import dom_render_workbench  # noqa: E402,F401
 from .pbcs.dom import dom_runtime_capabilities  # noqa: E402,F401
 from .pbcs.dom import dom_runtime_smoke  # noqa: E402,F401
 from .pbcs.dom import dom_screen_fraud  # noqa: E402,F401
 from .pbcs.dom import dom_set_parameter  # noqa: E402,F401
+from .pbcs.dom import dom_ui_contract  # noqa: E402,F401
 from .pbcs.dom import dom_upsert_customer_projection  # noqa: E402,F401
 from .pbcs.dom import dom_verify_order  # noqa: E402,F401
 from .pbcs.personnel_identity import PERSONNEL_IDENTITY_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401

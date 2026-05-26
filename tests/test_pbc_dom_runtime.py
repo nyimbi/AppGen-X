@@ -1,3 +1,5 @@
+import pytest
+
 from pyAppGen.pbc import DOM_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import dom_apply_inventory_allocation
 from pyAppGen.pbc import dom_apply_tax_projection
@@ -9,10 +11,12 @@ from pyAppGen.pbc import dom_create_fulfillment_plan
 from pyAppGen.pbc import dom_empty_state
 from pyAppGen.pbc import dom_price_order
 from pyAppGen.pbc import dom_register_rule
+from pyAppGen.pbc import dom_render_workbench
 from pyAppGen.pbc import dom_runtime_capabilities
 from pyAppGen.pbc import dom_runtime_smoke
 from pyAppGen.pbc import dom_screen_fraud
 from pyAppGen.pbc import dom_set_parameter
+from pyAppGen.pbc import dom_ui_contract
 from pyAppGen.pbc import dom_upsert_customer_projection
 from pyAppGen.pbc import dom_verify_order
 from pyAppGen.pbc import pbc_implemented_capability_audit
@@ -38,6 +42,8 @@ def test_dom_runtime_executes_standard_and_advanced_capabilities() -> None:
     contract = pbc_implementation_contract("dom")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert "DomConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(DOM_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("dom",))["ok"] is True
     assert pbc_implemented_capability_audit(("dom",))["ok"] is True
@@ -127,3 +133,48 @@ def test_dom_runtime_applies_rules_parameters_and_configuration() -> None:
     assert workbench["order_count"] == 1
     assert workbench["shipped_count"] == 1
     assert workbench["open_order_count"] == 0
+    assert workbench["configuration_bound"] is True
+    assert workbench["rule_count"] == 1
+    assert workbench["parameter_count"] == 3
+
+    ui_contract = dom_ui_contract()
+    assert ui_contract["configuration_editor"]["allowed_database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert "fraud_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
+    assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    rendered = dom_render_workbench(
+        state,
+        tenant="tenant_ops",
+        principal_permissions=(
+            "dom.create",
+            "dom.verify",
+            "dom.price",
+            "dom.allocate",
+            "dom.plan",
+            "dom.ship",
+            "dom.audit",
+            "dom.configure",
+        ),
+    )
+    assert rendered["ok"] is True
+    assert rendered["configuration_bound"] is True
+    assert rendered["event_outbox_count"] == 8
+    assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
+    assert not rendered["locked_actions"]
+
+
+def test_dom_rejects_unsupported_database_backends_and_unknown_parameters() -> None:
+    state = dom_empty_state()
+
+    with pytest.raises(ValueError, match="PostgreSQL, MySQL, or MariaDB"):
+        dom_configure_runtime(
+            state,
+            {
+                "database_backend": "stream_store",
+                "event_topic": "appgen.dom.events",
+                "retry_limit": 3,
+                "default_currency": "USD",
+            },
+        )
+
+    with pytest.raises(ValueError, match="Unsupported Distributed Order Management parameter"):
+        dom_set_parameter(state, "stream_engine", "hidden_picker")

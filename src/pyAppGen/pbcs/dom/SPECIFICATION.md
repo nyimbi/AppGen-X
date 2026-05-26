@@ -121,4 +121,10 @@ screening, sourcing, allocation, fulfillment planning, and shipping projection.
 The runtime must prove that rules, parameters, and configuration execute and
 influence order verification and fulfillment decisions; that order-owned state
 stays inside the package boundary; that AppGen-X outbox events are idempotent;
+that backend configuration rejects anything outside PostgreSQL, MySQL, or
+MariaDB; that eventing remains bound to the AppGen-X event contract without
+user-facing stream-engine selection; that package-local UI fragments expose
+order capture, validation, customer/tax projection, fraud, verification,
+pricing, allocation, fulfillment, split/backorder/cancellation, shipment,
+exception, federation, rule, parameter, and configuration workbench surfaces;
 and that all standard and advanced capabilities have testable release evidence.

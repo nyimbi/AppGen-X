@@ -227,16 +227,48 @@ def dom_empty_state() -> dict:
 
 
 def dom_configure_runtime(state: dict, configuration: dict) -> dict:
-    ok = configuration.get("database_backend") in {"postgresql", "mysql", "mariadb"} and bool(configuration.get("event_topic"))
-    return {"ok": ok, "state": {**state, "configuration": {**configuration, "ok": ok}}, "configuration": {**configuration, "ok": ok}}
+    allowed_databases = {"postgresql", "mysql", "mariadb"}
+    if configuration.get("database_backend") not in allowed_databases:
+        raise ValueError("Distributed Order Management supports only PostgreSQL, MySQL, or MariaDB backends")
+    if not configuration.get("event_topic"):
+        raise ValueError("Distributed Order Management requires an AppGen-X event topic")
+    configured = {
+        **configuration,
+        "ok": True,
+        "event_contract": "appgen_event_contract",
+        "allowed_database_backends": tuple(sorted(allowed_databases)),
+    }
+    return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
 
 def dom_set_parameter(state: dict, name: str, value: float | int | str | bool) -> dict:
+    allowed = {
+        "fraud_threshold",
+        "allocation_confidence_threshold",
+        "partial_fulfillment_threshold",
+        "max_split_shipments",
+        "service_level_weight",
+        "distance_weight",
+        "margin_weight",
+        "promise_horizon_days",
+        "exception_age_threshold_hours",
+        "retry_limit",
+        "workbench_limit",
+    }
+    if name not in allowed:
+        raise ValueError(f"Unsupported Distributed Order Management parameter: {name}")
     return {"ok": True, "state": {**state, "parameters": {**state["parameters"], name: value}}, "parameter": {"name": name, "value": value}}
 
 
 def dom_register_rule(state: dict, rule: dict) -> dict:
-    enriched = {**rule, "compiled_hash": _digest(rule)}
+    required = {"rule_id", "tenant", "status"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required Distributed Order Management rule fields: {missing}")
+    scope = rule.get("scope") or rule.get("rule_type")
+    if not scope:
+        raise ValueError("Distributed Order Management rule requires scope or rule_type")
+    enriched = {**rule, "scope": scope, "enabled": rule["status"] == "active", "compiled_hash": _digest(rule)}
     return {"ok": True, "state": {**state, "rules": {**state["rules"], rule["rule_id"]: enriched}}, "rule": enriched}
 
 
@@ -446,7 +478,18 @@ def dom_model_stochastic_fulfillment_exposure(*, delay_path: tuple[float, ...], 
 
 def dom_build_workbench_view(state: dict, *, tenant: str) -> dict:
     orders = tuple(order for order in state["orders"].values() if order["tenant"] == tenant)
-    return {"ok": True, "tenant": tenant, "order_count": len(orders), "open_order_count": len(tuple(order for order in orders if order["status"] not in {"shipped", "cancelled"})), "shipped_count": len(tuple(order for order in orders if order["status"] == "shipped")), "fraud_review_count": len(tuple(screen for screen in state["fraud"].values() if screen["tenant"] == tenant and screen["decision"] == "review")), "fulfillment_plan_count": len(tuple(plan for plan in state["fulfillment_plans"].values() if plan["tenant"] == tenant))}
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "order_count": len(orders),
+        "open_order_count": len(tuple(order for order in orders if order["status"] not in {"shipped", "cancelled"})),
+        "shipped_count": len(tuple(order for order in orders if order["status"] == "shipped")),
+        "fraud_review_count": len(tuple(screen for screen in state["fraud"].values() if screen["tenant"] == tenant and screen["decision"] == "review")),
+        "fulfillment_plan_count": len(tuple(plan for plan in state["fulfillment_plans"].values() if plan["tenant"] == tenant)),
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rule_count": len(state.get("rules", {})),
+        "parameter_count": len(state.get("parameters", {})),
+    }
 
 
 def dom_register_governed_model(name: str, metadata: dict) -> dict:
