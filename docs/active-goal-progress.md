@@ -865,6 +865,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   enterprise composition selection, implemented-capability audit,
   implementation release audit, `pbc_release_audit()`, all-46-PBC generation
   smoke audit, and the restricted legacy-name diff scan.
+- `bd9421f` normalizes `wms_core` into the complete package surface:
+  package-local warehouse execution UI/workbench contract, stricter executable
+  configuration and parameter validation, source contract wiring, central PBC
+  exports, focused WMS tests, and release-audit evidence. Verification passed
+  for WMS focused tests, the 65-test PBC regression slice, central enterprise
+  composition selection, implemented-capability audit, implementation release
+  audit, `pbc_release_audit()`, all-46-PBC generation smoke audit, and the
+  restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
