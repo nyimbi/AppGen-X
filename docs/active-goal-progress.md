@@ -811,6 +811,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated component family module and generated smoke-test module is loaded,
   replayed, checked for required group coverage, and required by component
   parity runtime validation.
+- `ed620cc` adds generated binding module runtime replay matrices: binding
+  modules, binding module tests, designer family modules, and designer family
+  tests are loaded and replayed as required evidence for binding runtime
+  validation.
 
 ## Open Completion Areas
 
