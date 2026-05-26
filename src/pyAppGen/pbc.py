@@ -7187,6 +7187,9 @@ from .pbcs.schema_registry import SCHEMA_REGISTRY_RUNTIME_CAPABILITY_KEYS  # noq
 from .pbcs.schema_registry import SCHEMA_REGISTRY_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.schema_registry import SCHEMA_REGISTRY_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.schema_registry import schema_registry_build_api_contract  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_build_release_evidence  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_build_schema_contract  # noqa: E402,F401
+from .pbcs.schema_registry import schema_registry_build_service_contract  # noqa: E402,F401
 from .pbcs.schema_registry import schema_registry_build_workbench_view  # noqa: E402,F401
 from .pbcs.schema_registry import schema_registry_configure_runtime  # noqa: E402,F401
 from .pbcs.schema_registry import schema_registry_define_compatibility_rule  # noqa: E402,F401

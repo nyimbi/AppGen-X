@@ -9,6 +9,9 @@ from .runtime import SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC
 from .runtime import SCHEMA_REGISTRY_RUNTIME_CAPABILITY_KEYS
 from .runtime import SCHEMA_REGISTRY_STANDARD_FEATURE_KEYS
 from .runtime import schema_registry_build_api_contract
+from .runtime import schema_registry_build_release_evidence
+from .runtime import schema_registry_build_schema_contract
+from .runtime import schema_registry_build_service_contract
 from .runtime import schema_registry_build_workbench_view
 from .runtime import schema_registry_configure_runtime
 from .runtime import schema_registry_define_compatibility_rule
@@ -44,7 +47,13 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": schema_registry_ui_contract(),
         "api_contract": schema_registry_build_api_contract(),
+        "schema_contract": schema_registry_build_schema_contract(),
+        "service_contract": schema_registry_build_service_contract(),
+        "release_evidence_contract": schema_registry_build_release_evidence(),
         "permissions_contract": schema_registry_permissions_contract(),
         "owned_tables": SCHEMA_REGISTRY_OWNED_TABLES,
         "allowed_database_backends": SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC,
+        "consumes": SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES,
+        "emits": SCHEMA_REGISTRY_EMITTED_EVENT_TYPES,
     }

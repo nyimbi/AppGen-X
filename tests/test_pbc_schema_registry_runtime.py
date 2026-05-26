@@ -7,6 +7,9 @@ from pyAppGen.pbc import SCHEMA_REGISTRY_EMITTED_EVENT_TYPES
 from pyAppGen.pbc import SCHEMA_REGISTRY_OWNED_TABLES
 from pyAppGen.pbc import SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbc import schema_registry_build_api_contract
+from pyAppGen.pbc import schema_registry_build_release_evidence
+from pyAppGen.pbc import schema_registry_build_schema_contract
+from pyAppGen.pbc import schema_registry_build_service_contract
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
@@ -41,10 +44,13 @@ def test_schema_registry_runtime_executes_standard_and_advanced_capabilities() -
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/schema_registry"
     assert runtime["owned_tables"] == SCHEMA_REGISTRY_OWNED_TABLES
-    assert len(runtime["standard_features"]) >= 25
+    assert len(runtime["owned_tables"]) >= 40
+    assert len(runtime["standard_features"]) >= 40
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
+    assert "schema_acceptance_proofs" in runtime["standard_features"]
+    assert "control_assertions" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert smoke["ok"] is True
     assert set(SCHEMA_REGISTRY_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
@@ -55,7 +61,13 @@ def test_schema_registry_runtime_executes_standard_and_advanced_capabilities() -
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["owned_tables"] == SCHEMA_REGISTRY_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["required_event_topic"] == SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == SCHEMA_REGISTRY_EMITTED_EVENT_TYPES
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "schema_registry.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "SchemaConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
@@ -75,6 +87,25 @@ def test_schema_registry_runtime_executes_standard_and_advanced_capabilities() -
     assert {route["route"] for route in api["routes"]} >= {"POST /schemas/subjects", "POST /schemas/events/inbox", "GET /schemas/subjects"}
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
     assert permissions["action_permissions"]["publish_contract_projection"] == "schema_registry.publish"
+
+    schema = schema_registry_build_schema_contract()
+    service = schema_registry_build_service_contract()
+    release = schema_registry_build_release_evidence()
+    assert schema["format"] == "appgen.schema-registry-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(SCHEMA_REGISTRY_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(SCHEMA_REGISTRY_OWNED_TABLES)
+    assert {"schema_field", "compatibility_matrix", "payload_validation_error", "schema_governed_model", "schema_registry_appgen_inbox_event"} <= {
+        item["table"] for item in schema["tables"]
+    }
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.schema-registry-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 25
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.schema-registry-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
 
 
 def test_schema_registry_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -241,6 +272,7 @@ def test_schema_registry_runtime_applies_rules_parameters_configuration_and_ui()
     assert ui_contract["configuration_editor"]["required_event_topic"] == SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["binding_evidence"]["owned_tables"] == SCHEMA_REGISTRY_OWNED_TABLES
+    assert ui_contract["binding_evidence"]["shared_table_access"] is False
     assert "compatibility_threshold" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     rendered = schema_registry_render_workbench(
@@ -255,6 +287,7 @@ def test_schema_registry_runtime_applies_rules_parameters_configuration_and_ui()
             "schema_registry.event",
             "schema_registry.configure",
             "schema_registry.audit",
+            "schema_registry.read",
         ),
     )
     assert rendered["ok"] is True
@@ -264,6 +297,7 @@ def test_schema_registry_runtime_applies_rules_parameters_configuration_and_ui()
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == SCHEMA_REGISTRY_OWNED_TABLES
+    assert rendered["binding_evidence"]["shared_table_access"] is False
 
     boundary = schema_registry_verify_owned_table_boundary(
         ("schema_version", "PbcDeployed", "gateway_contract_projection", "POST /audit/contract-events", "schema_registry_appgen_outbox_event")

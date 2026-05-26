@@ -20,12 +20,49 @@ Package-local implementation contract for the Schema Registry PBC. The package o
 Owned tables and generated model artifacts:
 
 - `schema_subject`
+- `schema_subject_alias`
+- `schema_namespace`
 - `schema_version`
+- `schema_field`
+- `schema_fingerprint`
+- `schema_semantic_tag`
+- `schema_diff`
+- `schema_evolution_plan`
 - `compatibility_rule`
+- `compatibility_matrix`
+- `compatibility_exception`
 - `consumer_binding`
+- `consumer_impact`
+- `producer_binding`
 - `validation_run`
+- `payload_validation_sample`
+- `payload_validation_error`
 - `contract_violation`
+- `contract_remediation`
 - `contract_projection`
+- `gateway_contract_projection`
+- `audit_contract_projection`
+- `composition_contract_projection`
+- `workflow_contract_projection`
+- `route_contract_projection`
+- `access_policy_projection`
+- `package_registration_projection`
+- `pbc_deployment_projection`
+- `schema_acceptance_proof`
+- `schema_policy_screening`
+- `schema_federation_view`
+- `schema_resilience_drill`
+- `schema_crypto_epoch`
+- `carbon_validation_window`
+- `schema_diff_optimization`
+- `consumer_review_allocation`
+- `validation_anomaly_signal`
+- `contract_exposure_forecast`
+- `schema_identity_attestation`
+- `schema_governed_model`
+- `schema_seed_data`
+- `schema_control_assertion`
+- `schema_registry_extension`
 - `schema_rule`
 - `schema_parameter`
 - `schema_configuration`
@@ -179,6 +216,14 @@ UI fragments:
 - `SchemaConfigurationPanel`
 
 The workbench exposes subject, version, validation, violation, consumer-binding, release-blocking, inbox, outbox, dead-letter, configuration, rule, parameter, and owned-boundary evidence. Visible actions are RBAC-filtered by read, register, approve, validate, triage, publish, event, configuration, and audit permissions.
+
+## Generated Schema, Services, And Release Evidence
+
+`schema_registry_build_schema_contract` emits generation-ready descriptors for every owned table, including table fields, relationships, migration paths under `pbcs/schema_registry/migrations/{sequence}_{table}.sql`, model descriptors under `pbcs/schema_registry/models/{table}.py`, backend allowlist evidence, and `shared_table_access: False`.
+
+`schema_registry_build_service_contract` publishes the command and query surface used by generated applications: runtime configuration, parameters, rules, owned schema extensions, AppGen-X inbox intake, subject registration, compatibility rules, consumer binding, schema submission, compatibility checks, payload validation, violation recording, contract projection publication, route failover, selective proof generation, policy screening, federation, identity checks, resilience drills, crypto epoch rotation, carbon-aware validation, schema diff optimization, consumer impact allocation, control testing, governed model registration, and boundary verification.
+
+`schema_registry_build_release_evidence` is the package-local release gate. It proves owned schema depth, one migration descriptor per owned table, service command depth, AppGen-X-only API/eventing, permission coverage for core commands, backend allowlist compliance, and no shared table access.
 
 ## Release Evidence
 

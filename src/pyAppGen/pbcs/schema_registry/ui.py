@@ -147,5 +147,7 @@ def schema_registry_render_workbench(
             "outbox_table": "schema_registry_appgen_outbox_event",
             "inbox_table": "schema_registry_appgen_inbox_event",
             "dead_letter_table": "schema_registry_dead_letter_event",
+            "shared_table_access": False,
+            "required_event_topic": SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC,
         },
     }
