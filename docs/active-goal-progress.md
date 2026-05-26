@@ -942,6 +942,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   implemented-capability audit, implementation release audit,
   `pbc_release_audit()`, talent onboarding generation smoke audit, py-compile,
   and the restricted legacy-name diff scan.
+- `02887a8` tightens `mrp_engine` into the complete package execution
+  contract: existing package-local UI/workbench wiring is preserved while
+  runtime configuration now rejects unsupported backends, parameters are
+  bounded, rules compile with required scope/status evidence, workbench
+  summaries expose configuration/rule/parameter bindings, and the package-local
+  specification records the strict datastore and AppGen-X eventing guarantees.
+  Verification passed for MRP focused tests, the 73-test PBC regression slice,
+  central enterprise composition selection, implemented-capability audit,
+  implementation release audit, `pbc_release_audit()`, MRP generation smoke
+  audit, py-compile, and the restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
