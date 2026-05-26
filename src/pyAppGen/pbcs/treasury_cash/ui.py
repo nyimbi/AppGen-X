@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import TREASURY_CASH_ALLOWED_DATABASE_BACKENDS
+from .runtime import TREASURY_CASH_CONSUMED_EVENT_TYPES
+from .runtime import TREASURY_CASH_EMITTED_EVENT_TYPES
+from .runtime import TREASURY_CASH_OWNED_TABLES
+from .runtime import TREASURY_CASH_REQUIRED_EVENT_TOPIC
+from .runtime import treasury_cash_permissions_contract
+
 
 TREASURY_CASH_UI_FRAGMENT_KEYS = (
     "TreasuryCashWorkbench",
@@ -80,27 +87,14 @@ def treasury_cash_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": {
-            "register_bank_account": "treasury_cash.bank",
-            "capture_bank_balance": "treasury_cash.balance",
-            "ingest_bank_statement": "treasury_cash.statement",
-            "reconcile_statement": "treasury_cash.reconcile",
-            "build_cash_position": "treasury_cash.position",
-            "forecast_cash": "treasury_cash.forecast",
-            "optimize_liquidity": "treasury_cash.funding",
-            "route_payment_rail": "treasury_cash.payment",
-            "place_investment": "treasury_cash.investment",
-            "draw_debt_facility": "treasury_cash.debt",
-            "recommend_hedge": "treasury_cash.fx",
-            "register_rule": "treasury_cash.configure",
-            "set_parameter": "treasury_cash.configure",
-            "configure_runtime": "treasury_cash.configure",
-            "run_control_tests": "treasury_cash.audit",
-        },
+        "action_permissions": treasury_cash_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": TREASURY_CASH_ALLOWED_DATABASE_BACKENDS,
+            "required_event_topic": TREASURY_CASH_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "user_selectable_event_contract": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -117,11 +111,13 @@ def treasury_cash_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": ("BankAccountRegistered", "BankBalanceCaptured", "BankStatementIngested", "InvestmentPlaced", "DebtFacilityDrawn"),
-            "consumes": ("PaymentFundingRequested", "ReceivableCashForecasted", "PayablePaymentScheduled", "FxRateChanged", "AccessPolicyChanged"),
+            "emits": TREASURY_CASH_EMITTED_EVENT_TYPES,
+            "consumes": TREASURY_CASH_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "binding_evidence": {"owned_tables": TREASURY_CASH_OWNED_TABLES, "shared_table_access": False},
     }
 
 
@@ -160,4 +156,12 @@ def treasury_cash_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "binding_evidence": {
+            "owned_tables": TREASURY_CASH_OWNED_TABLES,
+            "outbox_table": "treasury_cash_appgen_outbox_event",
+            "inbox_table": "treasury_cash_appgen_inbox_event",
+            "dead_letter_table": "treasury_cash_dead_letter_event",
+        },
     }

@@ -8,6 +8,64 @@ import math
 import re
 
 
+TREASURY_CASH_REQUIRED_EVENT_TOPIC = "appgen.treasury_cash.events"
+TREASURY_CASH_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+TREASURY_CASH_OWNED_TABLES = (
+    "treasury_cash_bank_account",
+    "treasury_cash_balance",
+    "treasury_cash_statement",
+    "treasury_cash_cash_position",
+    "treasury_cash_liquidity_plan",
+    "treasury_cash_capital_action",
+    "treasury_cash_rule",
+    "treasury_cash_parameter",
+    "treasury_cash_configuration",
+)
+TREASURY_CASH_EMITTED_EVENT_TYPES = (
+    "BankAccountRegistered",
+    "BankBalanceCaptured",
+    "BankStatementIngested",
+    "CashPositionBuilt",
+    "PaymentFunded",
+    "InvestmentPlaced",
+    "DebtFacilityDrawn",
+)
+TREASURY_CASH_CONSUMED_EVENT_TYPES = (
+    "PaymentFundingRequested",
+    "ReceivableCashForecasted",
+    "PayablePaymentScheduled",
+    "PayrollFundingRequested",
+    "TaxPaymentScheduled",
+    "FxRateChanged",
+    "AccessPolicyChanged",
+)
+_TREASURY_CASH_RUNTIME_TABLES = (
+    "treasury_cash_appgen_outbox_event",
+    "treasury_cash_appgen_inbox_event",
+    "treasury_cash_dead_letter_event",
+)
+_TREASURY_CASH_ALLOWED_DEPENDENCIES = (
+    "payment_funding_projection",
+    "receivable_forecast_projection",
+    "payable_payment_projection",
+    "payroll_funding_projection",
+    "tax_payment_projection",
+    "fx_rate_projection",
+    "access_policy_projection",
+    "GET /identity/policies",
+    "POST /audit/contract-events",
+    "GET /schema/events",
+)
+_TREASURY_CASH_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
 TREASURY_CASH_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_cash_lifecycle",
     "graph_relational_bank_topology",
@@ -77,12 +135,15 @@ def treasury_cash_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "treasury_cash",
         "implementation_directory": "src/pyAppGen/pbcs/treasury_cash",
+        "owned_tables": TREASURY_CASH_OWNED_TABLES,
         "capabilities": TREASURY_CASH_RUNTIME_CAPABILITY_KEYS,
         "standard_features": TREASURY_CASH_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_bank_account",
             "capture_bank_balance",
             "ingest_bank_statement",
@@ -99,6 +160,7 @@ def treasury_cash_runtime_capabilities() -> dict:
             "screen_bank_network",
             "run_control_tests",
             "build_api_contract",
+            "permissions_contract",
             "federate_cross_border_liquidity",
             "integrate_working_capital_finance",
             "verify_counterparty_identity",
@@ -113,6 +175,7 @@ def treasury_cash_runtime_capabilities() -> dict:
             "draw_debt_facility",
             "recommend_hedge",
             "build_workbench_view",
+            "verify_owned_table_boundary",
             "register_governed_model",
         ),
         "smoke": smoke,
@@ -125,7 +188,7 @@ def treasury_cash_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.treasury.events",
+            "event_topic": TREASURY_CASH_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "default_timezone": "UTC",
@@ -148,9 +211,18 @@ def treasury_cash_runtime_smoke() -> dict:
     )["state"]
     state = treasury_cash_register_schema_extension(
         state,
-        "cash_flow",
+        "treasury_cash_cash_position",
         {"source_attributes": "jsonb", "confidence": "decimal"},
     )["state"]
+    received = treasury_cash_receive_event(
+        state,
+        {
+            "event_id": "payable_due_001",
+            "event_type": "PayablePaymentScheduled",
+            "payload": {"tenant": "tenant_alpha", "schedule_id": "sched_001", "amount": 1200, "currency": "USD"},
+        },
+    )
+    state = received["state"]
     account = treasury_cash_register_bank_account(
         state,
         {
@@ -261,7 +333,7 @@ def treasury_cash_runtime_smoke() -> dict:
         {"id": "event_sourced_cash_lifecycle", "ok": len(state["events"]) >= 5 and state["events"][-1]["hash"]},
         {"id": "graph_relational_bank_topology", "ok": account["account"]["graph_degree"] >= 2},
         {"id": "multi_tenant_liquidity_isolation", "ok": cash_position["tenant"] == "tenant_alpha"},
-        {"id": "schema_evolution_resilient_cash_schema", "ok": state["schema_extensions"]["cash_flow"]["source_attributes"] == "jsonb"},
+        {"id": "schema_evolution_resilient_cash_schema", "ok": state["schema_extensions"]["treasury_cash_cash_position"]["source_attributes"] == "jsonb"},
         {"id": "probabilistic_cash_forecasting", "ok": forecast["ok"] and forecast["forecast"][0]["confidence_interval"][0] < forecast["forecast"][0]["amount"]},
         {"id": "real_time_liquidity_optimization", "ok": optimization["ok"] and optimization["selected_source"] == "cash_pool"},
         {"id": "counterfactual_funding_analysis", "ok": counterfactual["ok"] and counterfactual["savings"] > 0},
@@ -285,7 +357,7 @@ def treasury_cash_runtime_smoke() -> dict:
         {"id": "mechanism_design_funding_allocation", "ok": allocation["ok"] and allocation["clearing_rate"] == 0.016},
         {"id": "information_theoretic_cash_anomaly_detection", "ok": anomaly["ok"] and anomaly["kl_divergence"] >= 0},
         {"id": "temporal_liquidity_forecasting_construct", "ok": stochastic["simulation_count"] == 1000},
-        {"id": "distributed_systems_engineering", "ok": resilience["remaining_quorum"] >= 3 and routing["idempotency_key"].startswith("treasury_cash:")},
+        {"id": "distributed_systems_engineering", "ok": resilience["remaining_quorum"] >= 3 and routing["idempotency_key"].startswith("treasury_cash:") and received["handler"]["status"] == "processed"},
         {"id": "probabilistic_ml_liquidity_risk", "ok": risk["model"] == "bank_topology_risk" and forecast["forecast"][0]["confidence"] >= 0.8},
         {"id": "cryptographic_engineering", "ok": proof["proof"].startswith("zk_liquidity_") and crypto["key_epoch"] == 2},
         {"id": "mathematical_optimization", "ok": algebraic["objective_score"] < 1},
@@ -309,6 +381,18 @@ def treasury_cash_empty_state() -> dict:
         "rules": {},
         "events": (),
         "outbox": (),
+        "inbox": (),
+        "dead_letters": (),
+        "dead_letter": (),
+        "handled_events": {},
+        "retry_evidence": (),
+        "payment_funding_projections": {},
+        "receivable_forecast_projections": {},
+        "payable_payment_projections": {},
+        "payroll_funding_projections": {},
+        "tax_payment_projections": {},
+        "fx_rate_projections": {},
+        "access_policy_projections": {},
         "bank_accounts": {},
         "bank_topology": {},
         "balances": {},
@@ -321,14 +405,21 @@ def treasury_cash_empty_state() -> dict:
 
 
 def treasury_cash_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _TREASURY_CASH_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Treasury Cash uses the AppGen-X event contract; unsupported eventing fields: {forbidden}")
+    if configuration.get("database_backend") not in set(TREASURY_CASH_ALLOWED_DATABASE_BACKENDS):
         raise ValueError("Treasury Cash supports only PostgreSQL, MySQL, or MariaDB backends")
+    if configuration.get("event_topic") != TREASURY_CASH_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Treasury Cash requires AppGen-X event topic {TREASURY_CASH_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "allowed_database_backends": TREASURY_CASH_ALLOWED_DATABASE_BACKENDS,
+        "stream_engine_picker_visible": False,
+        "user_selectable_event_contract": False,
+        "owned_tables": TREASURY_CASH_OWNED_TABLES,
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -359,10 +450,65 @@ def treasury_cash_register_rule(state: dict, rule: dict) -> dict:
 
 
 def treasury_cash_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in TREASURY_CASH_OWNED_TABLES:
+        raise ValueError(f"Treasury Cash schema extensions must target owned tables: {TREASURY_CASH_OWNED_TABLES}")
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    merged = {**state["schema_extensions"].get(table, {}), **fields}
+    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: merged}}, "schema_extension": {"table": table, "fields": dict(fields)}, "target": table, "fields": merged}
+
+
+def treasury_cash_receive_event(state: dict, event: dict, *, simulate_failure: bool = False) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    key = event.get("idempotency_key") or f"{event_type}:{event_id}"
+    handled = state.get("handled_events", {})
+    if key in handled and handled[key]["status"] == "processed":
+        return {"ok": True, "duplicate": True, "state": state, "handler": handled[key]}
+
+    attempts = int(handled.get(key, {}).get("attempts", 0)) + 1
+    payload = dict(event.get("payload", {}))
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+    }
+    next_state = _copy_state(state)
+    next_state["inbox"] = (*next_state.get("inbox", ()), inbox_entry)
+    retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
+    if simulate_failure or event_type not in TREASURY_CASH_CONSUMED_EVENT_TYPES:
+        status = "dead_letter" if attempts >= retry_limit else "retrying"
+        handler = {"event_id": event_id, "event_type": event_type, "status": status, "attempts": attempts, "idempotency_key": key}
+        evidence = {"event_id": event_id, "event_type": event_type, "attempts": attempts, "status": status}
+        next_state["handled_events"][key] = handler
+        next_state["retry_evidence"] = (*next_state.get("retry_evidence", ()), evidence)
+        if status == "dead_letter":
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_treasury_event"}
+            next_state["dead_letters"] = (*next_state.get("dead_letters", ()), dead)
+            next_state["dead_letter"] = (*next_state.get("dead_letter", ()), dead)
+        return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
+
+    if event_type == "PaymentFundingRequested":
+        next_state["payment_funding_projections"][payload.get("request_id", event_id)] = payload
+    elif event_type == "ReceivableCashForecasted":
+        next_state["receivable_forecast_projections"][payload.get("forecast_id", event_id)] = payload
+    elif event_type == "PayablePaymentScheduled":
+        next_state["payable_payment_projections"][payload.get("schedule_id", event_id)] = payload
+    elif event_type == "PayrollFundingRequested":
+        next_state["payroll_funding_projections"][payload.get("payroll_id", event_id)] = payload
+    elif event_type == "TaxPaymentScheduled":
+        next_state["tax_payment_projections"][payload.get("tax_payment_id", event_id)] = payload
+    elif event_type == "FxRateChanged":
+        next_state["fx_rate_projections"][payload.get("currency_pair", event_id)] = payload
+    elif event_type == "AccessPolicyChanged":
+        next_state["access_policy_projections"][payload.get("policy_id", event_id)] = payload
+
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "attempts": attempts, "idempotency_key": key}
+    next_state["handled_events"][key] = handler
+    return {"ok": True, "duplicate": False, "state": next_state, "handler": handler}
 
 
 def treasury_cash_register_bank_account(state: dict, account: dict) -> dict:
@@ -471,10 +617,6 @@ def treasury_cash_run_control_tests(state: dict) -> dict:
     return {"ok": True, "dual_approval": True, "signatory_present": all(account["signatories"] for account in state["bank_accounts"].values()), "duplicate_statement_guard": len(state["statements"]) == len({statement["statement_id"] for statement in state["statements"].values()})}
 
 
-def treasury_cash_build_api_contract() -> dict:
-    return {"ok": True, "graphql_mutations": ("registerBankAccount", "ingestStatement", "releaseFunding", "placeInvestment"), "graphql_queries": ("cashPosition", "liquidityForecast", "counterpartyRisk"), "asyncapi_events": ("CashPositionBuilt", "BankStatementIngested", "PaymentFunded", "InvestmentPlaced")}
-
-
 def treasury_cash_federate_cross_border_liquidity(cash_position: dict, *, target_country: str, fx_rate: float) -> dict:
     return {"ok": True, "standard": "iso_20022", "target_country": target_country, "settlement_amount": round(cash_position["available_cash"] * fx_rate, 2), "message_id": "camt053_" + _digest(cash_position)[:16]}
 
@@ -561,6 +703,12 @@ def treasury_cash_build_workbench_view(state: dict, *, tenant: str, value_date: 
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "owned_tables": TREASURY_CASH_OWNED_TABLES,
+        "outbox_table": "treasury_cash_appgen_outbox_event",
+        "inbox_table": "treasury_cash_appgen_inbox_event",
+        "dead_letter_table": "treasury_cash_dead_letter_event",
+        "inbox_count": len(state.get("inbox", ())),
+        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
     }
 
 
@@ -573,6 +721,125 @@ def treasury_cash_verify_formal_invariants(state: dict) -> dict:
 
 def treasury_cash_register_governed_model(name: str, metadata: dict) -> dict:
     return {"ok": metadata.get("auc", 0) >= 0.8 and metadata.get("drift_score", 1) <= 0.1, "name": name, "metadata": metadata, "governance": {"regulated": True, "feature_lineage": tuple(metadata.get("features", ())), "explainability_required": True}}
+
+
+def treasury_cash_permissions_contract() -> dict:
+    return {
+        "format": "appgen.treasury-cash-permissions.v1",
+        "ok": True,
+        "permissions": (
+            "treasury_cash.read",
+            "treasury_cash.bank",
+            "treasury_cash.balance",
+            "treasury_cash.statement",
+            "treasury_cash.reconcile",
+            "treasury_cash.position",
+            "treasury_cash.forecast",
+            "treasury_cash.funding",
+            "treasury_cash.payment",
+            "treasury_cash.investment",
+            "treasury_cash.debt",
+            "treasury_cash.fx",
+            "treasury_cash.event",
+            "treasury_cash.configure",
+            "treasury_cash.audit",
+        ),
+        "action_permissions": {
+            "register_bank_account": "treasury_cash.bank",
+            "capture_bank_balance": "treasury_cash.balance",
+            "ingest_bank_statement": "treasury_cash.statement",
+            "reconcile_statement": "treasury_cash.reconcile",
+            "build_cash_position": "treasury_cash.position",
+            "forecast_cash": "treasury_cash.forecast",
+            "optimize_liquidity": "treasury_cash.funding",
+            "route_payment_rail": "treasury_cash.payment",
+            "place_investment": "treasury_cash.investment",
+            "draw_debt_facility": "treasury_cash.debt",
+            "recommend_hedge": "treasury_cash.fx",
+            "receive_event": "treasury_cash.event",
+            "register_rule": "treasury_cash.configure",
+            "register_schema_extension": "treasury_cash.configure",
+            "set_parameter": "treasury_cash.configure",
+            "configure_runtime": "treasury_cash.configure",
+            "build_workbench_view": "treasury_cash.audit",
+            "run_control_tests": "treasury_cash.audit",
+        },
+    }
+
+
+def treasury_cash_build_api_contract() -> dict:
+    return {
+        "format": "appgen.treasury-cash-api-contract.v1",
+        "ok": True,
+        "routes": (
+            {"route": "POST /treasury/bank-accounts", "command": "register_bank_account", "owned_tables": ("treasury_cash_bank_account",), "emits": ("BankAccountRegistered",), "requires_permission": "treasury_cash.bank", "idempotency_key": "account_id"},
+            {"route": "POST /treasury/balances", "command": "capture_bank_balance", "owned_tables": ("treasury_cash_balance",), "emits": ("BankBalanceCaptured",), "requires_permission": "treasury_cash.balance", "idempotency_key": "balance_id"},
+            {"route": "POST /treasury/statements", "command": "ingest_bank_statement", "owned_tables": ("treasury_cash_statement",), "emits": ("BankStatementIngested",), "requires_permission": "treasury_cash.statement", "idempotency_key": "statement_id"},
+            {"route": "POST /treasury/statements/{id}/reconcile", "command": "reconcile_statement", "owned_tables": ("treasury_cash_statement",), "emits": (), "requires_permission": "treasury_cash.reconcile", "idempotency_key": "statement_id"},
+            {"route": "GET /treasury/cash-position", "query": "build_cash_position", "owned_tables": ("treasury_cash_balance", "treasury_cash_statement", "treasury_cash_cash_position"), "emits": ("CashPositionBuilt",), "requires_permission": "treasury_cash.position"},
+            {"route": "POST /treasury/forecasts", "command": "forecast_cash", "owned_tables": ("treasury_cash_cash_position",), "emits": (), "requires_permission": "treasury_cash.forecast", "idempotency_key": "tenant:horizon"},
+            {"route": "POST /treasury/liquidity/optimize", "command": "optimize_liquidity", "owned_tables": ("treasury_cash_liquidity_plan",), "emits": ("PaymentFunded",), "requires_permission": "treasury_cash.funding", "idempotency_key": "tenant:target_balance"},
+            {"route": "POST /treasury/payment-rails/route", "command": "route_payment_rail", "owned_tables": ("treasury_cash_liquidity_plan",), "emits": ("PaymentFunded",), "requires_permission": "treasury_cash.payment", "idempotency_key": "rail:payment"},
+            {"route": "POST /treasury/investments", "command": "place_investment", "owned_tables": ("treasury_cash_capital_action",), "emits": ("InvestmentPlaced",), "requires_permission": "treasury_cash.investment", "idempotency_key": "investment_id"},
+            {"route": "POST /treasury/debt-draws", "command": "draw_debt_facility", "owned_tables": ("treasury_cash_capital_action",), "emits": ("DebtFacilityDrawn",), "requires_permission": "treasury_cash.debt", "idempotency_key": "draw_id"},
+            {"route": "POST /treasury/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": TREASURY_CASH_CONSUMED_EVENT_TYPES, "requires_permission": "treasury_cash.event", "idempotency_key": "event_id"},
+            {"route": "GET /treasury/workbench", "query": "build_workbench_view", "owned_tables": TREASURY_CASH_OWNED_TABLES, "requires_permission": "treasury_cash.audit"},
+        ),
+        "declared_catalog_routes": ("POST /treasury/bank-accounts", "POST /treasury/balances", "POST /treasury/statements", "GET /treasury/cash-position", "GET /treasury/workbench"),
+        "events": {"emits": TREASURY_CASH_EMITTED_EVENT_TYPES, "consumes": TREASURY_CASH_CONSUMED_EVENT_TYPES},
+        "emits": TREASURY_CASH_EMITTED_EVENT_TYPES,
+        "consumes": TREASURY_CASH_CONSUMED_EVENT_TYPES,
+        "asyncapi_events": TREASURY_CASH_EMITTED_EVENT_TYPES,
+        "permissions": tuple(sorted(treasury_cash_permissions_contract()["permissions"])),
+        "database_backends": TREASURY_CASH_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": TREASURY_CASH_OWNED_TABLES,
+        "shared_table_access": False,
+        "event_contract": "AppGen-X",
+        "required_event_topic": TREASURY_CASH_REQUIRED_EVENT_TOPIC,
+        "stream_engine_picker_visible": False,
+        "configuration": ("TREASURY_CASH_DATABASE_URL", "TREASURY_CASH_EVENT_TOPIC", "TREASURY_CASH_RETRY_LIMIT", "TREASURY_CASH_DEFAULT_TIMEZONE"),
+    }
+
+
+def treasury_cash_verify_owned_table_boundary(references: tuple[str, ...] | list[str] | set[str] = ()) -> dict:
+    allowed = (*TREASURY_CASH_OWNED_TABLES, *TREASURY_CASH_CONSUMED_EVENT_TYPES, *_TREASURY_CASH_RUNTIME_TABLES, *_TREASURY_CASH_ALLOWED_DEPENDENCIES)
+    violations = tuple(reference for reference in references if reference not in set(allowed) and not str(reference).startswith("treasury_cash_"))
+    return {
+        "format": "appgen.treasury-cash-boundary.v1",
+        "ok": not violations,
+        "owned_tables": TREASURY_CASH_OWNED_TABLES,
+        "declared_dependencies": {
+            "apis": ("GET /identity/policies", "POST /audit/contract-events", "GET /schema/events"),
+            "events": TREASURY_CASH_CONSUMED_EVENT_TYPES,
+            "api_projections": ("payment_funding_projection", "receivable_forecast_projection", "payable_payment_projection", "payroll_funding_projection", "tax_payment_projection", "fx_rate_projection", "access_policy_projection"),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+    }
+
+
+def _copy_state(state: dict) -> dict:
+    return {
+        **state,
+        "configuration": dict(state.get("configuration", {})),
+        "parameters": dict(state.get("parameters", {})),
+        "rules": dict(state.get("rules", {})),
+        "events": tuple(dict(item) for item in state.get("events", ())),
+        "outbox": tuple(dict(item) for item in state.get("outbox", ())),
+        "inbox": tuple(dict(item) for item in state.get("inbox", ())),
+        "dead_letters": tuple(dict(item) for item in state.get("dead_letters", ())),
+        "dead_letter": tuple(dict(item) for item in state.get("dead_letter", state.get("dead_letters", ()))),
+        "handled_events": {key: dict(value) for key, value in state.get("handled_events", {}).items()},
+        "retry_evidence": tuple(dict(item) for item in state.get("retry_evidence", ())),
+        "payment_funding_projections": {key: dict(value) for key, value in state.get("payment_funding_projections", {}).items()},
+        "receivable_forecast_projections": {key: dict(value) for key, value in state.get("receivable_forecast_projections", {}).items()},
+        "payable_payment_projections": {key: dict(value) for key, value in state.get("payable_payment_projections", {}).items()},
+        "payroll_funding_projections": {key: dict(value) for key, value in state.get("payroll_funding_projections", {}).items()},
+        "tax_payment_projections": {key: dict(value) for key, value in state.get("tax_payment_projections", {}).items()},
+        "fx_rate_projections": {key: dict(value) for key, value in state.get("fx_rate_projections", {}).items()},
+        "access_policy_projections": {key: dict(value) for key, value in state.get("access_policy_projections", {}).items()},
+    }
 
 
 def _append_event(state: dict, event_type: str, payload: dict) -> dict:

@@ -8,6 +8,68 @@ import math
 import re
 
 
+ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC = "appgen.asset.events"
+ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+ASSET_LIFECYCLE_OWNED_TABLES = (
+    "fixed_asset",
+    "asset_component",
+    "asset_book",
+    "asset_depreciation_schedule",
+    "asset_depreciation_run",
+    "asset_transfer",
+    "asset_valuation_adjustment",
+    "asset_maintenance_adjustment",
+    "asset_insurance_warranty",
+    "asset_retirement",
+    "asset_physical_verification",
+    "asset_rule",
+    "asset_parameter",
+    "asset_configuration",
+)
+ASSET_LIFECYCLE_EMITTED_EVENT_TYPES = (
+    "AssetRegistered",
+    "AssetPlacedInService",
+    "DepreciationCalculated",
+    "AssetTransferred",
+    "AssetRevalued",
+    "AssetImpaired",
+    "MaintenanceAdjustedAssetLife",
+    "AssetRetired",
+)
+ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES = (
+    "PurchaseReceiptCapitalized",
+    "MaintenanceCompleted",
+    "InsurancePolicyChanged",
+    "TaxBookChanged",
+    "AccessPolicyChanged",
+)
+_ASSET_LIFECYCLE_RUNTIME_TABLES = (
+    "asset_lifecycle_appgen_outbox_event",
+    "asset_lifecycle_appgen_inbox_event",
+    "asset_lifecycle_dead_letter_event",
+)
+_ASSET_LIFECYCLE_ALLOWED_DEPENDENCIES = (
+    "purchase_receipt_projection",
+    "maintenance_completion_projection",
+    "insurance_policy_projection",
+    "tax_book_projection",
+    "access_policy_projection",
+    "POST /ledger/journals",
+    "GET /procurement/receipts",
+    "GET /maintenance/work-orders",
+    "GET /insurance/policies",
+    "GET /tax/books",
+)
+_ASSET_LIFECYCLE_FORBIDDEN_EVENTING_FIELDS = {
+    "eventing_choice",
+    "eventing_mode",
+    "event_transport",
+    "stream_engine",
+    "stream_engine_picker",
+    "stream_picker",
+    "user_eventing_choice",
+}
+
 ASSET_LIFECYCLE_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_asset_lifecycle",
     "graph_relational_asset_topology",
@@ -68,9 +130,18 @@ ASSET_LIFECYCLE_STANDARD_FEATURE_KEYS = (
     "asset_retirement",
     "disposal_gain_loss",
     "journal_events",
+    "event_outbox",
+    "event_inbox",
+    "idempotent_handlers",
+    "retry_dead_letter",
     "physical_verification",
     "approval_controls",
     "audit_trail",
+    "permissions",
+    "owned_datastore_boundary",
+    "release_gate",
+    "seed_data",
+    "appgen_event_contract",
     "workbench",
 )
 
@@ -82,12 +153,15 @@ def asset_lifecycle_runtime_capabilities() -> dict:
         "ok": smoke["ok"],
         "pbc": "asset_lifecycle",
         "implementation_directory": "src/pyAppGen/pbcs/asset_lifecycle",
+        "owned_tables": ASSET_LIFECYCLE_OWNED_TABLES,
         "capabilities": ASSET_LIFECYCLE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": ASSET_LIFECYCLE_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
+            "receive_event",
             "register_asset",
             "place_asset_in_service",
             "build_depreciation_schedule",
@@ -108,6 +182,7 @@ def asset_lifecycle_runtime_capabilities() -> dict:
             "screen_asset_policy",
             "run_control_tests",
             "build_api_contract",
+            "permissions_contract",
             "federate_asset_view",
             "integrate_insurance_warranty",
             "verify_asset_identity",
@@ -118,6 +193,7 @@ def asset_lifecycle_runtime_capabilities() -> dict:
             "allocate_shared_asset",
             "detect_asset_anomaly",
             "verify_formal_invariants",
+            "verify_owned_table_boundary",
             "build_workbench_view",
             "register_governed_model",
         ),
@@ -131,7 +207,7 @@ def asset_lifecycle_runtime_smoke() -> dict:
         state,
         {
             "database_backend": "postgresql",
-            "event_topic": "appgen.asset.events",
+            "event_topic": ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC,
             "retry_limit": 3,
             "default_currency": "USD",
             "default_timezone": "UTC",
@@ -267,6 +343,18 @@ def asset_lifecycle_empty_state() -> dict:
         "rules": {},
         "events": (),
         "outbox": (),
+        "inbox": {},
+        "handled_events": {},
+        "dead_letters": (),
+        "dead_letter": (),
+        "retry_evidence": (),
+        "projections": {
+            "purchase_receipts": {},
+            "maintenance_completions": {},
+            "insurance_policies": {},
+            "tax_books": {},
+            "access_policies": {},
+        },
         "assets": {},
         "asset_graph": {},
         "schedules": {},
@@ -277,14 +365,24 @@ def asset_lifecycle_empty_state() -> dict:
 
 
 def asset_lifecycle_configure_runtime(state: dict, configuration: dict) -> dict:
-    allowed_databases = {"postgresql", "mysql", "mariadb"}
-    if configuration.get("database_backend") not in allowed_databases:
+    forbidden = tuple(sorted(field for field in _ASSET_LIFECYCLE_FORBIDDEN_EVENTING_FIELDS if field in configuration))
+    if forbidden:
+        raise ValueError(f"Asset Lifecycle eventing is fixed to AppGen-X; remove stream-engine picker fields: {forbidden}")
+    if configuration.get("database_backend") not in ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS:
         raise ValueError("Asset Lifecycle supports only PostgreSQL, MySQL, or MariaDB backends")
+    if configuration.get("event_topic") != ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC:
+        raise ValueError(f"Asset Lifecycle must use the AppGen-X event topic {ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC}")
     configured = {
         **configuration,
         "ok": True,
-        "event_contract": "appgen_event_contract",
-        "allowed_database_backends": tuple(sorted(allowed_databases)),
+        "event_contract": "AppGen-X",
+        "event_topic": ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC,
+        "stream_engine_picker_visible": False,
+        "allowed_database_backends": ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": ASSET_LIFECYCLE_OWNED_TABLES,
+        "outbox_table": "asset_lifecycle_appgen_outbox_event",
+        "inbox_table": "asset_lifecycle_appgen_inbox_event",
+        "dead_letter_table": "asset_lifecycle_dead_letter_event",
     }
     return {"ok": True, "state": {**state, "configuration": configured}, "configuration": configured}
 
@@ -315,10 +413,87 @@ def asset_lifecycle_register_rule(state: dict, rule: dict) -> dict:
 
 
 def asset_lifecycle_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    if table not in ASSET_LIFECYCLE_OWNED_TABLES:
+        return {"ok": False, "error": "non_owned_table", "table": table, "owned_tables": ASSET_LIFECYCLE_OWNED_TABLES, "state": state}
     invalid = tuple(name for name in fields if not re.fullmatch(r"[a-z][a-z0-9_]*", name))
     if invalid:
         return {"ok": False, "error": "invalid_extension_field", "invalid": invalid, "state": state}
-    return {"ok": True, "state": {**state, "schema_extensions": {**state["schema_extensions"], table: dict(fields)}}}
+    extensions = dict(state.get("schema_extensions", {}))
+    extensions[table] = {**extensions.get(table, {}), **dict(fields)}
+    return {"ok": True, "state": {**state, "schema_extensions": extensions}, "table": table, "fields": dict(fields)}
+
+
+def asset_lifecycle_receive_event(state: dict, event: dict) -> dict:
+    event_id = event.get("event_id")
+    event_type = event.get("event_type")
+    if not event_id:
+        raise ValueError("Asset Lifecycle inbox events require event_id")
+    if event_id in state.get("handled_events", {}):
+        return {
+            "ok": True,
+            "duplicate": True,
+            "state": state,
+            "handler": {"event_id": event_id, "event_type": event_type, "status": "duplicate"},
+        }
+    retry_limit = int(state.get("configuration", {}).get("retry_limit", 3))
+    attempts = int(event.get("attempts", 1))
+    if event_type not in ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES or event.get("payload") is None:
+        status = "dead_lettered" if attempts >= retry_limit else "retrying"
+        evidence = {
+            "event_id": event_id,
+            "event_type": event_type,
+            "attempts": attempts,
+            "retry_limit": retry_limit,
+            "status": status,
+            "reason": "unsupported_event_type" if event_type not in ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES else "missing_payload",
+        }
+        next_state = {**state, "retry_evidence": (*state.get("retry_evidence", ()), evidence)}
+        if status == "dead_lettered":
+            next_state = {
+                **next_state,
+                "dead_letters": (*next_state.get("dead_letters", ()), {**event, "status": status, "reason": evidence["reason"]}),
+                "dead_letter": (*next_state.get("dead_letter", ()), {**event, "status": status, "reason": evidence["reason"]}),
+            }
+        return {"ok": False, "state": next_state, "handler": evidence, "dead_lettered": status == "dead_lettered"}
+
+    payload = dict(event["payload"])
+    projections = {
+        **state.get(
+            "projections",
+            {
+                "purchase_receipts": {},
+                "maintenance_completions": {},
+                "insurance_policies": {},
+                "tax_books": {},
+                "access_policies": {},
+            },
+        )
+    }
+    projection_key = {
+        "PurchaseReceiptCapitalized": "purchase_receipts",
+        "MaintenanceCompleted": "maintenance_completions",
+        "InsurancePolicyChanged": "insurance_policies",
+        "TaxBookChanged": "tax_books",
+        "AccessPolicyChanged": "access_policies",
+    }[event_type]
+    projection_id = payload.get("asset_id") or payload.get("receipt_id") or payload.get("policy_id") or payload.get("book_id") or payload.get("policy_version") or event_id
+    projections[projection_key] = {
+        **projections.get(projection_key, {}),
+        projection_id: {
+            "event_id": event_id,
+            "event_type": event_type,
+            "payload": payload,
+            "source": event.get("source", "appgen"),
+        },
+    }
+    handler = {"event_id": event_id, "event_type": event_type, "status": "processed", "projection": projection_key}
+    next_state = {
+        **state,
+        "inbox": {**state.get("inbox", {}), event_id: {**event, "status": "processed"}},
+        "handled_events": {**state.get("handled_events", {}), event_id: handler},
+        "projections": projections,
+    }
+    return {"ok": True, "state": next_state, "handler": handler, "duplicate": False}
 
 
 def asset_lifecycle_register_asset(state: dict, asset: dict) -> dict:
@@ -465,7 +640,86 @@ def asset_lifecycle_run_control_tests(state: dict) -> dict:
 
 
 def asset_lifecycle_build_api_contract() -> dict:
-    return {"ok": True, "graphql_mutations": ("registerAsset", "placeInService", "runDepreciation", "retireAsset"), "graphql_queries": ("assetRegister", "depreciationSchedule", "assetRisk"), "asyncapi_events": ("AssetPlacedInService", "DepreciationCalculated", "AssetRetired")}
+    routes = (
+        {"route": "POST /assets", "command": "register_asset", "owned_table": "fixed_asset", "permission": "asset_lifecycle.register"},
+        {"route": "POST /assets/{asset_id}/service", "command": "place_asset_in_service", "owned_table": "fixed_asset", "permission": "asset_lifecycle.service"},
+        {"route": "POST /assets/{asset_id}/depreciation-schedules", "command": "build_depreciation_schedule", "owned_table": "asset_depreciation_schedule", "permission": "asset_lifecycle.depreciation"},
+        {"route": "POST /depreciation-runs", "command": "run_depreciation", "owned_table": "asset_depreciation_run", "permission": "asset_lifecycle.depreciation"},
+        {"route": "POST /assets/{asset_id}/transfers", "command": "transfer_asset", "owned_table": "asset_transfer", "permission": "asset_lifecycle.transfer"},
+        {"route": "POST /assets/{asset_id}/revaluations", "command": "revalue_asset", "owned_table": "asset_valuation_adjustment", "permission": "asset_lifecycle.valuation"},
+        {"route": "POST /assets/{asset_id}/impairments", "command": "impair_asset", "owned_table": "asset_valuation_adjustment", "permission": "asset_lifecycle.valuation"},
+        {"route": "POST /assets/{asset_id}/maintenance-adjustments", "command": "record_maintenance_adjustment", "owned_table": "asset_maintenance_adjustment", "permission": "asset_lifecycle.maintenance"},
+        {"route": "POST /assets/{asset_id}/retirements", "command": "retire_asset", "owned_table": "asset_retirement", "permission": "asset_lifecycle.retirement"},
+        {"route": "POST /assets/events/inbox", "command": "receive_event", "owned_table": "asset_lifecycle_appgen_inbox_event", "permission": "asset_lifecycle.event"},
+        {"route": "GET /assets", "query": "asset_register", "owned_table": "fixed_asset", "permission": "asset_lifecycle.read"},
+        {"route": "GET /assets/{asset_id}/risk", "query": "asset_risk", "owned_table": "fixed_asset", "permission": "asset_lifecycle.read"},
+    )
+    return {
+        "format": "appgen.asset-lifecycle-api-contract.v1",
+        "ok": True,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
+        "database_backends": ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS,
+        "owned_tables": ASSET_LIFECYCLE_OWNED_TABLES,
+        "runtime_tables": _ASSET_LIFECYCLE_RUNTIME_TABLES,
+        "emits": ASSET_LIFECYCLE_EMITTED_EVENT_TYPES,
+        "consumes": ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES,
+        "dependency_contracts": _ASSET_LIFECYCLE_ALLOWED_DEPENDENCIES,
+        "routes": routes,
+        "graphql_mutations": ("registerAsset", "placeInService", "runDepreciation", "retireAsset"),
+        "graphql_queries": ("assetRegister", "depreciationSchedule", "assetRisk"),
+        "asyncapi_events": ("AssetPlacedInService", "DepreciationCalculated", "AssetRetired"),
+    }
+
+
+def asset_lifecycle_permissions_contract() -> dict:
+    action_permissions = {
+        "configure_runtime": "asset_lifecycle.configure",
+        "set_parameter": "asset_lifecycle.configure",
+        "register_rule": "asset_lifecycle.configure",
+        "register_schema_extension": "asset_lifecycle.configure",
+        "receive_event": "asset_lifecycle.event",
+        "register_asset": "asset_lifecycle.register",
+        "place_asset_in_service": "asset_lifecycle.service",
+        "build_depreciation_schedule": "asset_lifecycle.depreciation",
+        "run_depreciation": "asset_lifecycle.depreciation",
+        "transfer_asset": "asset_lifecycle.transfer",
+        "revalue_asset": "asset_lifecycle.valuation",
+        "impair_asset": "asset_lifecycle.valuation",
+        "record_maintenance_adjustment": "asset_lifecycle.maintenance",
+        "retire_asset": "asset_lifecycle.retirement",
+        "generate_asset_audit_proof": "asset_lifecycle.audit",
+        "run_control_tests": "asset_lifecycle.audit",
+        "build_workbench_view": "asset_lifecycle.read",
+    }
+    return {
+        "format": "appgen.asset-lifecycle-permissions-contract.v1",
+        "ok": True,
+        "pbc": "asset_lifecycle",
+        "roles": {
+            "asset_lifecycle_admin": tuple(sorted(set(action_permissions.values()))),
+            "asset_lifecycle_accountant": (
+                "asset_lifecycle.read",
+                "asset_lifecycle.register",
+                "asset_lifecycle.service",
+                "asset_lifecycle.depreciation",
+                "asset_lifecycle.valuation",
+                "asset_lifecycle.retirement",
+            ),
+            "asset_lifecycle_operator": (
+                "asset_lifecycle.read",
+                "asset_lifecycle.transfer",
+                "asset_lifecycle.maintenance",
+            ),
+            "asset_lifecycle_auditor": (
+                "asset_lifecycle.read",
+                "asset_lifecycle.audit",
+            ),
+        },
+        "action_permissions": action_permissions,
+        "abac_attributes": ("tenant", "legal_entity", "book", "location", "cost_center", "asset_category"),
+    }
 
 
 def asset_lifecycle_federate_asset_view(state: dict, asset_id: str, *, external_systems: tuple[str, ...]) -> dict:
@@ -527,6 +781,19 @@ def asset_lifecycle_verify_formal_invariants(state: dict) -> dict:
     return {"ok": schedule_assets <= set(state["assets"]) and all(asset["book_value"] >= 0 for asset in state["assets"].values()), "invariants": ("schedule_references_existing_asset", "non_negative_book_value", "single_owner_datastore")}
 
 
+def asset_lifecycle_verify_owned_table_boundary(references: tuple[str, ...] | list[str]) -> dict:
+    allowed = set(ASSET_LIFECYCLE_OWNED_TABLES) | set(_ASSET_LIFECYCLE_RUNTIME_TABLES) | set(_ASSET_LIFECYCLE_ALLOWED_DEPENDENCIES) | set(ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES)
+    violations = tuple(sorted(reference for reference in references if reference not in allowed and not reference.startswith("asset_lifecycle_")))
+    return {
+        "format": "appgen.asset-lifecycle-owned-boundary.v1",
+        "ok": not violations,
+        "owned_tables": ASSET_LIFECYCLE_OWNED_TABLES,
+        "runtime_tables": _ASSET_LIFECYCLE_RUNTIME_TABLES,
+        "allowed_dependencies": _ASSET_LIFECYCLE_ALLOWED_DEPENDENCIES,
+        "violations": violations,
+    }
+
+
 def asset_lifecycle_build_workbench_view(state: dict, *, tenant: str) -> dict:
     assets = tuple(asset for asset in state["assets"].values() if asset["tenant"] == tenant)
     return {
@@ -539,6 +806,21 @@ def asset_lifecycle_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "inbox_count": len(state.get("inbox", {})),
+        "dead_letter_count": len(state.get("dead_letters", ())),
+        "binding_evidence": {
+            "owned_tables": ASSET_LIFECYCLE_OWNED_TABLES,
+            "runtime_tables": _ASSET_LIFECYCLE_RUNTIME_TABLES,
+            "configuration": {
+                "event_contract": "AppGen-X",
+                "event_topic": ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC,
+                "allowed_database_backends": ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS,
+                "stream_engine_picker_visible": False,
+            },
+            "emits": ASSET_LIFECYCLE_EMITTED_EVENT_TYPES,
+            "consumes": ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES,
+            "permissions": asset_lifecycle_permissions_contract()["action_permissions"],
+        },
     }
 
 

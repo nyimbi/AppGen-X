@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .runtime import ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS
+from .runtime import ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES
+from .runtime import ASSET_LIFECYCLE_EMITTED_EVENT_TYPES
+from .runtime import ASSET_LIFECYCLE_OWNED_TABLES
+from .runtime import ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC
+from .runtime import asset_lifecycle_permissions_contract
+
 
 ASSET_LIFECYCLE_UI_FRAGMENT_KEYS = (
     "AssetLifecycleWorkbench",
@@ -95,11 +102,15 @@ def asset_lifecycle_ui_contract() -> dict:
             "set_parameter": "asset_lifecycle.configure",
             "configure_runtime": "asset_lifecycle.configure",
             "run_control_tests": "asset_lifecycle.audit",
+            "receive_event": "asset_lifecycle.event",
+            "register_schema_extension": "asset_lifecycle.configure",
         },
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
-            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "allowed_database_backends": ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS,
             "event_contract": "AppGen-X",
+            "fixed_event_topic": ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC,
+            "stream_engine_picker_visible": False,
         },
         "parameter_editor": {
             "numeric_parameters": (
@@ -116,24 +127,24 @@ def asset_lifecycle_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
-            "emits": (
-                "AssetRegistered",
-                "AssetPlacedInService",
-                "DepreciationCalculated",
-                "AssetTransferred",
-                "AssetRevalued",
-                "AssetImpaired",
-                "AssetRetired",
-            ),
-            "consumes": (
-                "PurchaseReceiptCapitalized",
-                "MaintenanceCompleted",
-                "InsurancePolicyChanged",
-                "TaxBookChanged",
-                "AccessPolicyChanged",
-            ),
+            "emits": ASSET_LIFECYCLE_EMITTED_EVENT_TYPES,
+            "consumes": ASSET_LIFECYCLE_CONSUMED_EVENT_TYPES,
             "outbox_status": "visible",
+            "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "workbench_binding_evidence": {
+            "owned_tables": ASSET_LIFECYCLE_OWNED_TABLES,
+            "outbox_table": "asset_lifecycle_appgen_outbox_event",
+            "inbox_table": "asset_lifecycle_appgen_inbox_event",
+            "dead_letter_table": "asset_lifecycle_dead_letter_event",
+            "permissions": asset_lifecycle_permissions_contract()["action_permissions"],
+            "configuration": {
+                "event_contract": "AppGen-X",
+                "event_topic": ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC,
+                "allowed_database_backends": ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS,
+                "stream_engine_picker_visible": False,
+            },
         },
     }
 
@@ -172,4 +183,7 @@ def asset_lifecycle_render_workbench(
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
+        "event_inbox_count": len(state.get("inbox", {})),
+        "dead_letter_count": len(state.get("dead_letters", ())),
+        "binding_evidence": contract["workbench_binding_evidence"],
     }
