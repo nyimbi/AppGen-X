@@ -833,6 +833,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   composition selection, implemented-capability audit, implementation release
   audit, `pbc_release_audit()`, all-46-PBC generation smoke audit, and the
   restricted legacy-name diff scan.
+- `4066997` normalizes `asset_lifecycle` into the complete package surface:
+  expanded package-local specification, executable configuration/rule/parameter
+  operations, asset lifecycle UI/workbench contract, central PBC exports,
+  focused asset tests, and release-audit evidence. Verification passed for
+  asset focused tests, the 62-test PBC regression slice, central enterprise
+  composition selection, implemented-capability audit, implementation release
+  audit, `pbc_release_audit()`, all-46-PBC generation smoke audit, and the
+  restricted legacy-name diff scan.
 
 ## Open Completion Areas
 
