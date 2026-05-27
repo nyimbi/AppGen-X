@@ -2316,3 +2316,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   export, undo grouping, and snapshot-scoped rollback before visual runtime,
   designer, lifecycle, and readiness gates can pass. Verification is focused
   under the low-battery delivery constraint. Commit: `381e2d5`.
+- Current `multi_sided_market` PBC pass promotes deeper market table-stakes
+  into executable package-local operations: listing assets, availability
+  windows, exchange proposals, escrow release policies, escrow release,
+  reputation signals, dispute resolution, and market-clearing projections.
+  Runtime, catalog metadata, package exports, AppGen-X event descriptors,
+  service descriptors, specification traceability, and focused tests now prove
+  those flows plus counterfactual terms, semantic market instruction parsing,
+  collusion anomaly scoring, privacy-preserving reputation proof, and
+  carbon-aware fulfillment selection without stream-engine choices or shared
+  table access. Verification is focused under the low-battery delivery
+  constraint: package Python compile, runtime smoke, focused package contract
+  tests, source artifact contract, implementation release audit, generation
+  smoke audit, specification contract, and restricted legacy-name scan all
+  passed. Commit: `pending`.

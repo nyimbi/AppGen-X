@@ -3911,31 +3911,52 @@ PBC_CATALOG.update(
             "apis": (
                 "POST /market/participants",
                 "POST /market/listings",
+                "POST /market/listing-assets",
                 "POST /market/service-offers",
+                "POST /market/availability-windows",
                 "POST /market/trade-orders",
                 "POST /market/barter-offers",
+                "POST /market/exchange-proposals",
                 "POST /market/sale-orders",
                 "POST /market/bookings",
                 "POST /market/rentals",
                 "POST /market/loans",
                 "POST /market/escrow",
+                "POST /market/escrow-release-policies",
+                "POST /market/escrow-releases",
                 "POST /market/settlements",
+                "POST /market/reputation-signals",
                 "POST /market/disputes",
+                "POST /market/dispute-resolutions",
+                "POST /market/clearing-projections",
                 "GET /market-workbench",
+                "GET /market/exchange-match",
+                "GET /market/counterfactual-terms",
+                "GET /market/collusion-anomaly",
+                "GET /market/reputation-proof",
+                "GET /market/carbon-fulfillment",
             ),
             "emits": (
                 "MarketParticipantVerified",
                 "MarketListingPublished",
+                "ListingAssetRegistered",
                 "ServiceOfferCreated",
+                "AvailabilityWindowPublished",
                 "TradeOrderPlaced",
                 "BarterOfferMatched",
+                "ExchangeProposalPrepared",
                 "SaleCompleted",
                 "BookingReserved",
                 "RentalStarted",
                 "LoanIssued",
                 "EscrowOpened",
+                "EscrowReleasePolicyCompiled",
+                "EscrowReleased",
                 "MarketSettlementPrepared",
+                "ReputationSignalRecorded",
                 "MarketDisputeOpened",
+                "MarketDisputeResolved",
+                "MarketClearingProjected",
             ),
             "consumes": (
                 "ProductPublished",
@@ -9168,26 +9189,39 @@ from .pbcs.multi_sided_market import multi_sided_market_build_service_contract  
 from .pbcs.multi_sided_market import multi_sided_market_build_workbench_view  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_configure_runtime  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_create_service_offer  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_compile_escrow_release_policy  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_detect_collusion_anomaly  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_empty_state  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_execute_sale  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_generate_reputation_proof  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_issue_loan  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_match_barter_offer  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_open_dispute  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_open_escrow  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_optimize_exchange_match  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_parse_market_instruction  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_permissions_contract  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_place_trade_order  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_prepare_exchange_proposal  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_prepare_settlement  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_publish_availability_window  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_publish_listing  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_publish_market_clearing_projection  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_receive_event  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_record_reputation_signal  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_register_listing_asset  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_register_rule  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_register_schema_extension  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_release_escrow  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_render_workbench  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_reserve_booking  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_resolve_dispute  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_runtime_capabilities  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_runtime_smoke  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_score_reputation  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_select_carbon_fulfillment  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_set_parameter  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_simulate_counterfactual_terms  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_start_rental  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_ui_contract  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_verify_owned_table_boundary  # noqa: E402,F401

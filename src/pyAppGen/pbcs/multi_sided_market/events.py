@@ -1,6 +1,27 @@
 """Typed AppGen-X event contract for the multi_sided_market PBC."""
 PBC_KEY = 'multi_sided_market'
-EMITTED = ('MarketParticipantVerified', 'MarketListingPublished', 'ServiceOfferCreated', 'TradeOrderPlaced', 'BarterOfferMatched', 'SaleCompleted', 'BookingReserved', 'RentalStarted', 'LoanIssued', 'EscrowOpened', 'MarketSettlementPrepared', 'MarketDisputeOpened')
+EMITTED = (
+    'MarketParticipantVerified',
+    'MarketListingPublished',
+    'ListingAssetRegistered',
+    'ServiceOfferCreated',
+    'AvailabilityWindowPublished',
+    'TradeOrderPlaced',
+    'BarterOfferMatched',
+    'ExchangeProposalPrepared',
+    'SaleCompleted',
+    'BookingReserved',
+    'RentalStarted',
+    'LoanIssued',
+    'EscrowOpened',
+    'EscrowReleasePolicyCompiled',
+    'EscrowReleased',
+    'MarketSettlementPrepared',
+    'ReputationSignalRecorded',
+    'MarketDisputeOpened',
+    'MarketDisputeResolved',
+    'MarketClearingProjected',
+)
 CONSUMED = ('ProductPublished', 'InventoryPoolChanged', 'PaymentCaptured', 'TaxCalculated', 'FraudRiskScored', 'AccessPolicyChanged')
 OUTBOX_TABLE = 'multi_sided_market_appgen_outbox_event'
 INBOX_TABLE = 'multi_sided_market_appgen_inbox_event'

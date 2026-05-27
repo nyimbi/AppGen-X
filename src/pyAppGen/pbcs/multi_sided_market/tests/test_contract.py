@@ -1,6 +1,13 @@
 from .. import package_discovery_plan, package_metadata_manifest, registration_plan, validate_package_metadata
 from .. import events, handlers, release_evidence, routes, services, config, permissions, seed_data, agent, models
-from ..runtime import multi_sided_market_empty_state, multi_sided_market_open_escrow, multi_sided_market_runtime_smoke
+from ..runtime import multi_sided_market_compile_escrow_release_policy
+from ..runtime import multi_sided_market_empty_state
+from ..runtime import multi_sided_market_open_escrow
+from ..runtime import multi_sided_market_prepare_exchange_proposal
+from ..runtime import multi_sided_market_publish_availability_window
+from ..runtime import multi_sided_market_register_listing_asset
+from ..runtime import multi_sided_market_release_escrow
+from ..runtime import multi_sided_market_runtime_smoke
 from ..schema_contract import build_schema_contract
 from ..service_contract import build_service_contract
 
@@ -61,19 +68,39 @@ def test_service_and_route_surface_are_executable():
     assert all(item['event_contract'] == 'AppGen-X' for item in service['contracts'])
     assert all('idempotency_key' in item for item in route['contracts'])
     assert service['operation_event_map']['command_market_service_offers'] == 'ServiceOfferCreated'
+    assert service['operation_event_map']['command_market_listing_assets'] == 'ListingAssetRegistered'
+    assert service['operation_event_map']['command_market_availability_windows'] == 'AvailabilityWindowPublished'
+    assert service['operation_event_map']['command_market_exchange_proposals'] == 'ExchangeProposalPrepared'
     assert service['operation_event_map']['command_market_escrow'] == 'EscrowOpened'
+    assert service['operation_event_map']['command_market_escrow_releases'] == 'EscrowReleased'
     assert routes.dispatch_route('command_market_escrow', {'escrow_id': 'escrow_1'})['emits'] == ('EscrowOpened',)
 
 
 def test_runtime_supports_full_exchange_modes_and_escrow():
+    state = multi_sided_market_empty_state()
+    asset = multi_sided_market_register_listing_asset(state, {'asset_id': 'asset_1', 'listing_id': 'listing_1', 'quantity': 2})
+    state = asset['state']
+    window = multi_sided_market_publish_availability_window(state, {'window_id': 'window_1', 'listing_id': 'listing_1', 'capacity': 3, 'reserved_count': 1})
+    state = window['state']
+    proposal = multi_sided_market_prepare_exchange_proposal(state, {'proposal_id': 'proposal_1', 'source_listing_id': 'listing_1', 'target_listing_id': 'listing_2'})
+    state = proposal['state']
     escrow = multi_sided_market_open_escrow(
-        multi_sided_market_empty_state(),
+        state,
         {'escrow_id': 'escrow_1', 'exchange_id': 'sale_1', 'amount': 75, 'release_policy': {'type': 'delivery'}},
     )
+    state = escrow['state']
+    policy = multi_sided_market_compile_escrow_release_policy(state, {'policy_id': 'policy_1', 'escrow_id': 'escrow_1'})
+    release = multi_sided_market_release_escrow(policy['state'], {'escrow_id': 'escrow_1', 'policy_id': 'policy_1', 'completed_checks': ('payment_captured', 'fulfillment_confirmed', 'dispute_window_clear')})
+    assert asset['asset']['status'] == 'available'
+    assert window['availability_window']['available_count'] == 2
+    assert proposal['exchange_proposal']['status'] in {'proposed', 'needs_review'}
     assert escrow['ok'] is True
     assert escrow['escrow']['status'] == 'open'
-    assert escrow['state']['outbox'][-1]['event_type'] == 'EscrowOpened'
-    assert multi_sided_market_runtime_smoke()['ok'] is True
+    assert release['escrow']['status'] == 'released'
+    smoke = multi_sided_market_runtime_smoke()
+    assert smoke['ok'] is True
+    assert smoke['advanced_evidence']['parsed']['requires_document_review'] is True
+    assert smoke['advanced_evidence']['proof']['proof'].startswith('market_reputation_')
 
 
 def test_event_handlers_are_idempotent_and_retryable():

@@ -17,19 +17,32 @@ EVENT_CONTRACT = {
 COMMAND_ROUTES = {
     "command_market_participants": ("POST", "/api/pbc/multi_sided_market/participants", "multi_sided_market.command.participant"),
     "command_market_listings": ("POST", "/api/pbc/multi_sided_market/listings", "multi_sided_market.command.listing"),
+    "command_market_listing_assets": ("POST", "/api/pbc/multi_sided_market/listing-assets", "multi_sided_market.command.listing"),
     "command_market_service_offers": ("POST", "/api/pbc/multi_sided_market/service-offers", "multi_sided_market.command.service_offer"),
+    "command_market_availability_windows": ("POST", "/api/pbc/multi_sided_market/availability-windows", "multi_sided_market.command.booking"),
     "command_market_trade_orders": ("POST", "/api/pbc/multi_sided_market/trade-orders", "multi_sided_market.command.trade_order"),
     "command_market_barter_offers": ("POST", "/api/pbc/multi_sided_market/barter-offers", "multi_sided_market.command.barter_offer"),
+    "command_market_exchange_proposals": ("POST", "/api/pbc/multi_sided_market/exchange-proposals", "multi_sided_market.command.exchange_proposal"),
     "command_market_sale_orders": ("POST", "/api/pbc/multi_sided_market/sale-orders", "multi_sided_market.command.sale_order"),
     "command_market_bookings": ("POST", "/api/pbc/multi_sided_market/bookings", "multi_sided_market.command.booking"),
     "command_market_rentals": ("POST", "/api/pbc/multi_sided_market/rentals", "multi_sided_market.command.rental"),
     "command_market_loans": ("POST", "/api/pbc/multi_sided_market/loans", "multi_sided_market.command.loan"),
     "command_market_escrow": ("POST", "/api/pbc/multi_sided_market/escrow", "multi_sided_market.command.escrow"),
+    "command_market_escrow_release_policies": ("POST", "/api/pbc/multi_sided_market/escrow-release-policies", "multi_sided_market.command.escrow"),
+    "command_market_escrow_releases": ("POST", "/api/pbc/multi_sided_market/escrow-releases", "multi_sided_market.command.escrow"),
     "command_market_settlements": ("POST", "/api/pbc/multi_sided_market/settlements", "multi_sided_market.command.settlement"),
+    "command_market_reputation_signals": ("POST", "/api/pbc/multi_sided_market/reputation-signals", "multi_sided_market.command.reputation"),
     "command_market_disputes": ("POST", "/api/pbc/multi_sided_market/disputes", "multi_sided_market.command.dispute"),
+    "command_market_dispute_resolutions": ("POST", "/api/pbc/multi_sided_market/dispute-resolutions", "multi_sided_market.command.dispute"),
+    "command_market_clearing_projections": ("POST", "/api/pbc/multi_sided_market/clearing-projections", "multi_sided_market.command.analytics"),
 }
 QUERY_ROUTES = {
     "query_market_workbench": ("GET", "/api/pbc/multi_sided_market-workbench", "multi_sided_market.query.workbench"),
+    "query_exchange_match": ("GET", "/api/pbc/multi_sided_market/exchange-match", "multi_sided_market.query.workbench"),
+    "query_counterfactual_terms": ("GET", "/api/pbc/multi_sided_market/counterfactual-terms", "multi_sided_market.query.workbench"),
+    "query_collusion_anomaly": ("GET", "/api/pbc/multi_sided_market/collusion-anomaly", "multi_sided_market.query.workbench"),
+    "query_reputation_proof": ("GET", "/api/pbc/multi_sided_market/reputation-proof", "multi_sided_market.query.workbench"),
+    "query_carbon_fulfillment": ("GET", "/api/pbc/multi_sided_market/carbon-fulfillment", "multi_sided_market.query.workbench"),
 }
 
 
@@ -148,14 +161,23 @@ class MultiSidedMarketService:
     def command_market_listings(self, payload=None):
         return self._command("command_market_listings", payload or {})
 
+    def command_market_listing_assets(self, payload=None):
+        return self._command("command_market_listing_assets", payload or {})
+
     def command_market_service_offers(self, payload=None):
         return self._command("command_market_service_offers", payload or {})
+
+    def command_market_availability_windows(self, payload=None):
+        return self._command("command_market_availability_windows", payload or {})
 
     def command_market_trade_orders(self, payload=None):
         return self._command("command_market_trade_orders", payload or {})
 
     def command_market_barter_offers(self, payload=None):
         return self._command("command_market_barter_offers", payload or {})
+
+    def command_market_exchange_proposals(self, payload=None):
+        return self._command("command_market_exchange_proposals", payload or {})
 
     def command_market_sale_orders(self, payload=None):
         return self._command("command_market_sale_orders", payload or {})
@@ -172,14 +194,34 @@ class MultiSidedMarketService:
     def command_market_escrow(self, payload=None):
         return self._command("command_market_escrow", payload or {})
 
+    def command_market_escrow_release_policies(self, payload=None):
+        return self._command("command_market_escrow_release_policies", payload or {})
+
+    def command_market_escrow_releases(self, payload=None):
+        return self._command("command_market_escrow_releases", payload or {})
+
     def command_market_settlements(self, payload=None):
         return self._command("command_market_settlements", payload or {})
+
+    def command_market_reputation_signals(self, payload=None):
+        return self._command("command_market_reputation_signals", payload or {})
 
     def command_market_disputes(self, payload=None):
         return self._command("command_market_disputes", payload or {})
 
+    def command_market_dispute_resolutions(self, payload=None):
+        return self._command("command_market_dispute_resolutions", payload or {})
+
+    def command_market_clearing_projections(self, payload=None):
+        return self._command("command_market_clearing_projections", payload or {})
+
     def query_market_workbench(self, payload=None):
         return self._query("query_market_workbench", payload or {})
+
+    def __getattr__(self, operation_name):
+        if operation_name in service_operation_contracts()["operations"]:
+            return lambda payload=None: self._execute(operation_name, payload or {})
+        raise AttributeError(operation_name)
 
 
 def service_operation_manifest():
