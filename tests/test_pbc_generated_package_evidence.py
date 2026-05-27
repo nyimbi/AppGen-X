@@ -29,6 +29,7 @@ def test_generated_pbc_packages_include_schema_service_and_release_evidence(tmp_
             "schema_contract.py",
             "service_contract.py",
             "release_evidence.py",
+            "agent.py",
             "models.py",
             "services.py",
             "routes.py",
@@ -70,14 +71,35 @@ def test_generated_pbc_packages_include_schema_service_and_release_evidence(tmp_
         assert not release_validation["boundary_gaps"]
         sys.path.insert(0, str(output_dir))
         try:
+            agent = importlib.import_module(f"pbcs.{key}.agent")
+            agent_skills = agent.agent_skill_manifest()
+            chatbot = agent.chatbot_interface_contract()
+            document_plan = agent.document_instruction_plan("uploaded document", "create the relevant record")
+            read_plan = agent.datastore_crud_plan("read")
+            create_plan = agent.datastore_crud_plan("create", payload={"status": "draft"})
+            rejected_foreign = agent.datastore_crud_plan("update", table="foreign_table", payload={"status": "draft"})
+            agent_contribution = agent.composed_agent_contribution()
+            agent_smoke = agent.smoke_test()
             generated_test = importlib.import_module(f"pbcs.{key}.tests.test_contract")
+            assert agent_skills["ok"] is True
+            assert chatbot["ok"] is True
+            assert document_plan["ok"] is True
+            assert read_plan["ok"] is True
+            assert create_plan["ok"] is True
+            assert rejected_foreign["ok"] is False
+            assert agent_contribution["ok"] is True
+            assert agent_smoke["ok"] is True
+            assert agent_contribution["single_agent_skill_namespace"] == f"{key}_skills"
+            assert f"{key}_crud" in agent_contribution["dsl_tools"]
             generated_test.test_generated_schema_service_and_release_evidence()
+            generated_test.test_agent_chatbot_skills_are_executable()
             generated_test.test_manifest_and_event_contract()
         finally:
             sys.path.remove(str(output_dir))
             for module_name in (
                 f"pbcs.{key}.tests.test_contract",
                 f"pbcs.{key}.tests",
+                f"pbcs.{key}.agent",
                 f"pbcs.{key}",
                 "pbcs",
             ):
@@ -91,9 +113,11 @@ def test_generated_pbc_packages_include_schema_service_and_release_evidence(tmp_
     assert "schema_contract.py" in directory_check["required_artifacts"]
     assert "service_contract.py" in directory_check["required_artifacts"]
     assert "release_evidence.py" in directory_check["required_artifacts"]
+    assert "agent.py" in directory_check["required_artifacts"]
     assert contract_test_check["ok"] is True
     assert {result["pbc"] for result in contract_test_check["results"]} == set(selected)
     assert all("test_generated_schema_service_and_release_evidence" in result["executed"] for result in contract_test_check["results"])
+    assert all("test_agent_chatbot_skills_are_executable" in result["executed"] for result in contract_test_check["results"])
 
 
 def test_release_audit_runs_generation_smoke_for_every_implemented_pbc() -> None:

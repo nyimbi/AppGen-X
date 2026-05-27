@@ -64,6 +64,7 @@ PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS = (
     "config.py",
     "seed_data.py",
     "migrations/001_initial.sql",
+    "agent.py",
     "tests/__init__.py",
     "tests/test_contract.py",
     "RELEASE_EVIDENCE.md",
@@ -71,7 +72,6 @@ PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS = (
 PBC_SOURCE_PACKAGE_REQUIRED_ARTIFACTS = (
     *PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
     "capability_assurance.py",
-    "agent.py",
 )
 PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS = (
     "capability_modules",
