@@ -165,6 +165,7 @@ from pyAppGen.form_designer import cross_target_hit_test_transform_operation
 from pyAppGen.form_designer import cross_target_import_visual_asset_operation
 from pyAppGen.form_designer import cross_target_run_visual_component_scenario_operation
 from pyAppGen.form_designer import cross_target_scene_material_editor_transaction_replay_contract
+from pyAppGen.form_designer import cross_target_scene_camera_light_transaction_replay_contract
 from pyAppGen.form_designer import cross_target_scene_transform_transaction_replay_contract
 from pyAppGen.form_designer import cross_target_style_override_transaction_replay_contract
 from pyAppGen.form_designer import cross_target_validate_effect_stack_operation
@@ -3297,6 +3298,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "timeline_editor_transaction_replay",
         "effect_fallback_matrix",
         "effect_editor_transaction_replay",
+        "scene_camera_light_transaction_replay",
         "scene_material_editor_transaction_replay",
         "scene_transform_gizmos",
         "scene_transform_transaction_replay",
@@ -3395,6 +3397,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         for transaction in visual_depth["effect_editor_transaction"]["transactions"]
     )
     assert cross_target_effect_editor_transaction_replay_contract()["ok"] is True
+    camera_light_transaction = cross_target_scene_camera_light_transaction_replay_contract()
+    assert camera_light_transaction["format"] == "appgen.cross-target-scene-camera-light-transaction-replay.v1"
+    assert camera_light_transaction["ok"] is True
+    assert {
+        "camera_and_light_nodes_editable",
+        "lens_and_light_parameters_staged",
+        "scene_validation_before_preview",
+        "preview_before_commit",
+        "runtime_camera_light_plan_after_commit",
+        "undo_and_rollback_restore_snapshots",
+        "side_effect_free_camera_light_transaction",
+    } <= {check["id"] for check in camera_light_transaction["checks"] if check["ok"]}
+    assert all(
+        {"sync_inspector", "record_group_undo"} <= set(transaction["operations"])
+        for transaction in camera_light_transaction["transactions"]
+    )
+    assert visual_depth["scene_camera_light_transaction"]["ok"] is True
     assert visual_depth["scene_material_editor_transaction"]["ok"] is True
     assert visual_depth["scene_material_editor_transaction"]["transactions"]
     assert {
@@ -3423,7 +3442,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("emit_runtime_transform_plan" in transaction["operations"] for transaction in transform_transaction["transactions"])
     assert visual_depth["scene_transform_transaction"]["ok"] is True
     assert visual_depth["runtime_replay"]["ok"] is True
-    assert {"style_resolution", "style_override_transaction", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_hit_testing", "scene_material_editor_transaction", "scene_transform_sync", "scene_transform_transaction"} <= {
+    assert {"style_resolution", "style_override_transaction", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_camera_light_transaction", "scene_hit_testing", "scene_material_editor_transaction", "scene_transform_sync", "scene_transform_transaction"} <= {
         item["phase"] for item in visual_depth["runtime_replay"]["replay"]
     }
     assert visual_depth["runtime_replay"]["final_state"]["style_transactions"] > 0
@@ -3435,6 +3454,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "author_timeline",
         "validate_effect_stack",
         "author_scene_graph",
+        "author_camera_and_lights",
         "author_scene_materials",
         "import_assets_and_preview",
         "hit_test_and_transform",
@@ -3442,6 +3462,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {item["phase"] for item in visual_depth["designer_transaction_replay"]["replay"]}
     assert visual_depth["designer_transaction_replay"]["final_state"]["timeline_samples"] > 0
     assert visual_depth["designer_transaction_replay"]["final_state"]["asset_import_transactions"] > 0
+    assert visual_depth["designer_transaction_replay"]["final_state"]["camera_light_transactions"] > 0
     assert visual_depth["designer_transaction_replay"]["final_state"]["transform_syncs"] > 0
     assert visual_depth["designer_transaction_replay"]["final_state"]["transform_transactions"] > 0
     visual_component_specs = cross_target_visual_component_spec_contract()
@@ -3476,6 +3497,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "style_transaction_before_timeline",
         "effects_before_runtime",
         "scene_assets_before_preview_diff",
+        "scene_camera_lights_before_materials",
         "scene_material_transactions_before_preview_diff",
         "asset_import_transaction_before_preview",
         "hit_tests_before_designer_replay",
@@ -3486,6 +3508,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "export_timeline_runtime",
         "assign_effect_fallbacks",
         "validate_scene_materials",
+        "validate_scene_camera_lights",
         "validate_scene_material_transactions",
         "validate_scene_transform_transactions",
         "import_assets_and_diff_preview",
@@ -3628,6 +3651,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "effects_ready",
         "effect_editor_transaction_ready",
         "asset_import_transaction_ready",
+        "scene_camera_light_transaction_ready",
         "scene_material_editor_transaction_ready",
         "scene_transform_transaction_ready",
         "scene_assets_ready",
@@ -3646,6 +3670,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert visual_readiness["final_state"]["asset_import_transactions"] == len(
         visual_depth["asset_import_transaction"]["replay"]
+    )
+    assert visual_readiness["final_state"]["scene_camera_light_transactions"] == len(
+        cross_target_scene_camera_light_transaction_replay_contract()["transactions"]
     )
     assert visual_readiness["final_state"]["scene_material_editor_transactions"] == len(
         visual_depth["scene_material_editor_transaction"]["transactions"]
@@ -5694,6 +5721,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert {
         "visual_runtime_replay",
+        "scene_camera_light_transaction_replay",
         "scene_material_editor_transaction_replay",
         "scene_transform_transaction_replay",
         "visual_lifecycle_replay",
@@ -5859,6 +5887,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "effect_editor_transaction_replay",
         "asset_import_transaction_ready",
         "asset_import_transaction_replay",
+        "scene_camera_light_transaction_ready",
+        "scene_camera_light_transaction_replay",
         "scene_material_editor_transaction_ready",
         "scene_material_editor_transaction_replay",
         "scene_transform_transaction_ready",
@@ -15867,6 +15897,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert {
         "visual_runtime_replay",
+        "scene_camera_light_transaction_replay",
         "scene_material_editor_transaction_replay",
         "scene_transform_transaction_replay",
         "visual_lifecycle_replay",
@@ -16046,6 +16077,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "effect_editor_transaction_replay",
         "asset_import_transaction_ready",
         "asset_import_transaction_replay",
+        "scene_camera_light_transaction_ready",
+        "scene_camera_light_transaction_replay",
         "scene_material_editor_transaction_ready",
         "scene_material_editor_transaction_replay",
         "scene_transform_transaction_ready",
@@ -18661,6 +18694,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "timeline_editor_transaction_replay",
         "effect_fallback_matrix",
         "effect_editor_transaction_replay",
+        "scene_camera_light_transaction_replay",
         "scene_material_editor_transaction_replay",
         "scene_transform_gizmos",
         "scene_transform_transaction_replay",
@@ -18744,6 +18778,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "target_fallbacks_assigned",
         "runtime_effect_plan_after_edit",
     } <= {check["id"] for check in generated_visual_depth["effect_editor_transaction"]["checks"] if check["ok"]}
+    generated_camera_light_transaction = form_designer.cross_target_scene_camera_light_transaction_replay_contract()
+    assert generated_camera_light_transaction["format"] == (
+        "appgen.generated-cross-target-scene-camera-light-transaction-replay.v1"
+    )
+    assert generated_camera_light_transaction["ok"] is True
+    assert {
+        "camera_and_light_nodes_editable",
+        "lens_and_light_parameters_staged",
+        "scene_validation_before_preview",
+        "preview_before_commit",
+        "runtime_camera_light_plan_after_commit",
+        "undo_and_rollback_restore_snapshots",
+        "side_effect_free_camera_light_transaction",
+    } <= {check["id"] for check in generated_camera_light_transaction["checks"] if check["ok"]}
+    assert all(
+        {"sync_inspector", "record_group_undo"} <= set(transaction["operations"])
+        for transaction in generated_camera_light_transaction["transactions"]
+    )
+    assert generated_visual_depth["scene_camera_light_transaction"]["ok"] is True
     assert generated_visual_depth["scene_material_editor_transaction"]["ok"] is True
     assert generated_visual_depth["scene_material_editor_transaction"]["transactions"]
     assert {
@@ -18771,7 +18824,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {check["id"] for check in generated_transform_transaction["checks"] if check["ok"]}
     assert generated_visual_depth["scene_transform_transaction"]["ok"] is True
     assert generated_visual_depth["runtime_replay"]["ok"] is True
-    assert {"style_resolution", "style_override_transaction", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_hit_testing", "scene_material_editor_transaction", "scene_transform_sync", "scene_transform_transaction"} <= {
+    assert {"style_resolution", "style_override_transaction", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_camera_light_transaction", "scene_hit_testing", "scene_material_editor_transaction", "scene_transform_sync", "scene_transform_transaction"} <= {
         item["phase"] for item in generated_visual_depth["runtime_replay"]["replay"]
     }
     assert generated_visual_depth["runtime_replay"]["final_state"]["style_transactions"] > 0
@@ -18783,6 +18836,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "author_timeline",
         "validate_effect_stack",
         "author_scene_graph",
+        "author_camera_and_lights",
         "author_scene_materials",
         "import_assets_and_preview",
         "hit_test_and_transform",
@@ -18824,6 +18878,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "export_timeline_runtime",
         "assign_effect_fallbacks",
         "validate_scene_materials",
+        "validate_scene_camera_lights",
         "validate_scene_material_transactions",
         "validate_scene_transform_transactions",
         "import_assets_and_diff_preview",
@@ -18956,6 +19011,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "effects_ready",
         "effect_editor_transaction_ready",
         "asset_import_transaction_ready",
+        "scene_camera_light_transaction_ready",
         "scene_material_editor_transaction_ready",
         "scene_transform_transaction_ready",
         "scene_assets_ready",
@@ -18974,6 +19030,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert generated_visual_readiness["final_state"]["asset_import_transactions"] == len(
         generated_visual_depth["asset_import_transaction"]["replay"]
+    )
+    assert generated_visual_readiness["final_state"]["scene_camera_light_transactions"] == len(
+        generated_visual_depth["scene_camera_light_transaction"]["transactions"]
     )
     assert generated_visual_readiness["final_state"]["scene_material_editor_transactions"] == len(
         generated_visual_depth["scene_material_editor_transaction"]["transactions"]

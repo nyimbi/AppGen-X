@@ -18101,6 +18101,136 @@ def cross_target_scene_transform_transaction_replay_contract() -> dict:
     }
 
 
+def cross_target_scene_camera_light_transaction_replay_contract() -> dict:
+    """Replay camera and light authoring transactions through preview and runtime export."""
+    scene = cross_target_3d_scene_contract()
+    scene_validation = cross_target_scene_validation_workflow()
+    scene_integrity = cross_target_scene_graph_integrity_contract()
+    camera_nodes = tuple(node for node in scene["scene_graph"] if node["kind"] == "camera")
+    light_nodes = tuple(node for node in scene["scene_graph"] if node["kind"] == "light")
+    transactions = (
+        *tuple(
+            {
+                "node": node["id"],
+                "kind": "camera",
+                "operations": (
+                    "select_scene_node",
+                    "snapshot_camera_state",
+                    "open_camera_preview",
+                    "stage_lens",
+                    "stage_frustum",
+                    "stage_clipping_planes",
+                    "validate_scene_graph",
+                    "preview_camera_path",
+                    "commit_camera_state",
+                    "record_group_undo",
+                    "sync_inspector",
+                    "emit_runtime_camera_plan",
+                ),
+                "before": {"lens_mm": 35, "near": 0.1, "far": 1000, "projection": "perspective"},
+                "after": {"lens_mm": 50, "near": 0.1, "far": 750, "projection": "perspective"},
+                "rollback": ("restore_camera_snapshot", "clear_camera_preview", "sync_inspector"),
+            }
+            for node in camera_nodes
+        ),
+        *tuple(
+            {
+                "node": node["id"],
+                "kind": "light",
+                "operations": (
+                    "select_scene_node",
+                    "snapshot_light_state",
+                    "show_light_cone",
+                    "stage_light_color",
+                    "stage_light_intensity",
+                    "stage_light_falloff",
+                    "validate_scene_graph",
+                    "preview_light_contribution",
+                    "commit_light_state",
+                    "record_group_undo",
+                    "sync_inspector",
+                    "emit_runtime_light_plan",
+                ),
+                "before": {"color": "#ffffff", "intensity": 1.0, "falloff": "linear"},
+                "after": {"color": "#f8fafc", "intensity": 0.8, "falloff": "smooth"},
+                "rollback": ("restore_light_snapshot", "clear_light_preview", "sync_inspector"),
+            }
+            for node in light_nodes
+        ),
+    )
+    checks = (
+        {
+            "id": "camera_and_light_nodes_editable",
+            "ok": bool(camera_nodes)
+            and bool(light_nodes)
+            and all({"select_scene_node", "sync_inspector"} <= set(transaction["operations"]) for transaction in transactions),
+        },
+        {
+            "id": "lens_and_light_parameters_staged",
+            "ok": any({"stage_lens", "stage_frustum"} <= set(transaction["operations"]) for transaction in transactions)
+            and any({"stage_light_color", "stage_light_intensity", "show_light_cone"} <= set(transaction["operations"]) for transaction in transactions),
+        },
+        {
+            "id": "scene_validation_before_preview",
+            "ok": scene_validation["ok"]
+            and scene_integrity["ok"]
+            and all(
+                transaction["operations"].index("validate_scene_graph")
+                < max(
+                    transaction["operations"].index(step)
+                    for step in transaction["operations"]
+                    if step.startswith("preview_")
+                )
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "preview_before_commit",
+            "ok": all(
+                max(
+                    transaction["operations"].index(step)
+                    for step in transaction["operations"]
+                    if step.startswith("preview_")
+                )
+                < transaction["operations"].index("commit_camera_state" if transaction["kind"] == "camera" else "commit_light_state")
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "runtime_camera_light_plan_after_commit",
+            "ok": all(
+                transaction["operations"].index("commit_camera_state" if transaction["kind"] == "camera" else "commit_light_state")
+                < transaction["operations"].index("emit_runtime_camera_plan" if transaction["kind"] == "camera" else "emit_runtime_light_plan")
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "undo_and_rollback_restore_snapshots",
+            "ok": all("record_group_undo" in transaction["operations"] and "sync_inspector" in transaction["rollback"] for transaction in transactions),
+        },
+        {
+            "id": "side_effect_free_camera_light_transaction",
+            "ok": not scene["side_effects"] and not scene_validation["side_effects"] and not scene_integrity["side_effects"],
+        },
+    )
+    return {
+        "format": "appgen.cross-target-scene-camera-light-transaction-replay.v1",
+        "ok": all(check["ok"] for check in checks),
+        "transactions": transactions,
+        "checks": checks,
+        "guards": (
+            "camera_light_selection_before_edit",
+            "lens_and_light_staging_before_preview",
+            "scene_validation_before_preview",
+            "preview_before_commit",
+            "runtime_camera_light_plan_after_commit",
+            "camera_light_rollback_is_snapshot_scoped",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def cross_target_visual_runtime_replay_contract() -> dict:
     """Replay visual authoring contracts through deterministic runtime delivery."""
     style_resolution = cross_target_style_resolution_workflow()
@@ -18111,6 +18241,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
     effects = cross_target_effect_fallback_matrix_contract()
     effect_editor = cross_target_effect_editor_transaction_replay_contract()
     scene = cross_target_scene_hit_test_contract()
+    camera_light = cross_target_scene_camera_light_transaction_replay_contract()
     scene_material_editor = cross_target_scene_material_editor_transaction_replay_contract()
     transforms = cross_target_scene_transform_gizmo_contract()
     transform_transaction = cross_target_scene_transform_transaction_replay_contract()
@@ -18121,6 +18252,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
         "effect_fallbacks": 0,
         "effect_transactions": 0,
         "material_transactions": 0,
+        "camera_light_transactions": 0,
         "scene_hits": 0,
         "inspector_syncs": 0,
         "transform_transactions": 0,
@@ -18171,6 +18303,13 @@ def cross_target_visual_runtime_replay_contract() -> dict:
             and {"budget_validation_before_render", "runtime_effect_plan_after_edit"} <= set(effect_editor["guards"]),
         },
         {
+            "phase": "scene_camera_light_transaction",
+            "pipeline": tuple(check["id"] for check in camera_light["checks"]),
+            "ok": camera_light["ok"]
+            and {"scene_validation_before_preview", "runtime_camera_light_plan_after_commit"}
+            <= set(camera_light["guards"]),
+        },
+        {
             "phase": "scene_hit_testing",
             "pipeline": scene["guards"],
             "ok": scene["ok"] and all("open_inspector" in item["route"] for item in scene["hit_tests"]),
@@ -18200,6 +18339,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
     state["effect_fallbacks"] = sum(1 for row in effects["rows"] if row["decision"] == "use_fallback")
     state["effect_transactions"] = len(effect_editor["transactions"])
     state["material_transactions"] = len(scene_material_editor["transactions"])
+    state["camera_light_transactions"] = len(camera_light["transactions"])
     state["scene_hits"] = len(scene["hit_tests"])
     state["inspector_syncs"] = sum(1 for item in transforms["transforms"] if "sync_inspector" in item["pipeline"])
     state["transform_transactions"] = len(transform_transaction["transactions"])
@@ -18211,6 +18351,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
         and state["timeline_samples"] > 0
         and state["effect_transactions"] > 0
         and state["material_transactions"] > 0
+        and state["camera_light_transactions"] > 0
         and state["scene_hits"] > 0
         and state["inspector_syncs"] > 0
         and state["transform_transactions"] > 0
@@ -18223,6 +18364,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
             "timeline_samples_match_preview",
             "effect_fallbacks_are_targeted",
             "effect_editor_transactions_emit_runtime_plan",
+            "camera_light_transactions_emit_runtime_plan",
             "scene_hit_tests_route_to_inspector",
             "scene_material_transactions_emit_runtime_plan",
             "transforms_sync_inspector",
@@ -18254,6 +18396,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
     timeline_interpolation = cross_target_timeline_interpolation_contract()
     effect_fallback_matrix = cross_target_effect_fallback_matrix_contract()
     effect_editor_transaction = cross_target_effect_editor_transaction_replay_contract()
+    camera_light_transaction = cross_target_scene_camera_light_transaction_replay_contract()
     scene_material_editor_transaction = cross_target_scene_material_editor_transaction_replay_contract()
     scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
     scene_transform_transaction = cross_target_scene_transform_transaction_replay_contract()
@@ -18268,6 +18411,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
         "timeline_samples": sum(len(sample["runtime_samples"]) for sample in timeline_interpolation["samples"]),
         "effect_fallbacks": sum(1 for row in effect_fallback_matrix["rows"] if row["decision"] == "use_fallback"),
         "effect_transactions": len(effect_editor_transaction["transactions"]),
+        "camera_light_transactions": len(camera_light_transaction["transactions"]),
         "material_transactions": len(scene_material_editor_transaction["transactions"]),
         "asset_import_transactions": len(asset_import_transaction["replay"]),
         "scene_hits": len(scene_hit_testing["hit_tests"]),
@@ -18319,6 +18463,16 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
             and scene_integrity["ok"]
             and material_binding["ok"]
             and shader_material_editor["ok"],
+        },
+        {
+            "phase": "author_camera_and_lights",
+            "pipeline": tuple(check["id"] for check in camera_light_transaction["checks"]),
+            "ok": camera_light_transaction["ok"]
+            and "runtime_camera_light_plan_after_commit" in camera_light_transaction["guards"]
+            and all(
+                {"sync_inspector", "record_group_undo"} <= set(transaction["operations"])
+                for transaction in camera_light_transaction["transactions"]
+            ),
         },
         {
             "phase": "author_scene_materials",
@@ -18373,6 +18527,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
         and state["timeline_samples"] > 0
         and state["effect_fallbacks"] > 0
         and state["effect_transactions"] > 0
+        and state["camera_light_transactions"] > 0
         and state["material_transactions"] > 0
         and state["scene_hits"] > 0
         and state["transform_syncs"] > 0
@@ -18387,6 +18542,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
             "effect_budget_before_runtime",
             "effect_editor_before_runtime",
             "scene_graph_validated_before_transform",
+            "camera_light_authoring_before_materials",
             "scene_material_editor_before_runtime",
             "asset_import_transaction_before_preview",
             "assets_fingerprinted_before_preview",
@@ -18411,6 +18567,7 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
     scene_integrity = cross_target_scene_graph_integrity_contract()
     material_binding = cross_target_material_binding_contract()
     shader_editor = cross_target_shader_material_editor_contract()
+    camera_light = cross_target_scene_camera_light_transaction_replay_contract()
     scene_material_editor = cross_target_scene_material_editor_transaction_replay_contract()
     scene_transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     asset_import = cross_target_asset_import_workflow()
@@ -18472,6 +18629,16 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
                 "nodes": tuple(node["id"] for node in scene_integrity["nodes"]),
                 "materials": tuple(binding["material"] for binding in material_binding["bindings"]),
                 "material_transactions": tuple(transaction["material"] for transaction in scene_material_editor["transactions"]),
+            },
+        },
+        {
+            "phase": "validate_scene_camera_lights",
+            "ok": scene_integrity["ok"]
+            and camera_light["ok"]
+            and "runtime_camera_light_plan_after_commit" in camera_light["guards"],
+            "evidence": {
+                "transactions": tuple(transaction["node"] for transaction in camera_light["transactions"]),
+                "checks": tuple(check["id"] for check in camera_light["checks"] if check["ok"]),
             },
         },
         {
@@ -18556,6 +18723,12 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
             "evidence": replay,
         },
         {
+            "id": "scene_camera_lights_before_materials",
+            "ok": tuple(item["phase"] for item in replay).index("validate_scene_camera_lights")
+            < tuple(item["phase"] for item in replay).index("validate_scene_material_transactions"),
+            "evidence": replay,
+        },
+        {
             "id": "scene_material_transactions_before_preview_diff",
             "ok": tuple(item["phase"] for item in replay).index("validate_scene_material_transactions")
             < tuple(item["phase"] for item in replay).index("import_assets_and_diff_preview"),
@@ -18586,6 +18759,7 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
             and not scene_integrity["side_effects"]
             and not material_binding["side_effects"]
             and not shader_editor["side_effects"]
+            and not camera_light["side_effects"]
             and not scene_material_editor["side_effects"]
             and not asset_import["side_effects"]
             and not preview_diff["side_effects"]
@@ -18610,6 +18784,7 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
             "effects_before_runtime",
             "effect_editor_before_runtime",
             "scene_assets_before_preview_diff",
+            "scene_camera_light_before_material_editor",
             "scene_material_editor_before_runtime",
             "hit_tests_before_designer_replay",
             "transform_transactions_before_designer_replay",
@@ -19142,6 +19317,7 @@ def cross_target_visual_readiness_contract() -> dict:
     designer_replay = cross_target_visual_designer_transaction_replay_contract()
     timeline_editor = cross_target_timeline_editor_transaction_replay_contract()
     effect_editor = cross_target_effect_editor_transaction_replay_contract()
+    camera_light = cross_target_scene_camera_light_transaction_replay_contract()
     scene_material_editor = cross_target_scene_material_editor_transaction_replay_contract()
     scene_transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     asset_import_transaction = cross_target_asset_import_transaction_replay_contract()
@@ -19181,13 +19357,16 @@ def cross_target_visual_readiness_contract() -> dict:
             "pipeline": scene["pipeline"]
             + asset_import["pipeline"]
             + tuple(check["id"] for check in asset_import_transaction["checks"])
+            + tuple(check["id"] for check in camera_light["checks"])
             + tuple(check["id"] for check in scene_material_editor["checks"]),
             "ok": scene["ok"]
             and asset_import["ok"]
             and asset_import_transaction["ok"]
+            and camera_light["ok"]
             and scene_material_editor["ok"]
             and {"assign_material", "validate_scene"} <= set(scene["pipeline"])
             and {"write_asset_manifest", "generate_fallback_thumbnail"} <= set(asset_import["pipeline"])
+            and "runtime_camera_light_plan_after_commit" in camera_light["guards"]
             and {"asset_manifest_published", "invalid_import_rolled_back"} <= {
                 check["id"] for check in asset_import_transaction["checks"] if check["ok"]
             },
@@ -19232,6 +19411,7 @@ def cross_target_visual_readiness_contract() -> dict:
         {"id": "effect_editor_transaction_ready", "ok": phases[2]["ok"], "evidence": effect_editor},
         {"id": "scene_assets_ready", "ok": phases[3]["ok"], "evidence": {"scene": scene, "asset_import": asset_import}},
         {"id": "asset_import_transaction_ready", "ok": phases[3]["ok"], "evidence": asset_import_transaction},
+        {"id": "scene_camera_light_transaction_ready", "ok": phases[3]["ok"], "evidence": camera_light},
         {"id": "scene_material_editor_transaction_ready", "ok": phases[3]["ok"], "evidence": scene_material_editor},
         {"id": "scene_transform_transaction_ready", "ok": phases[4]["ok"], "evidence": scene_transform_transaction},
         {"id": "hit_test_component_ready", "ok": phases[4]["ok"] and component_specs["ok"], "evidence": {"hit_test": hit_test, "component_specs": component_specs}},
@@ -19270,6 +19450,7 @@ def cross_target_visual_readiness_contract() -> dict:
             "timeline_editor_transactions": len(timeline_editor["transactions"]),
             "effect_editor_transactions": len(effect_editor["transactions"]),
             "asset_import_transactions": len(asset_import_transaction["replay"]),
+            "scene_camera_light_transactions": len(camera_light["transactions"]),
             "scene_material_editor_transactions": len(scene_material_editor["transactions"]),
             "scene_transform_transactions": len(scene_transform_transaction["transactions"]),
         },
@@ -19281,6 +19462,7 @@ def cross_target_visual_readiness_contract() -> dict:
             "effect_editor_before_runtime_replay",
             "effects_before_scene_assets",
             "asset_import_transaction_before_runtime_replay",
+            "scene_camera_light_transaction_before_runtime_replay",
             "scene_material_editor_before_runtime_replay",
             "scene_transform_transaction_before_runtime_replay",
             "scene_assets_before_runtime_replay",
@@ -19316,6 +19498,7 @@ def cross_target_visual_depth_workbench() -> dict:
     timeline_editor_transaction = cross_target_timeline_editor_transaction_replay_contract()
     effect_fallback_matrix = cross_target_effect_fallback_matrix_contract()
     effect_editor_transaction = cross_target_effect_editor_transaction_replay_contract()
+    camera_light_transaction = cross_target_scene_camera_light_transaction_replay_contract()
     scene_material_editor_transaction = cross_target_scene_material_editor_transaction_replay_contract()
     scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
     scene_transform_transaction = cross_target_scene_transform_transaction_replay_contract()
@@ -19552,6 +19735,26 @@ def cross_target_visual_depth_workbench() -> dict:
             "evidence": effect_editor_transaction,
         },
         {
+            "id": "scene_camera_light_transaction_replay",
+            "ok": camera_light_transaction["ok"]
+            and {
+                "camera_and_light_nodes_editable",
+                "lens_and_light_parameters_staged",
+                "scene_validation_before_preview",
+                "runtime_camera_light_plan_after_commit",
+                "undo_and_rollback_restore_snapshots",
+            }
+            <= {check["id"] for check in camera_light_transaction["checks"] if check["ok"]}
+            and {
+                "lens_and_light_staging_before_preview",
+                "runtime_camera_light_plan_after_commit",
+                "camera_light_rollback_is_snapshot_scoped",
+            }
+            <= set(camera_light_transaction["guards"])
+            and not camera_light_transaction["side_effects"],
+            "evidence": camera_light_transaction,
+        },
+        {
             "id": "scene_material_editor_transaction_replay",
             "ok": scene_material_editor_transaction["ok"]
             and {"preview_before_runtime_plan", "runtime_material_plan_after_edit"}
@@ -19753,6 +19956,7 @@ def cross_target_visual_depth_workbench() -> dict:
                 "effects_ready",
                 "effect_editor_transaction_ready",
                 "asset_import_transaction_ready",
+                "scene_camera_light_transaction_ready",
                 "scene_material_editor_transaction_ready",
                 "scene_transform_transaction_ready",
                 "scene_assets_ready",
@@ -19793,6 +19997,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "timeline_editor_transaction": timeline_editor_transaction,
         "effect_fallback_matrix": effect_fallback_matrix,
         "effect_editor_transaction": effect_editor_transaction,
+        "scene_camera_light_transaction": camera_light_transaction,
         "scene_material_editor_transaction": scene_material_editor_transaction,
         "asset_import_transaction": asset_import_transaction,
         "scene_transform_gizmos": scene_transform_gizmos,
@@ -20544,6 +20749,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "effects_ready",
                 "effect_editor_transaction_ready",
                 "asset_import_transaction_ready",
+                "scene_camera_light_transaction_ready",
                 "scene_material_editor_transaction_ready",
                 "scene_transform_transaction_ready",
                 "scene_assets_ready",
@@ -20559,6 +20765,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "timeline_editor_transaction_replay",
                 "effect_editor_transaction_replay",
                 "asset_import_transaction_replay",
+                "scene_camera_light_transaction_replay",
                 "scene_material_editor_transaction_replay",
                 "scene_transform_transaction_replay",
                 "visual_lifecycle_replay",
@@ -20583,6 +20790,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "effects_ready",
                 "effect_editor_transaction_ready",
                 "asset_import_transaction_ready",
+                "scene_camera_light_transaction_ready",
                 "scene_material_editor_transaction_ready",
                 "scene_transform_transaction_ready",
                 "scene_assets_ready",
@@ -20592,6 +20800,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "timeline_editor_transaction_replay",
                 "effect_editor_transaction_replay",
                 "asset_import_transaction_replay",
+                "scene_camera_light_transaction_replay",
                 "scene_material_editor_transaction_replay",
                 "scene_transform_transaction_replay",
                 "visual_component_modules",
@@ -23055,6 +23264,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "timeline_editor_transaction_replay",
         "effect_fallback_matrix",
         "effect_editor_transaction_replay",
+        "scene_camera_light_transaction_replay",
         "scene_material_editor_transaction_replay",
         "scene_transform_gizmos",
         "scene_transform_transaction_replay",
@@ -23092,6 +23302,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "timeline_editor_transaction_ready",
         "effects_ready",
         "effect_editor_transaction_ready",
+        "scene_camera_light_transaction_ready",
         "scene_material_editor_transaction_ready",
         "scene_transform_transaction_ready",
         "scene_assets_ready",

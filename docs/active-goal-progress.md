@@ -2309,3 +2309,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tests, source artifact contract, implementation release audit, generation
   smoke audit, specification contract, and restricted legacy-name scan all
   passed. Commit: `a0e0204`.
+- Current cross-target scene authoring pass adds camera/light transaction replay
+  as release-gating evidence. Source and generated visual contracts now prove
+  camera lens/frustum staging, light cone/color/intensity staging, scene
+  validation before preview, preview before commit, runtime camera/light plan
+  export, undo grouping, and snapshot-scoped rollback before visual runtime,
+  designer, lifecycle, and readiness gates can pass. Verification is focused
+  under the low-battery delivery constraint. Commit: pending.
