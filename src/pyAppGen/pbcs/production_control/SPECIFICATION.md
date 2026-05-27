@@ -212,7 +212,7 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `production_control`
 - Mesh: `opsmfg`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
@@ -244,16 +244,32 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### API Routes
 
-- `POST /production-orders`
-- `POST /downtime`
-- `POST /material-consumptions`
-- `POST /labor-time`
-- `POST /machine-time`
-- `POST /quality-gates`
-- `POST /scrap-rework`
-- `POST /capacity-allocations`
-- `POST /completion-proofs`
-- `GET /schedule`
+- `POST /production/work-centers`
+- `POST /production/orders`
+- `POST /production/routing-steps`
+- `POST /production/orders/{id}/schedule`
+- `POST /production/operations/{id}/start`
+- `POST /production/material-consumptions`
+- `POST /production/labor-time`
+- `POST /production/machine-time`
+- `POST /production/downtime`
+- `POST /production/quality-gates`
+- `POST /production/scrap-rework`
+- `POST /production/operations/{id}/confirm`
+- `POST /production/orders/{id}/complete`
+- `POST /production/oee-snapshots`
+- `POST /production/exception-cases`
+- `POST /production/capacity-allocations`
+- `POST /production/completion-proofs`
+- `POST /production/audit-entries`
+- `POST /production/events/inbox`
+- `POST /production/rules`
+- `POST /production/parameters`
+- `POST /production/configuration`
+- `GET /production/workbench`
+- `GET /production/schema-contract`
+- `GET /production/service-contract`
+- `GET /production/release-evidence`
 
 ### Emitted Events
 
@@ -273,22 +289,97 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `ProductionControlWorkbench`
+- `WorkCenterConsole`
+- `RoutingEditor`
+- `ProductionOrderBoard`
+- `FiniteScheduleBoard`
+- `DowntimeConsole`
+- `OeeDashboard`
+- `ProductionRuleStudio`
+- `ProductionParameterConsole`
+- `ProductionConfigurationPanel`
 
 ### Permissions
 
-- None declared
+- `production_control.audit`
+- `production_control.complete`
+- `production_control.configure`
+- `production_control.event`
+- `production_control.operate`
+- `production_control.read`
+- `production_control.schedule`
 
 ### Configuration Keys
 
-- None declared
+- `PRODUCTION_CONTROL_DATABASE_URL`
+- `PRODUCTION_CONTROL_EVENT_TOPIC`
+- `PRODUCTION_CONTROL_RETRY_LIMIT`
+- `PRODUCTION_CONTROL_DEFAULT_TIMEZONE`
 
 ### Standard Features
 
-- None declared
+- `work_center_master`
+- `routing_step_definition`
+- `production_order_creation`
+- `finite_capacity_scheduling`
+- `dispatch_list`
+- `operation_sequencing`
+- `production_start`
+- `operation_confirmation`
+- `production_completion`
+- `downtime_capture`
+- `oee_calculation`
+- `throughput_analytics`
+- `schedule_adherence`
+- `yield_tracking`
+- `material_readiness_projection`
+- `quality_gate_projection`
+- `maintenance_projection`
+- `asset_commissioning_handoff`
+- `multi_site_isolation`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_production_lifecycle`
+- `graph_relational_routing_work_center_topology`
+- `multi_tenant_site_execution_isolation`
+- `schema_evolution_resilient_production_schema`
+- `probabilistic_downtime_yield_schedule_risk_scoring`
+- `real_time_oee_execution_analytics`
+- `counterfactual_dispatch_capacity_simulation`
+- `temporal_throughput_downtime_forecasting`
+- `autonomous_production_exception_resolution`
+- `semantic_shop_floor_instruction_parsing`
+- `predictive_schedule_quality_maintenance_risk`
+- `self_healing_execution_route_selection`
+- `zero_knowledge_completion_proof`
+- `immutable_production_audit_trail`
+- `dynamic_production_policy_screening`
+- `automated_production_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_production_federation`
+- `mrp_inventory_quality_asset_integration`
+- `decentralized_work_center_asset_identity`
+- `chaos_engineered_shop_floor_tolerance`
+- `quantum_resistant_production_authorization`
+- `carbon_aware_production_scheduling`
+- `algebraic_schedule_optimization`
+- `mechanism_design_capacity_allocation`
+- `information_theoretic_downtime_anomaly_detection`
+- `temporal_production_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_production_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `production_mlops_governance`
+- `standard_table_stakes_execution_records`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
