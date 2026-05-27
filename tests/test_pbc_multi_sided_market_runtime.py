@@ -171,6 +171,14 @@ def test_multi_sided_market_contracts_cover_standard_table_stakes() -> None:
     assert "POST /market/loans" in {route["route"] for route in api["routes"]}
     assert schema["ok"] is True
     assert len(schema["owned_tables"]) >= 20
+    listing_table = next(table for table in schema["tables"] if table["table"] == "multi_sided_market_marketplace_listing")
+    rental_table = next(table for table in schema["tables"] if table["table"] == "multi_sided_market_rental_contract")
+    escrow_table = next(table for table in schema["tables"] if table["table"] == "multi_sided_market_escrow_account")
+    assert "exchange_modes" in listing_table["fields"]
+    assert "collateral_amount" in rental_table["fields"]
+    assert "release_policy_hash" in escrow_table["fields"]
+    assert len(listing_table["field_contracts"]) >= 10
+    assert any(item["type"].startswith("owned") for item in schema["relationships"])
     assert service["ok"] is True
     assert "command_market_barter_offers" in service["command_methods"]
     assert "query_market_workbench" in service["query_methods"]

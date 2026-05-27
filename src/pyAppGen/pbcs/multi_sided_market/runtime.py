@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 from copy import deepcopy
 
+from .domain_schema import class_name_for, fields_for, logical_table, owned_table, relationships_for
+
 PBC_KEY = 'multi_sided_market'
 MULTI_SIDED_MARKET_OWNED_TABLES = ('multi_sided_market_participant_profile', 'multi_sided_market_marketplace_listing', 'multi_sided_market_listing_asset', 'multi_sided_market_service_offer', 'multi_sided_market_availability_window', 'multi_sided_market_booking_reservation', 'multi_sided_market_rental_contract', 'multi_sided_market_loan_agreement', 'multi_sided_market_barter_offer', 'multi_sided_market_trade_order', 'multi_sided_market_sale_order', 'multi_sided_market_exchange_proposal', 'multi_sided_market_escrow_account', 'multi_sided_market_settlement_instruction', 'multi_sided_market_dispute_case', 'multi_sided_market_reputation_signal', 'multi_sided_market_market_rule', 'multi_sided_market_market_parameter', 'multi_sided_market_schema_extension', 'multi_sided_market_governed_model')
 MULTI_SIDED_MARKET_RUNTIME_TABLES = ('multi_sided_market_participant_profile', 'multi_sided_market_marketplace_listing', 'multi_sided_market_listing_asset', 'multi_sided_market_service_offer', 'multi_sided_market_availability_window', 'multi_sided_market_booking_reservation', 'multi_sided_market_rental_contract', 'multi_sided_market_loan_agreement', 'multi_sided_market_barter_offer', 'multi_sided_market_trade_order', 'multi_sided_market_sale_order', 'multi_sided_market_exchange_proposal', 'multi_sided_market_escrow_account', 'multi_sided_market_settlement_instruction', 'multi_sided_market_dispute_case', 'multi_sided_market_reputation_signal', 'multi_sided_market_market_rule', 'multi_sided_market_market_parameter', 'multi_sided_market_schema_extension', 'multi_sided_market_governed_model', 'multi_sided_market_appgen_outbox_event', 'multi_sided_market_appgen_inbox_event', 'multi_sided_market_appgen_dead_letter_event')
@@ -200,7 +202,34 @@ def multi_sided_market_optimize_exchange_match(state, demand):
 
 def multi_sided_market_build_schema_contract():
     migrations = tuple({'path': 'migrations/001_initial.sql', 'table': table, 'operation': 'create_owned_table'} for table in MULTI_SIDED_MARKET_RUNTIME_TABLES)
-    return {'format': 'appgen.multi-sided-market-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'owned_tables': MULTI_SIDED_MARKET_OWNED_TABLES, 'runtime_tables': MULTI_SIDED_MARKET_RUNTIME_TABLES, 'tables': tuple({'table': table, 'fields': ('id','code','status','version','created_at','updated_at')} for table in MULTI_SIDED_MARKET_RUNTIME_TABLES), 'migrations': migrations, 'models': tuple(table.title().replace('_','') for table in MULTI_SIDED_MARKET_OWNED_TABLES), 'shared_table_access': False, 'allowed_database_backends': MULTI_SIDED_MARKET_ALLOWED_DATABASE_BACKENDS}
+    owned_table_contracts = tuple(
+        {
+            'table': owned_table(table),
+            'logical_table': logical_table(table),
+            'fields': tuple(field['name'] for field in fields_for(table)),
+            'field_contracts': fields_for(table),
+            'relationships': relationships_for(table),
+        }
+        for table in MULTI_SIDED_MARKET_OWNED_TABLES
+    )
+    runtime_event_tables = tuple(
+        {'table': table, 'fields': ('id', 'event_type', 'payload', 'idempotency_key', 'retry_count', 'created_at')}
+        for table in MULTI_SIDED_MARKET_RUNTIME_TABLES
+        if table not in MULTI_SIDED_MARKET_OWNED_TABLES
+    )
+    return {
+        'format': 'appgen.multi-sided-market-owned-schema-contract.v1',
+        'ok': True,
+        'pbc': PBC_KEY,
+        'owned_tables': MULTI_SIDED_MARKET_OWNED_TABLES,
+        'runtime_tables': MULTI_SIDED_MARKET_RUNTIME_TABLES,
+        'tables': owned_table_contracts + runtime_event_tables,
+        'relationships': tuple(item for table in owned_table_contracts for item in table['relationships']),
+        'migrations': migrations,
+        'models': tuple(class_name_for(table) for table in MULTI_SIDED_MARKET_OWNED_TABLES),
+        'shared_table_access': False,
+        'allowed_database_backends': MULTI_SIDED_MARKET_ALLOWED_DATABASE_BACKENDS,
+    }
 
 
 def multi_sided_market_build_service_contract():

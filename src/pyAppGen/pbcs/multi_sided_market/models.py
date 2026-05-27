@@ -1,24 +1,80 @@
 """Owned model metadata for the multi_sided_market PBC."""
-PBC_KEY = 'multi_sided_market'
-OWNED_SCHEMA = {'schema': PBC_KEY, 'table_prefix': PBC_KEY + '_', 'tables': ({'logical_table': 'participant_profile', 'owned_table': 'multi_sided_market_participant_profile', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'marketplace_listing', 'owned_table': 'multi_sided_market_marketplace_listing', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'listing_asset', 'owned_table': 'multi_sided_market_listing_asset', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'service_offer', 'owned_table': 'multi_sided_market_service_offer', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'availability_window', 'owned_table': 'multi_sided_market_availability_window', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'booking_reservation', 'owned_table': 'multi_sided_market_booking_reservation', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'rental_contract', 'owned_table': 'multi_sided_market_rental_contract', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'loan_agreement', 'owned_table': 'multi_sided_market_loan_agreement', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'barter_offer', 'owned_table': 'multi_sided_market_barter_offer', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'trade_order', 'owned_table': 'multi_sided_market_trade_order', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'sale_order', 'owned_table': 'multi_sided_market_sale_order', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'exchange_proposal', 'owned_table': 'multi_sided_market_exchange_proposal', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'escrow_account', 'owned_table': 'multi_sided_market_escrow_account', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'settlement_instruction', 'owned_table': 'multi_sided_market_settlement_instruction', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'dispute_case', 'owned_table': 'multi_sided_market_dispute_case', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'reputation_signal', 'owned_table': 'multi_sided_market_reputation_signal', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'market_rule', 'owned_table': 'multi_sided_market_market_rule', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'market_parameter', 'owned_table': 'multi_sided_market_market_parameter', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'schema_extension', 'owned_table': 'multi_sided_market_schema_extension', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'logical_table': 'governed_model', 'owned_table': 'multi_sided_market_governed_model', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}), 'relationships': (), 'allowed_external_access': 'apis_events_or_projections_only'}
-MODELS = ({'class_name': 'ParticipantProfile', 'table': 'multi_sided_market_participant_profile', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'MarketplaceListing', 'table': 'multi_sided_market_marketplace_listing', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'ListingAsset', 'table': 'multi_sided_market_listing_asset', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'ServiceOffer', 'table': 'multi_sided_market_service_offer', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'AvailabilityWindow', 'table': 'multi_sided_market_availability_window', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'BookingReservation', 'table': 'multi_sided_market_booking_reservation', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'RentalContract', 'table': 'multi_sided_market_rental_contract', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'LoanAgreement', 'table': 'multi_sided_market_loan_agreement', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'BarterOffer', 'table': 'multi_sided_market_barter_offer', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'TradeOrder', 'table': 'multi_sided_market_trade_order', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'SaleOrder', 'table': 'multi_sided_market_sale_order', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'ExchangeProposal', 'table': 'multi_sided_market_exchange_proposal', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'EscrowAccount', 'table': 'multi_sided_market_escrow_account', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'SettlementInstruction', 'table': 'multi_sided_market_settlement_instruction', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'DisputeCase', 'table': 'multi_sided_market_dispute_case', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'ReputationSignal', 'table': 'multi_sided_market_reputation_signal', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'MarketRule', 'table': 'multi_sided_market_market_rule', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'MarketParameter', 'table': 'multi_sided_market_market_parameter', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'SchemaExtension', 'table': 'multi_sided_market_schema_extension', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()}, {'class_name': 'GovernedModel', 'table': 'multi_sided_market_governed_model', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True}, {'name': 'code', 'type': 'string', 'required': True}, {'name': 'status', 'type': 'string', 'required': True}, {'name': 'version', 'type': 'integer', 'required': True}), 'relationships': ()})
+
+from .domain_schema import class_name_for
+from .domain_schema import fields_for
+from .domain_schema import logical_table
+from .domain_schema import owned_table
+from .domain_schema import relationships_for
+from .runtime import MULTI_SIDED_MARKET_OWNED_TABLES
+
+PBC_KEY = "multi_sided_market"
+
+OWNED_SCHEMA = {
+    "schema": PBC_KEY,
+    "table_prefix": PBC_KEY + "_",
+    "tables": tuple(
+        {
+            "logical_table": logical_table(table),
+            "owned_table": owned_table(table),
+            "fields": fields_for(table),
+            "relationships": relationships_for(table),
+        }
+        for table in MULTI_SIDED_MARKET_OWNED_TABLES
+    ),
+    "relationships": tuple(
+        relationship
+        for table in MULTI_SIDED_MARKET_OWNED_TABLES
+        for relationship in relationships_for(table)
+    ),
+    "allowed_external_access": "apis_events_or_projections_only",
+}
+
+MODELS = tuple(
+    {
+        "class_name": class_name_for(table),
+        "table": owned_table(table),
+        "fields": fields_for(table),
+        "relationships": relationships_for(table),
+    }
+    for table in MULTI_SIDED_MARKET_OWNED_TABLES
+)
 
 
 def model_manifest():
-    schema_tables = tuple(table['owned_table'] for table in OWNED_SCHEMA['tables'])
-    model_tables = tuple(model['table'] for model in MODELS)
-    external_models = tuple(table for table in model_tables if not table.startswith(PBC_KEY + '_'))
-    return {'ok': set(schema_tables) == set(model_tables) and not external_models, 'pbc': PBC_KEY, 'schema_tables': schema_tables, 'model_tables': model_tables, 'missing_models': tuple(table for table in schema_tables if table not in model_tables), 'external_models': external_models, 'cross_pbc_relationships': (), 'relationship_targets': (), 'side_effects': ()}
+    schema_tables = tuple(table["owned_table"] for table in OWNED_SCHEMA["tables"])
+    model_tables = tuple(model["table"] for model in MODELS)
+    external_models = tuple(table for table in model_tables if not table.startswith(PBC_KEY + "_"))
+    thin_models = tuple(model["table"] for model in MODELS if len(model["fields"]) < 10)
+    return {
+        "ok": set(schema_tables) == set(model_tables) and not external_models and not thin_models,
+        "pbc": PBC_KEY,
+        "schema_tables": schema_tables,
+        "model_tables": model_tables,
+        "missing_models": tuple(table for table in schema_tables if table not in model_tables),
+        "external_models": external_models,
+        "thin_models": thin_models,
+        "cross_pbc_relationships": (),
+        "relationship_targets": tuple(OWNED_SCHEMA["relationships"]),
+        "side_effects": (),
+    }
 
 
 def instantiate_model(table_name, values=None):
-    model = next((item for item in MODELS if item['table'] == table_name), None)
+    model = next((item for item in MODELS if item["table"] == table_name), None)
     if model is None:
-        return {'ok': False, 'reason': 'unknown_model', 'side_effects': ()}
-    return {'ok': True, 'pbc': PBC_KEY, 'model': model['class_name'], 'table': table_name, 'fields': tuple(field['name'] for field in model['fields']), 'payload': dict(values or {}), 'side_effects': ()}
+        return {"ok": False, "reason": "unknown_model", "side_effects": ()}
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "model": model["class_name"],
+        "table": table_name,
+        "fields": tuple(field["name"] for field in model["fields"]),
+        "payload": dict(values or {}),
+        "side_effects": (),
+    }
 
 
 def smoke_test():
     manifest = model_manifest()
-    instance = instantiate_model(manifest['model_tables'][0], {'id': 1})
-    return {'ok': manifest['ok'] and instance['ok'], 'manifest': manifest, 'instance': instance, 'side_effects': ()}
+    instance = instantiate_model(manifest["model_tables"][0], {"id": 1, "tenant": "default", "status": "draft"})
+    return {"ok": manifest["ok"] and instance["ok"], "manifest": manifest, "instance": instance, "side_effects": ()}
