@@ -6422,6 +6422,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "binding_module_runtime_replay_matrix_ready",
         "runtime_replay",
     } <= set(binding_runtime_smoke["passing_checks"])
+    assert {
+        "create_link",
+        "validate_graph",
+        "edit_expression_surface",
+        "surface_diagnostics_and_conflicts",
+        "commit_designer_transaction",
+        "inspector_property_commit",
+        "runtime_wiring_refresh",
+    } <= set(binding_runtime_smoke["smoke"]["required_binding_operations"]) <= set(
+        binding_runtime_smoke["smoke"]["binding_operations"]
+    )
     package_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_package_manager_runtime")
     assert package_runtime_smoke["ok"] is True
     assert {
@@ -17981,6 +17992,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding_module_runtime_replay_matrix_ready",
         "runtime_replay",
     } <= set(binding_runtime_smoke["checks"])
+    assert {
+        "create_link",
+        "validate_graph",
+        "edit_expression_surface",
+        "surface_diagnostics_and_conflicts",
+        "commit_designer_transaction",
+        "inspector_property_commit",
+        "runtime_wiring_refresh",
+    } <= set(binding_runtime_smoke["required_binding_operations"]) <= set(binding_runtime_smoke["binding_operations"])
     binding_module_files = binding_runtime.binding_module_file_manifest()
     binding_module_tests = binding_runtime.binding_module_test_file_manifest()
     assert binding_module_files["ok"] is True
