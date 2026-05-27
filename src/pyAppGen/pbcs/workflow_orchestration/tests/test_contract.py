@@ -260,3 +260,27 @@ def test_event_handlers_are_idempotent_and_retryable():
     assert smoke['duplicate_result']['duplicate'] is True
     assert smoke['unknown_result']['handled'] is False
     assert not smoke['side_effects']
+
+
+def test_table_stakes_and_advanced_capability_assurance_is_executable():
+    from .. import capability_assurance
+
+    manifest = capability_assurance.table_stakes_capability_manifest()
+    validation = capability_assurance.validate_table_stakes_capability_coverage()
+    smoke = capability_assurance.smoke_test()
+    assert manifest['ok'] is True
+    assert validation['ok'] is True
+    assert smoke['ok'] is True
+    assert manifest['standard_features']
+    assert manifest['advanced_capabilities']
+    assert not validation['missing_standard']
+    assert not validation['missing_advanced']
+    assert not validation['missing_operations']
+    assert not validation['uncovered_features']
+    assert not validation['invalid_tables']
+    assert not validation['invalid_backends']
+    assert validation['stream_picker_visible'] is False
+    assert validation['event_contract'] == 'AppGen-X'
+    assert validation['boundary_probe']['ok'] is False
+    assert validation['boundary_probe']['violations']
+    assert not smoke['side_effects']
