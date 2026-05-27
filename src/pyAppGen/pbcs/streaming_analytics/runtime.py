@@ -10,7 +10,29 @@ import math
 
 STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC = "appgen.streaming_analytics.events"
 STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
-STREAMING_ANALYTICS_OWNED_TABLES = ("metric_stream", "aggregation_window", "kpi_snapshot", "dashboard_projection")
+STREAMING_ANALYTICS_OWNED_TABLES = (
+    "metric_stream",
+    "aggregation_window",
+    "kpi_snapshot",
+    "dashboard_projection",
+    "metric_event",
+    "ingestion_checkpoint",
+    "data_quality_result",
+    "replay_job",
+    "watermark_state",
+    "retention_policy",
+    "threshold_alert",
+    "metric_forecast",
+    "operational_risk_score",
+    "metric_exception",
+    "window_recomputation",
+    "kpi_control_assertion",
+    "kpi_snapshot_proof",
+    "metric_policy_screening",
+    "analytics_audit_entry",
+    "analytics_federation_view",
+    "analytics_governed_model",
+)
 STREAMING_ANALYTICS_RUNTIME_TABLES = (
     "streaming_analytics_appgen_outbox_event",
     "streaming_analytics_appgen_inbox_event",
@@ -168,6 +190,21 @@ def streaming_analytics_runtime_capabilities() -> dict:
             "receive_event",
             "ingest_metric_event",
             "create_dashboard_projection",
+            "record_ingestion_checkpoint",
+            "evaluate_data_quality",
+            "open_replay_job",
+            "advance_watermark",
+            "apply_retention_policy",
+            "evaluate_threshold_alert",
+            "forecast_metric",
+            "score_operational_risk",
+            "resolve_metric_exception",
+            "recompute_window",
+            "run_kpi_controls",
+            "generate_snapshot_proof",
+            "screen_metric_policy",
+            "build_analytics_federation_view",
+            "register_governed_model",
             "build_workbench_view",
             "build_api_contract",
             "build_schema_contract",
@@ -242,6 +279,39 @@ def streaming_analytics_runtime_smoke() -> dict:
         {"event_id": "ship_alpha", "event_type": "OrderShipped", "payload": {"tenant": "tenant_alpha", "region": "US", "order_id": "ord_alpha", "units": 4}},
     )["state"]
     state = streaming_analytics_create_dashboard_projection(state, {"projection_id": "dash_ops", "tenant": "tenant_alpha", "name": "Ops", "stream_ids": ("stream_revenue",), "status": "active"})["state"]
+    state = streaming_analytics_record_ingestion_checkpoint(
+        state,
+        {"checkpoint_id": "chk_alpha", "tenant": "tenant_alpha", "source": "payment_projection", "last_event_id": "pay_alpha", "status": "committed"},
+    )["state"]
+    state = streaming_analytics_evaluate_data_quality(state, "pay_alpha")["state"]
+    state = streaming_analytics_open_replay_job(
+        state,
+        {"replay_job_id": "replay_alpha", "tenant": "tenant_alpha", "source": "payment_projection", "from_event_id": "pay_alpha", "to_event_id": "pay_alpha"},
+    )["state"]
+    state = streaming_analytics_advance_watermark(state, {"watermark_id": "wm_alpha", "tenant": "tenant_alpha", "stream_id": "stream_revenue", "event_id": "pay_alpha"})["state"]
+    state = streaming_analytics_apply_retention_policy(state, {"policy_id": "ret_alpha", "tenant": "tenant_alpha", "retention_days": 90, "status": "active"})["state"]
+    state = streaming_analytics_evaluate_threshold_alert(
+        state,
+        {"alert_id": "alert_alpha", "tenant": "tenant_alpha", "snapshot_id": "stream_revenue:latest", "threshold": 1000.0, "severity": "medium"},
+    )["state"]
+    state = streaming_analytics_forecast_metric(state, {"forecast_id": "forecast_alpha", "tenant": "tenant_alpha", "stream_id": "stream_revenue", "horizon_minutes": 240})["state"]
+    state = streaming_analytics_score_operational_risk(state, {"risk_id": "risk_alpha", "tenant": "tenant_alpha", "stream_id": "stream_revenue"})["state"]
+    state = streaming_analytics_resolve_metric_exception(
+        state,
+        {"exception_id": "exception_alpha", "tenant": "tenant_alpha", "stream_id": "stream_revenue", "reason": "late_event", "resolution": "replayed"},
+    )["state"]
+    state = streaming_analytics_recompute_window(state, {"recomputation_id": "recompute_alpha", "tenant": "tenant_alpha", "window_id": "window_revenue_15m"})["state"]
+    state = streaming_analytics_run_kpi_controls(state, {"assertion_id": "control_alpha", "tenant": "tenant_alpha", "snapshot_id": "stream_revenue:latest"})["state"]
+    state = streaming_analytics_generate_snapshot_proof(state, {"proof_id": "proof_alpha", "tenant": "tenant_alpha", "snapshot_id": "stream_revenue:latest"})["state"]
+    state = streaming_analytics_screen_metric_policy(
+        state,
+        {"screening_id": "policy_alpha", "tenant": "tenant_alpha", "event_type": "payment", "region": "US", "metric_field": "amount"},
+    )["state"]
+    state = streaming_analytics_build_analytics_federation_view(state, {"view_id": "view_alpha", "tenant": "tenant_alpha", "stream_id": "stream_revenue"})["state"]
+    state = streaming_analytics_register_governed_model(
+        state,
+        {"model_id": "model_alpha", "tenant": "tenant_alpha", "model_type": "kpi_forecast", "version": "1.0", "status": "approved"},
+    )["state"]
     checks = tuple({"id": key, "ok": True, "evidence": _capability_evidence(state, key)} for key in STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS)
     return {
         "format": "appgen.streaming-analytics-runtime-smoke.v1",
@@ -275,6 +345,22 @@ def streaming_analytics_empty_state() -> dict:
         "kpi_snapshots": {},
         "dashboard_projections": {},
         "metric_events": {},
+        "ingestion_checkpoints": {},
+        "data_quality_results": {},
+        "replay_jobs": {},
+        "watermark_states": {},
+        "retention_policies": {},
+        "threshold_alerts": {},
+        "metric_forecasts": {},
+        "operational_risk_scores": {},
+        "metric_exceptions": {},
+        "window_recomputations": {},
+        "kpi_control_assertions": {},
+        "kpi_snapshot_proofs": {},
+        "metric_policy_screenings": {},
+        "analytics_audit_entries": {},
+        "analytics_federation_views": {},
+        "analytics_governed_models": {},
         "seed_data": {"event_types": ("audit", "order", "payment", "operational"), "aggregations": ("count", "sum", "avg", "max")},
     }
 
@@ -434,6 +520,236 @@ def streaming_analytics_create_dashboard_projection(state: dict, command: dict) 
     return {"ok": True, "state": runtime, "projection": projection}
 
 
+def streaming_analytics_record_ingestion_checkpoint(state: dict, command: dict) -> dict:
+    required = {"checkpoint_id", "tenant", "source", "last_event_id", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics checkpoint fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    checkpoint = {**command, "audit_proof": _digest(command)}
+    runtime["ingestion_checkpoints"][checkpoint["checkpoint_id"]] = checkpoint
+    runtime["events"].append(_state_event("IngestionCheckpointRecorded", checkpoint["checkpoint_id"], checkpoint))
+    return {"ok": True, "state": runtime, "checkpoint": checkpoint}
+
+
+def streaming_analytics_evaluate_data_quality(state: dict, event_id: str) -> dict:
+    metric_event = state["metric_events"].get(event_id)
+    if not metric_event:
+        raise ValueError(f"Unknown Streaming Analytics metric event: {event_id}")
+    threshold = float(state["parameters"].get("quality_score_threshold", {"value": 0.9})["value"])
+    runtime = _copy_state(state)
+    result_id = f"quality_{event_id}"
+    result = {
+        "quality_result_id": result_id,
+        "tenant": metric_event["tenant"],
+        "event_id": event_id,
+        "quality_score": metric_event["quality_score"],
+        "decision": "accepted" if metric_event["quality_score"] >= threshold else "quarantined",
+        "threshold": threshold,
+        "audit_proof": _digest(metric_event),
+    }
+    runtime["data_quality_results"][result_id] = result
+    runtime["events"].append(_state_event("MetricDataQualityEvaluated", result_id, result))
+    return {"ok": True, "state": runtime, "quality_result": result}
+
+
+def streaming_analytics_open_replay_job(state: dict, command: dict) -> dict:
+    required = {"replay_job_id", "tenant", "source", "from_event_id", "to_event_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics replay job fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    job = {**command, "status": "ready", "batch_limit": int(runtime["parameters"].get("replay_batch_limit", {"value": 1000})["value"]), "audit_proof": _digest(command)}
+    runtime["replay_jobs"][job["replay_job_id"]] = job
+    runtime["events"].append(_state_event("MetricReplayJobOpened", job["replay_job_id"], job))
+    return {"ok": True, "state": runtime, "replay_job": job}
+
+
+def streaming_analytics_advance_watermark(state: dict, command: dict) -> dict:
+    required = {"watermark_id", "tenant", "stream_id", "event_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics watermark fields: {tuple(sorted(missing))}")
+    if command["stream_id"] not in state["metric_streams"]:
+        raise ValueError(f"Unknown Streaming Analytics stream: {command['stream_id']}")
+    runtime = _copy_state(state)
+    watermark = {**command, "watermark_seconds": int(runtime["configuration"].get("watermark_seconds", 0)), "status": "advanced", "audit_proof": _digest(command)}
+    runtime["watermark_states"][watermark["watermark_id"]] = watermark
+    runtime["events"].append(_state_event("MetricWatermarkAdvanced", watermark["watermark_id"], watermark))
+    return {"ok": True, "state": runtime, "watermark": watermark}
+
+
+def streaming_analytics_apply_retention_policy(state: dict, command: dict) -> dict:
+    required = {"policy_id", "tenant", "retention_days", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics retention policy fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    policy = {**command, "eligible_event_count": len(tuple(event for event in runtime["metric_events"].values() if event["tenant"] == command["tenant"])), "audit_proof": _digest(command)}
+    runtime["retention_policies"][policy["policy_id"]] = policy
+    runtime["events"].append(_state_event("MetricRetentionPolicyApplied", policy["policy_id"], policy))
+    return {"ok": True, "state": runtime, "retention_policy": policy}
+
+
+def streaming_analytics_evaluate_threshold_alert(state: dict, command: dict) -> dict:
+    required = {"alert_id", "tenant", "snapshot_id", "threshold", "severity"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics alert fields: {tuple(sorted(missing))}")
+    snapshot = state["kpi_snapshots"].get(command["snapshot_id"])
+    if not snapshot:
+        raise ValueError(f"Unknown Streaming Analytics snapshot: {command['snapshot_id']}")
+    runtime = _copy_state(state)
+    triggered = float(snapshot["value"]) >= float(command["threshold"])
+    alert = {**command, "snapshot_value": snapshot["value"], "status": "triggered" if triggered else "clear", "audit_proof": _digest(command)}
+    runtime["threshold_alerts"][alert["alert_id"]] = alert
+    if triggered:
+        _emit(runtime, "OperationalKpiChanged", command["tenant"], {"alert_id": command["alert_id"], "snapshot_id": command["snapshot_id"], "severity": command["severity"]})
+    runtime["events"].append(_state_event("MetricThresholdAlertEvaluated", alert["alert_id"], alert))
+    return {"ok": True, "state": runtime, "alert": alert}
+
+
+def streaming_analytics_forecast_metric(state: dict, command: dict) -> dict:
+    required = {"forecast_id", "tenant", "stream_id", "horizon_minutes"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics forecast fields: {tuple(sorted(missing))}")
+    snapshot = state["kpi_snapshots"].get(f"{command['stream_id']}:latest")
+    if not snapshot:
+        raise ValueError(f"Unknown Streaming Analytics stream snapshot: {command['stream_id']}")
+    runtime = _copy_state(state)
+    horizon = int(command["horizon_minutes"])
+    forecast_value = round(float(snapshot["value"]) * (1 + min(horizon, 10080) / 100800), 4)
+    forecast = {**command, "base_value": snapshot["value"], "forecast_value": forecast_value, "confidence": snapshot["confidence"], "audit_proof": _digest(command)}
+    runtime["metric_forecasts"][forecast["forecast_id"]] = forecast
+    _emit(runtime, "ForecastUpdated", command["tenant"], forecast)
+    runtime["events"].append(_state_event("MetricForecasted", forecast["forecast_id"], forecast))
+    return {"ok": True, "state": runtime, "forecast": forecast}
+
+
+def streaming_analytics_score_operational_risk(state: dict, command: dict) -> dict:
+    required = {"risk_id", "tenant", "stream_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics risk fields: {tuple(sorted(missing))}")
+    snapshot = state["kpi_snapshots"].get(f"{command['stream_id']}:latest")
+    if not snapshot:
+        raise ValueError(f"Unknown Streaming Analytics stream snapshot: {command['stream_id']}")
+    runtime = _copy_state(state)
+    risk_score = round(max(0.01, min(0.99, 1 - float(snapshot["confidence"]))), 4)
+    risk = {**command, "risk_score": risk_score, "risk_band": "high" if risk_score >= 0.4 else "normal", "audit_proof": _digest(command)}
+    runtime["operational_risk_scores"][risk["risk_id"]] = risk
+    runtime["events"].append(_state_event("OperationalRiskScored", risk["risk_id"], risk))
+    return {"ok": True, "state": runtime, "risk": risk}
+
+
+def streaming_analytics_resolve_metric_exception(state: dict, command: dict) -> dict:
+    required = {"exception_id", "tenant", "stream_id", "reason", "resolution"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics exception fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    exception = {**command, "status": "resolved", "audit_proof": _digest(command)}
+    runtime["metric_exceptions"][exception["exception_id"]] = exception
+    _record_analytics_audit(runtime, command["tenant"], "resolve_metric_exception", exception)
+    runtime["events"].append(_state_event("MetricExceptionResolved", exception["exception_id"], exception))
+    return {"ok": True, "state": runtime, "exception": exception}
+
+
+def streaming_analytics_recompute_window(state: dict, command: dict) -> dict:
+    required = {"recomputation_id", "tenant", "window_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics recomputation fields: {tuple(sorted(missing))}")
+    window = state["aggregation_windows"].get(command["window_id"])
+    if not window:
+        raise ValueError(f"Unknown Streaming Analytics window: {command['window_id']}")
+    runtime = _copy_state(state)
+    stream = runtime["metric_streams"][window["stream_id"]]
+    _recompute_stream(runtime, stream)
+    snapshot = runtime["kpi_snapshots"][f"{stream['stream_id']}:latest"]
+    recomputation = {**command, "stream_id": stream["stream_id"], "snapshot_id": snapshot["snapshot_id"], "event_count": snapshot["event_count"], "status": "recomputed", "audit_proof": _digest(command)}
+    runtime["window_recomputations"][recomputation["recomputation_id"]] = recomputation
+    runtime["events"].append(_state_event("MetricWindowRecomputed", recomputation["recomputation_id"], recomputation))
+    return {"ok": True, "state": runtime, "recomputation": recomputation}
+
+
+def streaming_analytics_run_kpi_controls(state: dict, command: dict) -> dict:
+    required = {"assertion_id", "tenant", "snapshot_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics KPI control fields: {tuple(sorted(missing))}")
+    snapshot = state["kpi_snapshots"].get(command["snapshot_id"])
+    if not snapshot:
+        raise ValueError(f"Unknown Streaming Analytics snapshot: {command['snapshot_id']}")
+    threshold = float(state["parameters"].get("kpi_confidence_threshold", {"value": 0.75})["value"])
+    runtime = _copy_state(state)
+    assertion = {**command, "confidence": snapshot["confidence"], "threshold": threshold, "status": "passed" if snapshot["confidence"] >= threshold else "failed", "control_hash": _digest(command)}
+    runtime["kpi_control_assertions"][assertion["assertion_id"]] = assertion
+    runtime["events"].append(_state_event("KpiControlsRun", assertion["assertion_id"], assertion))
+    return {"ok": assertion["status"] == "passed", "state": runtime, "control_assertion": assertion}
+
+
+def streaming_analytics_generate_snapshot_proof(state: dict, command: dict) -> dict:
+    required = {"proof_id", "tenant", "snapshot_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics snapshot proof fields: {tuple(sorted(missing))}")
+    snapshot = state["kpi_snapshots"].get(command["snapshot_id"])
+    if not snapshot:
+        raise ValueError(f"Unknown Streaming Analytics snapshot: {command['snapshot_id']}")
+    runtime = _copy_state(state)
+    proof = {**command, "snapshot_hash": _digest(snapshot), "event_hash": _digest({"events": tuple(runtime["metric_events"].values())}), "status": "issued"}
+    runtime["kpi_snapshot_proofs"][proof["proof_id"]] = proof
+    _record_analytics_audit(runtime, command["tenant"], "generate_snapshot_proof", proof)
+    runtime["events"].append(_state_event("KpiSnapshotProofGenerated", proof["proof_id"], proof))
+    return {"ok": True, "state": runtime, "proof": proof}
+
+
+def streaming_analytics_screen_metric_policy(state: dict, command: dict) -> dict:
+    required = {"screening_id", "tenant", "event_type", "region", "metric_field"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics policy screening fields: {tuple(sorted(missing))}")
+    rules = tuple(rule for rule in state["rules"].values() if rule["tenant"] == command["tenant"] and rule["status"] == "active")
+    allowed_event_types = set(rules[0]["allowed_event_types"]) if rules else set(state["configuration"].get("supported_event_types", ()))
+    allowed_regions = set(rules[0]["allowed_regions"]) if rules else set(state["configuration"].get("supported_regions", ()))
+    decision = "allowed" if command["event_type"] in allowed_event_types and command["region"] in allowed_regions else "blocked"
+    runtime = _copy_state(state)
+    screening = {**command, "decision": decision, "policy_hash": _digest(command)}
+    runtime["metric_policy_screenings"][screening["screening_id"]] = screening
+    runtime["events"].append(_state_event("MetricPolicyScreened", screening["screening_id"], screening))
+    return {"ok": decision == "allowed", "state": runtime, "screening": screening}
+
+
+def streaming_analytics_build_analytics_federation_view(state: dict, command: dict) -> dict:
+    required = {"view_id", "tenant", "stream_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics federation view fields: {tuple(sorted(missing))}")
+    stream = state["metric_streams"].get(command["stream_id"])
+    if not stream:
+        raise ValueError(f"Unknown Streaming Analytics stream: {command['stream_id']}")
+    snapshot = state["kpi_snapshots"].get(f"{command['stream_id']}:latest", {})
+    runtime = _copy_state(state)
+    view = {**command, "event_type": stream["event_type"], "metric_field": stream["metric_field"], "latest_value": snapshot.get("value"), "projection_sources": STREAMING_ANALYTICS_DECLARED_EVENT_PROVIDERS, "status": "materialized"}
+    runtime["analytics_federation_views"][view["view_id"]] = view
+    runtime["events"].append(_state_event("AnalyticsFederationViewBuilt", view["view_id"], view))
+    return {"ok": True, "state": runtime, "federation_view": view}
+
+
+def streaming_analytics_register_governed_model(state: dict, command: dict) -> dict:
+    required = {"model_id", "tenant", "model_type", "version", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Streaming Analytics governed model fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    model = {**command, "training_boundary": "streaming_analytics_owned_tables", "governance_hash": _digest(command)}
+    runtime["analytics_governed_models"][model["model_id"]] = model
+    runtime["events"].append(_state_event("AnalyticsGovernedModelRegistered", model["model_id"], model))
+    return {"ok": True, "state": runtime, "model": model}
+
+
 def streaming_analytics_build_workbench_view(state: dict, *, tenant: str) -> dict:
     streams = tuple(item for item in state.get("metric_streams", {}).values() if item["tenant"] == tenant)
     windows = tuple(item for item in state.get("aggregation_windows", {}).values() if item["tenant"] == tenant)
@@ -495,12 +811,46 @@ def streaming_analytics_build_schema_contract() -> dict:
         "aggregation_window": ("tenant", "window_id", "stream_id", "window_minutes", "status", "compiled_hash"),
         "kpi_snapshot": ("tenant", "snapshot_id", "stream_id", "value", "event_count", "confidence", "audit_proof"),
         "dashboard_projection": ("tenant", "projection_id", "name", "stream_ids", "snapshot_count", "latest_values", "status", "audit_proof"),
+        "metric_event": ("tenant", "event_id", "event_type", "region", "values", "quality_score", "audit_proof"),
+        "ingestion_checkpoint": ("tenant", "checkpoint_id", "source", "last_event_id", "status", "audit_proof"),
+        "data_quality_result": ("tenant", "quality_result_id", "event_id", "quality_score", "decision", "threshold", "audit_proof"),
+        "replay_job": ("tenant", "replay_job_id", "source", "from_event_id", "to_event_id", "batch_limit", "status", "audit_proof"),
+        "watermark_state": ("tenant", "watermark_id", "stream_id", "event_id", "watermark_seconds", "status", "audit_proof"),
+        "retention_policy": ("tenant", "policy_id", "retention_days", "eligible_event_count", "status", "audit_proof"),
+        "threshold_alert": ("tenant", "alert_id", "snapshot_id", "threshold", "severity", "snapshot_value", "status", "audit_proof"),
+        "metric_forecast": ("tenant", "forecast_id", "stream_id", "horizon_minutes", "base_value", "forecast_value", "confidence", "audit_proof"),
+        "operational_risk_score": ("tenant", "risk_id", "stream_id", "risk_score", "risk_band", "audit_proof"),
+        "metric_exception": ("tenant", "exception_id", "stream_id", "reason", "resolution", "status", "audit_proof"),
+        "window_recomputation": ("tenant", "recomputation_id", "window_id", "stream_id", "snapshot_id", "event_count", "status", "audit_proof"),
+        "kpi_control_assertion": ("tenant", "assertion_id", "snapshot_id", "confidence", "threshold", "status", "control_hash"),
+        "kpi_snapshot_proof": ("tenant", "proof_id", "snapshot_id", "snapshot_hash", "event_hash", "status"),
+        "metric_policy_screening": ("tenant", "screening_id", "event_type", "region", "metric_field", "decision", "policy_hash"),
+        "analytics_audit_entry": ("tenant", "audit_id", "action", "payload_hash", "payload", "status"),
+        "analytics_federation_view": ("tenant", "view_id", "stream_id", "event_type", "metric_field", "latest_value", "projection_sources", "status"),
+        "analytics_governed_model": ("tenant", "model_id", "model_type", "version", "status", "training_boundary", "governance_hash"),
     }
     primary_keys = {
         "metric_stream": ("stream_id",),
         "aggregation_window": ("window_id",),
         "kpi_snapshot": ("snapshot_id",),
         "dashboard_projection": ("projection_id",),
+        "metric_event": ("event_id",),
+        "ingestion_checkpoint": ("checkpoint_id",),
+        "data_quality_result": ("quality_result_id",),
+        "replay_job": ("replay_job_id",),
+        "watermark_state": ("watermark_id",),
+        "retention_policy": ("policy_id",),
+        "threshold_alert": ("alert_id",),
+        "metric_forecast": ("forecast_id",),
+        "operational_risk_score": ("risk_id",),
+        "metric_exception": ("exception_id",),
+        "window_recomputation": ("recomputation_id",),
+        "kpi_control_assertion": ("assertion_id",),
+        "kpi_snapshot_proof": ("proof_id",),
+        "metric_policy_screening": ("screening_id",),
+        "analytics_audit_entry": ("audit_id",),
+        "analytics_federation_view": ("view_id",),
+        "analytics_governed_model": ("model_id",),
     }
     runtime_tables = (
         {
@@ -585,10 +935,118 @@ def streaming_analytics_build_api_contract() -> dict:
             {
                 "route": "POST /metric-events",
                 "command": "ingest_metric_event",
-                "owned_tables": ("kpi_snapshot",),
+                "owned_tables": ("metric_event", "kpi_snapshot"),
                 "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES,
                 "requires_permission": "streaming_analytics.event.write",
                 "idempotency_key": "event_id",
+            },
+            {
+                "route": "POST /ingestion-checkpoints",
+                "command": "record_ingestion_checkpoint",
+                "owned_tables": ("ingestion_checkpoint",),
+                "requires_permission": "streaming_analytics.operations.write",
+                "idempotency_key": "checkpoint_id",
+            },
+            {
+                "route": "POST /quality/evaluations",
+                "command": "evaluate_data_quality",
+                "owned_tables": ("data_quality_result", "metric_event"),
+                "requires_permission": "streaming_analytics.quality.write",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "POST /replay-jobs",
+                "command": "open_replay_job",
+                "owned_tables": ("replay_job",),
+                "requires_permission": "streaming_analytics.operations.write",
+                "idempotency_key": "replay_job_id",
+            },
+            {
+                "route": "POST /watermarks",
+                "command": "advance_watermark",
+                "owned_tables": ("watermark_state", "metric_stream"),
+                "requires_permission": "streaming_analytics.operations.write",
+                "idempotency_key": "watermark_id",
+            },
+            {
+                "route": "POST /retention-policies",
+                "command": "apply_retention_policy",
+                "owned_tables": ("retention_policy", "metric_event"),
+                "requires_permission": "streaming_analytics.configure",
+                "idempotency_key": "policy_id",
+            },
+            {
+                "route": "POST /threshold-alerts",
+                "command": "evaluate_threshold_alert",
+                "owned_tables": ("threshold_alert", "kpi_snapshot"),
+                "emits": ("OperationalKpiChanged",),
+                "requires_permission": "streaming_analytics.alert.write",
+                "idempotency_key": "alert_id",
+            },
+            {
+                "route": "POST /forecasts",
+                "command": "forecast_metric",
+                "owned_tables": ("metric_forecast", "kpi_snapshot"),
+                "emits": ("ForecastUpdated",),
+                "requires_permission": "streaming_analytics.intelligence.write",
+                "idempotency_key": "forecast_id",
+            },
+            {
+                "route": "POST /risk-scores",
+                "command": "score_operational_risk",
+                "owned_tables": ("operational_risk_score", "kpi_snapshot"),
+                "requires_permission": "streaming_analytics.intelligence.write",
+                "idempotency_key": "risk_id",
+            },
+            {
+                "route": "POST /exceptions/resolutions",
+                "command": "resolve_metric_exception",
+                "owned_tables": ("metric_exception", "analytics_audit_entry"),
+                "requires_permission": "streaming_analytics.operations.write",
+                "idempotency_key": "exception_id",
+            },
+            {
+                "route": "POST /windows/recomputations",
+                "command": "recompute_window",
+                "owned_tables": ("window_recomputation", "aggregation_window", "kpi_snapshot"),
+                "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES,
+                "requires_permission": "streaming_analytics.operations.write",
+                "idempotency_key": "recomputation_id",
+            },
+            {
+                "route": "POST /kpi-controls",
+                "command": "run_kpi_controls",
+                "owned_tables": ("kpi_control_assertion", "kpi_snapshot"),
+                "requires_permission": "streaming_analytics.quality.write",
+                "idempotency_key": "assertion_id",
+            },
+            {
+                "route": "POST /snapshot-proofs",
+                "command": "generate_snapshot_proof",
+                "owned_tables": ("kpi_snapshot_proof", "analytics_audit_entry", "kpi_snapshot", "metric_event"),
+                "requires_permission": "streaming_analytics.audit",
+                "idempotency_key": "proof_id",
+            },
+            {
+                "route": "POST /policy-screenings",
+                "command": "screen_metric_policy",
+                "owned_tables": ("metric_policy_screening",),
+                "requires_permission": "streaming_analytics.quality.write",
+                "idempotency_key": "screening_id",
+            },
+            {
+                "route": "POST /federation-views",
+                "command": "build_analytics_federation_view",
+                "owned_tables": ("analytics_federation_view", "metric_stream", "kpi_snapshot"),
+                "requires_permission": "streaming_analytics.audit",
+                "idempotency_key": "view_id",
+            },
+            {
+                "route": "POST /governed-models",
+                "command": "register_governed_model",
+                "owned_tables": ("analytics_governed_model",),
+                "requires_permission": "streaming_analytics.intelligence.write",
+                "idempotency_key": "model_id",
             },
             {
                 "route": "GET /kpis",
@@ -655,6 +1113,21 @@ def streaming_analytics_build_service_contract() -> dict:
         "receive_event",
         "ingest_metric_event",
         "create_dashboard_projection",
+        "record_ingestion_checkpoint",
+        "evaluate_data_quality",
+        "open_replay_job",
+        "advance_watermark",
+        "apply_retention_policy",
+        "evaluate_threshold_alert",
+        "forecast_metric",
+        "score_operational_risk",
+        "resolve_metric_exception",
+        "recompute_window",
+        "run_kpi_controls",
+        "generate_snapshot_proof",
+        "screen_metric_policy",
+        "build_analytics_federation_view",
+        "register_governed_model",
     )
     query_methods = (
         "build_workbench_view",
@@ -668,7 +1141,9 @@ def streaming_analytics_build_service_contract() -> dict:
         "format": "appgen.streaming-analytics-service-contract.v1",
         "ok": len(command_methods) >= 9
         and {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(query_methods),
+        "pbc": "streaming_analytics",
         "transaction_boundary": "streaming_analytics_owned_datastore_plus_appgen_outbox",
+        "shared_table_access": False,
         "command_methods": command_methods,
         "query_methods": query_methods,
         "mutates_only": STREAMING_ANALYTICS_OWNED_TABLES,
@@ -831,6 +1306,10 @@ def streaming_analytics_permissions_contract() -> dict:
         "streaming_analytics.event.consume",
         "streaming_analytics.configure",
         "streaming_analytics.audit",
+        "streaming_analytics.operations.write",
+        "streaming_analytics.quality.write",
+        "streaming_analytics.alert.write",
+        "streaming_analytics.intelligence.write",
     )
     return {
         "format": "appgen.streaming-analytics-permissions.v1",
@@ -860,6 +1339,21 @@ def streaming_analytics_permissions_contract() -> dict:
             "define_window": "streaming_analytics.window.write",
             "create_dashboard_projection": "streaming_analytics.stream.write",
             "ingest_metric_event": "streaming_analytics.event.write",
+            "record_ingestion_checkpoint": "streaming_analytics.operations.write",
+            "evaluate_data_quality": "streaming_analytics.quality.write",
+            "open_replay_job": "streaming_analytics.operations.write",
+            "advance_watermark": "streaming_analytics.operations.write",
+            "apply_retention_policy": "streaming_analytics.configure",
+            "evaluate_threshold_alert": "streaming_analytics.alert.write",
+            "forecast_metric": "streaming_analytics.intelligence.write",
+            "score_operational_risk": "streaming_analytics.intelligence.write",
+            "resolve_metric_exception": "streaming_analytics.operations.write",
+            "recompute_window": "streaming_analytics.operations.write",
+            "run_kpi_controls": "streaming_analytics.quality.write",
+            "generate_snapshot_proof": "streaming_analytics.audit",
+            "screen_metric_policy": "streaming_analytics.quality.write",
+            "build_analytics_federation_view": "streaming_analytics.audit",
+            "register_governed_model": "streaming_analytics.intelligence.write",
             "receive_event": "streaming_analytics.event.consume",
             "register_rule": "streaming_analytics.configure",
             "register_schema_extension": "streaming_analytics.configure",
@@ -1054,6 +1548,21 @@ def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> None:
     }
     state["outbox"].append(event)
     state["events"].append(_state_event(event_type, event["event_id"], payload))
+
+
+def _record_analytics_audit(state: dict, tenant: str, action: str, payload: dict) -> dict:
+    audit_id = f"audit_{tenant}_{len(state['analytics_audit_entries']) + 1}"
+    entry = {
+        "audit_id": audit_id,
+        "tenant": tenant,
+        "action": action,
+        "payload_hash": _digest(payload),
+        "payload": payload,
+        "status": "recorded",
+    }
+    state["analytics_audit_entries"][audit_id] = entry
+    state["events"].append(_state_event("AnalyticsAuditRecorded", audit_id, entry))
+    return entry
 
 
 def _state_event(event_type: str, key: str, payload: dict) -> dict:

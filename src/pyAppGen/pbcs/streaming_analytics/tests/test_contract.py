@@ -201,3 +201,56 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['owned_boundary_rejection']['ok'] is False
     assert validation['owned_boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_advanced_streaming_analytics_runtime_surface_is_executable():
+    from ..runtime import STREAMING_ANALYTICS_OWNED_TABLES
+    from ..runtime import streaming_analytics_build_api_contract
+    from ..runtime import streaming_analytics_build_service_contract
+    from ..runtime import streaming_analytics_runtime_smoke
+
+    smoke = streaming_analytics_runtime_smoke()
+    api = streaming_analytics_build_api_contract()
+    service = streaming_analytics_build_service_contract()
+    required_tables = {
+        "metric_event",
+        "ingestion_checkpoint",
+        "data_quality_result",
+        "replay_job",
+        "watermark_state",
+        "retention_policy",
+        "threshold_alert",
+        "metric_forecast",
+        "operational_risk_score",
+        "metric_exception",
+        "window_recomputation",
+        "kpi_control_assertion",
+        "kpi_snapshot_proof",
+        "metric_policy_screening",
+        "analytics_audit_entry",
+        "analytics_federation_view",
+        "analytics_governed_model",
+    }
+    required_commands = {
+        "record_ingestion_checkpoint",
+        "evaluate_data_quality",
+        "open_replay_job",
+        "advance_watermark",
+        "apply_retention_policy",
+        "evaluate_threshold_alert",
+        "forecast_metric",
+        "score_operational_risk",
+        "resolve_metric_exception",
+        "recompute_window",
+        "run_kpi_controls",
+        "generate_snapshot_proof",
+        "screen_metric_policy",
+        "build_analytics_federation_view",
+        "register_governed_model",
+    }
+    assert smoke["ok"] is True
+    assert required_tables <= set(STREAMING_ANALYTICS_OWNED_TABLES)
+    assert required_commands <= set(service["command_methods"])
+    assert api["event_contract"] == "AppGen-X"
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert api["stream_engine_picker_visible"] is False

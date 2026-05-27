@@ -15,6 +15,7 @@ from .runtime import STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS
 from .runtime import STREAMING_ANALYTICS_RUNTIME_TABLES
 from .runtime import STREAMING_ANALYTICS_STANDARD_FEATURE_KEYS
 from .runtime import streaming_analytics_build_api_contract
+from .runtime import streaming_analytics_build_analytics_federation_view
 from .runtime import streaming_analytics_build_release_evidence
 from .runtime import streaming_analytics_build_schema_contract
 from .runtime import streaming_analytics_build_service_contract
@@ -23,14 +24,28 @@ from .runtime import streaming_analytics_configure_runtime
 from .runtime import streaming_analytics_create_dashboard_projection
 from .runtime import streaming_analytics_define_window
 from .runtime import streaming_analytics_empty_state
+from .runtime import streaming_analytics_advance_watermark
+from .runtime import streaming_analytics_apply_retention_policy
+from .runtime import streaming_analytics_evaluate_data_quality
+from .runtime import streaming_analytics_evaluate_threshold_alert
+from .runtime import streaming_analytics_forecast_metric
+from .runtime import streaming_analytics_generate_snapshot_proof
 from .runtime import streaming_analytics_ingest_metric_event
+from .runtime import streaming_analytics_open_replay_job
 from .runtime import streaming_analytics_permissions_contract
 from .runtime import streaming_analytics_receive_event
+from .runtime import streaming_analytics_recompute_window
+from .runtime import streaming_analytics_record_ingestion_checkpoint
 from .runtime import streaming_analytics_register_metric_stream
+from .runtime import streaming_analytics_register_governed_model
 from .runtime import streaming_analytics_register_rule
 from .runtime import streaming_analytics_register_schema_extension
+from .runtime import streaming_analytics_resolve_metric_exception
+from .runtime import streaming_analytics_run_kpi_controls
 from .runtime import streaming_analytics_runtime_capabilities
 from .runtime import streaming_analytics_runtime_smoke
+from .runtime import streaming_analytics_score_operational_risk
+from .runtime import streaming_analytics_screen_metric_policy
 from .runtime import streaming_analytics_set_parameter
 from .runtime import streaming_analytics_verify_owned_table_boundary
 from .ui import STREAMING_ANALYTICS_UI_FRAGMENT_KEYS
@@ -109,4 +124,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

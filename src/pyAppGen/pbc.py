@@ -4125,9 +4125,56 @@ PBC_CATALOG.update(
         "streaming_analytics": {
             "label": "Streaming Analytics and Real-Time Aggregation",
             "mesh": "intelligence",
-            "description": "Windowed metrics, counts, KPI state, and operational dashboard models.",
-            "tables": ("metric_stream", "aggregation_window", "kpi_snapshot", "dashboard_projection"),
-            "apis": ("POST /metric-streams", "GET /kpis", "GET /projections"),
+            "description": "Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboards, replay, quality, controls, forecasting, risk, and governed analytics models.",
+            "tables": (
+                "metric_stream",
+                "aggregation_window",
+                "kpi_snapshot",
+                "dashboard_projection",
+                "metric_event",
+                "ingestion_checkpoint",
+                "data_quality_result",
+                "replay_job",
+                "watermark_state",
+                "retention_policy",
+                "threshold_alert",
+                "metric_forecast",
+                "operational_risk_score",
+                "metric_exception",
+                "window_recomputation",
+                "kpi_control_assertion",
+                "kpi_snapshot_proof",
+                "metric_policy_screening",
+                "analytics_audit_entry",
+                "analytics_federation_view",
+                "analytics_governed_model",
+            ),
+            "apis": (
+                "POST /metric-streams",
+                "POST /aggregation-windows",
+                "POST /metric-events",
+                "POST /ingestion-checkpoints",
+                "POST /quality/evaluations",
+                "POST /replay-jobs",
+                "POST /watermarks",
+                "POST /retention-policies",
+                "POST /threshold-alerts",
+                "POST /forecasts",
+                "POST /risk-scores",
+                "POST /exceptions/resolutions",
+                "POST /windows/recomputations",
+                "POST /kpi-controls",
+                "POST /snapshot-proofs",
+                "POST /policy-screenings",
+                "POST /federation-views",
+                "POST /governed-models",
+                "GET /kpis",
+                "GET /projections",
+                "GET /streaming-analytics/workbench",
+                "GET /streaming-analytics/schema-contract",
+                "GET /streaming-analytics/service-contract",
+                "GET /streaming-analytics/release-evidence",
+            ),
             "emits": ("ForecastUpdated", "OperationalKpiChanged"),
             "consumes": ("AuditEventSealed", "OrderShipped", "PaymentCaptured"),
             "template": "reporting",
@@ -9383,23 +9430,38 @@ from .pbcs.streaming_analytics import STREAMING_ANALYTICS_RUNTIME_TABLES  # noqa
 from .pbcs.streaming_analytics import STREAMING_ANALYTICS_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.streaming_analytics import STREAMING_ANALYTICS_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_build_api_contract  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_build_analytics_federation_view  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_build_release_evidence  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_build_schema_contract  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_build_service_contract  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_build_workbench_view  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_advance_watermark  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_apply_retention_policy  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_configure_runtime  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_create_dashboard_projection  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_define_window  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_empty_state  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_evaluate_data_quality  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_evaluate_threshold_alert  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_forecast_metric  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_generate_snapshot_proof  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_ingest_metric_event  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_open_replay_job  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_permissions_contract  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_receive_event  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_recompute_window  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_record_ingestion_checkpoint  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_register_metric_stream  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_register_governed_model  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_register_rule  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_register_schema_extension  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_render_workbench  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_resolve_metric_exception  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_run_kpi_controls  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_runtime_capabilities  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_runtime_smoke  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_score_operational_risk  # noqa: E402,F401
+from .pbcs.streaming_analytics import streaming_analytics_screen_metric_policy  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_set_parameter  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_ui_contract  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_verify_owned_table_boundary  # noqa: E402,F401

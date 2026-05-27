@@ -38,6 +38,17 @@ The PBC owns exactly these tables:
   cryptographic proof, and publication evidence.
 - `dashboard_projection`: dashboard read models, selected streams, latest KPI
   values, projection status, and audit proof.
+- `metric_event`, `ingestion_checkpoint`, `data_quality_result`, `replay_job`,
+  `watermark_state`, and `retention_policy`: ingestion state, quality decisions,
+  replay control, watermark progress, and retention policy evidence.
+- `threshold_alert`, `metric_forecast`, `operational_risk_score`,
+  `metric_exception`, and `window_recomputation`: alerting, forecasting,
+  predictive risk, exception resolution, and self-healing recomputation.
+- `kpi_control_assertion`, `kpi_snapshot_proof`,
+  `metric_policy_screening`, and `analytics_audit_entry`: control testing,
+  cryptographic proof, dynamic policy screening, and immutable audit evidence.
+- `analytics_federation_view` and `analytics_governed_model`: declared
+  cross-system analytic projections and governed analytics model registration.
 
 The PBC does not read or write foreign tables. Cross-PBC dependencies are
 declared as event or API dependencies:
@@ -142,6 +153,21 @@ The service layer exposes these package-local operations:
 - `receive_event(event, simulate_failure=False)`.
 - `ingest_metric_event(command)`.
 - `create_dashboard_projection(command)`.
+- `record_ingestion_checkpoint(command)`.
+- `evaluate_data_quality(event_id)`.
+- `open_replay_job(command)`.
+- `advance_watermark(command)`.
+- `apply_retention_policy(command)`.
+- `evaluate_threshold_alert(command)`.
+- `forecast_metric(command)`.
+- `score_operational_risk(command)`.
+- `resolve_metric_exception(command)`.
+- `recompute_window(command)`.
+- `run_kpi_controls(command)`.
+- `generate_snapshot_proof(command)`.
+- `screen_metric_policy(command)`.
+- `build_analytics_federation_view(command)`.
+- `register_governed_model(command)`.
 - `build_api_contract()`.
 - `permissions_contract()`.
 - `build_workbench_view(tenant=...)`.
@@ -161,6 +187,21 @@ The API contract exposes:
 - `POST /metric-events` for `ingest_metric_event`, recomputing
   `kpi_snapshot`, emitting `OperationalKpiChanged` and `ForecastUpdated`, and
   requiring `streaming_analytics.event.write`.
+- `POST /ingestion-checkpoints` for `record_ingestion_checkpoint`.
+- `POST /quality/evaluations` for `evaluate_data_quality`.
+- `POST /replay-jobs` for `open_replay_job`.
+- `POST /watermarks` for `advance_watermark`.
+- `POST /retention-policies` for `apply_retention_policy`.
+- `POST /threshold-alerts` for `evaluate_threshold_alert`.
+- `POST /forecasts` for `forecast_metric`.
+- `POST /risk-scores` for `score_operational_risk`.
+- `POST /exceptions/resolutions` for `resolve_metric_exception`.
+- `POST /windows/recomputations` for `recompute_window`.
+- `POST /kpi-controls` for `run_kpi_controls`.
+- `POST /snapshot-proofs` for `generate_snapshot_proof`.
+- `POST /policy-screenings` for `screen_metric_policy`.
+- `POST /federation-views` for `build_analytics_federation_view`.
+- `POST /governed-models` for `register_governed_model`.
 - `GET /kpis` for KPI snapshot queries, requiring `streaming_analytics.audit`.
 - `GET /projections` for dashboard projection queries, requiring
   `streaming_analytics.audit`.
@@ -247,12 +288,44 @@ This appendix is generated from the package manifest and is release-gated so the
 - `aggregation_window`
 - `kpi_snapshot`
 - `dashboard_projection`
+- `metric_event`
+- `ingestion_checkpoint`
+- `data_quality_result`
+- `replay_job`
+- `watermark_state`
+- `retention_policy`
+- `threshold_alert`
+- `metric_forecast`
+- `operational_risk_score`
+- `metric_exception`
+- `window_recomputation`
+- `kpi_control_assertion`
+- `kpi_snapshot_proof`
+- `metric_policy_screening`
+- `analytics_audit_entry`
+- `analytics_federation_view`
+- `analytics_governed_model`
 
 ### API Routes
 
 - `POST /metric-streams`
 - `POST /aggregation-windows`
 - `POST /metric-events`
+- `POST /ingestion-checkpoints`
+- `POST /quality/evaluations`
+- `POST /replay-jobs`
+- `POST /watermarks`
+- `POST /retention-policies`
+- `POST /threshold-alerts`
+- `POST /forecasts`
+- `POST /risk-scores`
+- `POST /exceptions/resolutions`
+- `POST /windows/recomputations`
+- `POST /kpi-controls`
+- `POST /snapshot-proofs`
+- `POST /policy-screenings`
+- `POST /federation-views`
+- `POST /governed-models`
 - `GET /kpis`
 - `GET /projections`
 - `GET /streaming-analytics/workbench`
@@ -290,9 +363,13 @@ This appendix is generated from the package manifest and is release-gated so the
 ### Permissions
 
 - `streaming_analytics.audit`
+- `streaming_analytics.alert.write`
 - `streaming_analytics.configure`
 - `streaming_analytics.event.consume`
 - `streaming_analytics.event.write`
+- `streaming_analytics.intelligence.write`
+- `streaming_analytics.operations.write`
+- `streaming_analytics.quality.write`
 - `streaming_analytics.stream.write`
 - `streaming_analytics.window.write`
 
