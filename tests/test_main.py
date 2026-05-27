@@ -189,6 +189,7 @@ from pyAppGen.form_designer import livebindings_actionable_operations
 from pyAppGen.form_designer import livebindings_create_link
 from pyAppGen.form_designer import livebindings_detect_conflicts
 from pyAppGen.form_designer import livebindings_emit_runtime_wiring
+from pyAppGen.form_designer import binding_expression_editor_transaction_replay_contract
 from pyAppGen.form_designer import livebindings_graph_contract
 from pyAppGen.form_designer import livebindings_preview_value
 from pyAppGen.form_designer import livebindings_readiness_contract
@@ -2291,6 +2292,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "update_scheduler",
         "dependency_execution_plan",
         "expression_sandbox",
+        "expression_editor_transaction_replay",
         "runtime_failure_recovery",
         "dataset_cursor_sync",
         "conflict_resolution_workflow",
@@ -2363,6 +2365,26 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert binding_workbench["update_scheduler"]["phases"][-1]["phase"] == "publish_notifications"
     assert all(item["reentrant_guard"] == "defer_reentrant_writes" for item in binding_workbench["dependency_execution"]["execution_plan"])
     assert binding_workbench["expression_sandbox"]["blocked_probe"]["blocked_tokens"]
+    expression_editor = binding_expression_editor_transaction_replay_contract()
+    assert expression_editor["format"] == "appgen.binding-expression-editor-transaction-replay.v1"
+    assert expression_editor["ok"] is True
+    assert {
+        "select_expression_node",
+        "offer_autocomplete_and_scope",
+        "validate_safe_expression",
+        "preview_expression_value",
+        "attach_converter_and_validator",
+        "commit_expression_binding",
+        "reject_unsafe_expression",
+        "rollback_failed_edit",
+    } == {item["phase"] for item in expression_editor["replay"]}
+    assert {
+        "safe_expression_validates_before_preview",
+        "converter_validator_attached_before_commit",
+        "unsafe_expression_rejected_and_rolled_back",
+        "expression_editor_transactions_side_effect_free",
+    } <= {check["id"] for check in expression_editor["checks"] if check["ok"]}
+    assert binding_workbench["expression_editor_replay"]["ok"] is True
     assert all("rollback_target_write" in item["pipeline"] for item in binding_workbench["runtime_failure_recovery"]["scenarios"])
     assert all(
         {"refresh_controls", "preserve_bookmark", "sync_dataset_bookmark", "clear_orphaned_controls"} & set(flow["pipeline"])
@@ -2386,6 +2408,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "validate_graph",
         "execute_converter_validator_pipeline",
         "resolve_master_detail",
+        "edit_expression_surface",
         "replay_offline_queue",
         "propagate_runtime_values",
     } <= {item["phase"] for item in binding_workbench["design_runtime_replay"]["replay"]}
@@ -2398,6 +2421,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "stage_transaction",
         "preview_and_hit_test",
         "schedule_dependencies",
+        "edit_expression_surface",
         "surface_diagnostics_and_conflicts",
         "replay_offline_queue",
         "exercise_accessibility_routes",
@@ -2413,6 +2437,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "validate_before_transaction",
         "stage_graph_transactions",
         "surface_diagnostics_and_conflicts",
+        "replay_expression_editor",
         "generate_runtime_wiring",
         "replay_offline_queue",
         "verify_accessibility_routes",
@@ -2424,6 +2449,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "graph_authoring_precedes_validation",
         "validation_precedes_transaction_commit",
         "diagnostics_precede_runtime_wiring",
+        "expression_editor_precedes_runtime_wiring",
         "offline_and_accessibility_precede_runtime",
         "design_runtime_and_designer_replays_complete",
         "side_effect_guards",
@@ -2440,6 +2466,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "open_binding_designer",
         "author_visual_link",
         "validate_staged_graph",
+        "edit_expression_surface",
         "commit_designer_transaction",
         "emit_runtime_wiring",
         "refresh_inspector_bridge",
@@ -2454,6 +2481,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "author_binding_graph",
         "validate_and_stage_edits",
         "preview_and_emit_runtime_wiring",
+        "edit_expression_surface",
         "surface_diagnostics_and_conflicts",
         "replay_offline_accessible_runtime",
         "prove_designer_and_release_replay",
@@ -2463,6 +2491,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "graph_authoring_ready",
         "validation_transaction_ready",
         "preview_runtime_ready",
+        "expression_editor_ready",
         "runtime_artifact_pipeline_ready",
         "diagnostics_conflict_ready",
         "offline_accessible_runtime_ready",
@@ -2477,6 +2506,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert binding_readiness["final_state"]["edge_count"] == len(binding_workbench["contract"]["graph"]["edges"])
     assert binding_readiness["final_state"]["runtime_artifacts"] >= 5
     assert binding_readiness["final_state"]["converter_validator_pipelines"] == len(binding_workbench["pipelines"]["pipelines"])
+    assert binding_readiness["final_state"]["expression_editor_phases"] == len(expression_editor["replay"])
     assert binding_workbench["readiness"]["ok"] is True
     assert binding_workbench["readiness"]["final_state"]["runtime_trace"] > 0
     assert len(binding_workbench["binding_module_artifacts"]) == 6
@@ -5176,6 +5206,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "author_binding_graph",
         "validate_and_stage_edits",
         "preview_and_emit_runtime_wiring",
+        "edit_expression_surface",
         "surface_diagnostics_and_conflicts",
         "replay_offline_accessible_runtime",
         "prove_designer_and_release_replay",
@@ -5192,6 +5223,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_transaction_replay",
         "design_runtime_session_replay",
         "binding_lifecycle_release_replay",
+        "expression_editor_transaction_replay",
         "binding_designer_scenario",
     } <= set(lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["binding_passing_checks"])
     assert lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
@@ -5373,6 +5405,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "binding_generated_modules",
         "binding_generated_module_tests",
         "runtime_artifact_pipeline_ready",
+        "expression_editor_transaction_replay",
+        "expression_editor_ready",
         "binding_designer_scenario",
         "binding_designer_family_contract",
         "binding_designer_family_modules",
@@ -15276,6 +15310,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "author_binding_graph",
         "validate_and_stage_edits",
         "preview_and_emit_runtime_wiring",
+        "edit_expression_surface",
         "surface_diagnostics_and_conflicts",
         "replay_offline_accessible_runtime",
         "prove_designer_and_release_replay",
@@ -15292,6 +15327,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "designer_transaction_replay",
         "design_runtime_session_replay",
         "binding_lifecycle_release_replay",
+        "expression_editor_transaction_replay",
         "binding_designer_scenario",
     } <= set(generated_lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["binding_passing_checks"])
     assert generated_lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
@@ -15484,6 +15520,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding_generated_modules",
         "binding_generated_module_tests",
         "runtime_artifact_pipeline_ready",
+        "expression_editor_transaction_replay",
+        "expression_editor_ready",
         "binding_designer_scenario",
         "binding_designer_family_contract",
         "binding_designer_family_modules",
@@ -16138,6 +16176,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "update_scheduler",
         "dependency_execution_plan",
         "expression_sandbox",
+        "expression_editor_transaction_replay",
         "runtime_failure_recovery",
         "dataset_cursor_sync",
         "conflict_resolution_workflow",
@@ -16187,6 +16226,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "topological_order_required" in generated_bindings["update_scheduler"]["guards"]
     assert all(item["reentrant_guard"] == "defer_reentrant_writes" for item in generated_bindings["dependency_execution"]["execution_plan"])
     assert generated_bindings["expression_sandbox"]["blocked_probe"]["blocked_tokens"]
+    generated_expression_editor = form_designer.binding_expression_editor_transaction_replay_contract()
+    assert generated_expression_editor["format"] == "appgen.generated-binding-expression-editor-transaction-replay.v1"
+    assert generated_expression_editor["ok"] is True
+    assert {
+        "safe_expression_validates_before_preview",
+        "converter_validator_attached_before_commit",
+        "unsafe_expression_rejected_and_rolled_back",
+        "expression_editor_transactions_side_effect_free",
+    } <= {check["id"] for check in generated_expression_editor["checks"] if check["ok"]}
+    assert generated_bindings["expression_editor_replay"]["ok"] is True
     assert all("rollback_target_write" in item["pipeline"] for item in generated_bindings["runtime_failure_recovery"]["scenarios"])
     assert generated_bindings["cursor_sync"]["fields"]
     assert all("validate_graph" in resolution["workflow"] for resolution in generated_bindings["conflict_resolution"]["resolutions"])
@@ -16200,6 +16249,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "validate_graph",
         "execute_converter_validator_pipeline",
         "resolve_master_detail",
+        "edit_expression_surface",
         "replay_offline_queue",
         "propagate_runtime_values",
     } <= {item["phase"] for item in generated_bindings["design_runtime_replay"]["replay"]}
@@ -16212,6 +16262,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "stage_transaction",
         "preview_and_hit_test",
         "schedule_dependencies",
+        "edit_expression_surface",
         "surface_diagnostics_and_conflicts",
         "replay_offline_queue",
         "exercise_accessibility_routes",
@@ -16226,6 +16277,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "validate_before_transaction",
         "stage_graph_transactions",
         "surface_diagnostics_and_conflicts",
+        "replay_expression_editor",
         "generate_runtime_wiring",
         "replay_offline_queue",
         "verify_accessibility_routes",
@@ -16237,6 +16289,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "graph_authoring_precedes_validation",
         "validation_precedes_transaction_commit",
         "diagnostics_precede_runtime_wiring",
+        "expression_editor_precedes_runtime_wiring",
         "offline_and_accessibility_precede_runtime",
         "design_runtime_and_designer_replays_complete",
         "side_effect_guards",
@@ -16252,6 +16305,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "open_binding_designer",
         "author_visual_link",
         "validate_staged_graph",
+        "edit_expression_surface",
         "commit_designer_transaction",
         "emit_runtime_wiring",
         "refresh_inspector_bridge",
@@ -16266,6 +16320,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "author_binding_graph",
         "validate_and_stage_edits",
         "preview_and_emit_runtime_wiring",
+        "edit_expression_surface",
         "surface_diagnostics_and_conflicts",
         "replay_offline_accessible_runtime",
         "prove_designer_and_release_replay",
@@ -16275,6 +16330,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "graph_authoring_ready",
         "validation_transaction_ready",
         "preview_runtime_ready",
+        "expression_editor_ready",
         "runtime_artifact_pipeline_ready",
         "diagnostics_conflict_ready",
         "offline_accessible_runtime_ready",
@@ -16289,6 +16345,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_binding_readiness["final_state"]["scenario_steps"] == len(generated_binding_scenario["pipeline"])
     assert generated_binding_readiness["final_state"]["runtime_artifacts"] >= 5
     assert generated_binding_readiness["final_state"]["converter_validator_pipelines"] == len(generated_bindings["pipelines"]["pipelines"])
+    assert generated_binding_readiness["final_state"]["expression_editor_phases"] == len(generated_expression_editor["replay"])
     assert generated_bindings["readiness"]["ok"] is True
     assert generated_bindings["readiness"]["final_state"]["runtime_trace"] > 0
     generated_binding_families = form_designer.binding_designer_family_contract()

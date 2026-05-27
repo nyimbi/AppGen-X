@@ -8942,6 +8942,137 @@ def binding_expression_sandbox_contract(design: dict | None = None) -> dict:
     }
 
 
+def binding_expression_editor_transaction_replay_contract(design: dict | None = None) -> dict:
+    """Replay expression editing from autocomplete through safe commit and rejected rollback."""
+    graph = livebindings_graph_contract(design)
+    sandbox = binding_expression_sandbox_contract(design)
+    previews = binding_preview_evaluation_contract(design)
+    pipelines = binding_pipeline_contract(design)
+    diagnostics = binding_diagnostics_contract(design)
+    expression_nodes = tuple(node for node in graph["nodes"] if node["kind"] == "expression")
+    selected = expression_nodes[0]
+    safe_expression = selected["expression"]
+    unsafe_expression = "__import__('os').system('echo unsafe')"
+    safe_validation = validate_binding_expression(safe_expression)
+    unsafe_validation = validate_binding_expression(unsafe_expression)
+    preview = livebindings_preview_value(
+        {"from": selected["id"], "to": "control:preview", "kind": "expression_to_property"},
+        "Ada",
+    )
+    state = {
+        "selected_expression": selected["id"],
+        "committed_expression": safe_expression,
+        "rejected_expression": unsafe_expression,
+        "preview_values": len(previews["previews"]),
+        "diagnostics": len(diagnostics["diagnostics"]),
+        "side_effects": (),
+    }
+    replay = (
+        {
+            "phase": "select_expression_node",
+            "pipeline": ("select_node", "open_expression_editor", "load_scope_context"),
+            "ok": bool(expression_nodes) and selected["id"].startswith("expression:"),
+        },
+        {
+            "phase": "offer_autocomplete_and_scope",
+            "pipeline": sandbox["sandbox"]["allowed_functions"] + ("dataset_fields", "lookup_fields", "control_properties"),
+            "ok": {"format", "lookup", "concat"} <= set(sandbox["sandbox"]["allowed_functions"]),
+        },
+        {
+            "phase": "validate_safe_expression",
+            "pipeline": ("parse_expression", "check_allowed_functions", "check_blocked_tokens", "typecheck_result"),
+            "ok": safe_validation["ok"] and not safe_validation["blocked_tokens"],
+        },
+        {
+            "phase": "preview_expression_value",
+            "pipeline": preview["pipeline"],
+            "ok": preview["ok"] and {"apply_converter", "run_validators", "publish_preview"} <= set(preview["pipeline"]),
+        },
+        {
+            "phase": "attach_converter_and_validator",
+            "pipeline": tuple(item["pipeline"] for item in pipelines["pipelines"]),
+            "ok": pipelines["ok"]
+            and all({"apply_converter", "run_validators"} <= set(item["pipeline"]) for item in pipelines["pipelines"]),
+        },
+        {
+            "phase": "commit_expression_binding",
+            "pipeline": ("capture_graph", "write_expression_node", "validate_graph", "record_undo", "publish_preview_delta"),
+            "ok": safe_validation["ok"] and "blocked_tokens_rejected" in sandbox["guards"],
+        },
+        {
+            "phase": "reject_unsafe_expression",
+            "pipeline": ("parse_expression", "detect_blocked_token", "surface_diagnostic", "restore_previous_expression"),
+            "ok": not unsafe_validation["ok"]
+            and bool(unsafe_validation["blocked_tokens"])
+            and any(diagnostic["code"] == "unsafe_expression" for diagnostic in diagnostics["diagnostics"]),
+        },
+        {
+            "phase": "rollback_failed_edit",
+            "pipeline": ("restore_expression_snapshot", "clear_preview_delta", "keep_runtime_wiring_unchanged"),
+            "ok": state["committed_expression"] == safe_expression and state["rejected_expression"] == unsafe_expression,
+        },
+    )
+    checks = (
+        {
+            "id": "expression_editor_selects_expression_node",
+            "ok": replay[0]["ok"],
+            "evidence": selected,
+        },
+        {
+            "id": "autocomplete_uses_safe_scope",
+            "ok": replay[1]["ok"] and "allowed_functions_only" in sandbox["guards"],
+            "evidence": sandbox["sandbox"],
+        },
+        {
+            "id": "safe_expression_validates_before_preview",
+            "ok": tuple(item["phase"] for item in replay).index("validate_safe_expression")
+            < tuple(item["phase"] for item in replay).index("preview_expression_value")
+            and replay[2]["ok"],
+            "evidence": safe_validation,
+        },
+        {
+            "id": "converter_validator_attached_before_commit",
+            "ok": tuple(item["phase"] for item in replay).index("attach_converter_and_validator")
+            < tuple(item["phase"] for item in replay).index("commit_expression_binding")
+            and replay[4]["ok"],
+            "evidence": pipelines,
+        },
+        {
+            "id": "unsafe_expression_rejected_and_rolled_back",
+            "ok": replay[6]["ok"] and replay[7]["ok"],
+            "evidence": {"unsafe": unsafe_validation, "rollback": replay[7]},
+        },
+        {
+            "id": "expression_editor_transactions_side_effect_free",
+            "ok": not sandbox["side_effects"]
+            and not previews["side_effects"]
+            and not pipelines["side_effects"]
+            and not diagnostics["side_effects"]
+            and state["side_effects"] == (),
+            "evidence": (),
+        },
+    )
+    ok = all(item["ok"] for item in replay) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.binding-expression-editor-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "replay": replay,
+        "checks": checks,
+        "final_state": state,
+        "guards": (
+            "expression_node_selected_before_edit",
+            "safe_scope_before_autocomplete",
+            "safe_expression_validates_before_preview",
+            "converter_validator_attached_before_commit",
+            "unsafe_expression_rejected_and_rolled_back",
+            "expression_editor_transactions_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def binding_runtime_failure_recovery_contract(design: dict | None = None) -> dict:
     """Return runtime binding failure handling and recovery evidence."""
     runtime = binding_runtime_wiring_contract(design)
@@ -9162,6 +9293,7 @@ def binding_design_runtime_session_replay_contract(design: dict | None = None) -
     master_detail = binding_master_detail_contract(design)
     dependency_execution = binding_dependency_execution_plan_contract(design)
     sandbox = binding_expression_sandbox_contract(design)
+    expression_editor = binding_expression_editor_transaction_replay_contract(design)
     conflicts = binding_conflict_resolution_workflow(design)
     offline = binding_offline_replay_contract(design)
     propagation = binding_runtime_propagation_replay_contract(design)
@@ -9170,6 +9302,7 @@ def binding_design_runtime_session_replay_contract(design: dict | None = None) -
         "pipelines_executed": 0,
         "master_detail_links": 0,
         "dependency_steps": 0,
+        "expression_editor_transactions": 0,
         "offline_items_replayed": 0,
         "runtime_notifications": 0,
         "runtime_errors": 0,
@@ -9207,6 +9340,15 @@ def binding_design_runtime_session_replay_contract(design: dict | None = None) -
             "ok": sandbox["ok"] and bool(sandbox["blocked_probe"]["blocked_tokens"]),
         },
         {
+            "phase": "edit_expression_surface",
+            "pipeline": tuple(item["phase"] for item in expression_editor["replay"]),
+            "ok": expression_editor["ok"]
+            and {
+                "safe_expression_validates_before_preview",
+                "unsafe_expression_rejected_and_rolled_back",
+            } <= {check["id"] for check in expression_editor["checks"] if check["ok"]},
+        },
+        {
             "phase": "resolve_conflicts",
             "pipeline": tuple(resolution["workflow"] for resolution in conflicts["resolutions"]),
             "ok": conflicts["ok"] and all("validate_graph" in resolution["workflow"] for resolution in conflicts["resolutions"]),
@@ -9225,6 +9367,7 @@ def binding_design_runtime_session_replay_contract(design: dict | None = None) -
     state["pipelines_executed"] = len(pipelines["pipelines"])
     state["master_detail_links"] = len(master_detail["links"])
     state["dependency_steps"] = len(dependency_execution["execution_plan"])
+    state["expression_editor_transactions"] = len(expression_editor["replay"])
     state["offline_items_replayed"] = len(offline["queue_items"])
     state["runtime_notifications"] = len(propagation["final_state"]["notifications"])
     state["runtime_errors"] = len(propagation["final_state"]["errors"])
@@ -9244,6 +9387,7 @@ def binding_design_runtime_session_replay_contract(design: dict | None = None) -
             "graph_validated_before_runtime",
             "converter_validator_pipeline_executed",
             "master_detail_scope_resolved",
+            "expression_editor_validates_before_runtime",
             "offline_queue_replayed_idempotently",
             "runtime_errors_surface_to_designer",
         ),
@@ -9259,6 +9403,7 @@ def binding_designer_transaction_replay_contract(design: dict | None = None) -> 
     previews = binding_preview_evaluation_contract(design)
     hit_testing = binding_hit_testing_contract(design)
     dependency_execution = binding_dependency_execution_plan_contract(design)
+    expression_editor = binding_expression_editor_transaction_replay_contract(design)
     diagnostics = binding_diagnostics_contract(design)
     conflict_resolution = binding_conflict_resolution_workflow(design)
     offline = binding_offline_replay_contract(design)
@@ -9271,6 +9416,7 @@ def binding_designer_transaction_replay_contract(design: dict | None = None) -> 
         "preview_values": len(previews["previews"]),
         "hit_targets": len(hit_testing["hit_targets"]),
         "dependency_steps": len(dependency_execution["execution_plan"]),
+        "expression_editor_transactions": len(expression_editor["replay"]),
         "diagnostics": len(diagnostics["diagnostics"]),
         "conflict_resolutions": len(conflict_resolution["resolutions"]),
         "offline_replays": len(offline["queue_items"]),
@@ -9311,6 +9457,13 @@ def binding_designer_transaction_replay_contract(design: dict | None = None) -> 
             "pipeline": tuple(item["edge"]["kind"] for item in dependency_execution["execution_plan"]),
             "ok": dependency_execution["ok"]
             and all(item["reentrant_guard"] == "defer_reentrant_writes" for item in dependency_execution["execution_plan"]),
+        },
+        {
+            "phase": "edit_expression_surface",
+            "pipeline": tuple(item["phase"] for item in expression_editor["replay"]),
+            "ok": expression_editor["ok"]
+            and "unsafe_expression_rejected_and_rolled_back"
+            in {check["id"] for check in expression_editor["checks"] if check["ok"]},
         },
         {
             "phase": "surface_diagnostics_and_conflicts",
@@ -9360,6 +9513,7 @@ def binding_designer_transaction_replay_contract(design: dict | None = None) -> 
             "graph_validation_before_commit",
             "preview_and_hit_testing_before_runtime",
             "dependency_schedule_before_runtime_write",
+            "expression_editor_commit_before_runtime_write",
             "diagnostics_and_conflicts_surface_before_commit",
             "offline_replay_is_idempotent",
             "accessibility_routes_match_designer_commands",
@@ -9376,6 +9530,7 @@ def binding_lifecycle_release_replay_contract(design: dict | None = None) -> dic
     edit_transactions = binding_edit_transaction_contract(design)
     diagnostics = binding_diagnostics_contract(design)
     conflict_resolution = binding_conflict_resolution_workflow(design)
+    expression_editor = binding_expression_editor_transaction_replay_contract(design)
     runtime_wiring = binding_runtime_wiring_contract(design)
     preview_runtime_parity = binding_preview_runtime_parity_contract(design)
     offline = binding_offline_replay_contract(design)
@@ -9409,6 +9564,13 @@ def binding_lifecycle_release_replay_contract(design: dict | None = None) -> dic
             "ok": diagnostics["ok"]
             and conflict_resolution["ok"]
             and all("validate_graph" in resolution["workflow"] for resolution in conflict_resolution["resolutions"]),
+        },
+        {
+            "phase": "replay_expression_editor",
+            "pipeline": tuple(item["phase"] for item in expression_editor["replay"]),
+            "ok": expression_editor["ok"]
+            and {"safe_expression_validates_before_preview", "converter_validator_attached_before_commit"}
+            <= {check["id"] for check in expression_editor["checks"] if check["ok"]},
         },
         {
             "phase": "generate_runtime_wiring",
@@ -9453,6 +9615,7 @@ def binding_lifecycle_release_replay_contract(design: dict | None = None) -> dic
         edit_transactions,
         diagnostics,
         conflict_resolution,
+        expression_editor,
         runtime_wiring,
         preview_runtime_parity,
         offline,
@@ -9466,6 +9629,7 @@ def binding_lifecycle_release_replay_contract(design: dict | None = None) -> dic
         "transactions": len(edit_transactions["operations"]),
         "diagnostics": len(diagnostics["diagnostics"]),
         "conflict_resolutions": len(conflict_resolution["resolutions"]),
+        "expression_editor_phases": len(expression_editor["replay"]),
         "runtime_artifacts": len(runtime_wiring["artifacts"]),
         "offline_items": len(offline["queue_items"]),
         "accessibility_routes": len(accessibility["shortcuts"]),
@@ -9487,7 +9651,8 @@ def binding_lifecycle_release_replay_contract(design: dict | None = None) -> dic
         },
         {
             "id": "diagnostics_precede_runtime_wiring",
-            "ok": phases.index("surface_diagnostics_and_conflicts") < phases.index("generate_runtime_wiring"),
+            "ok": phases.index("surface_diagnostics_and_conflicts") < phases.index("generate_runtime_wiring")
+            and phases.index("replay_expression_editor") < phases.index("generate_runtime_wiring"),
             "evidence": phases,
         },
         {
@@ -9524,6 +9689,7 @@ def binding_lifecycle_release_replay_contract(design: dict | None = None) -> dic
             "graph_authoring_precedes_validation",
             "validation_precedes_transaction_commit",
             "diagnostics_precede_runtime_wiring",
+            "expression_editor_precedes_runtime_wiring",
             "offline_and_accessibility_precede_runtime",
             "runtime_failures_roll_back_before_release",
             "design_runtime_and_designer_replays_complete",
@@ -9542,6 +9708,7 @@ def livebindings_run_designer_scenario_operation(design: dict | None = None) -> 
     diagnostics = binding_diagnostics_contract(design)
     conflicts = livebindings_detect_conflicts()
     conflict_resolution = binding_conflict_resolution_workflow(design)
+    expression_editor = binding_expression_editor_transaction_replay_contract(design)
     designer_transaction = binding_designer_transaction_replay_contract(design)
     runtime_wiring = livebindings_emit_runtime_wiring(livebindings_graph_contract(design))
     offline_replay = binding_offline_replay_contract(design)
@@ -9572,6 +9739,13 @@ def livebindings_run_designer_scenario_operation(design: dict | None = None) -> 
             "step": "preview_runtime_value",
             "ok": preview["ok"] and {"apply_converter", "run_validators", "publish_preview"} <= set(preview["pipeline"]),
             "evidence": preview,
+        },
+        {
+            "step": "edit_expression_surface",
+            "ok": expression_editor["ok"]
+            and {"safe_expression_validates_before_preview", "unsafe_expression_rejected_and_rolled_back"}
+            <= {check["id"] for check in expression_editor["checks"] if check["ok"]},
+            "evidence": expression_editor,
         },
         {
             "step": "surface_diagnostics_and_conflicts",
@@ -9624,6 +9798,7 @@ def livebindings_run_designer_scenario_operation(design: dict | None = None) -> 
     )
     final_state = {
         "authoring_ops": len(authoring["operations"]),
+        "expression_editor_phases": len(expression_editor["replay"]),
         "transaction_phases": len(designer_transaction["replay"]),
         "runtime_bindings": len(runtime_wiring["bindings"]),
         "offline_items": len(offline_replay["queue_items"]),
@@ -9641,6 +9816,7 @@ def livebindings_run_designer_scenario_operation(design: dict | None = None) -> 
                 "author_visual_link",
                 "validate_staged_graph",
                 "preview_runtime_value",
+                "edit_expression_surface",
                 "surface_diagnostics_and_conflicts",
                 "commit_designer_transaction",
                 "emit_runtime_wiring",
@@ -9675,6 +9851,7 @@ def livebindings_run_designer_scenario_operation(design: dict | None = None) -> 
         "guards": (
             "visual_authoring_precedes_validation",
             "validation_precedes_preview",
+            "expression_editor_precedes_commit",
             "diagnostics_precede_commit",
             "commit_precedes_runtime_wiring",
             "offline_accessibility_precede_runtime_propagation",
@@ -9697,6 +9874,7 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
     runtime_wiring = binding_runtime_wiring_contract(design)
     preview_runtime_parity = binding_preview_runtime_parity_contract(design)
     pipelines = binding_pipeline_contract(design)
+    expression_editor = binding_expression_editor_transaction_replay_contract(design)
     diagnostics = binding_diagnostics_contract(design)
     conflict_resolution = binding_conflict_resolution_workflow(design)
     offline_replay = binding_offline_replay_contract(design)
@@ -9730,6 +9908,13 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
             and all(preview["validator"]["ok"] for preview in previews["previews"])
             and {"binding_registry", "observer_hooks", "update_queue", "validation_pipeline"} <= set(runtime_wiring["artifacts"])
             and preview_runtime_parity["ok"],
+        },
+        {
+            "phase": "edit_expression_surface",
+            "pipeline": tuple(item["phase"] for item in expression_editor["replay"]),
+            "ok": expression_editor["ok"]
+            and {"safe_expression_validates_before_preview", "unsafe_expression_rejected_and_rolled_back"}
+            <= {check["id"] for check in expression_editor["checks"] if check["ok"]},
         },
         {
             "phase": "surface_diagnostics_and_conflicts",
@@ -9772,6 +9957,7 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
         {"id": "graph_authoring_ready", "ok": phases[0]["ok"], "evidence": {"contract": contract, "graph": graph, "authoring": authoring}},
         {"id": "validation_transaction_ready", "ok": phases[1]["ok"], "evidence": {"graph_validation": graph_validation, "edit_transactions": edit_transactions}},
         {"id": "preview_runtime_ready", "ok": phases[2]["ok"], "evidence": {"previews": previews, "runtime_wiring": runtime_wiring, "parity": preview_runtime_parity}},
+        {"id": "expression_editor_ready", "ok": phases[3]["ok"], "evidence": expression_editor},
         {
             "id": "runtime_artifact_pipeline_ready",
             "ok": {"binding_registry", "observer_hooks", "update_queue", "validation_pipeline", "converter_pipeline"} <= set(runtime_wiring["artifacts"])
@@ -9782,10 +9968,10 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
             and not pipelines["side_effects"],
             "evidence": {"runtime_wiring": runtime_wiring, "pipelines": pipelines},
         },
-        {"id": "diagnostics_conflict_ready", "ok": phases[3]["ok"], "evidence": {"diagnostics": diagnostics, "conflict_resolution": conflict_resolution}},
-        {"id": "offline_accessible_runtime_ready", "ok": phases[4]["ok"], "evidence": {"offline": offline_replay, "accessibility": accessibility, "runtime": runtime_propagation}},
-        {"id": "designer_release_replay_ready", "ok": phases[5]["ok"], "evidence": {"design_runtime": design_runtime, "designer_transaction": designer_transaction, "lifecycle": lifecycle_release}},
-        {"id": "inspector_bridge_ready", "ok": phases[6]["ok"], "evidence": inspector_bridge},
+        {"id": "diagnostics_conflict_ready", "ok": phases[4]["ok"], "evidence": {"diagnostics": diagnostics, "conflict_resolution": conflict_resolution}},
+        {"id": "offline_accessible_runtime_ready", "ok": phases[5]["ok"], "evidence": {"offline": offline_replay, "accessibility": accessibility, "runtime": runtime_propagation}},
+        {"id": "designer_release_replay_ready", "ok": phases[6]["ok"], "evidence": {"design_runtime": design_runtime, "designer_transaction": designer_transaction, "lifecycle": lifecycle_release}},
+        {"id": "inspector_bridge_ready", "ok": phases[7]["ok"], "evidence": inspector_bridge},
         {"id": "operation_surface_ready", "ok": actionable["ok"] and not actionable["side_effects"], "evidence": actionable},
         {
             "id": "designer_scenario_ready",
@@ -9802,6 +9988,7 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
                 "author_binding_graph",
                 "validate_and_stage_edits",
                 "preview_and_emit_runtime_wiring",
+                "edit_expression_surface",
                 "surface_diagnostics_and_conflicts",
                 "replay_offline_accessible_runtime",
                 "prove_designer_and_release_replay",
@@ -9822,6 +10009,7 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
             "runtime_bindings": len(livebindings_emit_runtime_wiring(graph)["bindings"]),
             "runtime_artifacts": len(runtime_wiring["artifacts"]),
             "converter_validator_pipelines": len(pipelines["pipelines"]),
+            "expression_editor_phases": len(expression_editor["replay"]),
             "offline_items": len(offline_replay["queue_items"]),
             "runtime_trace": len(runtime_propagation["trace"]),
             "release_phases": len(lifecycle_release["replay"]),
@@ -9830,6 +10018,7 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
         "guards": (
             "graph_authoring_before_validation",
             "validation_before_runtime_wiring",
+            "expression_editor_before_diagnostics",
             "diagnostics_before_release",
             "offline_accessibility_before_runtime_claim",
             "designer_replay_before_release_claim",
@@ -9887,6 +10076,7 @@ def livebindings_workbench() -> dict:
     update_scheduler = binding_update_scheduler_contract()
     dependency_execution = binding_dependency_execution_plan_contract()
     expression_sandbox = binding_expression_sandbox_contract()
+    expression_editor_replay = binding_expression_editor_transaction_replay_contract()
     runtime_failure_recovery = binding_runtime_failure_recovery_contract()
     cursor_sync = binding_dataset_cursor_sync_contract()
     conflict_resolution = binding_conflict_resolution_workflow()
@@ -10067,6 +10257,18 @@ def livebindings_workbench() -> dict:
             "evidence": expression_sandbox,
         },
         {
+            "id": "expression_editor_transaction_replay",
+            "ok": expression_editor_replay["ok"]
+            and {
+                "safe_expression_validates_before_preview",
+                "converter_validator_attached_before_commit",
+                "unsafe_expression_rejected_and_rolled_back",
+                "expression_editor_transactions_side_effect_free",
+            } <= {check["id"] for check in expression_editor_replay["checks"] if check["ok"]}
+            and not expression_editor_replay["side_effects"],
+            "evidence": expression_editor_replay,
+        },
+        {
             "id": "runtime_failure_recovery",
             "ok": runtime_failure_recovery["ok"]
             and {"failed_writes_roll_back", "errors_surface_to_designer"} <= set(runtime_failure_recovery["guards"])
@@ -10139,7 +10341,9 @@ def livebindings_workbench() -> dict:
                 "graph_authoring_ready",
                 "validation_transaction_ready",
                 "preview_runtime_ready",
+                "expression_editor_ready",
                 "runtime_artifact_pipeline_ready",
+                "expression_editor_ready",
                 "diagnostics_conflict_ready",
                 "offline_accessible_runtime_ready",
                 "designer_release_replay_ready",
@@ -10247,6 +10451,7 @@ def livebindings_workbench() -> dict:
         "update_scheduler": update_scheduler,
         "dependency_execution": dependency_execution,
         "expression_sandbox": expression_sandbox,
+        "expression_editor_replay": expression_editor_replay,
         "runtime_failure_recovery": runtime_failure_recovery,
         "cursor_sync": cursor_sync,
         "conflict_resolution": conflict_resolution,
@@ -17819,6 +18024,8 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "binding_lifecycle_release_replay",
                 "design_runtime_session_replay",
                 "designer_transaction_replay",
+                "expression_editor_transaction_replay",
+                "expression_editor_ready",
                 "runtime_artifact_pipeline_ready",
                 "binding_designer_scenario",
                 "binding_generated_modules",
@@ -18908,6 +19115,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "author_binding_graph",
         "validate_and_stage_edits",
         "preview_and_emit_runtime_wiring",
+        "edit_expression_surface",
         "surface_diagnostics_and_conflicts",
         "replay_offline_accessible_runtime",
         "prove_designer_and_release_replay",
@@ -18945,6 +19153,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "update_scheduler",
         "dependency_execution_plan",
         "expression_sandbox",
+        "expression_editor_transaction_replay",
         "runtime_failure_recovery",
         "dataset_cursor_sync",
         "conflict_resolution_workflow",
@@ -18988,6 +19197,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "validate_before_transaction",
         "stage_graph_transactions",
         "surface_diagnostics_and_conflicts",
+        "replay_expression_editor",
         "generate_runtime_wiring",
         "replay_offline_queue",
         "verify_accessibility_routes",
@@ -19002,6 +19212,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "graph_authoring_precedes_validation",
         "validation_precedes_transaction_commit",
         "diagnostics_precede_runtime_wiring",
+        "expression_editor_precedes_runtime_wiring",
         "offline_and_accessibility_precede_runtime",
         "design_runtime_and_designer_replays_complete",
         "side_effect_guards",
@@ -19013,6 +19224,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "graph_authoring_ready",
         "validation_transaction_ready",
         "preview_runtime_ready",
+        "expression_editor_ready",
         "runtime_artifact_pipeline_ready",
         "diagnostics_conflict_ready",
         "offline_accessible_runtime_ready",
@@ -19062,6 +19274,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "stage_transaction",
         "preview_and_hit_test",
         "schedule_dependencies",
+        "edit_expression_surface",
         "surface_diagnostics_and_conflicts",
         "replay_offline_queue",
         "exercise_accessibility_routes",
