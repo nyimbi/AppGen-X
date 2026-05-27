@@ -2293,4 +2293,4 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   traceability, and focused tests now cover those standard shop-floor table
   stakes without exposing stream-engine choices or shared-table access.
   Verification is focused under the low-battery delivery constraint. Commit:
-  pending.
+  `510ecaf`.
