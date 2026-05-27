@@ -201,3 +201,162 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['owned_boundary_rejection']['ok'] is False
     assert validation['owned_boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_executable_trade_lifecycle_covers_documents_handoffs_holds_and_release():
+    from .. import runtime
+
+    state = runtime.cross_border_trade_empty_state()
+    state = runtime.cross_border_trade_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": runtime.CROSS_BORDER_TRADE_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "supported_countries": ("US", "CA"),
+            "supported_incoterms": ("DDP",),
+        },
+    )["state"]
+    state = runtime.cross_border_trade_register_rule(
+        state,
+        {
+            "rule_id": "rule_test_trade",
+            "tenant": "tenant_test",
+            "scope": "cross_border_trade",
+            "status": "active",
+            "classification_policy": {"confidence_floor": 0.72},
+            "landed_cost_policy": {"default_duty_rate": 0.08, "default_tax_rate": 0.12},
+            "export_control_policy": {"review_score": 0.8},
+            "declaration_policy": {"required_documents": ("commercial_invoice", "packing_list")},
+        },
+    )["state"]
+    state = runtime.cross_border_trade_classify_product(
+        state,
+        {
+            "classification_id": "hsc_test",
+            "tenant": "tenant_test",
+            "product_id": "sku_test",
+            "description": "digital camera",
+            "country_of_origin": "US",
+            "destination_country": "CA",
+        },
+    )["state"]
+    state = runtime.cross_border_trade_quote_landed_cost(
+        state,
+        {
+            "quote_id": "lcq_test",
+            "tenant": "tenant_test",
+            "order_id": "order_test",
+            "classification_id": "hsc_test",
+            "incoterm": "DDP",
+            "origin_country": "US",
+            "destination_country": "CA",
+            "goods_value": 100,
+            "shipping_cost": 20,
+            "currency": "USD",
+        },
+    )["state"]
+    state = runtime.cross_border_trade_screen_export_control(
+        state,
+        {
+            "check_id": "ecc_test",
+            "tenant": "tenant_test",
+            "order_id": "order_test",
+            "classification_id": "hsc_test",
+            "destination_country": "CA",
+            "counterparties": ({"name": "Known Buyer", "risk_score": 0.1},),
+        },
+    )["state"]
+    state = runtime.cross_border_trade_file_customs_declaration(
+        state,
+        {
+            "declaration_id": "ccd_test",
+            "tenant": "tenant_test",
+            "order_id": "order_test",
+            "quote_id": "lcq_test",
+            "check_id": "ecc_test",
+            "documents": ("commercial_invoice", "packing_list"),
+        },
+    )["state"]
+    state = runtime.cross_border_trade_screen_denied_party(
+        state,
+        {
+            "screening_id": "dps_test",
+            "tenant": "tenant_test",
+            "entity_id": "order_test",
+            "counterparties": ({"name": "Known Buyer", "risk_score": 0.1},),
+        },
+    )["state"]
+    state = runtime.cross_border_trade_register_country_restriction_policy(
+        state,
+        {
+            "restriction_id": "crp_test",
+            "tenant": "tenant_test",
+            "destination_country": "CA",
+            "status": "allowed",
+            "restriction_basis": "supported_lane",
+        },
+    )["state"]
+    state = runtime.cross_border_trade_prepare_trade_document_packet(
+        state,
+        {
+            "packet_id": "tdp_test",
+            "tenant": "tenant_test",
+            "declaration_id": "ccd_test",
+            "documents": ("commercial_invoice", "packing_list"),
+        },
+    )["state"]
+    state = runtime.cross_border_trade_queue_broker_handoff(
+        state,
+        {
+            "handoff_id": "bh_test",
+            "tenant": "tenant_test",
+            "declaration_id": "ccd_test",
+            "broker_id": "broker_priority",
+        },
+    )["state"]
+    state = runtime.cross_border_trade_prepare_carrier_handoff(
+        state,
+        {
+            "handoff_id": "ch_test",
+            "tenant": "tenant_test",
+            "declaration_id": "ccd_test",
+            "order_id": "order_test",
+            "status": "ready",
+        },
+    )["state"]
+    state = runtime.cross_border_trade_open_trade_compliance_hold(
+        state,
+        {
+            "hold_id": "hold_test",
+            "tenant": "tenant_test",
+            "entity_id": "ccd_test",
+            "reason": "manual_release_gate",
+        },
+    )["state"]
+    state = runtime.cross_border_trade_resolve_trade_compliance_hold(
+        state,
+        {
+            "hold_id": "hold_test",
+            "tenant": "tenant_test",
+            "resolution": "release_approved",
+            "release_evidence": ("commercial_invoice", "packing_list"),
+        },
+    )["state"]
+    release = runtime.cross_border_trade_release_customs_declaration(
+        state,
+        {
+            "declaration_id": "ccd_test",
+            "tenant": "tenant_test",
+            "release_reference": "release_test",
+        },
+    )
+
+    assert release["customs_declaration"]["status"] == "released"
+    assert release["state"]["trade_document_packets"]["tdp_test"]["status"] == "complete"
+    assert release["state"]["broker_handoffs"]["bh_test"]["status"] == "submitted"
+    assert release["state"]["carrier_handoffs"]["ch_test"]["status"] == "ready"
+    assert release["state"]["compliance_holds"]["hold_test"]["status"] == "resolved"
+    assert all(event["event_contract"] == "AppGen-X" for event in release["state"]["outbox"])
+    assert runtime.cross_border_trade_verify_owned_table_boundary(runtime.CROSS_BORDER_TRADE_OWNED_TABLES)["ok"] is True

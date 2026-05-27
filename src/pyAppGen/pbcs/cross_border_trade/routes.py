@@ -5,8 +5,31 @@ from .services import CrossBorderTradeService, service_operation_contracts
 
 ROUTES = ({'method': 'POST', 'path': '/api/pbc/cross_border_trade/landed-cost', 'handler': 'command_landed_cost', 'permission': 'cross_border_trade.command.1'}, {'method': 'POST', 'path': '/api/pbc/cross_border_trade/export-checks', 'handler': 'command_export_checks', 'permission': 'cross_border_trade.command.2'}, {'method': 'POST', 'path': '/api/pbc/cross_border_trade/declarations', 'handler': 'command_declarations', 'permission': 'cross_border_trade.command.3'}, {'method': 'GET', 'path': '/api/pbc/cross_border_trade/cross-border-trade-workbench', 'handler': 'query_cross_border_trade_workbench', 'permission': 'cross_border_trade.query.4'})
 
+ROUTES = ROUTES + (
+    {'method': 'POST', 'path': '/api/pbc/cross_border_trade/denied-party-screenings', 'handler': 'command_denied_party_screenings', 'permission': 'cross_border_trade.screen'},
+    {'method': 'POST', 'path': '/api/pbc/cross_border_trade/document-packets', 'handler': 'command_document_packets', 'permission': 'cross_border_trade.declare'},
+    {'method': 'POST', 'path': '/api/pbc/cross_border_trade/broker-handoffs', 'handler': 'command_broker_handoffs', 'permission': 'cross_border_trade.declare'},
+    {'method': 'POST', 'path': '/api/pbc/cross_border_trade/carrier-handoffs', 'handler': 'command_carrier_handoffs', 'permission': 'cross_border_trade.declare'},
+    {'method': 'POST', 'path': '/api/pbc/cross_border_trade/compliance-holds', 'handler': 'command_compliance_holds', 'permission': 'cross_border_trade.declare'},
+    {'method': 'POST', 'path': '/api/pbc/cross_border_trade/compliance-holds/resolve', 'handler': 'command_hold_resolutions', 'permission': 'cross_border_trade.declare'},
+    {'method': 'POST', 'path': '/api/pbc/cross_border_trade/country-restriction-policies', 'handler': 'command_country_restrictions', 'permission': 'cross_border_trade.configure'},
+    {'method': 'POST', 'path': '/api/pbc/cross_border_trade/declaration-releases', 'handler': 'command_declaration_releases', 'permission': 'cross_border_trade.declare'},
+)
+
 
 API_ROUTE_CONTRACTS = ({'method': 'POST', 'path': '/api/pbc/cross_border_trade/landed-cost', 'handler': 'command_landed_cost', 'permission': 'cross_border_trade.command.1', 'operation': 'command_landed_cost', 'operation_kind': 'command', 'owned_tables': ('cross_border_trade_hs_classification', 'cross_border_trade_landed_cost_quote', 'cross_border_trade_export_control_check', 'cross_border_trade_customs_declaration'), 'read_tables': (), 'emitted_event': 'CustomsDeclarationPrepared', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'cross_border_trade:command_landed_cost:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/cross_border_trade/export-checks', 'handler': 'command_export_checks', 'permission': 'cross_border_trade.command.2', 'operation': 'command_export_checks', 'operation_kind': 'command', 'owned_tables': ('cross_border_trade_hs_classification', 'cross_border_trade_landed_cost_quote', 'cross_border_trade_export_control_check', 'cross_border_trade_customs_declaration'), 'read_tables': (), 'emitted_event': 'LandedCostCalculated', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'cross_border_trade:command_export_checks:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/cross_border_trade/declarations', 'handler': 'command_declarations', 'permission': 'cross_border_trade.command.3', 'operation': 'command_declarations', 'operation_kind': 'command', 'owned_tables': ('cross_border_trade_hs_classification', 'cross_border_trade_landed_cost_quote', 'cross_border_trade_export_control_check', 'cross_border_trade_customs_declaration'), 'read_tables': (), 'emitted_event': 'CustomsDeclarationPrepared', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'cross_border_trade:command_declarations:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/cross_border_trade/cross-border-trade-workbench', 'handler': 'query_cross_border_trade_workbench', 'permission': 'cross_border_trade.query.4', 'operation': 'query_cross_border_trade_workbench', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('cross_border_trade_hs_classification', 'cross_border_trade_landed_cost_quote', 'cross_border_trade_export_control_check', 'cross_border_trade_customs_declaration'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False})
+
+API_ROUTE_CONTRACTS = API_ROUTE_CONTRACTS + tuple(
+    {
+        **contract,
+        'idempotency_required': True,
+        'idempotency_key': f"cross_border_trade:{contract['operation']}:idempotency_key",
+        'shared_table_access': False,
+        'stream_engine_picker_visible': False,
+    }
+    for contract in service_operation_contracts()['contracts']
+    if contract['operation'] not in {item['operation'] for item in API_ROUTE_CONTRACTS}
+)
 
 
 def register_routes(app=None):

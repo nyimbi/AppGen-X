@@ -5,6 +5,17 @@ EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibili
 
 OPERATION_CONTRACTS = ({'operation': 'command_landed_cost', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/landed-cost', 'permission': 'cross_border_trade.command.1', 'owned_tables': ('cross_border_trade_hs_classification', 'cross_border_trade_landed_cost_quote', 'cross_border_trade_export_control_check', 'cross_border_trade_customs_declaration'), 'read_tables': (), 'emitted_event': 'CustomsDeclarationPrepared', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_export_checks', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/export-checks', 'permission': 'cross_border_trade.command.2', 'owned_tables': ('cross_border_trade_hs_classification', 'cross_border_trade_landed_cost_quote', 'cross_border_trade_export_control_check', 'cross_border_trade_customs_declaration'), 'read_tables': (), 'emitted_event': 'LandedCostCalculated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_declarations', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/declarations', 'permission': 'cross_border_trade.command.3', 'owned_tables': ('cross_border_trade_hs_classification', 'cross_border_trade_landed_cost_quote', 'cross_border_trade_export_control_check', 'cross_border_trade_customs_declaration'), 'read_tables': (), 'emitted_event': 'CustomsDeclarationPrepared', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_cross_border_trade_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/cross_border_trade/cross-border-trade-workbench', 'permission': 'cross_border_trade.query.4', 'owned_tables': (), 'read_tables': ('cross_border_trade_hs_classification', 'cross_border_trade_landed_cost_quote', 'cross_border_trade_export_control_check', 'cross_border_trade_customs_declaration'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
 
+OPERATION_CONTRACTS = OPERATION_CONTRACTS + (
+    {'operation': 'command_denied_party_screenings', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/denied-party-screenings', 'permission': 'cross_border_trade.screen', 'owned_tables': ('cross_border_trade_denied_party_screening', 'cross_border_trade_trade_compliance_hold'), 'read_tables': (), 'emitted_event': 'DeniedPartyScreened', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_document_packets', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/document-packets', 'permission': 'cross_border_trade.declare', 'owned_tables': ('cross_border_trade_trade_document_packet', 'cross_border_trade_customs_declaration'), 'read_tables': (), 'emitted_event': 'TradeDocumentPacketPrepared', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_broker_handoffs', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/broker-handoffs', 'permission': 'cross_border_trade.declare', 'owned_tables': ('cross_border_trade_broker_handoff', 'cross_border_trade_customs_declaration'), 'read_tables': (), 'emitted_event': 'BrokerHandoffQueued', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_carrier_handoffs', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/carrier-handoffs', 'permission': 'cross_border_trade.declare', 'owned_tables': ('cross_border_trade_carrier_handoff', 'cross_border_trade_customs_declaration'), 'read_tables': (), 'emitted_event': 'CarrierHandoffPrepared', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_compliance_holds', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/compliance-holds', 'permission': 'cross_border_trade.declare', 'owned_tables': ('cross_border_trade_trade_compliance_hold',), 'read_tables': (), 'emitted_event': 'TradeComplianceHoldOpened', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_hold_resolutions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/compliance-holds/resolve', 'permission': 'cross_border_trade.declare', 'owned_tables': ('cross_border_trade_trade_compliance_hold',), 'read_tables': (), 'emitted_event': 'TradeComplianceHoldResolved', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_country_restrictions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/country-restriction-policies', 'permission': 'cross_border_trade.configure', 'owned_tables': ('cross_border_trade_country_restriction_policy',), 'read_tables': (), 'emitted_event': 'CountryRestrictionPolicyRegistered', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_declaration_releases', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/cross_border_trade/declaration-releases', 'permission': 'cross_border_trade.declare', 'owned_tables': ('cross_border_trade_customs_declaration', 'cross_border_trade_trade_audit_evidence'), 'read_tables': (), 'emitted_event': 'CustomsDeclarationReleased', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+)
+
 
 def service_operation_contracts():
     """Return route-bound service operation contracts for this PBC."""
@@ -99,6 +110,31 @@ class CrossBorderTradeService:
 
     def command_declarations(self, payload=None):
         return self._command('command_declarations', payload or {})
+
+    def command_denied_party_screenings(self, payload=None):
+        return self._command('command_denied_party_screenings', payload or {})
+
+    def command_document_packets(self, payload=None):
+        return self._command('command_document_packets', payload or {})
+
+    def command_broker_handoffs(self, payload=None):
+        return self._command('command_broker_handoffs', payload or {})
+
+    def command_carrier_handoffs(self, payload=None):
+        return self._command('command_carrier_handoffs', payload or {})
+
+    def command_compliance_holds(self, payload=None):
+        return self._command('command_compliance_holds', payload or {})
+
+    def command_hold_resolutions(self, payload=None):
+        return self._command('command_hold_resolutions', payload or {})
+
+    def command_country_restrictions(self, payload=None):
+        return self._command('command_country_restrictions', payload or {})
+
+    def command_declaration_releases(self, payload=None):
+        return self._command('command_declaration_releases', payload or {})
+
     def query_cross_border_trade_workbench(self, payload=None):
         return self._query('query_cross_border_trade_workbench', payload or {})
 

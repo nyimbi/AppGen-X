@@ -71,13 +71,19 @@ def cross_border_trade_ui_contract() -> dict:
                 "key": "export_controls",
                 "fragment": "ExportControlScreeningPanel",
                 "binds_to": ("export_control_check", "restricted_party_screen", "license_requirement"),
-                "commands": ("screen_export_control",),
+                "commands": ("screen_export_control", "screen_denied_party", "register_country_restriction_policy"),
             },
             {
                 "key": "declarations",
                 "fragment": "CustomsDeclarationConsole",
                 "binds_to": ("customs_declaration", "broker_handoff", "carrier_handoff", "documents", "compliance_hold"),
-                "commands": ("file_customs_declaration",),
+                "commands": (
+                    "file_customs_declaration",
+                    "prepare_trade_document_packet",
+                    "queue_broker_handoff",
+                    "prepare_carrier_handoff",
+                    "release_customs_declaration",
+                ),
             },
             {
                 "key": "eventing",
@@ -89,7 +95,12 @@ def cross_border_trade_ui_contract() -> dict:
                 "key": "holds",
                 "fragment": "TradeExceptionResolutionBoard",
                 "binds_to": ("trade_compliance_hold", "denied_party_screening", "country_restriction_policy"),
-                "commands": ("screen_export_control", "file_customs_declaration"),
+                "commands": (
+                    "screen_export_control",
+                    "screen_denied_party",
+                    "open_trade_compliance_hold",
+                    "resolve_trade_compliance_hold",
+                ),
             },
             {
                 "key": "governance",

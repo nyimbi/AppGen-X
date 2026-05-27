@@ -67,6 +67,19 @@ a production package:
   missing documents, and restricted review outcomes.
 - Customs declaration filing with document-packet completeness, broker route
   selection, broker handoff, carrier handoff, and declaration audit hashes.
+- First-class denied-party screening commands with match evidence, risk
+  decisions, and automatic compliance-hold creation for review or blocked
+  outcomes.
+- First-class trade document-packet lifecycle commands that hash submitted
+  documents, reconcile required evidence, update declaration completeness, and
+  open holds for missing evidence.
+- First-class broker and carrier handoff commands that track submission
+  payloads, retry policy, carrier readiness, and declaration linkage without
+  shared broker or carrier tables.
+- First-class compliance-hold open and resolution commands with release
+  evidence, severity, source, and immutable AppGen-X events.
+- Country restriction policy registration and customs declaration release
+  commands with owned audit evidence and hold/document gates.
 - Duties and taxes captured as declaration evidence for audit review and
   customs filing support.
 - Broker and carrier handoff evidence without shared-table coupling.
@@ -135,6 +148,14 @@ The runtime smoke and release evidence prove:
 - `quote_landed_cost`.
 - `screen_export_control`.
 - `file_customs_declaration`.
+- `screen_denied_party`.
+- `prepare_trade_document_packet`.
+- `queue_broker_handoff`.
+- `prepare_carrier_handoff`.
+- `open_trade_compliance_hold`.
+- `resolve_trade_compliance_hold`.
+- `register_country_restriction_policy`.
+- `release_customs_declaration`.
 - `run_control_tests`.
 - `build_api_contract`.
 - `build_schema_contract`.
@@ -158,6 +179,14 @@ table dependencies.
 - `POST /trade/landed-cost-quotes`.
 - `POST /trade/export-control-checks`.
 - `POST /trade/customs-declarations`.
+- `POST /trade/denied-party-screenings`.
+- `POST /trade/document-packets`.
+- `POST /trade/broker-handoffs`.
+- `POST /trade/carrier-handoffs`.
+- `POST /trade/compliance-holds`.
+- `POST /trade/compliance-holds/{hold_id}/resolve`.
+- `POST /trade/country-restriction-policies`.
+- `POST /trade/customs-declarations/{declaration_id}/release`.
 - `POST /cross-border-trade/events/inbox`.
 - `GET /trade/workbench`.
 - `GET /trade/schema-contract`.
@@ -182,6 +211,14 @@ Emitted event contracts:
 - `LandedCostQuoted`.
 - `ExportControlCleared`.
 - `CustomsDeclarationFiled`.
+- `DeniedPartyScreened`.
+- `TradeDocumentPacketPrepared`.
+- `BrokerHandoffQueued`.
+- `CarrierHandoffPrepared`.
+- `TradeComplianceHoldOpened`.
+- `TradeComplianceHoldResolved`.
+- `CountryRestrictionPolicyRegistered`.
+- `CustomsDeclarationReleased`.
 
 Handlers require event IDs and idempotency keys. Duplicate events are ignored
 without double-applying state. Unsupported events first record retry evidence

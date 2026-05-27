@@ -2153,3 +2153,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   capture, and runtime preview reload after debug. Verified with Python compile,
   direct source parity audit probe, and direct fresh generated-app audit probe.
   Commit: `bc7c5cb`.
+- Current `cross_border_trade` PBC pass promotes passive support evidence into
+  executable package-local lifecycle commands: denied-party screening, trade
+  document packet preparation, broker handoff, carrier handoff, compliance hold
+  open/resolve, country restriction policy registration, and customs release.
+  The package manifest, runtime, service descriptors, route descriptors, event
+  contract, UI bindings, specification, and focused tests now cover those flows
+  without exposing stream-engine choices or shared-table access. Verification:
+  package Python compile, runtime smoke, package service/route/UI/agent smokes,
+  focused package contract tests, source artifact contract, implementation
+  release audit, generation smoke audit, specification contract, and restricted
+  legacy-name scan all passed. Commit: pending.

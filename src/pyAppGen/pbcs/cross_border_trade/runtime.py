@@ -16,6 +16,17 @@ CROSS_BORDER_TRADE_OWNED_TABLES = (
     "landed_cost_quote",
     "export_control_check",
     "customs_declaration",
+    "denied_party_screening",
+    "trade_document_packet",
+    "broker_handoff",
+    "carrier_handoff",
+    "trade_compliance_hold",
+    "country_restriction_policy",
+    "trade_rule",
+    "trade_parameter",
+    "trade_configuration",
+    "trade_schema_extension",
+    "trade_audit_evidence",
 )
 CROSS_BORDER_TRADE_RUNTIME_TABLES = (
     "cross_border_trade_appgen_outbox_event",
@@ -52,6 +63,14 @@ CROSS_BORDER_TRADE_EMITTED_EVENT_TYPES = (
     "LandedCostQuoted",
     "ExportControlCleared",
     "CustomsDeclarationFiled",
+    "DeniedPartyScreened",
+    "TradeDocumentPacketPrepared",
+    "BrokerHandoffQueued",
+    "CarrierHandoffPrepared",
+    "TradeComplianceHoldOpened",
+    "TradeComplianceHoldResolved",
+    "CountryRestrictionPolicyRegistered",
+    "CustomsDeclarationReleased",
 )
 
 CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS = (
@@ -126,6 +145,11 @@ CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS = (
     "compliance_holds",
     "declarations",
     "audit_evidence",
+    "customs_release",
+    "broker_status_tracking",
+    "carrier_status_tracking",
+    "document_packet_lifecycle",
+    "denied_party_case_management",
 )
 
 _SUPPORTED_PARAMETERS = {
@@ -180,6 +204,14 @@ _API_SURFACES = (
     "POST /trade/landed-cost-quotes",
     "POST /trade/export-control-checks",
     "POST /trade/customs-declarations",
+    "POST /trade/denied-party-screenings",
+    "POST /trade/document-packets",
+    "POST /trade/broker-handoffs",
+    "POST /trade/carrier-handoffs",
+    "POST /trade/compliance-holds",
+    "POST /trade/compliance-holds/{hold_id}/resolve",
+    "POST /trade/country-restriction-policies",
+    "POST /trade/customs-declarations/{declaration_id}/release",
     "POST /cross-border-trade/events/inbox",
     "GET /trade/workbench",
 )
@@ -221,6 +253,14 @@ def cross_border_trade_runtime_capabilities() -> dict:
             "quote_landed_cost",
             "screen_export_control",
             "file_customs_declaration",
+            "screen_denied_party",
+            "prepare_trade_document_packet",
+            "queue_broker_handoff",
+            "prepare_carrier_handoff",
+            "open_trade_compliance_hold",
+            "resolve_trade_compliance_hold",
+            "register_country_restriction_policy",
+            "release_customs_declaration",
             "build_api_contract",
             "build_schema_contract",
             "build_service_contract",
@@ -409,6 +449,91 @@ def cross_border_trade_runtime_smoke() -> dict:
         },
     )
     state = declaration["state"]
+    denied_party = cross_border_trade_screen_denied_party(
+        state,
+        {
+            "screening_id": "dps_001",
+            "tenant": "tenant_alpha",
+            "entity_id": "order_001",
+            "counterparties": ({"name": "Aster Distribution", "risk_score": 0.08},),
+        },
+    )
+    state = denied_party["state"]
+    country_policy = cross_border_trade_register_country_restriction_policy(
+        state,
+        {
+            "restriction_id": "crp_001",
+            "tenant": "tenant_alpha",
+            "destination_country": "CA",
+            "status": "allowed",
+            "restriction_basis": "trusted_trade_lane",
+        },
+    )
+    state = country_policy["state"]
+    document_packet = cross_border_trade_prepare_trade_document_packet(
+        state,
+        {
+            "packet_id": "tdp_001",
+            "tenant": "tenant_alpha",
+            "declaration_id": "ccd_001",
+            "documents": ("commercial_invoice", "packing_list", "origin_certificate"),
+        },
+    )
+    state = document_packet["state"]
+    broker_handoff = cross_border_trade_queue_broker_handoff(
+        state,
+        {
+            "handoff_id": "bh_001",
+            "tenant": "tenant_alpha",
+            "declaration_id": "ccd_001",
+            "broker_id": "broker_priority",
+        },
+    )
+    state = broker_handoff["state"]
+    carrier_handoff = cross_border_trade_prepare_carrier_handoff(
+        state,
+        {
+            "handoff_id": "ch_001",
+            "tenant": "tenant_alpha",
+            "declaration_id": "ccd_001",
+            "order_id": "order_001",
+            "carrier_ref": "carrier_ca_001",
+            "status": "ready",
+        },
+    )
+    state = carrier_handoff["state"]
+    manual_hold = cross_border_trade_open_trade_compliance_hold(
+        state,
+        {
+            "hold_id": "hold_ccd_001",
+            "tenant": "tenant_alpha",
+            "entity_id": "ccd_001",
+            "reason": "manual_release_gate",
+            "severity": "review",
+            "source": "release_gate",
+        },
+    )
+    state = manual_hold["state"]
+    resolved_hold = cross_border_trade_resolve_trade_compliance_hold(
+        state,
+        {
+            "hold_id": "hold_ccd_001",
+            "tenant": "tenant_alpha",
+            "resolution": "release_approved",
+            "release_evidence": ("commercial_invoice", "packing_list", "origin_certificate"),
+        },
+    )
+    state = resolved_hold["state"]
+    released = cross_border_trade_release_customs_declaration(
+        state,
+        {
+            "declaration_id": "ccd_001",
+            "tenant": "tenant_alpha",
+            "release_reference": "release_ca_001",
+            "release_evidence": ("broker_clearance", "document_packet_complete"),
+        },
+    )
+    state = released["state"]
     simulation = cross_border_trade_simulate_landed_cost(
         state,
         "lcq_001",
@@ -462,7 +587,7 @@ def cross_border_trade_runtime_smoke() -> dict:
     )
 
     checks = (
-        {"id": "event_sourced_trade_lifecycle", "ok": len(state["events"]) >= 7 and bool(state["events"][-1]["hash"])},
+        {"id": "event_sourced_trade_lifecycle", "ok": len(state["events"]) >= 15 and bool(state["events"][-1]["hash"])},
         {"id": "owned_trade_schema_boundary", "ok": boundary["ok"]},
         {"id": "graph_relational_trade_topology", "ok": declaration["customs_declaration"]["graph_degree"] >= 4},
         {"id": "multi_tenant_trade_isolation", "ok": workbench["tenant"] == "tenant_alpha"},
@@ -474,12 +599,19 @@ def cross_border_trade_runtime_smoke() -> dict:
         {"id": "semantic_trade_document_understanding", "ok": parsed["order_id"] == "order_001" and parsed["product_id"] == "sku_camera"},
         {"id": "predictive_export_control_risk", "ok": 0.0 <= risk["risk_score"] <= 1.0},
         {"id": "self_healing_customs_broker_route_selection", "ok": declaration["customs_declaration"]["broker_id"] == "broker_priority"},
+        {"id": "denied_party_screening_lifecycle", "ok": denied_party["denied_party_screening"]["decision"] == "cleared"},
+        {"id": "country_restriction_policy_lifecycle", "ok": country_policy["country_restriction_policy"]["status"] == "allowed"},
+        {"id": "document_packet_lifecycle", "ok": document_packet["trade_document_packet"]["status"] == "complete"},
+        {"id": "broker_status_tracking", "ok": broker_handoff["broker_handoff"]["status"] == "submitted"},
+        {"id": "carrier_status_tracking", "ok": carrier_handoff["carrier_handoff"]["status"] == "ready"},
+        {"id": "compliance_hold_resolution", "ok": resolved_hold["trade_compliance_hold"]["status"] == "resolved"},
+        {"id": "customs_release", "ok": released["customs_declaration"]["status"] == "released"},
         {"id": "cryptographic_trade_proof", "ok": bool(proof["proof_hash"])},
         {"id": "immutable_trade_audit_trail", "ok": all(event["hash"] for event in state["events"])},
         {"id": "dynamic_trade_policy_screening", "ok": screening["decision"] == "allow"},
         {"id": "automated_trade_control_testing", "ok": controls["ok"] is True},
         {"id": "cross_system_order_inventory_payment_logistics_federation", "ok": len(federation["systems"]) == 4},
-        {"id": "appgen_x_outbox_inbox_eventing", "ok": len(state["outbox"]) == 4 and len(state["inbox"]) == 3},
+        {"id": "appgen_x_outbox_inbox_eventing", "ok": len(state["outbox"]) >= 12 and len(state["inbox"]) == 3},
         {"id": "idempotent_inbox_handlers", "ok": duplicate["duplicate"] is True},
         {"id": "retry_dead_letter_evidence", "ok": invalid["dead_lettered"] is True and len(state["dead_letter"]) == 1},
         {"id": "tenant_isolation", "ok": workbench["tenant"] == "tenant_alpha"},
@@ -1016,6 +1148,324 @@ def cross_border_trade_file_customs_declaration(state: dict, command: dict) -> d
     return {"ok": True, "state": new_state, "customs_declaration": record}
 
 
+def cross_border_trade_screen_denied_party(state: dict, command: dict) -> dict:
+    _require_keys(
+        command,
+        ("screening_id", "tenant", "counterparties"),
+        "denied-party screening command",
+    )
+    _require_configured(state)
+    rule = _active_rule(state, command["tenant"])
+    policy = rule.get("export_control_policy", {}) if rule else {}
+    threshold = float(state.get("parameters", {}).get("restricted_party_review_threshold", policy.get("review_score", 0.7)))
+    counterparties = tuple(command["counterparties"])
+    matches = tuple(
+        {
+            "name": party["name"],
+            "risk_score": round(float(party.get("risk_score", 0.0)), 4),
+            "list": party.get("list", "restricted_party_index"),
+            "match_basis": party.get("match_basis", "name_similarity"),
+        }
+        for party in counterparties
+        if float(party.get("risk_score", 0.0)) >= threshold
+    )
+    max_risk = max((float(party.get("risk_score", 0.0)) for party in counterparties), default=0.0)
+    decision = "blocked" if any(match["risk_score"] >= 0.95 for match in matches) else "review" if matches else "cleared"
+    record = {
+        "screening_id": command["screening_id"],
+        "tenant": command["tenant"],
+        "check_id": command.get("check_id"),
+        "entity_id": command.get("entity_id", command["screening_id"]),
+        "counterparties": counterparties,
+        "matches": matches,
+        "risk_score": round(max_risk, 4),
+        "decision": decision,
+        "status": "cleared" if decision == "cleared" else "review",
+        "owned_table": "denied_party_screening",
+        "audit_evidence_hash": _hash_payload(command),
+    }
+    new_state = _clone_state(state)
+    new_state["denied_party_screenings"][record["screening_id"]] = record
+    if decision != "cleared":
+        hold = cross_border_trade_open_trade_compliance_hold(
+            new_state,
+            {
+                "hold_id": f"hold_{record['screening_id']}",
+                "tenant": record["tenant"],
+                "entity_id": record["entity_id"],
+                "reason": "denied_party_match",
+                "severity": "critical" if decision == "blocked" else "review",
+                "source": "denied_party_screening",
+            },
+        )
+        new_state = hold["state"]
+    new_state["audit_evidence"][record["screening_id"]] = {
+        "artifact_type": "denied_party_screening",
+        "artifact_id": record["screening_id"],
+        "tenant": record["tenant"],
+        "hash": record["audit_evidence_hash"],
+    }
+    _append_event(new_state, "DeniedPartyScreened", record)
+    _append_outbox(new_state, "DeniedPartyScreened", record["screening_id"], record["tenant"], record)
+    return {"ok": True, "state": new_state, "denied_party_screening": record}
+
+
+def cross_border_trade_prepare_trade_document_packet(state: dict, command: dict) -> dict:
+    _require_keys(
+        command,
+        ("packet_id", "tenant", "declaration_id", "documents"),
+        "trade document packet command",
+    )
+    _require_configured(state)
+    declaration = state["customs_declarations"].get(command["declaration_id"])
+    if not declaration:
+        raise ValueError("Trade document packet requires an owned customs declaration.")
+    rule = _active_rule(state, command["tenant"])
+    policy = rule.get("declaration_policy", {}) if rule else {}
+    required_documents = set(policy.get("required_documents", ()))
+    documents = tuple(command["documents"])
+    missing_documents = tuple(sorted(required_documents.difference(documents)))
+    record = {
+        "packet_id": command["packet_id"],
+        "tenant": command["tenant"],
+        "declaration_id": command["declaration_id"],
+        "documents": documents,
+        "missing_documents": missing_documents,
+        "status": "complete" if not missing_documents else "incomplete",
+        "document_hashes": tuple(_hash_payload({"document": document, "packet_id": command["packet_id"]}) for document in documents),
+        "owned_table": "trade_document_packet",
+        "audit_evidence_hash": _hash_payload(command),
+    }
+    new_state = _clone_state(state)
+    new_state["trade_document_packets"][record["packet_id"]] = record
+    new_state["customs_declarations"][command["declaration_id"]] = {
+        **declaration,
+        "document_packet_id": record["packet_id"],
+        "missing_documents": missing_documents,
+        "customs_documents_complete": not missing_documents,
+        "compliance_hold": declaration["compliance_hold"] or bool(missing_documents),
+    }
+    if missing_documents:
+        hold = cross_border_trade_open_trade_compliance_hold(
+            new_state,
+            {
+                "hold_id": f"hold_{record['packet_id']}",
+                "tenant": record["tenant"],
+                "entity_id": command["declaration_id"],
+                "reason": "missing_documents",
+                "severity": "operational",
+                "source": "trade_document_packet",
+            },
+        )
+        new_state = hold["state"]
+    _append_event(new_state, "TradeDocumentPacketPrepared", record)
+    _append_outbox(new_state, "TradeDocumentPacketPrepared", record["packet_id"], record["tenant"], record)
+    return {"ok": True, "state": new_state, "trade_document_packet": record}
+
+
+def cross_border_trade_queue_broker_handoff(state: dict, command: dict) -> dict:
+    _require_keys(
+        command,
+        ("handoff_id", "tenant", "declaration_id", "broker_id"),
+        "broker handoff command",
+    )
+    _require_configured(state)
+    declaration = state["customs_declarations"].get(command["declaration_id"])
+    if not declaration:
+        raise ValueError("Broker handoff requires an owned customs declaration.")
+    submission_payload = {
+        "declaration_id": command["declaration_id"],
+        "order_id": declaration["order_id"],
+        "documents": declaration["documents"],
+        "duties_taxes": declaration["duties_taxes"],
+        "broker_id": command["broker_id"],
+    }
+    record = {
+        "handoff_id": command["handoff_id"],
+        "tenant": command["tenant"],
+        "declaration_id": command["declaration_id"],
+        "broker_id": command["broker_id"],
+        "status": command.get("status", "queued" if declaration["status"] != "filed" else "submitted"),
+        "submission_payload": submission_payload,
+        "retry_policy": {"max_attempts": state["configuration"]["retry_limit"], "backoff": "exponential"},
+        "owned_table": "broker_handoff",
+        "audit_evidence_hash": _hash_payload(submission_payload),
+    }
+    new_state = _clone_state(state)
+    new_state["broker_handoffs"][record["handoff_id"]] = record
+    new_state["customs_declarations"][command["declaration_id"]] = {
+        **declaration,
+        "broker_id": command["broker_id"],
+        "broker_handoff_id": command["handoff_id"],
+    }
+    _append_event(new_state, "BrokerHandoffQueued", record)
+    _append_outbox(new_state, "BrokerHandoffQueued", record["handoff_id"], record["tenant"], record)
+    return {"ok": True, "state": new_state, "broker_handoff": record}
+
+
+def cross_border_trade_prepare_carrier_handoff(state: dict, command: dict) -> dict:
+    _require_keys(
+        command,
+        ("handoff_id", "tenant", "declaration_id", "order_id"),
+        "carrier handoff command",
+    )
+    _require_configured(state)
+    declaration = state["customs_declarations"].get(command["declaration_id"])
+    if not declaration:
+        raise ValueError("Carrier handoff requires an owned customs declaration.")
+    shipment = state["shipment_dispatches"].get(command["order_id"], {})
+    record = {
+        "handoff_id": command["handoff_id"],
+        "tenant": command["tenant"],
+        "declaration_id": command["declaration_id"],
+        "order_id": command["order_id"],
+        "carrier_ref": command.get("carrier_ref", shipment.get("carrier_ref", "carrier_pending")),
+        "status": command.get("status", "ready" if shipment else "pending_dispatch"),
+        "release_dependency": declaration["status"],
+        "owned_table": "carrier_handoff",
+        "audit_evidence_hash": _hash_payload(command),
+    }
+    new_state = _clone_state(state)
+    new_state["carrier_handoffs"][record["handoff_id"]] = record
+    new_state["customs_declarations"][command["declaration_id"]] = {
+        **declaration,
+        "carrier_handoff_id": command["handoff_id"],
+        "carrier_handoff_status": record["status"],
+    }
+    _append_event(new_state, "CarrierHandoffPrepared", record)
+    _append_outbox(new_state, "CarrierHandoffPrepared", record["handoff_id"], record["tenant"], record)
+    return {"ok": True, "state": new_state, "carrier_handoff": record}
+
+
+def cross_border_trade_open_trade_compliance_hold(state: dict, command: dict) -> dict:
+    _require_keys(
+        command,
+        ("hold_id", "tenant", "entity_id", "reason"),
+        "trade compliance hold command",
+    )
+    _require_configured(state)
+    record = {
+        "hold_id": command["hold_id"],
+        "tenant": command["tenant"],
+        "entity_id": command["entity_id"],
+        "reason": command["reason"],
+        "severity": command.get("severity", "review"),
+        "source": command.get("source", "manual"),
+        "status": "open",
+        "released_at": None,
+        "release_evidence": (),
+        "owned_table": "trade_compliance_hold",
+        "audit_evidence_hash": _hash_payload(command),
+    }
+    new_state = _clone_state(state)
+    new_state["compliance_holds"][record["hold_id"]] = record
+    _append_event(new_state, "TradeComplianceHoldOpened", record)
+    _append_outbox(new_state, "TradeComplianceHoldOpened", record["hold_id"], record["tenant"], record)
+    return {"ok": True, "state": new_state, "trade_compliance_hold": record}
+
+
+def cross_border_trade_resolve_trade_compliance_hold(state: dict, command: dict) -> dict:
+    _require_keys(
+        command,
+        ("hold_id", "tenant", "resolution", "release_evidence"),
+        "trade compliance hold resolution command",
+    )
+    _require_configured(state)
+    hold = state["compliance_holds"].get(command["hold_id"])
+    if not hold:
+        hold = next((item for item in state["compliance_holds"].values() if item.get("hold_id") == command["hold_id"]), None)
+    if not hold:
+        raise ValueError("Trade compliance hold resolution requires an owned hold.")
+    record = {
+        **hold,
+        "status": "resolved",
+        "resolution": command["resolution"],
+        "released_at": command.get("released_at", "runtime_clock"),
+        "release_evidence": tuple(command["release_evidence"]),
+        "audit_evidence_hash": _hash_payload(command),
+    }
+    new_state = _clone_state(state)
+    new_state["compliance_holds"][record["hold_id"]] = record
+    _append_event(new_state, "TradeComplianceHoldResolved", record)
+    _append_outbox(new_state, "TradeComplianceHoldResolved", record["hold_id"], record["tenant"], record)
+    return {"ok": True, "state": new_state, "trade_compliance_hold": record}
+
+
+def cross_border_trade_register_country_restriction_policy(state: dict, command: dict) -> dict:
+    _require_keys(
+        command,
+        ("restriction_id", "tenant", "destination_country", "status", "restriction_basis"),
+        "country restriction policy command",
+    )
+    _require_configured(state)
+    _assert_supported_country(state, str(command["destination_country"]))
+    if command["status"] not in {"allowed", "blocked", "license_required", "review"}:
+        raise ValueError("Unsupported country restriction policy status.")
+    record = {
+        "restriction_id": command["restriction_id"],
+        "tenant": command["tenant"],
+        "destination_country": command["destination_country"],
+        "status": command["status"],
+        "restriction_basis": command["restriction_basis"],
+        "effective_policy": command.get("effective_policy", "tenant_country_restriction_policy"),
+        "owned_table": "country_restriction_policy",
+        "audit_evidence_hash": _hash_payload(command),
+    }
+    new_state = _clone_state(state)
+    new_state["country_restrictions"][record["restriction_id"]] = record
+    _append_event(new_state, "CountryRestrictionPolicyRegistered", record)
+    _append_outbox(new_state, "CountryRestrictionPolicyRegistered", record["restriction_id"], record["tenant"], record)
+    return {"ok": True, "state": new_state, "country_restriction_policy": record}
+
+
+def cross_border_trade_release_customs_declaration(state: dict, command: dict) -> dict:
+    _require_keys(
+        command,
+        ("declaration_id", "tenant", "release_reference"),
+        "customs declaration release command",
+    )
+    _require_configured(state)
+    declaration = state["customs_declarations"].get(command["declaration_id"])
+    if not declaration:
+        raise ValueError("Customs release requires an owned customs declaration.")
+    open_holds = tuple(
+        hold
+        for hold in state["compliance_holds"].values()
+        if hold.get("tenant") == command["tenant"]
+        and hold.get("entity_id") in {command["declaration_id"], declaration.get("check_id")}
+        and hold.get("status") == "open"
+    )
+    if open_holds:
+        raise ValueError("Customs declaration cannot be released while compliance holds are open.")
+    if not declaration.get("customs_documents_complete"):
+        raise ValueError("Customs declaration release requires complete document evidence.")
+    record = {
+        **declaration,
+        "status": "released",
+        "release_reference": command["release_reference"],
+        "released_by": command.get("released_by", "trade_compliance_agent"),
+        "release_evidence": tuple(command.get("release_evidence", (declaration["audit_evidence_hash"],))),
+        "audit_evidence_hash": _hash_payload(
+            {
+                "declaration_id": command["declaration_id"],
+                "release_reference": command["release_reference"],
+                "previous_hash": declaration["audit_evidence_hash"],
+            }
+        ),
+    }
+    new_state = _clone_state(state)
+    new_state["customs_declarations"][record["declaration_id"]] = record
+    new_state["audit_evidence"][f"release_{record['declaration_id']}"] = {
+        "artifact_type": "customs_release",
+        "artifact_id": record["declaration_id"],
+        "tenant": record["tenant"],
+        "hash": record["audit_evidence_hash"],
+    }
+    _append_event(new_state, "CustomsDeclarationReleased", record)
+    _append_outbox(new_state, "CustomsDeclarationReleased", record["declaration_id"], record["tenant"], record)
+    return {"ok": True, "state": new_state, "customs_declaration": record}
+
+
 def cross_border_trade_build_workbench_view(state: dict, *, tenant: str) -> dict:
     filtered = _filter_tenant_records(state, tenant)
     latest_declarations = tuple(filtered["customs_declarations"].values())[-int(state.get("configuration", {}).get("workbench_limit", 100)) :]
@@ -1125,6 +1575,70 @@ def cross_border_trade_build_api_contract() -> dict:
                 "emits": ("CustomsDeclarationFiled",),
                 "requires_permission": "cross_border_trade.declare",
                 "idempotency_key": "declaration_id",
+            },
+            {
+                "route": "POST /trade/denied-party-screenings",
+                "command": "screen_denied_party",
+                "owned_tables": ("denied_party_screening", "trade_compliance_hold"),
+                "emits": ("DeniedPartyScreened", "TradeComplianceHoldOpened"),
+                "requires_permission": "cross_border_trade.screen",
+                "idempotency_key": "screening_id",
+            },
+            {
+                "route": "POST /trade/document-packets",
+                "command": "prepare_trade_document_packet",
+                "owned_tables": ("trade_document_packet", "customs_declaration", "trade_compliance_hold"),
+                "emits": ("TradeDocumentPacketPrepared", "TradeComplianceHoldOpened"),
+                "requires_permission": "cross_border_trade.declare",
+                "idempotency_key": "packet_id",
+            },
+            {
+                "route": "POST /trade/broker-handoffs",
+                "command": "queue_broker_handoff",
+                "owned_tables": ("broker_handoff", "customs_declaration"),
+                "emits": ("BrokerHandoffQueued",),
+                "requires_permission": "cross_border_trade.declare",
+                "idempotency_key": "handoff_id",
+            },
+            {
+                "route": "POST /trade/carrier-handoffs",
+                "command": "prepare_carrier_handoff",
+                "owned_tables": ("carrier_handoff", "customs_declaration"),
+                "emits": ("CarrierHandoffPrepared",),
+                "requires_permission": "cross_border_trade.declare",
+                "idempotency_key": "handoff_id",
+            },
+            {
+                "route": "POST /trade/compliance-holds",
+                "command": "open_trade_compliance_hold",
+                "owned_tables": ("trade_compliance_hold",),
+                "emits": ("TradeComplianceHoldOpened",),
+                "requires_permission": "cross_border_trade.declare",
+                "idempotency_key": "hold_id",
+            },
+            {
+                "route": "POST /trade/compliance-holds/{hold_id}/resolve",
+                "command": "resolve_trade_compliance_hold",
+                "owned_tables": ("trade_compliance_hold",),
+                "emits": ("TradeComplianceHoldResolved",),
+                "requires_permission": "cross_border_trade.declare",
+                "idempotency_key": "hold_id",
+            },
+            {
+                "route": "POST /trade/country-restriction-policies",
+                "command": "register_country_restriction_policy",
+                "owned_tables": ("country_restriction_policy",),
+                "emits": ("CountryRestrictionPolicyRegistered",),
+                "requires_permission": "cross_border_trade.configure",
+                "idempotency_key": "restriction_id",
+            },
+            {
+                "route": "POST /trade/customs-declarations/{declaration_id}/release",
+                "command": "release_customs_declaration",
+                "owned_tables": ("customs_declaration", "trade_audit_evidence"),
+                "emits": ("CustomsDeclarationReleased",),
+                "requires_permission": "cross_border_trade.declare",
+                "idempotency_key": "release_reference",
             },
             {
                 "route": "POST /cross-border-trade/events/inbox",
@@ -1436,6 +1950,14 @@ def cross_border_trade_build_service_contract() -> dict:
         "quote_landed_cost",
         "screen_export_control",
         "file_customs_declaration",
+        "screen_denied_party",
+        "prepare_trade_document_packet",
+        "queue_broker_handoff",
+        "prepare_carrier_handoff",
+        "open_trade_compliance_hold",
+        "resolve_trade_compliance_hold",
+        "register_country_restriction_policy",
+        "release_customs_declaration",
         "run_control_tests",
         "rotate_crypto_epoch",
         "verify_owned_table_boundary",
@@ -1612,6 +2134,14 @@ def cross_border_trade_permissions_contract() -> dict:
             "quote_landed_cost": "cross_border_trade.quote",
             "screen_export_control": "cross_border_trade.screen",
             "file_customs_declaration": "cross_border_trade.declare",
+            "screen_denied_party": "cross_border_trade.screen",
+            "prepare_trade_document_packet": "cross_border_trade.declare",
+            "queue_broker_handoff": "cross_border_trade.declare",
+            "prepare_carrier_handoff": "cross_border_trade.declare",
+            "open_trade_compliance_hold": "cross_border_trade.declare",
+            "resolve_trade_compliance_hold": "cross_border_trade.declare",
+            "register_country_restriction_policy": "cross_border_trade.configure",
+            "release_customs_declaration": "cross_border_trade.declare",
             "build_api_contract": "cross_border_trade.audit",
             "build_schema_contract": "cross_border_trade.audit",
             "build_service_contract": "cross_border_trade.audit",
@@ -1723,7 +2253,7 @@ def cross_border_trade_generate_trade_proof(state: dict, declaration_id: str, *,
 def cross_border_trade_screen_policy(state: dict, declaration_id: str) -> dict:
     declaration = state["customs_declarations"][declaration_id]
     check = state["export_control_checks"][declaration["check_id"]]
-    decision = "allow" if declaration["status"] == "filed" and check["decision"] in {"cleared", "license_review"} else "block"
+    decision = "allow" if declaration["status"] in {"filed", "released"} and check["decision"] in {"cleared", "license_review"} else "block"
     return {
         "format": "appgen.cross-border-trade-policy-screen.v1",
         "declaration_id": declaration_id,

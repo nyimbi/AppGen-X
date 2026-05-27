@@ -24,13 +24,21 @@ from .runtime import cross_border_trade_classify_product
 from .runtime import cross_border_trade_configure_runtime
 from .runtime import cross_border_trade_empty_state
 from .runtime import cross_border_trade_file_customs_declaration
+from .runtime import cross_border_trade_open_trade_compliance_hold
+from .runtime import cross_border_trade_prepare_carrier_handoff
+from .runtime import cross_border_trade_prepare_trade_document_packet
 from .runtime import cross_border_trade_permissions_contract
 from .runtime import cross_border_trade_quote_landed_cost
+from .runtime import cross_border_trade_queue_broker_handoff
 from .runtime import cross_border_trade_receive_event
+from .runtime import cross_border_trade_register_country_restriction_policy
 from .runtime import cross_border_trade_register_rule
 from .runtime import cross_border_trade_register_schema_extension
+from .runtime import cross_border_trade_release_customs_declaration
+from .runtime import cross_border_trade_resolve_trade_compliance_hold
 from .runtime import cross_border_trade_runtime_capabilities
 from .runtime import cross_border_trade_runtime_smoke
+from .runtime import cross_border_trade_screen_denied_party
 from .runtime import cross_border_trade_screen_export_control
 from .runtime import cross_border_trade_set_parameter
 from .runtime import cross_border_trade_ui_binding_contract
@@ -113,4 +121,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-
