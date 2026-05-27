@@ -3987,6 +3987,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "lifecycle_execution",
         "actionable_package_operations",
         "installation_scenario_operation",
+        "package_manager_operations_exposed",
         "marketplace_publication",
         "package_readiness_contract",
         "package_manager_modules",
@@ -4008,6 +4009,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "test_package_manager_module_step_contracts" in item["exports"]
         for item in package_manager["package_manager_module_test_artifacts"]
     )
+    assert {
+        "read_package_manifest",
+        "resolve_dependency_graph",
+        "run_adapter_smoke",
+        "register_inspector_editors",
+        "publish_marketplace_entry",
+        "hot_reload_design_surfaces",
+        "verify_registry_clean",
+        "run_package_operation",
+    } <= set(package_manager["required_package_manager_operations"]) <= set(package_manager["package_manager_operations"])
     package_module_replay_matrix = package_manager_module_replay_matrix()
     assert package_module_replay_matrix["format"] == "appgen.package-manager-module-replay-matrix.v1"
     assert package_module_replay_matrix["ok"] is True
@@ -16492,6 +16503,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "lifecycle_execution",
         "actionable_package_operations",
         "installation_scenario_operation",
+        "package_manager_operations_exposed",
         "marketplace_publication",
         "package_manager_modules",
         "package_manager_module_tests",
@@ -16509,6 +16521,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_package_manager["hot_reload"]["ok"] is True
     assert generated_package_manager["icon_assets"]["ok"] is True
     assert generated_package_manager["actionable_operations"]["operations"][0]["preview_load"]["ok"] is True
+    assert {
+        "read_package_manifest",
+        "resolve_dependency_graph",
+        "run_adapter_smoke",
+        "register_inspector_editors",
+        "publish_marketplace_entry",
+        "hot_reload_design_surfaces",
+        "verify_registry_clean",
+        "run_package_operation",
+    } <= set(generated_package_manager["required_package_manager_operations"]) <= set(
+        generated_package_manager["package_manager_operations"]
+    )
     assert generated_package_manager["lifecycle_replay"]["ok"] is True
     assert generated_package_manager["lifecycle_replay"]["format"] == "appgen.generated-component-package-lifecycle-transaction-replay.v1"
     assert generated_package_manager["package_readiness"]["format"] == "appgen.generated-component-package-readiness-contract.v1"
@@ -16535,6 +16559,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "lifecycle_execution",
         "actionable_package_operations",
         "installation_scenario_operation",
+        "package_manager_operations_exposed",
         "marketplace_publication",
         "hot_reload_transaction_replay",
         "icon_asset_transaction_replay",

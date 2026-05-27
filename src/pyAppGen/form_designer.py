@@ -3384,6 +3384,92 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     package_manager_module_test_artifacts = package_manager_module_test_file_manifest()
     module_replay_matrix = package_manager_module_replay_matrix(package_ids)
     readiness = component_package_readiness_contract(package_ids)
+    required_package_manager_operations = (
+        "read_package_manifest",
+        "validate_metadata",
+        "resolve_dependency_graph",
+        "prepare_lockfile_entry",
+        "validate_load_request",
+        "create_sandbox_loader",
+        "instantiate_preview_adapter",
+        "run_adapter_smoke",
+        "unload_preview",
+        "load_adapter",
+        "register_palette_entries",
+        "register_icon_assets",
+        "register_inspector_editors",
+        "register_binding_adapters",
+        "commit_project_manifest",
+        "refresh_palette",
+        "resolve_metadata",
+        "preview_load",
+        "registry_commit",
+        "update_package",
+        "uninstall_package",
+        "sandbox_preview_load",
+        "commit_registry",
+        "publish_marketplace_entry",
+        "run_update_smoke",
+        "hot_reload_design_surfaces",
+        "rollback_registry",
+        "uninstall_cleanup",
+        "verify_registry_clean",
+        "detect_version_conflict",
+        "surface_review_plan",
+        "retry_compatible_resolution",
+        "disable_adapters",
+        "remove_palette_entries",
+        "restore_registry",
+        "run_package_operation",
+    )
+
+    def _collect_strings(value) -> tuple[str, ...]:
+        if isinstance(value, str):
+            return (value,)
+        if isinstance(value, dict):
+            return tuple(text for item in value.values() for text in _collect_strings(item))
+        if isinstance(value, (tuple, list, set)):
+            return tuple(text for item in value for text in _collect_strings(item))
+        return ()
+
+    package_manager_operations = tuple(
+        dict.fromkeys(
+            tuple(actionable_operations["operation_names"])
+            + tuple(text for operation in actionable_operations["operations"] for text in _collect_strings(operation))
+            + tuple(
+                text
+                for surface in (
+                    session,
+                    registration,
+                    rollback,
+                    signature_validation,
+                    lifecycle_execution,
+                    behavior,
+                    lockfile,
+                    sandbox,
+                    registration_consistency,
+                    dependency_order,
+                    compatibility_smoke,
+                    version_conflicts,
+                    dependency_conflicts,
+                    update_plan,
+                    uninstall_plan,
+                    palette_refresh,
+                    failure_isolation,
+                    hot_reload,
+                    icon_assets,
+                    lifecycle_replay,
+                    installation_scenario,
+                    marketplace,
+                    package_manager_module_artifacts,
+                    package_manager_module_test_artifacts,
+                    module_replay_matrix,
+                    readiness,
+                )
+                for text in _collect_strings(surface)
+            )
+        )
+    )
     checks = (
         {
             "id": "install_session_phases",
@@ -3554,6 +3640,14 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": installation_scenario,
         },
         {
+            "id": "package_manager_operations_exposed",
+            "ok": set(required_package_manager_operations) <= set(package_manager_operations),
+            "required": required_package_manager_operations,
+            "passing": tuple(
+                operation for operation in required_package_manager_operations if operation in package_manager_operations
+            ),
+        },
+        {
             "id": "marketplace_publication",
             "ok": marketplace["ok"]
             and {"catalog_entries_present", "self_registration_entrypoints", "publication_pipeline_reviewed", "rollback_recipe_attached"}
@@ -3696,6 +3790,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "icon_assets": icon_assets,
         "lifecycle_replay": lifecycle_replay,
         "actionable_operations": actionable_operations,
+        "required_package_manager_operations": required_package_manager_operations,
+        "package_manager_operations": package_manager_operations,
         "installation_scenario": installation_scenario,
         "marketplace_publication": marketplace,
         "package_manager_module_artifacts": package_manager_module_artifacts,
