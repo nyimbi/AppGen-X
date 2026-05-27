@@ -5,6 +5,15 @@ EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibili
 
 OPERATION_CONTRACTS = ({'operation': 'command_payment_intents', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payment_orchestration/payment-intents', 'permission': 'payment_orchestration.command.1', 'owned_tables': ('payment_orchestration_payment_gateway', 'payment_orchestration_payment_intent', 'payment_orchestration_payment_token', 'payment_orchestration_fraud_check'), 'read_tables': (), 'emitted_event': 'PaymentCaptured', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_gateway_routes', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payment_orchestration/gateway-routes', 'permission': 'payment_orchestration.command.2', 'owned_tables': ('payment_orchestration_payment_gateway', 'payment_orchestration_payment_intent', 'payment_orchestration_payment_token', 'payment_orchestration_fraud_check'), 'read_tables': (), 'emitted_event': 'PaymentFailed', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_tokens', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payment_orchestration/tokens', 'permission': 'payment_orchestration.command.3', 'owned_tables': ('payment_orchestration_payment_gateway', 'payment_orchestration_payment_intent', 'payment_orchestration_payment_token', 'payment_orchestration_fraud_check'), 'read_tables': (), 'emitted_event': 'FraudCheckRequested', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_payment_orchestration_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/payment_orchestration/payment-orchestration-workbench', 'permission': 'payment_orchestration.query.4', 'owned_tables': (), 'read_tables': ('payment_orchestration_payment_gateway', 'payment_orchestration_payment_intent', 'payment_orchestration_payment_token', 'payment_orchestration_fraud_check'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
 
+OPERATION_CONTRACTS = OPERATION_CONTRACTS + (
+    {'operation': 'command_authorizations', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payment_orchestration/authorizations', 'permission': 'payment_orchestration.capture', 'owned_tables': ('payment_orchestration_payment_authorization', 'payment_orchestration_payment_intent'), 'read_tables': (), 'emitted_event': 'PaymentAuthorized', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_captures', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payment_orchestration/captures', 'permission': 'payment_orchestration.capture', 'owned_tables': ('payment_orchestration_payment_authorization', 'payment_orchestration_payment_capture', 'payment_orchestration_payment_settlement'), 'read_tables': (), 'emitted_event': 'PaymentCaptured', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_settlements', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payment_orchestration/settlements', 'permission': 'payment_orchestration.settlement', 'owned_tables': ('payment_orchestration_payment_settlement', 'payment_orchestration_payment_reconciliation_handoff'), 'read_tables': (), 'emitted_event': 'PaymentSettled', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_payouts', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payment_orchestration/payouts', 'permission': 'payment_orchestration.settlement', 'owned_tables': ('payment_orchestration_payment_payout',), 'read_tables': (), 'emitted_event': 'PaymentPayoutScheduled', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_refunds', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payment_orchestration/refunds', 'permission': 'payment_orchestration.refund', 'owned_tables': ('payment_orchestration_payment_refund', 'payment_orchestration_payment_reconciliation_handoff'), 'read_tables': (), 'emitted_event': 'PaymentRefunded', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_disputes', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payment_orchestration/disputes', 'permission': 'payment_orchestration.dispute', 'owned_tables': ('payment_orchestration_payment_dispute', 'payment_orchestration_payment_reconciliation_handoff'), 'read_tables': (), 'emitted_event': 'PaymentDisputeResolved', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+)
+
 
 def service_operation_contracts():
     """Return route-bound service operation contracts for this PBC."""
@@ -99,6 +108,25 @@ class PaymentOrchestrationService:
 
     def command_tokens(self, payload=None):
         return self._command('command_tokens', payload or {})
+
+    def command_authorizations(self, payload=None):
+        return self._command('command_authorizations', payload or {})
+
+    def command_captures(self, payload=None):
+        return self._command('command_captures', payload or {})
+
+    def command_settlements(self, payload=None):
+        return self._command('command_settlements', payload or {})
+
+    def command_payouts(self, payload=None):
+        return self._command('command_payouts', payload or {})
+
+    def command_refunds(self, payload=None):
+        return self._command('command_refunds', payload or {})
+
+    def command_disputes(self, payload=None):
+        return self._command('command_disputes', payload or {})
+
     def query_payment_orchestration_workbench(self, payload=None):
         return self._query('query_payment_orchestration_workbench', payload or {})
 

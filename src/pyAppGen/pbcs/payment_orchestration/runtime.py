@@ -41,10 +41,14 @@ PAYMENT_ORCHESTRATION_STANDARD_FEATURE_KEYS = (
     "gateway_health_evidence",
     "payment_tokens",
     "payment_intents",
+    "authorization_controls",
     "authorization_capture_refund_void",
     "provider_routing",
     "fraud_handoff",
+    "settlement_execution",
     "settlement_evidence",
+    "payout_scheduling",
+    "dispute_chargeback_workflow",
     "reconciliation_handoff",
     "tenant_isolation",
     "appgen_x_outbox",
@@ -71,10 +75,13 @@ PAYMENT_ORCHESTRATION_OWNED_TABLES = (
     "payment_intent",
     "gateway_route",
     "fraud_check",
+    "payment_authorization",
     "payment_capture",
     "payment_refund",
     "payment_void",
     "payment_settlement",
+    "payment_payout",
+    "payment_dispute",
     "payment_reconciliation_handoff",
     "payment_exception",
     "payment_audit_trace",
@@ -99,10 +106,15 @@ PAYMENT_ORCHESTRATION_OWNED_TABLES = (
 )
 PAYMENT_ORCHESTRATION_EMITTED_EVENT_TYPES = (
     "PaymentIntentCreated",
+    "PaymentAuthorized",
     "FraudCheckRequested",
     "PaymentCaptured",
+    "PaymentSettled",
     "PaymentRefunded",
     "PaymentVoided",
+    "PaymentDisputeOpened",
+    "PaymentDisputeResolved",
+    "PaymentPayoutScheduled",
     "PaymentFailed",
 )
 PAYMENT_ORCHESTRATION_CONSUMED_EVENT_TYPES = (
@@ -216,8 +228,13 @@ def payment_orchestration_runtime_capabilities() -> dict:
             "create_payment_intent",
             "route_gateway",
             "request_fraud_check",
+            "authorize_payment",
             "capture_payment",
+            "settle_payment",
+            "schedule_payout",
             "refund_payment",
+            "open_dispute",
+            "resolve_dispute",
             "void_payment",
             "simulate_gateway_route",
             "forecast_authorization",
@@ -379,8 +396,35 @@ def payment_orchestration_runtime_smoke() -> dict:
     )["state"]
     captured = payment_orchestration_capture_payment(state, "pi_100", amount=125.5)
     state = captured["state"]
+    settled = payment_orchestration_settle_payment(
+        state,
+        "pi_100",
+        settlement_reference="batch_2026_001",
+    )
+    state = settled["state"]
+    payout = payment_orchestration_schedule_payout(
+        state,
+        "pi_100",
+        payout_account="merchant_settlement_account",
+    )
+    state = payout["state"]
     refund = payment_orchestration_refund_payment(state, "pi_100", amount=10.0, reason="goodwill")
     state = refund["state"]
+    dispute = payment_orchestration_open_dispute(
+        state,
+        "pi_100",
+        amount=5.0,
+        reason="customer_question",
+        evidence=("proof_of_delivery", "customer_acknowledgement"),
+    )
+    state = dispute["state"]
+    dispute_resolution = payment_orchestration_resolve_dispute(
+        state,
+        dispute["dispute"]["dispute_id"],
+        decision="merchant_won",
+        resolution_notes="evidence accepted",
+    )
+    state = dispute_resolution["state"]
     simulation = payment_orchestration_simulate_gateway_route(
         state,
         "pi_100",
@@ -474,7 +518,9 @@ def payment_orchestration_runtime_smoke() -> dict:
         },
         {
             "id": "probabilistic_authorization_fraud_settlement_scoring",
-            "ok": captured["authorization_score"] >= 0.72 and fraud["fraud_check"]["risk_score"] < 0.65,
+            "ok": captured["authorization_score"] >= 0.72
+            and fraud["fraud_check"]["risk_score"] < 0.65
+            and settled["settlement"]["status"] == "settled",
         },
         {
             "id": "counterfactual_gateway_routing_simulation",
@@ -544,7 +590,7 @@ def payment_orchestration_runtime_smoke() -> dict:
         {
             "id": "distributed_systems_engineering",
             "ok": permissions["ok"]
-            and state["outbox"][-1]["idempotency_key"].startswith("payment_orchestration:PaymentRefunded")
+            and state["outbox"][-1]["idempotency_key"].startswith("payment_orchestration:PaymentDisputeResolved")
             and boundary["ok"],
         },
     )
@@ -568,10 +614,13 @@ def payment_orchestration_empty_state() -> dict:
         "intents": {},
         "routes": {},
         "fraud_checks": {},
+        "authorizations": {},
         "captures": {},
         "refunds": {},
         "voids": {},
         "settlements": {},
+        "payouts": {},
+        "disputes": {},
         "reconciliation_handoffs": {},
         "exceptions": {},
         "rules": {},
@@ -957,6 +1006,8 @@ def payment_orchestration_capture_payment(
     *,
     amount: float,
 ) -> dict:
+    authorization = payment_orchestration_authorize_payment(state, intent_id, amount=amount)
+    state = authorization["state"]
     intent = state["intents"][intent_id]
     fraud = state["fraud_checks"].get(intent_id, {})
     rule = _active_rule_for_tenant(state, intent["tenant"])
@@ -1049,6 +1100,146 @@ def payment_orchestration_capture_payment(
     }
 
 
+def payment_orchestration_authorize_payment(
+    state: dict,
+    intent_id: str,
+    *,
+    amount: float,
+) -> dict:
+    intent = state["intents"][intent_id]
+    route = state["routes"].get(intent_id, {})
+    fraud = state["fraud_checks"].get(intent_id, {})
+    threshold = float(state["parameters"].get("authorization_threshold", 1))
+    risk_ceiling = float(_active_rule_for_tenant(state, intent["tenant"]).get("risk_ceiling", 1))
+    authorization_score = float(route.get("authorization_score", intent.get("authorization_score", 0)))
+    ok = (
+        intent["status"] in {"routed", "authorized", "captured"}
+        and amount <= float(intent["amount"])
+        and authorization_score >= threshold
+        and float(fraud.get("risk_score", 0)) <= risk_ceiling
+    )
+    authorization = {
+        "authorization_id": f"auth_{intent_id}_{len(state['authorizations']) + 1}",
+        "tenant": intent["tenant"],
+        "intent_id": intent_id,
+        "gateway_id": intent.get("gateway_id"),
+        "amount": amount,
+        "authorization_score": authorization_score,
+        "risk_score": float(fraud.get("risk_score", 0)),
+        "status": "authorized" if ok else "declined",
+        "network_reference": _digest({"intent_id": intent_id, "amount": amount})[:18],
+    }
+    updated_intent = {
+        **intent,
+        "status": "authorized" if ok and intent["status"] != "captured" else intent["status"],
+        "authorized_amount": amount if ok else intent.get("authorized_amount", 0.0),
+        "authorization_reference": authorization["network_reference"] if ok else intent.get("authorization_reference"),
+    }
+    next_state = {
+        **state,
+        "authorizations": {**state["authorizations"], authorization["authorization_id"]: authorization},
+        "intents": {**state["intents"], intent_id: updated_intent},
+    }
+    next_state = _append_event(
+        next_state,
+        "PaymentAuthorized" if ok else "PaymentFailed",
+        {
+            "tenant": intent["tenant"],
+            "intent_id": intent_id,
+            "amount": amount,
+            "gateway_id": intent.get("gateway_id"),
+            "authorization_reference": authorization["network_reference"],
+        },
+    )
+    return {"ok": ok, "state": next_state, "authorization": authorization, "intent": updated_intent}
+
+
+def payment_orchestration_settle_payment(
+    state: dict,
+    intent_id: str,
+    *,
+    settlement_reference: str,
+) -> dict:
+    intent = state["intents"][intent_id]
+    settlement = state["settlements"].get(intent_id)
+    ok = intent["status"] in {"captured", "partially_refunded"} and bool(settlement) and bool(settlement_reference)
+    updated_settlement = {
+        **(settlement or {
+            "settlement_id": f"stl_{intent_id}",
+            "tenant": intent["tenant"],
+            "intent_id": intent_id,
+            "amount": intent.get("captured_amount", 0.0),
+            "window": state["configuration"].get("settlement_windows", ("default",))[0],
+        }),
+        "status": "settled" if ok else "blocked",
+        "settlement_reference": settlement_reference,
+        "reconciled_amount": round(float(intent.get("captured_amount", 0)) - float(intent.get("refunded_amount", 0)), 2),
+    }
+    handoff = {
+        "handoff_id": f"handoff_{intent_id}_settlement",
+        "tenant": intent["tenant"],
+        "intent_id": intent_id,
+        "target_projection": "ledger_cash_projection",
+        "status": "ready" if ok else "blocked",
+        "settlement_reference": settlement_reference,
+    }
+    next_state = {
+        **state,
+        "settlements": {**state["settlements"], intent_id: updated_settlement},
+        "reconciliation_handoffs": {
+            **state["reconciliation_handoffs"],
+            handoff["handoff_id"]: handoff,
+        },
+    }
+    if ok:
+        next_state = _append_event(
+            next_state,
+            "PaymentSettled",
+            {
+                "tenant": intent["tenant"],
+                "intent_id": intent_id,
+                "amount": updated_settlement["reconciled_amount"],
+                "settlement_reference": settlement_reference,
+            },
+        )
+    return {"ok": ok, "state": next_state, "settlement": updated_settlement, "handoff": handoff}
+
+
+def payment_orchestration_schedule_payout(
+    state: dict,
+    intent_id: str,
+    *,
+    payout_account: str,
+) -> dict:
+    intent = state["intents"][intent_id]
+    settlement = state["settlements"].get(intent_id, {})
+    amount = round(float(intent.get("captured_amount", 0)) - float(intent.get("refunded_amount", 0)), 2)
+    ok = settlement.get("status") == "settled" and amount > 0 and bool(payout_account)
+    payout = {
+        "payout_id": f"payout_{intent_id}_{len(state['payouts']) + 1}",
+        "tenant": intent["tenant"],
+        "intent_id": intent_id,
+        "settlement_id": settlement.get("settlement_id"),
+        "payout_account": payout_account,
+        "amount": amount,
+        "currency": intent["currency"],
+        "status": "scheduled" if ok else "blocked",
+    }
+    next_state = {**state, "payouts": {**state["payouts"], payout["payout_id"]: payout}}
+    if ok:
+        next_state = _append_event(
+            next_state,
+            "PaymentPayoutScheduled",
+            {
+                "tenant": intent["tenant"],
+                "intent_id": intent_id,
+                "amount": amount,
+                "currency": intent["currency"],
+            },
+        )
+    return {"ok": ok, "state": next_state, "payout": payout}
+
+
 def payment_orchestration_refund_payment(
     state: dict,
     intent_id: str,
@@ -1078,6 +1269,17 @@ def payment_orchestration_refund_payment(
         next_state = {
             **next_state,
             "refunds": {**next_state["refunds"], refund["refund_id"]: refund},
+            "reconciliation_handoffs": {
+                **next_state["reconciliation_handoffs"],
+                f"handoff_{refund['refund_id']}": {
+                    "handoff_id": f"handoff_{refund['refund_id']}",
+                    "tenant": intent["tenant"],
+                    "intent_id": intent_id,
+                    "target_projection": "ledger_cash_projection",
+                    "status": "ready",
+                    "refund_id": refund["refund_id"],
+                },
+            },
         }
         next_state = _append_event(
             next_state,
@@ -1090,6 +1292,92 @@ def payment_orchestration_refund_payment(
             },
         )
     return {"ok": ok, "state": next_state, "intent": updated_intent}
+
+
+def payment_orchestration_open_dispute(
+    state: dict,
+    intent_id: str,
+    *,
+    amount: float,
+    reason: str,
+    evidence: tuple[str, ...] = (),
+) -> dict:
+    intent = state["intents"][intent_id]
+    ok = intent["status"] in {"captured", "partially_refunded"} and amount <= float(intent.get("captured_amount", 0))
+    dispute = {
+        "dispute_id": f"dsp_{intent_id}_{len(state['disputes']) + 1}",
+        "tenant": intent["tenant"],
+        "intent_id": intent_id,
+        "amount": amount,
+        "reason": reason,
+        "evidence": tuple(evidence),
+        "status": "evidence_required" if ok and not evidence else "under_review" if ok else "blocked",
+        "recommended_action": "submit_evidence" if ok else "reject_dispute",
+    }
+    next_state = {**state, "disputes": {**state["disputes"], dispute["dispute_id"]: dispute}}
+    if ok:
+        next_state = _append_event(
+            next_state,
+            "PaymentDisputeOpened",
+            {
+                "tenant": intent["tenant"],
+                "intent_id": intent_id,
+                "dispute_id": dispute["dispute_id"],
+                "amount": amount,
+            },
+        )
+    return {"ok": ok, "state": next_state, "dispute": dispute}
+
+
+def payment_orchestration_resolve_dispute(
+    state: dict,
+    dispute_id: str,
+    *,
+    decision: str,
+    resolution_notes: str,
+) -> dict:
+    dispute = state["disputes"][dispute_id]
+    intent = state["intents"][dispute["intent_id"]]
+    decision = str(decision)
+    merchant_won = decision == "merchant_won"
+    updated_dispute = {
+        **dispute,
+        "status": "resolved",
+        "decision": decision,
+        "resolution_notes": resolution_notes,
+        "financial_impact": 0.0 if merchant_won else float(dispute["amount"]),
+    }
+    updated_intent = {
+        **intent,
+        "disputed_amount": round(float(intent.get("disputed_amount", 0)) + updated_dispute["financial_impact"], 2),
+    }
+    handoff = {
+        "handoff_id": f"handoff_{dispute_id}",
+        "tenant": dispute["tenant"],
+        "intent_id": dispute["intent_id"],
+        "target_projection": "ledger_cash_projection",
+        "status": "ready",
+        "dispute_id": dispute_id,
+        "financial_impact": updated_dispute["financial_impact"],
+    }
+    next_state = {
+        **state,
+        "disputes": {**state["disputes"], dispute_id: updated_dispute},
+        "intents": {**state["intents"], dispute["intent_id"]: updated_intent},
+        "reconciliation_handoffs": {**state["reconciliation_handoffs"], handoff["handoff_id"]: handoff},
+    }
+    next_state = _append_event(
+        next_state,
+        "PaymentDisputeResolved",
+        {
+            "tenant": dispute["tenant"],
+            "intent_id": dispute["intent_id"],
+            "dispute_id": dispute_id,
+            "decision": decision,
+            "financial_impact": updated_dispute["financial_impact"],
+        },
+    )
+    return {"ok": True, "state": next_state, "dispute": updated_dispute, "handoff": handoff}
 
 
 def payment_orchestration_void_payment(state: dict, intent_id: str, *, reason: str) -> dict:
@@ -1153,7 +1441,7 @@ def payment_orchestration_forecast_authorization(
 
 
 def payment_orchestration_parse_instruction(text: str) -> dict:
-    action = re.search(r"(capture|refund|void)\s+payment", text, re.I)
+    action = re.search(r"(authorize|capture|settle|payout|refund|void|dispute|resolve)\s+(?:payment|dispute)", text, re.I)
     intent = re.search(r"\b(pi_[a-z0-9_]+)\b", text, re.I)
     amount = re.search(r"amount\s+([0-9.]+)", text, re.I)
     gateway = re.search(r"gateway\s+([a-z0-9_]+)", text, re.I)
@@ -1324,11 +1612,29 @@ def payment_orchestration_build_api_contract() -> dict:
         {
             "route": "POST /payment-intents/{id}/captures",
             "command": "capture_payment",
-            "owned_tables": ("payment_capture", "payment_settlement"),
+            "owned_tables": ("payment_authorization", "payment_capture", "payment_settlement"),
             "emits": ("PaymentCaptured", "PaymentFailed"),
             "requires_permission": "payment_orchestration.capture",
             "idempotency_key": "capture_id",
             "dependencies": ("POST /ledger/payment-events",),
+        },
+        {
+            "route": "POST /payment-intents/{id}/settlements",
+            "command": "settle_payment",
+            "owned_tables": ("payment_settlement", "payment_reconciliation_handoff"),
+            "emits": ("PaymentSettled",),
+            "requires_permission": "payment_orchestration.settlement",
+            "idempotency_key": "settlement_reference",
+            "dependencies": ("POST /ledger/payment-events",),
+        },
+        {
+            "route": "POST /payment-intents/{id}/payouts",
+            "command": "schedule_payout",
+            "owned_tables": ("payment_payout",),
+            "emits": ("PaymentPayoutScheduled",),
+            "requires_permission": "payment_orchestration.settlement",
+            "idempotency_key": "payout_id",
+            "dependencies": ("POST /audit/payment-events",),
         },
         {
             "route": "POST /payment-intents/{id}/refunds",
@@ -1338,6 +1644,24 @@ def payment_orchestration_build_api_contract() -> dict:
             "requires_permission": "payment_orchestration.refund",
             "idempotency_key": "refund_id",
             "dependencies": ("POST /audit/payment-events",),
+        },
+        {
+            "route": "POST /payment-intents/{id}/disputes",
+            "command": "open_dispute",
+            "owned_tables": ("payment_dispute",),
+            "emits": ("PaymentDisputeOpened",),
+            "requires_permission": "payment_orchestration.dispute",
+            "idempotency_key": "dispute_id",
+            "dependencies": ("POST /audit/payment-events",),
+        },
+        {
+            "route": "POST /payment-disputes/{id}/resolution",
+            "command": "resolve_dispute",
+            "owned_tables": ("payment_dispute", "payment_reconciliation_handoff"),
+            "emits": ("PaymentDisputeResolved",),
+            "requires_permission": "payment_orchestration.dispute",
+            "idempotency_key": "dispute_id",
+            "dependencies": ("POST /ledger/payment-events", "POST /audit/payment-events"),
         },
         {
             "route": "POST /payment-intents/{id}/void",
@@ -1465,6 +1789,18 @@ def payment_orchestration_build_schema_contract() -> dict:
                 "status",
                 "audit_hash",
             ),
+            "payment_authorization": (
+                "tenant",
+                "authorization_id",
+                "intent_id",
+                "gateway_id",
+                "amount",
+                "authorization_score",
+                "risk_score",
+                "network_reference",
+                "status",
+                "audit_hash",
+            ),
             "payment_capture": (
                 "tenant",
                 "capture_id",
@@ -1497,6 +1833,29 @@ def payment_orchestration_build_schema_contract() -> dict:
                 "intent_id",
                 "amount",
                 "window",
+                "status",
+                "audit_hash",
+            ),
+            "payment_payout": (
+                "tenant",
+                "payout_id",
+                "intent_id",
+                "settlement_id",
+                "payout_account",
+                "amount",
+                "currency",
+                "status",
+                "audit_hash",
+            ),
+            "payment_dispute": (
+                "tenant",
+                "dispute_id",
+                "intent_id",
+                "amount",
+                "reason",
+                "evidence",
+                "decision",
+                "financial_impact",
                 "status",
                 "audit_hash",
             ),
@@ -1578,10 +1937,13 @@ def payment_orchestration_build_schema_contract() -> dict:
         {"from_table": "gateway_route", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
         {"from_table": "gateway_route", "from_field": "gateway_id", "to_table": "payment_gateway", "to_field": "gateway_id"},
         {"from_table": "fraud_check", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
+        {"from_table": "payment_authorization", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
         {"from_table": "payment_capture", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
         {"from_table": "payment_refund", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
         {"from_table": "payment_void", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
         {"from_table": "payment_settlement", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
+        {"from_table": "payment_payout", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
+        {"from_table": "payment_dispute", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
         {"from_table": "payment_reconciliation_handoff", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
         {"from_table": "payment_exception", "from_field": "intent_id", "to_table": "payment_intent", "to_field": "intent_id"},
     )
@@ -1631,8 +1993,13 @@ def payment_orchestration_build_service_contract() -> dict:
         "create_payment_intent",
         "route_gateway",
         "request_fraud_check",
+        "authorize_payment",
         "capture_payment",
+        "settle_payment",
+        "schedule_payout",
         "refund_payment",
+        "open_dispute",
+        "resolve_dispute",
         "void_payment",
         "generate_payment_proof",
         "screen_policy",
@@ -1734,7 +2101,9 @@ def payment_orchestration_permissions_contract() -> dict:
             "payment_orchestration.read",
             "payment_orchestration.intent",
             "payment_orchestration.capture",
+            "payment_orchestration.settlement",
             "payment_orchestration.refund",
+            "payment_orchestration.dispute",
             "payment_orchestration.event",
             "payment_orchestration.configure",
             "payment_orchestration.audit",
@@ -1745,8 +2114,13 @@ def payment_orchestration_permissions_contract() -> dict:
             "create_payment_intent": "payment_orchestration.intent",
             "route_gateway": "payment_orchestration.intent",
             "request_fraud_check": "payment_orchestration.intent",
+            "authorize_payment": "payment_orchestration.capture",
             "capture_payment": "payment_orchestration.capture",
+            "settle_payment": "payment_orchestration.settlement",
+            "schedule_payout": "payment_orchestration.settlement",
             "refund_payment": "payment_orchestration.refund",
+            "open_dispute": "payment_orchestration.dispute",
+            "resolve_dispute": "payment_orchestration.dispute",
             "void_payment": "payment_orchestration.refund",
             "receive_event": "payment_orchestration.event",
             "register_rule": "payment_orchestration.configure",
@@ -1943,11 +2317,16 @@ def payment_orchestration_build_workbench_view(state: dict, *, tenant: str) -> d
     fraud_checks = tuple(
         fraud_check for fraud_check in state["fraud_checks"].values() if fraud_check.get("tenant") == tenant
     )
+    authorizations = tuple(
+        authorization for authorization in state["authorizations"].values() if authorization["tenant"] == tenant
+    )
     captures = tuple(capture for capture in state["captures"].values() if capture["tenant"] == tenant)
     settlements = tuple(
         settlement for settlement in state["settlements"].values() if settlement["tenant"] == tenant
     )
+    payouts = tuple(payout for payout in state["payouts"].values() if payout["tenant"] == tenant)
     refunds = tuple(refund for refund in state["refunds"].values() if refund["tenant"] == tenant)
+    disputes = tuple(dispute for dispute in state["disputes"].values() if dispute["tenant"] == tenant)
     voids = tuple(void for void in state["voids"].values() if void["tenant"] == tenant)
     exceptions = tuple(
         exception for exception in state["exceptions"].values() if exception["tenant"] == tenant
@@ -1964,9 +2343,12 @@ def payment_orchestration_build_workbench_view(state: dict, *, tenant: str) -> d
         "token_count": len(tokens),
         "route_count": len(routes),
         "fraud_check_count": len(fraud_checks),
+        "authorization_count": len(authorizations),
         "refund_count": len(refunds),
+        "dispute_count": len(disputes),
         "void_count": len(voids),
         "settlement_count": len(settlements),
+        "payout_count": len(payouts),
         "exception_count": len(exceptions),
         "captured_amount": round(sum(intent.get("captured_amount", 0) for intent in intents), 2),
         "refunded_amount": round(sum(intent.get("refunded_amount", 0) for intent in intents), 2),

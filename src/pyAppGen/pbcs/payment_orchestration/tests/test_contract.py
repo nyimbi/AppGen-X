@@ -201,3 +201,126 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['owned_boundary_rejection']['ok'] is False
     assert validation['owned_boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_payment_lifecycle_covers_authorization_settlement_payout_and_dispute():
+    from .. import runtime
+
+    state = runtime.payment_orchestration_empty_state()
+    state = runtime.payment_orchestration_configure_runtime(state, {
+        "database_backend": "postgresql",
+        "event_topic": runtime.PAYMENT_ORCHESTRATION_REQUIRED_EVENT_TOPIC,
+        "retry_limit": 3,
+        "default_currency": "USD",
+        "supported_currencies": ("USD",),
+        "supported_regions": ("US",),
+        "supported_methods": ("card",),
+        "settlement_windows": ("night",),
+        "default_timezone": "UTC",
+        "workbench_limit": 100,
+    })["state"]
+    for name, value in (
+        ("authorization_threshold", 0.7),
+        ("fraud_review_threshold", 0.7),
+        ("capture_amount_tolerance", 0.5),
+        ("retry_limit", 3),
+        ("gateway_latency_weight", 0.2),
+        ("gateway_cost_weight", 0.2),
+        ("gateway_auth_weight", 0.5),
+        ("settlement_risk_weight", 0.1),
+        ("max_capture_attempts", 3),
+        ("workbench_limit", 100),
+    ):
+        state = runtime.payment_orchestration_set_parameter(state, name, value)["state"]
+    state = runtime.payment_orchestration_register_rule(state, {
+        "rule_id": "rule_card",
+        "tenant": "tenant_payment",
+        "rule_type": "gateway_routing",
+        "allowed_gateways": ("gateway_primary",),
+        "allowed_currencies": ("USD",),
+        "allowed_regions": ("US",),
+        "risk_ceiling": 0.8,
+        "capture_policy": "authorize_then_capture",
+        "status": "active",
+    })["state"]
+    state = runtime.payment_orchestration_register_gateway(state, {
+        "gateway_id": "gateway_primary",
+        "tenant": "tenant_payment",
+        "provider": "primarypay",
+        "regions": ("US",),
+        "currencies": ("USD",),
+        "methods": ("card",),
+        "latency_ms": 120,
+        "fee_bps": 80,
+        "authorization_rate": 0.93,
+        "settlement_risk": 0.04,
+        "capacity": 50,
+        "carbon_score": 20,
+        "status": "active",
+    })["state"]
+    state = runtime.payment_orchestration_receive_event(state, {
+        "event_id": "checkout_payment_1",
+        "event_type": "CheckoutCompleted",
+        "payload": {
+            "tenant": "tenant_payment",
+            "checkout_id": "checkout_payment",
+            "customer_id": "customer_payment",
+            "amount": 100,
+            "currency": "USD",
+            "region": "US",
+        },
+    })["state"]
+    state = runtime.payment_orchestration_tokenize_payment_method(state, {
+        "token_id": "token_payment",
+        "tenant": "tenant_payment",
+        "customer_id": "customer_payment",
+        "method_type": "card",
+        "network": "card_network",
+        "issuer_country": "US",
+        "vault_ref": "vault://token_payment",
+    })["state"]
+    state = runtime.payment_orchestration_create_payment_intent(state, {
+        "intent_id": "pi_payment",
+        "tenant": "tenant_payment",
+        "checkout_id": "checkout_payment",
+        "customer_id": "customer_payment",
+        "amount": 100,
+        "currency": "USD",
+        "region": "US",
+        "token_id": "token_payment",
+    })["state"]
+    state = runtime.payment_orchestration_route_gateway(state, "pi_payment")["state"]
+    state = runtime.payment_orchestration_request_fraud_check(state, "pi_payment")["state"]
+    state = runtime.payment_orchestration_receive_event(state, {
+        "event_id": "fraud_payment_1",
+        "event_type": "FraudRiskScored",
+        "payload": {"tenant": "tenant_payment", "intent_id": "pi_payment", "risk_score": 0.1, "decision": "approve"},
+    })["state"]
+
+    capture = runtime.payment_orchestration_capture_payment(state, "pi_payment", amount=100)
+    state = capture["state"]
+    settlement = runtime.payment_orchestration_settle_payment(state, "pi_payment", settlement_reference="batch_payment")
+    state = settlement["state"]
+    payout = runtime.payment_orchestration_schedule_payout(state, "pi_payment", payout_account="merchant_account")
+    state = payout["state"]
+    dispute = runtime.payment_orchestration_open_dispute(
+        state,
+        "pi_payment",
+        amount=12,
+        reason="customer_query",
+        evidence=("delivery_proof",),
+    )
+    state = dispute["state"]
+    resolution = runtime.payment_orchestration_resolve_dispute(
+        state,
+        dispute["dispute"]["dispute_id"],
+        decision="merchant_won",
+        resolution_notes="proof accepted",
+    )
+
+    assert capture["ok"] is True
+    assert settlement["settlement"]["status"] == "settled"
+    assert payout["payout"]["status"] == "scheduled"
+    assert dispute["dispute"]["status"] == "under_review"
+    assert resolution["dispute"]["status"] == "resolved"
+    assert state["outbox"][-1]["event_type"] == "PaymentDisputeOpened"

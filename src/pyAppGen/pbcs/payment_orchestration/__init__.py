@@ -18,10 +18,12 @@ from .runtime import payment_orchestration_build_release_evidence
 from .runtime import payment_orchestration_build_schema_contract
 from .runtime import payment_orchestration_build_service_contract
 from .runtime import payment_orchestration_build_workbench_view
+from .runtime import payment_orchestration_authorize_payment
 from .runtime import payment_orchestration_capture_payment
 from .runtime import payment_orchestration_configure_runtime
 from .runtime import payment_orchestration_create_payment_intent
 from .runtime import payment_orchestration_empty_state
+from .runtime import payment_orchestration_open_dispute
 from .runtime import payment_orchestration_permissions_contract
 from .runtime import payment_orchestration_receive_event
 from .runtime import payment_orchestration_refund_payment
@@ -29,10 +31,13 @@ from .runtime import payment_orchestration_register_gateway
 from .runtime import payment_orchestration_register_rule
 from .runtime import payment_orchestration_register_schema_extension
 from .runtime import payment_orchestration_request_fraud_check
+from .runtime import payment_orchestration_resolve_dispute
 from .runtime import payment_orchestration_route_gateway
 from .runtime import payment_orchestration_runtime_capabilities
 from .runtime import payment_orchestration_runtime_smoke
+from .runtime import payment_orchestration_schedule_payout
 from .runtime import payment_orchestration_set_parameter
+from .runtime import payment_orchestration_settle_payment
 from .runtime import payment_orchestration_tokenize_payment_method
 from .runtime import payment_orchestration_verify_owned_table_boundary
 from .runtime import payment_orchestration_void_payment
@@ -110,4 +115,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-
