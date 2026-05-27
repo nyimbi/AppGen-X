@@ -2662,7 +2662,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   effect fallback, scene authoring, material/shader edits, asset import, hit
   testing, runtime package publishing, visual component scenarios, and
   runtime/designer ordering without unpacking nested payloads. Verification is
-  focused under the low-battery delivery constraint. Commit: pending.
+  focused under the low-battery delivery constraint. Commit: `8ae631a`.
 - Current PBC specification gate pass makes first-class agent/chatbot skills
   and side-effect-free self-registration explicit specification requirements.
   All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,
