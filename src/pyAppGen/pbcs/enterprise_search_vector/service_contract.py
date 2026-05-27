@@ -1,8 +1,13 @@
 """Generated service evidence for the enterprise_search_vector PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.enterprise-search-vector-service-contract.v1', 'ok': True, 'pbc': 'enterprise_search_vector', 'transaction_boundary': 'enterprise_search_vector_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'create_index', 'ingest_document', 'run_embedding_job', 'refresh_index', 'query', 'record_feedback', 'build_workbench_view', 'verify_owned_table_boundary', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'simulate_counterfactual_ranking', 'forecast_index_freshness', 'remediate_search_quality', 'screen_search_policy', 'run_relevance_controls', 'generate_index_proof', 'federate_search_sources'), 'query_methods': ('build_api_contract', 'permissions_contract', 'build_workbench_view', 'build_schema_contract', 'build_service_contract', 'build_release_evidence'), 'mutates_only': ('search_index', 'embedding_job', 'vector_document', 'query_trace', 'enterprise_search_vector_appgen_outbox_event', 'enterprise_search_vector_appgen_inbox_event', 'enterprise_search_vector_dead_letter_event'), 'external_dependencies': {'apis': ('POST /indexes', 'POST /indexes/{id}/refresh', 'POST /embeddings', 'POST /search', 'POST /query-feedback', 'GET /query-traces'), 'events': ('ProductPublished', 'CustomerUpdated', 'AuditEventSealed'), 'shared_tables': ()}, 'eventing': {'contract': 'AppGen-X', 'topic': 'appgen.enterprise_search_vector.events', 'outbox_table': 'enterprise_search_vector_appgen_outbox_event', 'inbox_table': 'enterprise_search_vector_appgen_inbox_event', 'dead_letter_table': 'enterprise_search_vector_dead_letter_event', 'idempotency_required': True}, 'idempotent_handlers': ('receive_event',), 'retry_dead_letter_evidence': {'retry_limit_field': 'retry_limit', 'dead_letter_table': 'enterprise_search_vector_dead_letter_event'}, 'generated_artifacts': {'services': ('pbcs/enterprise_search_vector/services/search_service.py',), 'routes': ('pbcs/enterprise_search_vector/routes/search_routes.py',), 'events': ('pbcs/enterprise_search_vector/events/search_events.py',), 'handlers': ('pbcs/enterprise_search_vector/handlers/search_handlers.py',), 'ui': ('pbcs/enterprise_search_vector/ui/workbench.py',)}, 'shared_table_access': False}
+from __future__ import annotations
+
+from .runtime import enterprise_search_vector_build_service_contract
 
 
-def build_service_contract():
+def build_service_contract() -> dict:
     """Return generated command, eventing, and handler evidence."""
-    return dict(SERVICE_CONTRACT)
+    return enterprise_search_vector_build_service_contract()
+
+
+SERVICE_CONTRACT = build_service_contract()

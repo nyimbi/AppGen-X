@@ -256,7 +256,7 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `enterprise_search_vector`
 - Mesh: `intelligence`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
@@ -269,11 +269,16 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - `POST /indexes`
 - `POST /indexes/{id}/refresh`
+- `POST /documents`
 - `POST /embeddings`
 - `POST /search`
 - `POST /query-feedback`
+- `POST /enterprise-search-vector/events/inbox`
 - `GET /query-traces`
 - `GET /enterprise-search-vector-workbench`
+- `GET /enterprise-search-vector/schema-contract`
+- `GET /enterprise-search-vector/service-contract`
+- `GET /enterprise-search-vector/release-evidence`
 
 ### Emitted Events
 
@@ -288,22 +293,39 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- `EnterpriseSearchVectorWorkbench`
-- `EnterpriseSearchVectorDetail`
+- `EnterpriseSearchWorkbench`
+- `SearchIndexRegistry`
+- `VectorDocumentExplorer`
+- `EmbeddingJobConsole`
+- `HybridQueryWorkbench`
+- `QueryTraceExplorer`
+- `SearchIndexFreshnessBoard`
+- `AclFilteredResultsPanel`
+- `RelevanceFeedbackPanel`
+- `SearchRuleStudio`
+- `SearchParameterConsole`
+- `SearchConfigurationPanel`
+- `SearchEventOutbox`
+- `SearchDeadLetterQueue`
 
 ### Permissions
 
-- `enterprise_search_vector.read`
-- `enterprise_search_vector.create`
-- `enterprise_search_vector.update`
-- `enterprise_search_vector.approve`
-- `enterprise_search_vector.admin`
+- `enterprise_search_vector.audit`
+- `enterprise_search_vector.configure`
+- `enterprise_search_vector.document.write`
+- `enterprise_search_vector.event.consume`
+- `enterprise_search_vector.index.write`
+- `enterprise_search_vector.query`
 
 ### Configuration Keys
 
 - `ENTERPRISE_SEARCH_VECTOR_DATABASE_URL`
 - `ENTERPRISE_SEARCH_VECTOR_EVENT_TOPIC`
 - `ENTERPRISE_SEARCH_VECTOR_RETRY_LIMIT`
+- `ENTERPRISE_SEARCH_VECTOR_DEFAULT_LOCALE`
+- `ENTERPRISE_SEARCH_VECTOR_EMBEDDING_DIMENSIONS`
+- `ENTERPRISE_SEARCH_VECTOR_RETENTION_DAYS`
+- `ENTERPRISE_SEARCH_VECTOR_RANKING_MODE`
 
 ### Standard Features
 

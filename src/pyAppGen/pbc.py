@@ -9387,6 +9387,52 @@ from .pbcs.enterprise_search_vector import enterprise_search_vector_runtime_smok
 from .pbcs.enterprise_search_vector import enterprise_search_vector_set_parameter  # noqa: E402,F401
 from .pbcs.enterprise_search_vector import enterprise_search_vector_ui_contract  # noqa: E402,F401
 from .pbcs.enterprise_search_vector import enterprise_search_vector_verify_owned_table_boundary  # noqa: E402,F401
+PBC_CATALOG["enterprise_search_vector"].update(
+    {
+        "apis": (
+            "POST /indexes",
+            "POST /indexes/{id}/refresh",
+            "POST /documents",
+            "POST /embeddings",
+            "POST /search",
+            "POST /query-feedback",
+            "POST /enterprise-search-vector/events/inbox",
+            "GET /query-traces",
+            "GET /enterprise-search-vector-workbench",
+            "GET /enterprise-search-vector/schema-contract",
+            "GET /enterprise-search-vector/service-contract",
+            "GET /enterprise-search-vector/release-evidence",
+        ),
+        "ui_fragments": ENTERPRISE_SEARCH_VECTOR_UI_FRAGMENT_KEYS,
+        "permissions": tuple(sorted(enterprise_search_vector_permissions_contract()["permissions"])),
+        "configuration": (
+            "ENTERPRISE_SEARCH_VECTOR_DATABASE_URL",
+            "ENTERPRISE_SEARCH_VECTOR_EVENT_TOPIC",
+            "ENTERPRISE_SEARCH_VECTOR_RETRY_LIMIT",
+            "ENTERPRISE_SEARCH_VECTOR_DEFAULT_LOCALE",
+            "ENTERPRISE_SEARCH_VECTOR_EMBEDDING_DIMENSIONS",
+            "ENTERPRISE_SEARCH_VECTOR_RETENTION_DAYS",
+            "ENTERPRISE_SEARCH_VECTOR_RANKING_MODE",
+        ),
+        "capabilities": tuple(
+            f"enterprise_search_vector.{table}"
+            for table in enterprise_search_vector_build_schema_contract()["business_tables"]
+        ),
+        "standard_features": ENTERPRISE_SEARCH_VECTOR_STANDARD_FEATURE_KEYS,
+        "advanced_capabilities": ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS,
+        "workflows": enterprise_search_vector_runtime_capabilities()["operations"],
+        "analytics": (
+            "query_result_count",
+            "relevance_confidence",
+            "index_freshness",
+            "acl_filter_rate",
+            "embedding_job_latency",
+            "feedback_score",
+            "search_index_updated_throughput",
+            "discovery_insight_generated_throughput",
+        ),
+    }
+)
 from .pbcs.predictive_demand import PREDICTIVE_DEMAND_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.predictive_demand import PREDICTIVE_DEMAND_RUNTIME_TABLES  # noqa: E402,F401
 from .pbcs.predictive_demand import PREDICTIVE_DEMAND_STANDARD_FEATURE_KEYS  # noqa: E402,F401

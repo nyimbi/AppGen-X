@@ -1,142 +1,280 @@
 """Command service layer for the enterprise_search_vector PBC."""
 
-EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.enterprise_search_vector.events', 'inbox_topic': 'pbc.enterprise_search_vector.inbox', 'outbox_table': 'enterprise_search_vector_appgen_outbox_event', 'inbox_table': 'enterprise_search_vector_appgen_inbox_event', 'dead_letter_table': 'enterprise_search_vector_appgen_dead_letter_event', 'emitted': ({'event_type': 'SearchIndexUpdated', 'schema': 'enterprise_search_vector.search_index_updated.emitted.v1', 'topic': 'pbc.enterprise_search_vector.events', 'outbox_table': 'enterprise_search_vector_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'DiscoveryInsightGenerated', 'schema': 'enterprise_search_vector.discovery_insight_generated.emitted.v1', 'topic': 'pbc.enterprise_search_vector.events', 'outbox_table': 'enterprise_search_vector_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'ProductPublished', 'schema': 'enterprise_search_vector.product_published.consumed.v1', 'topic': 'pbc.enterprise_search_vector.inbox', 'inbox_table': 'enterprise_search_vector_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'CustomerUpdated', 'schema': 'enterprise_search_vector.customer_updated.consumed.v1', 'topic': 'pbc.enterprise_search_vector.inbox', 'inbox_table': 'enterprise_search_vector_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'AuditEventSealed', 'schema': 'enterprise_search_vector.audit_event_sealed.consumed.v1', 'topic': 'pbc.enterprise_search_vector.inbox', 'inbox_table': 'enterprise_search_vector_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'enterprise_search_vector_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'enterprise_search_vector_appgen_inbox_event'}}
+from __future__ import annotations
+
+from .events import EVENT_CONTRACT
+from .runtime import ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES
+from .runtime import enterprise_search_vector_build_service_contract
 
 
-OPERATION_CONTRACTS = ({'operation': 'command_indexes', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/enterprise_search_vector/indexes', 'permission': 'enterprise_search_vector.command.1', 'owned_tables': ('enterprise_search_vector_search_index', 'enterprise_search_vector_embedding_job', 'enterprise_search_vector_vector_document', 'enterprise_search_vector_query_trace'), 'read_tables': (), 'emitted_event': 'SearchIndexUpdated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_embeddings', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/enterprise_search_vector/embeddings', 'permission': 'enterprise_search_vector.command.2', 'owned_tables': ('enterprise_search_vector_search_index', 'enterprise_search_vector_embedding_job', 'enterprise_search_vector_vector_document', 'enterprise_search_vector_query_trace'), 'read_tables': (), 'emitted_event': 'DiscoveryInsightGenerated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_search', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/enterprise_search_vector/search', 'permission': 'enterprise_search_vector.command.3', 'owned_tables': ('enterprise_search_vector_search_index', 'enterprise_search_vector_embedding_job', 'enterprise_search_vector_vector_document', 'enterprise_search_vector_query_trace'), 'read_tables': (), 'emitted_event': 'SearchIndexUpdated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_enterprise_search_vector_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/enterprise_search_vector/enterprise-search-vector-workbench', 'permission': 'enterprise_search_vector.query.4', 'owned_tables': (), 'read_tables': ('enterprise_search_vector_search_index', 'enterprise_search_vector_embedding_job', 'enterprise_search_vector_vector_document', 'enterprise_search_vector_query_trace'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
+PBC_KEY = "enterprise_search_vector"
+
+_ROUTE_DEFINITIONS = (
+    {
+        "route": "POST /indexes",
+        "operation": "create_index",
+        "kind": "command",
+        "owned_tables": ("search_index",),
+        "permission": "enterprise_search_vector.index.write",
+        "emitted_event": "SearchIndexUpdated",
+        "idempotency_key": "index_id",
+    },
+    {
+        "route": "POST /indexes/{id}/refresh",
+        "operation": "refresh_index",
+        "kind": "command",
+        "owned_tables": ("search_index", "vector_document"),
+        "permission": "enterprise_search_vector.index.write",
+        "emitted_event": "SearchIndexUpdated",
+        "idempotency_key": "refresh_id",
+    },
+    {
+        "route": "POST /documents",
+        "operation": "ingest_document",
+        "kind": "command",
+        "owned_tables": ("vector_document", "search_index"),
+        "permission": "enterprise_search_vector.document.write",
+        "emitted_event": "SearchIndexUpdated",
+        "idempotency_key": "document_id",
+    },
+    {
+        "route": "POST /embeddings",
+        "operation": "run_embedding_job",
+        "kind": "command",
+        "owned_tables": ("embedding_job", "vector_document", "search_index"),
+        "permission": "enterprise_search_vector.document.write",
+        "emitted_event": "SearchIndexUpdated",
+        "idempotency_key": "job_id",
+    },
+    {
+        "route": "POST /search",
+        "operation": "query",
+        "kind": "command",
+        "owned_tables": ("query_trace", "search_index"),
+        "permission": "enterprise_search_vector.query",
+        "emitted_event": "DiscoveryInsightGenerated",
+        "idempotency_key": "query_id",
+    },
+    {
+        "route": "POST /query-feedback",
+        "operation": "record_feedback",
+        "kind": "command",
+        "owned_tables": ("query_trace", "vector_document", "search_index"),
+        "permission": "enterprise_search_vector.query",
+        "emitted_event": "SearchIndexUpdated",
+        "idempotency_key": "query_id:document_id",
+    },
+    {
+        "route": "POST /enterprise-search-vector/events/inbox",
+        "operation": "receive_event",
+        "kind": "command",
+        "owned_tables": (),
+        "permission": "enterprise_search_vector.event.consume",
+        "emitted_event": "SearchIndexUpdated",
+        "consumed_event": ("ProductPublished", "CustomerUpdated", "AuditEventSealed"),
+        "idempotency_key": "event_id",
+    },
+    {
+        "route": "GET /query-traces",
+        "operation": "query_traces",
+        "kind": "query",
+        "owned_tables": ("query_trace",),
+        "permission": "enterprise_search_vector.audit",
+    },
+    {
+        "route": "GET /enterprise-search-vector-workbench",
+        "operation": "build_workbench_view",
+        "kind": "query",
+        "owned_tables": ("search_index", "embedding_job", "vector_document", "query_trace"),
+        "permission": "enterprise_search_vector.audit",
+    },
+    {
+        "route": "GET /enterprise-search-vector/schema-contract",
+        "operation": "build_schema_contract",
+        "kind": "query",
+        "owned_tables": ("search_index", "embedding_job", "vector_document", "query_trace"),
+        "permission": "enterprise_search_vector.audit",
+    },
+    {
+        "route": "GET /enterprise-search-vector/service-contract",
+        "operation": "build_service_contract",
+        "kind": "query",
+        "owned_tables": ("search_index", "embedding_job", "vector_document", "query_trace"),
+        "permission": "enterprise_search_vector.audit",
+    },
+    {
+        "route": "GET /enterprise-search-vector/release-evidence",
+        "operation": "build_release_evidence",
+        "kind": "query",
+        "owned_tables": ("search_index", "embedding_job", "vector_document", "query_trace"),
+        "permission": "enterprise_search_vector.audit",
+    },
+)
 
 
-def service_operation_contracts():
+def _method_path(route: str) -> tuple[str, str]:
+    method, path = route.split(" ", 1)
+    return method, path
+
+
+def _owned_tables(route: dict) -> tuple[str, ...]:
+    return tuple(
+        table if table.startswith(f"{PBC_KEY}_") else f"{PBC_KEY}_{table}"
+        for table in route.get("owned_tables", ())
+    )
+
+
+def _build_operation_contracts() -> tuple[dict, ...]:
+    contracts = []
+    for route in _ROUTE_DEFINITIONS:
+        method, path = _method_path(route["route"])
+        is_command = route["kind"] == "command"
+        table_scope = _owned_tables(route)
+        if is_command and not table_scope and route["operation"] == "receive_event":
+            table_scope = (ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[1], ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[2])
+        contracts.append(
+            {
+                "operation": route["operation"],
+                "operation_kind": route["kind"],
+                "method": method,
+                "path": path,
+                "permission": route["permission"],
+                "owned_tables": table_scope if is_command else (),
+                "read_tables": () if is_command else table_scope,
+                "emitted_event": route.get("emitted_event") if is_command else None,
+                "consumed_event": tuple(route.get("consumed_event", ())),
+                "idempotency_key": route.get("idempotency_key"),
+                "transaction_boundary": "owned_datastore_plus_outbox",
+                "event_contract": "AppGen-X",
+                "stream_engine_picker_visible": False,
+                "shared_table_access": False,
+            }
+        )
+    return tuple(contracts)
+
+
+OPERATION_CONTRACTS = _build_operation_contracts()
+
+
+def service_operation_contracts() -> dict:
     """Return route-bound service operation contracts for this PBC."""
-    operations = tuple(item['operation'] for item in OPERATION_CONTRACTS)
-    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'command')
-    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'query')
+    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "command")
+    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "query")
+    runtime_service = enterprise_search_vector_build_service_contract()
     return {
-        'ok': bool(OPERATION_CONTRACTS)
-        and all(item['event_contract'] == 'AppGen-X' for item in OPERATION_CONTRACTS)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in OPERATION_CONTRACTS)
-        and all(item['emitted_event'] for item in command_contracts)
-        and all(item['owned_tables'] and not item['read_tables'] for item in command_contracts)
-        and all(item['emitted_event'] is None for item in query_contracts)
-        and all(item['read_tables'] and not item['owned_tables'] for item in query_contracts),
-        'pbc': 'enterprise_search_vector',
-        'operations': operations,
-        'command_operations': tuple(item['operation'] for item in command_contracts),
-        'query_operations': tuple(item['operation'] for item in query_contracts),
-        'contracts': OPERATION_CONTRACTS,
-        'side_effects': (),
+        "ok": runtime_service["ok"]
+        and bool(OPERATION_CONTRACTS)
+        and all(item["event_contract"] == "AppGen-X" for item in OPERATION_CONTRACTS)
+        and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in OPERATION_CONTRACTS)
+        and all(item["owned_tables"] or item["consumed_event"] for item in command_contracts)
+        and all(item["read_tables"] for item in query_contracts),
+        "pbc": PBC_KEY,
+        "operations": tuple(item["operation"] for item in OPERATION_CONTRACTS),
+        "command_operations": tuple(item["operation"] for item in command_contracts),
+        "query_operations": tuple(item["operation"] for item in query_contracts),
+        "contracts": OPERATION_CONTRACTS,
+        "runtime_service_contract": runtime_service,
+        "side_effects": (),
     }
 
 
-def operation_plan(operation_name, payload=None):
+def operation_plan(operation_name: str, payload: dict | None = None) -> dict:
     """Plan one service operation without mutating state."""
-    contract = next((item for item in OPERATION_CONTRACTS if item['operation'] == operation_name), None)
+    contract = next((item for item in OPERATION_CONTRACTS if item["operation"] == operation_name), None)
     if contract is None:
-        return {'ok': False, 'reason': 'unknown_operation', 'operation': operation_name, 'side_effects': ()}
+        return {"ok": False, "reason": "unknown_operation", "operation": operation_name, "side_effects": ()}
     supplied = dict(payload or {})
-    table_scope = contract['owned_tables'] or contract['read_tables']
+    table_scope = contract["owned_tables"] or contract["read_tables"] or tuple(ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES)
     return {
-        'ok': bool(table_scope) and contract['event_contract'] == 'AppGen-X',
-        'pbc': 'enterprise_search_vector',
-        'operation': operation_name,
-        'operation_kind': contract['operation_kind'],
-        'route': {'method': contract['method'], 'path': contract['path']},
-        'permission': contract['permission'],
-        'owned_tables': contract['owned_tables'],
-        'read_tables': contract['read_tables'],
-        'emitted_event': contract['emitted_event'],
-        'payload_keys': tuple(sorted(supplied)),
-        'transaction_boundary': contract['transaction_boundary'],
-        'event_contract': contract['event_contract'],
-        'side_effects': (),
+        "ok": bool(table_scope) and contract["event_contract"] == "AppGen-X",
+        "pbc": PBC_KEY,
+        "operation": operation_name,
+        "operation_kind": contract["operation_kind"],
+        "route": {"method": contract["method"], "path": contract["path"]},
+        "permission": contract["permission"],
+        "owned_tables": contract["owned_tables"],
+        "read_tables": contract["read_tables"],
+        "emitted_event": contract["emitted_event"],
+        "consumed_event": contract["consumed_event"],
+        "idempotency_key": contract["idempotency_key"],
+        "payload_keys": tuple(sorted(supplied)),
+        "transaction_boundary": contract["transaction_boundary"],
+        "event_contract": contract["event_contract"],
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
+        "side_effects": (),
     }
 
 
 class EnterpriseSearchVectorService:
-    """Side-effect-free generated command facade."""
+    """Side-effect-free service facade for generated route dispatch."""
 
-    def _execute(self, operation_name, payload):
+    def execute_operation(self, operation_name: str, payload: dict | None = None) -> dict:
         plan = operation_plan(operation_name, payload)
-        operation_kind = plan.get('operation_kind')
+        operation_kind = plan.get("operation_kind")
         result = {
-            'ok': plan['ok'],
-            'pbc': 'enterprise_search_vector',
-            'operation': operation_name,
-            'operation_kind': operation_kind,
-            'payload': dict(payload),
-            'operation_contract': plan,
-            'transaction_boundary': plan.get('transaction_boundary'),
-            'side_effects': (),
+            "ok": plan["ok"],
+            "pbc": PBC_KEY,
+            "operation": operation_name,
+            "operation_kind": operation_kind,
+            "payload": dict(payload or {}),
+            "operation_contract": plan,
+            "transaction_boundary": plan.get("transaction_boundary"),
+            "side_effects": (),
         }
-        if operation_kind == 'command':
-            event_type = plan.get('emitted_event')
-            result.update({
-                'command': operation_name,
-                'read_only': False,
-                'outbox_table': EVENT_CONTRACT['outbox_table'],
-                'emits': (event_type,) if event_type else (),
-            })
-        elif operation_kind == 'query':
-            result.update({
-                'query': operation_name,
-                'read_only': True,
-                'outbox_table': None,
-                'emits': (),
-            })
+        if operation_kind == "command":
+            result.update(
+                {
+                    "command": operation_name,
+                    "read_only": False,
+                    "outbox_table": EVENT_CONTRACT["outbox_table"],
+                    "emits": (plan.get("emitted_event"),),
+                    "consumes": plan.get("consumed_event", ()),
+                }
+            )
+        elif operation_kind == "query":
+            result.update(
+                {
+                    "query": operation_name,
+                    "read_only": True,
+                    "outbox_table": None,
+                    "emits": (),
+                }
+            )
         return result
 
-    def _command(self, command_name, payload):
-        return self._execute(command_name, payload)
-
-    def _query(self, query_name, payload):
-        return self._execute(query_name, payload)
-
-    def command_indexes(self, payload=None):
-        return self._command('command_indexes', payload or {})
-
-    def command_embeddings(self, payload=None):
-        return self._command('command_embeddings', payload or {})
-
-    def command_search(self, payload=None):
-        return self._command('command_search', payload or {})
-    def query_enterprise_search_vector_workbench(self, payload=None):
-        return self._query('query_enterprise_search_vector_workbench', payload or {})
+    def __getattr__(self, operation_name: str):
+        if operation_name in service_operation_contracts()["operations"]:
+            return lambda payload=None: self.execute_operation(operation_name, payload or {})
+        raise AttributeError(operation_name)
 
 
-def service_operation_manifest():
+def service_operation_manifest() -> dict:
     """Return the executable service operation surface."""
-    service = EnterpriseSearchVectorService()
-    operations = tuple(
-        name
-        for name in dir(service)
-        if (name.startswith('command_') or name.startswith('query_'))
-        and callable(getattr(service, name))
-    )
+    contracts = service_operation_contracts()
     return {
-        'ok': bool(operations) and service_operation_contracts()['ok'],
-        'pbc': 'enterprise_search_vector',
-        'service_class': service.__class__.__name__,
-        'operations': operations,
-        'command_operations': service_operation_contracts()['command_operations'],
-        'query_operations': service_operation_contracts()['query_operations'],
-        'operation_contracts': service_operation_contracts()['contracts'],
-        'transaction_boundary': 'owned_datastore_plus_outbox',
-        'outbox_table': EVENT_CONTRACT['outbox_table'],
-        'side_effects': (),
+        "ok": contracts["ok"],
+        "pbc": PBC_KEY,
+        "service_class": EnterpriseSearchVectorService.__name__,
+        "operations": contracts["operations"],
+        "command_operations": contracts["command_operations"],
+        "query_operations": contracts["query_operations"],
+        "operation_contracts": contracts["contracts"],
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "outbox_table": EVENT_CONTRACT["outbox_table"],
+        "side_effects": (),
     }
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Execute one side-effect-free service operation through the facade."""
     manifest = service_operation_manifest()
     service = EnterpriseSearchVectorService()
-    operation = manifest['operations'][0] if manifest['operations'] else None
-    result = getattr(service, operation)({'smoke': True}) if operation else {'ok': False}
+    operation = manifest["operations"][0] if manifest["operations"] else None
+    result = service.execute_operation(operation, {"smoke": True}) if operation else {"ok": False}
     return {
-        'ok': manifest['ok']
-        and result.get('ok') is True
-        and result.get('operation_contract', {}).get('ok') is True,
-        'manifest': manifest,
-        'result': result,
-        'side_effects': (),
+        "ok": manifest["ok"] and result.get("ok") is True and result.get("operation_contract", {}).get("ok") is True,
+        "manifest": manifest,
+        "result": result,
+        "side_effects": (),
     }
