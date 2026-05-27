@@ -6,6 +6,8 @@ from .runtime import streaming_analytics_build_api_contract
 from .services import StreamingAnalyticsService
 from .services import service_operation_contracts
 
+PBC_KEY = "streaming_analytics"
+
 
 def _method_path(route: str) -> tuple[str, str]:
     method, path = route.split(" ", 1)
@@ -22,7 +24,7 @@ def _route_rows() -> tuple[dict, ...]:
         rows.append(
             {
                 "method": method,
-                "path": path,
+                "path": f"/api/pbc/{PBC_KEY}{path}",
                 "handler": operation,
                 "permission": route["requires_permission"],
             }
@@ -34,10 +36,15 @@ ROUTES = _route_rows()
 
 
 def _route_contracts() -> tuple[dict, ...]:
-    operation_index = {item["operation"]: item for item in service_operation_contracts()["contracts"]}
     contracts = []
     for route in ROUTES:
-        service_operation = operation_index[route["handler"]]
+        service_operation = next(
+            item
+            for item in service_operation_contracts()["contracts"]
+            if item["operation"] == route["handler"]
+            and item["method"] == route["method"]
+            and f"/api/pbc/{PBC_KEY}{item['path']}" == route["path"]
+        )
         idempotency_required = service_operation["operation_kind"] == "command"
         contracts.append(
             {
@@ -51,7 +58,7 @@ def _route_contracts() -> tuple[dict, ...]:
                 "event_contract": "AppGen-X",
                 "transaction_boundary": "owned_datastore_plus_outbox",
                 "idempotency_required": idempotency_required,
-                "idempotency_key": f"streaming_analytics:{route['handler']}:idempotency_key" if idempotency_required else None,
+                "idempotency_key": f"{PBC_KEY}:{route['handler']}:idempotency_key" if idempotency_required else None,
                 "shared_table_access": False,
                 "stream_engine_picker_visible": False,
             }
@@ -70,11 +77,19 @@ def register_routes(app=None):
 def api_route_contracts() -> dict:
     """Return executable API route contracts with policy and boundary evidence."""
     service_contracts = service_operation_contracts()["contracts"]
-    operation_index = {item["operation"]: item for item in service_contracts}
     contracts = tuple(
         {
             **contract,
-            "service_operation": operation_index.get(contract["operation"]),
+            "service_operation": next(
+                (
+                    item
+                    for item in service_contracts
+                    if item["operation"] == contract["operation"]
+                    and item["method"] == contract["method"]
+                    and f"/api/pbc/{PBC_KEY}{item['path']}" == contract["path"]
+                ),
+                None,
+            ),
             "route_id": f"{contract['method']} {contract['path']}",
         }
         for contract in API_ROUTE_CONTRACTS
@@ -85,7 +100,7 @@ def api_route_contracts() -> dict:
         and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in contracts)
         and all(item["stream_engine_picker_visible"] is False for item in contracts)
         and all(item["shared_table_access"] is False for item in contracts),
-        "pbc": "streaming_analytics",
+        "pbc": PBC_KEY,
         "contracts": contracts,
         "routes": tuple(item["route_id"] for item in contracts),
         "side_effects": (),
@@ -101,7 +116,7 @@ def validate_api_route_contracts() -> dict:
         for item in contracts
         if not item["service_operation"]
         or item["service_operation"]["method"] != item["method"]
-        or item["service_operation"]["path"] != item["path"]
+        or f"/api/pbc/{PBC_KEY}{item['service_operation']['path']}" != item["path"]
         or item["service_operation"]["permission"] != item["permission"]
     )
     missing_idempotency = tuple(
@@ -113,11 +128,11 @@ def validate_api_route_contracts() -> dict:
         item["route_id"]
         for item in contracts
         for table in item["owned_tables"] + item["read_tables"]
-        if not table.startswith("streaming_analytics_")
+        if not table.startswith(f"{PBC_KEY}_")
     )
     return {
         "ok": manifest["ok"] and not service_mismatches and not missing_idempotency and not invalid_table_scope,
-        "pbc": "streaming_analytics",
+        "pbc": PBC_KEY,
         "contracts": contracts,
         "service_mismatches": service_mismatches,
         "missing_idempotency": missing_idempotency,
