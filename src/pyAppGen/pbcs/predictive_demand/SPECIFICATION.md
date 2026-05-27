@@ -33,6 +33,13 @@ The package owns exactly these operational tables:
   signal date, source, payload, driver weight, and signal audit proof.
 - `forecast_result`: published forecast, confidence band, recommended supply,
   shortage quantity, planning action, model/run references, and audit proof.
+- `planning_horizon`, `forecast_driver`, `consensus_adjustment`,
+  `scenario_version`, `shortage_risk`, `replenishment_recommendation`,
+  `forecast_exception`, `model_drift_signal`, `planning_rule`,
+  `planning_parameter`, `governed_model_evidence`, and
+  `forecast_audit_proof`: complete planning governance, causal-driver,
+  scenario, shortage, replenishment, exception, drift, rule, parameter,
+  model-evidence, and cryptographic audit surfaces.
 
 The PBC does not read or write shared order, inventory, KPI, material, planning,
 or finance tables. External information arrives through declared AppGen-X events
@@ -56,15 +63,19 @@ such as `inventory_pool`.
 `predictive_demand_build_schema_contract()` is the package-local generated
 schema descriptor for Predictive Demand. It publishes:
 
-- Owned tables: `forecast_model`, `forecast_run`, `demand_signal`, and
-  `forecast_result`.
+- Owned tables: `forecast_model`, `forecast_run`, `demand_signal`,
+  `forecast_result`, `planning_horizon`, `forecast_driver`,
+  `consensus_adjustment`, `scenario_version`, `shortage_risk`,
+  `replenishment_recommendation`, `forecast_exception`,
+  `model_drift_signal`, `planning_rule`, `planning_parameter`,
+  `governed_model_evidence`, and `forecast_audit_proof`.
 - Runtime AppGen-X event tables:
   `predictive_demand_appgen_outbox_event`,
   `predictive_demand_appgen_inbox_event`, and
   `predictive_demand_dead_letter_event`.
-- Generated migration artifacts at
-  `pbcs/predictive_demand/migrations/001_forecast_model.sql` through
-  `pbcs/predictive_demand/migrations/004_forecast_result.sql`.
+- Generated migration artifacts in
+  `pbcs/predictive_demand/migrations/001_initial.sql` for every owned
+  planning table and AppGen-X event table.
 - Generated model artifacts under
   `pyAppGen.pbcs.predictive_demand.models.*`.
 - Owned-table relationships from `forecast_run.model_id` to
@@ -293,6 +304,18 @@ This appendix is generated from the package manifest and is release-gated so the
 - `forecast_run`
 - `demand_signal`
 - `forecast_result`
+- `planning_horizon`
+- `forecast_driver`
+- `consensus_adjustment`
+- `scenario_version`
+- `shortage_risk`
+- `replenishment_recommendation`
+- `forecast_exception`
+- `model_drift_signal`
+- `planning_rule`
+- `planning_parameter`
+- `governed_model_evidence`
+- `forecast_audit_proof`
 
 ### API Routes
 

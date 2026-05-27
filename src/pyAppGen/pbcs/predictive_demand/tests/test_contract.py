@@ -13,6 +13,20 @@ def test_generated_schema_service_and_release_evidence():
     assert SCHEMA_CONTRACT['pbc'] == 'predictive_demand'
     assert SCHEMA_CONTRACT['ok'] is True
     assert SCHEMA_CONTRACT['owned_tables']
+    assert len(SCHEMA_CONTRACT['owned_tables']) >= 16
+    assert 'planning_horizon' in SCHEMA_CONTRACT['owned_tables']
+    assert 'forecast_driver' in SCHEMA_CONTRACT['owned_tables']
+    assert 'consensus_adjustment' in SCHEMA_CONTRACT['owned_tables']
+    assert 'scenario_version' in SCHEMA_CONTRACT['owned_tables']
+    assert 'shortage_risk' in SCHEMA_CONTRACT['owned_tables']
+    assert 'replenishment_recommendation' in SCHEMA_CONTRACT['owned_tables']
+    assert 'forecast_exception' in SCHEMA_CONTRACT['owned_tables']
+    assert 'model_drift_signal' in SCHEMA_CONTRACT['owned_tables']
+    assert 'planning_rule' in SCHEMA_CONTRACT['owned_tables']
+    assert 'planning_parameter' in SCHEMA_CONTRACT['owned_tables']
+    assert 'governed_model_evidence' in SCHEMA_CONTRACT['owned_tables']
+    assert 'forecast_audit_proof' in SCHEMA_CONTRACT['owned_tables']
+    assert all(len(table['fields']) >= 8 for table in SCHEMA_CONTRACT['tables'])
     schema_smoke = schema_contract.smoke_test()
     model_smoke = models.smoke_test()
     assert schema_smoke['ok'] is True
