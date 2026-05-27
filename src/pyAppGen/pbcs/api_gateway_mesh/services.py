@@ -1,140 +1,154 @@
 """Command service layer for the api_gateway_mesh PBC."""
 
-EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.api_gateway_mesh.events', 'inbox_topic': 'pbc.api_gateway_mesh.inbox', 'outbox_table': 'api_gateway_mesh_appgen_outbox_event', 'inbox_table': 'api_gateway_mesh_appgen_inbox_event', 'dead_letter_table': 'api_gateway_mesh_appgen_dead_letter_event', 'emitted': ({'event_type': 'RoutePublished', 'schema': 'api_gateway_mesh.route_published.emitted.v1', 'topic': 'pbc.api_gateway_mesh.events', 'outbox_table': 'api_gateway_mesh_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'ServiceHealthChanged', 'schema': 'api_gateway_mesh.service_health_changed.emitted.v1', 'topic': 'pbc.api_gateway_mesh.events', 'outbox_table': 'api_gateway_mesh_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'PbcDeployed', 'schema': 'api_gateway_mesh.pbc_deployed.consumed.v1', 'topic': 'pbc.api_gateway_mesh.inbox', 'inbox_table': 'api_gateway_mesh_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'AccessPolicyChanged', 'schema': 'api_gateway_mesh.access_policy_changed.consumed.v1', 'topic': 'pbc.api_gateway_mesh.inbox', 'inbox_table': 'api_gateway_mesh_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'api_gateway_mesh_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'api_gateway_mesh_appgen_inbox_event'}}
+from __future__ import annotations
+
+from .events import EVENT_CONTRACT
+from .runtime import api_gateway_mesh_build_api_contract
+from .runtime import api_gateway_mesh_build_service_contract
+
+PBC_KEY = "api_gateway_mesh"
 
 
-OPERATION_CONTRACTS = ({'operation': 'command_routes', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/api_gateway_mesh/routes', 'permission': 'api_gateway_mesh.command.1', 'owned_tables': ('api_gateway_mesh_service_route', 'api_gateway_mesh_rate_limit_policy', 'api_gateway_mesh_mtls_identity', 'api_gateway_mesh_traffic_sample'), 'read_tables': (), 'emitted_event': 'RoutePublished', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_rate_limits', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/api_gateway_mesh/rate-limits', 'permission': 'api_gateway_mesh.command.2', 'owned_tables': ('api_gateway_mesh_service_route', 'api_gateway_mesh_rate_limit_policy', 'api_gateway_mesh_mtls_identity', 'api_gateway_mesh_traffic_sample'), 'read_tables': (), 'emitted_event': 'ServiceHealthChanged', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_service_map', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/api_gateway_mesh/service-map', 'permission': 'api_gateway_mesh.query.3', 'owned_tables': (), 'read_tables': ('api_gateway_mesh_service_route', 'api_gateway_mesh_rate_limit_policy', 'api_gateway_mesh_mtls_identity', 'api_gateway_mesh_traffic_sample'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
-
-
-def service_operation_contracts():
-    """Return route-bound service operation contracts for this PBC."""
-    operations = tuple(item['operation'] for item in OPERATION_CONTRACTS)
-    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'command')
-    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'query')
+def _route_to_contract(route: dict) -> dict:
+    method, path = route["route"].split(" ", 1)
+    operation = route.get("command") or route.get("query")
+    operation_kind = "command" if route.get("command") else "query"
+    owned_tables = tuple(
+        table if table.startswith(f"{PBC_KEY}_") else f"{PBC_KEY}_{table}"
+        for table in route.get("owned_tables", ())
+    )
+    is_command = operation_kind == "command"
     return {
-        'ok': bool(OPERATION_CONTRACTS)
-        and all(item['event_contract'] == 'AppGen-X' for item in OPERATION_CONTRACTS)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in OPERATION_CONTRACTS)
-        and all(item['emitted_event'] for item in command_contracts)
-        and all(item['owned_tables'] and not item['read_tables'] for item in command_contracts)
-        and all(item['emitted_event'] is None for item in query_contracts)
-        and all(item['read_tables'] and not item['owned_tables'] for item in query_contracts),
-        'pbc': 'api_gateway_mesh',
-        'operations': operations,
-        'command_operations': tuple(item['operation'] for item in command_contracts),
-        'query_operations': tuple(item['operation'] for item in query_contracts),
-        'contracts': OPERATION_CONTRACTS,
-        'side_effects': (),
+        "operation": operation,
+        "operation_kind": operation_kind,
+        "method": method,
+        "path": path,
+        "permission": route["requires_permission"],
+        "owned_tables": owned_tables if is_command else (),
+        "read_tables": () if is_command else owned_tables,
+        "emitted_event": tuple(route.get("emits", ())),
+        "consumed_event": tuple(route.get("consumes", ())),
+        "idempotency_key": route.get("idempotency_key"),
+        "dependency_apis": tuple(route.get("dependency_apis", ())),
+        "dependency_projections": tuple(route.get("dependency_projections", ())),
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
     }
 
 
-def operation_plan(operation_name, payload=None):
-    """Plan one service operation without mutating state."""
-    contract = next((item for item in OPERATION_CONTRACTS if item['operation'] == operation_name), None)
-    if contract is None:
-        return {'ok': False, 'reason': 'unknown_operation', 'operation': operation_name, 'side_effects': ()}
-    supplied = dict(payload or {})
-    table_scope = contract['owned_tables'] or contract['read_tables']
+OPERATION_CONTRACTS = tuple(
+    _route_to_contract(route) for route in api_gateway_mesh_build_api_contract()["routes"]
+)
+
+
+def service_operation_contracts() -> dict:
+    """Return route-bound service operation contracts for this PBC."""
+    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "command")
+    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "query")
+    runtime_service = api_gateway_mesh_build_service_contract()
     return {
-        'ok': bool(table_scope) and contract['event_contract'] == 'AppGen-X',
-        'pbc': 'api_gateway_mesh',
-        'operation': operation_name,
-        'operation_kind': contract['operation_kind'],
-        'route': {'method': contract['method'], 'path': contract['path']},
-        'permission': contract['permission'],
-        'owned_tables': contract['owned_tables'],
-        'read_tables': contract['read_tables'],
-        'emitted_event': contract['emitted_event'],
-        'payload_keys': tuple(sorted(supplied)),
-        'transaction_boundary': contract['transaction_boundary'],
-        'event_contract': contract['event_contract'],
-        'side_effects': (),
+        "ok": runtime_service["ok"]
+        and bool(OPERATION_CONTRACTS)
+        and all(item["event_contract"] == "AppGen-X" for item in OPERATION_CONTRACTS)
+        and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in OPERATION_CONTRACTS)
+        and all(item["owned_tables"] or item["consumed_event"] for item in command_contracts)
+        and all(item["read_tables"] for item in query_contracts),
+        "pbc": PBC_KEY,
+        "operations": tuple(item["operation"] for item in OPERATION_CONTRACTS),
+        "command_operations": tuple(item["operation"] for item in command_contracts),
+        "query_operations": tuple(item["operation"] for item in query_contracts),
+        "contracts": OPERATION_CONTRACTS,
+        "runtime_service_contract": runtime_service,
+        "side_effects": (),
+    }
+
+
+def operation_plan(operation_name: str, payload: dict | None = None) -> dict:
+    """Plan one service operation without mutating state."""
+    contract = next((item for item in OPERATION_CONTRACTS if item["operation"] == operation_name), None)
+    if contract is None:
+        return {"ok": False, "reason": "unknown_operation", "operation": operation_name, "side_effects": ()}
+    supplied = dict(payload or {})
+    return {
+        "ok": bool(contract["owned_tables"] or contract["read_tables"] or contract["consumed_event"]),
+        "pbc": PBC_KEY,
+        "operation": operation_name,
+        "operation_kind": contract["operation_kind"],
+        "route": {"method": contract["method"], "path": contract["path"]},
+        "permission": contract["permission"],
+        "owned_tables": contract["owned_tables"],
+        "read_tables": contract["read_tables"],
+        "emitted_event": contract["emitted_event"],
+        "consumed_event": contract["consumed_event"],
+        "idempotency_key": contract["idempotency_key"],
+        "dependency_apis": contract["dependency_apis"],
+        "dependency_projections": contract["dependency_projections"],
+        "payload_keys": tuple(sorted(supplied)),
+        "transaction_boundary": contract["transaction_boundary"],
+        "event_contract": contract["event_contract"],
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
     }
 
 
 class ApiGatewayMeshService:
     """Side-effect-free generated command facade."""
 
-    def _execute(self, operation_name, payload):
+    def execute_operation(self, operation_name: str, payload: dict | None = None) -> dict:
         plan = operation_plan(operation_name, payload)
-        operation_kind = plan.get('operation_kind')
         result = {
-            'ok': plan['ok'],
-            'pbc': 'api_gateway_mesh',
-            'operation': operation_name,
-            'operation_kind': operation_kind,
-            'payload': dict(payload),
-            'operation_contract': plan,
-            'transaction_boundary': plan.get('transaction_boundary'),
-            'side_effects': (),
+            "ok": plan["ok"],
+            "pbc": PBC_KEY,
+            "operation": operation_name,
+            "operation_kind": plan.get("operation_kind"),
+            "payload": dict(payload or {}),
+            "operation_contract": plan,
+            "transaction_boundary": plan.get("transaction_boundary"),
+            "side_effects": (),
         }
-        if operation_kind == 'command':
-            event_type = plan.get('emitted_event')
-            result.update({
-                'command': operation_name,
-                'read_only': False,
-                'outbox_table': EVENT_CONTRACT['outbox_table'],
-                'emits': (event_type,) if event_type else (),
-            })
-        elif operation_kind == 'query':
-            result.update({
-                'query': operation_name,
-                'read_only': True,
-                'outbox_table': None,
-                'emits': (),
-            })
+        if plan.get("operation_kind") == "command":
+            result.update(
+                {
+                    "command": operation_name,
+                    "read_only": False,
+                    "outbox_table": EVENT_CONTRACT["outbox_table"],
+                    "emits": plan.get("emitted_event", ()),
+                }
+            )
+        elif plan.get("operation_kind") == "query":
+            result.update({"query": operation_name, "read_only": True, "outbox_table": None, "emits": ()})
         return result
 
-    def _command(self, command_name, payload):
-        return self._execute(command_name, payload)
-
-    def _query(self, query_name, payload):
-        return self._execute(query_name, payload)
-
-    def command_routes(self, payload=None):
-        return self._command('command_routes', payload or {})
-
-    def command_rate_limits(self, payload=None):
-        return self._command('command_rate_limits', payload or {})
-
-    def query_service_map(self, payload=None):
-        return self._query('query_service_map', payload or {})
+    def __getattr__(self, operation_name: str):
+        if operation_name in service_operation_contracts()["operations"]:
+            return lambda payload=None: self.execute_operation(operation_name, payload or {})
+        raise AttributeError(operation_name)
 
 
-def service_operation_manifest():
+def service_operation_manifest() -> dict:
     """Return the executable service operation surface."""
-    service = ApiGatewayMeshService()
-    operations = tuple(
-        name
-        for name in dir(service)
-        if (name.startswith('command_') or name.startswith('query_'))
-        and callable(getattr(service, name))
-    )
+    contracts = service_operation_contracts()
     return {
-        'ok': bool(operations) and service_operation_contracts()['ok'],
-        'pbc': 'api_gateway_mesh',
-        'service_class': service.__class__.__name__,
-        'operations': operations,
-        'command_operations': service_operation_contracts()['command_operations'],
-        'query_operations': service_operation_contracts()['query_operations'],
-        'operation_contracts': service_operation_contracts()['contracts'],
-        'transaction_boundary': 'owned_datastore_plus_outbox',
-        'outbox_table': EVENT_CONTRACT['outbox_table'],
-        'side_effects': (),
+        "ok": contracts["ok"],
+        "pbc": PBC_KEY,
+        "service_class": ApiGatewayMeshService.__name__,
+        "operations": contracts["operations"],
+        "command_operations": contracts["command_operations"],
+        "query_operations": contracts["query_operations"],
+        "operation_contracts": contracts["contracts"],
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "outbox_table": EVENT_CONTRACT["outbox_table"],
+        "side_effects": (),
     }
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Execute one side-effect-free service operation through the facade."""
     manifest = service_operation_manifest()
     service = ApiGatewayMeshService()
-    operation = manifest['operations'][0] if manifest['operations'] else None
-    result = getattr(service, operation)({'smoke': True}) if operation else {'ok': False}
-    return {
-        'ok': manifest['ok']
-        and result.get('ok') is True
-        and result.get('operation_contract', {}).get('ok') is True,
-        'manifest': manifest,
-        'result': result,
-        'side_effects': (),
-    }
+    operation = manifest["operations"][0] if manifest["operations"] else None
+    result = service.execute_operation(operation, {"smoke": True}) if operation else {"ok": False}
+    return {"ok": manifest["ok"] and result.get("ok") is True, "manifest": manifest, "result": result, "side_effects": ()}

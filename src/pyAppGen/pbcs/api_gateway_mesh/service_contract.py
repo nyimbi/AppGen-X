@@ -1,6 +1,14 @@
 """Generated service evidence for the api_gateway_mesh PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.api-gateway-mesh-service-contract.v1', 'ok': True, 'transaction_boundary': 'api_gateway_mesh_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'register_service', 'register_mtls_identity', 'publish_route', 'apply_rate_limit', 'record_health', 'record_traffic_sample', 'run_control_tests', 'register_governed_model', 'run_resilience_drill', 'rotate_crypto_epoch'), 'query_methods': ('build_service_map', 'build_workbench_view', 'simulate_traffic_policy', 'forecast_route_health', 'parse_route_request', 'score_route_risk', 'recommend_exception_resolution', 'select_route', 'generate_route_proof', 'screen_policy', 'federate_service_view', 'verify_service_identity', 'schedule_carbon_aware_routing', 'optimize_routes', 'allocate_traffic', 'detect_traffic_anomaly', 'model_stochastic_traffic_exposure', 'build_api_contract', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'verify_owned_table_boundary'), 'mutates_only': ('service_registration', 'endpoint_catalog', 'service_route', 'route_version', 'rate_limit_policy', 'mtls_identity', 'traffic_policy', 'retry_budget', 'circuit_breaker', 'fallback_route', 'service_health', 'traffic_sample', 'gateway_rule', 'gateway_parameter', 'gateway_configuration', 'gateway_service_map_projection', 'gateway_route_contract_projection', 'gateway_policy_screening', 'gateway_route_publication_proof', 'gateway_federation_projection', 'gateway_resilience_drill', 'gateway_crypto_epoch', 'gateway_carbon_routing_window', 'gateway_route_optimization', 'gateway_traffic_allocation', 'gateway_anomaly_signal', 'gateway_stochastic_exposure', 'gateway_parsed_request', 'gateway_control_assertion', 'gateway_governed_model', 'gateway_retry_evidence', 'gateway_health_forecast', 'gateway_exception_resolution', 'gateway_route_risk_score', 'gateway_route_selection', 'api_gateway_mesh_appgen_outbox_event', 'api_gateway_mesh_appgen_inbox_event', 'api_gateway_mesh_dead_letter_event'), 'external_dependencies': {'apis': ('GET /identity/policies', 'GET /schemas/routes', 'POST /audit/route-events', 'POST /composition/services'), 'events': ('PbcDeployed', 'AccessPolicyChanged', 'SchemaAccepted', 'AuditEventSealed', 'TenantProvisioned'), 'api_projections': ('identity_policy_projection', 'schema_contract_projection', 'audit_route_projection', 'composition_service_projection', 'pbc_deployment_projection', 'tenant_gateway_projection'), 'shared_tables': ()}, 'pbc': 'api_gateway_mesh', 'shared_table_access': False}
+from __future__ import annotations
+
+from .runtime import api_gateway_mesh_build_service_contract
+
+SERVICE_CONTRACT = {
+    **api_gateway_mesh_build_service_contract(),
+    "pbc": "api_gateway_mesh",
+    "shared_table_access": False,
+}
 
 
 def build_service_contract():

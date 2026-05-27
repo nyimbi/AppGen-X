@@ -2427,3 +2427,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and side-effect-free artifact replay alongside style, timeline, effect, scene,
   and target package asset checks. Verification is focused under the
   low-battery delivery constraint. Commit: `2711b0b`.
+- Current `api_gateway_mesh` PBC pass removes stale static generated wrappers
+  from the gateway mesh package surface. Generated service, route,
+  service-contract, and release-evidence modules now bind directly to the
+  executable gateway runtime contract, including service registration, route
+  publication, rate limits, mTLS identity, health, traffic samples, inbox
+  handlers, gateway contracts, dependency API/projection evidence, AppGen-X
+  eventing, owned-table boundaries, idempotency, and release evidence.
+  Verification is focused under the low-battery delivery constraint: package
+  Python compile, runtime smoke, focused package contract tests, package
+  service/route/release smokes, source artifact contract, implementation
+  release audit, generation smoke audit, specification contract, and restricted
+  legacy-name scan all passed. Commit: `pending`.
