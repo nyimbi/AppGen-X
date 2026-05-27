@@ -2518,6 +2518,19 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   service/route/service-contract/release smokes, source artifact contract,
   implementation release audit, generation smoke audit, specification contract,
   and restricted legacy-name scan all passed. Commit: `8c82a8e`.
+- Current `multi_sided_market` PBC pass turns capability assurance into
+  executable coverage evidence instead of placeholder success. Every standard
+  market feature and advanced capability now maps to concrete runtime/service
+  operations, including participant onboarding, goods/service listings,
+  availability, booking, rental, loan, barter, trade, sale, escrow, settlement,
+  reputation, disputes, document instruction intake, governed CRUD, exchange
+  graph matching, counterfactual simulation, collusion detection,
+  privacy-preserving reputation proofs, carbon-aware fulfillment, and cross-PBC
+  integration. Verification is focused to the PBC slice: package Python compile,
+  runtime smoke, focused package contract tests, package
+  capability/service/route/service-contract/release smokes, source artifact
+  contract, implementation release audit, generation smoke audit, specification
+  contract, and restricted legacy-name scan all passed. Commit: `9498b68`.
 - Current visual depth runtime smoke pass exposes required visual design and
   runtime operations plus collected operations directly from generated visual
   depth runtime smoke. Generated consumers can now inspect style authoring,
