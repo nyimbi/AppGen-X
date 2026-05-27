@@ -1,54 +1,144 @@
-"""Generated owned schema evidence for the service_ticketing PBC."""
+"""Owned schema evidence for the service_ticketing PBC."""
 
-SCHEMA_CONTRACT = {'format': 'appgen.service-ticketing-owned-schema-contract.v1', 'ok': True, 'pbc': 'service_ticketing', 'owned_tables': ('service_ticketing_support_ticket', 'service_ticketing_sla_policy', 'service_ticketing_case_assignment', 'service_ticketing_escalation_event'), 'tables': ({'logical_table': 'support_ticket', 'owned_table': 'service_ticketing_support_ticket', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'logical_table': 'sla_policy', 'owned_table': 'service_ticketing_sla_policy', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'support_ticket_id', 'type': 'integer', 'required': True, 'references': 'service_ticketing_support_ticket.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'support_ticket_id', 'target_table': 'service_ticketing_support_ticket', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'case_assignment', 'owned_table': 'service_ticketing_case_assignment', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'support_ticket_id', 'type': 'integer', 'required': True, 'references': 'service_ticketing_support_ticket.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'support_ticket_id', 'target_table': 'service_ticketing_support_ticket', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'escalation_event', 'owned_table': 'service_ticketing_escalation_event', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'support_ticket_id', 'type': 'integer', 'required': True, 'references': 'service_ticketing_support_ticket.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'support_ticket_id', 'target_table': 'service_ticketing_support_ticket', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'runtime_tables': ({'table': 'service_ticketing_appgen_outbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'idempotency_key', 'published_at', 'audit_hash')}, {'table': 'service_ticketing_appgen_inbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'idempotency_key', 'attempts', 'handled_at', 'audit_hash')}, {'table': 'service_ticketing_dead_letter_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'idempotency_key', 'reason', 'attempts', 'audit_hash')}), 'migrations': ('migrations/001_initial.sql',), 'models': ({'class_name': 'ServiceTicketingSupportTicket', 'table': 'service_ticketing_support_ticket', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'class_name': 'ServiceTicketingSlaPolicy', 'table': 'service_ticketing_sla_policy', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'support_ticket_id', 'type': 'integer', 'required': True, 'references': 'service_ticketing_support_ticket.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'support_ticket_id', 'target_table': 'service_ticketing_support_ticket', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'ServiceTicketingCaseAssignment', 'table': 'service_ticketing_case_assignment', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'support_ticket_id', 'type': 'integer', 'required': True, 'references': 'service_ticketing_support_ticket.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'support_ticket_id', 'target_table': 'service_ticketing_support_ticket', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'ServiceTicketingEscalationEvent', 'table': 'service_ticketing_escalation_event', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'support_ticket_id', 'type': 'integer', 'required': True, 'references': 'service_ticketing_support_ticket.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'support_ticket_id', 'target_table': 'service_ticketing_support_ticket', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'migration_descriptors': ({'path': 'pbcs/service_ticketing/migrations/001_support_ticket.sql', 'operation': 'create_owned_table', 'table': 'support_ticket', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/002_service_queue.sql', 'operation': 'create_owned_table', 'table': 'service_queue', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/003_sla_policy.sql', 'operation': 'create_owned_table', 'table': 'sla_policy', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/004_service_priority.sql', 'operation': 'create_owned_table', 'table': 'service_priority', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/005_case_assignment.sql', 'operation': 'create_owned_table', 'table': 'case_assignment', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/006_escalation_event.sql', 'operation': 'create_owned_table', 'table': 'escalation_event', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/007_ticket_interaction.sql', 'operation': 'create_owned_table', 'table': 'ticket_interaction', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/008_knowledge_suggestion.sql', 'operation': 'create_owned_table', 'table': 'knowledge_suggestion', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/009_entitlement_snapshot.sql', 'operation': 'create_owned_table', 'table': 'entitlement_snapshot', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/010_case_lifecycle_state.sql', 'operation': 'create_owned_table', 'table': 'case_lifecycle_state', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/011_field_service_handoff.sql', 'operation': 'create_owned_table', 'table': 'field_service_handoff', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/012_customer_update.sql', 'operation': 'create_owned_table', 'table': 'customer_update', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/013_resolution_record.sql', 'operation': 'create_owned_table', 'table': 'resolution_record', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/014_csat_response.sql', 'operation': 'create_owned_table', 'table': 'csat_response', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/015_ticket_audit_log.sql', 'operation': 'create_owned_table', 'table': 'ticket_audit_log', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/016_automation_insight.sql', 'operation': 'create_owned_table', 'table': 'automation_insight', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/017_service_rule.sql', 'operation': 'create_owned_table', 'table': 'service_rule', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/018_service_parameter.sql', 'operation': 'create_owned_table', 'table': 'service_parameter', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/service_ticketing/migrations/019_service_configuration.sql', 'operation': 'create_owned_table', 'table': 'service_configuration', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}), 'model_descriptors': ({'class_name': 'SupportTicket', 'table': 'support_ticket', 'module': 'pbcs/service_ticketing/models/SupportTicket.py', 'fields': ('tenant', 'ticket_id', 'customer_id', 'subject', 'description', 'channel', 'priority', 'region', 'queue', 'assignment_id', 'sla_policy_id', 'status', 'breach_risk', 'next_best_response', 'audit_hash')}, {'class_name': 'ServiceQueue', 'table': 'service_queue', 'module': 'pbcs/service_ticketing/models/ServiceQueue.py', 'fields': ('tenant', 'queue_id', 'name', 'assignment_mode', 'service_tier', 'default_owner', 'workbench_limit', 'audit_hash')}, {'class_name': 'SlaPolicy', 'table': 'sla_policy', 'module': 'pbcs/service_ticketing/models/SlaPolicy.py', 'fields': ('tenant', 'sla_policy_id', 'name', 'priority', 'first_response_minutes', 'resolution_target_hours', 'status', 'audit_hash')}, {'class_name': 'ServicePriority', 'table': 'service_priority', 'module': 'pbcs/service_ticketing/models/ServicePriority.py', 'fields': ('tenant', 'priority_id', 'display_order', 'severity_score', 'default_response_minutes', 'default_resolution_hours', 'status', 'audit_hash')}, {'class_name': 'CaseAssignment', 'table': 'case_assignment', 'module': 'pbcs/service_ticketing/models/CaseAssignment.py', 'fields': ('tenant', 'assignment_id', 'ticket_id', 'owner', 'queue', 'skills', 'assignment_score', 'status', 'audit_hash')}, {'class_name': 'EscalationEvent', 'table': 'escalation_event', 'module': 'pbcs/service_ticketing/models/EscalationEvent.py', 'fields': ('tenant', 'escalation_id', 'ticket_id', 'reason', 'breach_risk', 'queue', 'status', 'audit_hash')}, {'class_name': 'TicketInteraction', 'table': 'ticket_interaction', 'module': 'pbcs/service_ticketing/models/TicketInteraction.py', 'fields': ('tenant', 'interaction_id', 'ticket_id', 'interaction_type', 'channel', 'actor', 'summary', 'audit_hash')}, {'class_name': 'KnowledgeSuggestion', 'table': 'knowledge_suggestion', 'module': 'pbcs/service_ticketing/models/KnowledgeSuggestion.py', 'fields': ('tenant', 'suggestion_id', 'ticket_id', 'customer_id', 'source', 'article_ref', 'recommendation', 'confidence', 'audit_hash')}, {'class_name': 'EntitlementSnapshot', 'table': 'entitlement_snapshot', 'module': 'pbcs/service_ticketing/models/EntitlementSnapshot.py', 'fields': ('tenant', 'snapshot_id', 'customer_id', 'tier', 'entitlements', 'coverage_status', 'source_event', 'audit_hash')}, {'class_name': 'CaseLifecycleState', 'table': 'case_lifecycle_state', 'module': 'pbcs/service_ticketing/models/CaseLifecycleState.py', 'fields': ('tenant', 'ticket_id', 'stage', 'status', 'history', 'current_owner', 'current_queue', 'audit_hash')}, {'class_name': 'FieldServiceHandoff', 'table': 'field_service_handoff', 'module': 'pbcs/service_ticketing/models/FieldServiceHandoff.py', 'fields': ('tenant', 'handoff_id', 'ticket_id', 'assignment_id', 'handoff_reason', 'target_team', 'status', 'audit_hash')}, {'class_name': 'CustomerUpdate', 'table': 'customer_update', 'module': 'pbcs/service_ticketing/models/CustomerUpdate.py', 'fields': ('tenant', 'update_id', 'ticket_id', 'customer_id', 'update_type', 'delivery_channel', 'message', 'audit_hash')}, {'class_name': 'ResolutionRecord', 'table': 'resolution_record', 'module': 'pbcs/service_ticketing/models/ResolutionRecord.py', 'fields': ('tenant', 'resolution_id', 'ticket_id', 'resolution', 'resolved_by', 'resolution_code', 'audit_hash')}, {'class_name': 'CsatResponse', 'table': 'csat_response', 'module': 'pbcs/service_ticketing/models/CsatResponse.py', 'fields': ('tenant', 'survey_id', 'ticket_id', 'customer_id', 'status', 'sent_at', 'score', 'audit_hash')}, {'class_name': 'TicketAuditLog', 'table': 'ticket_audit_log', 'module': 'pbcs/service_ticketing/models/TicketAuditLog.py', 'fields': ('tenant', 'audit_id', 'entity_table', 'entity_id', 'action', 'payload_digest', 'created_at', 'audit_hash')}, {'class_name': 'AutomationInsight', 'table': 'automation_insight', 'module': 'pbcs/service_ticketing/models/AutomationInsight.py', 'fields': ('tenant', 'insight_id', 'ticket_id', 'insight_type', 'score', 'recommended_action', 'explanation', 'audit_hash')}, {'class_name': 'ServiceRule', 'table': 'service_rule', 'module': 'pbcs/service_ticketing/models/ServiceRule.py', 'fields': ('tenant', 'rule_id', 'scope', 'status', 'allowed_regions', 'allowed_channels', 'allowed_priorities', 'compiled_hash', 'audit_hash')}, {'class_name': 'ServiceParameter', 'table': 'service_parameter', 'module': 'pbcs/service_ticketing/models/ServiceParameter.py', 'fields': ('tenant', 'parameter_name', 'parameter_value', 'bounds', 'compiled_hash', 'audit_hash')}, {'class_name': 'ServiceConfiguration', 'table': 'service_configuration', 'module': 'pbcs/service_ticketing/models/ServiceConfiguration.py', 'fields': ('tenant', 'configuration_id', 'database_backend', 'event_topic', 'event_contract', 'assignment_mode', 'default_region', 'default_timezone', 'audit_hash')}), 'database_backends': ('postgresql',), 'shared_table_access': False, 'tenant_isolation': {'field': 'tenant', 'required': True}, 'schema_extensions': {'allowed': True, 'owned_tables_only': True, 'field_name_pattern': '[a-z][a-z0-9_]*'}, 'declared_dependencies': {'apis': ('GET /customer-context/{customer_id}', 'GET /knowledge/suggestions', 'GET /entitlements/{customer_id}', 'POST /customer-updates', 'POST /field-service/handoffs'), 'events': ('CustomerUpdated', 'PreferenceChanged', 'EntitlementUpdated', 'KnowledgeSuggested'), 'api_projections': ('customer_context_projection', 'preference_projection', 'entitlement_projection', 'knowledge_projection'), 'shared_tables': ()}}
+from __future__ import annotations
+
+from .runtime import SERVICE_TICKETING_ALLOWED_DATABASE_BACKENDS
+from .runtime import SERVICE_TICKETING_OWNED_TABLES
+from .runtime import SERVICE_TICKETING_RUNTIME_TABLES
+from .runtime import service_ticketing_build_schema_contract
 
 
-def build_schema_contract():
-    """Return generated owned schema, migration, and model evidence."""
-    return dict(SCHEMA_CONTRACT)
+def _owned_table_name(table: str) -> str:
+    return table if table.startswith("service_ticketing_") else f"service_ticketing_{table}"
 
 
-def validate_schema_contract():
-    """Validate owned table, migration, model, and datastore evidence."""
-    contract = build_schema_contract()
-    pbc = contract['pbc']
-    owned_tables = tuple(contract.get('owned_tables', ()))
-    raw_model_tables = tuple(
-        model.get('table')
-        for model in contract.get('models', ())
-        if isinstance(model, dict) and model.get('table')
+def _source_table_contract(table: dict) -> dict:
+    owned_table = _owned_table_name(table["table"])
+    relationships = tuple(
+        {
+            "field": relationship["from_field"],
+            "target_table": _owned_table_name(relationship["to_table"]),
+            "target_column": relationship["to_field"],
+            "cardinality": "many-to-one",
+            "ownership": "same_pbc",
+        }
+        for relationship in table.get("relationships", ())
     )
-    model_tables = tuple(
-        table if table.startswith(f'{pbc}_') else f'{pbc}_{table}'
-        for table in raw_model_tables
-    )
-    migration_paths = tuple(contract.get('migrations', ()))
-    allowed_backends = {'postgresql', 'mysql', 'mariadb'}
-    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f'{pbc}_'))
-    missing_models = tuple(table for table in owned_tables if model_tables and table not in model_tables)
-    invalid_backends = tuple(
-        backend for backend in contract.get('database_backends', ()) if backend not in allowed_backends
+    fields = (
+        {"name": "id", "type": "integer", "primary_key": True, "nullable": False},
+        *(
+            {
+                "name": field,
+                "type": "json" if field.endswith(("policy", "entitlements", "history", "explanation")) else "string",
+                "required": field in {"tenant", "status"} or field.endswith("_id"),
+            }
+            for field in table["fields"]
+        ),
+        {"name": "version", "type": "integer", "required": True, "default": 1},
+        {"name": "created_at", "type": "datetime", "required": True},
+        {"name": "updated_at", "type": "datetime", "required": True},
     )
     return {
-        'ok': contract.get('ok') is True
-        and bool(owned_tables)
-        and bool(migration_paths)
-        and not invalid_tables
-        and not missing_models
-        and not invalid_backends
-        and contract.get('shared_table_access') is False,
-        'pbc': pbc,
-        'owned_tables': owned_tables,
-        'raw_model_tables': raw_model_tables,
-        'model_tables': model_tables,
-        'migration_paths': migration_paths,
-        'invalid_tables': invalid_tables,
-        'missing_models': missing_models,
-        'invalid_backends': invalid_backends,
-        'side_effects': (),
+        "logical_table": table["table"],
+        "owned_table": owned_table,
+        "fields": fields,
+        "relationships": relationships,
     }
 
 
-def smoke_test():
+def build_schema_contract() -> dict:
+    """Return generated owned schema, migration, and model evidence."""
+    runtime = service_ticketing_build_schema_contract()
+    tables = tuple(_source_table_contract(table) for table in runtime["tables"])
+    relationships = tuple(
+        relationship
+        for table in tables
+        for relationship in table.get("relationships", ())
+    )
+    runtime_tables = tuple(
+        {
+            "table": table["table"],
+            "fields": tuple(table["fields"]),
+        }
+        for table in runtime["runtime_tables"]
+    )
+    models = tuple(
+        {
+            "class_name": descriptor["class_name"],
+            "table": _owned_table_name(descriptor["table"]),
+            "fields": next(
+                table["fields"]
+                for table in tables
+                if table["logical_table"] == descriptor["table"]
+            ),
+            "relationships": next(
+                table["relationships"]
+                for table in tables
+                if table["logical_table"] == descriptor["table"]
+            ),
+        }
+        for descriptor in runtime["model_descriptors"]
+    )
+    return {
+        **runtime,
+        "owned_tables": tuple(_owned_table_name(table) for table in SERVICE_TICKETING_OWNED_TABLES),
+        "tables": tables,
+        "relationships": relationships,
+        "runtime_tables": runtime_tables,
+        "models": models,
+        "database_backends": SERVICE_TICKETING_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+SCHEMA_CONTRACT = build_schema_contract()
+
+
+def validate_schema_contract() -> dict:
+    """Validate owned table, migration, model, and datastore evidence."""
+    contract = build_schema_contract()
+    pbc = contract["pbc"]
+    owned_tables = tuple(contract.get("owned_tables", ()))
+    model_tables = tuple(model["table"] for model in contract.get("models", ()))
+    relationship_tables = tuple(
+        relationship.get("target_table")
+        for relationship in contract.get("relationships", ())
+        if relationship.get("target_table")
+    )
+    migration_paths = tuple(contract.get("migrations", ()))
+    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f"{pbc}_"))
+    missing_models = tuple(table for table in owned_tables if table not in model_tables)
+    cross_pbc_relationships = tuple(
+        table for table in relationship_tables if not table.startswith(f"{pbc}_")
+    )
+    invalid_backends = tuple(
+        backend
+        for backend in contract.get("database_backends", ())
+        if backend not in {"postgresql", "mysql", "mariadb"}
+    )
+    return {
+        "ok": contract.get("ok") is True
+        and len(owned_tables) == len(SERVICE_TICKETING_OWNED_TABLES)
+        and tuple(table["table"] for table in contract["runtime_tables"]) == SERVICE_TICKETING_RUNTIME_TABLES
+        and bool(migration_paths)
+        and not invalid_tables
+        and not missing_models
+        and not cross_pbc_relationships
+        and not invalid_backends
+        and contract.get("shared_table_access") is False,
+        "pbc": pbc,
+        "owned_tables": owned_tables,
+        "model_tables": model_tables,
+        "relationship_tables": relationship_tables,
+        "migration_paths": migration_paths,
+        "invalid_tables": invalid_tables,
+        "missing_models": missing_models,
+        "cross_pbc_relationships": cross_pbc_relationships,
+        "invalid_backends": invalid_backends,
+        "side_effects": (),
+    }
+
+
+def smoke_test() -> dict:
     """Exercise schema validation side-effect-free."""
     return validate_schema_contract()

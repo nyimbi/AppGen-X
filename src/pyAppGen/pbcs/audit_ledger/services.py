@@ -24,8 +24,10 @@ def _path_for(route: str) -> tuple[str, str]:
 
 
 def _operation_contracts() -> tuple[dict, ...]:
+    api = audit_ledger_build_api_contract()
+    fallback_event = tuple(api["events"]["emits"])[0]
     contracts = []
-    for route in audit_ledger_build_api_contract()["routes"]:
+    for route in api["routes"]:
         method, path = _path_for(route["route"])
         operation = route.get("command") or route.get("query")
         operation_kind = "command" if route.get("command") else "query"
@@ -38,7 +40,7 @@ def _operation_contracts() -> tuple[dict, ...]:
                 "permission": route["requires_permission"],
                 "owned_tables": tuple(route.get("owned_tables", ())) if operation_kind == "command" else (),
                 "read_tables": tuple(route.get("owned_tables", ())) if operation_kind == "query" else (),
-                "emitted_event": tuple(route.get("emits", ()))[0] if route.get("emits") else None,
+                "emitted_event": (tuple(route.get("emits", ())) or (fallback_event,))[0] if operation_kind == "command" else None,
                 "consumed_events": tuple(route.get("consumes", ())),
                 "transaction_boundary": "owned_datastore_plus_outbox",
                 "event_contract": "AppGen-X",

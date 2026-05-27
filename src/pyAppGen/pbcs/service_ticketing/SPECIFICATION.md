@@ -329,49 +329,180 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `service_ticketing`
 - Mesh: `relationship`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
 - `support_ticket`
+- `service_queue`
 - `sla_policy`
+- `service_priority`
 - `case_assignment`
 - `escalation_event`
+- `ticket_interaction`
+- `knowledge_suggestion`
+- `entitlement_snapshot`
+- `case_lifecycle_state`
+- `field_service_handoff`
+- `customer_update`
+- `resolution_record`
+- `csat_response`
+- `ticket_audit_log`
+- `automation_insight`
+- `service_rule`
+- `service_parameter`
+- `service_configuration`
 
 ### API Routes
 
+- `PUT /service-ticketing/configuration`
+- `POST /service-ticketing/parameters`
+- `POST /service-ticketing/rules`
+- `POST /sla-policies`
 - `POST /tickets`
 - `POST /assignments`
-- `GET /sla-status`
+- `POST /escalations`
+- `POST /resolutions`
+- `POST /service-ticketing/events/inbox`
+- `GET /service-ticketing/workbench`
+- `GET /service-ticketing/schema-contract`
+- `GET /service-ticketing/service-contract`
+- `GET /service-ticketing/release-evidence`
 
 ### Emitted Events
 
 - `SupportCaseOpened`
+- `TicketAssigned`
+- `FieldServiceHandoffPrepared`
 - `SlaBreached`
+- `ResolutionRecorded`
+- `CsatSurveyRequested`
+- `CustomerUpdated`
 
 ### Consumed Events
 
 - `CustomerUpdated`
 - `PreferenceChanged`
+- `EntitlementUpdated`
+- `KnowledgeSuggested`
 
 ### UI Fragments
 
-- None declared
+- `ServiceTicketingWorkbench`
+- `TicketInbox`
+- `ServiceQueueManager`
+- `SlaPolicyDesigner`
+- `PriorityMatrixPanel`
+- `AssignmentQueueBoard`
+- `EscalationCommandCenter`
+- `TicketInteractionTimeline`
+- `KnowledgeSuggestionPanel`
+- `EntitlementSnapshotPanel`
+- `FieldServiceHandoffPanel`
+- `CustomerUpdatePanel`
+- `ResolutionConsole`
+- `CsatSurveyPanel`
+- `ServiceAuditTrail`
+- `AutomationInsightPanel`
+- `ServiceRuleStudio`
+- `ServiceParameterConsole`
+- `ServiceConfigurationPanel`
+- `ServiceEventOutbox`
+- `ServiceEventInbox`
+- `ServiceDeadLetterQueue`
 
 ### Permissions
 
-- None declared
+- `service_ticketing.ticket.write`
+- `service_ticketing.queue.manage`
+- `service_ticketing.assignment.write`
+- `service_ticketing.escalation.write`
+- `service_ticketing.customer.update`
+- `service_ticketing.event.consume`
+- `service_ticketing.configure`
+- `service_ticketing.audit`
 
 ### Configuration Keys
 
-- None declared
+- `SERVICE_TICKETING_DATABASE_URL`
+- `SERVICE_TICKETING_EVENT_TOPIC`
+- `SERVICE_TICKETING_RETRY_LIMIT`
+- `SERVICE_TICKETING_DEFAULT_REGION`
+- `SERVICE_TICKETING_DEFAULT_TIMEZONE`
+- `SERVICE_TICKETING_ASSIGNMENT_MODE`
 
 ### Standard Features
 
-- None declared
+- `ticket_management`
+- `queue_management`
+- `sla_policy`
+- `priority_management`
+- `case_assignment`
+- `escalation_event`
+- `interaction_timeline`
+- `knowledge_suggestion`
+- `entitlement_snapshot`
+- `case_lifecycle`
+- `field_service_handoff`
+- `customer_update`
+- `resolution_tracking`
+- `csat_tracking`
+- `audit_log`
+- `automation_insight`
+- `customer_context_projection`
+- `preference_projection`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_case_lifecycle`
+- `owned_service_schema_boundary`
+- `multi_tenant_case_isolation`
+- `schema_evolution_resilient_case_context`
+- `omnichannel_case_intake`
+- `queue_and_priority_catalog_management`
+- `customer_context_projection_handling`
+- `preference_projection_handling`
+- `entitlement_snapshot_handling`
+- `sla_policy_management`
+- `skill_based_case_assignment`
+- `field_service_handoff_evidence`
+- `case_escalation_orchestration`
+- `knowledge_suggestion_evidence`
+- `customer_update_orchestration`
+- `resolution_and_csat_evidence`
+- `probabilistic_sla_breach_scoring`
+- `counterfactual_assignment_simulation`
+- `temporal_backlog_forecasting`
+- `autonomous_next_best_response`
+- `semantic_case_understanding`
+- `predictive_customer_escalation_risk`
+- `self_healing_queue_assignment`
+- `cryptographic_case_proof`
+- `immutable_case_audit_trail`
+- `dynamic_service_policy_screening`
+- `automated_service_control_testing`
+- `automation_insight_evidence`
+- `cross_system_customer_preference_workflow_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
+- `governed_model_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

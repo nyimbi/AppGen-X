@@ -1,1 +1,87 @@
-PBC_MANIFEST = {'pbc': 'service_ticketing', 'label': 'Customer Service Ticketing and SLA Orchestration', 'mesh': 'relationship', 'description': 'Multi-channel support, routing, escalation, and SLA tracking.', 'datastore_backend': 'postgresql', 'tables': ('support_ticket', 'sla_policy', 'case_assignment', 'escalation_event'), 'apis': ('POST /tickets', 'POST /assignments', 'GET /sla-status'), 'emits': ('SupportCaseOpened', 'SlaBreached'), 'consumes': ('CustomerUpdated', 'PreferenceChanged'), 'template': None, 'ui_fragments': ('ServiceTicketingWorkbench', 'ServiceTicketingDetail'), 'permissions': ('service_ticketing.read', 'service_ticketing.create', 'service_ticketing.update', 'service_ticketing.approve', 'service_ticketing.admin'), 'configuration': ('SERVICE_TICKETING_DATABASE_URL', 'SERVICE_TICKETING_EVENT_TOPIC', 'SERVICE_TICKETING_RETRY_LIMIT'), 'capabilities': ('service_ticketing.support_ticket', 'service_ticketing.sla_policy', 'service_ticketing.case_assignment', 'service_ticketing.escalation_event'), 'standard_features': ('ticket_management', 'queue_management', 'sla_policy', 'priority_management', 'case_assignment', 'escalation_event', 'interaction_timeline', 'knowledge_suggestion', 'entitlement_snapshot', 'case_lifecycle', 'field_service_handoff', 'customer_update', 'resolution_tracking', 'csat_tracking', 'audit_log', 'automation_insight', 'customer_context_projection', 'preference_projection', 'tenant_isolation', 'appgen_x_outbox', 'appgen_x_inbox', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench'), 'workflows': ('command_tickets', 'command_assignments', 'query_sla_status'), 'analytics': ('response_time', 'engagement_quality', 'segment_lift', 'retention_signal', 'support_case_opened_throughput', 'sla_breached_throughput'), 'advanced_capabilities': ('event_sourced_case_lifecycle', 'owned_service_schema_boundary', 'multi_tenant_case_isolation', 'schema_evolution_resilient_case_context', 'omnichannel_case_intake', 'queue_and_priority_catalog_management', 'customer_context_projection_handling', 'preference_projection_handling', 'entitlement_snapshot_handling', 'sla_policy_management', 'skill_based_case_assignment', 'field_service_handoff_evidence', 'case_escalation_orchestration', 'knowledge_suggestion_evidence', 'customer_update_orchestration', 'resolution_and_csat_evidence', 'probabilistic_sla_breach_scoring', 'counterfactual_assignment_simulation', 'temporal_backlog_forecasting', 'autonomous_next_best_response', 'semantic_case_understanding', 'predictive_customer_escalation_risk', 'self_healing_queue_assignment', 'cryptographic_case_proof', 'immutable_case_audit_trail', 'dynamic_service_policy_screening', 'automated_service_control_testing', 'automation_insight_evidence', 'cross_system_customer_preference_workflow_federation', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions_governance_evidence', 'configuration_schema', 'parameter_engine', 'rule_engine', 'seed_data', 'workbench_ui', 'governed_model_evidence'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+from .runtime import SERVICE_TICKETING_CONSUMED_EVENT_TYPES
+from .runtime import SERVICE_TICKETING_EMITTED_EVENT_TYPES
+from .runtime import SERVICE_TICKETING_OWNED_TABLES
+from .runtime import SERVICE_TICKETING_RUNTIME_CAPABILITY_KEYS
+from .runtime import SERVICE_TICKETING_STANDARD_FEATURE_KEYS
+from .ui import SERVICE_TICKETING_UI_FRAGMENT_KEYS
+
+
+PBC_MANIFEST = {
+    'pbc': 'service_ticketing',
+    'label': 'Customer Service Ticketing and SLA Orchestration',
+    'mesh': 'relationship',
+    'description': 'Omnichannel service case intake, queues, priorities, SLA policy, assignment, field handoff, customer updates, resolution, satisfaction, audit, automation, and governed service operations.',
+    'datastore_backend': 'postgresql',
+    'tables': SERVICE_TICKETING_OWNED_TABLES,
+    'apis': (
+        'PUT /service-ticketing/configuration',
+        'POST /service-ticketing/parameters',
+        'POST /service-ticketing/rules',
+        'POST /sla-policies',
+        'POST /tickets',
+        'POST /assignments',
+        'POST /escalations',
+        'POST /resolutions',
+        'POST /service-ticketing/events/inbox',
+        'GET /service-ticketing/workbench',
+        'GET /service-ticketing/schema-contract',
+        'GET /service-ticketing/service-contract',
+        'GET /service-ticketing/release-evidence',
+    ),
+    'emits': SERVICE_TICKETING_EMITTED_EVENT_TYPES,
+    'consumes': SERVICE_TICKETING_CONSUMED_EVENT_TYPES,
+    'template': None,
+    'ui_fragments': SERVICE_TICKETING_UI_FRAGMENT_KEYS,
+    'permissions': (
+        'service_ticketing.ticket.write',
+        'service_ticketing.queue.manage',
+        'service_ticketing.assignment.write',
+        'service_ticketing.escalation.write',
+        'service_ticketing.customer.update',
+        'service_ticketing.event.consume',
+        'service_ticketing.configure',
+        'service_ticketing.audit',
+    ),
+    'configuration': (
+        'SERVICE_TICKETING_DATABASE_URL',
+        'SERVICE_TICKETING_EVENT_TOPIC',
+        'SERVICE_TICKETING_RETRY_LIMIT',
+        'SERVICE_TICKETING_DEFAULT_REGION',
+        'SERVICE_TICKETING_DEFAULT_TIMEZONE',
+        'SERVICE_TICKETING_ASSIGNMENT_MODE',
+    ),
+    'capabilities': tuple(f'service_ticketing.{table}' for table in SERVICE_TICKETING_OWNED_TABLES),
+    'standard_features': SERVICE_TICKETING_STANDARD_FEATURE_KEYS,
+    'workflows': (
+        'configure_runtime',
+        'set_parameter',
+        'register_rule',
+        'create_sla_policy',
+        'open_ticket',
+        'assign_ticket',
+        'record_escalation',
+        'resolve_ticket',
+        'receive_event',
+        'build_workbench_view',
+    ),
+    'analytics': (
+        'first_response_attainment',
+        'resolution_attainment',
+        'sla_breach_risk',
+        'assignment_score',
+        'queue_load',
+        'knowledge_confidence',
+        'field_service_handoff_rate',
+        'csat_pending_rate',
+        'automation_insight_score',
+        'support_case_opened_throughput',
+        'ticket_assigned_throughput',
+        'sla_breached_throughput',
+        'resolution_recorded_throughput',
+    ),
+    'advanced_capabilities': SERVICE_TICKETING_RUNTIME_CAPABILITY_KEYS,
+    'migrations': ('migrations/001_initial.sql',),
+    'seed_data': ('seed_data.py',),
+    'tests': ('tests/test_contract.py',),
+    'docs': ('RELEASE_EVIDENCE.md', 'SPECIFICATION.md'),
+}

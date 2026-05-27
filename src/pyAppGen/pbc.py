@@ -3932,11 +3932,58 @@ PBC_CATALOG.update(
         "service_ticketing": {
             "label": "Customer Service Ticketing and SLA Orchestration",
             "mesh": "relationship",
-            "description": "Multi-channel support, routing, escalation, and SLA tracking.",
-            "tables": ("support_ticket", "sla_policy", "case_assignment", "escalation_event"),
-            "apis": ("POST /tickets", "POST /assignments", "GET /sla-status"),
-            "emits": ("SupportCaseOpened", "SlaBreached"),
-            "consumes": ("CustomerUpdated", "PreferenceChanged"),
+            "description": "Omnichannel service case intake, queues, priorities, SLA policy, assignment, field handoff, customer updates, resolution, satisfaction, audit, automation, and governed service operations.",
+            "tables": (
+                "support_ticket",
+                "service_queue",
+                "sla_policy",
+                "service_priority",
+                "case_assignment",
+                "escalation_event",
+                "ticket_interaction",
+                "knowledge_suggestion",
+                "entitlement_snapshot",
+                "case_lifecycle_state",
+                "field_service_handoff",
+                "customer_update",
+                "resolution_record",
+                "csat_response",
+                "ticket_audit_log",
+                "automation_insight",
+                "service_rule",
+                "service_parameter",
+                "service_configuration",
+            ),
+            "apis": (
+                "PUT /service-ticketing/configuration",
+                "POST /service-ticketing/parameters",
+                "POST /service-ticketing/rules",
+                "POST /sla-policies",
+                "POST /tickets",
+                "POST /assignments",
+                "POST /escalations",
+                "POST /resolutions",
+                "POST /service-ticketing/events/inbox",
+                "GET /service-ticketing/workbench",
+                "GET /service-ticketing/schema-contract",
+                "GET /service-ticketing/service-contract",
+                "GET /service-ticketing/release-evidence",
+            ),
+            "emits": (
+                "SupportCaseOpened",
+                "TicketAssigned",
+                "FieldServiceHandoffPrepared",
+                "SlaBreached",
+                "ResolutionRecorded",
+                "CsatSurveyRequested",
+                "CustomerUpdated",
+            ),
+            "consumes": (
+                "CustomerUpdated",
+                "PreferenceChanged",
+                "EntitlementUpdated",
+                "KnowledgeSuggested",
+            ),
             "template": None,
         },
         "notifications": {
@@ -9000,6 +9047,34 @@ from .pbcs.service_ticketing import service_ticketing_runtime_smoke  # noqa: E40
 from .pbcs.service_ticketing import service_ticketing_set_parameter  # noqa: E402,F401
 from .pbcs.service_ticketing import service_ticketing_ui_contract  # noqa: E402,F401
 from .pbcs.service_ticketing import service_ticketing_verify_owned_table_boundary  # noqa: E402,F401
+PBC_CATALOG["service_ticketing"].update(
+    {
+        "apis": tuple(route["route"] for route in service_ticketing_build_api_contract()["routes"]),
+        "ui_fragments": SERVICE_TICKETING_UI_FRAGMENT_KEYS,
+        "capabilities": tuple(
+            f"service_ticketing.{table}"
+            for table in service_ticketing_build_schema_contract()["owned_tables"]
+        ),
+        "standard_features": SERVICE_TICKETING_STANDARD_FEATURE_KEYS,
+        "advanced_capabilities": SERVICE_TICKETING_RUNTIME_CAPABILITY_KEYS,
+        "workflows": service_ticketing_runtime_capabilities()["operations"],
+        "analytics": (
+            "first_response_attainment",
+            "resolution_attainment",
+            "sla_breach_risk",
+            "assignment_score",
+            "queue_load",
+            "knowledge_confidence",
+            "field_service_handoff_rate",
+            "csat_pending_rate",
+            "automation_insight_score",
+            "support_case_opened_throughput",
+            "ticket_assigned_throughput",
+            "sla_breached_throughput",
+            "resolution_recorded_throughput",
+        ),
+    }
+)
 from .pbcs.notifications import NOTIFICATIONS_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.notifications import NOTIFICATIONS_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.notifications import NOTIFICATIONS_UI_FRAGMENT_KEYS  # noqa: E402,F401
