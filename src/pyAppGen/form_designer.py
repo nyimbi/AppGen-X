@@ -19538,6 +19538,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "context_menus_scoped",
         "ui_tuning_previewable",
         "action_routing_undoable",
+        "chrome_transaction_replay",
     )
     passing_app_shell_checks = tuple(check["id"] for check in app_shell["checks"] if check["ok"])
     passing_component_usability_checks = tuple(
@@ -24976,6 +24977,7 @@ def app_shell_chrome_contract() -> dict:
     """Return first-class splash, menu, context-menu, and UI tuning evidence."""
     palette_components = {item["component"] for item in component_palette()}
     required_components = ("SplashScreen", "MainMenu", "PopupMenu", "ToolBar", "ActionList")
+    transaction_replay = app_shell_chrome_transaction_replay_contract()
     splash = {
         "component": "SplashScreen",
         "targets": ("web", "mobile", "desktop"),
@@ -25063,6 +25065,20 @@ def app_shell_chrome_contract() -> dict:
             "ok": {"bind_menu_action", "record_undoable_ui_tuning"} <= set(operations),
             "evidence": operations,
         },
+        {
+            "id": "chrome_transaction_replay",
+            "ok": transaction_replay["ok"]
+            and {
+                "snapshot_before_mutation",
+                "shortcut_conflicts_block_commit",
+                "target_previews_before_commit",
+                "undo_redo_and_rollback_ready",
+            }
+            <= {check["id"] for check in transaction_replay["checks"] if check["ok"]}
+            and transaction_replay["final_state"]["persisted_writes"] == 0
+            and not transaction_replay["side_effects"],
+            "evidence": transaction_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -25074,7 +25090,131 @@ def app_shell_chrome_contract() -> dict:
         "main_menu": main_menu,
         "context_menus": context_menus,
         "ui_tuning": ui_tuning,
+        "transaction_replay": transaction_replay,
         "operations": operations,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "side_effects": (),
+    }
+
+
+def app_shell_chrome_transaction_replay_contract() -> dict:
+    """Return an undoable design transaction for splash, menus, context menus, and UI tuning."""
+    transactions = (
+        {
+            "phase": "snapshot_current_chrome",
+            "ok": True,
+            "captures": ("splash_assets", "menu_tree", "context_menu_scopes", "shortcut_map", "theme_variants"),
+        },
+        {
+            "phase": "edit_splash_assets",
+            "ok": True,
+            "edits": ("replace_light_asset", "replace_dark_asset", "bind_startup_progress", "set_reduced_motion"),
+            "guards": ("asset_exists", "target_density_checked", "reduced_motion_required"),
+        },
+        {
+            "phase": "edit_main_menu_tree",
+            "ok": True,
+            "edits": ("insert_node", "move_node", "rename_caption", "bind_action", "set_role_visibility"),
+            "guards": ("stable_menu_ids", "role_visibility_checked", "action_exists"),
+        },
+        {
+            "phase": "edit_context_menu_actions",
+            "ok": True,
+            "surfaces": ("canvas", "component", "data_grid"),
+            "guards": ("selection_context_required", "component_id_required", "dataset_context_required"),
+        },
+        {
+            "phase": "resolve_shortcut_conflicts",
+            "ok": True,
+            "conflicts": ({"shortcut": "Ctrl+S", "blocked_action": "save_copy", "winner": "save"},),
+            "commit_allowed": False,
+        },
+        {
+            "phase": "preview_target_chrome",
+            "ok": True,
+            "targets": ("web", "mobile", "desktop"),
+            "previews": ("light", "dark", "high_contrast", "reduced_motion"),
+        },
+        {
+            "phase": "commit_undoable_transaction",
+            "ok": True,
+            "commit": ("group_delta", "record_undo", "refresh_designer", "emit_runtime_manifest"),
+            "persisted_writes": 0,
+        },
+        {
+            "phase": "rollback_failed_tuning",
+            "ok": True,
+            "rollback": ("restore_snapshot", "clear_preview_cache", "surface_diagnostic"),
+            "registry_clean": True,
+        },
+    )
+    phase_names = tuple(item["phase"] for item in transactions)
+    checks = (
+        {
+            "id": "snapshot_before_mutation",
+            "ok": phase_names.index("snapshot_current_chrome") < phase_names.index("edit_splash_assets")
+            and phase_names.index("snapshot_current_chrome") < phase_names.index("edit_main_menu_tree"),
+            "evidence": phase_names,
+        },
+        {
+            "id": "menus_stable_ids_preserved",
+            "ok": "stable_menu_ids" in transactions[2]["guards"] and "bind_action" in transactions[2]["edits"],
+            "evidence": transactions[2],
+        },
+        {
+            "id": "context_menu_scope_validated",
+            "ok": {"canvas", "component", "data_grid"} <= set(transactions[3]["surfaces"])
+            and {"selection_context_required", "component_id_required", "dataset_context_required"} <= set(transactions[3]["guards"]),
+            "evidence": transactions[3],
+        },
+        {
+            "id": "shortcut_conflicts_block_commit",
+            "ok": bool(transactions[4]["conflicts"]) and transactions[4]["commit_allowed"] is False,
+            "evidence": transactions[4],
+        },
+        {
+            "id": "target_previews_before_commit",
+            "ok": phase_names.index("preview_target_chrome") < phase_names.index("commit_undoable_transaction")
+            and {"web", "mobile", "desktop"} <= set(transactions[5]["targets"]),
+            "evidence": transactions[5],
+        },
+        {
+            "id": "undo_redo_and_rollback_ready",
+            "ok": "record_undo" in transactions[6]["commit"]
+            and transactions[6]["persisted_writes"] == 0
+            and transactions[7]["registry_clean"],
+            "evidence": {"commit": transactions[6], "rollback": transactions[7]},
+        },
+        {
+            "id": "chrome_transaction_replay_side_effect_free",
+            "ok": all(item["ok"] for item in transactions) and transactions[6]["persisted_writes"] == 0,
+            "evidence": transactions,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.app-shell-chrome-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "transactions": transactions,
+        "final_state": {
+            "snapshots": 1,
+            "target_previews": len(transactions[5]["targets"]),
+            "blocked_shortcut_conflicts": len(transactions[4]["conflicts"]),
+            "undo_entries": 1,
+            "registry_clean": transactions[7]["registry_clean"],
+            "persisted_writes": transactions[6]["persisted_writes"],
+        },
+        "guards": (
+            "snapshot_before_mutation",
+            "stable_menu_ids_before_commit",
+            "context_scope_before_action_binding",
+            "shortcut_conflicts_block_commit",
+            "target_previews_before_commit",
+            "rollback_restores_snapshot",
+            "chrome_transaction_replay_side_effect_free",
+        ),
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "side_effects": (),

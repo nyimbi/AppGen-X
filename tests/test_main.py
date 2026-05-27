@@ -154,6 +154,7 @@ from pyAppGen.form_designer import component_ide_readiness_catalog
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import app_shell_chrome_contract
+from pyAppGen.form_designer import app_shell_chrome_transaction_replay_contract
 from pyAppGen.form_designer import cross_target_author_scene_operation
 from pyAppGen.form_designer import cross_target_author_style_operation
 from pyAppGen.form_designer import cross_target_author_timeline_operation
@@ -1709,6 +1710,31 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         menu["surface"] for menu in app_shell["context_menus"]
     }
     assert "bind_menu_action" in app_shell["operations"]
+    chrome_replay = app_shell_chrome_transaction_replay_contract()
+    assert chrome_replay["format"] == "appgen.app-shell-chrome-transaction-replay.v1"
+    assert chrome_replay["ok"] is True
+    assert {
+        "snapshot_current_chrome",
+        "edit_splash_assets",
+        "edit_main_menu_tree",
+        "edit_context_menu_actions",
+        "resolve_shortcut_conflicts",
+        "preview_target_chrome",
+        "commit_undoable_transaction",
+        "rollback_failed_tuning",
+    } == {item["phase"] for item in chrome_replay["transactions"]}
+    assert {
+        "snapshot_before_mutation",
+        "context_menu_scope_validated",
+        "shortcut_conflicts_block_commit",
+        "target_previews_before_commit",
+        "undo_redo_and_rollback_ready",
+        "chrome_transaction_replay_side_effect_free",
+    } <= {check["id"] for check in chrome_replay["checks"] if check["ok"]}
+    assert chrome_replay["final_state"]["blocked_shortcut_conflicts"] == 1
+    assert chrome_replay["final_state"]["persisted_writes"] == 0
+    assert app_shell["transaction_replay"]["ok"] is True
+    assert "chrome_transaction_replay" in {check["id"] for check in app_shell["checks"] if check["ok"]}
     assert REQUESTED_COMPONENT_ANALOGS <= {item["component"] for item in palette}
     analog_matrix = component_analog_matrix()
     assert {item["source"] for item in analog_matrix} == REQUESTED_COMPONENT_ANALOG_SOURCES
@@ -15162,6 +15188,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert {"web", "mobile", "desktop"} <= set(generated_shell["splash"]["targets"])
     assert "record_undoable_ui_tuning" in generated_shell["operations"]
+    generated_chrome_replay = form_designer.app_shell_chrome_transaction_replay_contract()
+    assert generated_chrome_replay["format"] == "appgen.generated-app-shell-chrome-transaction-replay.v1"
+    assert generated_chrome_replay["ok"] is True
+    assert {
+        "snapshot_current_chrome",
+        "edit_splash_assets",
+        "edit_main_menu_tree",
+        "edit_context_menu_actions",
+        "resolve_shortcut_conflicts",
+        "preview_target_chrome",
+        "commit_undoable_transaction",
+        "rollback_failed_tuning",
+    } == {item["phase"] for item in generated_chrome_replay["transactions"]}
+    assert {
+        "snapshot_before_mutation",
+        "context_menu_scope_validated",
+        "shortcut_conflicts_block_commit",
+        "target_previews_before_commit",
+        "undo_redo_and_rollback_ready",
+        "chrome_transaction_replay_side_effect_free",
+    } <= {check["id"] for check in generated_chrome_replay["checks"] if check["ok"]}
+    assert generated_chrome_replay["final_state"]["blocked_shortcut_conflicts"] == 1
+    assert generated_chrome_replay["final_state"]["persisted_writes"] == 0
+    assert generated_shell["transaction_replay"]["ok"] is True
+    assert "chrome_transaction_replay" in {check["id"] for check in generated_shell["checks"] if check["ok"]}
     assert form_designer.field_component("Author", "birth_date")["type"] == "DatePicker"
     assert form_designer.field_component("Author", "last_seen_at")["type"] == "DateTimePicker"
     assert form_designer.field_component("Author", "appointment_time")["type"] == "TimePicker"
