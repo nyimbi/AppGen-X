@@ -2439,3 +2439,20 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   service/route/release smokes, source artifact contract, implementation
   release audit, generation smoke audit, specification contract, and restricted
   legacy-name scan all passed. Commit: `a1a30e9`.
+- Current visual runtime asset smoke pass exposes target artifact transaction
+  operations directly from generated visual runtime asset smoke. Generated
+  consumers can now inspect manifest writing, bundle integrity, rollback, and
+  publish operations without unpacking the nested validation manifest.
+  Verification is focused under the low-battery delivery constraint. Commit:
+  `54191e0`.
+- Current `streaming_analytics` PBC pass removes stale serialized wrapper
+  evidence from the analytics package surface. Generated route, service-contract,
+  and release-evidence modules now bind directly to the executable streaming
+  analytics runtime, including path-aware service route matching, app-local PBC
+  route prefixes, AppGen-X eventing, owned-table boundaries, idempotency, and
+  schema/service/API/permission release sections. Verification is focused under
+  the low-battery delivery constraint: package Python compile, runtime smoke,
+  focused package contract tests, package service/route/release smokes, source
+  artifact contract, implementation release audit, generation smoke audit,
+  specification contract, and restricted legacy-name scan all passed. Commit:
+  `5834a73`.
