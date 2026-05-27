@@ -12,6 +12,10 @@ from .runtime import CDP_SEGMENTATION_RUNTIME_TABLES
 from .runtime import CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS
 from .runtime import CDP_SEGMENTATION_STANDARD_FEATURE_KEYS
 from .runtime import cdp_segmentation_activate_segment
+from .runtime import cdp_segmentation_allocate_activation
+from .runtime import cdp_segmentation_detect_profile_anomaly
+from .runtime import cdp_segmentation_federate_customer_view
+from .runtime import cdp_segmentation_forecast_audience
 from .runtime import cdp_segmentation_build_api_contract
 from .runtime import cdp_segmentation_build_release_evidence
 from .runtime import cdp_segmentation_build_schema_contract
@@ -21,14 +25,23 @@ from .runtime import cdp_segmentation_configure_runtime
 from .runtime import cdp_segmentation_define_segment
 from .runtime import cdp_segmentation_empty_state
 from .runtime import cdp_segmentation_evaluate_segments
+from .runtime import cdp_segmentation_generate_profile_proof
+from .runtime import cdp_segmentation_heal_profile_merge
 from .runtime import cdp_segmentation_ingest_customer_event
+from .runtime import cdp_segmentation_parse_segment_rule
 from .runtime import cdp_segmentation_permissions_contract
 from .runtime import cdp_segmentation_receive_event
 from .runtime import cdp_segmentation_register_rule
 from .runtime import cdp_segmentation_register_schema_extension
+from .runtime import cdp_segmentation_register_governed_model
+from .runtime import cdp_segmentation_resolve_audience_exception
 from .runtime import cdp_segmentation_runtime_capabilities
 from .runtime import cdp_segmentation_runtime_smoke
+from .runtime import cdp_segmentation_run_data_quality_controls
+from .runtime import cdp_segmentation_score_lifecycle_risk
+from .runtime import cdp_segmentation_screen_consent_policy
 from .runtime import cdp_segmentation_set_parameter
+from .runtime import cdp_segmentation_simulate_segment_membership
 from .runtime import cdp_segmentation_upsert_profile_property
 from .runtime import cdp_segmentation_verify_owned_table_boundary
 from .ui import CDP_SEGMENTATION_UI_FRAGMENT_KEYS
@@ -103,4 +116,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

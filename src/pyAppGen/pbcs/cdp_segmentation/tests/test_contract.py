@@ -179,6 +179,117 @@ def test_event_handlers_are_idempotent_and_retryable():
     assert smoke['unknown_result']['handled'] is False
     assert not smoke['side_effects']
 
+
+def test_cdp_advanced_orchestration_tail_is_executable():
+    from ..runtime import CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC
+    from ..runtime import cdp_segmentation_allocate_activation
+    from ..runtime import cdp_segmentation_configure_runtime
+    from ..runtime import cdp_segmentation_define_segment
+    from ..runtime import cdp_segmentation_detect_profile_anomaly
+    from ..runtime import cdp_segmentation_empty_state
+    from ..runtime import cdp_segmentation_evaluate_segments
+    from ..runtime import cdp_segmentation_federate_customer_view
+    from ..runtime import cdp_segmentation_forecast_audience
+    from ..runtime import cdp_segmentation_generate_profile_proof
+    from ..runtime import cdp_segmentation_heal_profile_merge
+    from ..runtime import cdp_segmentation_ingest_customer_event
+    from ..runtime import cdp_segmentation_parse_segment_rule
+    from ..runtime import cdp_segmentation_register_governed_model
+    from ..runtime import cdp_segmentation_register_rule
+    from ..runtime import cdp_segmentation_resolve_audience_exception
+    from ..runtime import cdp_segmentation_run_data_quality_controls
+    from ..runtime import cdp_segmentation_score_lifecycle_risk
+    from ..runtime import cdp_segmentation_screen_consent_policy
+    from ..runtime import cdp_segmentation_set_parameter
+    from ..runtime import cdp_segmentation_simulate_segment_membership
+
+    state = cdp_segmentation_empty_state()
+    state = cdp_segmentation_configure_runtime(
+        state,
+        {
+            'database_backend': 'postgresql',
+            'event_topic': CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC,
+            'retry_limit': 3,
+            'default_region': 'US',
+            'supported_regions': ('US',),
+            'supported_event_types': ('profile', 'payment', 'shipment', 'engagement'),
+            'identity_keys': ('customer_id', 'email'),
+            'default_timezone': 'UTC',
+            'activation_mode': 'policy',
+            'workbench_limit': 50,
+        },
+    )['state']
+    for name, value in (
+        ('membership_score_threshold', 0.6),
+        ('profile_merge_confidence_threshold', 0.85),
+        ('event_freshness_days', 180),
+        ('payment_value_weight', 0.35),
+        ('order_recency_weight', 0.25),
+        ('engagement_weight', 0.4),
+        ('consent_risk_threshold', 0.6),
+        ('activation_batch_limit', 5000),
+        ('max_segments_per_profile', 20),
+        ('workbench_limit', 50),
+    ):
+        state = cdp_segmentation_set_parameter(state, name, value)['state']
+    state = cdp_segmentation_register_rule(
+        state,
+        {
+            'rule_id': 'rule_tail',
+            'tenant': 'tenant_tail',
+            'scope': 'cdp_segmentation',
+            'status': 'active',
+            'allowed_event_types': ('profile', 'payment', 'shipment', 'engagement'),
+            'allowed_regions': ('US',),
+            'segment_policy': {'minimum_score': 0.6, 'required_properties': ('customer_id',)},
+            'consent_policy': {'require_opt_in': True, 'restricted_regions': ()},
+            'activation_policy': {'destinations': ('notifications', 'pricing')},
+        },
+    )['state']
+    for event in (
+        {'event_id': 'profile_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail', 'event_type': 'profile', 'region': 'US', 'properties': {'customer_id': 'cust_tail', 'email': 'tail@example.com', 'opt_in': True}},
+        {'event_id': 'payment_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail', 'event_type': 'payment', 'region': 'US', 'properties': {'amount': 2000}},
+        {'event_id': 'ship_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail', 'event_type': 'shipment', 'region': 'US', 'properties': {'order_id': 'ord_tail'}},
+        {'event_id': 'engage_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail', 'event_type': 'engagement', 'region': 'US', 'properties': {'clicks': 5}},
+    ):
+        state = cdp_segmentation_ingest_customer_event(state, event)['state']
+    state = cdp_segmentation_define_segment(
+        state,
+        {'segment_id': 'seg_tail', 'tenant': 'tenant_tail', 'name': 'Tail Segment', 'criteria': {'min_payment_value': 1000, 'requires_shipment': True, 'min_engagement': 0.2}, 'status': 'active'},
+    )['state']
+    state = cdp_segmentation_evaluate_segments(state, 'cust_tail')['state']
+    state = cdp_segmentation_parse_segment_rule(state, {'rule_text': 'high value with shipment and engagement', 'tenant': 'tenant_tail', 'segment_id': 'seg_tail'})['state']
+    state = cdp_segmentation_simulate_segment_membership(
+        state,
+        {'simulation_id': 'sim_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail', 'segment_id': 'seg_tail', 'counterfactual_properties': {'amount': 3000, 'clicks': 9}},
+    )['state']
+    state = cdp_segmentation_forecast_audience(state, {'forecast_id': 'forecast_tail', 'tenant': 'tenant_tail', 'segment_id': 'seg_tail', 'horizon_days': 30})['state']
+    state = cdp_segmentation_score_lifecycle_risk(state, {'score_id': 'risk_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail'})['state']
+    state = cdp_segmentation_heal_profile_merge(state, {'merge_id': 'merge_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail', 'candidate_customer_id': 'cust_alias', 'confidence': 0.91})['state']
+    state = cdp_segmentation_generate_profile_proof(state, {'proof_id': 'proof_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail'})['state']
+    state = cdp_segmentation_screen_consent_policy(state, {'screening_id': 'consent_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail', 'activation_destination': 'notifications'})['state']
+    state = cdp_segmentation_run_data_quality_controls(state, 'tenant_tail')['state']
+    state = cdp_segmentation_federate_customer_view(state, {'view_id': 'view_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail'})['state']
+    state = cdp_segmentation_allocate_activation(state, {'allocation_id': 'alloc_tail', 'tenant': 'tenant_tail', 'segment_id': 'seg_tail', 'destination': 'notifications', 'budget': 500})['state']
+    state = cdp_segmentation_detect_profile_anomaly(state, {'signal_id': 'anom_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail'})['state']
+    state = cdp_segmentation_resolve_audience_exception(state, {'exception_id': 'exception_tail', 'tenant': 'tenant_tail', 'customer_id': 'cust_tail', 'reason': 'identity_conflict', 'resolution': 'accepted_primary_identity'})['state']
+    state = cdp_segmentation_register_governed_model(state, {'model_id': 'model_tail', 'tenant': 'tenant_tail', 'model_type': 'lifecycle_risk', 'version': '1.0', 'status': 'approved'})['state']
+
+    assert state['segment_rules']
+    assert state['segment_simulations']['sim_tail']['counterfactual_score'] >= state['segment_simulations']['sim_tail']['baseline_score']
+    assert state['audience_forecasts']['forecast_tail']['forecast_members'] >= 1
+    assert state['lifecycle_risk_scores']['risk_tail']['risk_band'] in {'normal', 'high'}
+    assert state['merge_candidates']['merge_tail']['status'] == 'accepted'
+    assert state['profile_proofs']['proof_tail']['status'] == 'issued'
+    assert state['consent_policy_screenings']['consent_tail']['decision'] == 'allowed'
+    assert state['data_quality_findings']
+    assert state['cdp_federation_views']['view_tail']['status'] == 'materialized'
+    assert state['activation_allocations']['alloc_tail']['status'] == 'allocated'
+    assert state['profile_anomaly_signals']['anom_tail']['status'] in {'normal', 'review'}
+    assert state['profile_exceptions']['exception_tail']['status'] == 'resolved'
+    assert state['cdp_governed_models']['model_tail']['training_data_boundary'] == 'cdp_segmentation_owned_tables'
+
+
 def test_table_stakes_and_advanced_capability_assurance_is_executable():
     from .. import capability_assurance
 

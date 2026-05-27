@@ -137,6 +137,19 @@ The service layer exposes these package-local commands:
 - `define_segment(command)`.
 - `evaluate_segments(customer_id)`.
 - `activate_segment(segment_id)`.
+- `simulate_segment_membership(command)`.
+- `forecast_audience(command)`.
+- `resolve_audience_exception(command)`.
+- `parse_segment_rule(command)`.
+- `score_lifecycle_risk(command)`.
+- `heal_profile_merge(command)`.
+- `generate_profile_proof(command)`.
+- `screen_consent_policy(command)`.
+- `run_data_quality_controls(tenant)`.
+- `federate_customer_view(command)`.
+- `allocate_activation(command)`.
+- `detect_profile_anomaly(command)`.
+- `register_governed_model(command)`.
 - `build_api_contract()`.
 - `permissions_contract()`.
 - `build_workbench_view(tenant=...)`.
@@ -164,6 +177,29 @@ The package-local API contract exposes route descriptors:
 - `POST /segment-activations` runs `activate_segment`, reads owned segment and
   membership state, requires `cdp_segmentation.membership.evaluate`, and is
   idempotent by `segment_id`.
+- `POST /segment-simulations` runs counterfactual segment scoring and writes
+  `segment_simulation`.
+- `POST /audience-forecasts` writes audience forecast, snapshot, and exposure
+  forecast evidence.
+- `POST /profile-exceptions/resolve` records resolved audience/profile
+  exceptions with audit evidence.
+- `POST /segment-rules/parse` compiles semantic segment text into owned
+  segment-rule criteria.
+- `POST /lifecycle-risk-scores` writes lifecycle risk and affinity score
+  evidence.
+- `POST /profile-merges/heal` writes merge candidate, identity stitch, and
+  identity attestation evidence.
+- `POST /profile-proofs` writes cryptographic profile proof evidence.
+- `POST /consent-policy-screenings` writes consent screening and consent state.
+- `POST /data-quality-controls` writes quality findings and control
+  assertions.
+- `POST /customer-federation-views` writes customer/payment/order federation
+  view projections without shared-table access.
+- `POST /activation-allocations` writes activation allocation, run, delivery,
+  destination, and downstream projection readiness evidence.
+- `POST /profile-anomaly-signals` writes anomaly signal evidence.
+- `POST /governed-models` writes governed model, crypto epoch, resilience
+  drill, and carbon activation window evidence.
 - `POST /cdp-segmentation/events/inbox` runs `receive_event`, consumes
   declared AppGen-X events, requires `cdp_segmentation.event.consume`, and is
   idempotent by `event_id`.
@@ -368,10 +404,12 @@ This appendix is generated from the package manifest and is release-gated so the
 ### Permissions
 
 - `cdp_segmentation.audit`
+- `cdp_segmentation.analytics.write`
 - `cdp_segmentation.configure`
 - `cdp_segmentation.event.consume`
 - `cdp_segmentation.event.write`
 - `cdp_segmentation.membership.evaluate`
+- `cdp_segmentation.profile.govern`
 - `cdp_segmentation.segment.write`
 
 ### Configuration Keys
