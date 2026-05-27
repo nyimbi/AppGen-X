@@ -2380,3 +2380,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   artifacts before visual runtime package and readiness gates can pass.
   Verification is focused under the low-battery delivery constraint. Commit:
   `8467917`.
+- Current `personnel_identity` PBC pass removes stale static generated wrappers
+  from the personnel, org, and identity package surface. Generated service,
+  route, service-contract, and release-evidence modules now bind directly to
+  the executable personnel runtime contract, including repeated commands with
+  distinct route scopes, synthesized idempotency keys where runtime routes omit
+  them, permission fallback from runtime action permissions, AppGen-X eventing,
+  owned-table boundaries, and release evidence. Verification is focused under
+  the low-battery delivery constraint: package Python compile, runtime smoke,
+  focused package contract tests, package service/route/release smokes, source
+  artifact contract, implementation release audit, generation smoke audit,
+  specification contract, and restricted legacy-name scan all passed. Commit:
+  `pending`.
