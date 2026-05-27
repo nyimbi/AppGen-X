@@ -449,7 +449,7 @@ CREATE TABLE treasury_cash_appgen_inbox_event (
   processed_at TIMESTAMP
 );
 
-CREATE TABLE treasury_cash_appgen_dead_letter_event (
+CREATE TABLE treasury_cash_dead_letter_event (
   id INTEGER PRIMARY KEY,
   event_id VARCHAR(255) NOT NULL,
   event_type VARCHAR(255) NOT NULL,
