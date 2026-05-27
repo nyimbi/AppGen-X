@@ -252,6 +252,7 @@ from pyAppGen.form_designer import data_tooling_query_designer_transaction_repla
 from pyAppGen.form_designer import data_tooling_readiness_contract
 from pyAppGen.form_designer import data_tooling_run_ide_scenario_operation
 from pyAppGen.form_designer import data_tooling_run_module_smoke_operation
+from pyAppGen.form_designer import data_tooling_service_method_transaction_replay_contract
 from pyAppGen.form_designer import data_tooling_test_connection
 from pyAppGen.form_designer import rad_parity_workbench
 from pyAppGen.form_designer import palette_categories
@@ -2609,6 +2610,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
         "data_tooling_query_designer_transaction_replay",
+        "data_tooling_service_method_transaction_replay",
         "data_tooling_failover_transaction_replay",
         "data_tooling_readiness_contract",
         "data_tooling_ide_scenario",
@@ -2851,6 +2853,34 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert data_workbench["query_designer_transaction_replay"]["final_state"]["query_transactions"] == len(
         query_designer_replay["transactions"]
     )
+    service_method_replay = data_tooling_service_method_transaction_replay_contract()
+    assert service_method_replay["format"] == "appgen.data-tooling-service-method-transaction-replay.v1"
+    assert service_method_replay["ok"] is True
+    assert {
+        "select_service_methods",
+        "bind_parameter_schemas",
+        "generate_server_methods",
+        "generate_client_proxies",
+        "attach_security_and_validation",
+        "run_contract_tests",
+        "publish_runtime_adapters",
+        "rollback_failed_method",
+    } <= {item["phase"] for item in service_method_replay["transactions"]}
+    assert {
+        "service_methods_selected",
+        "parameters_bound_before_publish",
+        "server_and_client_artifacts_generated",
+        "auth_and_validation_attached",
+        "contract_tests_before_publish",
+        "runtime_adapters_published",
+        "failed_method_rollback_scoped",
+        "service_method_transactions_side_effect_free",
+    } <= {check["id"] for check in service_method_replay["checks"] if check["ok"]}
+    assert service_method_replay["final_state"]["persisted_writes"] == 0
+    assert data_workbench["service_method_transaction_replay"]["ok"] is True
+    assert data_workbench["service_method_transaction_replay"]["final_state"]["service_method_transactions"] == len(
+        service_method_replay["transactions"]
+    )
     failover_replay = data_tooling_failover_transaction_replay_contract()
     assert failover_replay["format"] == "appgen.data-tooling-failover-transaction-replay.v1"
     assert failover_replay["ok"] is True
@@ -2880,6 +2910,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "introspect_schema",
         "design_dataset_and_fields",
         "design_query",
+        "publish_service_methods",
         "generate_relationship_lookups",
         "publish_service_resource",
         "stage_offline_replay",
@@ -2896,6 +2927,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "probe_connection",
         "design_dataset",
         "design_query",
+        "publish_service_methods",
         "generate_relationship_lookups",
         "publish_service_resources",
         "rehearse_offline_replay",
@@ -2907,6 +2939,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "connection_ready",
         "dataset_ready",
         "query_designer_ready",
+        "service_method_ready",
         "relationship_lookup_ready",
         "publish_ready",
         "offline_replay_ready",
@@ -2919,6 +2952,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } == {check["id"] for check in readiness["checks"]}
     assert readiness["final_state"]["persisted_writes"] == 0
     assert readiness["final_state"]["query_designer_transactions"] == len(query_designer_replay["transactions"])
+    assert readiness["final_state"]["service_method_transactions"] == len(service_method_replay["transactions"])
     assert readiness["final_state"]["lookup_endpoints"] == data_ide_scenario["final_state"]["lookup_endpoints"]
     assert readiness["final_state"]["design_runtime_phases"] == data_ide_scenario["final_state"]["design_runtime_phases"]
     assert readiness["final_state"]["scenario_steps"] == len(data_ide_scenario["pipeline"])
@@ -5325,6 +5359,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "probe_connection",
         "design_dataset",
         "design_query",
+        "publish_service_methods",
         "generate_relationship_lookups",
         "publish_service_resources",
         "rehearse_offline_replay",
@@ -5337,6 +5372,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
         "data_tooling_query_designer_transaction_replay",
+        "data_tooling_service_method_transaction_replay",
         "data_tooling_ide_scenario",
     } <= set(lifecycle_by_phase["publish_data_services"]["evidence"]["passing_checks"])
     assert lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
@@ -5522,6 +5558,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "enterprise_data_ide_module_tests",
         "data_tooling_module_replay_matrix",
         "data_tooling_query_designer_transaction_replay",
+        "data_tooling_service_method_transaction_replay",
         "data_tooling_ide_scenario",
         "phase_order_ready",
     } <= set(requirements_by_id["native_data_service_tooling"]["deep_checks"])
@@ -15437,6 +15474,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "probe_connection",
         "design_dataset",
         "design_query",
+        "publish_service_methods",
         "generate_relationship_lookups",
         "publish_service_resources",
         "rehearse_offline_replay",
@@ -15449,6 +15487,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
         "data_tooling_query_designer_transaction_replay",
+        "data_tooling_service_method_transaction_replay",
         "data_tooling_ide_scenario",
     } <= set(generated_lifecycle_by_phase["publish_data_services"]["evidence"]["passing_checks"])
     assert generated_lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
@@ -15644,6 +15683,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "enterprise_data_ide_module_tests",
         "data_tooling_module_replay_matrix",
         "data_tooling_query_designer_transaction_replay",
+        "data_tooling_service_method_transaction_replay",
         "data_tooling_ide_scenario",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["native_data_service_tooling"]["deep_checks"])
@@ -16593,6 +16633,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
         "data_tooling_query_designer_transaction_replay",
+        "data_tooling_service_method_transaction_replay",
         "data_tooling_failover_transaction_replay",
         "data_tooling_readiness_contract",
         "data_tooling_ide_scenario",
@@ -16821,6 +16862,33 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {check["id"] for check in generated_query_designer_replay["checks"] if check["ok"]}
     assert generated_query_designer_replay["final_state"]["persisted_writes"] == 0
     assert generated_data_tooling["query_designer_transaction_replay"]["ok"] is True
+    generated_service_method_replay = form_designer.data_tooling_service_method_transaction_replay_contract()
+    assert generated_service_method_replay["format"] == (
+        "appgen.generated-data-tooling-service-method-transaction-replay.v1"
+    )
+    assert generated_service_method_replay["ok"] is True
+    assert {
+        "select_service_methods",
+        "bind_parameter_schemas",
+        "generate_server_methods",
+        "generate_client_proxies",
+        "attach_security_and_validation",
+        "run_contract_tests",
+        "publish_runtime_adapters",
+        "rollback_failed_method",
+    } <= {item["phase"] for item in generated_service_method_replay["transactions"]}
+    assert {
+        "service_methods_selected",
+        "parameters_bound_before_publish",
+        "server_and_client_artifacts_generated",
+        "auth_and_validation_attached",
+        "contract_tests_before_publish",
+        "runtime_adapters_published",
+        "failed_method_rollback_scoped",
+        "service_method_transactions_side_effect_free",
+    } <= {check["id"] for check in generated_service_method_replay["checks"] if check["ok"]}
+    assert generated_service_method_replay["final_state"]["persisted_writes"] == 0
+    assert generated_data_tooling["service_method_transaction_replay"]["ok"] is True
     generated_failover_replay = form_designer.data_tooling_failover_transaction_replay_contract()
     assert generated_failover_replay["format"] == "appgen.generated-data-tooling-failover-transaction-replay.v1"
     assert generated_failover_replay["ok"] is True
@@ -16846,6 +16914,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "introspect_schema",
         "design_dataset_and_fields",
         "design_query",
+        "publish_service_methods",
         "generate_relationship_lookups",
         "publish_service_resource",
         "stage_offline_replay",
@@ -16862,6 +16931,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "probe_connection",
         "design_dataset",
         "design_query",
+        "publish_service_methods",
         "generate_relationship_lookups",
         "publish_service_resources",
         "rehearse_offline_replay",
@@ -16873,6 +16943,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "connection_ready",
         "dataset_ready",
         "query_designer_ready",
+        "service_method_ready",
         "relationship_lookup_ready",
         "publish_ready",
         "offline_replay_ready",
@@ -16886,6 +16957,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_readiness["final_state"]["persisted_writes"] == 0
     assert generated_readiness["final_state"]["query_designer_transactions"] == len(
         generated_query_designer_replay["transactions"]
+    )
+    assert generated_readiness["final_state"]["service_method_transactions"] == len(
+        generated_service_method_replay["transactions"]
     )
     assert generated_readiness["final_state"]["lookup_endpoints"] == generated_data_ide_scenario["final_state"]["lookup_endpoints"]
     assert generated_readiness["final_state"]["design_runtime_phases"] == generated_data_ide_scenario["final_state"]["design_runtime_phases"]

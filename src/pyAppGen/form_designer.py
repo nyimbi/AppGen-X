@@ -12848,6 +12848,136 @@ def data_tooling_query_designer_transaction_replay_contract() -> dict:
     }
 
 
+def data_tooling_service_method_transaction_replay_contract() -> dict:
+    """Replay service-method publication from method selection to rollback-safe runtime adapters."""
+    methods = data_service_method_contract()
+    invocation = data_server_method_invocation_contract("approve_inventory_move")
+    resource_publish = data_tooling_publish_resource()
+    service_tests = data_service_contract_test_plan()
+    service_security = data_service_security_contract()
+    stored_procedures = data_stored_procedure_workflow_contract()
+    service_versioning = data_service_versioning_contract()
+    telemetry = data_service_telemetry_contract()
+    method_spec = {
+        "name": "approve_inventory_move",
+        "kind": "transaction",
+        "source": "stored_procedure",
+        "routine": "approve_inventory_move",
+        "parameters": (
+            {"name": "inventory_move_id", "type": "uuid", "required": True},
+            {"name": "approved_by", "type": "user_ref", "required": True},
+            {"name": "approval_note", "type": "text", "required": False},
+        ),
+        "server_stub": "ApproveInventoryMoveMethod",
+        "client_proxy": "approveInventoryMove",
+        "runtime_adapter": "ApproveInventoryMoveRuntimeAdapter",
+    }
+    transactions = (
+        {
+            "phase": "select_service_methods",
+            "operations": methods["method_kinds"] + ("choose_transaction_method",),
+            "ok": {"query", "command", "transaction", "background_job"} <= set(methods["method_kinds"])
+            and method_spec["kind"] in methods["method_kinds"],
+        },
+        {
+            "phase": "bind_parameter_schemas",
+            "operations": tuple(parameter["name"] for parameter in method_spec["parameters"]),
+            "ok": bool(method_spec["parameters"])
+            and all({"name", "type", "required"} <= set(parameter) for parameter in method_spec["parameters"])
+            and "typed_parameters_required" in stored_procedures["guards"],
+        },
+        {
+            "phase": "generate_server_methods",
+            "operations": ("server_method_stub", "transaction_scope", "response_mapper"),
+            "ok": "server_method_stub" in methods["generated_artifacts"]
+            and "transaction_scope" in methods["session_lifecycle"]
+            and invocation["session"]["transaction_scope"] in {"read_only", "transaction"},
+        },
+        {
+            "phase": "generate_client_proxies",
+            "operations": ("client_proxy", "transport_binding", "error_mapper"),
+            "ok": "client_proxy" in methods["generated_artifacts"]
+            and invocation["transport"] in methods["transports"]
+            and method_spec["client_proxy"].startswith("approve"),
+        },
+        {
+            "phase": "attach_security_and_validation",
+            "operations": ("auth_filter", "request_validator", "audit_policy"),
+            "ok": {"auth_filter", "request_validator"} <= set(methods["generated_artifacts"])
+            and {"deny_by_default", "audit_log_required"} <= set(service_security["guards"]),
+        },
+        {
+            "phase": "run_contract_tests",
+            "operations": tuple(test["surface"] for test in service_tests["tests"]),
+            "ok": all(test["assertions"] for test in service_tests["tests"])
+            and {"auth_filter_required", "request_validator_required"} <= set(service_tests["guards"]),
+        },
+        {
+            "phase": "publish_runtime_adapters",
+            "operations": resource_publish["pipeline"] + telemetry["guards"] + service_versioning["guards"],
+            "ok": resource_publish["ok"]
+            and {"attach_security", "register_analytics"} <= set(resource_publish["pipeline"])
+            and "latency_budget_recorded" in telemetry["guards"]
+            and "versioned_routes_required" in service_versioning["guards"],
+        },
+        {
+            "phase": "rollback_failed_method",
+            "operations": ("restore_method_snapshot", "remove_unpublished_route", "assert_no_persisted_changes"),
+            "ok": "rollback_preview" in stored_procedures["workflows"][0]["pipeline"]
+            and not invocation["side_effects"]
+            and not resource_publish["side_effects"],
+        },
+    )
+    phase_names = tuple(transaction["phase"] for transaction in transactions)
+    checks = (
+        {"id": "service_methods_selected", "ok": transactions[0]["ok"], "evidence": methods},
+        {"id": "parameters_bound_before_publish", "ok": phase_names.index("bind_parameter_schemas") < phase_names.index("publish_runtime_adapters"), "evidence": method_spec["parameters"]},
+        {"id": "server_and_client_artifacts_generated", "ok": transactions[2]["ok"] and transactions[3]["ok"], "evidence": method_spec},
+        {"id": "auth_and_validation_attached", "ok": transactions[4]["ok"], "evidence": service_security},
+        {"id": "contract_tests_before_publish", "ok": phase_names.index("run_contract_tests") < phase_names.index("publish_runtime_adapters") and transactions[5]["ok"], "evidence": service_tests},
+        {"id": "runtime_adapters_published", "ok": transactions[6]["ok"] and method_spec["runtime_adapter"].endswith("Adapter"), "evidence": {"resource_publish": resource_publish, "telemetry": telemetry}},
+        {"id": "failed_method_rollback_scoped", "ok": transactions[7]["ok"], "evidence": stored_procedures},
+        {
+            "id": "service_method_transactions_side_effect_free",
+            "ok": not invocation["side_effects"]
+            and not resource_publish["side_effects"]
+            and not service_tests["side_effects"]
+            and not service_security["side_effects"]
+            and not stored_procedures["side_effects"]
+            and not telemetry["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = all(transaction["ok"] for transaction in transactions) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.data-tooling-service-method-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "method": method_spec,
+        "transactions": transactions,
+        "checks": checks,
+        "final_state": {
+            "service_method_transactions": len(transactions),
+            "parameters": len(method_spec["parameters"]),
+            "generated_artifacts": len(methods["generated_artifacts"]),
+            "service_tests": len(service_tests["tests"]),
+            "published_adapters": 1 if transactions[6]["ok"] else 0,
+            "persisted_writes": 0,
+        },
+        "guards": (
+            "parameter_schemas_before_method_publish",
+            "server_method_stub_before_client_proxy",
+            "auth_and_validation_before_contract_tests",
+            "contract_tests_before_runtime_adapter_publish",
+            "telemetry_before_service_method_release",
+            "rollback_restores_method_snapshot",
+            "service_method_transactions_are_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def data_tooling_failover_transaction_replay_contract() -> dict:
     """Replay a degraded data connection through failover, rollback preview, restore, and replay gates."""
     connection = data_connection_test_contract()
@@ -12961,6 +13091,7 @@ def data_tooling_run_ide_scenario_operation() -> dict:
     lookup_editors = data_tooling_generate_lookup_editors()
     relationship_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
     query_designer_replay = data_tooling_query_designer_transaction_replay_contract()
+    service_method_replay = data_tooling_service_method_transaction_replay_contract()
     publish_resource = data_tooling_publish_resource()
     offline_replay = data_tooling_rehearse_offline_replay_operation()
     replication = data_tooling_monitor_replication_operation()
@@ -12994,6 +13125,13 @@ def data_tooling_run_ide_scenario_operation() -> dict:
             and {"query_preview_before_runtime_adapter", "rollback_restores_query_snapshot"}
             <= {check["id"] for check in query_designer_replay["checks"] if check["ok"]},
             "evidence": query_designer_replay,
+        },
+        {
+            "step": "publish_service_methods",
+            "ok": service_method_replay["ok"]
+            and {"contract_tests_before_publish", "runtime_adapters_published"}
+            <= {check["id"] for check in service_method_replay["checks"] if check["ok"]},
+            "evidence": service_method_replay,
         },
         {
             "step": "generate_relationship_lookups",
@@ -13052,6 +13190,7 @@ def data_tooling_run_ide_scenario_operation() -> dict:
         "schema_pipeline_steps": len(schema_browser["pipeline"]),
         "dataset_transitions": len(dataset["transitions"]),
         "query_designer_transactions": len(query_designer_replay["transactions"]),
+        "service_method_transactions": len(service_method_replay["transactions"]),
         "lookup_endpoints": len(lookup_editors["lookup_endpoints"]),
         "publish_steps": len(publish_resource["pipeline"]),
         "offline_items": len(offline_replay["queue"]),
@@ -13071,6 +13210,7 @@ def data_tooling_run_ide_scenario_operation() -> dict:
                 "introspect_schema",
                 "design_dataset_and_fields",
                 "design_query",
+                "publish_service_methods",
                 "generate_relationship_lookups",
                 "publish_service_resource",
                 "stage_offline_replay",
@@ -13106,7 +13246,8 @@ def data_tooling_run_ide_scenario_operation() -> dict:
             "connection_profile_before_schema_introspection",
             "schema_introspection_before_dataset_design",
             "dataset_design_before_query_design",
-            "query_design_before_relationship_lookups",
+            "query_design_before_service_method_publish",
+            "service_method_publish_before_relationship_lookups",
             "relationship_lookups_before_publish",
             "publish_before_offline_replay",
             "offline_replay_before_failover_monitoring",
@@ -13130,6 +13271,7 @@ def data_tooling_readiness_contract() -> dict:
     lookup_editors = data_tooling_generate_lookup_editors()
     relationship_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
     query_designer_replay = data_tooling_query_designer_transaction_replay_contract()
+    service_method_replay = data_tooling_service_method_transaction_replay_contract()
     design_runtime = data_tooling_design_runtime_session_replay_contract()
     publish_replay = data_tooling_publish_transaction_replay_contract()
     failover_replay = data_tooling_failover_transaction_replay_contract()
@@ -13152,6 +13294,13 @@ def data_tooling_readiness_contract() -> dict:
             "ok": query_designer_replay["ok"]
             and {"query_preview_before_runtime_adapter", "named_query_round_trips"}
             <= {check["id"] for check in query_designer_replay["checks"] if check["ok"]},
+        },
+        {
+            "phase": "publish_service_methods",
+            "pipeline": tuple(transaction["phase"] for transaction in service_method_replay["transactions"]),
+            "ok": service_method_replay["ok"]
+            and {"contract_tests_before_publish", "runtime_adapters_published"}
+            <= {check["id"] for check in service_method_replay["checks"] if check["ok"]},
         },
         {
             "phase": "generate_relationship_lookups",
@@ -13209,19 +13358,26 @@ def data_tooling_readiness_contract() -> dict:
             "evidence": query_designer_replay,
         },
         {
+            "id": "service_method_ready",
+            "ok": phases[3]["ok"]
+            and service_method_replay["final_state"]["persisted_writes"] == 0
+            and not service_method_replay["side_effects"],
+            "evidence": service_method_replay,
+        },
+        {
             "id": "relationship_lookup_ready",
-            "ok": phases[3]["ok"],
+            "ok": phases[4]["ok"],
             "evidence": {"operation": lookup_editors, "lifecycle": relationship_lifecycle},
         },
-        {"id": "publish_ready", "ok": phases[4]["ok"], "evidence": {"operation": publish_resource, "replay": publish_replay}},
-        {"id": "offline_replay_ready", "ok": phases[5]["ok"], "evidence": offline_replay},
-        {"id": "replication_failover_ready", "ok": phases[6]["ok"], "evidence": {"replication": replication, "failover": failover_replay}},
+        {"id": "publish_ready", "ok": phases[5]["ok"], "evidence": {"operation": publish_resource, "replay": publish_replay}},
+        {"id": "offline_replay_ready", "ok": phases[6]["ok"], "evidence": offline_replay},
+        {"id": "replication_failover_ready", "ok": phases[7]["ok"], "evidence": {"replication": replication, "failover": failover_replay}},
         {
             "id": "design_runtime_session_ready",
-            "ok": phases[7]["ok"],
+            "ok": phases[8]["ok"],
             "evidence": design_runtime,
         },
-        {"id": "diagnostics_ready", "ok": phases[8]["ok"], "evidence": {"module_smoke": module_smoke, "runtime_replay": runtime_replay}},
+        {"id": "diagnostics_ready", "ok": phases[9]["ok"], "evidence": {"module_smoke": module_smoke, "runtime_replay": runtime_replay}},
         {"id": "operation_surface_ready", "ok": actionable_operations["ok"] and not actionable_operations["side_effects"], "evidence": actionable_operations},
         {
             "id": "ide_scenario_ready",
@@ -13239,6 +13395,7 @@ def data_tooling_readiness_contract() -> dict:
                 "probe_connection",
                 "design_dataset",
                 "design_query",
+                "publish_service_methods",
                 "generate_relationship_lookups",
                 "publish_service_resources",
                 "rehearse_offline_replay",
@@ -13259,6 +13416,7 @@ def data_tooling_readiness_contract() -> dict:
             "dataset_transitions": len(dataset["transitions"]),
             "published_resources": len(publish_resource["pipeline"]),
             "query_designer_transactions": len(query_designer_replay["transactions"]),
+            "service_method_transactions": len(service_method_replay["transactions"]),
             "lookup_endpoints": len(relationship_lifecycle["lookup_endpoints"]),
             "offline_queue": len(offline_replay["queue"]),
             "replication_monitors": len(replication["monitors"]),
@@ -13270,6 +13428,7 @@ def data_tooling_readiness_contract() -> dict:
         "guards": (
             "connection_probe_before_dataset_design",
             "dataset_design_before_service_publish",
+            "service_method_publish_before_relationship_lookup",
             "relationship_lookup_lifecycle_before_service_publish",
             "service_publish_before_offline_replay",
             "offline_replay_before_failover_monitoring",
@@ -13333,6 +13492,7 @@ def rad_data_tooling_workbench() -> dict:
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
     query_designer_transaction_replay = data_tooling_query_designer_transaction_replay_contract()
+    service_method_transaction_replay = data_tooling_service_method_transaction_replay_contract()
     failover_transaction_replay = data_tooling_failover_transaction_replay_contract()
     ide_scenario = data_tooling_run_ide_scenario_operation()
     readiness = data_tooling_readiness_contract()
@@ -13737,6 +13897,23 @@ def rad_data_tooling_workbench() -> dict:
             "evidence": query_designer_transaction_replay,
         },
         {
+            "id": "data_tooling_service_method_transaction_replay",
+            "ok": service_method_transaction_replay["ok"]
+            and {
+                "service_methods_selected",
+                "parameters_bound_before_publish",
+                "server_and_client_artifacts_generated",
+                "auth_and_validation_attached",
+                "contract_tests_before_publish",
+                "runtime_adapters_published",
+                "failed_method_rollback_scoped",
+                "service_method_transactions_side_effect_free",
+            } <= {check["id"] for check in service_method_transaction_replay["checks"] if check["ok"]}
+            and service_method_transaction_replay["final_state"]["persisted_writes"] == 0
+            and not service_method_transaction_replay["side_effects"],
+            "evidence": service_method_transaction_replay,
+        },
+        {
             "id": "data_tooling_failover_transaction_replay",
             "ok": failover_transaction_replay["ok"]
             and {"failed_route_quarantined_before_retry", "offline_replay_pauses_for_manual_review"} <= set(failover_transaction_replay["guards"])
@@ -13828,6 +14005,7 @@ def rad_data_tooling_workbench() -> dict:
         "design_runtime_replay": design_runtime_replay,
             "publish_transaction_replay": publish_transaction_replay,
             "query_designer_transaction_replay": query_designer_transaction_replay,
+            "service_method_transaction_replay": service_method_transaction_replay,
             "failover_transaction_replay": failover_transaction_replay,
         "ide_scenario": ide_scenario,
         "readiness": readiness,
@@ -18394,12 +18572,14 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and "phase_order_ready" in {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["publish_transaction_replay"]["ok"]
             and data_tooling["query_designer_transaction_replay"]["ok"]
+            and data_tooling["service_method_transaction_replay"]["ok"]
             and data_tooling["ide_scenario"]["ok"]
             and {
                 "relationship_lookup_lifecycle_replay",
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
                 "data_tooling_query_designer_transaction_replay",
+                "data_tooling_service_method_transaction_replay",
                 "data_tooling_ide_scenario",
             } <= data_tooling_passing_checks
             and {
@@ -18412,6 +18592,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "passing_checks": tuple(sorted(data_tooling_passing_checks)),
                 "publish_state": data_tooling["publish_transaction_replay"]["final_state"],
                 "query_designer_state": data_tooling["query_designer_transaction_replay"]["final_state"],
+                "service_method_state": data_tooling["service_method_transaction_replay"]["final_state"],
                 "scenario_state": data_tooling["ide_scenario"]["final_state"],
                 "readiness_phases": tuple(phase["phase"] for phase in data_readiness["phases"]),
             },
@@ -18823,6 +19004,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "connection_ready",
                 "dataset_ready",
                 "query_designer_ready",
+                "service_method_ready",
                 "publish_ready",
                 "offline_replay_ready",
                 "replication_failover_ready",
@@ -18834,10 +19016,12 @@ def platform_parity_requirement_audit_contract() -> dict:
             and data_tooling["runtime_replay"]["ok"]
             and data_tooling["publish_transaction_replay"]["ok"]
             and data_tooling["query_designer_transaction_replay"]["ok"]
+            and data_tooling["service_method_transaction_replay"]["ok"]
             and data_tooling["ide_scenario"]["ok"]
             and {
                 "relationship_lookup_lifecycle_replay",
                 "data_tooling_query_designer_transaction_replay",
+                "data_tooling_service_method_transaction_replay",
                 "data_tooling_ide_scenario",
                 "data_tooling_modules",
                 "data_tooling_module_tests",
@@ -18859,6 +19043,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
                 "data_tooling_query_designer_transaction_replay",
+                "data_tooling_service_method_transaction_replay",
                 "data_tooling_ide_scenario",
                 "phase_order_ready",
             ),
