@@ -1,1 +1,62 @@
-PBC_MANIFEST = {'pbc': 'streaming_analytics', 'label': 'Streaming Analytics and Real-Time Aggregation', 'mesh': 'intelligence', 'description': 'Windowed metrics, counts, KPI state, and operational dashboard models.', 'datastore_backend': 'postgresql', 'tables': ('metric_stream', 'aggregation_window', 'kpi_snapshot', 'dashboard_projection'), 'apis': ('POST /metric-streams', 'GET /kpis', 'GET /projections'), 'emits': ('ForecastUpdated', 'OperationalKpiChanged'), 'consumes': ('AuditEventSealed', 'OrderShipped', 'PaymentCaptured'), 'template': 'reporting', 'ui_fragments': ('StreamingAnalyticsWorkbench', 'StreamingAnalyticsDetail'), 'permissions': ('streaming_analytics.read', 'streaming_analytics.create', 'streaming_analytics.update', 'streaming_analytics.approve', 'streaming_analytics.admin'), 'configuration': ('STREAMING_ANALYTICS_DATABASE_URL', 'STREAMING_ANALYTICS_EVENT_TOPIC', 'STREAMING_ANALYTICS_RETRY_LIMIT'), 'capabilities': ('streaming_analytics.metric_stream', 'streaming_analytics.aggregation_window', 'streaming_analytics.kpi_snapshot', 'streaming_analytics.dashboard_projection'), 'standard_features': ('metric_streams', 'event_ingestion', 'aggregation_windows', 'kpi_snapshots', 'dashboard_projections', 'threshold_alerts', 'late_event_replay', 'quality_checks', 'retention_policy', 'audit_event_projection', 'order_projection', 'payment_projection', 'tenant_isolation', 'appgen_x_outbox', 'appgen_x_inbox', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench'), 'workflows': ('command_metric_streams', 'query_kpis', 'query_projections'), 'analytics': ('prediction_quality', 'drift_score', 'decision_latency', 'risk_precision', 'forecast_updated_throughput', 'operational_kpi_changed_throughput'), 'advanced_capabilities': ('event_sourced_metric_lifecycle', 'owned_analytics_schema_boundary', 'multi_tenant_metric_isolation', 'schema_evolution_resilient_metric_context', 'metric_stream_definition', 'real_time_event_ingestion', 'windowed_aggregation_engine', 'kpi_snapshot_publication', 'dashboard_projection_management', 'late_event_and_replay_handling', 'data_quality_gatekeeping', 'probabilistic_kpi_confidence_scoring', 'counterfactual_metric_threshold_simulation', 'temporal_kpi_forecasting', 'autonomous_metric_exception_resolution', 'semantic_metric_definition_understanding', 'predictive_operational_risk', 'self_healing_window_recomputation', 'cryptographic_kpi_snapshot_proof', 'immutable_metric_audit_trail', 'dynamic_metric_policy_screening', 'automated_kpi_control_testing', 'cross_system_audit_order_payment_federation', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions_governance_evidence', 'configuration_schema', 'parameter_engine', 'rule_engine', 'seed_data', 'workbench_ui', 'governed_model_evidence'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+"""Package manifest for the Streaming Analytics PBC."""
+
+from __future__ import annotations
+
+from .runtime import STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES
+from .runtime import STREAMING_ANALYTICS_EMITTED_EVENT_TYPES
+from .runtime import STREAMING_ANALYTICS_OWNED_TABLES
+from .runtime import STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS
+from .runtime import STREAMING_ANALYTICS_STANDARD_FEATURE_KEYS
+from .runtime import streaming_analytics_build_api_contract
+from .runtime import streaming_analytics_permissions_contract
+from .runtime import streaming_analytics_runtime_capabilities
+from .ui import STREAMING_ANALYTICS_UI_FRAGMENT_KEYS
+
+
+PBC_KEY = 'streaming_analytics'
+
+PBC_MANIFEST = {
+    "pbc": "streaming_analytics",
+    "label": "Streaming Analytics and Real-Time Aggregation",
+    "mesh": "intelligence",
+    "description": (
+        "Operational metric streams, event ingestion, aggregation windows, KPI "
+        "snapshots, dashboard projections, replay, quality controls, forecasting, "
+        "rules, parameters, governance, and AppGen-X event orchestration."
+    ),
+    "datastore_backend": "postgresql",
+    "tables": STREAMING_ANALYTICS_OWNED_TABLES,
+    "apis": tuple(route["route"] for route in streaming_analytics_build_api_contract()["routes"]),
+    "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES,
+    "consumes": STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES,
+    "template": None,
+    "ui_fragments": STREAMING_ANALYTICS_UI_FRAGMENT_KEYS,
+    "permissions": tuple(sorted(streaming_analytics_permissions_contract()["permissions"])),
+    "configuration": (
+        "STREAMING_ANALYTICS_DATABASE_URL",
+        "STREAMING_ANALYTICS_EVENT_TOPIC",
+        "STREAMING_ANALYTICS_RETRY_LIMIT",
+        "STREAMING_ANALYTICS_DEFAULT_TIMEZONE",
+        "STREAMING_ANALYTICS_RETENTION_DAYS",
+        "STREAMING_ANALYTICS_WATERMARK_SECONDS",
+        "STREAMING_ANALYTICS_AGGREGATION_MODE",
+    ),
+    "capabilities": tuple(f"streaming_analytics.{table}" for table in STREAMING_ANALYTICS_OWNED_TABLES),
+    "standard_features": STREAMING_ANALYTICS_STANDARD_FEATURE_KEYS,
+    "workflows": streaming_analytics_runtime_capabilities()["operations"],
+    "analytics": (
+        "event_ingestion_rate",
+        "kpi_snapshot_count",
+        "late_event_rate",
+        "quality_score",
+        "forecast_confidence",
+        "operational_risk",
+        "forecast_updated_throughput",
+        "operational_kpi_changed_throughput",
+    ),
+    "advanced_capabilities": STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS,
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": ("tests/test_contract.py",),
+    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+}

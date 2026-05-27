@@ -9327,6 +9327,39 @@ from .pbcs.streaming_analytics import streaming_analytics_runtime_smoke  # noqa:
 from .pbcs.streaming_analytics import streaming_analytics_set_parameter  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_ui_contract  # noqa: E402,F401
 from .pbcs.streaming_analytics import streaming_analytics_verify_owned_table_boundary  # noqa: E402,F401
+PBC_CATALOG["streaming_analytics"].update(
+    {
+        "apis": tuple(route["route"] for route in streaming_analytics_build_api_contract()["routes"]),
+        "ui_fragments": STREAMING_ANALYTICS_UI_FRAGMENT_KEYS,
+        "permissions": tuple(sorted(streaming_analytics_permissions_contract()["permissions"])),
+        "configuration": (
+            "STREAMING_ANALYTICS_DATABASE_URL",
+            "STREAMING_ANALYTICS_EVENT_TOPIC",
+            "STREAMING_ANALYTICS_RETRY_LIMIT",
+            "STREAMING_ANALYTICS_DEFAULT_TIMEZONE",
+            "STREAMING_ANALYTICS_RETENTION_DAYS",
+            "STREAMING_ANALYTICS_WATERMARK_SECONDS",
+            "STREAMING_ANALYTICS_AGGREGATION_MODE",
+        ),
+        "capabilities": tuple(
+            f"streaming_analytics.{table['table']}"
+            for table in streaming_analytics_build_schema_contract()["tables"]
+        ),
+        "standard_features": STREAMING_ANALYTICS_STANDARD_FEATURE_KEYS,
+        "advanced_capabilities": STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS,
+        "workflows": streaming_analytics_runtime_capabilities()["operations"],
+        "analytics": (
+            "event_ingestion_rate",
+            "kpi_snapshot_count",
+            "late_event_rate",
+            "quality_score",
+            "forecast_confidence",
+            "operational_risk",
+            "forecast_updated_throughput",
+            "operational_kpi_changed_throughput",
+        ),
+    }
+)
 from .pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES  # noqa: E402,F401
 from .pbcs.enterprise_search_vector import ENTERPRISE_SEARCH_VECTOR_STANDARD_FEATURE_KEYS  # noqa: E402,F401

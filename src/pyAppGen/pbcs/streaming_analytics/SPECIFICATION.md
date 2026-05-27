@@ -239,7 +239,7 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `streaming_analytics`
 - Mesh: `intelligence`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
@@ -251,8 +251,14 @@ This appendix is generated from the package manifest and is release-gated so the
 ### API Routes
 
 - `POST /metric-streams`
+- `POST /aggregation-windows`
+- `POST /metric-events`
 - `GET /kpis`
 - `GET /projections`
+- `GET /streaming-analytics/workbench`
+- `GET /streaming-analytics/schema-contract`
+- `GET /streaming-analytics/service-contract`
+- `GET /streaming-analytics/release-evidence`
 
 ### Emitted Events
 
@@ -267,22 +273,99 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `StreamingAnalyticsWorkbench`
+- `MetricStreamRegistry`
+- `MetricEventMonitor`
+- `AggregationWindowDesigner`
+- `KpiSnapshotBoard`
+- `DashboardProjectionBuilder`
+- `ReplayConsole`
+- `QualityControlPanel`
+- `AnalyticsRuleStudio`
+- `AnalyticsParameterConsole`
+- `AnalyticsConfigurationPanel`
+- `AnalyticsEventOutbox`
+- `AnalyticsDeadLetterQueue`
 
 ### Permissions
 
-- None declared
+- `streaming_analytics.audit`
+- `streaming_analytics.configure`
+- `streaming_analytics.event.consume`
+- `streaming_analytics.event.write`
+- `streaming_analytics.stream.write`
+- `streaming_analytics.window.write`
 
 ### Configuration Keys
 
-- None declared
+- `STREAMING_ANALYTICS_DATABASE_URL`
+- `STREAMING_ANALYTICS_EVENT_TOPIC`
+- `STREAMING_ANALYTICS_RETRY_LIMIT`
+- `STREAMING_ANALYTICS_DEFAULT_TIMEZONE`
+- `STREAMING_ANALYTICS_RETENTION_DAYS`
+- `STREAMING_ANALYTICS_WATERMARK_SECONDS`
+- `STREAMING_ANALYTICS_AGGREGATION_MODE`
 
 ### Standard Features
 
-- None declared
+- `metric_streams`
+- `event_ingestion`
+- `aggregation_windows`
+- `kpi_snapshots`
+- `dashboard_projections`
+- `threshold_alerts`
+- `late_event_replay`
+- `quality_checks`
+- `retention_policy`
+- `audit_event_projection`
+- `order_projection`
+- `payment_projection`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_metric_lifecycle`
+- `owned_analytics_schema_boundary`
+- `multi_tenant_metric_isolation`
+- `schema_evolution_resilient_metric_context`
+- `metric_stream_definition`
+- `real_time_event_ingestion`
+- `windowed_aggregation_engine`
+- `kpi_snapshot_publication`
+- `dashboard_projection_management`
+- `late_event_and_replay_handling`
+- `data_quality_gatekeeping`
+- `probabilistic_kpi_confidence_scoring`
+- `counterfactual_metric_threshold_simulation`
+- `temporal_kpi_forecasting`
+- `autonomous_metric_exception_resolution`
+- `semantic_metric_definition_understanding`
+- `predictive_operational_risk`
+- `self_healing_window_recomputation`
+- `cryptographic_kpi_snapshot_proof`
+- `immutable_metric_audit_trail`
+- `dynamic_metric_policy_screening`
+- `automated_kpi_control_testing`
+- `cross_system_audit_order_payment_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
+- `governed_model_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
