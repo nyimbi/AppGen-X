@@ -19,18 +19,28 @@ from .runtime import enterprise_search_vector_build_workbench_view
 from .runtime import enterprise_search_vector_configure_runtime
 from .runtime import enterprise_search_vector_create_index
 from .runtime import enterprise_search_vector_empty_state
+from .runtime import enterprise_search_vector_federate_search_sources
+from .runtime import enterprise_search_vector_forecast_index_freshness
+from .runtime import enterprise_search_vector_generate_index_proof
 from .runtime import enterprise_search_vector_ingest_document
 from .runtime import enterprise_search_vector_permissions_contract
 from .runtime import enterprise_search_vector_query
 from .runtime import enterprise_search_vector_receive_event
 from .runtime import enterprise_search_vector_refresh_index
 from .runtime import enterprise_search_vector_record_feedback
+from .runtime import enterprise_search_vector_record_retention_deletion
 from .runtime import enterprise_search_vector_register_rule
 from .runtime import enterprise_search_vector_register_schema_extension
+from .runtime import enterprise_search_vector_register_governed_model
+from .runtime import enterprise_search_vector_remediate_search_quality
+from .runtime import enterprise_search_vector_run_relevance_controls
 from .runtime import enterprise_search_vector_run_embedding_job
 from .runtime import enterprise_search_vector_runtime_capabilities
 from .runtime import enterprise_search_vector_runtime_smoke
+from .runtime import enterprise_search_vector_score_query_intent_risk
+from .runtime import enterprise_search_vector_screen_search_policy
 from .runtime import enterprise_search_vector_set_parameter
+from .runtime import enterprise_search_vector_simulate_counterfactual_ranking
 from .runtime import enterprise_search_vector_verify_owned_table_boundary
 from .ui import ENTERPRISE_SEARCH_VECTOR_UI_FRAGMENT_KEYS
 from .ui import enterprise_search_vector_render_workbench
@@ -104,4 +114,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

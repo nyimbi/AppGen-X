@@ -2,23 +2,29 @@
 
 `enterprise_search_vector` owns semantic and hybrid discovery for AppGen-X
 applications. The package-local implementation manages search indexes,
-embedding jobs, vectorized documents, query traces, ACL-filtered retrieval,
-feedback-driven ranking evidence, AppGen-X outbox/inbox eventing, and the
-search workbench surface without depending on shared operational tables.
+embedding jobs, vectorized documents, query traces, counterfactual ranking,
+freshness forecasting, quality remediation, policy screening, relevance
+controls, index proofs, federated views, intent risk, retention/deletion
+evidence, governed models, AppGen-X outbox/inbox eventing, and the search
+workbench surface without depending on shared operational tables.
 
 ## Owned Boundary
 
 - PBC key: `enterprise_search_vector`
 - Owned tables: `search_index`, `embedding_job`, `vector_document`,
-  `query_trace`
+  `query_trace`, `ranking_simulation`, `freshness_forecast`,
+  `quality_remediation`, `search_policy_screening`,
+  `relevance_control_assertion`, `index_proof`, `federated_search_view`,
+  `query_intent_risk`, `retention_deletion_record`, `search_audit_entry`,
+  and `search_governed_model`
 - Allowed datastores: PostgreSQL, MySQL, MariaDB
 - Event contract: AppGen-X outbox/inbox only
 - Emitted events: `SearchIndexUpdated`, `DiscoveryInsightGenerated`
 - Consumed events: `ProductPublished`, `CustomerUpdated`,
   `AuditEventSealed`
 - Primary APIs: `POST /indexes`, `POST /indexes/{id}/refresh`,
-  `POST /embeddings`, `POST /search`, `POST /query-feedback`,
-  `GET /query-traces`
+  `POST /documents`, `POST /embeddings`, `POST /search`,
+  `POST /query-feedback`, advanced command routes, and `GET /query-traces`
 
 The package references product, customer, audit, and knowledge domains through
 declared APIs, AppGen-X events, and projections only. It does not read or
@@ -42,7 +48,8 @@ write another PBC's tables.
     traces, freshness, feedback, configuration, outbox, and dead-letter
     review.
 11. Rules, parameters, configuration schema, permissions, and seed defaults.
-12. Package-local ownership proof for the four runtime tables.
+12. Package-local ownership proof for all search, intelligence, governance,
+    audit, and runtime tables.
 
 ## Advanced Capabilities
 
@@ -109,8 +116,12 @@ not expose a stream-engine picker or per-PBC runtime selector.
 `enterprise_search_vector_build_schema_contract()` generates package-owned
 schema descriptors for business tables and AppGen-X runtime tables:
 
-- Business tables: `search_index`, `embedding_job`, `vector_document`, and
-  `query_trace`.
+- Business tables: `search_index`, `embedding_job`, `vector_document`,
+  `query_trace`, `ranking_simulation`, `freshness_forecast`,
+  `quality_remediation`, `search_policy_screening`,
+  `relevance_control_assertion`, `index_proof`, `federated_search_view`,
+  `query_intent_risk`, `retention_deletion_record`, `search_audit_entry`,
+  and `search_governed_model`.
 - Runtime tables: `enterprise_search_vector_appgen_outbox_event`,
   `enterprise_search_vector_appgen_inbox_event`, and
   `enterprise_search_vector_dead_letter_event`.
@@ -135,6 +146,16 @@ mode, result count, results, explanations, feedback, and audit proof. Runtime
 event tables include tenant, event id, event type, payload, idempotency key,
 attempts, status, version, timestamps, and dead-letter failure reason where
 applicable.
+
+Advanced tables persist executable outcomes instead of descriptor-only claims:
+ranking simulations store counterfactual score traces, freshness forecasts
+store projected staleness and refresh recommendations, quality remediations
+store applied fixes, policy screenings store deterministic access decisions,
+relevance assertions store control-test results, index proofs store hash-based
+verification evidence, federated views store dependency-safe source counts,
+intent risks store governed query decisions, retention/deletion records store
+disposition evidence, audit entries store sealed proofs, and governed models
+store approval evidence.
 
 Owned relationships are explicit. Embedding jobs and vector documents refer to
 owned search indexes by `index_id`. Vector documents can refer to owned
@@ -170,7 +191,9 @@ retention evidence, permissions, configuration, parameter updates, rule
 registration, schema extension registration, event intake, retry handling, and
 dead-letter routing. It also exposes advanced operations for counterfactual
 ranking, freshness forecasting, quality remediation, policy screening,
-relevance-control tests, index proof generation, and federated source views.
+relevance-control tests, index proof generation, federated source views,
+query-intent risk scoring, retention/deletion recording, and governed model
+registration.
 
 ## UI and Workbench
 
@@ -264,6 +287,17 @@ This appendix is generated from the package manifest and is release-gated so the
 - `embedding_job`
 - `vector_document`
 - `query_trace`
+- `ranking_simulation`
+- `freshness_forecast`
+- `quality_remediation`
+- `search_policy_screening`
+- `relevance_control_assertion`
+- `index_proof`
+- `federated_search_view`
+- `query_intent_risk`
+- `retention_deletion_record`
+- `search_audit_entry`
+- `search_governed_model`
 
 ### API Routes
 
@@ -273,6 +307,16 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /embeddings`
 - `POST /search`
 - `POST /query-feedback`
+- `POST /ranking-simulations`
+- `POST /freshness-forecasts`
+- `POST /quality-remediations`
+- `POST /policy-screenings`
+- `POST /relevance-controls`
+- `POST /index-proofs`
+- `POST /federated-source-views`
+- `POST /query-intent-risks`
+- `POST /retention-deletions`
+- `POST /governed-models`
 - `POST /enterprise-search-vector/events/inbox`
 - `GET /query-traces`
 - `GET /enterprise-search-vector-workbench`
@@ -315,7 +359,11 @@ This appendix is generated from the package manifest and is release-gated so the
 - `enterprise_search_vector.document.write`
 - `enterprise_search_vector.event.consume`
 - `enterprise_search_vector.index.write`
+- `enterprise_search_vector.intelligence.write`
+- `enterprise_search_vector.policy.write`
+- `enterprise_search_vector.quality.write`
 - `enterprise_search_vector.query`
+- `enterprise_search_vector.retention.write`
 
 ### Configuration Keys
 

@@ -216,3 +216,49 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['owned_boundary_rejection']['ok'] is False
     assert validation['owned_boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_advanced_search_runtime_operations_are_executable():
+    from ..runtime import ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES
+    from ..runtime import enterprise_search_vector_build_api_contract
+    from ..runtime import enterprise_search_vector_build_service_contract
+    from ..runtime import enterprise_search_vector_permissions_contract
+    from ..runtime import enterprise_search_vector_runtime_smoke
+
+    required_tables = {
+        "ranking_simulation",
+        "freshness_forecast",
+        "quality_remediation",
+        "search_policy_screening",
+        "relevance_control_assertion",
+        "index_proof",
+        "federated_search_view",
+        "query_intent_risk",
+        "retention_deletion_record",
+        "search_audit_entry",
+        "search_governed_model",
+    }
+    required_commands = {
+        "simulate_counterfactual_ranking",
+        "forecast_index_freshness",
+        "remediate_search_quality",
+        "screen_search_policy",
+        "run_relevance_controls",
+        "generate_index_proof",
+        "federate_search_sources",
+        "score_query_intent_risk",
+        "record_retention_deletion",
+        "register_governed_model",
+    }
+    smoke = enterprise_search_vector_runtime_smoke()
+    service = enterprise_search_vector_build_service_contract()
+    api = enterprise_search_vector_build_api_contract()
+    permissions = enterprise_search_vector_permissions_contract()
+
+    assert smoke["ok"] is True
+    assert required_tables <= set(ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES)
+    assert required_commands <= set(service["command_methods"])
+    assert api["event_contract"] == "AppGen-X"
+    assert api["stream_engine_picker_visible"] is False
+    assert api["shared_table_access"] is False
+    assert set(permissions["action_permissions"]) >= required_commands

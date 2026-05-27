@@ -11,7 +11,23 @@ from .domain_schema import class_name_for, field_names_for, fields_for, relation
 
 ENTERPRISE_SEARCH_VECTOR_REQUIRED_EVENT_TOPIC = "appgen.enterprise_search_vector.events"
 ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
-ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES = ("search_index", "embedding_job", "vector_document", "query_trace")
+ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES = (
+    "search_index",
+    "embedding_job",
+    "vector_document",
+    "query_trace",
+    "ranking_simulation",
+    "freshness_forecast",
+    "quality_remediation",
+    "search_policy_screening",
+    "relevance_control_assertion",
+    "index_proof",
+    "federated_search_view",
+    "query_intent_risk",
+    "retention_deletion_record",
+    "search_audit_entry",
+    "search_governed_model",
+)
 ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES = (
     "enterprise_search_vector_appgen_outbox_event",
     "enterprise_search_vector_appgen_inbox_event",
@@ -171,6 +187,16 @@ def enterprise_search_vector_runtime_capabilities() -> dict:
             "refresh_index",
             "query",
             "record_feedback",
+            "simulate_counterfactual_ranking",
+            "forecast_index_freshness",
+            "remediate_search_quality",
+            "screen_search_policy",
+            "run_relevance_controls",
+            "generate_index_proof",
+            "federate_search_sources",
+            "score_query_intent_risk",
+            "record_retention_deletion",
+            "register_governed_model",
             "receive_event",
             "build_api_contract",
             "build_workbench_view",
@@ -339,6 +365,75 @@ def enterprise_search_vector_runtime_smoke() -> dict:
             "status": "completed",
         },
     )["state"]
+    state = enterprise_search_vector_simulate_counterfactual_ranking(
+        state,
+        {
+            "simulation_id": "sim_alpha",
+            "tenant": "tenant_alpha",
+            "query_id": "query_alpha",
+            "weight_overrides": {"freshness": 0.5, "feedback": 0.2},
+        },
+    )["state"]
+    state = enterprise_search_vector_forecast_index_freshness(
+        state,
+        {"forecast_id": "fresh_alpha", "tenant": "tenant_alpha", "index_id": "idx_product", "horizon_days": 30},
+    )["state"]
+    state = enterprise_search_vector_remediate_search_quality(
+        state,
+        {
+            "remediation_id": "rem_alpha",
+            "tenant": "tenant_alpha",
+            "document_id": "doc_product_alpha",
+            "issue": "low_explainability",
+            "action": "regenerate_chunks",
+        },
+    )["state"]
+    state = enterprise_search_vector_screen_search_policy(
+        state,
+        {
+            "screening_id": "policy_alpha",
+            "tenant": "tenant_alpha",
+            "source": "product",
+            "locale": "en-US",
+            "principal_permissions": ("search.read",),
+        },
+    )["state"]
+    state = enterprise_search_vector_run_relevance_controls(
+        state,
+        {"assertion_id": "ctl_alpha", "tenant": "tenant_alpha", "query_id": "query_alpha"},
+    )["state"]
+    state = enterprise_search_vector_generate_index_proof(
+        state,
+        {"proof_id": "proof_alpha", "tenant": "tenant_alpha", "index_id": "idx_product"},
+    )["state"]
+    state = enterprise_search_vector_federate_search_sources(
+        state,
+        {"view_id": "fed_alpha", "tenant": "tenant_alpha", "index_id": "idx_product"},
+    )["state"]
+    state = enterprise_search_vector_score_query_intent_risk(
+        state,
+        {"risk_id": "risk_alpha", "tenant": "tenant_alpha", "query_id": "query_alpha"},
+    )["state"]
+    state = enterprise_search_vector_record_retention_deletion(
+        state,
+        {
+            "record_id": "ret_alpha",
+            "tenant": "tenant_alpha",
+            "document_id": "doc_customer_alpha",
+            "reason": "retention_review",
+            "status": "retained",
+        },
+    )["state"]
+    state = enterprise_search_vector_register_governed_model(
+        state,
+        {
+            "model_id": "model_alpha",
+            "tenant": "tenant_alpha",
+            "model_type": "embedding",
+            "version": "2026.05",
+            "status": "approved",
+        },
+    )["state"]
     checks = tuple(
         {"id": key, "ok": True, "evidence": _capability_evidence(state, key)}
         for key in ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS
@@ -351,6 +446,16 @@ def enterprise_search_vector_runtime_smoke() -> dict:
         and bool(state["query_traces"])
         and bool(state["outbox"])
         and bool(state["handled_events"])
+        and bool(state["ranking_simulations"])
+        and bool(state["freshness_forecasts"])
+        and bool(state["quality_remediations"])
+        and bool(state["search_policy_screenings"])
+        and bool(state["relevance_control_assertions"])
+        and bool(state["index_proofs"])
+        and bool(state["federated_search_views"])
+        and bool(state["query_intent_risks"])
+        and bool(state["retention_deletion_records"])
+        and bool(state["search_governed_models"])
         and bool(state["configuration"].get("ok"))
         and not tuple(check for check in checks if not check["ok"]),
         "checks": checks,
@@ -380,6 +485,17 @@ def enterprise_search_vector_empty_state() -> dict:
         "embedding_jobs": {},
         "vector_documents": {},
         "query_traces": {},
+        "ranking_simulations": {},
+        "freshness_forecasts": {},
+        "quality_remediations": {},
+        "search_policy_screenings": {},
+        "relevance_control_assertions": {},
+        "index_proofs": {},
+        "federated_search_views": {},
+        "query_intent_risks": {},
+        "retention_deletion_records": {},
+        "search_audit_entries": {},
+        "search_governed_models": {},
         "seed_data": {
             "sources": ("product", "customer", "audit", "knowledge"),
             "ranking_modes": ("semantic", "keyword", "hybrid"),
@@ -809,6 +925,259 @@ def enterprise_search_vector_record_feedback(state: dict, query_id: str, documen
     return {"ok": True, "state": runtime, "feedback": feedback}
 
 
+def enterprise_search_vector_simulate_counterfactual_ranking(state: dict, command: dict) -> dict:
+    required = {"simulation_id", "tenant", "query_id", "weight_overrides"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector ranking simulation fields: {tuple(sorted(missing))}")
+    if command["query_id"] not in state["query_traces"]:
+        raise ValueError(f"Unknown Enterprise Search Vector query: {command['query_id']}")
+    trace = state["query_traces"][command["query_id"]]
+    if trace["tenant"] != command["tenant"]:
+        raise ValueError(f"Enterprise Search Vector tenant mismatch for query: {command['query_id']}")
+    overrides = dict(command["weight_overrides"])
+    simulated = []
+    for result in trace["results"]:
+        factors = trace["explanations"][result["document_id"]]
+        score = (
+            factors["semantic"] * float(overrides.get("semantic", state["parameters"].get("semantic_weight", {"value": 0.45})["value"]))
+            + factors["keyword"] * float(overrides.get("keyword", state["parameters"].get("keyword_weight", {"value": 0.3})["value"]))
+            + factors["freshness"] * float(overrides.get("freshness", state["parameters"].get("freshness_weight", {"value": 0.1})["value"]))
+            + factors["authority"] * float(overrides.get("authority", state["parameters"].get("authority_weight", {"value": 0.1})["value"]))
+            + factors["feedback"] * float(overrides.get("feedback", state["parameters"].get("feedback_weight", {"value": 0.05})["value"]))
+        )
+        simulated.append({**result, "simulated_score": round(score, 4)})
+    simulation = {
+        **command,
+        "weight_overrides": overrides,
+        "baseline_top_result": trace["results"][0]["document_id"] if trace["results"] else None,
+        "simulated_results": tuple(sorted(simulated, key=lambda item: (-item["simulated_score"], item["document_id"]))),
+        "audit_proof": _digest(command),
+    }
+    runtime = _copy_state(state)
+    runtime["ranking_simulations"][simulation["simulation_id"]] = simulation
+    runtime["events"].append(_state_event("CounterfactualRankingSimulated", simulation["simulation_id"], simulation))
+    return {"ok": True, "state": runtime, "simulation": simulation}
+
+
+def enterprise_search_vector_forecast_index_freshness(state: dict, command: dict) -> dict:
+    required = {"forecast_id", "tenant", "index_id", "horizon_days"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector freshness forecast fields: {tuple(sorted(missing))}")
+    if command["index_id"] not in state["search_indexes"]:
+        raise ValueError(f"Unknown Enterprise Search Vector index: {command['index_id']}")
+    index = state["search_indexes"][command["index_id"]]
+    if index["tenant"] != command["tenant"]:
+        raise ValueError(f"Enterprise Search Vector tenant mismatch for index: {command['index_id']}")
+    docs = tuple(doc for doc in state["vector_documents"].values() if doc["index_id"] == command["index_id"])
+    current = round(sum(float(doc.get("freshness_score", 1.0)) for doc in docs) / max(len(docs), 1), 4)
+    decay = min(0.8, max(0.0, int(command["horizon_days"]) / 365.0))
+    forecast = {
+        **command,
+        "document_count": len(docs),
+        "current_freshness_score": current,
+        "projected_freshness_score": round(max(0.0, current - decay), 4),
+        "recommended_refresh_before_days": max(1, min(int(command["horizon_days"]), 14 if current < 0.8 else 30)),
+        "audit_proof": _digest(command),
+    }
+    runtime = _copy_state(state)
+    runtime["freshness_forecasts"][forecast["forecast_id"]] = forecast
+    runtime["events"].append(_state_event("IndexFreshnessForecasted", forecast["forecast_id"], forecast))
+    return {"ok": True, "state": runtime, "forecast": forecast}
+
+
+def enterprise_search_vector_remediate_search_quality(state: dict, command: dict) -> dict:
+    required = {"remediation_id", "tenant", "document_id", "issue", "action"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector quality remediation fields: {tuple(sorted(missing))}")
+    if command["document_id"] not in state["vector_documents"]:
+        raise ValueError(f"Unknown Enterprise Search Vector document: {command['document_id']}")
+    runtime = _copy_state(state)
+    document = runtime["vector_documents"][command["document_id"]]
+    if document["tenant"] != command["tenant"]:
+        raise ValueError(f"Enterprise Search Vector tenant mismatch for document: {command['document_id']}")
+    document["quality_review_status"] = "remediated"
+    document["freshness_score"] = max(float(document.get("freshness_score", 1.0)), 0.95)
+    remediation = {
+        **command,
+        "result": "applied",
+        "index_id": document["index_id"],
+        "post_quality_status": document["quality_review_status"],
+        "audit_proof": _digest(command),
+    }
+    runtime["quality_remediations"][remediation["remediation_id"]] = remediation
+    _recompute_index(runtime, document["index_id"])
+    runtime["events"].append(_state_event("SearchQualityRemediated", remediation["remediation_id"], remediation))
+    _emit(
+        runtime,
+        "SearchIndexUpdated",
+        command["tenant"],
+        {"index_id": document["index_id"], "document_id": command["document_id"], "reason": "quality_remediated"},
+    )
+    return {"ok": True, "state": runtime, "remediation": remediation}
+
+
+def enterprise_search_vector_screen_search_policy(state: dict, command: dict) -> dict:
+    required = {"screening_id", "tenant", "source", "locale", "principal_permissions"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector policy screening fields: {tuple(sorted(missing))}")
+    policy = _active_rule_for_tenant(state, command["tenant"])
+    permissions = tuple(command["principal_permissions"])
+    allowed_source = policy is None or command["source"] in policy["allowed_sources"]
+    allowed_locale = policy is None or command["locale"] in policy["allowed_locales"]
+    required_acl = tuple((policy or {}).get("acl_policy", {}).get("default_acl", ("search.read",)))
+    allowed_acl = bool(set(permissions).intersection(required_acl))
+    screening = {
+        **command,
+        "principal_permissions": permissions,
+        "decision": "allowed" if allowed_source and allowed_locale and allowed_acl else "blocked",
+        "policy_rule_id": policy.get("rule_id") if policy else None,
+        "required_acl": required_acl,
+        "audit_proof": _digest(command),
+    }
+    runtime = _copy_state(state)
+    runtime["search_policy_screenings"][screening["screening_id"]] = screening
+    runtime["events"].append(_state_event("SearchPolicyScreened", screening["screening_id"], screening))
+    return {"ok": True, "state": runtime, "screening": screening}
+
+
+def enterprise_search_vector_run_relevance_controls(state: dict, command: dict) -> dict:
+    required = {"assertion_id", "tenant", "query_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector relevance control fields: {tuple(sorted(missing))}")
+    if command["query_id"] not in state["query_traces"]:
+        raise ValueError(f"Unknown Enterprise Search Vector query: {command['query_id']}")
+    trace = state["query_traces"][command["query_id"]]
+    threshold = float(state["parameters"].get("relevance_threshold", {"value": 0.1})["value"])
+    top_score = float(trace["results"][0]["score"]) if trace["results"] else 0.0
+    passed = trace["tenant"] == command["tenant"] and trace["result_count"] > 0 and top_score >= threshold
+    assertion = {
+        **command,
+        "top_score": top_score,
+        "threshold": threshold,
+        "result_count": trace["result_count"],
+        "status": "passed" if passed else "failed",
+        "audit_proof": _digest(command),
+    }
+    runtime = _copy_state(state)
+    runtime["relevance_control_assertions"][assertion["assertion_id"]] = assertion
+    runtime["events"].append(_state_event("RelevanceControlsExecuted", assertion["assertion_id"], assertion))
+    return {"ok": passed, "state": runtime, "assertion": assertion}
+
+
+def enterprise_search_vector_generate_index_proof(state: dict, command: dict) -> dict:
+    required = {"proof_id", "tenant", "index_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector index proof fields: {tuple(sorted(missing))}")
+    if command["index_id"] not in state["search_indexes"]:
+        raise ValueError(f"Unknown Enterprise Search Vector index: {command['index_id']}")
+    index = state["search_indexes"][command["index_id"]]
+    docs = tuple(doc for doc in state["vector_documents"].values() if doc["index_id"] == command["index_id"])
+    proof_payload = {"index": index, "documents": docs, "query_count": index.get("query_count", 0)}
+    proof = {
+        **command,
+        "document_count": len(docs),
+        "proof_hash": _digest(proof_payload),
+        "verification_status": "verifiable",
+        "audit_proof": _digest(command),
+    }
+    runtime = _copy_state(state)
+    runtime["index_proofs"][proof["proof_id"]] = proof
+    _record_search_audit(runtime, command["tenant"], "generate_index_proof", proof)
+    return {"ok": True, "state": runtime, "proof": proof}
+
+
+def enterprise_search_vector_federate_search_sources(state: dict, command: dict) -> dict:
+    required = {"view_id", "tenant", "index_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector federated view fields: {tuple(sorted(missing))}")
+    if command["index_id"] not in state["search_indexes"]:
+        raise ValueError(f"Unknown Enterprise Search Vector index: {command['index_id']}")
+    docs = tuple(doc for doc in state["vector_documents"].values() if doc["tenant"] == command["tenant"])
+    view = {
+        **command,
+        "source_counts": {
+            source: sum(1 for doc in docs if doc["source"] == source)
+            for source in tuple(sorted({doc["source"] for doc in docs}))
+        },
+        "query_count": sum(1 for query in state["query_traces"].values() if query["tenant"] == command["tenant"]),
+        "declared_dependencies": enterprise_search_vector_verify_owned_table_boundary()["declared_dependencies"],
+        "audit_proof": _digest(command),
+    }
+    runtime = _copy_state(state)
+    runtime["federated_search_views"][view["view_id"]] = view
+    runtime["events"].append(_state_event("FederatedSearchViewMaterialized", view["view_id"], view))
+    return {"ok": True, "state": runtime, "view": view}
+
+
+def enterprise_search_vector_score_query_intent_risk(state: dict, command: dict) -> dict:
+    required = {"risk_id", "tenant", "query_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector query intent risk fields: {tuple(sorted(missing))}")
+    if command["query_id"] not in state["query_traces"]:
+        raise ValueError(f"Unknown Enterprise Search Vector query: {command['query_id']}")
+    trace = state["query_traces"][command["query_id"]]
+    sensitive_tokens = {"secret", "password", "payroll", "private", "credential"}
+    hits = set(_tokens(trace["text"])).intersection(sensitive_tokens)
+    risk = {
+        **command,
+        "risk_score": round(min(1.0, len(hits) * 0.35 + (0.2 if trace["result_count"] == 0 else 0.0)), 4),
+        "risk_reasons": tuple(sorted(hits)) or ("normal_discovery_intent",),
+        "decision": "allow" if not hits else "review",
+        "audit_proof": _digest(command),
+    }
+    runtime = _copy_state(state)
+    runtime["query_intent_risks"][risk["risk_id"]] = risk
+    runtime["events"].append(_state_event("QueryIntentRiskScored", risk["risk_id"], risk))
+    return {"ok": True, "state": runtime, "risk": risk}
+
+
+def enterprise_search_vector_record_retention_deletion(state: dict, command: dict) -> dict:
+    required = {"record_id", "tenant", "document_id", "reason", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector retention deletion fields: {tuple(sorted(missing))}")
+    if command["document_id"] not in state["vector_documents"]:
+        raise ValueError(f"Unknown Enterprise Search Vector document: {command['document_id']}")
+    runtime = _copy_state(state)
+    document = runtime["vector_documents"][command["document_id"]]
+    if document["tenant"] != command["tenant"]:
+        raise ValueError(f"Enterprise Search Vector tenant mismatch for document: {command['document_id']}")
+    record = {**command, "index_id": document["index_id"], "audit_proof": _digest(command)}
+    if command["status"] == "deleted":
+        document["status"] = "deleted"
+        document["body"] = ""
+        document["chunks"] = ()
+        document["embedding"] = ()
+    runtime["retention_deletion_records"][record["record_id"]] = record
+    _record_search_audit(runtime, command["tenant"], "record_retention_deletion", record)
+    return {"ok": True, "state": runtime, "record": record}
+
+
+def enterprise_search_vector_register_governed_model(state: dict, command: dict) -> dict:
+    required = {"model_id", "tenant", "model_type", "version", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Enterprise Search Vector governed model fields: {tuple(sorted(missing))}")
+    model = {
+        **command,
+        "approved": command["status"] in {"approved", "active"},
+        "evidence_hash": _digest(command),
+        "audit_proof": _digest(command),
+    }
+    runtime = _copy_state(state)
+    runtime["search_governed_models"][model["model_id"]] = model
+    runtime["events"].append(_state_event("SearchGovernedModelRegistered", model["model_id"], model))
+    return {"ok": True, "state": runtime, "model": model}
+
+
 def enterprise_search_vector_build_workbench_view(state: dict, *, tenant: str) -> dict:
     indexes = tuple(item for item in state.get("search_indexes", {}).values() if item["tenant"] == tenant)
     jobs = tuple(item for item in state.get("embedding_jobs", {}).values() if item["tenant"] == tenant)
@@ -855,9 +1224,20 @@ def enterprise_search_vector_verify_owned_table_boundary(
         *ENTERPRISE_SEARCH_VECTOR_EMITTED_EVENT_TYPES,
         "POST /indexes",
         "POST /indexes/{id}/refresh",
+        "POST /documents",
         "POST /embeddings",
         "POST /search",
         "POST /query-feedback",
+        "POST /ranking-simulations",
+        "POST /freshness-forecasts",
+        "POST /quality-remediations",
+        "POST /policy-screenings",
+        "POST /relevance-controls",
+        "POST /index-proofs",
+        "POST /federated-source-views",
+        "POST /query-intent-risks",
+        "POST /retention-deletions",
+        "POST /governed-models",
         "GET /query-traces",
     )
     allowed_set = set(allowed)
@@ -876,9 +1256,20 @@ def enterprise_search_vector_verify_owned_table_boundary(
             "apis": (
                 "POST /indexes",
                 "POST /indexes/{id}/refresh",
+                "POST /documents",
                 "POST /embeddings",
                 "POST /search",
                 "POST /query-feedback",
+                "POST /ranking-simulations",
+                "POST /freshness-forecasts",
+                "POST /quality-remediations",
+                "POST /policy-screenings",
+                "POST /relevance-controls",
+                "POST /index-proofs",
+                "POST /federated-source-views",
+                "POST /query-intent-risks",
+                "POST /retention-deletions",
+                "POST /governed-models",
                 "GET /query-traces",
             ),
             "events": ENTERPRISE_SEARCH_VECTOR_CONSUMED_EVENT_TYPES,
@@ -894,9 +1285,20 @@ def enterprise_search_vector_build_api_contract() -> dict:
         "routes": (
             "POST /indexes",
             "POST /indexes/{id}/refresh",
+            "POST /documents",
             "POST /embeddings",
             "POST /search",
             "POST /query-feedback",
+            "POST /ranking-simulations",
+            "POST /freshness-forecasts",
+            "POST /quality-remediations",
+            "POST /policy-screenings",
+            "POST /relevance-controls",
+            "POST /index-proofs",
+            "POST /federated-source-views",
+            "POST /query-intent-risks",
+            "POST /retention-deletions",
+            "POST /governed-models",
             "GET /query-traces",
         ),
         "shared_table_access": False,
@@ -967,6 +1369,9 @@ def enterprise_search_vector_build_service_contract() -> dict:
         "run_relevance_controls",
         "generate_index_proof",
         "federate_search_sources",
+        "score_query_intent_risk",
+        "record_retention_deletion",
+        "register_governed_model",
     )
     query_methods = (
         "build_api_contract",
@@ -1051,6 +1456,10 @@ def enterprise_search_vector_permissions_contract() -> dict:
             "enterprise_search_vector.event.consume",
             "enterprise_search_vector.configure",
             "enterprise_search_vector.audit",
+            "enterprise_search_vector.quality.write",
+            "enterprise_search_vector.policy.write",
+            "enterprise_search_vector.intelligence.write",
+            "enterprise_search_vector.retention.write",
         ),
         "action_permissions": {
             "create_index": "enterprise_search_vector.index.write",
@@ -1069,6 +1478,16 @@ def enterprise_search_vector_permissions_contract() -> dict:
             "build_schema_contract": "enterprise_search_vector.audit",
             "build_service_contract": "enterprise_search_vector.audit",
             "build_release_evidence": "enterprise_search_vector.audit",
+            "simulate_counterfactual_ranking": "enterprise_search_vector.intelligence.write",
+            "forecast_index_freshness": "enterprise_search_vector.intelligence.write",
+            "remediate_search_quality": "enterprise_search_vector.quality.write",
+            "screen_search_policy": "enterprise_search_vector.policy.write",
+            "run_relevance_controls": "enterprise_search_vector.audit",
+            "generate_index_proof": "enterprise_search_vector.audit",
+            "federate_search_sources": "enterprise_search_vector.intelligence.write",
+            "score_query_intent_risk": "enterprise_search_vector.policy.write",
+            "record_retention_deletion": "enterprise_search_vector.retention.write",
+            "register_governed_model": "enterprise_search_vector.configure",
         },
     }
 
@@ -1167,6 +1586,20 @@ def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> None:
     }
     state["outbox"].append(event)
     state["events"].append(_state_event(event_type, event["event_id"], payload))
+
+
+def _record_search_audit(state: dict, tenant: str, action: str, payload: dict) -> dict:
+    entry = {
+        "entry_id": f"audit_{len(state['search_audit_entries']) + 1}",
+        "tenant": tenant,
+        "action": action,
+        "payload_digest": _digest(payload),
+        "proof_hash": _digest({"tenant": tenant, "action": action, "payload": payload}),
+        "status": "sealed",
+    }
+    state["search_audit_entries"][entry["entry_id"]] = entry
+    state["events"].append(_state_event("SearchAuditEntrySealed", entry["entry_id"], entry))
+    return entry
 
 
 def _state_event(event_type: str, key: str, payload: dict) -> dict:
