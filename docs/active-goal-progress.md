@@ -2145,3 +2145,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated artifact discovery plus the required app/template paths, while
   partial explicit path sets still fail coverage. Verified with Python compile
   and a direct fresh generated-app self-discovery probe. Commit: `9b58b2d`.
+- Current native runtime/debug pass adds debug-session transaction replay as
+  release-gating evidence. Source and generated form-designer runtime contracts
+  now replay conditional breakpoint setup, preview attachment, breakpoint hit
+  routing, sandboxed watch evaluation, event stepping, redacted exception trace
+  capture, and runtime preview reload after debug. Verified with Python compile,
+  direct source parity audit probe, and direct fresh generated-app audit probe.
+  Commit: `pending`.

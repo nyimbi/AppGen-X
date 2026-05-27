@@ -264,6 +264,7 @@ from pyAppGen.form_designer import pascal_compile_preview_operation
 from pyAppGen.form_designer import pascal_open_design_stream_operation
 from pyAppGen.form_designer import pascal_refresh_resources_operation
 from pyAppGen.form_designer import pascal_reload_runtime_preview_operation
+from pyAppGen.form_designer import pascal_debug_session_transaction_replay_contract
 from pyAppGen.form_designer import pascal_runtime_debug_authoring_contract
 from pyAppGen.form_designer import pascal_run_runtime_authoring_scenario_operation
 from pyAppGen.form_designer import pascal_round_trip_stream_operation
@@ -4138,6 +4139,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "stream_migration",
         "debug_symbols",
         "runtime_debug_authoring",
+        "debug_session_transaction_replay",
         "runtime_memory_model",
         "toolchain_adapters",
         "runtime_session_replay",
@@ -4186,6 +4188,28 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "normalize_exception_traces" in {item["phase"] for item in runtime["debug_session"]["replay"]}
     assert all(trace["redaction"] and trace["safe"] for trace in runtime["debug_session"]["exception_traces"])
     assert all("runtime_preview" in item["invalidates"] for item in runtime["debug_session"]["resource_dependencies"])
+    debug_transaction = pascal_debug_session_transaction_replay_contract(design)
+    assert debug_transaction["format"] == "appgen.pascal-debug-session-transaction-replay.v1"
+    assert debug_transaction["ok"] is True
+    assert {
+        "conditional_breakpoint_resolves",
+        "preview_session_attaches_to_runtime",
+        "breakpoint_hit_routes_to_designer",
+        "watch_evaluation_sandboxed",
+        "step_controls_preserve_preview_state",
+        "exception_trace_redacted",
+        "preview_reload_after_debug_session",
+        "debug_transaction_side_effect_free",
+    } == {check["id"] for check in debug_transaction["checks"]}
+    assert tuple(item["phase"] for item in runtime["debug_transaction_replay"]["replay"]) == (
+        "set_conditional_breakpoint",
+        "start_preview_session",
+        "hit_breakpoint",
+        "evaluate_watch_expressions",
+        "step_event_dispatch",
+        "capture_exception_trace",
+        "reload_preview_after_debug",
+    )
     assert "event_dispatch_exception_boundary" in runtime["runtime_memory_model"]["guards"]
     assert all("normalize_diagnostics" in adapter["commands"] for adapter in runtime["toolchain_adapters"]["adapters"])
     assert runtime["runtime_replay"]["ok"] is True
@@ -5564,6 +5588,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_preview_ready",
         "debug_preview_ready",
         "runtime_debug_authoring",
+        "debug_session_transaction_replay",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -15732,6 +15757,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_preview_ready",
         "debug_preview_ready",
         "runtime_debug_authoring",
+        "debug_session_transaction_replay",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -16106,6 +16132,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "stream_migration",
         "debug_symbols",
         "runtime_debug_authoring",
+        "debug_session_transaction_replay",
         "runtime_memory_model",
         "toolchain_adapters",
         "runtime_session_replay",
@@ -16165,6 +16192,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "normalize_exception_traces" in {item["phase"] for item in generated_runtime["debug_session"]["replay"]}
     assert all(trace["redaction"] and trace["safe"] for trace in generated_runtime["debug_session"]["exception_traces"])
     assert all("runtime_preview" in item["invalidates"] for item in generated_runtime["debug_session"]["resource_dependencies"])
+    assert generated_runtime["debug_transaction_replay"]["format"] == (
+        "appgen.generated-pascal-debug-session-transaction-replay.v1"
+    )
+    assert generated_runtime["debug_transaction_replay"]["ok"] is True
+    assert {
+        "conditional_breakpoint_resolves",
+        "preview_session_attaches_to_runtime",
+        "breakpoint_hit_routes_to_designer",
+        "watch_evaluation_sandboxed",
+        "step_controls_preserve_preview_state",
+        "exception_trace_redacted",
+        "preview_reload_after_debug_session",
+        "debug_transaction_side_effect_free",
+    } == {check["id"] for check in generated_runtime["debug_transaction_replay"]["checks"]}
+    assert tuple(item["phase"] for item in generated_runtime["debug_transaction_replay"]["replay"]) == (
+        "set_conditional_breakpoint",
+        "start_preview_session",
+        "hit_breakpoint",
+        "evaluate_watch_expressions",
+        "step_event_dispatch",
+        "capture_exception_trace",
+        "reload_preview_after_debug",
+    )
     assert all(item["release"] for item in generated_runtime["runtime_memory_model"]["ownership"])
     assert all(adapter["sandboxed"] for adapter in generated_runtime["toolchain_adapters"]["adapters"])
     assert generated_runtime["runtime_replay"]["ok"] is True

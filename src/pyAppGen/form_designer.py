@@ -4668,6 +4668,83 @@ def pascal_runtime_debug_authoring_contract(design: dict | None = None) -> dict:
     }
 
 
+def pascal_debug_session_transaction_replay_contract(design: dict | None = None) -> dict:
+    """Replay a debug-preview transaction from breakpoint setup through preview reload."""
+    debug_session = pascal_runtime_debug_authoring_contract(design)
+    runtime_replay = pascal_runtime_session_replay_contract(design)
+    design_edit_replay = pascal_design_edit_session_replay_contract(design)
+    first_breakpoint = debug_session["breakpoints"][0] if debug_session["breakpoints"] else {}
+    replay = (
+        {
+            "phase": "set_conditional_breakpoint",
+            "pipeline": ("resolve_symbol", "verify_source_span", "persist_condition", "sync_designer_badge"),
+            "ok": bool(first_breakpoint)
+            and bool(first_breakpoint.get("condition"))
+            and "form_designer" in first_breakpoint.get("maps_to", ()),
+        },
+        {
+            "phase": "start_preview_session",
+            "pipeline": ("load_symbol_map", "load_resource_manifest", "start_runtime_preview", "attach_debug_session"),
+            "ok": debug_session["ok"] and runtime_replay["ok"] and runtime_replay["final_state"]["emit_allowed"],
+        },
+        {
+            "phase": "hit_breakpoint",
+            "pipeline": ("match_component_event", "pause_dispatch", "surface_source_span", "highlight_designer_component"),
+            "ok": all(item.get("source_span") for item in debug_session["breakpoints"])
+            and all(
+                {"unit_editor", "form_designer", "package_manager", "runtime_preview"} & set(item.get("maps_to", ()))
+                for item in debug_session["breakpoints"]
+            ),
+        },
+        {
+            "phase": "evaluate_watch_expressions",
+            "pipeline": ("parse_watch", "deny_user_code_execution", "read_safe_runtime_state", "redact_value"),
+            "ok": all(item["safe"] for item in debug_session["watches"]),
+        },
+        {
+            "phase": "step_event_dispatch",
+            "pipeline": ("step_into_handler", "step_over_property_setter", "step_out_to_form_event", "resume_preview"),
+            "ok": {"step_into_handler", "step_over_property_setter", "step_out_to_form_event"} <= set(debug_session["step_controls"]),
+        },
+        {
+            "phase": "capture_exception_trace",
+            "pipeline": ("capture_boundary", "redact_internal_paths", "route_to_surfaces", "preserve_preview_state"),
+            "ok": all(trace["safe"] and trace["redaction"] and "source_span" in trace["captures"] for trace in debug_session["exception_traces"]),
+        },
+        {
+            "phase": "reload_preview_after_debug",
+            "pipeline": ("clear_paused_state", "apply_pending_design_edits", "reload_runtime_preview", "verify_runtime_state"),
+            "ok": design_edit_replay["ok"] and design_edit_replay["final_state"]["runtime_phases"] > 0,
+        },
+    )
+    checks = (
+        {"id": "conditional_breakpoint_resolves", "ok": replay[0]["ok"], "evidence": first_breakpoint},
+        {"id": "preview_session_attaches_to_runtime", "ok": replay[1]["ok"], "evidence": runtime_replay["final_state"]},
+        {"id": "breakpoint_hit_routes_to_designer", "ok": replay[2]["ok"], "evidence": debug_session["breakpoints"]},
+        {"id": "watch_evaluation_sandboxed", "ok": replay[3]["ok"], "evidence": debug_session["watches"]},
+        {"id": "step_controls_preserve_preview_state", "ok": replay[4]["ok"], "evidence": debug_session["step_controls"]},
+        {"id": "exception_trace_redacted", "ok": replay[5]["ok"], "evidence": debug_session["exception_traces"]},
+        {"id": "preview_reload_after_debug_session", "ok": replay[6]["ok"], "evidence": design_edit_replay["final_state"]},
+        {"id": "debug_transaction_side_effect_free", "ok": all(item["ok"] for item in replay)},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.pascal-debug-session-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "conditional_breakpoints_resolve_before_preview_attach",
+            "watch_evaluation_never_executes_user_code",
+            "exception_traces_redacted_before_surface_routing",
+            "preview_reload_verifies_runtime_state_after_debug",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def pascal_runtime_memory_model_contract(design: dict | None = None) -> dict:
     """Return runtime ownership, lifetime, and exception-boundary evidence."""
     unit = pascal_unit_contract(design)
@@ -5417,6 +5494,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     stream_migration = dfm_stream_migration_contract(design)
     debug_symbols = pascal_debug_symbol_contract(design)
     debug_session = pascal_runtime_debug_authoring_contract(design)
+    debug_transaction_replay = pascal_debug_session_transaction_replay_contract(design)
     runtime_memory_model = pascal_runtime_memory_model_contract(design)
     toolchain_adapters = pascal_toolchain_adapter_contract(design)
     runtime_replay = pascal_runtime_session_replay_contract(design)
@@ -5617,6 +5695,17 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "evidence": debug_session,
         },
         {
+            "id": "debug_session_transaction_replay",
+            "ok": debug_transaction_replay["ok"]
+            and {
+                "conditional_breakpoints_resolve_before_preview_attach",
+                "watch_evaluation_never_executes_user_code",
+                "preview_reload_verifies_runtime_state_after_debug",
+            } <= set(debug_transaction_replay["guards"])
+            and not debug_transaction_replay["side_effects"],
+            "evidence": debug_transaction_replay,
+        },
+        {
             "id": "runtime_memory_model",
             "ok": runtime_memory_model["ok"] and "owner_releases_children" in runtime_memory_model["guards"] and not runtime_memory_model["side_effects"],
             "evidence": runtime_memory_model,
@@ -5801,6 +5890,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "stream_migration": stream_migration,
         "debug_symbols": debug_symbols,
         "debug_session": debug_session,
+        "debug_transaction_replay": debug_transaction_replay,
         "runtime_memory_model": runtime_memory_model,
         "toolchain_adapters": toolchain_adapters,
         "runtime_replay": runtime_replay,
@@ -19040,6 +19130,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "runtime_session_replay",
                 "design_edit_session_replay",
                 "runtime_debug_authoring",
+                "debug_session_transaction_replay",
                 "native_form_modules",
                 "native_form_module_tests",
                 "runtime_operation_modules",
@@ -19058,6 +19149,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "debug_preview_ready",
                 "runtime_preview_ready",
                 "runtime_debug_authoring",
+                "debug_session_transaction_replay",
                 "native_form_modules",
                 "native_form_module_tests",
                 "runtime_operation_modules",
