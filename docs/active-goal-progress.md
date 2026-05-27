@@ -2484,3 +2484,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tests, package service/route/service-contract/release smokes, source artifact
   contract, implementation release audit, generation smoke audit, specification
   contract, and restricted legacy-name scan all passed. Commit: `fc08942`.
+- Current `production_control` PBC pass attaches full runtime release sections
+  to the generated production-control package surface. Release evidence now
+  includes runtime schema, service, API, and permission contracts alongside the
+  existing production scheduling, shop-floor execution, OEE, downtime,
+  completion, asset handoff, rule, parameter, configuration, workbench,
+  AppGen-X eventing, and owned-table evidence. Verification is focused to the
+  PBC slice: package Python compile, runtime smoke, focused package contract
+  tests, package service/route/service-contract/release smokes, source artifact
+  contract, implementation release audit, generation smoke audit, specification
+  contract, and restricted legacy-name scan all passed. Commit: `286f2b3`.
