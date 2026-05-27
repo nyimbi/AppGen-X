@@ -183,9 +183,17 @@ def fraud_anomaly_detection_runtime_capabilities() -> dict:
             "register_rule",
             "register_fraud_rule",
             "register_schema_extension",
+            "link_identity",
+            "update_behavior_baseline",
+            "record_device_fingerprint",
+            "record_network_indicator",
+            "calculate_velocity_window",
             "ingest_risk_signal",
             "score_anomaly",
+            "explain_decision",
             "open_risk_case",
+            "project_loss_exposure",
+            "enqueue_analyst_case",
             "receive_event",
             "build_api_contract",
             "build_workbench_view",
@@ -331,17 +339,27 @@ def fraud_anomaly_detection_runtime_smoke() -> dict:
         and bool(state["anomaly_scores"])
         and bool(state["fraud_rules"])
         and bool(state["risk_cases"])
+        and bool(state["identity_links"])
+        and bool(state["behavior_baselines"])
+        and bool(state["velocity_windows"])
+        and bool(state["decision_explanations"])
+        and bool(state["loss_exposures"])
+        and bool(state["analyst_queue_items"])
         and bool(state["outbox"])
         and bool(state["handled_events"])
         and bool(state["configuration"].get("ok"))
         and not tuple(check for check in checks if not check["ok"]),
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "state": state,
         "state_digest": _digest(
             {
                 "signals": state["risk_signals"],
                 "scores": state["anomaly_scores"],
                 "cases": state["risk_cases"],
+                "identity_links": state["identity_links"],
+                "loss_exposures": state["loss_exposures"],
+                "analyst_queue_items": state["analyst_queue_items"],
                 "outbox": state["outbox"],
             }
         ),
@@ -363,6 +381,14 @@ def fraud_anomaly_detection_empty_state() -> dict:
         "anomaly_scores": {},
         "fraud_rules": {},
         "risk_cases": {},
+        "identity_links": {},
+        "behavior_baselines": {},
+        "device_fingerprints": {},
+        "network_indicators": {},
+        "velocity_windows": {},
+        "decision_explanations": {},
+        "loss_exposures": {},
+        "analyst_queue_items": {},
         "seed_data": {
             "event_types": FRAUD_ANOMALY_DETECTION_CONSUMED_EVENT_TYPES,
             "decisions": ("approve", "review", "deny"),
@@ -518,6 +544,141 @@ def fraud_anomaly_detection_ingest_risk_signal(state: dict, command: dict) -> di
     return {"ok": True, "state": runtime, "risk_signal": signal}
 
 
+def fraud_anomaly_detection_link_identity(state: dict, signal_id: str) -> dict:
+    signal = state["risk_signals"].get(signal_id)
+    if not signal:
+        raise ValueError(f"Unknown Fraud Anomaly Detection signal for identity link: {signal_id}")
+    runtime = _copy_state(state)
+    dimensions = dict(signal.get("identity_dimensions", {}))
+    populated = {key: value for key, value in dimensions.items() if value}
+    link_strength = _clamp(len(populated) / max(1, len(runtime["configuration"].get("identity_dimensions", ()))), 0.0, 1.0)
+    identity_link = {
+        "identity_link_id": f"identity:{signal['subject_key']}",
+        "tenant": signal["tenant"],
+        "subject_key": signal["subject_key"],
+        "customer_id": dimensions.get("customer_id"),
+        "email": dimensions.get("email"),
+        "device_id": dimensions.get("device_id"),
+        "ip_address": dimensions.get("ip_address"),
+        "principal_id": dimensions.get("principal_id"),
+        "link_strength": round(link_strength, 4),
+        "audit_proof": _digest({"signal_id": signal_id, "dimensions": populated}),
+    }
+    runtime["identity_links"][identity_link["identity_link_id"]] = identity_link
+    runtime["events"].append(_state_event("IdentityLinked", identity_link["identity_link_id"], identity_link))
+    return {"ok": True, "state": runtime, "identity_link": identity_link}
+
+
+def fraud_anomaly_detection_update_behavior_baseline(state: dict, signal_id: str) -> dict:
+    signal = state["risk_signals"].get(signal_id)
+    if not signal:
+        raise ValueError(f"Unknown Fraud Anomaly Detection signal for behavior baseline: {signal_id}")
+    runtime = _copy_state(state)
+    matching = tuple(
+        item
+        for item in runtime["risk_signals"].values()
+        if item["tenant"] == signal["tenant"]
+        and item["subject_key"] == signal["subject_key"]
+        and item["event_type"] == signal["event_type"]
+    )
+    amounts = tuple(float(item.get("amount", 0.0) or 0.0) for item in matching)
+    risks = tuple(float(item.get("raw_score", 0.0) or 0.0) for item in matching)
+    baseline = {
+        "baseline_id": f"baseline:{signal['subject_key']}:{signal['event_type']}",
+        "tenant": signal["tenant"],
+        "subject_key": signal["subject_key"],
+        "event_type": signal["event_type"],
+        "window_days": int(runtime["parameters"].get("behavior_decay_days", {"value": 90})["value"]),
+        "event_count": len(matching),
+        "mean_amount": round(sum(amounts) / max(1, len(amounts)), 4),
+        "risk_mean": round(sum(risks) / max(1, len(risks)), 4),
+        "last_observed_at": signal.get("observed_at", "runtime"),
+        "audit_proof": _digest({"signal_id": signal_id, "event_count": len(matching), "risk_mean": risks}),
+    }
+    runtime["behavior_baselines"][baseline["baseline_id"]] = baseline
+    runtime["events"].append(_state_event("BehaviorBaselineUpdated", baseline["baseline_id"], baseline))
+    return {"ok": True, "state": runtime, "behavior_baseline": baseline}
+
+
+def fraud_anomaly_detection_record_device_fingerprint(state: dict, signal_id: str) -> dict:
+    signal = state["risk_signals"].get(signal_id)
+    if not signal:
+        raise ValueError(f"Unknown Fraud Anomaly Detection signal for device fingerprint: {signal_id}")
+    device_id = signal.get("identity_dimensions", {}).get("device_id")
+    if not device_id:
+        return {"ok": False, "state": state, "reason": "missing_device_id"}
+    runtime = _copy_state(state)
+    trust_level = "low" if "device_trust_low" in signal.get("indicators", ()) else "standard"
+    fingerprint = {
+        "device_fingerprint_id": f"device:{device_id}",
+        "tenant": signal["tenant"],
+        "device_id": device_id,
+        "subject_key": signal["subject_key"],
+        "trust_level": trust_level,
+        "first_seen_at": runtime["device_fingerprints"].get(f"device:{device_id}", {}).get("first_seen_at", signal.get("observed_at", "runtime")),
+        "last_seen_at": signal.get("observed_at", "runtime"),
+        "signals": tuple(sorted(set(runtime["device_fingerprints"].get(f"device:{device_id}", {}).get("signals", ())) | {signal_id})),
+        "audit_proof": _digest({"signal_id": signal_id, "device_id": device_id, "trust_level": trust_level}),
+    }
+    runtime["device_fingerprints"][fingerprint["device_fingerprint_id"]] = fingerprint
+    runtime["events"].append(_state_event("DeviceFingerprintRecorded", fingerprint["device_fingerprint_id"], fingerprint))
+    return {"ok": True, "state": runtime, "device_fingerprint": fingerprint}
+
+
+def fraud_anomaly_detection_record_network_indicator(state: dict, signal_id: str) -> dict:
+    signal = state["risk_signals"].get(signal_id)
+    if not signal:
+        raise ValueError(f"Unknown Fraud Anomaly Detection signal for network indicator: {signal_id}")
+    ip_address = signal.get("identity_dimensions", {}).get("ip_address")
+    if not ip_address:
+        return {"ok": False, "state": state, "reason": "missing_ip_address"}
+    runtime = _copy_state(state)
+    network_indicator = {
+        "network_indicator_id": f"network:{ip_address}",
+        "tenant": signal["tenant"],
+        "ip_address": ip_address,
+        "asn": signal.get("asn", "unknown"),
+        "region": signal["region"],
+        "risk_score": round(float(signal["raw_score"]), 4),
+        "vpn_detected": bool(signal.get("vpn_detected", False) or "vpn_detected" in signal.get("indicators", ())),
+        "observed_at": signal.get("observed_at", "runtime"),
+        "audit_proof": _digest({"signal_id": signal_id, "ip_address": ip_address}),
+    }
+    runtime["network_indicators"][network_indicator["network_indicator_id"]] = network_indicator
+    runtime["events"].append(_state_event("NetworkIndicatorRecorded", network_indicator["network_indicator_id"], network_indicator))
+    return {"ok": True, "state": runtime, "network_indicator": network_indicator}
+
+
+def fraud_anomaly_detection_calculate_velocity_window(state: dict, signal_id: str) -> dict:
+    signal = state["risk_signals"].get(signal_id)
+    if not signal:
+        raise ValueError(f"Unknown Fraud Anomaly Detection signal for velocity window: {signal_id}")
+    runtime = _copy_state(state)
+    matching = tuple(
+        item
+        for item in runtime["risk_signals"].values()
+        if item["tenant"] == signal["tenant"]
+        and item["subject_key"] == signal["subject_key"]
+        and item["event_type"] == signal["event_type"]
+    )
+    amount_total = sum(float(item.get("amount", 0.0) or 0.0) for item in matching)
+    velocity_risk = _clamp((len(matching) / 10.0) + min(amount_total / 10000.0, 0.5), 0.0, 1.0)
+    window = {
+        "velocity_window_id": f"velocity:{signal['subject_key']}:{signal['event_type']}",
+        "tenant": signal["tenant"],
+        "subject_key": signal["subject_key"],
+        "event_type": signal["event_type"],
+        "window_minutes": 60,
+        "event_count": len(matching),
+        "amount_total": round(amount_total, 4),
+        "risk_score": round(velocity_risk, 4),
+        "audit_proof": _digest({"signal_id": signal_id, "amount_total": amount_total, "count": len(matching)}),
+    }
+    runtime["velocity_windows"][window["velocity_window_id"]] = window
+    runtime["events"].append(_state_event("VelocityWindowCalculated", window["velocity_window_id"], window))
+    return {"ok": True, "state": runtime, "velocity_window": window}
+
+
 def fraud_anomaly_detection_score_anomaly(state: dict, signal_id: str) -> dict:
     signal = state["risk_signals"].get(signal_id)
     if not signal:
@@ -628,6 +789,31 @@ def fraud_anomaly_detection_score_anomaly(state: dict, signal_id: str) -> dict:
     return {"ok": True, "state": runtime, "anomaly_score": anomaly_score}
 
 
+def fraud_anomaly_detection_explain_decision(state: dict, anomaly_score_id: str) -> dict:
+    anomaly_score = state["anomaly_scores"].get(anomaly_score_id)
+    if not anomaly_score:
+        raise ValueError(f"Unknown Fraud Anomaly Detection score for explanation: {anomaly_score_id}")
+    runtime = _copy_state(state)
+    reason_codes = tuple(str(item).split("=")[0] for item in anomaly_score.get("explanations", ()))
+    weights = {
+        str(item).split("=")[0]: str(item).split("=")[1] if "=" in str(item) else "present"
+        for item in anomaly_score.get("explanations", ())
+    }
+    explanation = {
+        "explanation_id": f"explanation:{anomaly_score_id}",
+        "tenant": anomaly_score["tenant"],
+        "anomaly_score_id": anomaly_score_id,
+        "reason_codes": reason_codes,
+        "feature_weights": weights,
+        "model_version": "fraud_anomaly_detection.policy.v1",
+        "created_at": "runtime",
+        "audit_proof": _digest({"anomaly_score_id": anomaly_score_id, "reason_codes": reason_codes}),
+    }
+    runtime["decision_explanations"][explanation["explanation_id"]] = explanation
+    runtime["events"].append(_state_event("DecisionExplained", explanation["explanation_id"], explanation))
+    return {"ok": True, "state": runtime, "decision_explanation": explanation}
+
+
 def fraud_anomaly_detection_open_risk_case(state: dict, command: dict) -> dict:
     required = {
         "case_id",
@@ -674,6 +860,54 @@ def fraud_anomaly_detection_open_risk_case(state: dict, command: dict) -> dict:
     return {"ok": True, "state": runtime, "risk_case": risk_case}
 
 
+def fraud_anomaly_detection_project_loss_exposure(state: dict, case_id: str) -> dict:
+    risk_case = state["risk_cases"].get(case_id)
+    if not risk_case:
+        raise ValueError(f"Unknown Fraud Anomaly Detection risk case for loss exposure: {case_id}")
+    signal = state["risk_signals"].get(risk_case["signal_id"], {})
+    anomaly_score = state["anomaly_scores"].get(risk_case["anomaly_score_id"], {})
+    amount = float(signal.get("amount", 1000.0) or 1000.0)
+    risk_score = float(anomaly_score.get("risk_score", 0.5))
+    runtime = _copy_state(state)
+    exposure = {
+        "loss_exposure_id": f"loss:{case_id}",
+        "tenant": risk_case["tenant"],
+        "case_id": case_id,
+        "amount": round(amount, 4),
+        "currency": signal.get("currency", "USD"),
+        "expected_loss": round(amount * risk_score, 4),
+        "tail_loss": round(amount * min(1.0, risk_score + 0.25), 4),
+        "status": "projected",
+        "audit_proof": _digest({"case_id": case_id, "amount": amount, "risk_score": risk_score}),
+    }
+    runtime["loss_exposures"][exposure["loss_exposure_id"]] = exposure
+    runtime["events"].append(_state_event("LossExposureProjected", exposure["loss_exposure_id"], exposure))
+    return {"ok": True, "state": runtime, "loss_exposure": exposure}
+
+
+def fraud_anomaly_detection_enqueue_analyst_case(state: dict, case_id: str) -> dict:
+    risk_case = state["risk_cases"].get(case_id)
+    if not risk_case:
+        raise ValueError(f"Unknown Fraud Anomaly Detection risk case for analyst queue: {case_id}")
+    anomaly_score = state["anomaly_scores"].get(risk_case["anomaly_score_id"], {})
+    runtime = _copy_state(state)
+    priority = _clamp(float(anomaly_score.get("risk_score", 0.5)) + (0.1 if risk_case["severity"] in {"high", "critical"} else 0.0), 0.0, 1.0)
+    queue_item = {
+        "queue_item_id": f"queue:{case_id}",
+        "tenant": risk_case["tenant"],
+        "case_id": case_id,
+        "queue": risk_case.get("queue", "fraud_ops"),
+        "priority": round(priority, 4),
+        "assigned_to": risk_case.get("assigned_to"),
+        "sla_due_at": "runtime+4h" if priority >= 0.7 else "runtime+1d",
+        "status": "queued",
+        "audit_proof": _digest({"case_id": case_id, "priority": priority}),
+    }
+    runtime["analyst_queue_items"][queue_item["queue_item_id"]] = queue_item
+    runtime["events"].append(_state_event("AnalystCaseQueued", queue_item["queue_item_id"], queue_item))
+    return {"ok": True, "state": runtime, "analyst_queue_item": queue_item}
+
+
 def fraud_anomaly_detection_receive_event(
     state: dict,
     event: dict,
@@ -709,9 +943,17 @@ def fraud_anomaly_detection_receive_event(
     runtime["handled_events"].add(event_id)
     signal_command = _derive_signal_from_event(runtime, event)
     runtime = fraud_anomaly_detection_ingest_risk_signal(runtime, signal_command)["state"]
+    runtime = fraud_anomaly_detection_link_identity(runtime, signal_command["signal_id"])["state"]
+    runtime = fraud_anomaly_detection_update_behavior_baseline(runtime, signal_command["signal_id"])["state"]
+    device = fraud_anomaly_detection_record_device_fingerprint(runtime, signal_command["signal_id"])
+    runtime = device["state"]
+    network = fraud_anomaly_detection_record_network_indicator(runtime, signal_command["signal_id"])
+    runtime = network["state"]
+    runtime = fraud_anomaly_detection_calculate_velocity_window(runtime, signal_command["signal_id"])["state"]
     scored = fraud_anomaly_detection_score_anomaly(runtime, signal_command["signal_id"])
     runtime = scored["state"]
     anomaly_score = scored["anomaly_score"]
+    runtime = fraud_anomaly_detection_explain_decision(runtime, anomaly_score["anomaly_score_id"])["state"]
     risk_case = None
     if anomaly_score["decision"] != "approve" or anomaly_score["risk_score"] >= _case_open_threshold(runtime, runtime["risk_signals"][signal_command["signal_id"]]):
         opened = fraud_anomaly_detection_open_risk_case(
@@ -731,6 +973,8 @@ def fraud_anomaly_detection_receive_event(
         )
         runtime = opened["state"]
         risk_case = opened["risk_case"]
+        runtime = fraud_anomaly_detection_project_loss_exposure(runtime, risk_case["case_id"])["state"]
+        runtime = fraud_anomaly_detection_enqueue_analyst_case(runtime, risk_case["case_id"])["state"]
     runtime["events"].append(_state_event(f"{event_type}Handled", event_id, payload))
     return {
         "ok": True,
@@ -747,6 +991,14 @@ def fraud_anomaly_detection_build_workbench_view(state: dict, *, tenant: str) ->
     scores = tuple(item for item in state.get("anomaly_scores", {}).values() if item["tenant"] == tenant)
     fraud_rules = tuple(item for item in state.get("fraud_rules", {}).values() if item["tenant"] == tenant)
     cases = tuple(item for item in state.get("risk_cases", {}).values() if item["tenant"] == tenant)
+    identity_links = tuple(item for item in state.get("identity_links", {}).values() if item["tenant"] == tenant)
+    baselines = tuple(item for item in state.get("behavior_baselines", {}).values() if item["tenant"] == tenant)
+    devices = tuple(item for item in state.get("device_fingerprints", {}).values() if item["tenant"] == tenant)
+    networks = tuple(item for item in state.get("network_indicators", {}).values() if item["tenant"] == tenant)
+    velocity = tuple(item for item in state.get("velocity_windows", {}).values() if item["tenant"] == tenant)
+    explanations = tuple(item for item in state.get("decision_explanations", {}).values() if item["tenant"] == tenant)
+    exposures = tuple(item for item in state.get("loss_exposures", {}).values() if item["tenant"] == tenant)
+    queue_items = tuple(item for item in state.get("analyst_queue_items", {}).values() if item["tenant"] == tenant)
     return {
         "format": "appgen.fraud-anomaly-detection-workbench-view.v1",
         "tenant": tenant,
@@ -754,10 +1006,18 @@ def fraud_anomaly_detection_build_workbench_view(state: dict, *, tenant: str) ->
         "anomaly_score_count": len(scores),
         "fraud_rule_count": len(fraud_rules),
         "case_count": len(cases),
+        "identity_link_count": len(identity_links),
+        "behavior_baseline_count": len(baselines),
+        "device_fingerprint_count": len(devices),
+        "network_indicator_count": len(networks),
+        "velocity_window_count": len(velocity),
+        "decision_explanation_count": len(explanations),
+        "loss_exposure_count": len(exposures),
+        "analyst_queue_count": len(queue_items),
         "open_case_count": len(tuple(item for item in cases if item["status"] == "open")),
         "high_risk_count": len(tuple(item for item in scores if float(item["risk_score"]) >= 0.7)),
         "total_loss_exposure": round(
-            sum(float(item["risk_score"]) * 1000.0 for item in scores),
+            sum(float(item["expected_loss"]) for item in exposures),
             2,
         ),
         "outbox_count": len(state.get("outbox", ())),
@@ -1024,9 +1284,17 @@ def fraud_anomaly_detection_build_service_contract() -> dict:
         "register_rule",
         "register_schema_extension",
         "register_fraud_rule",
+        "link_identity",
+        "update_behavior_baseline",
+        "record_device_fingerprint",
+        "record_network_indicator",
+        "calculate_velocity_window",
         "ingest_risk_signal",
         "score_anomaly",
+        "explain_decision",
         "open_risk_case",
+        "project_loss_exposure",
+        "enqueue_analyst_case",
         "receive_event",
     )
     query_methods = (
@@ -1040,7 +1308,7 @@ def fraud_anomaly_detection_build_service_contract() -> dict:
     )
     return {
         "format": "appgen.fraud-anomaly-detection-service-contract.v1",
-        "ok": len(command_methods) >= 9 and len(query_methods) >= 7,
+        "ok": len(command_methods) >= 17 and len(query_methods) >= 7,
         "pbc": "fraud_anomaly_detection",
         "transaction_boundary": "fraud_anomaly_detection_owned_datastore_plus_appgen_outbox",
         "command_methods": command_methods,
@@ -1178,9 +1446,17 @@ def fraud_anomaly_detection_permissions_contract() -> dict:
         "register_rule": "fraud_anomaly_detection.configure",
         "register_schema_extension": "fraud_anomaly_detection.configure",
         "register_fraud_rule": "fraud_anomaly_detection.fraud_rule.write",
+        "link_identity": "fraud_anomaly_detection.anomaly_score.write",
+        "update_behavior_baseline": "fraud_anomaly_detection.anomaly_score.write",
+        "record_device_fingerprint": "fraud_anomaly_detection.anomaly_score.write",
+        "record_network_indicator": "fraud_anomaly_detection.anomaly_score.write",
+        "calculate_velocity_window": "fraud_anomaly_detection.anomaly_score.write",
         "ingest_risk_signal": "fraud_anomaly_detection.event.write",
         "score_anomaly": "fraud_anomaly_detection.anomaly_score.write",
+        "explain_decision": "fraud_anomaly_detection.audit",
         "open_risk_case": "fraud_anomaly_detection.risk_case.write",
+        "project_loss_exposure": "fraud_anomaly_detection.risk_case.write",
+        "enqueue_analyst_case": "fraud_anomaly_detection.risk_case.write",
         "receive_event": "fraud_anomaly_detection.event.consume",
         "build_workbench_view": "fraud_anomaly_detection.audit",
         "build_schema_contract": "fraud_anomaly_detection.audit",
@@ -1236,9 +1512,19 @@ def fraud_anomaly_detection_build_release_evidence() -> dict:
             "ok": tuple(item["table"] for item in schema["runtime_tables"]) == FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
         },
         {
+            "id": "standard_table_runtime_population",
+            "ok": control["workbench"]["identity_link_count"] >= 1
+            and control["workbench"]["behavior_baseline_count"] >= 1
+            and control["workbench"]["velocity_window_count"] >= 1
+            and control["workbench"]["decision_explanation_count"] >= 1
+            and control["workbench"]["loss_exposure_count"] >= 1
+            and control["workbench"]["analyst_queue_count"] >= 1,
+        },
+        {
             "id": "service_contract_depth",
             "ok": service["ok"]
             and "receive_event" in service["idempotent_handlers"]
+            and {"link_identity", "project_loss_exposure", "enqueue_analyst_case"} <= set(service["command_methods"])
             and {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(service["query_methods"]),
         },
         {
@@ -1598,6 +1884,11 @@ def _derive_signal_from_event(state: dict, event: dict) -> dict:
         "event_type": event_type,
         "region": region,
         "raw_score": raw_score,
+        "amount": float(payload.get("amount", payload.get("cart_total", 0.0)) or 0.0),
+        "currency": payload.get("currency", "USD"),
+        "asn": payload.get("asn", "unknown"),
+        "vpn_detected": bool(payload.get("vpn_detected", False)),
+        "observed_at": payload.get("occurred_at", "runtime"),
         "indicators": indicators,
         "source_event_id": event["event_id"],
         "identity_dimensions": identity_dimensions,
@@ -1653,6 +1944,12 @@ def _capability_evidence(state: dict, capability: str) -> dict:
         "parameters": len(state["parameters"]),
         "fraud_rules": len(state["fraud_rules"]),
         "cases": len(state["risk_cases"]),
+        "identity_links": len(state["identity_links"]),
+        "behavior_baselines": len(state["behavior_baselines"]),
+        "velocity_windows": len(state["velocity_windows"]),
+        "decision_explanations": len(state["decision_explanations"]),
+        "loss_exposures": len(state["loss_exposures"]),
+        "analyst_queue_items": len(state["analyst_queue_items"]),
         "configuration": bool(state["configuration"].get("ok")),
         "runtime_digest": _digest(
             {
@@ -1660,6 +1957,8 @@ def _capability_evidence(state: dict, capability: str) -> dict:
                 "signals": len(state["risk_signals"]),
                 "scores": len(state["anomaly_scores"]),
                 "cases": len(state["risk_cases"]),
+                "identity_links": len(state["identity_links"]),
+                "loss_exposures": len(state["loss_exposures"]),
             }
         ),
     }

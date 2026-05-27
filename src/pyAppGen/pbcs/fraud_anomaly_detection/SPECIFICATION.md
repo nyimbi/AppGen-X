@@ -64,6 +64,10 @@ forbidden.
   summaries.
 - Identity-link analysis, device/network indicators, velocity checks, behavior
   baselines, and loss-exposure projections.
+- Runtime event handling populates identity links, behavior baselines, device
+  fingerprints, network indicators, velocity windows, decision explanations,
+  loss exposures, and analyst queue items; these tables are executable state,
+  not schema-only descriptors.
 - Idempotent consumption of `CheckoutCompleted`, `PaymentCaptured`, and
   `AccessPolicyChanged`.
 - Emission of `FraudRiskScored` and `RiskCaseOpened` through the AppGen-X
@@ -135,7 +139,10 @@ rules, fraud rules, parameters, outbox, inbox, and dead-letter bindings.
 
 The package-local service contract must expose command methods for runtime
 configuration, parameter/rule registration, fraud-rule registration, risk-signal
-ingestion, anomaly scoring, risk-case opening, and AppGen-X event handling.
+ingestion, identity linking, behavior baseline refresh, device/network
+indicator capture, velocity calculation, anomaly scoring, decision explanation,
+loss projection, analyst queueing, risk-case opening, and AppGen-X event
+handling.
 
 Query methods must include workbench, API, schema, service, and release
 evidence builders plus owned-boundary verification. Service-layer evidence must

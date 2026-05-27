@@ -19,12 +19,19 @@ from .runtime import fraud_anomaly_detection_build_release_evidence
 from .runtime import fraud_anomaly_detection_build_schema_contract
 from .runtime import fraud_anomaly_detection_build_service_contract
 from .runtime import fraud_anomaly_detection_build_workbench_view
+from .runtime import fraud_anomaly_detection_calculate_velocity_window
 from .runtime import fraud_anomaly_detection_configure_runtime
 from .runtime import fraud_anomaly_detection_empty_state
+from .runtime import fraud_anomaly_detection_enqueue_analyst_case
+from .runtime import fraud_anomaly_detection_explain_decision
 from .runtime import fraud_anomaly_detection_ingest_risk_signal
+from .runtime import fraud_anomaly_detection_link_identity
 from .runtime import fraud_anomaly_detection_open_risk_case
 from .runtime import fraud_anomaly_detection_permissions_contract
+from .runtime import fraud_anomaly_detection_project_loss_exposure
 from .runtime import fraud_anomaly_detection_receive_event
+from .runtime import fraud_anomaly_detection_record_device_fingerprint
+from .runtime import fraud_anomaly_detection_record_network_indicator
 from .runtime import fraud_anomaly_detection_register_fraud_rule
 from .runtime import fraud_anomaly_detection_register_rule
 from .runtime import fraud_anomaly_detection_register_schema_extension
@@ -32,6 +39,7 @@ from .runtime import fraud_anomaly_detection_runtime_capabilities
 from .runtime import fraud_anomaly_detection_runtime_smoke
 from .runtime import fraud_anomaly_detection_score_anomaly
 from .runtime import fraud_anomaly_detection_set_parameter
+from .runtime import fraud_anomaly_detection_update_behavior_baseline
 from .runtime import fraud_anomaly_detection_verify_owned_table_boundary
 from .ui import FRAUD_ANOMALY_DETECTION_UI_FRAGMENT_KEYS
 from .ui import fraud_anomaly_detection_render_workbench
@@ -109,4 +117,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

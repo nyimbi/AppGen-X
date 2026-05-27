@@ -15,6 +15,7 @@ def test_generated_schema_service_and_release_evidence():
     assert len(SCHEMA_CONTRACT['owned_tables']) >= 14
     assert 'fraud_anomaly_detection_identity_link' in SCHEMA_CONTRACT['owned_tables']
     assert 'fraud_anomaly_detection_loss_exposure' in SCHEMA_CONTRACT['owned_tables']
+    assert 'fraud_anomaly_detection_analyst_queue_item' in SCHEMA_CONTRACT['owned_tables']
     schema_smoke = schema_contract.smoke_test()
     model_smoke = models.smoke_test()
     assert schema_smoke['ok'] is True
@@ -25,6 +26,9 @@ def test_generated_schema_service_and_release_evidence():
     assert SERVICE_CONTRACT['pbc'] == 'fraud_anomaly_detection'
     assert SERVICE_CONTRACT['ok'] is True
     assert SERVICE_CONTRACT.get('shared_table_access') is False
+    assert 'link_identity' in SERVICE_CONTRACT['command_methods']
+    assert 'project_loss_exposure' in SERVICE_CONTRACT['command_methods']
+    assert 'enqueue_analyst_case' in SERVICE_CONTRACT['command_methods']
     assert RELEASE_EVIDENCE['pbc'] == 'fraud_anomaly_detection'
     assert RELEASE_EVIDENCE['ok'] is True
 
@@ -128,6 +132,22 @@ def test_service_and_route_surface_are_executable():
     assert not route_contracts['side_effects']
     assert not route_validation['side_effects']
     assert not route_smoke['side_effects']
+
+
+def test_runtime_populates_all_fraud_table_stakes():
+    from ..runtime import fraud_anomaly_detection_runtime_smoke
+
+    smoke = fraud_anomaly_detection_runtime_smoke()
+    assert smoke['ok'] is True
+    state = smoke['state']
+    assert state['identity_links']
+    assert state['behavior_baselines']
+    assert state['device_fingerprints']
+    assert state['network_indicators']
+    assert state['velocity_windows']
+    assert state['decision_explanations']
+    assert state['loss_exposures']
+    assert state['analyst_queue_items']
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():

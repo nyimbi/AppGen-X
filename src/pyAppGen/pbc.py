@@ -9487,12 +9487,19 @@ from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_release_
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_schema_contract  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_service_contract  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_build_workbench_view  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_calculate_velocity_window  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_configure_runtime  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_empty_state  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_enqueue_analyst_case  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_explain_decision  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_ingest_risk_signal  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_link_identity  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_open_risk_case  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_permissions_contract  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_project_loss_exposure  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_receive_event  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_record_device_fingerprint  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_record_network_indicator  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_register_fraud_rule  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_register_rule  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_register_schema_extension  # noqa: E402,F401
@@ -9502,6 +9509,7 @@ from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_runtime_smoke 
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_score_anomaly  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_set_parameter  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_ui_contract  # noqa: E402,F401
+from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_update_behavior_baseline  # noqa: E402,F401
 from .pbcs.fraud_anomaly_detection import fraud_anomaly_detection_verify_owned_table_boundary  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_ALLOWED_DATABASE_BACKENDS  # noqa: E402,F401
 from .pbcs.federated_iam import FEDERATED_IAM_CONSUMED_EVENT_TYPES  # noqa: E402,F401

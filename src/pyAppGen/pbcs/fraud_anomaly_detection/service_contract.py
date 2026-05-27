@@ -1,8 +1,28 @@
 """Generated service evidence for the fraud_anomaly_detection PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.fraud-anomaly-detection-service-contract.v1', 'ok': True, 'pbc': 'fraud_anomaly_detection', 'transaction_boundary': 'fraud_anomaly_detection_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'register_fraud_rule', 'ingest_risk_signal', 'score_anomaly', 'open_risk_case', 'receive_event'), 'query_methods': ('build_workbench_view', 'build_api_contract', 'permissions_contract', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'verify_owned_table_boundary'), 'mutates_only': ('risk_signal', 'anomaly_score', 'fraud_rule', 'risk_case'), 'runtime_tables': ('fraud_anomaly_detection_appgen_outbox_event', 'fraud_anomaly_detection_appgen_inbox_event', 'fraud_anomaly_detection_dead_letter_event'), 'external_dependencies': {'apis': ('POST /risk-events', 'POST /fraud-checks', 'GET /risk-cases'), 'events': ('CheckoutCompleted', 'PaymentCaptured', 'AccessPolicyChanged'), 'shared_tables': ()}, 'configuration': {'required_fields': ('database_backend', 'event_topic', 'retry_limit', 'default_region', 'supported_regions', 'supported_event_types', 'identity_dimensions', 'default_timezone', 'scoring_mode', 'workbench_limit'), 'allowed_database_backends': ('postgresql', 'mysql', 'mariadb'), 'required_event_topic': 'appgen.fraud_anomaly_detection.events', 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'event_contract_selector_visible': False}, 'eventing': {'contract': 'AppGen-X', 'topic': 'appgen.fraud_anomaly_detection.events', 'outbox_table': 'fraud_anomaly_detection_appgen_outbox_event', 'inbox_table': 'fraud_anomaly_detection_appgen_inbox_event', 'dead_letter_table': 'fraud_anomaly_detection_dead_letter_event', 'idempotency_required': True, 'stream_engine_picker_visible': False}, 'idempotent_handlers': ('receive_event',), 'retry_dead_letter_evidence': {'retry_limit_field': 'retry_limit', 'outbox_state': 'outbox', 'inbox_state': 'inbox', 'dead_letter_state': 'dead_letter', 'dead_letter_table': 'fraud_anomaly_detection_dead_letter_event'}, 'generated_artifacts': {'services': ('pbcs/fraud_anomaly_detection/services/risk_service.py',), 'routes': ('pbcs/fraud_anomaly_detection/routes/risk_routes.py',), 'events': ('pbcs/fraud_anomaly_detection/events/fraud_events.py',), 'handlers': ('pbcs/fraud_anomaly_detection/handlers/fraud_handlers.py',), 'ui': ('pbcs/fraud_anomaly_detection/ui/workbench.py',)}, 'shared_table_access': False}
+from __future__ import annotations
+
+from .runtime import fraud_anomaly_detection_build_service_contract
+
+SERVICE_CONTRACT = fraud_anomaly_detection_build_service_contract()
 
 
 def build_service_contract():
     """Return generated command, eventing, and handler evidence."""
     return dict(SERVICE_CONTRACT)
+
+
+def validate_service_contract():
+    contract = build_service_contract()
+    return {
+        "ok": contract["ok"]
+        and contract["shared_table_access"] is False
+        and "receive_event" in contract["idempotent_handlers"]
+        and {"link_identity", "project_loss_exposure", "enqueue_analyst_case"} <= set(contract["command_methods"]),
+        "contract": contract,
+        "side_effects": (),
+    }
+
+
+def smoke_test():
+    return validate_service_contract()
