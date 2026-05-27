@@ -1932,6 +1932,21 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   fraud/source/specification tests pass (`17 passed`), fraud implementation
   and generation smoke pass, all implemented generation smoke passes, and
   `pbc_release_audit()` returns true. Commit: `1562a15`.
+- Current multi-sided market hardening pass makes `multi_sided_market` schema
+  and model evidence executable rather than generic. The PBC now has a local
+  domain schema source for participants, listings, assets, services,
+  availability, bookings, rentals, loans, barter, trades, sales, exchange
+  proposals, escrow, settlements, disputes, reputation, rules, parameters,
+  schema extensions, and governed models; runtime schema contracts, model
+  metadata, and migrations now expose those fields and owned relationships.
+  The specification now documents the table-stakes market workflows, advanced
+  matching/escrow/dispute/agent capabilities, rules, parameters,
+  configuration, UI workbench, and composed-agent skill contribution. Py
+  compile passed for the touched market package and runtime tests; focused
+  market tests pass (`11 passed`); source package and traceability tests pass
+  (`20 passed`); banned legacy name scan is clean; implementation smoke,
+  market generation smoke, all implemented generation smoke, and
+  `pbc_release_audit()` all return true. Commit: `748140f`.
 
 ## Open Completion Areas
 
