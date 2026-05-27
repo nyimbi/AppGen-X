@@ -1,76 +1,43 @@
 CREATE SCHEMA IF NOT EXISTS returns_reverse_logistics;
 
-CREATE TABLE returns_reverse_logistics_return_authorization (
-  id INTEGER PRIMARY KEY NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE returns_reverse_logistics_return_label (
-  id INTEGER PRIMARY KEY NOT NULL,
-  return_authorization_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (return_authorization_id) REFERENCES returns_reverse_logistics_return_authorization(id)
-);
-
-CREATE TABLE returns_reverse_logistics_inspection_grade (
-  id INTEGER PRIMARY KEY NOT NULL,
-  return_authorization_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (return_authorization_id) REFERENCES returns_reverse_logistics_return_authorization(id)
-);
-
-CREATE TABLE returns_reverse_logistics_credit_adjustment (
-  id INTEGER PRIMARY KEY NOT NULL,
-  return_authorization_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (return_authorization_id) REFERENCES returns_reverse_logistics_return_authorization(id)
-);
-
-CREATE TABLE returns_reverse_logistics_appgen_outbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE returns_reverse_logistics_appgen_inbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE returns_reverse_logistics_appgen_dead_letter_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
+CREATE TABLE returns_reverse_logistics_return_authorization (tenant VARCHAR(120) NOT NULL, return_id VARCHAR(160) NOT NULL, rma VARCHAR(160) NOT NULL, order_id VARCHAR(160) NOT NULL, payment_id VARCHAR(160) NOT NULL, customer_id VARCHAR(160) NOT NULL, reason VARCHAR(240) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_line (tenant VARCHAR(120) NOT NULL, return_line_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, sku VARCHAR(160) NOT NULL, quantity DECIMAL(18,4) NOT NULL, reason_code VARCHAR(120) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_eligibility_decision (tenant VARCHAR(120) NOT NULL, decision_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, score DECIMAL(12,4) NOT NULL, eligible BOOLEAN NOT NULL, window_days INTEGER NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_policy_snapshot (tenant VARCHAR(120) NOT NULL, snapshot_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, rule_id VARCHAR(160) NOT NULL, scope VARCHAR(120) NOT NULL, compiled_hash VARCHAR(200) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_reverse_route_graph (tenant VARCHAR(120) NOT NULL, graph_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, carrier_id VARCHAR(160) NOT NULL, route_health DECIMAL(12,4) NOT NULL, carbon_intensity DECIMAL(18,4) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_label (tenant VARCHAR(120) NOT NULL, label_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, carrier_id VARCHAR(160) NOT NULL, tracking_number VARCHAR(200) NOT NULL, handoff_status VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_carrier_handoff (tenant VARCHAR(120) NOT NULL, handoff_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, label_id VARCHAR(160) NOT NULL, carrier_id VARCHAR(160) NOT NULL, handoff_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_receipt (tenant VARCHAR(120) NOT NULL, receipt_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, received_at TIMESTAMP NOT NULL, receiving_site VARCHAR(160) NOT NULL, received_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_inspection_grade (tenant VARCHAR(120) NOT NULL, inspection_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, grade VARCHAR(80) NOT NULL, recommended_disposition VARCHAR(80) NOT NULL, expected_recovery_rate DECIMAL(12,4) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_inspection_finding (tenant VARCHAR(120) NOT NULL, finding_id VARCHAR(160) NOT NULL, inspection_id VARCHAR(160) NOT NULL, finding_type VARCHAR(120) NOT NULL, severity VARCHAR(80) NOT NULL, notes TEXT, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_disposition_decision (tenant VARCHAR(120) NOT NULL, disposition_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, disposition VARCHAR(80) NOT NULL, expected_recovery_rate DECIMAL(12,4) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_refund_exchange_resolution (tenant VARCHAR(120) NOT NULL, resolution_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, resolution_mode VARCHAR(80) NOT NULL, adjustment_id VARCHAR(160), status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_restocking_order (tenant VARCHAR(120) NOT NULL, restocking_order_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, inventory_action VARCHAR(120) NOT NULL, destination_site VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_repair_refurbishment_order (tenant VARCHAR(120) NOT NULL, repair_order_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, repair_path VARCHAR(160) NOT NULL, provider_ref VARCHAR(160), status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_carrier_claim (tenant VARCHAR(120) NOT NULL, carrier_claim_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, claim_reason VARCHAR(240) NOT NULL, carrier_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_customer_status (tenant VARCHAR(120) NOT NULL, status_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, customer_visible_status VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, updated_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_exception_case (tenant VARCHAR(120) NOT NULL, exception_case_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, exception_type VARCHAR(160) NOT NULL, severity VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_exception_task (tenant VARCHAR(120) NOT NULL, exception_task_id VARCHAR(160) NOT NULL, exception_case_id VARCHAR(160) NOT NULL, owner VARCHAR(160) NOT NULL, due_at TIMESTAMP NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_fraud_signal (tenant VARCHAR(120) NOT NULL, fraud_signal_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, fraud_score DECIMAL(12,4) NOT NULL, decision VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_credit_adjustment (tenant VARCHAR(120) NOT NULL, adjustment_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, amount DECIMAL(18,4) NOT NULL, currency VARCHAR(12) NOT NULL, disposition VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_refund_ledger_handoff (tenant VARCHAR(120) NOT NULL, handoff_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, adjustment_id VARCHAR(160) NOT NULL, target_account VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_inventory_recovery_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, recovery_type VARCHAR(120) NOT NULL, recovery_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_repair_vendor_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, provider_ref VARCHAR(160) NOT NULL, repair_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_carrier_claim_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, carrier_id VARCHAR(160) NOT NULL, claim_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_customer_notification_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, channel VARCHAR(80) NOT NULL, delivery_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_order_return_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, order_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, projection_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_payment_return_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, payment_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, projection_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_inventory_return_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, inventory_reference VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, projection_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_ledger_return_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, ledger_reference VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, projection_status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_rule (tenant VARCHAR(120) NOT NULL, rule_id VARCHAR(160) NOT NULL, scope VARCHAR(120) NOT NULL, compiled_hash VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_parameter (tenant VARCHAR(120) NOT NULL, parameter_name VARCHAR(160) NOT NULL, parameter_value TEXT NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_configuration (tenant VARCHAR(120) NOT NULL, configuration_id VARCHAR(160) NOT NULL, database_backend VARCHAR(40) NOT NULL, event_topic VARCHAR(200) NOT NULL, event_contract VARCHAR(80) NOT NULL, retry_limit INTEGER NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_schema_extension (tenant VARCHAR(120) NOT NULL, extension_id VARCHAR(160) NOT NULL, table_name VARCHAR(160) NOT NULL, field_name VARCHAR(160) NOT NULL, field_type VARCHAR(80) NOT NULL, revision INTEGER NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_proof (tenant VARCHAR(120) NOT NULL, proof_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, proof_hash VARCHAR(200) NOT NULL, disclosure_level VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_policy_screening (tenant VARCHAR(120) NOT NULL, screening_id VARCHAR(160) NOT NULL, return_id VARCHAR(160) NOT NULL, decision VARCHAR(80) NOT NULL, reasons TEXT NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_control_assertion (tenant VARCHAR(120) NOT NULL, assertion_id VARCHAR(160) NOT NULL, control_name VARCHAR(160) NOT NULL, assertion_status VARCHAR(80) NOT NULL, asserted_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_governed_model (tenant VARCHAR(120) NOT NULL, model_id VARCHAR(160) NOT NULL, model_name VARCHAR(160) NOT NULL, auc DECIMAL(12,4) NOT NULL, drift_score DECIMAL(12,4) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_return_seed_data (tenant VARCHAR(120) NOT NULL, seed_id VARCHAR(160) NOT NULL, seed_type VARCHAR(120) NOT NULL, seed_key VARCHAR(160) NOT NULL, seed_value TEXT NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_outbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, topic VARCHAR(200) NOT NULL, payload TEXT NOT NULL, idempotency_key VARCHAR(200) NOT NULL, published_at TIMESTAMP, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_inbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, idempotency_key VARCHAR(200) NOT NULL, attempts INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE returns_reverse_logistics_dead_letter_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160), event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, idempotency_key VARCHAR(200), attempts INTEGER NOT NULL, reason TEXT NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);

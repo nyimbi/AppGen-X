@@ -303,6 +303,13 @@ def test_returns_reverse_logistics_package_schema_service_and_release_contracts(
     )
     assert schema["required_event_topic"] == RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
     assert schema["shared_table_access"] is False
+    authorization_table = next(item for item in schema["tables"] if item["table"] == "return_authorization")
+    inspection_table = next(item for item in schema["tables"] if item["table"] == "inspection_grade")
+    credit_table = next(item for item in schema["tables"] if item["table"] == "credit_adjustment")
+    assert {"return_id", "rma", "order_id", "payment_id", "customer_id"} <= set(authorization_table["fields"])
+    assert {"grade", "recommended_disposition", "expected_recovery_rate"} <= set(inspection_table["fields"])
+    assert {"adjustment_id", "amount", "currency", "disposition"} <= set(credit_table["fields"])
+    assert any(item["type"].startswith("owned_") for item in schema["relationships"])
 
     assert service["format"] == "appgen.returns-reverse-logistics-service-contract.v1"
     assert service["ok"] is True

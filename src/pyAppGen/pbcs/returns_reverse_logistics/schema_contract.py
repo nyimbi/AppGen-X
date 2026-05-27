@@ -1,6 +1,94 @@
 """Generated owned schema evidence for the returns_reverse_logistics PBC."""
 
-SCHEMA_CONTRACT = {'format': 'appgen.returns-reverse-logistics-owned-schema-contract.v1', 'ok': True, 'owned_tables': ('returns_reverse_logistics_return_authorization', 'returns_reverse_logistics_return_label', 'returns_reverse_logistics_inspection_grade', 'returns_reverse_logistics_credit_adjustment'), 'tables': ({'logical_table': 'return_authorization', 'owned_table': 'returns_reverse_logistics_return_authorization', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'logical_table': 'return_label', 'owned_table': 'returns_reverse_logistics_return_label', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'return_authorization_id', 'type': 'integer', 'required': True, 'references': 'returns_reverse_logistics_return_authorization.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'return_authorization_id', 'target_table': 'returns_reverse_logistics_return_authorization', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'inspection_grade', 'owned_table': 'returns_reverse_logistics_inspection_grade', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'return_authorization_id', 'type': 'integer', 'required': True, 'references': 'returns_reverse_logistics_return_authorization.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'return_authorization_id', 'target_table': 'returns_reverse_logistics_return_authorization', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'credit_adjustment', 'owned_table': 'returns_reverse_logistics_credit_adjustment', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'return_authorization_id', 'type': 'integer', 'required': True, 'references': 'returns_reverse_logistics_return_authorization.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'return_authorization_id', 'target_table': 'returns_reverse_logistics_return_authorization', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'runtime_tables': ({'table': 'returns_reverse_logistics_outbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'published_at', 'audit_hash')}, {'table': 'returns_reverse_logistics_inbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'idempotency_key', 'attempts', 'status', 'audit_hash')}, {'table': 'returns_reverse_logistics_dead_letter_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'idempotency_key', 'attempts', 'reason', 'audit_hash')}), 'relationships': ({'from': 'return_line.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_line'}, {'from': 'return_eligibility_decision.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_eligibility'}, {'from': 'return_policy_snapshot.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_policy'}, {'from': 'return_label.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_label'}, {'from': 'carrier_handoff.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_handoff'}, {'from': 'return_receipt.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_receipt'}, {'from': 'inspection_grade.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_inspection'}, {'from': 'inspection_finding.inspection_id', 'to': 'inspection_grade.inspection_id', 'type': 'owned_finding'}, {'from': 'disposition_decision.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_disposition'}, {'from': 'credit_adjustment.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_credit'}, {'from': 'refund_exchange_resolution.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_resolution'}, {'from': 'restocking_order.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_restock'}, {'from': 'repair_refurbishment_order.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_repair'}, {'from': 'carrier_claim.return_id', 'to': 'return_authorization.return_id', 'type': 'owned_claim'}, {'from': 'return_exception_task.exception_case_id', 'to': 'return_exception_case.exception_case_id', 'type': 'owned_exception_task'}), 'migrations': ('migrations/001_initial.sql',), 'models': ({'class_name': 'ReturnsReverseLogisticsReturnAuthorization', 'table': 'returns_reverse_logistics_return_authorization', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'class_name': 'ReturnsReverseLogisticsReturnLabel', 'table': 'returns_reverse_logistics_return_label', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'return_authorization_id', 'type': 'integer', 'required': True, 'references': 'returns_reverse_logistics_return_authorization.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'return_authorization_id', 'target_table': 'returns_reverse_logistics_return_authorization', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'ReturnsReverseLogisticsInspectionGrade', 'table': 'returns_reverse_logistics_inspection_grade', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'return_authorization_id', 'type': 'integer', 'required': True, 'references': 'returns_reverse_logistics_return_authorization.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'return_authorization_id', 'target_table': 'returns_reverse_logistics_return_authorization', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'ReturnsReverseLogisticsCreditAdjustment', 'table': 'returns_reverse_logistics_credit_adjustment', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'return_authorization_id', 'type': 'integer', 'required': True, 'references': 'returns_reverse_logistics_return_authorization.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'return_authorization_id', 'target_table': 'returns_reverse_logistics_return_authorization', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'datastore_backends': ('postgresql', 'mysql', 'mariadb'), 'required_event_topic': 'appgen.returns.events', 'event_contract': 'AppGen-X', 'shared_table_access': False, 'pbc': 'returns_reverse_logistics', 'database_backends': ('postgresql',)}
+from .domain_schema import LOGICAL_TABLES
+from .domain_schema import RUNTIME_TABLE_CONTRACTS
+from .domain_schema import RUNTIME_TABLE_NAMES
+from .domain_schema import class_name_for
+from .domain_schema import fields_for
+from .domain_schema import migration_path_for
+from .domain_schema import owned_table
+from .domain_schema import relationships_for
+from .domain_schema import supported_backends
+from .runtime import RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC
+
+
+def _table_contract(table: str) -> dict:
+    return {
+        "logical_table": table,
+        "owned_table": owned_table(table),
+        "fields": fields_for(table),
+        "relationships": relationships_for(table),
+    }
+
+
+def _runtime_table_contract(table: str) -> dict:
+    return {
+        "logical_table": table,
+        "owned_table": table,
+        "fields": fields_for(table),
+        "relationships": (),
+    }
+
+
+def _model_contract(table: str) -> dict:
+    return {
+        "class_name": class_name_for(table),
+        "table": owned_table(table),
+        "fields": fields_for(table),
+        "relationships": relationships_for(table),
+    }
+
+
+SCHEMA_CONTRACT = {
+    "format": "appgen.returns-reverse-logistics-owned-schema-contract.v1",
+    "ok": True,
+    "pbc": "returns_reverse_logistics",
+    "owned_tables": tuple(owned_table(table) for table in LOGICAL_TABLES) + RUNTIME_TABLE_NAMES,
+    "logical_owned_tables": LOGICAL_TABLES,
+    "tables": tuple(_table_contract(table) for table in LOGICAL_TABLES)
+    + tuple(_runtime_table_contract(table) for table in RUNTIME_TABLE_NAMES),
+    "runtime_tables": RUNTIME_TABLE_CONTRACTS,
+    "relationships": tuple(relationship for table in LOGICAL_TABLES for relationship in relationships_for(table)),
+    "migrations": (migration_path_for("return_authorization"),),
+    "migration_plan": tuple(
+        {"path": migration_path_for(table), "operation": "create_owned_table", "table": owned_table(table)}
+        for table in LOGICAL_TABLES
+    )
+    + tuple(
+        {"path": migration_path_for(table), "operation": "create_runtime_event_table", "table": table}
+        for table in RUNTIME_TABLE_NAMES
+    ),
+    "models": tuple(_model_contract(table) for table in LOGICAL_TABLES)
+    + tuple(
+        {
+            "class_name": class_name_for(table),
+            "table": table,
+            "fields": fields_for(table),
+            "relationships": (),
+        }
+        for table in RUNTIME_TABLE_NAMES
+    ),
+    "datastore_backends": supported_backends(),
+    "database_backends": supported_backends(),
+    "required_event_topic": RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC,
+    "event_contract": "AppGen-X",
+    "shared_table_access": False,
+    "schema_extensions": {"allowed": True, "owned_tables_only": True},
+    "declared_dependencies": {
+        "apis": (
+            "GET /orders/{order_id}",
+            "GET /payments/{payment_id}",
+            "POST /inventory-dispositions",
+            "POST /refunds",
+            "POST /exchange-orders",
+            "POST /ledger-adjustments",
+            "POST /carrier-claims",
+            "GET /customer-status",
+        ),
+        "events": ("OrderShipped", "PaymentCaptured"),
+        "shared_tables": (),
+    },
+}
 
 
 def build_schema_contract():
@@ -11,41 +99,37 @@ def build_schema_contract():
 def validate_schema_contract():
     """Validate owned table, migration, model, and datastore evidence."""
     contract = build_schema_contract()
-    pbc = contract['pbc']
-    owned_tables = tuple(contract.get('owned_tables', ()))
-    raw_model_tables = tuple(
-        model.get('table')
-        for model in contract.get('models', ())
-        if isinstance(model, dict) and model.get('table')
-    )
+    pbc = contract["pbc"]
+    owned_tables = tuple(contract.get("owned_tables", ()))
     model_tables = tuple(
-        table if table.startswith(f'{pbc}_') else f'{pbc}_{table}'
-        for table in raw_model_tables
+        model.get("table")
+        for model in contract.get("models", ())
+        if isinstance(model, dict) and model.get("table")
     )
-    migration_paths = tuple(contract.get('migrations', ()))
-    allowed_backends = {'postgresql', 'mysql', 'mariadb'}
-    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f'{pbc}_'))
-    missing_models = tuple(table for table in owned_tables if model_tables and table not in model_tables)
-    invalid_backends = tuple(
-        backend for backend in contract.get('database_backends', ()) if backend not in allowed_backends
-    )
+    migration_paths = tuple(contract.get("migrations", ()))
+    allowed_backends = {"postgresql", "mysql", "mariadb"}
+    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f"{pbc}_"))
+    missing_models = tuple(table for table in owned_tables if table not in model_tables)
+    invalid_backends = tuple(backend for backend in contract.get("database_backends", ()) if backend not in allowed_backends)
+    thin_tables = tuple(table["owned_table"] for table in contract["tables"] if len(table["fields"]) < 5)
     return {
-        'ok': contract.get('ok') is True
-        and bool(owned_tables)
+        "ok": contract.get("ok") is True
+        and len(owned_tables) >= 35
         and bool(migration_paths)
         and not invalid_tables
         and not missing_models
         and not invalid_backends
-        and contract.get('shared_table_access') is False,
-        'pbc': pbc,
-        'owned_tables': owned_tables,
-        'raw_model_tables': raw_model_tables,
-        'model_tables': model_tables,
-        'migration_paths': migration_paths,
-        'invalid_tables': invalid_tables,
-        'missing_models': missing_models,
-        'invalid_backends': invalid_backends,
-        'side_effects': (),
+        and not thin_tables
+        and contract.get("shared_table_access") is False,
+        "pbc": pbc,
+        "owned_tables": owned_tables,
+        "model_tables": model_tables,
+        "migration_paths": migration_paths,
+        "invalid_tables": invalid_tables,
+        "missing_models": missing_models,
+        "invalid_backends": invalid_backends,
+        "thin_tables": thin_tables,
+        "side_effects": (),
     }
 
 

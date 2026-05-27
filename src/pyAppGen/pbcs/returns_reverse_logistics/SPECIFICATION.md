@@ -240,20 +240,68 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `returns_reverse_logistics`
 - Mesh: `commerce`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
 - `return_authorization`
+- `return_line`
+- `return_eligibility_decision`
+- `return_policy_snapshot`
+- `reverse_route_graph`
 - `return_label`
+- `carrier_handoff`
+- `return_receipt`
 - `inspection_grade`
+- `inspection_finding`
+- `disposition_decision`
+- `refund_exchange_resolution`
+- `restocking_order`
+- `repair_refurbishment_order`
+- `carrier_claim`
+- `return_customer_status`
+- `return_exception_case`
+- `return_exception_task`
+- `return_fraud_signal`
 - `credit_adjustment`
+- `refund_ledger_handoff`
+- `inventory_recovery_projection`
+- `repair_vendor_projection`
+- `carrier_claim_projection`
+- `customer_notification_projection`
+- `order_return_projection`
+- `payment_return_projection`
+- `inventory_return_projection`
+- `ledger_return_projection`
+- `returns_reverse_logistics_rule`
+- `returns_reverse_logistics_parameter`
+- `returns_reverse_logistics_configuration`
+- `returns_reverse_logistics_schema_extension`
+- `return_proof`
+- `return_policy_screening`
+- `return_control_assertion`
+- `return_governed_model`
+- `return_seed_data`
 
 ### API Routes
 
+- `PUT /returns-reverse-logistics/configuration`
+- `POST /returns-reverse-logistics/parameters`
+- `POST /returns-reverse-logistics/rules`
 - `POST /returns`
 - `POST /labels`
+- `POST /returns/{return_id}/receipts`
 - `POST /inspection-grades`
+- `POST /returns/{return_id}/dispositions`
+- `POST /credit-adjustments`
+- `POST /returns/{return_id}/refund-exchange`
+- `POST /returns/{return_id}/carrier-claims`
+- `GET /returns/{return_id}/customer-status`
+- `POST /returns-reverse-logistics/events/inbox`
+- `GET /returns-reverse-logistics-workbench`
+- `GET /returns-reverse-logistics/schema-contract`
+- `GET /returns-reverse-logistics/service-contract`
+- `GET /returns-reverse-logistics/release-evidence`
 
 ### Emitted Events
 
@@ -267,22 +315,110 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `ReturnsReverseLogisticsWorkbench`
+- `ReturnAuthorizationConsole`
+- `ReturnEligibilityPanel`
+- `ReturnLabelConsole`
+- `CarrierHandoffBoard`
+- `ReceivingInspectionWorkbench`
+- `DispositionDecisionBoard`
+- `CreditAdjustmentConsole`
+- `RefundExchangeResolutionPanel`
+- `RecoveryOperationsPanel`
+- `CarrierClaimsPanel`
+- `ReturnExceptionBoard`
+- `ReturnConfigurationPanel`
 
 ### Permissions
 
-- None declared
+- `returns_reverse_logistics.authorize`
+- `returns_reverse_logistics.label`
+- `returns_reverse_logistics.inspect`
+- `returns_reverse_logistics.adjust`
+- `returns_reverse_logistics.event.consume`
+- `returns_reverse_logistics.configure`
+- `returns_reverse_logistics.audit`
+- `returns_reverse_logistics.exception`
+- `returns_reverse_logistics.claim`
 
 ### Configuration Keys
 
-- None declared
+- `RETURNS_REVERSE_LOGISTICS_DATABASE_URL`
+- `RETURNS_REVERSE_LOGISTICS_EVENT_TOPIC`
+- `RETURNS_REVERSE_LOGISTICS_RETRY_LIMIT`
+- `RETURNS_REVERSE_LOGISTICS_DEFAULT_CURRENCY`
+- `RETURNS_REVERSE_LOGISTICS_SUPPORTED_CARRIERS`
+- `RETURNS_REVERSE_LOGISTICS_SUPPORTED_DISPOSITIONS`
 
 ### Standard Features
 
-- None declared
+- `return_authorizations_rma`
+- `return_authorization_workflows`
+- `return_eligibility`
+- `eligibility_decisions`
+- `return_labels`
+- `carrier_handoff`
+- `return_receiving`
+- `receipt_and_inspection`
+- `disposition_routing`
+- `refund_exchange_resolution`
+- `restock_refurbish_scrap_routing`
+- `repair_refurbishment`
+- `carrier_claims`
+- `credit_adjustments`
+- `refund_ledger_handoff`
+- `fraud_abuse_screening`
+- `customer_return_status`
+- `exception_workflows`
+- `tenant_isolation`
+- `idempotent_handlers`
+- `appgen_x_outbox_inbox_eventing`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `owned_datastore_boundary`
+- `schema_contract`
+- `service_contract`
+- `release_gate`
+- `seed_data`
+- `appgen_event_contract`
+- `workbench`
+- `immutable_audit`
+- `governed_model_evidence`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_returns_lifecycle`
+- `graph_relational_reverse_logistics_topology`
+- `probabilistic_return_eligibility_scoring`
+- `counterfactual_disposition_simulation`
+- `temporal_return_rate_recovery_forecasting`
+- `autonomous_return_exception_resolution`
+- `semantic_return_instruction_parsing`
+- `predictive_return_risk`
+- `self_healing_label_carrier_route_selection`
+- `cryptographic_return_proof`
+- `immutable_return_audit_trail`
+- `dynamic_return_policy_screening`
+- `automated_control_testing`
+- `cross_system_order_payment_inventory_ledger_federation`
+- `universal_api_async_streaming`
+- `distributed_systems_evidence`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_inbox_handlers`
+- `retry_dead_letter_evidence`
+- `fraud_abuse_screening`
+- `tenant_isolation`
+- `chaos_tolerant_return_operations`
+- `crypto_agility`
+- `carbon_aware_return_routing`
+- `mathematical_recovery_optimization`
+- `disposition_allocation_mechanism_design`
+- `return_anomaly_detection`
+- `stochastic_return_exposure_modeling`
+- `governed_ml_model_evidence`
+- `permissions_governance_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
