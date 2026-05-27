@@ -31056,6 +31056,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "effect_bundles",
         "scene_and_assets",
         "target_package",
+        "target_artifact_transaction",
     )
     required_data_tooling_runtime_checks = (
         "connections",

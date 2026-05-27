@@ -6467,6 +6467,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "effect_bundles",
         "scene_and_assets",
         "target_package",
+        "target_artifact_transaction",
     } <= set(visual_asset_smoke["passing_checks"])
     data_tooling_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_data_tooling_runtime")
     assert data_tooling_smoke["ok"] is True
@@ -19372,11 +19373,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert visual_manifest["format"] == "appgen.generated-visual-runtime-asset-manifest.v1"
     assert visual_manifest["ok"] is True
     assert {"web", "mobile", "desktop", "pwa"} <= {item["target"] for item in visual_manifest["artifacts"]}
+    assert visual_manifest["artifact_transaction"]["ok"] is True
+    assert "artifact_transaction_replayed" in visual_manifest["guards"]
     assert visual_assets.style_runtime_assets()["bundles"]
     assert visual_assets.timeline_runtime_assets()["tracks"]
     assert any(row["decision"] == "use_fallback" for row in visual_assets.effect_runtime_assets()["fallbacks"])
     assert visual_assets.scene_runtime_assets()["scene_manifests"]
     assert visual_assets.validate_runtime_assets()["ok"] is True
+    assert "target_artifact_transaction" in {
+        check["id"] for check in visual_assets.validate_runtime_assets()["checks"] if check["ok"]
+    }
     assert visual_assets.smoke_test()["ok"] is True
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
