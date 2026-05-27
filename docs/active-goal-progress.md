@@ -1964,6 +1964,22 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   is clean; implementation smoke, enterprise-search generation smoke, all
   implemented generation smoke, and `pbc_release_audit()` all return true.
   Commit: `33a4c69`.
+- Current Returns Reverse Logistics PBC hardening pass makes
+  `returns_reverse_logistics` schema and model evidence executable rather than
+  generic. The PBC now has a local domain schema source for RMA authorization,
+  return lines, eligibility, policy snapshots, reverse route graphs, labels,
+  carrier handoffs, receipts, inspection findings, disposition, refunds,
+  exchanges, restock, repair, carrier claims, fraud signals, credit/ledger
+  handoff, projections, rules, parameters, configuration, governed models, and
+  AppGen-X runtime event tables; source schema contracts, model metadata,
+  migrations, manifest surfaces, and tests now prove owned-table coverage,
+  relationship coverage, event idempotency, UI/RBAC/configuration traceability,
+  and advanced returns capability coverage. Py compile passed for the touched
+  returns package and runtime tests; focused returns tests pass (`12 passed`);
+  source package and traceability tests pass (`21 passed`); banned legacy name
+  scan is clean; implementation smoke, returns generation smoke, all
+  implemented generation smoke, and `pbc_release_audit()` all return true.
+  Commit: `99ce1f9`.
 
 ## Open Completion Areas
 
