@@ -25,6 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
+| 2026-05-27 | `410e606` | Archived regenerated runtime caches from the active repository tree and generalized cache-archive ignore rules. | Moved the root pytest cache plus 97 active `__pycache__` directories and 858 generated cache files into `archive/repo-cleanup-2026-05-27-12/runtime-cache/`; a compile check regenerated 96 cache directories with 848 files, then moved those into `runtime-cache-post-verify/`; added an archive manifest; replaced one-off archive cache ignores with reusable `/archive/**/runtime-cache*/**` and `/archive/**/generated-test-output/**` patterns; left source, docs, tests, frontend files, and in-progress PBC edits untouched. |
 | 2026-05-27 | `pending` | Added source and generated timeline editor transaction replay as release-gated visual IDE evidence. The visual workbench and generated app template now prove track selection, keyframe insert/snap/move, easing edits, scrub preview, undo/redo, runtime export, runtime sample verification, and side-effect-free timeline editor transactions before visual readiness and requirement audits pass. | Py compile passed for `src/pyAppGen/form_designer.py`, `src/pyAppGen/gen.py`, and `tests/test_main.py`; direct source probe returned ok for `cross_target_timeline_editor_transaction_replay_contract()`, visual readiness, visual workbench, platform requirement audit, and RAD parity workbench visual gate; generated SQLite app probe returned ok for generated timeline editor transaction replay, visual readiness, visual workbench, and platform requirement audit; diff hygiene and restricted-name scan passed. A focused pytest node was attempted but did not complete and was not used as completion evidence. |
 | 2026-05-27 | `b8a8e8e` | Archived regenerated runtime caches from the active repository tree without touching in-progress source work. | Moved `.pytest_cache/` plus 96 active `src/**/__pycache__/` and `tests/**/__pycache__/` directories into `archive/repo-cleanup-2026-05-27-4/runtime-cache/`; moved regenerated verification sweeps into `runtime-cache-second-sweep/`, `runtime-cache-post-verify/`, and `runtime-cache-final-sweep/`; tracked a cleanup manifest while ignoring generated payloads; final shell check reported zero active cache directories under `src` or `tests` and no root `.pytest_cache`. |
 | 2026-05-27 | `ad166b8` | Separated PBC service commands from read-only query operations across source packages and the generated package template. Built-in and generated service facades now expose `command_operations` and `query_operations`, prevent query facades from emitting events or using outbox metadata, and require command facades to own tables and emit AppGen-X events. | Py compile passed for `src/pyAppGen/gen.py`, `tests/test_pbc_service_operation_semantics.py`, and all modified source PBC `services.py` files; `tests/test_pbc_service_operation_semantics.py` passed (`3 passed`); generated service-template probe passed for `gl_core` and `ap_automation`; `pbc_release_audit()` returned true with zero blocking gaps; `tests/test_pbc_generated_package_evidence.py` and `tests/test_pbc_package_local_assurance.py` passed (`5 passed`). |
@@ -2011,6 +2012,22 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tests pass (`23 passed`); banned legacy name scan is clean; implementation
   smoke, workflow generation smoke, all implemented generation smoke, and
   `pbc_release_audit()` all return true. Commit: `8d6c604`.
+- Current Federated IAM PBC hardening pass makes `federated_iam` source
+  artifacts match the identity runtime boundary instead of the old four-table
+  placeholder. The central catalog, package manifest, specification
+  traceability, domain schema source, source schema contract, model metadata,
+  migration, and tests now cover tenants, principals, identity providers,
+  principal identity links, role assignments, access policies, policy
+  decisions, token grants, sessions, credential verification, privileged
+  access requests, IAM rules, parameters, configuration, AppGen-X outbox/inbox
+  and dead letters, owned relationships, idempotency keys, UI fragments,
+  permissions, and advanced identity capabilities. Py compile passed for
+  `src/pyAppGen/pbc.py`, the touched federated IAM package, and runtime tests;
+  focused federated IAM tests pass (`14 passed`); source package and
+  traceability tests pass (`23 passed`); banned legacy name scan is clean;
+  implementation smoke, federated IAM generation smoke, all implemented
+  generation smoke, and `pbc_release_audit()` all return true. Commit:
+  `b9f876f`.
 
 ## Open Completion Areas
 

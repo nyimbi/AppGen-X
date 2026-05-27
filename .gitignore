@@ -14,9 +14,5 @@
 /appgen-frontend/browser-smoke-report.json
 __pycache__/
 /archive/unused-2026-05-26/**
-/archive/repo-cleanup-2026-05-27-5/runtime-cache/**
-/archive/repo-cleanup-2026-05-27-5/runtime-cache-post-verify/**
-/archive/repo-cleanup-2026-05-27-5/runtime-cache-final-sweep/**
-/archive/repo-cleanup-2026-05-27-5/runtime-cache-background-sweep/**
-/archive/repo-cleanup-2026-05-27-5/generated-test-output/**
-/archive/repo-cleanup-2026-05-27-8/runtime-cache/**
+/archive/**/runtime-cache*/**
+/archive/**/generated-test-output/**
