@@ -4,6 +4,13 @@ EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibili
 
 
 OPERATION_CONTRACTS = ({'operation': 'command_price_quotes', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/price_promotion_engine/price-quotes', 'permission': 'price_promotion_engine.command.1', 'owned_tables': ('price_promotion_engine_price_rule', 'price_promotion_engine_promotion', 'price_promotion_engine_loyalty_tier', 'price_promotion_engine_price_decision'), 'read_tables': (), 'emitted_event': 'PriceOptimized', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_promotions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/price_promotion_engine/promotions', 'permission': 'price_promotion_engine.command.2', 'owned_tables': ('price_promotion_engine_price_rule', 'price_promotion_engine_promotion', 'price_promotion_engine_loyalty_tier', 'price_promotion_engine_price_decision'), 'read_tables': (), 'emitted_event': 'PromotionApplied', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_promotion_approvals', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/price_promotion_engine/promotions/approval', 'permission': 'price_promotion_engine.promotion.approve', 'owned_tables': ('price_promotion_engine_promotion', 'price_promotion_engine_promotion_approval', 'price_promotion_engine_price_audit_trace'), 'read_tables': (), 'emitted_event': 'PromotionApplied', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_coupon_redemptions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/price_promotion_engine/coupon-redemptions', 'permission': 'price_promotion_engine.quote', 'owned_tables': ('price_promotion_engine_coupon', 'price_promotion_engine_price_decision', 'price_promotion_engine_campaign_budget', 'price_promotion_engine_price_audit_trace', 'price_promotion_engine_price_performance_telemetry'), 'read_tables': (), 'emitted_event': 'PromotionApplied', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_price_decisions', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/price_promotion_engine/price-decisions', 'permission': 'price_promotion_engine.query.3', 'owned_tables': (), 'read_tables': ('price_promotion_engine_price_rule', 'price_promotion_engine_promotion', 'price_promotion_engine_loyalty_tier', 'price_promotion_engine_price_decision'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
+OPERATION_CONTRACTS = OPERATION_CONTRACTS + (
+    {'operation': 'command_price_agreements', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/price_promotion_engine/price-agreements', 'permission': 'price_promotion_engine.price.write', 'owned_tables': ('price_promotion_engine_price_agreement', 'price_promotion_engine_price_audit_trace'), 'read_tables': (), 'emitted_event': 'PriceOptimized', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_trade_promotion_plans', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/price_promotion_engine/trade-promotion-plans', 'permission': 'price_promotion_engine.promotion.write', 'owned_tables': ('price_promotion_engine_trade_promotion_plan', 'price_promotion_engine_promotion', 'price_promotion_engine_campaign_budget', 'price_promotion_engine_price_audit_trace'), 'read_tables': (), 'emitted_event': 'TradePromotionPlanned', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_price_exceptions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/price_promotion_engine/price-exceptions', 'permission': 'price_promotion_engine.exception.write', 'owned_tables': ('price_promotion_engine_price_exception_case', 'price_promotion_engine_price_audit_trace', 'price_promotion_engine_price_performance_telemetry'), 'read_tables': (), 'emitted_event': 'PriceExceptionOpened', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_promotion_accruals', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/price_promotion_engine/promotion-accruals', 'permission': 'price_promotion_engine.promotion.settle', 'owned_tables': ('price_promotion_engine_promotion_accrual', 'price_promotion_engine_promotion', 'price_promotion_engine_price_decision', 'price_promotion_engine_price_audit_trace'), 'read_tables': (), 'emitted_event': 'PromotionApplied', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_promotion_settlements', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/price_promotion_engine/promotion-settlements', 'permission': 'price_promotion_engine.promotion.settle', 'owned_tables': ('price_promotion_engine_promotion_settlement', 'price_promotion_engine_promotion_accrual', 'price_promotion_engine_price_audit_trace'), 'read_tables': (), 'emitted_event': 'PromotionSettlementPosted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+)
 
 
 def service_operation_contracts():
@@ -102,6 +109,21 @@ class PricePromotionEngineService:
 
     def command_coupon_redemptions(self, payload=None):
         return self._command('command_coupon_redemptions', payload or {})
+
+    def command_price_agreements(self, payload=None):
+        return self._command('command_price_agreements', payload or {})
+
+    def command_trade_promotion_plans(self, payload=None):
+        return self._command('command_trade_promotion_plans', payload or {})
+
+    def command_price_exceptions(self, payload=None):
+        return self._command('command_price_exceptions', payload or {})
+
+    def command_promotion_accruals(self, payload=None):
+        return self._command('command_promotion_accruals', payload or {})
+
+    def command_promotion_settlements(self, payload=None):
+        return self._command('command_promotion_settlements', payload or {})
 
     def query_price_decisions(self, payload=None):
         return self._query('query_price_decisions', payload or {})

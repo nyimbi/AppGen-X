@@ -59,9 +59,11 @@ The package owns these business tables:
 - `price_book`
 - `price_book_entry`
 - `price_rule`
+- `price_agreement`
 - `customer_price`
 - `channel_price`
 - `currency_price`
+- `trade_promotion_plan`
 - `promotion`
 - `promotion_rule`
 - `coupon`
@@ -70,7 +72,10 @@ The package owns these business tables:
 - `promotion_exclusion`
 - `campaign_budget`
 - `promotion_approval`
+- `promotion_accrual`
+- `promotion_settlement`
 - `loyalty_tier`
+- `price_exception_case`
 - `price_simulation`
 - `price_margin_guardrail`
 - `price_decision`
@@ -116,6 +121,13 @@ The complete package covers:
   approvals
 - executable promotion approval updates and coupon redemption validation with
   reuse-limit enforcement, budget consumption, audit traces, and telemetry
+- customer-specific price agreements that override price-book entries through
+  the owned pricing boundary
+- trade promotion plans with calendar, spend, owner, uplift, audit, and outbox
+  evidence
+- price exception cases with open/resolve lifecycle, telemetry, and audit trail
+- promotion accruals and settlements tied to applied decisions and campaign
+  evidence
 - loyalty-tier pricing
 - quote decisions with counterfactual simulations
 - margin guardrails and review routing
@@ -143,6 +155,8 @@ The runtime supports these commands:
 - `register_rule(rule)`
 - `register_schema_extension(table, fields)`
 - `register_price_rule(command)`
+- `register_price_agreement(command)`
+- `plan_trade_promotion(command)`
 - `register_promotion(command)`
 - `approve_promotion(promotion_id, approved_by, approval_status)`
 - `register_loyalty_tier(command)`
@@ -150,6 +164,10 @@ The runtime supports these commands:
 - `quote_price(command)`
 - `apply_promotion(decision_id, promotion_id)`
 - `redeem_coupon(decision_id, coupon_code)`
+- `open_price_exception(command)`
+- `resolve_price_exception(exception_id, resolution, resolved_by)`
+- `accrue_promotion(decision_id, promotion_id)`
+- `settle_promotion(accrual_id, settled_amount, settled_by)`
 
 Quote generation performs:
 
@@ -185,6 +203,15 @@ Promotion approval performs:
 - synchronization of the promotion approval status
 - pricing-manager audit trace generation
 - eligibility gating so pending or rejected promotions cannot be quoted
+
+Trade promotion and settlement execution performs:
+
+- owned trade-plan registration against an existing promotion and configured
+  calendar
+- `TradePromotionPlanned` AppGen-X outbox emission
+- exception opening and resolution inside `price_exception_case`
+- accrual generation from applied promotion decisions
+- settlement posting with `PromotionSettlementPosted` AppGen-X outbox evidence
 
 ## Schema Contract Expectations
 
@@ -225,10 +252,15 @@ Promotion approval performs:
 - `POST /price-promotion/parameters`
 - `POST /price-promotion/schema-extensions`
 - `POST /price-rules`
+- `POST /price-agreements`
 - `POST /promotions`
+- `POST /trade-promotion-plans`
 - `POST /loyalty-tiers`
 - `POST /price-quotes`
 - `POST /promotion-applications`
+- `POST /price-exceptions`
+- `POST /promotion-accruals`
+- `POST /promotion-settlements`
 - `POST /price-promotion/events/inbox`
 - `GET /price-promotion/workbench`
 - `GET /price-promotion/schema-contract`

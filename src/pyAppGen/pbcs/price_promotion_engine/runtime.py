@@ -35,9 +35,11 @@ PRICE_PROMOTION_ENGINE_OWNED_TABLES = (
     "price_book",
     "price_book_entry",
     "price_rule",
+    "price_agreement",
     "customer_price",
     "channel_price",
     "currency_price",
+    "trade_promotion_plan",
     "promotion",
     "promotion_rule",
     "coupon",
@@ -46,7 +48,10 @@ PRICE_PROMOTION_ENGINE_OWNED_TABLES = (
     "promotion_exclusion",
     "campaign_budget",
     "promotion_approval",
+    "promotion_accrual",
+    "promotion_settlement",
     "loyalty_tier",
+    "price_exception_case",
     "price_simulation",
     "price_margin_guardrail",
     "price_decision",
@@ -66,6 +71,10 @@ PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS = (
     "campaign_budget_and_approval_evidence",
     "loyalty_tier_price_personalization",
     "volume_break_and_contract_price_support",
+    "customer_price_agreement_execution",
+    "trade_promotion_planning_execution",
+    "promotion_accrual_and_settlement_execution",
+    "price_exception_case_management",
     "forecast_signal_price_adjustment",
     "customer_segment_price_adjustment",
     "probabilistic_margin_elasticity_scoring",
@@ -115,6 +124,11 @@ PRICE_PROMOTION_ENGINE_STANDARD_FEATURE_KEYS = (
     "contextual_price_quotes",
     "promotion_redemption_validation",
     "volume_breaks",
+    "customer_price_agreements",
+    "trade_promotion_plans",
+    "price_exception_cases",
+    "promotion_accruals",
+    "promotion_settlements",
     "currency_region_constraints",
     "customer_segment_inputs",
     "forecast_signal_inputs",
@@ -181,7 +195,13 @@ PRICE_PROMOTION_ENGINE_REQUIRED_RULE_FIELDS = (
 )
 
 PRICE_PROMOTION_ENGINE_CONSUMED_EVENT_TYPES = ("CustomerSegmentUpdated", "ForecastUpdated")
-PRICE_PROMOTION_ENGINE_EMITTED_EVENT_TYPES = ("PriceOptimized", "PromotionApplied")
+PRICE_PROMOTION_ENGINE_EMITTED_EVENT_TYPES = (
+    "PriceOptimized",
+    "PromotionApplied",
+    "TradePromotionPlanned",
+    "PriceExceptionOpened",
+    "PromotionSettlementPosted",
+)
 
 _CONFIG_SEQUENCE_FIELDS = {"supported_currencies", "supported_regions", "pricing_calendars"}
 _RULE_SEQUENCE_FIELDS = {"allowed_currencies", "allowed_regions", "allowed_segments"}
@@ -294,6 +314,19 @@ _TABLE_FIELDS = {
         "status",
         "audit_hash",
     ),
+    "price_agreement": (
+        "tenant",
+        "agreement_id",
+        "customer_id",
+        "sku",
+        "region",
+        "currency",
+        "contracted_price",
+        "effective_from",
+        "effective_to",
+        "status",
+        "audit_hash",
+    ),
     "customer_price": (
         "tenant",
         "customer_price_id",
@@ -320,6 +353,17 @@ _TABLE_FIELDS = {
         "price_rule_id",
         "currency",
         "base_price",
+        "status",
+        "audit_hash",
+    ),
+    "trade_promotion_plan": (
+        "tenant",
+        "plan_id",
+        "promotion_id",
+        "calendar",
+        "target_uplift_percent",
+        "spend_amount",
+        "owner_role",
         "status",
         "audit_hash",
     ),
@@ -403,12 +447,43 @@ _TABLE_FIELDS = {
         "approved_by",
         "audit_hash",
     ),
+    "promotion_accrual": (
+        "tenant",
+        "accrual_id",
+        "promotion_id",
+        "decision_id",
+        "accrual_amount",
+        "currency",
+        "status",
+        "audit_hash",
+    ),
+    "promotion_settlement": (
+        "tenant",
+        "settlement_id",
+        "accrual_id",
+        "promotion_id",
+        "settled_amount",
+        "settled_by",
+        "status",
+        "audit_hash",
+    ),
     "loyalty_tier": (
         "tenant",
         "tier_id",
         "name",
         "rank",
         "discount_percent",
+        "status",
+        "audit_hash",
+    ),
+    "price_exception_case": (
+        "tenant",
+        "exception_id",
+        "subject_type",
+        "subject_id",
+        "severity",
+        "reason",
+        "resolution",
         "status",
         "audit_hash",
     ),
@@ -534,6 +609,8 @@ def price_promotion_engine_runtime_capabilities() -> dict:
             "register_rule",
             "register_schema_extension",
             "register_price_rule",
+            "register_price_agreement",
+            "plan_trade_promotion",
             "register_promotion",
             "approve_promotion",
             "register_loyalty_tier",
@@ -541,6 +618,10 @@ def price_promotion_engine_runtime_capabilities() -> dict:
             "quote_price",
             "apply_promotion",
             "redeem_coupon",
+            "open_price_exception",
+            "resolve_price_exception",
+            "accrue_promotion",
+            "settle_promotion",
             "build_workbench_view",
             "binding_evidence",
             "build_api_contract",
@@ -644,6 +725,51 @@ def price_promotion_engine_runtime_smoke() -> dict:
             "customer_id": "cust_alpha",
         },
     )["state"]
+    state = price_promotion_engine_register_price_agreement(
+        state,
+        {
+            "agreement_id": "agreement_release",
+            "tenant": "tenant_release",
+            "customer_id": "cust_release",
+            "sku": "sku_release",
+            "region": "US",
+            "currency": "USD",
+            "contracted_price": 112.0,
+            "effective_from": "2026-01-01",
+            "effective_to": "2026-12-31",
+            "status": "active",
+        },
+    )["state"]
+    state = price_promotion_engine_register_price_agreement(
+        state,
+        {
+            "agreement_id": "agreement_alpha",
+            "tenant": "tenant_alpha",
+            "customer_id": "cust_alpha",
+            "sku": "sku_alpha",
+            "region": "US",
+            "currency": "USD",
+            "contracted_price": 96.0,
+            "effective_from": "2026-01-01",
+            "effective_to": "2026-12-31",
+            "status": "active",
+        },
+    )["state"]
+    state = price_promotion_engine_register_price_agreement(
+        state,
+        {
+            "agreement_id": "agreement_release",
+            "tenant": "tenant_release",
+            "customer_id": "cust_release",
+            "sku": "sku_release",
+            "region": "US",
+            "currency": "USD",
+            "contracted_price": 112.0,
+            "effective_from": "2026-01-01",
+            "effective_to": "2026-12-31",
+            "status": "active",
+        },
+    )["state"]
     state = price_promotion_engine_register_promotion(
         state,
         {
@@ -664,6 +790,19 @@ def price_promotion_engine_runtime_smoke() -> dict:
         },
     )["state"]
     state = price_promotion_engine_approve_promotion(state, "promo_alpha", approved_by="pricing_manager")["state"]
+    state = price_promotion_engine_plan_trade_promotion(
+        state,
+        {
+            "plan_id": "trade_plan_alpha",
+            "tenant": "tenant_alpha",
+            "promotion_id": "promo_alpha",
+            "calendar": "standard",
+            "target_uplift_percent": 14.5,
+            "spend_amount": 350.0,
+            "owner_role": "trade_manager",
+            "status": "active",
+        },
+    )["state"]
     state = price_promotion_engine_receive_event(
         state,
         {
@@ -696,6 +835,31 @@ def price_promotion_engine_runtime_smoke() -> dict:
     )
     state = quoted["state"]
     state = price_promotion_engine_redeem_coupon(state, "decision_alpha", "GROWTH10")["state"]
+    state = price_promotion_engine_open_price_exception(
+        state,
+        {
+            "exception_id": "exception_alpha",
+            "tenant": "tenant_alpha",
+            "subject_type": "price_decision",
+            "subject_id": "decision_alpha",
+            "severity": "medium",
+            "reason": "margin_watch",
+        },
+    )["state"]
+    state = price_promotion_engine_resolve_price_exception(
+        state,
+        "exception_alpha",
+        resolution="approved_with_budget_watch",
+        resolved_by="pricing_manager",
+    )["state"]
+    accrued = price_promotion_engine_accrue_promotion(state, "decision_alpha", "promo_alpha")
+    state = accrued["state"]
+    state = price_promotion_engine_settle_promotion(
+        state,
+        accrued["promotion_accrual"]["accrual_id"],
+        settled_amount=accrued["promotion_accrual"]["accrual_amount"],
+        settled_by="trade_finance",
+    )["state"]
     checks = tuple(
         {"id": key, "ok": True, "evidence": _capability_evidence(state, key)}
         for key in PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS
@@ -708,9 +872,14 @@ def price_promotion_engine_runtime_smoke() -> dict:
         and bool(state["configuration"].get("ok"))
         and bool(state["price_lists"])
         and bool(state["price_books"])
+        and bool(state["price_agreements"])
+        and bool(state["trade_promotion_plans"])
         and bool(state["coupons"])
         and bool(state["campaign_budgets"])
         and bool(state["promotion_approvals"])
+        and bool(state["promotion_accruals"])
+        and bool(state["promotion_settlements"])
+        and bool(state["price_exception_cases"])
         and bool(tuple(item for item in state["promotion_approvals"].values() if item["approval_status"] == "approved"))
         and bool(tuple(item for item in state["coupons"].values() if item.get("redemption_count", 0) >= 1))
         and bool(state["price_simulations"])
@@ -739,9 +908,11 @@ def price_promotion_engine_empty_state() -> dict:
         "price_books": {},
         "price_book_entries": {},
         "price_rules": {},
+        "price_agreements": {},
         "customer_prices": {},
         "channel_prices": {},
         "currency_prices": {},
+        "trade_promotion_plans": {},
         "promotions": {},
         "promotion_rules": {},
         "coupons": {},
@@ -750,7 +921,10 @@ def price_promotion_engine_empty_state() -> dict:
         "promotion_exclusions": {},
         "campaign_budgets": {},
         "promotion_approvals": {},
+        "promotion_accruals": {},
+        "promotion_settlements": {},
         "loyalty_tiers": {},
+        "price_exception_cases": {},
         "price_simulations": {},
         "price_margin_guardrails": {},
         "price_decisions": {},
@@ -979,6 +1153,85 @@ def price_promotion_engine_register_price_rule(state: dict, command: dict) -> di
         payload=rule,
     )
     return {"ok": True, "state": runtime, "price_rule": rule}
+
+
+def price_promotion_engine_register_price_agreement(state: dict, command: dict) -> dict:
+    required = {
+        "agreement_id",
+        "tenant",
+        "customer_id",
+        "sku",
+        "region",
+        "currency",
+        "contracted_price",
+        "effective_from",
+        "effective_to",
+        "status",
+    }
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Price Promotion Engine price agreement fields: {tuple(sorted(missing))}")
+    _require_configured(state)
+    _assert_supported_currency_region(state, command["currency"], command["region"])
+    if float(command["contracted_price"]) <= 0:
+        raise ValueError("Price Promotion Engine contracted price must be positive")
+    runtime = _copy_state(state)
+    agreement = {
+        **command,
+        "contracted_price": float(command["contracted_price"]),
+        "audit_proof": _digest(command),
+    }
+    runtime["price_agreements"][agreement["agreement_id"]] = agreement
+    _append_state_event(runtime, "PriceAgreementRegistered", agreement["agreement_id"], agreement)
+    _record_audit_trace(
+        runtime,
+        tenant=agreement["tenant"],
+        trace_type="price_agreement",
+        subject_id=agreement["agreement_id"],
+        related_tables=("price_agreement",),
+        payload=agreement,
+    )
+    return {"ok": True, "state": runtime, "price_agreement": agreement}
+
+
+def price_promotion_engine_plan_trade_promotion(state: dict, command: dict) -> dict:
+    required = {
+        "plan_id",
+        "tenant",
+        "promotion_id",
+        "calendar",
+        "target_uplift_percent",
+        "spend_amount",
+        "owner_role",
+        "status",
+    }
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Price Promotion Engine trade promotion plan fields: {tuple(sorted(missing))}")
+    _require_configured(state)
+    promotion = state["promotions"].get(command["promotion_id"])
+    if not promotion or promotion["tenant"] != command["tenant"]:
+        raise ValueError(f"Unknown Price Promotion Engine promotion for trade plan: {command['promotion_id']}")
+    if command["calendar"] not in state["configuration"]["pricing_calendars"]:
+        raise ValueError(f"Unsupported Price Promotion Engine pricing calendar: {command['calendar']}")
+    runtime = _copy_state(state)
+    plan = {
+        **command,
+        "target_uplift_percent": float(command["target_uplift_percent"]),
+        "spend_amount": float(command["spend_amount"]),
+        "audit_proof": _digest(command),
+    }
+    runtime["trade_promotion_plans"][plan["plan_id"]] = plan
+    _record_audit_trace(
+        runtime,
+        tenant=plan["tenant"],
+        trace_type="trade_promotion_plan",
+        subject_id=plan["plan_id"],
+        related_tables=("trade_promotion_plan", "promotion", "campaign_budget"),
+        payload=plan,
+    )
+    _emit(runtime, "TradePromotionPlanned", plan["tenant"], plan)
+    return {"ok": True, "state": runtime, "trade_promotion_plan": plan}
 
 
 def price_promotion_engine_register_promotion(state: dict, command: dict) -> dict:
@@ -1418,11 +1671,147 @@ def price_promotion_engine_redeem_coupon(state: dict, decision_id: str, coupon_c
     return {"ok": True, "state": runtime, "coupon_redemption": redemption}
 
 
+def price_promotion_engine_open_price_exception(state: dict, command: dict) -> dict:
+    required = {"exception_id", "tenant", "subject_type", "subject_id", "severity", "reason"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Price Promotion Engine exception fields: {tuple(sorted(missing))}")
+    if command["subject_type"] not in {"price_rule", "promotion", "price_decision", "campaign_budget"}:
+        raise ValueError("Price Promotion Engine exception subject_type is unsupported")
+    runtime = _copy_state(state)
+    exception = {
+        **command,
+        "resolution": str(command.get("resolution", "")),
+        "status": str(command.get("status", "open")),
+        "audit_proof": _digest(command),
+    }
+    runtime["price_exception_cases"][exception["exception_id"]] = exception
+    _record_audit_trace(
+        runtime,
+        tenant=exception["tenant"],
+        trace_type="price_exception",
+        subject_id=exception["exception_id"],
+        related_tables=("price_exception_case",),
+        payload=exception,
+    )
+    _record_performance_telemetry(
+        runtime,
+        tenant=exception["tenant"],
+        metric_key="exception_open_latency",
+        subject_id=exception["exception_id"],
+        sample_ms=7,
+        rule_hits=1,
+        status="open",
+    )
+    _emit(runtime, "PriceExceptionOpened", exception["tenant"], exception)
+    return {"ok": True, "state": runtime, "price_exception_case": exception}
+
+
+def price_promotion_engine_resolve_price_exception(
+    state: dict,
+    exception_id: str,
+    *,
+    resolution: str,
+    resolved_by: str,
+) -> dict:
+    if exception_id not in state["price_exception_cases"]:
+        raise ValueError(f"Unknown Price Promotion Engine exception: {exception_id}")
+    runtime = _copy_state(state)
+    exception = dict(runtime["price_exception_cases"][exception_id])
+    exception["resolution"] = resolution
+    exception["resolved_by"] = resolved_by
+    exception["status"] = "resolved"
+    exception["audit_hash"] = _digest({"exception_id": exception_id, "resolution": resolution, "resolved_by": resolved_by})
+    runtime["price_exception_cases"][exception_id] = exception
+    _append_state_event(runtime, "PriceExceptionResolved", exception_id, exception)
+    _record_audit_trace(
+        runtime,
+        tenant=exception["tenant"],
+        trace_type="price_exception_resolution",
+        subject_id=exception_id,
+        related_tables=("price_exception_case",),
+        payload=exception,
+    )
+    return {"ok": True, "state": runtime, "price_exception_case": exception}
+
+
+def price_promotion_engine_accrue_promotion(state: dict, decision_id: str, promotion_id: str) -> dict:
+    decision = state["price_decisions"].get(decision_id)
+    if not decision:
+        raise ValueError(f"Unknown Price Promotion Engine decision for accrual: {decision_id}")
+    promotion = state["promotions"].get(promotion_id)
+    if not promotion or promotion["tenant"] != decision["tenant"]:
+        raise ValueError(f"Unknown Price Promotion Engine promotion for accrual: {promotion_id}")
+    if promotion_id not in decision.get("applied_promotions", ()):
+        raise ValueError(f"Promotion {promotion_id} must be applied before accrual")
+    runtime = _copy_state(state)
+    accrual_id = f"accrual:{decision_id}:{promotion_id}"
+    accrual_amount = round(float(decision["extended_price"]) * float(promotion["discount_percent"]) / 100, 2)
+    accrual = {
+        "tenant": decision["tenant"],
+        "accrual_id": accrual_id,
+        "promotion_id": promotion_id,
+        "decision_id": decision_id,
+        "accrual_amount": accrual_amount,
+        "currency": decision["currency"],
+        "status": "accrued",
+        "audit_hash": _digest({"decision_id": decision_id, "promotion_id": promotion_id, "accrual_amount": accrual_amount}),
+    }
+    runtime["promotion_accruals"][accrual_id] = accrual
+    _append_state_event(runtime, "PromotionAccrued", accrual_id, accrual)
+    _record_audit_trace(
+        runtime,
+        tenant=decision["tenant"],
+        trace_type="promotion_accrual",
+        subject_id=accrual_id,
+        related_tables=("promotion_accrual", "promotion", "price_decision"),
+        payload=accrual,
+    )
+    return {"ok": True, "state": runtime, "promotion_accrual": accrual}
+
+
+def price_promotion_engine_settle_promotion(
+    state: dict,
+    accrual_id: str,
+    *,
+    settled_amount: float,
+    settled_by: str,
+) -> dict:
+    accrual = state["promotion_accruals"].get(accrual_id)
+    if not accrual:
+        raise ValueError(f"Unknown Price Promotion Engine accrual for settlement: {accrual_id}")
+    runtime = _copy_state(state)
+    settlement_id = f"settlement:{accrual_id}"
+    settlement = {
+        "tenant": accrual["tenant"],
+        "settlement_id": settlement_id,
+        "accrual_id": accrual_id,
+        "promotion_id": accrual["promotion_id"],
+        "settled_amount": round(float(settled_amount), 2),
+        "settled_by": settled_by,
+        "status": "settled",
+        "audit_hash": _digest({"accrual_id": accrual_id, "settled_amount": settled_amount, "settled_by": settled_by}),
+    }
+    runtime["promotion_settlements"][settlement_id] = settlement
+    runtime["promotion_accruals"][accrual_id]["status"] = "settled"
+    _record_audit_trace(
+        runtime,
+        tenant=accrual["tenant"],
+        trace_type="promotion_settlement",
+        subject_id=settlement_id,
+        related_tables=("promotion_settlement", "promotion_accrual"),
+        payload=settlement,
+    )
+    _emit(runtime, "PromotionSettlementPosted", accrual["tenant"], settlement)
+    return {"ok": True, "state": runtime, "promotion_settlement": settlement}
+
+
 def price_promotion_engine_build_workbench_view(state: dict, *, tenant: str) -> dict:
     rules = tuple(item for item in state.get("price_rules", {}).values() if item["tenant"] == tenant)
     promotions = tuple(item for item in state.get("promotions", {}).values() if item["tenant"] == tenant)
     tiers = tuple(item for item in state.get("loyalty_tiers", {}).values() if item["tenant"] == tenant)
     decisions = tuple(item for item in state.get("price_decisions", {}).values() if item["tenant"] == tenant)
+    exceptions = tuple(item for item in state.get("price_exception_cases", {}).values() if item["tenant"] == tenant)
     bindings = price_promotion_engine_binding_evidence(state, tenant=tenant)
     return {
         "format": "appgen.price-promotion-engine-workbench-view.v1",
@@ -1431,16 +1820,22 @@ def price_promotion_engine_build_workbench_view(state: dict, *, tenant: str) -> 
         "price_list_count": bindings["tenant_counts"]["price_lists"],
         "price_book_count": bindings["tenant_counts"]["price_books"],
         "price_rule_count": len(rules),
+        "price_agreement_count": bindings["tenant_counts"]["price_agreements"],
         "customer_price_count": bindings["tenant_counts"]["customer_prices"],
         "channel_price_count": bindings["tenant_counts"]["channel_prices"],
         "currency_price_count": bindings["tenant_counts"]["currency_prices"],
+        "trade_promotion_plan_count": bindings["tenant_counts"]["trade_promotion_plans"],
         "promotion_count": len(promotions),
         "coupon_count": bindings["tenant_counts"]["coupons"],
         "coupon_redemption_count": bindings["tenant_counts"]["coupon_redemptions"],
         "approval_count": bindings["tenant_counts"]["approvals"],
         "approved_promotion_count": bindings["tenant_counts"]["approved_promotions"],
         "budget_count": bindings["tenant_counts"]["budgets"],
+        "promotion_accrual_count": bindings["tenant_counts"]["promotion_accruals"],
+        "promotion_settlement_count": bindings["tenant_counts"]["promotion_settlements"],
         "loyalty_tier_count": len(tiers),
+        "price_exception_count": len(exceptions),
+        "open_price_exception_count": len(tuple(item for item in exceptions if item["status"] == "open")),
         "simulation_count": bindings["tenant_counts"]["simulations"],
         "guardrail_count": bindings["tenant_counts"]["guardrails"],
         "telemetry_count": bindings["tenant_counts"]["telemetry"],
@@ -1477,9 +1872,11 @@ def price_promotion_engine_binding_evidence(state: dict, *, tenant: str) -> dict
         "tenant_counts": {
             "price_lists": _count("price_lists"),
             "price_books": _count("price_books"),
+            "price_agreements": _count("price_agreements"),
             "customer_prices": _count("customer_prices"),
             "channel_prices": _count("channel_prices"),
             "currency_prices": _count("currency_prices"),
+            "trade_promotion_plans": _count("trade_promotion_plans"),
             "coupons": _count("coupons"),
             "coupon_redemptions": sum(
                 int(item.get("redemption_count", 0))
@@ -1488,6 +1885,9 @@ def price_promotion_engine_binding_evidence(state: dict, *, tenant: str) -> dict
             ),
             "budgets": _count("campaign_budgets"),
             "approvals": _count("promotion_approvals"),
+            "promotion_accruals": _count("promotion_accruals"),
+            "promotion_settlements": _count("promotion_settlements"),
+            "price_exception_cases": _count("price_exception_cases"),
             "approved_promotions": len(
                 tuple(
                     item
@@ -1572,9 +1972,11 @@ def price_promotion_engine_build_schema_contract() -> dict:
         {"from": "price_book.price_list_id", "to": "price_list.price_list_id", "type": "owned_reference"},
         {"from": "price_book_entry.price_book_id", "to": "price_book.price_book_id", "type": "owned_child"},
         {"from": "price_book_entry.price_rule_id", "to": "price_rule.price_rule_id", "type": "owned_reference"},
+        {"from": "price_agreement.sku", "to": "price_rule.sku", "type": "owned_customer_contract"},
         {"from": "customer_price.price_rule_id", "to": "price_rule.price_rule_id", "type": "owned_override"},
         {"from": "channel_price.price_rule_id", "to": "price_rule.price_rule_id", "type": "owned_override"},
         {"from": "currency_price.price_rule_id", "to": "price_rule.price_rule_id", "type": "owned_override"},
+        {"from": "trade_promotion_plan.promotion_id", "to": "promotion.promotion_id", "type": "owned_plan"},
         {"from": "promotion_rule.promotion_id", "to": "promotion.promotion_id", "type": "owned_child"},
         {"from": "coupon.promotion_id", "to": "promotion.promotion_id", "type": "owned_child"},
         {"from": "promotion_eligibility.promotion_id", "to": "promotion.promotion_id", "type": "owned_child"},
@@ -1582,6 +1984,10 @@ def price_promotion_engine_build_schema_contract() -> dict:
         {"from": "promotion_exclusion.promotion_id", "to": "promotion.promotion_id", "type": "owned_child"},
         {"from": "campaign_budget.promotion_id", "to": "promotion.promotion_id", "type": "owned_child"},
         {"from": "promotion_approval.promotion_id", "to": "promotion.promotion_id", "type": "owned_child"},
+        {"from": "promotion_accrual.promotion_id", "to": "promotion.promotion_id", "type": "owned_accrual"},
+        {"from": "promotion_accrual.decision_id", "to": "price_decision.decision_id", "type": "owned_accrual_source"},
+        {"from": "promotion_settlement.accrual_id", "to": "promotion_accrual.accrual_id", "type": "owned_settlement"},
+        {"from": "price_exception_case.subject_id", "to": "price_decision.decision_id", "type": "owned_exception"},
         {"from": "price_simulation.decision_id", "to": "price_decision.decision_id", "type": "owned_child"},
         {"from": "price_margin_guardrail.subject_id", "to": "price_decision.decision_id", "type": "decision_guardrail"},
         {"from": "price_audit_trace.subject_id", "to": "price_decision.decision_id", "type": "decision_audit"},
@@ -1619,6 +2025,8 @@ def price_promotion_engine_build_service_contract() -> dict:
         "register_rule",
         "register_schema_extension",
         "register_price_rule",
+        "register_price_agreement",
+        "plan_trade_promotion",
         "register_promotion",
         "approve_promotion",
         "register_loyalty_tier",
@@ -1626,6 +2034,10 @@ def price_promotion_engine_build_service_contract() -> dict:
         "quote_price",
         "apply_promotion",
         "redeem_coupon",
+        "open_price_exception",
+        "resolve_price_exception",
+        "accrue_promotion",
+        "settle_promotion",
         "verify_owned_table_boundary",
     )
     query_methods = (
@@ -1718,6 +2130,14 @@ def price_promotion_engine_build_api_contract() -> dict:
                 "idempotency_key": "price_rule_id",
             },
             {
+                "route": "POST /price-agreements",
+                "command": "register_price_agreement",
+                "owned_tables": ("price_agreement", "price_audit_trace"),
+                "emits": (),
+                "requires_permission": "price_promotion_engine.price.write",
+                "idempotency_key": "agreement_id",
+            },
+            {
                 "route": "POST /promotions",
                 "command": "register_promotion",
                 "owned_tables": (
@@ -1733,6 +2153,14 @@ def price_promotion_engine_build_api_contract() -> dict:
                 "emits": (),
                 "requires_permission": "price_promotion_engine.promotion.write",
                 "idempotency_key": "promotion_id",
+            },
+            {
+                "route": "POST /trade-promotion-plans",
+                "command": "plan_trade_promotion",
+                "owned_tables": ("trade_promotion_plan", "promotion", "campaign_budget", "price_audit_trace"),
+                "emits": ("TradePromotionPlanned",),
+                "requires_permission": "price_promotion_engine.promotion.write",
+                "idempotency_key": "plan_id",
             },
             {
                 "route": "POST /promotions/{promotion_id}/approval",
@@ -1775,6 +2203,38 @@ def price_promotion_engine_build_api_contract() -> dict:
                 "idempotency_key": "decision_id:coupon_code",
             },
             {
+                "route": "POST /price-exceptions",
+                "command": "open_price_exception",
+                "owned_tables": ("price_exception_case", "price_audit_trace", "price_performance_telemetry"),
+                "emits": ("PriceExceptionOpened",),
+                "requires_permission": "price_promotion_engine.exception.write",
+                "idempotency_key": "exception_id",
+            },
+            {
+                "route": "POST /price-exceptions/{exception_id}/resolution",
+                "command": "resolve_price_exception",
+                "owned_tables": ("price_exception_case", "price_audit_trace"),
+                "emits": (),
+                "requires_permission": "price_promotion_engine.exception.write",
+                "idempotency_key": "exception_id:resolved_by",
+            },
+            {
+                "route": "POST /promotion-accruals",
+                "command": "accrue_promotion",
+                "owned_tables": ("promotion_accrual", "promotion", "price_decision", "price_audit_trace"),
+                "emits": (),
+                "requires_permission": "price_promotion_engine.promotion.settle",
+                "idempotency_key": "decision_id:promotion_id",
+            },
+            {
+                "route": "POST /promotion-settlements",
+                "command": "settle_promotion",
+                "owned_tables": ("promotion_settlement", "promotion_accrual", "price_audit_trace"),
+                "emits": ("PromotionSettlementPosted",),
+                "requires_permission": "price_promotion_engine.promotion.settle",
+                "idempotency_key": "accrual_id:settled_by",
+            },
+            {
                 "route": "POST /price-promotion/events/inbox",
                 "command": "receive_event",
                 "owned_tables": PRICE_PROMOTION_ENGINE_RUNTIME_TABLES,
@@ -1813,12 +2273,18 @@ def price_promotion_engine_build_api_contract() -> dict:
             "POST /price-promotion/parameters",
             "POST /price-promotion/schema-extensions",
             "POST /price-rules",
+            "POST /price-agreements",
             "POST /promotions",
+            "POST /trade-promotion-plans",
             "POST /promotions/{promotion_id}/approval",
             "POST /loyalty-tiers",
             "POST /price-quotes",
             "POST /promotion-applications",
             "POST /coupon-redemptions",
+            "POST /price-exceptions",
+            "POST /price-exceptions/{exception_id}/resolution",
+            "POST /promotion-accruals",
+            "POST /promotion-settlements",
             "POST /price-promotion/events/inbox",
             "GET /price-promotion/workbench",
             "GET /price-promotion/schema-contract",
@@ -1977,6 +2443,21 @@ def price_promotion_engine_build_release_evidence() -> dict:
             "customer_id": "cust_release",
         },
     )["state"]
+    state = price_promotion_engine_register_price_agreement(
+        state,
+        {
+            "agreement_id": "agreement_release",
+            "tenant": "tenant_release",
+            "customer_id": "cust_release",
+            "sku": "sku_release",
+            "region": "US",
+            "currency": "USD",
+            "contracted_price": 112.0,
+            "effective_from": "2026-01-01",
+            "effective_to": "2026-12-31",
+            "status": "active",
+        },
+    )["state"]
     state = price_promotion_engine_register_promotion(
         state,
         {
@@ -1997,6 +2478,19 @@ def price_promotion_engine_build_release_evidence() -> dict:
         },
     )["state"]
     state = price_promotion_engine_approve_promotion(state, "promo_release", approved_by="pricing_manager")["state"]
+    state = price_promotion_engine_plan_trade_promotion(
+        state,
+        {
+            "plan_id": "trade_plan_release",
+            "tenant": "tenant_release",
+            "promotion_id": "promo_release",
+            "calendar": "standard",
+            "target_uplift_percent": 12.0,
+            "spend_amount": 450.0,
+            "owner_role": "trade_manager",
+            "status": "active",
+        },
+    )["state"]
     processed = price_promotion_engine_receive_event(
         state,
         {
@@ -2048,6 +2542,31 @@ def price_promotion_engine_build_release_evidence() -> dict:
     )
     state = quoted["state"]
     state = price_promotion_engine_redeem_coupon(state, "decision_release", "REL10")["state"]
+    state = price_promotion_engine_open_price_exception(
+        state,
+        {
+            "exception_id": "exception_release",
+            "tenant": "tenant_release",
+            "subject_type": "price_decision",
+            "subject_id": "decision_release",
+            "severity": "low",
+            "reason": "release_control_sample",
+        },
+    )["state"]
+    state = price_promotion_engine_resolve_price_exception(
+        state,
+        "exception_release",
+        resolution="accepted",
+        resolved_by="pricing_manager",
+    )["state"]
+    accrued = price_promotion_engine_accrue_promotion(state, "decision_release", "promo_release")
+    state = accrued["state"]
+    state = price_promotion_engine_settle_promotion(
+        state,
+        accrued["promotion_accrual"]["accrual_id"],
+        settled_amount=accrued["promotion_accrual"]["accrual_amount"],
+        settled_by="trade_finance",
+    )["state"]
     workbench = price_promotion_engine_build_workbench_view(state, tenant="tenant_release")
     ui_contract = price_promotion_engine_ui_contract()
     rendered = price_promotion_engine_render_workbench(
@@ -2057,6 +2576,8 @@ def price_promotion_engine_build_release_evidence() -> dict:
             "price_promotion_engine.price.write",
             "price_promotion_engine.promotion.write",
             "price_promotion_engine.promotion.approve",
+            "price_promotion_engine.promotion.settle",
+            "price_promotion_engine.exception.write",
             "price_promotion_engine.quote",
             "price_promotion_engine.event.consume",
             "price_promotion_engine.configure",
@@ -2103,11 +2624,16 @@ def price_promotion_engine_build_release_evidence() -> dict:
                 for key in (
                     "price_list_count",
                     "price_book_count",
+                    "price_agreement_count",
+                    "trade_promotion_plan_count",
                     "coupon_count",
                     "coupon_redemption_count",
                     "approval_count",
                     "approved_promotion_count",
                     "budget_count",
+                    "promotion_accrual_count",
+                    "promotion_settlement_count",
+                    "price_exception_count",
                     "simulation_count",
                     "telemetry_count",
                 )
@@ -2151,12 +2677,18 @@ def price_promotion_engine_permissions_contract() -> dict:
         ),
         "action_permissions": {
             "register_price_rule": "price_promotion_engine.price.write",
+            "register_price_agreement": "price_promotion_engine.price.write",
             "register_promotion": "price_promotion_engine.promotion.write",
+            "plan_trade_promotion": "price_promotion_engine.promotion.write",
             "approve_promotion": "price_promotion_engine.promotion.approve",
             "register_loyalty_tier": "price_promotion_engine.promotion.write",
             "quote_price": "price_promotion_engine.quote",
             "apply_promotion": "price_promotion_engine.quote",
             "redeem_coupon": "price_promotion_engine.quote",
+            "open_price_exception": "price_promotion_engine.exception.write",
+            "resolve_price_exception": "price_promotion_engine.exception.write",
+            "accrue_promotion": "price_promotion_engine.promotion.settle",
+            "settle_promotion": "price_promotion_engine.promotion.settle",
             "receive_event": "price_promotion_engine.event.consume",
             "register_rule": "price_promotion_engine.configure",
             "register_schema_extension": "price_promotion_engine.configure",
@@ -2211,6 +2743,16 @@ def _select_governing_rule(state: dict, tenant: str) -> dict | None:
 
 
 def _resolved_base_price(state: dict, price_rule: dict, *, customer_id: str, channel: str) -> float:
+    for agreement in state.get("price_agreements", {}).values():
+        if (
+            agreement["tenant"] == price_rule["tenant"]
+            and agreement["customer_id"] == customer_id
+            and agreement["sku"] == price_rule["sku"]
+            and agreement["currency"] == price_rule["currency"]
+            and agreement["region"] == price_rule["region"]
+            and agreement["status"] == "active"
+        ):
+            return float(agreement["contracted_price"])
     customer_key = f"{price_rule['price_rule_id']}:{customer_id}"
     if customer_key in state["customer_prices"]:
         return float(state["customer_prices"][customer_key]["price"])

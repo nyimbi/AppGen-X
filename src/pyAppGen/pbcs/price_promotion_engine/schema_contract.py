@@ -1,6 +1,15 @@
 """Generated owned schema evidence for the price_promotion_engine PBC."""
 
-SCHEMA_CONTRACT = {'format': 'appgen.price-promotion-engine-schema-contract.v1', 'ok': True, 'owned_tables': ('price_promotion_engine_price_rule', 'price_promotion_engine_promotion', 'price_promotion_engine_loyalty_tier', 'price_promotion_engine_price_decision'), 'runtime_tables': ({'table': 'price_promotion_engine_appgen_outbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'topic', 'contract', 'idempotency_key', 'payload_hash', 'status', 'published_at', 'audit_hash'), 'descriptor_hash': 'c84857861081dd2fb3d7ab7853e518d19dd514df0038e73228b2bb56927b1efb'}, {'table': 'price_promotion_engine_appgen_inbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'topic', 'contract', 'idempotency_key', 'attempts', 'status', 'received_at', 'audit_hash'), 'descriptor_hash': 'ad485135c6bda6aaed7b7243fafd86275277d18280144ad7c47faf78ed1866c0'}, {'table': 'price_promotion_engine_dead_letter_event', 'fields': ('tenant', 'event_id', 'event_type', 'topic', 'contract', 'idempotency_key', 'attempts', 'reason', 'dead_lettered_at', 'audit_hash'), 'descriptor_hash': 'c95090bc649be4142365e8b9b261d90e9468092935b206414c7b3bac663dfdf7'}), 'tables': ({'logical_table': 'price_rule', 'owned_table': 'price_promotion_engine_price_rule', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'logical_table': 'promotion', 'owned_table': 'price_promotion_engine_promotion', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'price_rule_id', 'type': 'integer', 'required': True, 'references': 'price_promotion_engine_price_rule.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'price_rule_id', 'target_table': 'price_promotion_engine_price_rule', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'loyalty_tier', 'owned_table': 'price_promotion_engine_loyalty_tier', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'price_rule_id', 'type': 'integer', 'required': True, 'references': 'price_promotion_engine_price_rule.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'price_rule_id', 'target_table': 'price_promotion_engine_price_rule', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'price_decision', 'owned_table': 'price_promotion_engine_price_decision', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'price_rule_id', 'type': 'integer', 'required': True, 'references': 'price_promotion_engine_price_rule.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'price_rule_id', 'target_table': 'price_promotion_engine_price_rule', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'migrations': ('migrations/001_initial.sql',), 'models': ({'class_name': 'PricePromotionEnginePriceRule', 'table': 'price_promotion_engine_price_rule', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'class_name': 'PricePromotionEnginePromotion', 'table': 'price_promotion_engine_promotion', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'price_rule_id', 'type': 'integer', 'required': True, 'references': 'price_promotion_engine_price_rule.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'price_rule_id', 'target_table': 'price_promotion_engine_price_rule', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'PricePromotionEngineLoyaltyTier', 'table': 'price_promotion_engine_loyalty_tier', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'price_rule_id', 'type': 'integer', 'required': True, 'references': 'price_promotion_engine_price_rule.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'price_rule_id', 'target_table': 'price_promotion_engine_price_rule', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'PricePromotionEnginePriceDecision', 'table': 'price_promotion_engine_price_decision', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'price_rule_id', 'type': 'integer', 'required': True, 'references': 'price_promotion_engine_price_rule.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'price_rule_id', 'target_table': 'price_promotion_engine_price_rule', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'relationships': ({'from': 'price_parameter.parameter_name', 'to': 'price_configuration.configuration_id', 'type': 'runtime_governance'}, {'from': 'price_policy_rule.rule_id', 'to': 'price_configuration.configuration_id', 'type': 'governed_by'}, {'from': 'price_schema_extension.table_name', 'to': 'price_policy_rule.rule_id', 'type': 'schema_governance'}, {'from': 'price_book.price_list_id', 'to': 'price_list.price_list_id', 'type': 'owned_reference'}, {'from': 'price_book_entry.price_book_id', 'to': 'price_book.price_book_id', 'type': 'owned_child'}, {'from': 'price_book_entry.price_rule_id', 'to': 'price_rule.price_rule_id', 'type': 'owned_reference'}, {'from': 'customer_price.price_rule_id', 'to': 'price_rule.price_rule_id', 'type': 'owned_override'}, {'from': 'channel_price.price_rule_id', 'to': 'price_rule.price_rule_id', 'type': 'owned_override'}, {'from': 'currency_price.price_rule_id', 'to': 'price_rule.price_rule_id', 'type': 'owned_override'}, {'from': 'promotion_rule.promotion_id', 'to': 'promotion.promotion_id', 'type': 'owned_child'}, {'from': 'coupon.promotion_id', 'to': 'promotion.promotion_id', 'type': 'owned_child'}, {'from': 'promotion_eligibility.promotion_id', 'to': 'promotion.promotion_id', 'type': 'owned_child'}, {'from': 'promotion_stacking_policy.promotion_id', 'to': 'promotion.promotion_id', 'type': 'owned_child'}, {'from': 'promotion_exclusion.promotion_id', 'to': 'promotion.promotion_id', 'type': 'owned_child'}, {'from': 'campaign_budget.promotion_id', 'to': 'promotion.promotion_id', 'type': 'owned_child'}, {'from': 'promotion_approval.promotion_id', 'to': 'promotion.promotion_id', 'type': 'owned_child'}, {'from': 'price_simulation.decision_id', 'to': 'price_decision.decision_id', 'type': 'owned_child'}, {'from': 'price_margin_guardrail.subject_id', 'to': 'price_decision.decision_id', 'type': 'decision_guardrail'}, {'from': 'price_audit_trace.subject_id', 'to': 'price_decision.decision_id', 'type': 'decision_audit'}, {'from': 'price_performance_telemetry.subject_id', 'to': 'price_decision.decision_id', 'type': 'decision_telemetry'}), 'datastore_backends': ('postgresql', 'mysql', 'mariadb'), 'shared_table_access': False, 'eventing': {'contract': 'AppGen-X', 'topic': 'appgen.price_promotion.events', 'runtime_tables': ('price_promotion_engine_appgen_outbox_event', 'price_promotion_engine_appgen_inbox_event', 'price_promotion_engine_dead_letter_event')}, 'dependencies': {'apis': ('POST /customer-segment-projections/resolve', 'POST /forecast-projections/resolve', 'POST /checkout-projections/price-context', 'GET /currency-rate-projections/{currency}'), 'events': ('CustomerSegmentUpdated', 'ForecastUpdated'), 'api_projections': ('customer_segment_projection', 'forecast_projection', 'checkout_projection', 'currency_rate_projection'), 'shared_tables': ()}, 'pbc': 'price_promotion_engine', 'database_backends': ('postgresql',)}
+from __future__ import annotations
+
+from .runtime import price_promotion_engine_build_schema_contract
+
+
+SCHEMA_CONTRACT = {
+    **price_promotion_engine_build_schema_contract(),
+    "pbc": "price_promotion_engine",
+    "database_backends": ("postgresql", "mysql", "mariadb"),
+}
 
 
 def build_schema_contract():
@@ -11,41 +20,38 @@ def build_schema_contract():
 def validate_schema_contract():
     """Validate owned table, migration, model, and datastore evidence."""
     contract = build_schema_contract()
-    pbc = contract['pbc']
-    owned_tables = tuple(contract.get('owned_tables', ()))
+    pbc = contract["pbc"]
+    owned_tables = tuple(f"{pbc}_{table}" for table in contract.get("owned_tables", ()))
     raw_model_tables = tuple(
-        model.get('table')
-        for model in contract.get('models', ())
-        if isinstance(model, dict) and model.get('table')
+        model.get("table")
+        for model in contract.get("models", ())
+        if isinstance(model, dict) and model.get("table")
     )
-    model_tables = tuple(
-        table if table.startswith(f'{pbc}_') else f'{pbc}_{table}'
-        for table in raw_model_tables
-    )
-    migration_paths = tuple(contract.get('migrations', ()))
-    allowed_backends = {'postgresql', 'mysql', 'mariadb'}
-    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f'{pbc}_'))
+    model_tables = tuple(f"{pbc}_{table}" for table in raw_model_tables)
+    migration_paths = tuple(contract.get("migrations", ()))
+    allowed_backends = {"postgresql", "mysql", "mariadb"}
+    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f"{pbc}_"))
     missing_models = tuple(table for table in owned_tables if model_tables and table not in model_tables)
     invalid_backends = tuple(
-        backend for backend in contract.get('database_backends', ()) if backend not in allowed_backends
+        backend for backend in contract.get("database_backends", ()) if backend not in allowed_backends
     )
     return {
-        'ok': contract.get('ok') is True
+        "ok": contract.get("ok") is True
         and bool(owned_tables)
         and bool(migration_paths)
         and not invalid_tables
         and not missing_models
         and not invalid_backends
-        and contract.get('shared_table_access') is False,
-        'pbc': pbc,
-        'owned_tables': owned_tables,
-        'raw_model_tables': raw_model_tables,
-        'model_tables': model_tables,
-        'migration_paths': migration_paths,
-        'invalid_tables': invalid_tables,
-        'missing_models': missing_models,
-        'invalid_backends': invalid_backends,
-        'side_effects': (),
+        and contract.get("shared_table_access") is False,
+        "pbc": pbc,
+        "owned_tables": owned_tables,
+        "raw_model_tables": raw_model_tables,
+        "model_tables": model_tables,
+        "migration_paths": migration_paths,
+        "invalid_tables": invalid_tables,
+        "missing_models": missing_models,
+        "invalid_backends": invalid_backends,
+        "side_effects": (),
     }
 
 

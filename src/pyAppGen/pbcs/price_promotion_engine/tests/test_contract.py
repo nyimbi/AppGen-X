@@ -139,6 +139,51 @@ def test_runtime_approval_and_coupon_redemption_are_executable():
     workbench = price_promotion_engine_build_workbench_view(state, tenant='tenant_alpha')
     assert workbench['coupon_redemption_count'] == 1
     assert workbench['approved_promotion_count'] == 1
+    assert workbench['price_agreement_count'] == 1
+    assert workbench['trade_promotion_plan_count'] == 1
+    assert workbench['promotion_accrual_count'] == 1
+    assert workbench['promotion_settlement_count'] == 1
+    assert workbench['price_exception_count'] == 1
+    assert any(item['event_type'] == 'TradePromotionPlanned' for item in state['outbox'])
+    assert any(item['event_type'] == 'PromotionSettlementPosted' for item in state['outbox'])
+
+
+def test_price_trade_exception_accrual_and_settlement_operations_are_executable():
+    from ..runtime import price_promotion_engine_accrue_promotion
+    from ..runtime import price_promotion_engine_open_price_exception
+    from ..runtime import price_promotion_engine_resolve_price_exception
+    from ..runtime import price_promotion_engine_runtime_smoke
+    from ..runtime import price_promotion_engine_settle_promotion
+
+    state = price_promotion_engine_runtime_smoke()['state']
+    exception = price_promotion_engine_open_price_exception(
+        state,
+        {
+            'exception_id': 'exception_second',
+            'tenant': 'tenant_alpha',
+            'subject_type': 'campaign_budget',
+            'subject_id': 'promo_alpha:budget',
+            'severity': 'high',
+            'reason': 'budget_review',
+        },
+    )
+    resolved = price_promotion_engine_resolve_price_exception(
+        exception['state'],
+        'exception_second',
+        resolution='budget_rebalanced',
+        resolved_by='trade_finance',
+    )
+    accrued = price_promotion_engine_accrue_promotion(resolved['state'], 'decision_alpha', 'promo_alpha')
+    settled = price_promotion_engine_settle_promotion(
+        accrued['state'],
+        accrued['promotion_accrual']['accrual_id'],
+        settled_amount=accrued['promotion_accrual']['accrual_amount'],
+        settled_by='trade_finance',
+    )
+    assert resolved['price_exception_case']['status'] == 'resolved'
+    assert accrued['promotion_accrual']['status'] == 'accrued'
+    assert settled['promotion_settlement']['status'] == 'settled'
+    assert settled['state']['promotion_accruals'][accrued['promotion_accrual']['accrual_id']]['status'] == 'settled'
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():
