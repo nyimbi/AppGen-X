@@ -179,6 +179,82 @@ def test_event_handlers_are_idempotent_and_retryable():
     assert smoke['unknown_result']['handled'] is False
     assert not smoke['side_effects']
 
+
+def test_notification_orchestration_tail_is_executable():
+    from ..runtime import _notifications_smoke_state
+    from ..runtime import notifications_analyze_recipient_fatigue
+    from ..runtime import notifications_forecast_delivery_window
+    from ..runtime import notifications_recommend_localized_variant
+    from ..runtime import notifications_review_campaign_readiness
+    from ..runtime import notifications_review_transactional_history
+    from ..runtime import notifications_simulate_channel_routing
+
+    state = _notifications_smoke_state()
+    forecast = notifications_forecast_delivery_window(
+        state,
+        {
+            'tenant': 'tenant_alpha',
+            'delivery_id': 'msg_alpha',
+        },
+    )
+    routing = notifications_simulate_channel_routing(
+        state,
+        {
+            'tenant': 'tenant_alpha',
+            'customer_id': 'cust_alpha',
+            'urgency': 0.8,
+        },
+    )
+    variant = notifications_recommend_localized_variant(
+        state,
+        {
+            'template_id': 'tmpl_sla',
+            'locale': 'en-US',
+        },
+    )
+    fatigue = notifications_analyze_recipient_fatigue(
+        state,
+        {
+            'tenant': 'tenant_alpha',
+            'customer_id': 'cust_alpha',
+        },
+    )
+    readiness = notifications_review_campaign_readiness(state, 'cmp_release')
+    history = notifications_review_transactional_history(
+        state,
+        {
+            'tenant': 'tenant_alpha',
+            'customer_id': 'cust_alpha',
+        },
+    )
+
+    assert 'cmp_release' in state['notification_campaigns']
+    assert 'schedule_release' in state['delivery_schedules']
+    assert 'txn_release' in state['transactional_notifications']
+    assert 'route_override_alpha' in state['provider_routes']
+    assert 'receipt_external_alpha' in state['delivery_receipts']
+    assert 'bounce_external_beta' in state['bounce_events']
+    assert state['retry_evidence']['msg_beta']['status'] == 'scheduled'
+    assert state['deliverability_analytics']['tenant_alpha']['deliveries_total'] >= 2
+    assert any(item['action'] == 'release_smoke_audit' for item in state['notification_audit_log'])
+    assert forecast['ok'] is True
+    assert forecast['quiet_hours_enforced'] is True
+    assert routing['ok'] is True
+    assert routing['ranked_routes']
+    assert variant['ok'] is True
+    assert fatigue['ok'] is True
+    assert fatigue['message_count'] >= 2
+    assert readiness['ok'] is True
+    assert history['ok'] is True
+    assert history['transactional_count'] >= 1
+    assert not forecast['side_effects']
+    assert not routing['side_effects']
+    assert not variant['side_effects']
+    assert not fatigue['side_effects']
+    assert not readiness['side_effects']
+    assert not history['side_effects']
+
+
 def test_table_stakes_and_advanced_capability_assurance_is_executable():
     from .. import capability_assurance
 

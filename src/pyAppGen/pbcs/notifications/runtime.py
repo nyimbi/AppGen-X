@@ -252,6 +252,20 @@ def notifications_runtime_capabilities() -> dict:
             "receive_event",
             "send_message",
             "record_delivery_attempt",
+            "create_campaign",
+            "schedule_notification",
+            "create_transactional_notification",
+            "route_provider",
+            "record_delivery_receipt",
+            "record_bounce",
+            "record_audit_event",
+            "publish_deliverability_analytics",
+            "forecast_delivery_window",
+            "simulate_channel_routing",
+            "recommend_localized_variant",
+            "analyze_recipient_fatigue",
+            "review_campaign_readiness",
+            "review_transactional_history",
             "build_api_contract",
             "build_schema_contract",
             "build_service_contract",
@@ -866,6 +880,334 @@ def notifications_record_delivery_attempt(
     return {"ok": status == "delivered", "state": runtime, "delivery": updated}
 
 
+def notifications_create_campaign(state: dict, command: dict) -> dict:
+    required = {"campaign_id", "tenant", "name", "message_type", "scheduled_for", "locale", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications campaign fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    _assert_supported_locale(state, command["locale"])
+    rule = _select_rule(state, command["tenant"])
+    if rule and command["message_type"] not in rule["allowed_message_types"]:
+        raise ValueError(f"Campaign message type {command['message_type']} is blocked by notification rule {rule['rule_id']}")
+    runtime = _copy_state(state)
+    campaign = {
+        **command,
+        "audience_ref": command.get("audience_ref", "segment://all-opted-in"),
+        "batch_size": int(runtime["parameters"].get("campaign_batch_size", {"value": 1000})["value"]),
+        "readiness_score": 0.0,
+        "audit_hash": _digest(command),
+    }
+    runtime["notification_campaigns"][campaign["campaign_id"]] = campaign
+    runtime["delivery_schedules"][f"schedule_{campaign['campaign_id']}"] = {
+        "schedule_id": f"schedule_{campaign['campaign_id']}",
+        "tenant": campaign["tenant"],
+        "delivery_id": None,
+        "campaign_id": campaign["campaign_id"],
+        "scheduled_for": campaign["scheduled_for"],
+        "quiet_hours_enforced": True,
+        "status": "scheduled",
+    }
+    _append_audit(runtime, "create_campaign", campaign, tenant=campaign["tenant"])
+    runtime["events"].append(_state_event("CampaignCreated", campaign["campaign_id"], campaign))
+    return {"ok": True, "state": runtime, "campaign": campaign}
+
+
+def notifications_schedule_notification(state: dict, command: dict) -> dict:
+    required = {"schedule_id", "tenant", "scheduled_for"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications schedule fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    runtime = _copy_state(state)
+    schedule = {
+        **command,
+        "delivery_id": command.get("delivery_id"),
+        "campaign_id": command.get("campaign_id"),
+        "quiet_hours_enforced": bool(command.get("quiet_hours_enforced", True)),
+        "status": command.get("status", "scheduled"),
+        "audit_hash": _digest(command),
+    }
+    runtime["delivery_schedules"][schedule["schedule_id"]] = schedule
+    _append_audit(runtime, "schedule_notification", schedule, tenant=schedule["tenant"])
+    runtime["events"].append(_state_event("NotificationScheduled", schedule["schedule_id"], schedule))
+    return {"ok": True, "state": runtime, "schedule": schedule}
+
+
+def notifications_create_transactional_notification(state: dict, command: dict) -> dict:
+    required = {"transactional_id", "tenant", "customer_id", "template_id", "message_type", "context", "urgency"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications transactional fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    if command["template_id"] not in state["notification_templates"]:
+        raise ValueError(f"Unknown Notifications template: {command['template_id']}")
+    runtime = _copy_state(state)
+    transactional = {
+        "transactional_id": command["transactional_id"],
+        "tenant": command["tenant"],
+        "customer_id": command["customer_id"],
+        "template_id": command["template_id"],
+        "delivery_id": command.get("delivery_id", command["transactional_id"]),
+        "message_type": command["message_type"],
+        "context": dict(command["context"]),
+        "urgency": float(command["urgency"]),
+        "status": "requested",
+        "audit_hash": _digest(command),
+    }
+    runtime["transactional_notifications"][transactional["transactional_id"]] = transactional
+    _append_audit(runtime, "create_transactional_notification", transactional, tenant=transactional["tenant"])
+    runtime["events"].append(_state_event("TransactionalNotificationCreated", transactional["transactional_id"], transactional))
+    return {"ok": True, "state": runtime, "transactional_notification": transactional}
+
+
+def notifications_route_provider(state: dict, command: dict) -> dict:
+    required = {"route_id", "tenant", "delivery_id", "channel_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications provider route fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    channel = state["delivery_channels"].get(command["channel_id"])
+    if not channel:
+        raise ValueError(f"Unknown Notifications channel: {command['channel_id']}")
+    delivery = state["message_deliveries"].get(command["delivery_id"])
+    if not delivery:
+        raise ValueError(f"Unknown Notifications delivery: {command['delivery_id']}")
+    runtime = _copy_state(state)
+    route = {
+        **command,
+        "provider": channel["provider"],
+        "channel_type": channel["channel_type"],
+        "health_score": channel["health_score"],
+        "cost_score": channel["cost_score"],
+        "route_score": _channel_score(runtime, channel, delivery),
+        "status": "selected",
+        "audit_hash": _digest(command),
+    }
+    runtime["provider_routes"][route["route_id"]] = route
+    runtime["message_deliveries"][command["delivery_id"]]["route_id"] = route["route_id"]
+    runtime["message_deliveries"][command["delivery_id"]]["channel_id"] = command["channel_id"]
+    runtime["message_deliveries"][command["delivery_id"]]["channel_type"] = channel["channel_type"]
+    runtime["message_deliveries"][command["delivery_id"]]["provider"] = channel["provider"]
+    _append_audit(runtime, "route_provider", route, tenant=route["tenant"])
+    runtime["events"].append(_state_event("ProviderRouteSelected", route["route_id"], route))
+    return {"ok": True, "state": runtime, "provider_route": route}
+
+
+def notifications_record_delivery_receipt(state: dict, command: dict) -> dict:
+    required = {"receipt_id", "tenant", "delivery_id", "provider_status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications delivery receipt fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    delivery = state["message_deliveries"].get(command["delivery_id"])
+    if not delivery:
+        raise ValueError(f"Unknown Notifications delivery: {command['delivery_id']}")
+    runtime = _copy_state(state)
+    receipt = {
+        **command,
+        "channel_id": delivery["channel_id"],
+        "proof_hash": _digest(command),
+        "status": "recorded",
+    }
+    runtime["delivery_receipts"][receipt["receipt_id"]] = receipt
+    runtime["message_deliveries"][command["delivery_id"]]["status"] = "delivered"
+    runtime["message_deliveries"][command["delivery_id"]]["provider_status"] = command["provider_status"]
+    _emit(runtime, "MessageDelivered", receipt["tenant"], runtime["message_deliveries"][command["delivery_id"]])
+    _emit(runtime, "DeliveryReceiptRecorded", receipt["tenant"], receipt)
+    _append_audit(runtime, "record_delivery_receipt", receipt, tenant=receipt["tenant"])
+    _update_deliverability_analytics(runtime, receipt["tenant"])
+    return {"ok": True, "state": runtime, "receipt": receipt}
+
+
+def notifications_record_bounce(state: dict, command: dict) -> dict:
+    required = {"bounce_id", "tenant", "delivery_id", "provider_status", "bounce_type", "reason"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications bounce fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    delivery = state["message_deliveries"].get(command["delivery_id"])
+    if not delivery:
+        raise ValueError(f"Unknown Notifications delivery: {command['delivery_id']}")
+    runtime = _copy_state(state)
+    bounce = {**command, "status": "recorded", "audit_hash": _digest(command)}
+    runtime["bounce_events"][bounce["bounce_id"]] = bounce
+    runtime["message_deliveries"][command["delivery_id"]]["status"] = "failed"
+    runtime["message_deliveries"][command["delivery_id"]]["provider_status"] = command["provider_status"]
+    retry_limit = int(runtime.get("configuration", {}).get("retry_limit", 3) or 3)
+    runtime["retry_evidence"][command["delivery_id"]] = {
+        "retry_id": f"retry_{command['delivery_id']}",
+        "tenant": command["tenant"],
+        "event_id": command["delivery_id"],
+        "event_type": "MessageFailed",
+        "attempts": int(delivery.get("attempts", 0)),
+        "retry_limit": retry_limit,
+        "next_action": "retry",
+        "idempotency_key": f"notifications:MessageFailed:{command['delivery_id']}",
+        "status": "scheduled",
+    }
+    _emit(runtime, "MessageFailed", bounce["tenant"], runtime["message_deliveries"][command["delivery_id"]])
+    _emit(runtime, "BounceRecorded", bounce["tenant"], bounce)
+    _append_audit(runtime, "record_bounce", bounce, tenant=bounce["tenant"])
+    _update_deliverability_analytics(runtime, bounce["tenant"])
+    return {"ok": True, "state": runtime, "bounce": bounce}
+
+
+def notifications_record_audit_event(state: dict, command: dict) -> dict:
+    required = {"tenant", "action", "entity_id", "entity_type"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications audit event fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    runtime = _copy_state(state)
+    _append_audit(runtime, command["action"], command, tenant=command["tenant"])
+    audit = runtime["notification_audit_log"][-1]
+    runtime["events"].append(_state_event("NotificationAuditRecorded", audit["audit_id"], audit))
+    return {"ok": True, "state": runtime, "audit": audit}
+
+
+def notifications_publish_deliverability_analytics(state: dict, tenant: str) -> dict:
+    _require_appgen_x_event_contract(state)
+    runtime = _copy_state(state)
+    _update_deliverability_analytics(runtime, tenant)
+    analytics = runtime["deliverability_analytics"][tenant]
+    _append_audit(runtime, "publish_deliverability_analytics", analytics, tenant=tenant)
+    runtime["events"].append(_state_event("DeliverabilityAnalyticsPublished", tenant, analytics))
+    return {"ok": True, "state": runtime, "analytics": analytics}
+
+
+def notifications_forecast_delivery_window(state: dict, command: dict) -> dict:
+    _require_configured(state)
+    horizon = int(state["parameters"].get("schedule_horizon_hours", {"value": 72})["value"])
+    quiet_hours = tuple(state["configuration"].get("quiet_hours", ()))
+    return {
+        "ok": True,
+        "tenant": command.get("tenant"),
+        "delivery_id": command.get("delivery_id"),
+        "recommended_window": "next_available_window" if quiet_hours else "immediate",
+        "schedule_horizon_hours": horizon,
+        "quiet_hours_enforced": bool(quiet_hours),
+        "side_effects": (),
+    }
+
+
+def notifications_simulate_channel_routing(state: dict, command: dict) -> dict:
+    required = {"tenant", "customer_id", "urgency"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications channel simulation fields: {tuple(sorted(missing))}")
+    _require_configured(state)
+    preference = state["preference_snapshots"].get(
+        command["customer_id"],
+        {"preferred_channels": state["configuration"]["supported_channels"], "opt_in": True},
+    )
+    scored = tuple(
+        {
+            "channel_id": channel["channel_id"],
+            "channel_type": channel["channel_type"],
+            "provider": channel["provider"],
+            "route_score": _channel_score(state, channel, {"urgency": command["urgency"]}),
+        }
+        for channel in state["delivery_channels"].values()
+        if channel["tenant"] == command["tenant"] and channel["status"] == "active"
+    )
+    ranked = tuple(sorted(scored, key=lambda item: item["route_score"], reverse=True))
+    return {
+        "ok": bool(ranked),
+        "tenant": command["tenant"],
+        "customer_id": command["customer_id"],
+        "preferred_channels": tuple(preference.get("preferred_channels", ())),
+        "ranked_routes": ranked,
+        "side_effects": (),
+    }
+
+
+def notifications_recommend_localized_variant(state: dict, command: dict) -> dict:
+    required = {"template_id", "locale"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications locale recommendation fields: {tuple(sorted(missing))}")
+    _require_configured(state)
+    exact_id = f"{command['template_id']}:{command['locale']}"
+    fallback_locale = state["configuration"].get("default_locale", "en-US")
+    fallback_id = f"{command['template_id']}:{fallback_locale}"
+    variant = state["template_locale_variants"].get(exact_id) or state["template_locale_variants"].get(fallback_id)
+    return {
+        "ok": bool(variant),
+        "template_id": command["template_id"],
+        "requested_locale": command["locale"],
+        "selected_locale": variant.get("locale") if variant else None,
+        "variant": variant,
+        "side_effects": (),
+    }
+
+
+def notifications_analyze_recipient_fatigue(state: dict, command: dict) -> dict:
+    required = {"tenant", "customer_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications fatigue fields: {tuple(sorted(missing))}")
+    _require_configured(state)
+    messages = tuple(
+        item for item in state["message_deliveries"].values()
+        if item["tenant"] == command["tenant"] and item["customer_id"] == command["customer_id"]
+    )
+    limit = float(state["parameters"].get("max_daily_messages_per_recipient", {"value": 20})["value"])
+    score = round(min(len(messages) / max(limit, 1), 1.0), 4)
+    threshold = float(state["parameters"].get("fatigue_risk_threshold", {"value": 0.7})["value"])
+    return {
+        "ok": True,
+        "tenant": command["tenant"],
+        "customer_id": command["customer_id"],
+        "message_count": len(messages),
+        "fatigue_score": score,
+        "risk_level": "high" if score >= threshold else "normal",
+        "side_effects": (),
+    }
+
+
+def notifications_review_campaign_readiness(state: dict, campaign_id: str) -> dict:
+    _require_configured(state)
+    campaign = state["notification_campaigns"].get(campaign_id)
+    if not campaign:
+        raise ValueError(f"Unknown Notifications campaign: {campaign_id}")
+    active_channels = tuple(
+        item for item in state["delivery_channels"].values()
+        if item["tenant"] == campaign["tenant"] and item["status"] == "active"
+    )
+    templates = tuple(
+        item for item in state["notification_templates"].values()
+        if item["tenant"] == campaign["tenant"] and item["message_type"] == campaign["message_type"]
+    )
+    checks = {
+        "campaign_scheduled": campaign["status"] in {"scheduled", "ready"},
+        "active_channel": bool(active_channels),
+        "matching_template": bool(templates),
+        "rules_configured": bool(_select_rule(state, campaign["tenant"])),
+    }
+    return {"ok": all(checks.values()), "campaign_id": campaign_id, "checks": checks, "side_effects": ()}
+
+
+def notifications_review_transactional_history(state: dict, command: dict) -> dict:
+    required = {"tenant", "customer_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Notifications transactional history fields: {tuple(sorted(missing))}")
+    _require_configured(state)
+    records = tuple(
+        item for item in state["transactional_notifications"].values()
+        if item["tenant"] == command["tenant"] and item.get("customer_id") == command["customer_id"]
+    )
+    return {
+        "ok": True,
+        "tenant": command["tenant"],
+        "customer_id": command["customer_id"],
+        "transactional_count": len(records),
+        "records": records,
+        "side_effects": (),
+    }
+
+
 def notifications_build_workbench_view(state: dict, *, tenant: str) -> dict:
     templates = tuple(
         item for item in state.get("notification_templates", {}).values() if item["tenant"] == tenant
@@ -1026,12 +1368,70 @@ def notifications_build_api_contract() -> dict:
                 idempotency_key="delivery_id",
             ),
             _notifications_route_descriptor(
+                "POST /campaigns",
+                command="create_campaign",
+                owned_tables=("notification_campaign", "delivery_schedule"),
+                requires_permission="notifications.campaign.write",
+                idempotency_key="campaign_id",
+            ),
+            _notifications_route_descriptor(
+                "POST /delivery-schedules",
+                command="schedule_notification",
+                owned_tables=("delivery_schedule",),
+                requires_permission="notifications.message.send",
+                idempotency_key="schedule_id",
+            ),
+            _notifications_route_descriptor(
+                "POST /transactional-notifications",
+                command="create_transactional_notification",
+                owned_tables=("transactional_notification",),
+                requires_permission="notifications.message.send",
+                idempotency_key="transactional_id",
+            ),
+            _notifications_route_descriptor(
+                "POST /provider-routes",
+                command="route_provider",
+                owned_tables=("provider_route", "message_delivery"),
+                requires_permission="notifications.message.send",
+                idempotency_key="route_id",
+            ),
+            _notifications_route_descriptor(
                 "POST /delivery-attempts",
                 command="record_delivery_attempt",
                 owned_tables=("delivery_attempt", "retry_evidence", "delivery_receipt", "bounce_event"),
                 emits=("MessageDelivered", "MessageFailed", "DeliveryReceiptRecorded", "BounceRecorded"),
                 requires_permission="notifications.message.send",
                 idempotency_key="delivery_id:provider_status",
+            ),
+            _notifications_route_descriptor(
+                "POST /delivery-receipts",
+                command="record_delivery_receipt",
+                owned_tables=("delivery_receipt", "message_delivery", "deliverability_analytics"),
+                emits=("MessageDelivered", "DeliveryReceiptRecorded"),
+                requires_permission="notifications.analytics.read",
+                idempotency_key="receipt_id",
+            ),
+            _notifications_route_descriptor(
+                "POST /bounce-events",
+                command="record_bounce",
+                owned_tables=("bounce_event", "message_delivery", "retry_evidence", "deliverability_analytics"),
+                emits=("MessageFailed", "BounceRecorded"),
+                requires_permission="notifications.analytics.read",
+                idempotency_key="bounce_id",
+            ),
+            _notifications_route_descriptor(
+                "POST /notification-audit-events",
+                command="record_audit_event",
+                owned_tables=("notification_audit_log",),
+                requires_permission="notifications.audit",
+                idempotency_key="entity_id:action",
+            ),
+            _notifications_route_descriptor(
+                "POST /deliverability-analytics/publish",
+                command="publish_deliverability_analytics",
+                owned_tables=("deliverability_analytics", "notification_audit_log"),
+                requires_permission="notifications.analytics.read",
+                idempotency_key="tenant",
             ),
             _notifications_route_descriptor(
                 "POST /notifications/events/inbox",
@@ -1075,13 +1475,63 @@ def notifications_build_api_contract() -> dict:
                 owned_tables=NOTIFICATIONS_OWNED_TABLES,
                 requires_permission="notifications.audit",
             ),
+            _notifications_route_descriptor(
+                "GET /delivery-window-forecast",
+                query="forecast_delivery_window",
+                owned_tables=("delivery_schedule", "notification_parameter", "notification_configuration"),
+                requires_permission="notifications.analytics.read",
+            ),
+            _notifications_route_descriptor(
+                "GET /channel-routing-simulation",
+                query="simulate_channel_routing",
+                owned_tables=("delivery_channel", "preference_snapshot", "provider_route"),
+                requires_permission="notifications.analytics.read",
+            ),
+            _notifications_route_descriptor(
+                "GET /localized-template-recommendation",
+                query="recommend_localized_variant",
+                owned_tables=("notification_template", "template_locale_variant"),
+                requires_permission="notifications.analytics.read",
+            ),
+            _notifications_route_descriptor(
+                "GET /recipient-fatigue-analysis",
+                query="analyze_recipient_fatigue",
+                owned_tables=("message_delivery", "throttle_window", "notification_parameter"),
+                requires_permission="notifications.analytics.read",
+            ),
+            _notifications_route_descriptor(
+                "GET /campaign-readiness",
+                query="review_campaign_readiness",
+                owned_tables=("notification_campaign", "delivery_channel", "notification_template", "notification_rule"),
+                requires_permission="notifications.analytics.read",
+            ),
+            _notifications_route_descriptor(
+                "GET /transactional-history",
+                query="review_transactional_history",
+                owned_tables=("transactional_notification", "message_delivery"),
+                requires_permission="notifications.analytics.read",
+            ),
         ),
         "declared_catalog_routes": (
             "POST /templates",
             "POST /delivery-channels",
             "POST /messages",
+            "POST /campaigns",
+            "POST /delivery-schedules",
+            "POST /transactional-notifications",
+            "POST /provider-routes",
             "POST /delivery-attempts",
+            "POST /delivery-receipts",
+            "POST /bounce-events",
+            "POST /notification-audit-events",
+            "POST /deliverability-analytics/publish",
             "GET /notifications-workbench",
+            "GET /delivery-window-forecast",
+            "GET /channel-routing-simulation",
+            "GET /localized-template-recommendation",
+            "GET /recipient-fatigue-analysis",
+            "GET /campaign-readiness",
+            "GET /transactional-history",
             "GET /notifications/contracts/schema",
             "GET /notifications/contracts/service",
             "GET /notifications/release-evidence",
@@ -1453,6 +1903,7 @@ def notifications_build_service_contract() -> dict:
     return {
         "format": "appgen.notifications-service-contract.v1",
         "ok": len(command_methods) >= 16 and len(query_methods) >= 10 and boundary["ok"],
+        "pbc": "notifications",
         "transaction_boundary": "notifications_owned_datastore_plus_appgen_outbox",
         "command_methods": command_methods,
         "query_methods": query_methods,
@@ -1763,6 +2214,41 @@ def _notifications_smoke_state() -> dict:
             },
         },
     )["state"]
+    state = notifications_create_campaign(
+        state,
+        {
+            "campaign_id": "cmp_release",
+            "tenant": "tenant_alpha",
+            "name": "Release Readiness",
+            "message_type": "service",
+            "scheduled_for": "2026-04-02T09:00:00Z",
+            "locale": "en-US",
+            "status": "scheduled",
+            "audience_ref": "segment://release-ready",
+        },
+    )["state"]
+    state = notifications_schedule_notification(
+        state,
+        {
+            "schedule_id": "schedule_release",
+            "tenant": "tenant_alpha",
+            "campaign_id": "cmp_release",
+            "scheduled_for": "2026-04-02T09:30:00Z",
+            "quiet_hours_enforced": True,
+        },
+    )["state"]
+    state = notifications_create_transactional_notification(
+        state,
+        {
+            "transactional_id": "txn_release",
+            "tenant": "tenant_alpha",
+            "customer_id": "cust_alpha",
+            "template_id": "tmpl_sla",
+            "message_type": "service",
+            "context": {"customer_id": "cust_alpha", "ticket_id": "case_alpha"},
+            "urgency": 0.8,
+        },
+    )["state"]
     state = notifications_send_message(
         state,
         {
@@ -1775,11 +2261,63 @@ def _notifications_smoke_state() -> dict:
             "urgency": 0.9,
         },
     )["state"]
-    return notifications_record_delivery_attempt(
+    state = notifications_route_provider(
+        state,
+        {
+            "route_id": "route_override_alpha",
+            "tenant": "tenant_alpha",
+            "delivery_id": "msg_alpha",
+            "channel_id": "channel_email",
+        },
+    )["state"]
+    state = notifications_record_delivery_attempt(
         state,
         "msg_alpha",
         provider_status="delivered",
     )["state"]
+    state = notifications_record_delivery_receipt(
+        state,
+        {
+            "receipt_id": "receipt_external_alpha",
+            "tenant": "tenant_alpha",
+            "delivery_id": "msg_alpha",
+            "provider_status": "delivered",
+        },
+    )["state"]
+    state = notifications_send_message(
+        state,
+        {
+            "delivery_id": "msg_beta",
+            "tenant": "tenant_alpha",
+            "customer_id": "cust_alpha",
+            "template_id": "tmpl_sla",
+            "message_type": "service",
+            "context": {"customer_id": "cust_alpha", "ticket_id": "case_beta"},
+            "urgency": 0.6,
+        },
+    )["state"]
+    state = notifications_record_bounce(
+        state,
+        {
+            "bounce_id": "bounce_external_beta",
+            "tenant": "tenant_alpha",
+            "delivery_id": "msg_beta",
+            "provider_status": "bounced",
+            "bounce_type": "hard",
+            "reason": "mailbox_unavailable",
+        },
+    )["state"]
+    state = notifications_record_audit_event(
+        state,
+        {
+            "tenant": "tenant_alpha",
+            "action": "release_smoke_audit",
+            "entity_id": "msg_alpha",
+            "entity_type": "message_delivery",
+        },
+    )["state"]
+    state = notifications_publish_deliverability_analytics(state, "tenant_alpha")["state"]
+    return state
 
 
 def _notifications_route_descriptor(

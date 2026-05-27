@@ -128,6 +128,20 @@ Implemented commands:
 - `receive_event`
 - `send_message`
 - `record_delivery_attempt`
+- `create_campaign`
+- `schedule_notification`
+- `create_transactional_notification`
+- `route_provider`
+- `record_delivery_receipt`
+- `record_bounce`
+- `record_audit_event`
+- `publish_deliverability_analytics`
+- `forecast_delivery_window`
+- `simulate_channel_routing`
+- `recommend_localized_variant`
+- `analyze_recipient_fatigue`
+- `review_campaign_readiness`
+- `review_transactional_history`
 - `build_api_contract`
 - `build_schema_contract`
 - `build_service_contract`
@@ -157,12 +171,26 @@ Package-local descriptors include:
 - `POST /notifications/parameters`
 - `POST /notifications/configuration`
 - `POST /messages`
+- `POST /campaigns`
+- `POST /delivery-schedules`
+- `POST /transactional-notifications`
+- `POST /provider-routes`
 - `POST /delivery-attempts`
+- `POST /delivery-receipts`
+- `POST /bounce-events`
+- `POST /notification-audit-events`
+- `POST /deliverability-analytics/publish`
 - `POST /notifications/events/inbox`
 - `GET /notifications/contracts/schema`
 - `GET /notifications/contracts/service`
 - `GET /notifications/release-evidence`
 - `GET /notifications-workbench`
+- `GET /delivery-window-forecast`
+- `GET /channel-routing-simulation`
+- `GET /localized-template-recommendation`
+- `GET /recipient-fatigue-analysis`
+- `GET /campaign-readiness`
+- `GET /transactional-history`
 
 Every route descriptor includes owned tables, permission binding, AppGen-X
 event-contract evidence, fixed event topic evidence, idempotency evidence where

@@ -20,17 +20,31 @@ from .runtime import notifications_build_schema_contract
 from .runtime import notifications_build_service_contract
 from .runtime import notifications_build_workbench_view
 from .runtime import notifications_configure_runtime
+from .runtime import notifications_analyze_recipient_fatigue
+from .runtime import notifications_create_campaign
+from .runtime import notifications_create_transactional_notification
 from .runtime import notifications_empty_state
+from .runtime import notifications_forecast_delivery_window
 from .runtime import notifications_permissions_contract
+from .runtime import notifications_publish_deliverability_analytics
 from .runtime import notifications_receive_event
+from .runtime import notifications_record_audit_event
+from .runtime import notifications_record_bounce
 from .runtime import notifications_record_delivery_attempt
+from .runtime import notifications_record_delivery_receipt
+from .runtime import notifications_recommend_localized_variant
 from .runtime import notifications_register_channel
 from .runtime import notifications_register_rule
 from .runtime import notifications_register_schema_extension
 from .runtime import notifications_register_template
+from .runtime import notifications_review_campaign_readiness
+from .runtime import notifications_review_transactional_history
+from .runtime import notifications_route_provider
 from .runtime import notifications_runtime_capabilities
 from .runtime import notifications_runtime_smoke
+from .runtime import notifications_schedule_notification
 from .runtime import notifications_send_message
+from .runtime import notifications_simulate_channel_routing
 from .runtime import notifications_set_parameter
 from .runtime import notifications_verify_owned_table_boundary
 from .ui import NOTIFICATIONS_UI_FRAGMENT_KEYS
@@ -108,4 +122,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-
