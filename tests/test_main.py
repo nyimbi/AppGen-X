@@ -4026,6 +4026,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"breakpoints_bind_to_source_spans", "resource_dependencies_invalidate_preview"} <= {
         check["id"] for check in runtime["debug_session"]["checks"] if check["ok"]
     }
+    assert "exceptions_route_to_design_surfaces" in {
+        check["id"] for check in runtime["debug_session"]["checks"] if check["ok"]
+    }
+    assert "normalize_exception_traces" in {item["phase"] for item in runtime["debug_session"]["replay"]}
+    assert all(trace["redaction"] and trace["safe"] for trace in runtime["debug_session"]["exception_traces"])
     assert all("runtime_preview" in item["invalidates"] for item in runtime["debug_session"]["resource_dependencies"])
     assert "event_dispatch_exception_boundary" in runtime["runtime_memory_model"]["guards"]
     assert all("normalize_diagnostics" in adapter["commands"] for adapter in runtime["toolchain_adapters"]["adapters"])
@@ -15912,6 +15917,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"breakpoints_bind_to_source_spans", "resource_dependencies_invalidate_preview"} <= {
         check["id"] for check in generated_runtime["debug_session"]["checks"] if check["ok"]
     }
+    assert "exceptions_route_to_design_surfaces" in {
+        check["id"] for check in generated_runtime["debug_session"]["checks"] if check["ok"]
+    }
+    assert "normalize_exception_traces" in {item["phase"] for item in generated_runtime["debug_session"]["replay"]}
+    assert all(trace["redaction"] and trace["safe"] for trace in generated_runtime["debug_session"]["exception_traces"])
     assert all("runtime_preview" in item["invalidates"] for item in generated_runtime["debug_session"]["resource_dependencies"])
     assert all(item["release"] for item in generated_runtime["runtime_memory_model"]["ownership"])
     assert all(adapter["sandboxed"] for adapter in generated_runtime["toolchain_adapters"]["adapters"])

@@ -4416,11 +4416,41 @@ def pascal_runtime_debug_authoring_contract(design: dict | None = None) -> dict:
         }
         for item in resources["manifest"]
     )
+    exception_traces = (
+        {
+            "id": "handler_exception",
+            "boundary": "event_dispatch",
+            "captures": ("exception_class", "message", "component", "event", "source_span"),
+            "routes_to": ("unit_editor", "object_inspector", "runtime_preview"),
+            "redaction": "internal_paths_hidden",
+            "safe": True,
+        },
+        {
+            "id": "resource_exception",
+            "boundary": "resource_load",
+            "captures": ("exception_class", "resource", "hash", "source_span"),
+            "routes_to": ("resource_manifest", "package_manager", "runtime_preview"),
+            "redaction": "resource_roots_collapsed",
+            "safe": True,
+        },
+        {
+            "id": "property_setter_exception",
+            "boundary": "published_property_setter",
+            "captures": ("exception_class", "component", "property", "attempted_value", "source_span"),
+            "routes_to": ("object_inspector", "form_designer", "unit_editor"),
+            "redaction": "values_schema_filtered",
+            "safe": True,
+        },
+    )
     replay = (
         {"phase": "load_symbol_map", "ok": debug_symbols["ok"] and bool(source_maps)},
         {"phase": "bind_breakpoints", "ok": all(item["source_span"] and item["condition"] for item in breakpoints)},
         {"phase": "evaluate_watches", "ok": all(item["safe"] for item in watches)},
         {"phase": "trace_resource_dependencies", "ok": all(item["hash"].startswith("sha256:") for item in resource_dependencies)},
+        {
+            "phase": "normalize_exception_traces",
+            "ok": all(item["safe"] and "source_span" in item["captures"] and item["routes_to"] for item in exception_traces),
+        },
         {"phase": "route_debug_diagnostics", "ok": all("unit_editor" in item["design_surfaces"] or "object_inspector" in item["design_surfaces"] for item in source_maps)},
     )
     checks = (
@@ -4429,6 +4459,11 @@ def pascal_runtime_debug_authoring_contract(design: dict | None = None) -> dict:
         {"id": "step_controls_declared", "ok": {"step_into_handler", "continue_to_next_breakpoint"} <= set(step_controls)},
         {"id": "source_maps_route_diagnostics", "ok": bool(source_maps) and all(item["diagnostic_codes"] for item in source_maps)},
         {"id": "resource_dependencies_invalidate_preview", "ok": all("runtime_preview" in item["invalidates"] for item in resource_dependencies)},
+        {
+            "id": "exceptions_route_to_design_surfaces",
+            "ok": all({"unit_editor", "object_inspector", "runtime_preview"} & set(item["routes_to"]) for item in exception_traces)
+            and all(item["redaction"] for item in exception_traces),
+        },
         {"id": "debug_replay_side_effect_free", "ok": all(item["ok"] for item in replay)},
     )
     ok = all(check["ok"] for check in checks)
@@ -4441,12 +4476,14 @@ def pascal_runtime_debug_authoring_contract(design: dict | None = None) -> dict:
         "step_controls": step_controls,
         "source_maps": source_maps,
         "resource_dependencies": resource_dependencies,
+        "exception_traces": exception_traces,
         "replay": replay,
         "checks": checks,
         "guards": (
             "breakpoints_resolve_to_stable_source_spans",
             "watch_expressions_do_not_execute_user_code",
             "resource_dependency_trace_invalidates_preview",
+            "exception_traces_are_redacted_before_routing",
             "debug_diagnostics_route_to_design_surfaces",
         ),
         "side_effects": (),
@@ -5104,12 +5141,17 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
         {
             "phase": "debug_preview_trace",
             "ok": debug_session["ok"]
-            and {"breakpoints_resolve_to_stable_source_spans", "resource_dependency_trace_invalidates_preview"}
+            and {
+                "breakpoints_resolve_to_stable_source_spans",
+                "resource_dependency_trace_invalidates_preview",
+                "exception_traces_are_redacted_before_routing",
+            }
             <= set(debug_session["guards"])
             and operations["operations"]["start_debug_preview"]["ok"],
             "evidence": {
                 "breakpoints": tuple(item["id"] for item in debug_session["breakpoints"]),
                 "watches": tuple(item["expression"] for item in debug_session["watches"]),
+                "exception_traces": tuple(item["id"] for item in debug_session["exception_traces"]),
                 "step_controls": debug_session["step_controls"],
                 "operation": operations["operations"]["start_debug_preview"]["pipeline"],
             },
