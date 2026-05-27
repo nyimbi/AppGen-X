@@ -19008,6 +19008,7 @@ def cross_target_visual_runtime_package_contract() -> dict:
         }
         for target in targets
     )
+    artifact_transaction = cross_target_runtime_artifact_transaction_replay_contract(artifacts)
     checks = (
         {
             "id": "target_artifacts_complete",
@@ -19054,6 +19055,24 @@ def cross_target_visual_runtime_package_contract() -> dict:
             "evidence": {"diff_steps": preview_diff["diff_steps"], "runtime_state": runtime_replay["final_state"]},
         },
         {
+            "id": "runtime_artifact_transaction_replay",
+            "ok": artifact_transaction["ok"]
+            and {"web", "mobile", "desktop", "pwa"} <= {item["target"] for item in artifact_transaction["transactions"]}
+            and {
+                "resolve_target_runtime",
+                "collect_runtime_artifacts",
+                "write_artifact_manifest",
+                "attach_signature_metadata",
+                "build_install_bundle",
+                "verify_bundle_integrity",
+                "record_rollback_snapshot",
+                "publish_target_artifact",
+            }
+            <= {operation for item in artifact_transaction["transactions"] for operation in item["operations"]}
+            and not artifact_transaction["side_effects"],
+            "evidence": artifact_transaction,
+        },
+        {
             "id": "side_effect_guards",
             "ok": not style_resources.get("side_effects", ())
             and not timeline_export["side_effects"]
@@ -19063,7 +19082,8 @@ def cross_target_visual_runtime_package_contract() -> dict:
             and not shader_editor["side_effects"]
             and not asset_import["side_effects"]
             and not preview_diff["side_effects"]
-            and not runtime_replay["side_effects"],
+            and not runtime_replay["side_effects"]
+            and not artifact_transaction["side_effects"],
             "evidence": (),
         },
     )
@@ -19074,6 +19094,7 @@ def cross_target_visual_runtime_package_contract() -> dict:
         "decision": "approved" if ok else "blocked",
         "targets": targets,
         "artifacts": artifacts,
+        "artifact_transaction": artifact_transaction,
         "checks": checks,
         "guards": (
             "target_artifacts_complete",
@@ -19081,7 +19102,110 @@ def cross_target_visual_runtime_package_contract() -> dict:
             "effect_fallbacks_packaged",
             "scene_materials_packaged",
             "preview_runtime_diff_packaged",
+            "runtime_artifact_transaction_replay",
             "no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def cross_target_runtime_artifact_transaction_replay_contract(artifacts: tuple[dict, ...] | None = None) -> dict:
+    """Replay target artifact packaging without invoking external packagers."""
+    target_artifacts = artifacts or tuple(
+        {
+            "target": target,
+            "style_bundle": f"{target}/styles/appgen-stylebook.json",
+            "timeline_bundle": f"{target}/animations/appgen-timelines.json",
+            "effect_bundle": f"{target}/effects/appgen-effects.json",
+            "scene_manifest": f"{target}/scene/appgen-scene.json",
+            "asset_manifest": f"{target}/assets/appgen-assets.json",
+        }
+        for target in ("web", "mobile", "desktop", "pwa")
+    )
+    channel_by_target = {
+        "web": "web-dist",
+        "mobile": "mobile-store-bundle",
+        "desktop": "desktop-install-bundle",
+        "pwa": "pwa-offline-bundle",
+    }
+    transactions = tuple(
+        {
+            "target": artifact["target"],
+            "operations": (
+                "resolve_target_runtime",
+                "collect_runtime_artifacts",
+                "write_artifact_manifest",
+                "attach_signature_metadata",
+                "build_install_bundle",
+                "verify_bundle_integrity",
+                "record_rollback_snapshot",
+                "publish_target_artifact",
+            ),
+            "inputs": (
+                artifact["style_bundle"],
+                artifact["timeline_bundle"],
+                artifact["effect_bundle"],
+                artifact["scene_manifest"],
+                artifact["asset_manifest"],
+            ),
+            "manifest": f"{artifact['target']}/release/appgen-artifacts.json",
+            "signature_metadata": f"{artifact['target']}/release/appgen-signature.json",
+            "bundle": f"{artifact['target']}/release/appgen-{channel_by_target[artifact['target']]}.zip",
+            "rollback_snapshot": f"{artifact['target']}/release/appgen-rollback.json",
+            "publish_channel": channel_by_target[artifact["target"]],
+            "side_effects": (),
+        }
+        for artifact in target_artifacts
+    )
+    checks = (
+        {
+            "id": "all_targets_replayed",
+            "ok": {"web", "mobile", "desktop", "pwa"} <= {item["target"] for item in transactions},
+            "evidence": tuple(item["target"] for item in transactions),
+        },
+        {
+            "id": "manifest_before_bundle",
+            "ok": all(
+                item["operations"].index("write_artifact_manifest") < item["operations"].index("build_install_bundle")
+                for item in transactions
+            ),
+            "evidence": tuple((item["target"], item["operations"]) for item in transactions),
+        },
+        {
+            "id": "signature_before_integrity",
+            "ok": all(
+                item["operations"].index("attach_signature_metadata")
+                < item["operations"].index("verify_bundle_integrity")
+                for item in transactions
+            ),
+            "evidence": tuple((item["target"], item["signature_metadata"]) for item in transactions),
+        },
+        {
+            "id": "rollback_before_publish",
+            "ok": all(
+                item["operations"].index("record_rollback_snapshot")
+                < item["operations"].index("publish_target_artifact")
+                for item in transactions
+            ),
+            "evidence": tuple((item["target"], item["rollback_snapshot"]) for item in transactions),
+        },
+        {
+            "id": "side_effect_free_artifact_replay",
+            "ok": all(not item["side_effects"] for item in transactions),
+            "evidence": tuple(item["side_effects"] for item in transactions),
+        },
+    )
+    return {
+        "format": "appgen.cross-target-runtime-artifact-transaction-replay.v1",
+        "ok": all(check["ok"] for check in checks),
+        "transactions": transactions,
+        "checks": checks,
+        "guards": (
+            "manifest_written_before_bundle",
+            "signature_metadata_before_integrity",
+            "rollback_snapshot_before_publish",
+            "side_effect_free_artifact_replay",
         ),
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -19585,7 +19709,7 @@ def cross_target_visual_readiness_contract() -> dict:
             "pipeline": tuple(check["id"] for check in runtime_package["checks"]),
             "ok": runtime_package["ok"]
             and {"web", "mobile", "desktop", "pwa"} <= set(runtime_package["targets"])
-            and {"target_artifacts_complete", "scene_materials_packaged"} <= {
+            and {"target_artifacts_complete", "scene_materials_packaged", "runtime_artifact_transaction_replay"} <= {
                 check["id"] for check in runtime_package["checks"] if check["ok"]
             },
         },
@@ -19605,6 +19729,11 @@ def cross_target_visual_readiness_contract() -> dict:
         {"id": "hit_test_component_ready", "ok": phases[4]["ok"] and component_specs["ok"], "evidence": {"hit_test": hit_test, "component_specs": component_specs}},
         {"id": "runtime_designer_replay_ready", "ok": phases[5]["ok"], "evidence": {"runtime": runtime_replay, "designer": designer_replay, "lifecycle": lifecycle}},
         {"id": "runtime_package_ready", "ok": phases[6]["ok"], "evidence": runtime_package},
+        {
+            "id": "runtime_artifact_transaction_ready",
+            "ok": phases[6]["ok"] and runtime_package["artifact_transaction"]["ok"],
+            "evidence": runtime_package["artifact_transaction"],
+        },
         {"id": "operation_surface_ready", "ok": actionable["ok"] and not actionable["side_effects"], "evidence": actionable},
         {
             "id": "phase_order_ready",
@@ -19634,6 +19763,7 @@ def cross_target_visual_readiness_contract() -> dict:
             "scene_nodes": len(scene["scene_integrity"]["nodes"]),
             "component_specs": len(component_specs["specs"]),
             "runtime_targets": len(runtime_package["targets"]),
+            "runtime_artifact_transactions": len(runtime_package["artifact_transaction"]["transactions"]),
             "runtime_steps": len(runtime_replay["replay"]),
             "timeline_editor_transactions": len(timeline_editor["transactions"]),
             "effect_editor_transactions": len(effect_editor["transactions"]),
@@ -19655,6 +19785,7 @@ def cross_target_visual_readiness_contract() -> dict:
             "scene_transform_transaction_before_runtime_replay",
             "scene_assets_before_runtime_replay",
             "runtime_replay_before_package",
+            "runtime_artifact_replay_before_release",
             "side_effect_free_readiness",
         ),
         "side_effects": (),
@@ -19694,6 +19825,7 @@ def cross_target_visual_depth_workbench() -> dict:
     designer_transaction_replay = cross_target_visual_designer_transaction_replay_contract()
     lifecycle_replay = cross_target_visual_lifecycle_replay_contract()
     runtime_package = cross_target_visual_runtime_package_contract()
+    runtime_artifact_transaction = runtime_package["artifact_transaction"]
     actionable_operations = cross_target_visual_actionable_operations()
     visual_component_specs = cross_target_visual_component_spec_contract()
     visual_component_module_artifacts = visual_component_file_manifest()
@@ -20003,9 +20135,18 @@ def cross_target_visual_depth_workbench() -> dict:
             "id": "visual_runtime_package",
             "ok": runtime_package["ok"]
             and {"web", "mobile", "desktop", "pwa"} <= set(runtime_package["targets"])
-            and {"target_artifacts_complete", "scene_materials_packaged"} <= set(runtime_package["guards"])
+            and {"target_artifacts_complete", "scene_materials_packaged", "runtime_artifact_transaction_replay"}
+            <= set(runtime_package["guards"])
             and not runtime_package["side_effects"],
             "evidence": runtime_package,
+        },
+        {
+            "id": "runtime_artifact_transaction_replay",
+            "ok": runtime_artifact_transaction["ok"]
+            and {"rollback_snapshot_before_publish", "side_effect_free_artifact_replay"}
+            <= set(runtime_artifact_transaction["guards"])
+            and not runtime_artifact_transaction["side_effects"],
+            "evidence": runtime_artifact_transaction,
         },
         {
             "id": "visual_component_specs",
@@ -20151,6 +20292,7 @@ def cross_target_visual_depth_workbench() -> dict:
                 "hit_test_component_ready",
                 "runtime_designer_replay_ready",
                 "runtime_package_ready",
+                "runtime_artifact_transaction_ready",
                 "operation_surface_ready",
                 "phase_order_ready",
             }
@@ -20194,6 +20336,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "designer_transaction_replay": designer_transaction_replay,
         "lifecycle_replay": lifecycle_replay,
         "runtime_package": runtime_package,
+        "runtime_artifact_transaction": runtime_artifact_transaction,
         "visual_component_specs": visual_component_specs,
         "visual_component_module_artifacts": visual_component_module_artifacts,
         "visual_component_test_artifacts": visual_component_test_artifacts,
@@ -20949,6 +21092,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "hit_test_component_ready",
                 "runtime_designer_replay_ready",
                 "runtime_package_ready",
+                "runtime_artifact_transaction_ready",
                 "phase_order_ready",
             }
             <= {check["id"] for check in visual_readiness["checks"] if check["ok"]}
@@ -20989,6 +21133,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "scene_assets_ready",
                 "runtime_designer_replay_ready",
                 "runtime_package_ready",
+                "runtime_artifact_transaction_ready",
                 "style_override_transaction_replay",
                 "timeline_editor_transaction_replay",
                 "effect_editor_transaction_replay",
@@ -20996,6 +21141,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "scene_camera_light_transaction_replay",
                 "scene_material_editor_transaction_replay",
                 "scene_transform_transaction_replay",
+                "runtime_artifact_transaction_replay",
                 "visual_component_modules",
                 "visual_component_module_tests",
                 "visual_design_modules",
@@ -23607,6 +23753,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "effect_fallbacks_packaged",
         "scene_materials_packaged",
         "preview_runtime_diff_packaged",
+        "runtime_artifact_transaction_replay",
         "side_effect_guards",
     )
     passing_visual_runtime_package_checks = tuple(

@@ -175,6 +175,7 @@ from pyAppGen.form_designer import cross_target_visual_component_spec_contract
 from pyAppGen.form_designer import cross_target_visual_depth_workbench
 from pyAppGen.form_designer import cross_target_visual_lifecycle_replay_contract
 from pyAppGen.form_designer import cross_target_visual_readiness_contract
+from pyAppGen.form_designer import cross_target_runtime_artifact_transaction_replay_contract
 from pyAppGen.form_designer import cross_target_visual_runtime_package_contract
 from pyAppGen.form_designer import visual_design_ide_replay_matrix
 from pyAppGen.form_designer import visual_runtime_pipeline_replay_matrix
@@ -3552,8 +3553,29 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "effect_fallbacks_packaged",
         "scene_materials_packaged",
         "preview_runtime_diff_packaged",
+        "runtime_artifact_transaction_replay",
     } <= {check["id"] for check in visual_runtime_package["checks"] if check["ok"]}
+    runtime_artifact_transaction = cross_target_runtime_artifact_transaction_replay_contract()
+    assert runtime_artifact_transaction["format"] == "appgen.cross-target-runtime-artifact-transaction-replay.v1"
+    assert runtime_artifact_transaction["ok"] is True
+    assert {"web", "mobile", "desktop", "pwa"} == {
+        transaction["target"] for transaction in runtime_artifact_transaction["transactions"]
+    }
+    assert all(
+        {
+            "write_artifact_manifest",
+            "attach_signature_metadata",
+            "build_install_bundle",
+            "verify_bundle_integrity",
+            "record_rollback_snapshot",
+            "publish_target_artifact",
+        }
+        <= set(transaction["operations"])
+        for transaction in runtime_artifact_transaction["transactions"]
+    )
+    assert visual_runtime_package["artifact_transaction"]["ok"] is True
     assert visual_depth["runtime_package"]["ok"] is True
+    assert visual_depth["runtime_artifact_transaction"]["ok"] is True
     assert "scene_materials_packaged" in visual_depth["runtime_package"]["guards"]
     assert len(visual_depth["visual_component_module_artifacts"]) == len(visual_component_specs["specs"])
     assert len(visual_depth["visual_component_test_artifacts"]) == len(visual_component_specs["specs"])
@@ -3680,10 +3702,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "hit_test_component_ready",
         "runtime_designer_replay_ready",
         "runtime_package_ready",
+        "runtime_artifact_transaction_ready",
         "operation_surface_ready",
         "phase_order_ready",
     } == {check["id"] for check in visual_readiness["checks"]}
     assert visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert visual_readiness["final_state"]["runtime_artifact_transactions"] == 4
     assert visual_readiness["final_state"]["style_override_transactions"] == len(
         visual_depth["style_override_transaction"]["replay"]
     )
@@ -5919,6 +5943,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "scene_material_editor_transaction_replay",
         "scene_transform_transaction_ready",
         "scene_transform_transaction_replay",
+        "runtime_artifact_transaction_replay",
         "visual_component_modules",
         "visual_component_module_tests",
         "visual_design_modules",
@@ -16113,6 +16138,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "scene_material_editor_transaction_replay",
         "scene_transform_transaction_ready",
         "scene_transform_transaction_replay",
+        "runtime_artifact_transaction_replay",
         "visual_component_modules",
         "visual_component_module_tests",
         "visual_design_modules",
@@ -18946,8 +18972,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "effect_fallbacks_packaged",
         "scene_materials_packaged",
         "preview_runtime_diff_packaged",
+        "runtime_artifact_transaction_replay",
     } <= {check["id"] for check in generated_visual_package["checks"] if check["ok"]}
+    generated_artifact_transaction = form_designer.cross_target_runtime_artifact_transaction_replay_contract()
+    assert generated_artifact_transaction["format"] == (
+        "appgen.generated-cross-target-runtime-artifact-transaction-replay.v1"
+    )
+    assert generated_artifact_transaction["ok"] is True
+    assert all(
+        {
+            "write_artifact_manifest",
+            "attach_signature_metadata",
+            "build_install_bundle",
+            "verify_bundle_integrity",
+            "record_rollback_snapshot",
+            "publish_target_artifact",
+        }
+        <= set(transaction["operations"])
+        for transaction in generated_artifact_transaction["transactions"]
+    )
+    assert generated_visual_package["artifact_transaction"]["ok"] is True
     assert generated_visual_depth["runtime_package"]["ok"] is True
+    assert generated_visual_depth["runtime_artifact_transaction"]["ok"] is True
     assert "scene_materials_packaged" in generated_visual_depth["runtime_package"]["guards"]
     assert len(generated_visual_depth["visual_component_module_artifacts"]) == len(generated_visual_specs["specs"])
     assert len(generated_visual_depth["visual_component_test_artifacts"]) == len(generated_visual_specs["specs"])
@@ -19068,10 +19114,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "hit_test_component_ready",
         "runtime_designer_replay_ready",
         "runtime_package_ready",
+        "runtime_artifact_transaction_ready",
         "operation_surface_ready",
         "phase_order_ready",
     } == {check["id"] for check in generated_visual_readiness["checks"]}
     assert generated_visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert generated_visual_readiness["final_state"]["runtime_artifact_transactions"] == 4
     assert generated_visual_readiness["final_state"]["style_override_transactions"] == len(
         generated_visual_depth["style_override_transaction"]["replay"]
     )
