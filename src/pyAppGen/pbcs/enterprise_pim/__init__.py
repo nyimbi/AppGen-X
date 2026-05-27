@@ -22,17 +22,30 @@ from .runtime import enterprise_pim_build_service_contract
 from .runtime import enterprise_pim_build_workbench_view
 from .runtime import enterprise_pim_configure_runtime
 from .runtime import enterprise_pim_create_taxonomy
+from .runtime import enterprise_pim_create_attribute_group
+from .runtime import enterprise_pim_create_product_relationship
 from .runtime import enterprise_pim_define_attribute
+from .runtime import enterprise_pim_define_product_bundle
+from .runtime import enterprise_pim_define_variant_family
 from .runtime import enterprise_pim_empty_state
+from .runtime import enterprise_pim_add_variant_member
+from .runtime import enterprise_pim_assign_assortment
+from .runtime import enterprise_pim_assign_data_steward
+from .runtime import enterprise_pim_open_pim_exception
 from .runtime import enterprise_pim_permissions_contract
 from .runtime import enterprise_pim_receive_event
+from .runtime import enterprise_pim_register_attribute_validation_rule
+from .runtime import enterprise_pim_register_attribute_value_option
+from .runtime import enterprise_pim_register_locale_fallback_rule
 from .runtime import enterprise_pim_register_rule
 from .runtime import enterprise_pim_register_schema_extension
+from .runtime import enterprise_pim_resolve_pim_exception
 from .runtime import enterprise_pim_runtime_capabilities
 from .runtime import enterprise_pim_runtime_smoke
 from .runtime import enterprise_pim_set_parameter
 from .runtime import enterprise_pim_start_validation_workflow
 from .runtime import enterprise_pim_upsert_localized_content
+from .runtime import enterprise_pim_upsert_translation_memory
 from .runtime import enterprise_pim_verify_owned_table_boundary
 from .ui import ENTERPRISE_PIM_UI_FRAGMENT_KEYS
 from .ui import enterprise_pim_render_workbench
@@ -108,4 +121,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

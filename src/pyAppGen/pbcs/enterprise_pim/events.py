@@ -1,6 +1,34 @@
 """AppGen-X event contract for the enterprise_pim PBC."""
 
 EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.enterprise_pim.events', 'inbox_topic': 'pbc.enterprise_pim.inbox', 'outbox_table': 'enterprise_pim_appgen_outbox_event', 'inbox_table': 'enterprise_pim_appgen_inbox_event', 'dead_letter_table': 'enterprise_pim_appgen_dead_letter_event', 'emitted': ({'event_type': 'TaxonomyClassified', 'schema': 'enterprise_pim.taxonomy_classified.emitted.v1', 'topic': 'pbc.enterprise_pim.events', 'outbox_table': 'enterprise_pim_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'AttributeDefined', 'schema': 'enterprise_pim.attribute_defined.emitted.v1', 'topic': 'pbc.enterprise_pim.events', 'outbox_table': 'enterprise_pim_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'ContentLocalized', 'schema': 'enterprise_pim.content_localized.emitted.v1', 'topic': 'pbc.enterprise_pim.events', 'outbox_table': 'enterprise_pim_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'ValidationApproved', 'schema': 'enterprise_pim.validation_approved.emitted.v1', 'topic': 'pbc.enterprise_pim.events', 'outbox_table': 'enterprise_pim_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'PimMasterDataReady', 'schema': 'enterprise_pim.pim_master_data_ready.emitted.v1', 'topic': 'pbc.enterprise_pim.events', 'outbox_table': 'enterprise_pim_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'InventoryPositionUpdated', 'schema': 'enterprise_pim.inventory_position_updated.consumed.v1', 'topic': 'pbc.enterprise_pim.inbox', 'inbox_table': 'enterprise_pim_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'MediaAssetApproved', 'schema': 'enterprise_pim.media_asset_approved.consumed.v1', 'topic': 'pbc.enterprise_pim.inbox', 'inbox_table': 'enterprise_pim_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'PricePromotionApproved', 'schema': 'enterprise_pim.price_promotion_approved.consumed.v1', 'topic': 'pbc.enterprise_pim.inbox', 'inbox_table': 'enterprise_pim_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'TaxCalculated', 'schema': 'enterprise_pim.tax_calculated.consumed.v1', 'topic': 'pbc.enterprise_pim.inbox', 'inbox_table': 'enterprise_pim_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'enterprise_pim_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'enterprise_pim_appgen_inbox_event'}}
+EVENT_CONTRACT = {
+    **EVENT_CONTRACT,
+    'emitted': EVENT_CONTRACT['emitted']
+    + tuple(
+        {
+            'event_type': event_type,
+            'schema': f"enterprise_pim.{event_type[0].lower()}{''.join('_' + char.lower() if char.isupper() else char for char in event_type[1:])}.emitted.v1",
+            'topic': EVENT_CONTRACT['topic'],
+            'outbox_table': EVENT_CONTRACT['outbox_table'],
+            'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data'),
+        }
+        for event_type in (
+            'AttributeGroupCreated',
+            'AttributeOptionRegistered',
+            'AttributeValidationRuleRegistered',
+            'TranslationMemoryUpdated',
+            'LocaleFallbackRegistered',
+            'ProductRelationshipCreated',
+            'ProductBundleDefined',
+            'VariantFamilyDefined',
+            'VariantMemberAdded',
+            'AssortmentAssigned',
+            'DataStewardAssigned',
+            'PimExceptionOpened',
+            'PimExceptionResolved',
+        )
+    ),
+}
 EMITTED_EVENTS = EVENT_CONTRACT['emitted']
 CONSUMED_EVENTS = EVENT_CONTRACT['consumed']
 

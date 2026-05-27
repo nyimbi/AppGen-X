@@ -201,3 +201,227 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['owned_boundary_rejection']['ok'] is False
     assert validation['owned_boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_executable_pim_lifecycle_covers_attributes_localization_relationships_and_exceptions():
+    from .. import runtime
+
+    state = runtime.enterprise_pim_empty_state()
+    state = runtime.enterprise_pim_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": runtime.ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_locale": "en-US",
+            "allowed_locales": ("en-US", "fr-FR"),
+            "allowed_channels": ("commerce",),
+            "dependency_sources": ("dam_core",),
+        },
+    )["state"]
+    for name, value in (
+        ("minimum_completeness", 0.8),
+        ("minimum_translation_quality", 0.75),
+        ("validation_sla_hours", 24),
+        ("max_inheritance_depth", 4),
+        ("dead_letter_retry_limit", 2),
+        ("dependency_schema_version_floor", 1),
+        ("anomaly_zscore_threshold", 2.5),
+    ):
+        state = runtime.enterprise_pim_set_parameter(state, name, value)["state"]
+    state = runtime.enterprise_pim_register_rule(
+        state,
+        {
+            "rule_id": "rule_pim_test",
+            "tenant": "tenant_test",
+            "scope": "master_data_readiness",
+            "status": "active",
+            "required_locales": ("en-US",),
+            "required_attributes": ("material",),
+            "validation_policy": {"required_approvers": ("data_steward",)},
+        },
+    )["state"]
+    state = runtime.enterprise_pim_create_taxonomy(
+        state,
+        {
+            "taxonomy_id": "tax_test",
+            "tenant": "tenant_test",
+            "code": "tools/pumps",
+            "name": "Pumps",
+            "parent_id": None,
+            "localized_names": {"en-US": "Pumps"},
+        },
+    )["state"]
+    state = runtime.enterprise_pim_define_attribute(
+        state,
+        {
+            "attribute_id": "attr_material_test",
+            "tenant": "tenant_test",
+            "taxonomy_id": "tax_test",
+            "name": "material",
+            "data_type": "string",
+            "required": True,
+            "localized_labels": {"en-US": "Material"},
+            "value": "steel",
+        },
+    )["state"]
+    state = runtime.enterprise_pim_create_attribute_group(
+        state,
+        {
+            "group_id": "grp_test",
+            "tenant": "tenant_test",
+            "taxonomy_id": "tax_test",
+            "name": "Core",
+            "sequence": 1,
+            "attributes": ("attr_material_test",),
+        },
+    )["state"]
+    state = runtime.enterprise_pim_register_attribute_value_option(
+        state,
+        {
+            "option_id": "opt_steel",
+            "tenant": "tenant_test",
+            "attribute_id": "attr_material_test",
+            "value": "steel",
+            "label": "Steel",
+        },
+    )["state"]
+    state = runtime.enterprise_pim_register_attribute_validation_rule(
+        state,
+        {
+            "validation_rule_id": "avr_material",
+            "tenant": "tenant_test",
+            "attribute_id": "attr_material_test",
+            "data_type": "string",
+            "required": True,
+            "pattern": "^(steel|plastic)$",
+        },
+    )["state"]
+    state = runtime.enterprise_pim_upsert_localized_content(
+        state,
+        {
+            "content_id": "loc_test",
+            "tenant": "tenant_test",
+            "entity_id": "tax_test",
+            "entity_type": "product_taxonomy",
+            "locale": "en-US",
+            "title": "Pumps",
+            "description": "Complete product taxonomy content for governed pump catalogs",
+            "overrides": {},
+        },
+    )["state"]
+    state = runtime.enterprise_pim_upsert_translation_memory(
+        state,
+        {
+            "translation_id": "tm_test",
+            "tenant": "tenant_test",
+            "source_locale": "en-US",
+            "target_locale": "fr-FR",
+            "source_text": "Pumps",
+            "target_text": "Pompes",
+            "quality_score": 0.9,
+        },
+    )["state"]
+    state = runtime.enterprise_pim_register_locale_fallback_rule(
+        state,
+        {
+            "fallback_rule_id": "lfr_test",
+            "tenant": "tenant_test",
+            "locale": "fr-FR",
+            "fallback_locale": "en-US",
+            "priority": 1,
+        },
+    )["state"]
+    state = runtime.enterprise_pim_create_product_relationship(
+        state,
+        {
+            "relationship_id": "rel_test",
+            "tenant": "tenant_test",
+            "from_entity_id": "tax_test",
+            "to_entity_id": "tax_test",
+            "relationship_type": "accessory",
+        },
+    )["state"]
+    state = runtime.enterprise_pim_define_product_bundle(
+        state,
+        {
+            "bundle_id": "bundle_test",
+            "tenant": "tenant_test",
+            "taxonomy_id": "tax_test",
+            "component_refs": ("pump_head", "pump_motor"),
+            "bundle_policy": "kit",
+        },
+    )["state"]
+    state = runtime.enterprise_pim_define_variant_family(
+        state,
+        {
+            "family_id": "vf_test",
+            "tenant": "tenant_test",
+            "taxonomy_id": "tax_test",
+            "variant_axes": ("material",),
+        },
+    )["state"]
+    state = runtime.enterprise_pim_add_variant_member(
+        state,
+        {
+            "member_id": "vm_test",
+            "tenant": "tenant_test",
+            "family_id": "vf_test",
+            "sku_ref": "sku_steel",
+            "axis_values": {"material": "steel"},
+        },
+    )["state"]
+    state = runtime.enterprise_pim_assign_assortment(
+        state,
+        {
+            "assignment_id": "assort_test",
+            "tenant": "tenant_test",
+            "entity_id": "tax_test",
+            "channel": "commerce",
+            "market": "NA",
+        },
+    )["state"]
+    state = runtime.enterprise_pim_assign_data_steward(
+        state,
+        {
+            "assignment_id": "steward_test",
+            "tenant": "tenant_test",
+            "entity_id": "tax_test",
+            "steward": "owner",
+            "responsibility": "taxonomy",
+        },
+    )["state"]
+    state = runtime.enterprise_pim_open_pim_exception(
+        state,
+        {
+            "exception_id": "exc_test",
+            "tenant": "tenant_test",
+            "entity_id": "tax_test",
+            "exception_type": "quality_review",
+            "severity": "medium",
+        },
+    )["state"]
+    resolved = runtime.enterprise_pim_resolve_pim_exception(
+        state,
+        {
+            "exception_id": "exc_test",
+            "tenant": "tenant_test",
+            "resolution": "content_approved",
+            "resolved_by": "owner",
+        },
+    )
+
+    state = resolved["state"]
+    assert state["attribute_group"]["grp_test"]["status"] == "active"
+    assert state["attribute_value_option"]["opt_steel"]["status"] == "active"
+    assert state["attribute_validation_rule"]["avr_material"]["status"] == "active"
+    assert state["translation_memory_entry"]["tm_test"]["status"] == "approved"
+    assert state["locale_fallback_rule"]["lfr_test"]["fallback_locale"] == "en-US"
+    assert state["product_relationship"]["rel_test"]["status"] == "active"
+    assert state["product_bundle_definition"]["bundle_test"]["component_count"] == 2
+    assert state["product_variant_member"]["vm_test"]["status"] == "active"
+    assert state["assortment_assignment"]["assort_test"]["status"] == "active"
+    assert state["data_steward_assignment"]["steward_test"]["status"] == "active"
+    assert state["pim_exception"]["exc_test"]["status"] == "resolved"
+    assert all(event["topic"] == runtime.ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC for event in state["outbox"])
+    assert runtime.enterprise_pim_verify_owned_table_boundary(runtime.ENTERPRISE_PIM_OWNED_TABLES)["ok"] is True

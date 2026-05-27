@@ -54,14 +54,50 @@ def enterprise_pim_ui_contract() -> dict:
             {
                 "key": "attribute_governance",
                 "fragment": "AttributeDefinitionStudio",
-                "binds_to": ("product_attribute",),
-                "commands": ("define_attribute", "register_rule", "set_parameter"),
+                "binds_to": ("product_attribute", "attribute_group", "attribute_value_option", "attribute_validation_rule"),
+                "commands": (
+                    "define_attribute",
+                    "create_attribute_group",
+                    "register_attribute_value_option",
+                    "register_attribute_validation_rule",
+                    "register_rule",
+                    "set_parameter",
+                ),
             },
             {
                 "key": "localization",
                 "fragment": "LocalizationWorkbench",
-                "binds_to": ("localized_content", "product_attribute"),
-                "commands": ("upsert_localized_content", "start_validation_workflow"),
+                "binds_to": ("localized_content", "translation_memory_entry", "locale_fallback_rule", "product_attribute"),
+                "commands": (
+                    "upsert_localized_content",
+                    "upsert_translation_memory",
+                    "register_locale_fallback_rule",
+                    "start_validation_workflow",
+                ),
+            },
+            {
+                "key": "relationship_modeling",
+                "fragment": "AttributeInheritanceInspector",
+                "binds_to": (
+                    "product_relationship",
+                    "product_bundle_definition",
+                    "product_variant_family",
+                    "product_variant_member",
+                    "assortment_assignment",
+                ),
+                "commands": (
+                    "create_product_relationship",
+                    "define_product_bundle",
+                    "define_variant_family",
+                    "add_variant_member",
+                    "assign_assortment",
+                ),
+            },
+            {
+                "key": "stewardship_exceptions",
+                "fragment": "ValidationWorkflowBoard",
+                "binds_to": ("data_steward_assignment", "pim_exception", "exception_resolution_plan"),
+                "commands": ("assign_data_steward", "open_pim_exception", "resolve_pim_exception"),
             },
             {
                 "key": "integration_evidence",
@@ -93,7 +129,26 @@ def enterprise_pim_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status", "required_locales", "required_attributes"),
         },
         "event_surfaces": {
-            "emits": ("TaxonomyClassified", "AttributeDefined", "ContentLocalized", "ValidationApproved", "PimMasterDataReady"),
+            "emits": (
+                "TaxonomyClassified",
+                "AttributeDefined",
+                "ContentLocalized",
+                "ValidationApproved",
+                "PimMasterDataReady",
+                "AttributeGroupCreated",
+                "AttributeOptionRegistered",
+                "AttributeValidationRuleRegistered",
+                "TranslationMemoryUpdated",
+                "LocaleFallbackRegistered",
+                "ProductRelationshipCreated",
+                "ProductBundleDefined",
+                "VariantFamilyDefined",
+                "VariantMemberAdded",
+                "AssortmentAssigned",
+                "DataStewardAssigned",
+                "PimExceptionOpened",
+                "PimExceptionResolved",
+            ),
             "consumes": ("MediaAssetApproved", "PricePromotionApproved", "TaxCalculated", "InventoryPositionUpdated"),
             "outbox_status": "visible",
             "dead_letter_status": "visible",
@@ -123,11 +178,14 @@ def enterprise_pim_render_workbench(
     attributes = tuple(item for item in state["product_attribute"].values() if item["tenant"] == tenant)
     localized = tuple(item for item in state["localized_content"].values() if item["tenant"] == tenant)
     workflows = tuple(item for item in state["validation_workflow"].values() if item["tenant"] == tenant)
+    exceptions = tuple(item for item in state["pim_exception"].values() if item["tenant"] == tenant)
     cards = (
         {"key": "taxonomies", "value": len(taxonomies), "fragment": "TaxonomyGraphStudio"},
         {"key": "attributes", "value": len(attributes), "fragment": "AttributeDefinitionStudio"},
         {"key": "localized_content", "value": len(localized), "fragment": "LocalizationWorkbench"},
         {"key": "approved_workflows", "value": len(tuple(item for item in workflows if item["status"] == "approved")), "fragment": "ValidationWorkflowBoard"},
+        {"key": "variant_families", "value": len(tuple(item for item in state["product_variant_family"].values() if item["tenant"] == tenant)), "fragment": "AttributeInheritanceInspector"},
+        {"key": "resolved_exceptions", "value": len(tuple(item for item in exceptions if item["status"] == "resolved")), "fragment": "ValidationWorkflowBoard"},
         {"key": "outbox", "value": len(state["outbox"]), "fragment": "PimEventOutbox"},
         {"key": "dead_letter", "value": len(state["dead_letter"]), "fragment": "PimDeadLetterQueue"},
     )

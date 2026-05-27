@@ -82,6 +82,19 @@ ENTERPRISE_PIM_EMITTED_EVENT_TYPES = (
     "ContentLocalized",
     "ValidationApproved",
     "PimMasterDataReady",
+    "AttributeGroupCreated",
+    "AttributeOptionRegistered",
+    "AttributeValidationRuleRegistered",
+    "TranslationMemoryUpdated",
+    "LocaleFallbackRegistered",
+    "ProductRelationshipCreated",
+    "ProductBundleDefined",
+    "VariantFamilyDefined",
+    "VariantMemberAdded",
+    "AssortmentAssigned",
+    "DataStewardAssigned",
+    "PimExceptionOpened",
+    "PimExceptionResolved",
 )
 
 ENTERPRISE_PIM_RUNTIME_CAPABILITY_KEYS = (
@@ -225,10 +238,23 @@ _EMITTED_EVENT_TYPES = ENTERPRISE_PIM_EMITTED_EVENT_TYPES
 _API_SURFACES = (
     "POST /product-taxonomies",
     "POST /product-attributes",
+    "POST /attribute-groups",
+    "POST /attribute-options",
+    "POST /attribute-validation-rules",
     "POST /localized-content",
+    "POST /translation-memory",
+    "POST /locale-fallback-rules",
     "POST /validation-workflows",
     "POST /validation-workflows/{id}/approve",
     "POST /dependency-schemas",
+    "POST /product-relationships",
+    "POST /product-bundles",
+    "POST /variant-families",
+    "POST /variant-members",
+    "POST /assortments",
+    "POST /data-stewards",
+    "POST /pim-exceptions",
+    "POST /pim-exceptions/{id}/resolve",
     "POST /pim-events",
     "GET /pim-workbench",
 )
@@ -253,9 +279,22 @@ def enterprise_pim_runtime_capabilities() -> dict:
             "receive_event",
             "create_taxonomy",
             "define_attribute",
+            "create_attribute_group",
+            "register_attribute_value_option",
+            "register_attribute_validation_rule",
             "upsert_localized_content",
+            "upsert_translation_memory",
+            "register_locale_fallback_rule",
             "start_validation_workflow",
             "approve_validation_workflow",
+            "create_product_relationship",
+            "define_product_bundle",
+            "define_variant_family",
+            "add_variant_member",
+            "assign_assortment",
+            "assign_data_steward",
+            "open_pim_exception",
+            "resolve_pim_exception",
             "build_api_contract",
             "build_schema_contract",
             "build_service_contract",
@@ -355,6 +394,38 @@ def enterprise_pim_runtime_smoke() -> dict:
             "value": "none",
         },
     )["state"]
+    state = enterprise_pim_create_attribute_group(
+        state,
+        {
+            "group_id": "grp_compliance",
+            "tenant": "tenant_alpha",
+            "taxonomy_id": "tax_100",
+            "name": "Compliance attributes",
+            "sequence": 10,
+            "attributes": ("attr_material", "attr_hazard"),
+        },
+    )["state"]
+    state = enterprise_pim_register_attribute_value_option(
+        state,
+        {
+            "option_id": "opt_hazard_none",
+            "tenant": "tenant_alpha",
+            "attribute_id": "attr_hazard",
+            "value": "none",
+            "label": "No regulated hazard",
+        },
+    )["state"]
+    state = enterprise_pim_register_attribute_validation_rule(
+        state,
+        {
+            "validation_rule_id": "avr_hazard_allowed",
+            "tenant": "tenant_alpha",
+            "attribute_id": "attr_hazard",
+            "data_type": "string",
+            "required": True,
+            "pattern": "^(none|flammable|corrosive)$",
+        },
+    )["state"]
     state = enterprise_pim_upsert_localized_content(
         state,
         {
@@ -379,6 +450,106 @@ def enterprise_pim_runtime_smoke() -> dict:
             "title": "Pompes industrielles",
             "description": "Taxonomie gouvernee pour catalogues industriels",
             "overrides": {"short_name": "Pompes"},
+        },
+    )["state"]
+    state = enterprise_pim_upsert_translation_memory(
+        state,
+        {
+            "translation_id": "tm_100",
+            "tenant": "tenant_alpha",
+            "source_locale": "en-US",
+            "target_locale": "fr-FR",
+            "source_text": "Industrial Pumps",
+            "target_text": "Pompes industrielles",
+            "quality_score": 0.94,
+        },
+    )["state"]
+    state = enterprise_pim_register_locale_fallback_rule(
+        state,
+        {
+            "fallback_rule_id": "lfr_fr",
+            "tenant": "tenant_alpha",
+            "locale": "fr-FR",
+            "fallback_locale": "en-US",
+            "priority": 1,
+        },
+    )["state"]
+    state = enterprise_pim_create_product_relationship(
+        state,
+        {
+            "relationship_id": "rel_100",
+            "tenant": "tenant_alpha",
+            "from_entity_id": "tax_100",
+            "to_entity_id": "tax_100",
+            "relationship_type": "self_reference_for_smoke",
+        },
+    )["state"]
+    state = enterprise_pim_define_product_bundle(
+        state,
+        {
+            "bundle_id": "bundle_100",
+            "tenant": "tenant_alpha",
+            "taxonomy_id": "tax_100",
+            "component_refs": ("pump_head", "pump_motor"),
+            "bundle_policy": "complete_kit",
+        },
+    )["state"]
+    state = enterprise_pim_define_variant_family(
+        state,
+        {
+            "family_id": "vf_100",
+            "tenant": "tenant_alpha",
+            "taxonomy_id": "tax_100",
+            "variant_axes": ("voltage", "material"),
+        },
+    )["state"]
+    state = enterprise_pim_add_variant_member(
+        state,
+        {
+            "member_id": "vm_100",
+            "tenant": "tenant_alpha",
+            "family_id": "vf_100",
+            "sku_ref": "sku_pump_240v_steel",
+            "axis_values": {"voltage": "240v", "material": "steel"},
+        },
+    )["state"]
+    state = enterprise_pim_assign_assortment(
+        state,
+        {
+            "assignment_id": "assort_100",
+            "tenant": "tenant_alpha",
+            "entity_id": "tax_100",
+            "channel": "commerce",
+            "market": "NA",
+        },
+    )["state"]
+    state = enterprise_pim_assign_data_steward(
+        state,
+        {
+            "assignment_id": "steward_100",
+            "tenant": "tenant_alpha",
+            "entity_id": "tax_100",
+            "steward": "pim_steward",
+            "responsibility": "taxonomy_governance",
+        },
+    )["state"]
+    exception = enterprise_pim_open_pim_exception(
+        state,
+        {
+            "exception_id": "exc_100",
+            "tenant": "tenant_alpha",
+            "entity_id": "tax_100",
+            "exception_type": "translation_review",
+            "severity": "medium",
+        },
+    )
+    state = enterprise_pim_resolve_pim_exception(
+        exception["state"],
+        {
+            "exception_id": "exc_100",
+            "tenant": "tenant_alpha",
+            "resolution": "translation_memory_confirmed",
+            "resolved_by": "pim_steward",
         },
     )["state"]
     workflow = enterprise_pim_start_validation_workflow(
@@ -450,7 +621,11 @@ def enterprise_pim_runtime_smoke() -> dict:
         {"id": "graph_relational_taxonomy_topology", "ok": state["product_taxonomy"]["tax_100"]["graph_degree"] >= 2},
         {"id": "multi_tenant_pim_isolation", "ok": workbench["tenant"] == "tenant_alpha"},
         {"id": "schema_evolution_resilient_attribute_model", "ok": state["product_attribute"]["attr_material"]["compiled_hash"]},
+        {"id": "attribute_group_option_validation_lifecycle", "ok": state["attribute_group"]["grp_compliance"]["status"] == "active" and state["attribute_value_option"]["opt_hazard_none"]["status"] == "active" and state["attribute_validation_rule"]["avr_hazard_allowed"]["status"] == "active"},
         {"id": "multilingual_inheritance_localization", "ok": state["product_attribute"]["attr_hazard"]["inheritance_path"] == ("attr_material", "attr_hazard") and len(state["localized_content"]) == 2},
+        {"id": "translation_memory_and_locale_fallback_lifecycle", "ok": state["translation_memory_entry"]["tm_100"]["quality_score"] >= 0.9 and state["locale_fallback_rule"]["lfr_fr"]["fallback_locale"] == "en-US"},
+        {"id": "relationship_bundle_variant_assortment_lifecycle", "ok": state["product_relationship"]["rel_100"]["status"] == "active" and state["product_bundle_definition"]["bundle_100"]["status"] == "active" and state["product_variant_member"]["vm_100"]["status"] == "active" and state["assortment_assignment"]["assort_100"]["status"] == "active"},
+        {"id": "data_steward_and_exception_resolution_lifecycle", "ok": state["data_steward_assignment"]["steward_100"]["status"] == "active" and state["pim_exception"]["exc_100"]["status"] == "resolved"},
         {"id": "probabilistic_content_completeness_scoring", "ok": readiness["readiness_score"] >= 0.85},
         {"id": "counterfactual_taxonomy_publication_simulation", "ok": simulation["locale_delta"] < 0},
         {"id": "temporal_enrichment_readiness_forecasting", "ok": forecast["forecast_readiness"] > 0.9},
@@ -492,8 +667,22 @@ def enterprise_pim_empty_state() -> dict:
         "handled_event_keys": (),
         "product_taxonomy": {},
         "product_attribute": {},
+        "attribute_group": {},
+        "attribute_value_option": {},
+        "attribute_validation_rule": {},
+        "attribute_quality_signal": {},
         "localized_content": {},
+        "translation_memory_entry": {},
+        "locale_fallback_rule": {},
         "validation_workflow": {},
+        "product_relationship": {},
+        "product_bundle_definition": {},
+        "product_variant_family": {},
+        "product_variant_member": {},
+        "assortment_assignment": {},
+        "data_steward_assignment": {},
+        "pim_exception": {},
+        "exception_resolution_plan": {},
         "dependency_schemas": {},
         "dependency_projections": {},
         "rules": {},
@@ -637,6 +826,65 @@ def enterprise_pim_define_attribute(state: dict, attribute: dict) -> dict:
     return {"ok": ok, "state": next_state, "attribute": enriched}
 
 
+def enterprise_pim_create_attribute_group(state: dict, group: dict) -> dict:
+    if group["taxonomy_id"] not in state["product_taxonomy"]:
+        raise ValueError("Enterprise PIM attribute groups require an owned taxonomy.")
+    missing_attributes = tuple(attribute_id for attribute_id in group.get("attributes", ()) if attribute_id not in state["product_attribute"])
+    if missing_attributes:
+        raise ValueError(f"Enterprise PIM attribute group references unknown attributes: {missing_attributes}")
+    enriched = {
+        **group,
+        "status": "active",
+        "attribute_count": len(tuple(group.get("attributes", ()))),
+        "compiled_hash": _digest(group),
+    }
+    next_state = {**state, "attribute_group": {**state["attribute_group"], group["group_id"]: enriched}}
+    next_state = _append_event(next_state, "AttributeGroupCreated", {"tenant": group["tenant"], "group_id": group["group_id"], "taxonomy_id": group["taxonomy_id"]})
+    return {"ok": True, "state": next_state, "attribute_group": enriched}
+
+
+def enterprise_pim_register_attribute_value_option(state: dict, option: dict) -> dict:
+    if option["attribute_id"] not in state["product_attribute"]:
+        raise ValueError("Enterprise PIM value options require an owned attribute.")
+    enriched = {
+        **option,
+        "status": "active",
+        "compiled_hash": _digest(option),
+    }
+    next_state = {**state, "attribute_value_option": {**state["attribute_value_option"], option["option_id"]: enriched}}
+    next_state = _append_event(next_state, "AttributeOptionRegistered", {"tenant": option["tenant"], "option_id": option["option_id"], "attribute_id": option["attribute_id"]})
+    return {"ok": True, "state": next_state, "attribute_value_option": enriched}
+
+
+def enterprise_pim_register_attribute_validation_rule(state: dict, rule: dict) -> dict:
+    if rule["attribute_id"] not in state["product_attribute"]:
+        raise ValueError("Enterprise PIM validation rules require an owned attribute.")
+    sample_value = str(state["product_attribute"][rule["attribute_id"]].get("effective_value") or "")
+    pattern = rule.get("pattern")
+    matches = re.fullmatch(pattern, sample_value) is not None if pattern else True
+    enriched = {
+        **rule,
+        "status": "active" if matches else "review",
+        "sample_value_valid": matches,
+        "compiled_hash": _digest(rule),
+    }
+    quality = {
+        "quality_signal_id": f"aqs_{rule['validation_rule_id']}",
+        "tenant": rule["tenant"],
+        "attribute_id": rule["attribute_id"],
+        "score": 1.0 if matches else 0.4,
+        "reason": "validation_rule_registered",
+        "status": "accepted" if matches else "review",
+    }
+    next_state = {
+        **state,
+        "attribute_validation_rule": {**state["attribute_validation_rule"], rule["validation_rule_id"]: enriched},
+        "attribute_quality_signal": {**state["attribute_quality_signal"], quality["quality_signal_id"]: quality},
+    }
+    next_state = _append_event(next_state, "AttributeValidationRuleRegistered", {"tenant": rule["tenant"], "validation_rule_id": rule["validation_rule_id"], "attribute_id": rule["attribute_id"]})
+    return {"ok": matches, "state": next_state, "attribute_validation_rule": enriched, "attribute_quality_signal": quality}
+
+
 def enterprise_pim_upsert_localized_content(state: dict, content: dict) -> dict:
     allowed_locales = state["configuration"].get("allowed_locales", ())
     if content["locale"] not in allowed_locales:
@@ -653,6 +901,36 @@ def enterprise_pim_upsert_localized_content(state: dict, content: dict) -> dict:
     next_state = {**state, "localized_content": {**state["localized_content"], content["content_id"]: enriched}}
     next_state = _append_event(next_state, "ContentLocalized", {"tenant": content["tenant"], "content_id": content["content_id"], "locale": content["locale"]})
     return {"ok": status == "approved", "state": next_state, "content": enriched}
+
+
+def enterprise_pim_upsert_translation_memory(state: dict, entry: dict) -> dict:
+    if entry["source_locale"] not in state["configuration"].get("allowed_locales", ()):
+        raise ValueError(f"Unsupported Enterprise PIM source locale: {entry['source_locale']}")
+    if entry["target_locale"] not in state["configuration"].get("allowed_locales", ()):
+        raise ValueError(f"Unsupported Enterprise PIM target locale: {entry['target_locale']}")
+    enriched = {
+        **entry,
+        "source_text_hash": _digest(entry["source_text"]),
+        "status": "approved" if float(entry["quality_score"]) >= float(state["parameters"].get("minimum_translation_quality", {"value": 0.75})["value"]) else "review",
+        "compiled_hash": _digest(entry),
+    }
+    next_state = {**state, "translation_memory_entry": {**state["translation_memory_entry"], entry["translation_id"]: enriched}}
+    next_state = _append_event(next_state, "TranslationMemoryUpdated", {"tenant": entry["tenant"], "translation_id": entry["translation_id"], "target_locale": entry["target_locale"]})
+    return {"ok": enriched["status"] == "approved", "state": next_state, "translation_memory_entry": enriched}
+
+
+def enterprise_pim_register_locale_fallback_rule(state: dict, rule: dict) -> dict:
+    locales = state["configuration"].get("allowed_locales", ())
+    if rule["locale"] not in locales or rule["fallback_locale"] not in locales:
+        raise ValueError("Enterprise PIM fallback rules require configured locales.")
+    enriched = {
+        **rule,
+        "status": "active",
+        "compiled_hash": _digest(rule),
+    }
+    next_state = {**state, "locale_fallback_rule": {**state["locale_fallback_rule"], rule["fallback_rule_id"]: enriched}}
+    next_state = _append_event(next_state, "LocaleFallbackRegistered", {"tenant": rule["tenant"], "fallback_rule_id": rule["fallback_rule_id"], "locale": rule["locale"]})
+    return {"ok": True, "state": next_state, "locale_fallback_rule": enriched}
 
 
 def enterprise_pim_start_validation_workflow(state: dict, workflow: dict) -> dict:
@@ -687,6 +965,129 @@ def enterprise_pim_approve_validation_workflow(state: dict, workflow_id: str, *,
     return {"ok": status == "approved", "state": next_state, "workflow": updated}
 
 
+def enterprise_pim_create_product_relationship(state: dict, relationship: dict) -> dict:
+    known_entities = set(state["product_taxonomy"])
+    if relationship["from_entity_id"] not in known_entities or relationship["to_entity_id"] not in known_entities:
+        raise ValueError("Enterprise PIM product relationships require owned entity references.")
+    enriched = {
+        **relationship,
+        "status": "active",
+        "compiled_hash": _digest(relationship),
+    }
+    next_state = {**state, "product_relationship": {**state["product_relationship"], relationship["relationship_id"]: enriched}}
+    next_state = _append_event(next_state, "ProductRelationshipCreated", {"tenant": relationship["tenant"], "relationship_id": relationship["relationship_id"], "relationship_type": relationship["relationship_type"]})
+    return {"ok": True, "state": next_state, "product_relationship": enriched}
+
+
+def enterprise_pim_define_product_bundle(state: dict, bundle: dict) -> dict:
+    if bundle["taxonomy_id"] not in state["product_taxonomy"]:
+        raise ValueError("Enterprise PIM bundles require an owned taxonomy.")
+    components = tuple(bundle.get("component_refs", ()))
+    enriched = {
+        **bundle,
+        "component_refs": components,
+        "component_count": len(components),
+        "status": "active" if components else "review",
+        "compiled_hash": _digest(bundle),
+    }
+    next_state = {**state, "product_bundle_definition": {**state["product_bundle_definition"], bundle["bundle_id"]: enriched}}
+    next_state = _append_event(next_state, "ProductBundleDefined", {"tenant": bundle["tenant"], "bundle_id": bundle["bundle_id"], "taxonomy_id": bundle["taxonomy_id"]})
+    return {"ok": bool(components), "state": next_state, "product_bundle_definition": enriched}
+
+
+def enterprise_pim_define_variant_family(state: dict, family: dict) -> dict:
+    if family["taxonomy_id"] not in state["product_taxonomy"]:
+        raise ValueError("Enterprise PIM variant families require an owned taxonomy.")
+    axes = tuple(family.get("variant_axes", ()))
+    enriched = {
+        **family,
+        "variant_axes": axes,
+        "status": "active" if axes else "review",
+        "compiled_hash": _digest(family),
+    }
+    next_state = {**state, "product_variant_family": {**state["product_variant_family"], family["family_id"]: enriched}}
+    next_state = _append_event(next_state, "VariantFamilyDefined", {"tenant": family["tenant"], "family_id": family["family_id"], "taxonomy_id": family["taxonomy_id"]})
+    return {"ok": bool(axes), "state": next_state, "product_variant_family": enriched}
+
+
+def enterprise_pim_add_variant_member(state: dict, member: dict) -> dict:
+    family = state["product_variant_family"].get(member["family_id"])
+    if not family:
+        raise ValueError("Enterprise PIM variant members require an owned variant family.")
+    missing_axes = tuple(axis for axis in family["variant_axes"] if axis not in member.get("axis_values", {}))
+    enriched = {
+        **member,
+        "missing_axes": missing_axes,
+        "status": "active" if not missing_axes else "review",
+        "compiled_hash": _digest(member),
+    }
+    next_state = {**state, "product_variant_member": {**state["product_variant_member"], member["member_id"]: enriched}}
+    next_state = _append_event(next_state, "VariantMemberAdded", {"tenant": member["tenant"], "member_id": member["member_id"], "family_id": member["family_id"]})
+    return {"ok": not missing_axes, "state": next_state, "product_variant_member": enriched}
+
+
+def enterprise_pim_assign_assortment(state: dict, assignment: dict) -> dict:
+    if assignment["channel"] not in state["configuration"].get("allowed_channels", ()):
+        raise ValueError(f"Unsupported Enterprise PIM channel: {assignment['channel']}")
+    enriched = {
+        **assignment,
+        "status": "active",
+        "compiled_hash": _digest(assignment),
+    }
+    next_state = {**state, "assortment_assignment": {**state["assortment_assignment"], assignment["assignment_id"]: enriched}}
+    next_state = _append_event(next_state, "AssortmentAssigned", {"tenant": assignment["tenant"], "assignment_id": assignment["assignment_id"], "channel": assignment["channel"]})
+    return {"ok": True, "state": next_state, "assortment_assignment": enriched}
+
+
+def enterprise_pim_assign_data_steward(state: dict, assignment: dict) -> dict:
+    enriched = {
+        **assignment,
+        "status": "active",
+        "compiled_hash": _digest(assignment),
+    }
+    next_state = {**state, "data_steward_assignment": {**state["data_steward_assignment"], assignment["assignment_id"]: enriched}}
+    next_state = _append_event(next_state, "DataStewardAssigned", {"tenant": assignment["tenant"], "assignment_id": assignment["assignment_id"], "steward": assignment["steward"]})
+    return {"ok": True, "state": next_state, "data_steward_assignment": enriched}
+
+
+def enterprise_pim_open_pim_exception(state: dict, exception: dict) -> dict:
+    enriched = {
+        **exception,
+        "status": "open",
+        "compiled_hash": _digest(exception),
+    }
+    next_state = {**state, "pim_exception": {**state["pim_exception"], exception["exception_id"]: enriched}}
+    next_state = _append_event(next_state, "PimExceptionOpened", {"tenant": exception["tenant"], "exception_id": exception["exception_id"], "exception_type": exception["exception_type"]})
+    return {"ok": True, "state": next_state, "pim_exception": enriched}
+
+
+def enterprise_pim_resolve_pim_exception(state: dict, resolution: dict) -> dict:
+    exception = state["pim_exception"].get(resolution["exception_id"])
+    if not exception:
+        raise ValueError("Enterprise PIM exception resolution requires an owned exception.")
+    resolved = {
+        **exception,
+        "status": "resolved",
+        "resolution": resolution["resolution"],
+        "resolved_by": resolution["resolved_by"],
+        "resolution_hash": _digest(resolution),
+    }
+    plan = {
+        "plan_id": f"plan_{resolution['exception_id']}",
+        "tenant": resolution["tenant"],
+        "exception_id": resolution["exception_id"],
+        "resolution": resolution["resolution"],
+        "status": "completed",
+    }
+    next_state = {
+        **state,
+        "pim_exception": {**state["pim_exception"], resolution["exception_id"]: resolved},
+        "exception_resolution_plan": {**state["exception_resolution_plan"], plan["plan_id"]: plan},
+    }
+    next_state = _append_event(next_state, "PimExceptionResolved", {"tenant": resolution["tenant"], "exception_id": resolution["exception_id"], "resolution": resolution["resolution"]})
+    return {"ok": True, "state": next_state, "pim_exception": resolved, "exception_resolution_plan": plan}
+
+
 def enterprise_pim_publish_master_data(state: dict, taxonomy_id: str, *, channels: tuple[str, ...]) -> dict:
     taxonomy = state["product_taxonomy"][taxonomy_id]
     rule = next(iter(state["rules"].values()))
@@ -710,6 +1111,7 @@ def enterprise_pim_build_workbench_view(state: dict, *, tenant: str) -> dict:
     attributes = tuple(item for item in state["product_attribute"].values() if item["tenant"] == tenant)
     localized = tuple(item for item in state["localized_content"].values() if item["tenant"] == tenant)
     workflows = tuple(item for item in state["validation_workflow"].values() if item["tenant"] == tenant)
+    exceptions = tuple(item for item in state["pim_exception"].values() if item["tenant"] == tenant)
     average_quality = round(sum(item["quality_score"] for item in localized) / max(len(localized), 1), 4)
     return {
         "format": "appgen.enterprise-pim-workbench-view.v1",
@@ -719,6 +1121,12 @@ def enterprise_pim_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "attribute_count": len(attributes),
         "localized_content_count": len(localized),
         "approved_workflow_count": len(tuple(item for item in workflows if item["status"] == "approved")),
+        "attribute_group_count": len(tuple(item for item in state["attribute_group"].values() if item["tenant"] == tenant)),
+        "variant_family_count": len(tuple(item for item in state["product_variant_family"].values() if item["tenant"] == tenant)),
+        "bundle_count": len(tuple(item for item in state["product_bundle_definition"].values() if item["tenant"] == tenant)),
+        "assortment_count": len(tuple(item for item in state["assortment_assignment"].values() if item["tenant"] == tenant)),
+        "open_exception_count": len(tuple(item for item in exceptions if item["status"] == "open")),
+        "resolved_exception_count": len(tuple(item for item in exceptions if item["status"] == "resolved")),
         "dependency_projection_count": len(state["dependency_projections"]),
         "average_translation_quality": average_quality,
         "configuration_bound": bool(state["configuration"].get("ok")),
@@ -918,10 +1326,23 @@ def enterprise_pim_build_service_contract() -> dict:
         "receive_event",
         "create_taxonomy",
         "define_attribute",
+        "create_attribute_group",
+        "register_attribute_value_option",
+        "register_attribute_validation_rule",
         "upsert_localized_content",
+        "upsert_translation_memory",
+        "register_locale_fallback_rule",
         "start_validation_workflow",
         "approve_validation_workflow",
         "publish_master_data",
+        "create_product_relationship",
+        "define_product_bundle",
+        "define_variant_family",
+        "add_variant_member",
+        "assign_assortment",
+        "assign_data_steward",
+        "open_pim_exception",
+        "resolve_pim_exception",
         "route_dependency",
         "generate_master_data_proof",
         "screen_policy",
@@ -950,7 +1371,7 @@ def enterprise_pim_build_service_contract() -> dict:
     )
     return {
         "format": "appgen.enterprise-pim-service-contract.v1",
-        "ok": len(command_methods) >= 24 and not enterprise_pim_verify_owned_table_boundary(ENTERPRISE_PIM_OWNED_TABLES)["violations"],
+        "ok": len(command_methods) >= 36 and not enterprise_pim_verify_owned_table_boundary(ENTERPRISE_PIM_OWNED_TABLES)["violations"],
         "transaction_boundary": "enterprise_pim_owned_datastore_plus_appgen_outbox",
         "command_methods": command_methods,
         "query_methods": query_methods,
@@ -975,7 +1396,7 @@ def enterprise_pim_build_release_evidence() -> dict:
     checks = (
         {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 40},
         {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(ENTERPRISE_PIM_OWNED_TABLES)},
-        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 24},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 36},
         {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and api["stream_engine_picker_visible"] is False},
         {"id": "permissions_cover_commands", "ok": {"create_taxonomy", "publish_master_data", "receive_event"} <= set(permissions["action_permissions"])},
         {"id": "backend_allowlist", "ok": schema["datastore_backends"] == ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS},
@@ -1018,12 +1439,52 @@ def enterprise_pim_build_api_contract() -> dict:
                 "idempotency_key": "attribute_id",
             },
             {
+                "route": "POST /attribute-groups",
+                "command": "create_attribute_group",
+                "owned_tables": ("attribute_group",),
+                "emits": ("AttributeGroupCreated",),
+                "requires_permission": "enterprise_pim.attribute",
+                "idempotency_key": "group_id",
+            },
+            {
+                "route": "POST /attribute-options",
+                "command": "register_attribute_value_option",
+                "owned_tables": ("attribute_value_option",),
+                "emits": ("AttributeOptionRegistered",),
+                "requires_permission": "enterprise_pim.attribute",
+                "idempotency_key": "option_id",
+            },
+            {
+                "route": "POST /attribute-validation-rules",
+                "command": "register_attribute_validation_rule",
+                "owned_tables": ("attribute_validation_rule", "attribute_quality_signal"),
+                "emits": ("AttributeValidationRuleRegistered",),
+                "requires_permission": "enterprise_pim.attribute",
+                "idempotency_key": "validation_rule_id",
+            },
+            {
                 "route": "POST /localized-content",
                 "command": "upsert_localized_content",
                 "owned_tables": ("localized_content",),
                 "emits": ("ContentLocalized",),
                 "requires_permission": "enterprise_pim.localization",
                 "idempotency_key": "content_id",
+            },
+            {
+                "route": "POST /translation-memory",
+                "command": "upsert_translation_memory",
+                "owned_tables": ("translation_memory_entry",),
+                "emits": ("TranslationMemoryUpdated",),
+                "requires_permission": "enterprise_pim.localization",
+                "idempotency_key": "translation_id",
+            },
+            {
+                "route": "POST /locale-fallback-rules",
+                "command": "register_locale_fallback_rule",
+                "owned_tables": ("locale_fallback_rule",),
+                "emits": ("LocaleFallbackRegistered",),
+                "requires_permission": "enterprise_pim.localization",
+                "idempotency_key": "fallback_rule_id",
             },
             {
                 "route": "POST /validation-workflows",
@@ -1048,6 +1509,70 @@ def enterprise_pim_build_api_contract() -> dict:
                 "declared_api_dependencies": ("GET /media-assets", "GET /prices", "GET /tax-calculations", "GET /inventory-positions"),
                 "requires_permission": "enterprise_pim.integrate",
                 "idempotency_key": "dependency:schema_version",
+            },
+            {
+                "route": "POST /product-relationships",
+                "command": "create_product_relationship",
+                "owned_tables": ("product_relationship",),
+                "emits": ("ProductRelationshipCreated",),
+                "requires_permission": "enterprise_pim.taxonomy",
+                "idempotency_key": "relationship_id",
+            },
+            {
+                "route": "POST /product-bundles",
+                "command": "define_product_bundle",
+                "owned_tables": ("product_bundle_definition",),
+                "emits": ("ProductBundleDefined",),
+                "requires_permission": "enterprise_pim.attribute",
+                "idempotency_key": "bundle_id",
+            },
+            {
+                "route": "POST /variant-families",
+                "command": "define_variant_family",
+                "owned_tables": ("product_variant_family",),
+                "emits": ("VariantFamilyDefined",),
+                "requires_permission": "enterprise_pim.attribute",
+                "idempotency_key": "family_id",
+            },
+            {
+                "route": "POST /variant-members",
+                "command": "add_variant_member",
+                "owned_tables": ("product_variant_member",),
+                "emits": ("VariantMemberAdded",),
+                "requires_permission": "enterprise_pim.attribute",
+                "idempotency_key": "member_id",
+            },
+            {
+                "route": "POST /assortments",
+                "command": "assign_assortment",
+                "owned_tables": ("assortment_assignment",),
+                "emits": ("AssortmentAssigned",),
+                "requires_permission": "enterprise_pim.workflow",
+                "idempotency_key": "assignment_id",
+            },
+            {
+                "route": "POST /data-stewards",
+                "command": "assign_data_steward",
+                "owned_tables": ("data_steward_assignment",),
+                "emits": ("DataStewardAssigned",),
+                "requires_permission": "enterprise_pim.workflow",
+                "idempotency_key": "assignment_id",
+            },
+            {
+                "route": "POST /pim-exceptions",
+                "command": "open_pim_exception",
+                "owned_tables": ("pim_exception",),
+                "emits": ("PimExceptionOpened",),
+                "requires_permission": "enterprise_pim.workflow",
+                "idempotency_key": "exception_id",
+            },
+            {
+                "route": "POST /pim-exceptions/{id}/resolve",
+                "command": "resolve_pim_exception",
+                "owned_tables": ("pim_exception", "exception_resolution_plan"),
+                "emits": ("PimExceptionResolved",),
+                "requires_permission": "enterprise_pim.workflow",
+                "idempotency_key": "exception_id:resolution",
             },
             {
                 "route": "POST /pim-events",
@@ -1127,10 +1652,23 @@ def enterprise_pim_permissions_contract() -> dict:
         "action_permissions": {
             "create_taxonomy": "enterprise_pim.taxonomy",
             "define_attribute": "enterprise_pim.attribute",
+            "create_attribute_group": "enterprise_pim.attribute",
+            "register_attribute_value_option": "enterprise_pim.attribute",
+            "register_attribute_validation_rule": "enterprise_pim.attribute",
             "upsert_localized_content": "enterprise_pim.localization",
+            "upsert_translation_memory": "enterprise_pim.localization",
+            "register_locale_fallback_rule": "enterprise_pim.localization",
             "start_validation_workflow": "enterprise_pim.workflow",
             "approve_validation_workflow": "enterprise_pim.approve",
             "publish_master_data": "enterprise_pim.workflow",
+            "create_product_relationship": "enterprise_pim.taxonomy",
+            "define_product_bundle": "enterprise_pim.attribute",
+            "define_variant_family": "enterprise_pim.attribute",
+            "add_variant_member": "enterprise_pim.attribute",
+            "assign_assortment": "enterprise_pim.workflow",
+            "assign_data_steward": "enterprise_pim.workflow",
+            "open_pim_exception": "enterprise_pim.workflow",
+            "resolve_pim_exception": "enterprise_pim.workflow",
             "accept_dependency_schema": "enterprise_pim.integrate",
             "receive_event": "enterprise_pim.integrate",
             "register_rule": "enterprise_pim.configure",

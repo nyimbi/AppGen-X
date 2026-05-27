@@ -88,8 +88,19 @@ The PBC does not share product, media, pricing, tax, inventory, search, or comme
 
 - Enterprise taxonomy creation with hierarchy, lineage, parent-child topology, localized names, and status transitions.
 - Product attribute definition with data type, required flag, inherited value, localized labels, compiled hash, and active/blocked state.
+- Attribute group creation with ordered attribute membership and owned taxonomy validation.
+- Attribute value-option registration with owned-attribute validation.
+- Attribute validation-rule registration with sample-value evaluation and quality-signal evidence.
 - Attribute inheritance with configurable maximum depth.
 - Localized content upsert with locale validation, default-locale fallback, translation quality scoring, and localized override metadata.
+- Translation-memory upsert with source-text hashing, target-locale quality scoring, and approval status.
+- Locale fallback-rule registration with configured-locale validation.
+- Product relationship modeling for accessory, substitute, compatibility, and bundle-style product graph edges.
+- Product bundle definition with component references, component counts, and bundle policy evidence.
+- Variant-family and variant-member lifecycle support with required axis validation.
+- Assortment assignment by channel and market using configured channel policy.
+- Data-steward assignment for explicit ownership and accountability.
+- PIM exception open and resolution workflows with resolution-plan evidence.
 - Validation workflow start and approval with required approver steps, SLA evidence, approval trail, and taxonomy approval propagation.
 - Publication readiness evaluation across required locales, required attributes, approved workflow, dependency projections, taxonomy status, and channel configuration.
 - Dependency schema acceptance with schema version floors and accepted event validation.
@@ -139,8 +150,15 @@ The PBC does not share product, media, pricing, tax, inventory, search, or comme
 - `receive_event` performs idempotent dependency intake, projection storage, retry handling, and dead-letter recording.
 - `create_taxonomy` owns taxonomy hierarchy and emits `TaxonomyClassified`.
 - `define_attribute` owns typed attribute definitions and emits `AttributeDefined`.
+- `create_attribute_group` owns grouped attribute presentation and governance membership.
+- `register_attribute_value_option` owns controlled values for enumerated attributes.
+- `register_attribute_validation_rule` owns validation logic plus attribute-quality evidence.
 - `upsert_localized_content` owns localized content and emits `ContentLocalized`.
+- `upsert_translation_memory` owns translation-memory evidence for reusable localized phrases.
+- `register_locale_fallback_rule` owns locale fallback policy.
 - `start_validation_workflow` and `approve_validation_workflow` own workflow state and emit `ValidationApproved`.
+- `create_product_relationship`, `define_product_bundle`, `define_variant_family`, `add_variant_member`, `assign_assortment`, and `assign_data_steward` own relationship, bundling, variant, channel, and stewardship execution.
+- `open_pim_exception` and `resolve_pim_exception` own exception lifecycle and resolution-plan evidence.
 - `publish_master_data` emits `PimMasterDataReady` only after readiness checks.
 - `build_api_contract` emits descriptor-level route, permission, idempotency, event, and dependency evidence.
 - `permissions_contract` maps commands to RBAC permissions.
@@ -151,10 +169,23 @@ The PBC does not share product, media, pricing, tax, inventory, search, or comme
 
 - `POST /product-taxonomies` maps to `create_taxonomy`.
 - `POST /product-attributes` maps to `define_attribute`.
+- `POST /attribute-groups` maps to `create_attribute_group`.
+- `POST /attribute-options` maps to `register_attribute_value_option`.
+- `POST /attribute-validation-rules` maps to `register_attribute_validation_rule`.
 - `POST /localized-content` maps to `upsert_localized_content`.
+- `POST /translation-memory` maps to `upsert_translation_memory`.
+- `POST /locale-fallback-rules` maps to `register_locale_fallback_rule`.
 - `POST /validation-workflows` maps to `start_validation_workflow`.
 - `POST /validation-workflows/{id}/approve` maps to `approve_validation_workflow`.
 - `POST /dependency-schemas` maps to `accept_dependency_schema`.
+- `POST /product-relationships` maps to `create_product_relationship`.
+- `POST /product-bundles` maps to `define_product_bundle`.
+- `POST /variant-families` maps to `define_variant_family`.
+- `POST /variant-members` maps to `add_variant_member`.
+- `POST /assortments` maps to `assign_assortment`.
+- `POST /data-stewards` maps to `assign_data_steward`.
+- `POST /pim-exceptions` maps to `open_pim_exception`.
+- `POST /pim-exceptions/{id}/resolve` maps to `resolve_pim_exception`.
 - `POST /pim-events` maps to `receive_event`.
 - `POST /pim-publications` maps to `publish_master_data`.
 - `GET /pim-workbench` maps to `build_workbench_view`.
@@ -170,6 +201,19 @@ Emitted events:
 - `ContentLocalized`
 - `ValidationApproved`
 - `PimMasterDataReady`
+- `AttributeGroupCreated`
+- `AttributeOptionRegistered`
+- `AttributeValidationRuleRegistered`
+- `TranslationMemoryUpdated`
+- `LocaleFallbackRegistered`
+- `ProductRelationshipCreated`
+- `ProductBundleDefined`
+- `VariantFamilyDefined`
+- `VariantMemberAdded`
+- `AssortmentAssigned`
+- `DataStewardAssigned`
+- `PimExceptionOpened`
+- `PimExceptionResolved`
 
 Consumed events:
 

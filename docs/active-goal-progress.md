@@ -2171,3 +2171,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   invalid import rollback before runtime packaging. Verified with Python compile,
   direct source parity audit probe, and direct generated form-designer template
   audit probe. Commit: `3737292`.
+- Current `enterprise_pim` PBC pass promotes descriptor-heavy product
+  information areas into executable package-local operations: attribute groups,
+  attribute value options, attribute validation rules with quality signals,
+  translation memory, locale fallback rules, product relationships, bundles,
+  variant families/members, assortment assignment, data-steward assignment, and
+  PIM exception open/resolve. Runtime, package exports, manifest, AppGen-X event
+  descriptors, generated service/route descriptors, UI bindings, specification,
+  and focused tests now cover those flows without stream-engine choices or
+  shared-table access. Verification: package Python compile, runtime smoke,
+  package service/route/UI/agent smokes, focused package contract tests, source
+  artifact contract, implementation release audit, generation smoke audit,
+  specification contract, and restricted legacy-name scan all passed. Commit:
+  pending.
