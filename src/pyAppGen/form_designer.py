@@ -4934,6 +4934,124 @@ def pascal_debug_session_transaction_replay_contract(design: dict | None = None)
     }
 
 
+def pascal_debug_watch_transaction_replay_contract(design: dict | None = None) -> dict:
+    """Replay debug watch evaluation with scoped reads, redaction, and rollback evidence."""
+    debug_session = pascal_runtime_debug_authoring_contract(design)
+    debug_transaction = pascal_debug_session_transaction_replay_contract(design)
+    safe_watches = tuple(item for item in debug_session["watches"] if item["safe"])
+    unsafe_probes = (
+        {
+            "expression": "Application.Terminate",
+            "reason": "method_call_not_allowed",
+            "decision": "blocked",
+        },
+        {
+            "expression": "Self.Delete",
+            "reason": "mutating_member_not_allowed",
+            "decision": "blocked",
+        },
+    )
+    transactions = tuple(
+        {
+            "expression": watch["expression"],
+            "scope": watch["scope"],
+            "type": watch["type"],
+            "pipeline": (
+                "pause_at_breakpoint",
+                "parse_watch_expression",
+                "validate_scope_binding",
+                "deny_user_code_execution",
+                "snapshot_runtime_state",
+                "read_safe_runtime_state",
+                "redact_value",
+                "publish_watch_value",
+                "rollback_watch_snapshot",
+            ),
+            "value_preview": f"<{watch['type']}:redacted>",
+            "rollback": ("restore_runtime_snapshot", "clear_watch_cache", "resume_preview_state"),
+            "ok": watch["safe"] and "watch_evaluation_sandboxed" in {check["id"] for check in debug_transaction["checks"] if check["ok"]},
+        }
+        for watch in safe_watches
+    )
+    replay = (
+        {
+            "phase": "pause_at_breakpoint",
+            "ok": debug_transaction["ok"]
+            and "breakpoint_hit_routes_to_designer" in {check["id"] for check in debug_transaction["checks"] if check["ok"]},
+            "artifact": tuple(item["phase"] for item in debug_transaction["replay"]),
+        },
+        {
+            "phase": "parse_watch_expressions",
+            "ok": bool(transactions) and all("parse_watch_expression" in transaction["pipeline"] for transaction in transactions),
+            "artifact": tuple(transaction["expression"] for transaction in transactions),
+        },
+        {
+            "phase": "validate_scope_bindings",
+            "ok": all("validate_scope_binding" in transaction["pipeline"] and transaction["scope"] for transaction in transactions),
+            "artifact": tuple((transaction["expression"], transaction["scope"]) for transaction in transactions),
+        },
+        {
+            "phase": "reject_unsafe_watch_expressions",
+            "ok": all(item["decision"] == "blocked" and item["reason"].endswith("_not_allowed") for item in unsafe_probes),
+            "artifact": unsafe_probes,
+        },
+        {
+            "phase": "evaluate_and_redact_values",
+            "ok": all(
+                transaction["pipeline"].index("read_safe_runtime_state") < transaction["pipeline"].index("redact_value")
+                and transaction["value_preview"].endswith(":redacted>")
+                for transaction in transactions
+            ),
+            "artifact": tuple(transaction["value_preview"] for transaction in transactions),
+        },
+        {
+            "phase": "publish_watch_panel",
+            "ok": all("publish_watch_value" in transaction["pipeline"] for transaction in transactions),
+            "artifact": tuple(transaction["expression"] for transaction in transactions),
+        },
+        {
+            "phase": "rollback_watch_snapshot",
+            "ok": all({"restore_runtime_snapshot", "clear_watch_cache", "resume_preview_state"} <= set(transaction["rollback"]) for transaction in transactions),
+            "artifact": tuple(transaction["rollback"] for transaction in transactions),
+        },
+    )
+    phase_names = tuple(item["phase"] for item in replay)
+    checks = (
+        {"id": "watch_transactions_declared", "ok": bool(transactions), "evidence": tuple(transaction["expression"] for transaction in transactions)},
+        {"id": "watch_scope_validated_before_evaluation", "ok": phase_names.index("validate_scope_bindings") < phase_names.index("evaluate_and_redact_values"), "evidence": phase_names},
+        {"id": "unsafe_watch_expressions_blocked", "ok": replay[3]["ok"], "evidence": unsafe_probes},
+        {"id": "watch_values_redacted_before_publish", "ok": phase_names.index("evaluate_and_redact_values") < phase_names.index("publish_watch_panel") and replay[4]["ok"], "evidence": tuple(transaction["value_preview"] for transaction in transactions)},
+        {"id": "watch_snapshot_rollback_ready", "ok": replay[6]["ok"], "evidence": tuple(transaction["rollback"] for transaction in transactions)},
+        {"id": "watch_transaction_side_effect_free", "ok": not debug_session["side_effects"] and not debug_transaction["side_effects"]},
+    )
+    ok = all(item["ok"] for item in replay) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.pascal-debug-watch-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "transactions": transactions,
+        "unsafe_probes": unsafe_probes,
+        "replay": replay,
+        "checks": checks,
+        "final_state": {
+            "watch_count": len(transactions),
+            "blocked_unsafe_watches": len(unsafe_probes),
+            "redacted_values": sum(1 for transaction in transactions if transaction["value_preview"].endswith(":redacted>")),
+            "persisted_writes": 0,
+        },
+        "guards": (
+            "breakpoint_pause_before_watch_evaluation",
+            "watch_scope_validated_before_evaluation",
+            "unsafe_watch_expressions_blocked",
+            "watch_values_redacted_before_publish",
+            "watch_snapshot_rollback_ready",
+            "watch_transactions_have_no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def pascal_compile_package_transaction_replay_contract(design: dict | None = None) -> dict:
     """Replay compile/package authoring from stream decode through rollback proof."""
     design = design or form_design()
@@ -5629,6 +5747,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
     diagnostics = pascal_diagnostic_mapping_contract(design)
     compile_package_replay = pascal_compile_package_transaction_replay_contract(design)
     debug_session = pascal_runtime_debug_authoring_contract(design)
+    debug_watch_replay = pascal_debug_watch_transaction_replay_contract(design)
     runtime_replay = pascal_runtime_session_replay_contract(design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design)
     operations = pascal_runtime_actionable_operations(design)
@@ -5700,6 +5819,18 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
             },
         },
         {
+            "phase": "evaluate_debug_watches",
+            "ok": debug_watch_replay["ok"]
+            and debug_watch_replay["final_state"]["persisted_writes"] == 0
+            and {
+                "watch_scope_validated_before_evaluation",
+                "unsafe_watch_expressions_blocked",
+                "watch_values_redacted_before_publish",
+            }
+            <= {check["id"] for check in debug_watch_replay["checks"] if check["ok"]},
+            "evidence": debug_watch_replay,
+        },
+        {
             "phase": "reload_runtime_preview",
             "ok": runtime_replay["ok"] and design_edit_replay["ok"] and operations["operations"]["reload_runtime_preview"]["ok"],
             "evidence": {
@@ -5716,7 +5847,8 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
         {"id": "diagnostics_route_ready", "ok": phases[3]["ok"]},
         {"id": "compile_package_transaction_ready", "ok": phases[4]["ok"]},
         {"id": "debug_preview_ready", "ok": phases[5]["ok"]},
-        {"id": "runtime_preview_ready", "ok": phases[6]["ok"]},
+        {"id": "debug_watch_transaction_ready", "ok": phases[6]["ok"]},
+        {"id": "runtime_preview_ready", "ok": phases[7]["ok"]},
         {"id": "operation_surface_ready", "ok": operations["ok"]},
         {"id": "authoring_scenario_ready", "ok": authoring_scenario["ok"] and "verify_runtime_state" in authoring_scenario["pipeline"]},
         {
@@ -5729,6 +5861,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
                 "normalize_diagnostics",
                 "replay_compile_package_transaction",
                 "debug_preview_trace",
+                "evaluate_debug_watches",
                 "reload_runtime_preview",
             ),
         },
@@ -5741,13 +5874,15 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
         "phases": phases,
         "checks": checks,
         "compile_package_replay": compile_package_replay,
+        "debug_watch_replay": debug_watch_replay,
         "authoring_scenario": authoring_scenario,
         "guards": (
             "stream_identity_before_unit_cross_check",
             "unit_semantics_before_target_emit",
             "compile_package_replay_before_debug_trace",
             "diagnostics_before_runtime_preview",
-            "debug_trace_before_runtime_reload",
+            "debug_trace_before_watch_evaluation",
+            "debug_watch_before_runtime_reload",
             "reload_preview_uses_actionable_operation",
         ),
         "side_effects": (),
@@ -5788,6 +5923,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     debug_symbols = pascal_debug_symbol_contract(design)
     debug_session = pascal_runtime_debug_authoring_contract(design)
     debug_transaction_replay = pascal_debug_session_transaction_replay_contract(design)
+    debug_watch_replay = pascal_debug_watch_transaction_replay_contract(design)
     compile_package_replay = pascal_compile_package_transaction_replay_contract(design)
     runtime_memory_model = pascal_runtime_memory_model_contract(design)
     toolchain_adapters = pascal_toolchain_adapter_contract(design)
@@ -6000,6 +6136,19 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "evidence": debug_transaction_replay,
         },
         {
+            "id": "debug_watch_transaction_replay",
+            "ok": debug_watch_replay["ok"]
+            and {
+                "watch_scope_validated_before_evaluation",
+                "unsafe_watch_expressions_blocked",
+                "watch_values_redacted_before_publish",
+                "watch_snapshot_rollback_ready",
+            } <= {check["id"] for check in debug_watch_replay["checks"] if check["ok"]}
+            and debug_watch_replay["final_state"]["persisted_writes"] == 0
+            and not debug_watch_replay["side_effects"],
+            "evidence": debug_watch_replay,
+        },
+        {
             "id": "compile_package_transaction_replay",
             "ok": compile_package_replay["ok"]
             and {
@@ -6197,6 +6346,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "debug_symbols": debug_symbols,
         "debug_session": debug_session,
         "debug_transaction_replay": debug_transaction_replay,
+        "debug_watch_replay": debug_watch_replay,
         "compile_package_replay": compile_package_replay,
         "runtime_memory_model": runtime_memory_model,
         "toolchain_adapters": toolchain_adapters,
@@ -20069,6 +20219,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "diagnostics_route_ready",
                 "compile_package_transaction_ready",
                 "debug_preview_ready",
+                "debug_watch_transaction_ready",
                 "runtime_preview_ready",
                 "phase_order_ready",
             }
@@ -20079,6 +20230,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "design_edit_session_replay",
                 "runtime_debug_authoring",
                 "debug_session_transaction_replay",
+                "debug_watch_transaction_replay",
                 "compile_package_transaction_replay",
                 "native_form_modules",
                 "native_form_module_tests",
@@ -20097,9 +20249,11 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "diagnostics_route_ready",
                 "compile_package_transaction_ready",
                 "debug_preview_ready",
+                "debug_watch_transaction_ready",
                 "runtime_preview_ready",
                 "runtime_debug_authoring",
                 "debug_session_transaction_replay",
+                "debug_watch_transaction_replay",
                 "compile_package_transaction_replay",
                 "native_form_modules",
                 "native_form_module_tests",
@@ -23641,6 +23795,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "form_stream_schema",
         "stream_migration",
         "debug_symbols",
+        "runtime_debug_authoring",
+        "debug_session_transaction_replay",
+        "debug_watch_transaction_replay",
         "compile_package_transaction_replay",
         "runtime_memory_model",
         "toolchain_adapters",
@@ -23753,6 +23910,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "normalize_diagnostics",
         "replay_compile_package_transaction",
         "debug_preview_trace",
+        "evaluate_debug_watches",
         "reload_runtime_preview",
     )
     passing_runtime_readiness_phases = tuple(
@@ -23765,6 +23923,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "diagnostics_route_ready",
         "compile_package_transaction_ready",
         "debug_preview_ready",
+        "debug_watch_transaction_ready",
         "runtime_preview_ready",
         "operation_surface_ready",
         "phase_order_ready",

@@ -271,6 +271,7 @@ from pyAppGen.form_designer import pascal_open_design_stream_operation
 from pyAppGen.form_designer import pascal_refresh_resources_operation
 from pyAppGen.form_designer import pascal_reload_runtime_preview_operation
 from pyAppGen.form_designer import pascal_debug_session_transaction_replay_contract
+from pyAppGen.form_designer import pascal_debug_watch_transaction_replay_contract
 from pyAppGen.form_designer import pascal_runtime_debug_authoring_contract
 from pyAppGen.form_designer import pascal_run_runtime_authoring_scenario_operation
 from pyAppGen.form_designer import pascal_round_trip_stream_operation
@@ -4275,6 +4276,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "debug_symbols",
         "runtime_debug_authoring",
         "debug_session_transaction_replay",
+        "debug_watch_transaction_replay",
         "compile_package_transaction_replay",
         "runtime_memory_model",
         "toolchain_adapters",
@@ -4346,6 +4348,28 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "capture_exception_trace",
         "reload_preview_after_debug",
     )
+    debug_watch = pascal_debug_watch_transaction_replay_contract(design)
+    assert debug_watch["format"] == "appgen.pascal-debug-watch-transaction-replay.v1"
+    assert debug_watch["ok"] is True
+    assert {
+        "watch_transactions_declared",
+        "watch_scope_validated_before_evaluation",
+        "unsafe_watch_expressions_blocked",
+        "watch_values_redacted_before_publish",
+        "watch_snapshot_rollback_ready",
+        "watch_transaction_side_effect_free",
+    } == {check["id"] for check in debug_watch["checks"]}
+    assert tuple(item["phase"] for item in debug_watch["replay"]) == (
+        "pause_at_breakpoint",
+        "parse_watch_expressions",
+        "validate_scope_bindings",
+        "reject_unsafe_watch_expressions",
+        "evaluate_and_redact_values",
+        "publish_watch_panel",
+        "rollback_watch_snapshot",
+    )
+    assert debug_watch["final_state"]["persisted_writes"] == 0
+    assert runtime["debug_watch_replay"]["ok"] is True
     compile_package_transaction = pascal_compile_package_transaction_replay_contract(design)
     assert compile_package_transaction["format"] == "appgen.pascal-compile-package-transaction-replay.v1"
     assert compile_package_transaction["ok"] is True
@@ -4381,6 +4405,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "normalize_diagnostics",
         "replay_compile_package_transaction",
         "debug_preview_trace",
+        "evaluate_debug_watches",
         "reload_runtime_preview",
     } == {item["phase"] for item in runtime["readiness"]["phases"]}
     assert {
@@ -4390,6 +4415,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "diagnostics_route_ready",
         "compile_package_transaction_ready",
         "debug_preview_ready",
+        "debug_watch_transaction_ready",
         "runtime_preview_ready",
         "operation_surface_ready",
         "authoring_scenario_ready",
@@ -5556,11 +5582,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "normalize_diagnostics",
         "replay_compile_package_transaction",
         "debug_preview_trace",
+        "evaluate_debug_watches",
         "reload_runtime_preview",
     )
     assert {
         "form_stream_schema",
         "runtime_session_replay",
+        "debug_watch_transaction_replay",
         "compile_package_transaction_replay",
         "event_binding_lifecycle",
     } <= set(lifecycle_by_phase["stream_runtime_model"]["evidence"]["passing_checks"])
@@ -5755,8 +5783,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "runtime_preview_ready",
         "debug_preview_ready",
+        "debug_watch_transaction_ready",
         "runtime_debug_authoring",
         "debug_session_transaction_replay",
+        "debug_watch_transaction_replay",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -15726,6 +15756,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "normalize_diagnostics",
         "replay_compile_package_transaction",
         "debug_preview_trace",
+        "evaluate_debug_watches",
         "reload_runtime_preview",
     )
     assert {
@@ -15937,9 +15968,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "runtime_preview_ready",
         "debug_preview_ready",
+        "debug_watch_transaction_ready",
         "compile_package_transaction_ready",
         "runtime_debug_authoring",
         "debug_session_transaction_replay",
+        "debug_watch_transaction_replay",
         "compile_package_transaction_replay",
         "native_form_modules",
         "native_form_module_tests",
@@ -16341,6 +16374,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "debug_symbols",
         "runtime_debug_authoring",
         "debug_session_transaction_replay",
+        "debug_watch_transaction_replay",
         "compile_package_transaction_replay",
         "runtime_memory_model",
         "toolchain_adapters",
@@ -16424,6 +16458,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "capture_exception_trace",
         "reload_preview_after_debug",
     )
+    assert generated_runtime["debug_watch_replay"]["format"] == (
+        "appgen.generated-pascal-debug-watch-transaction-replay.v1"
+    )
+    assert generated_runtime["debug_watch_replay"]["ok"] is True
+    assert {
+        "watch_scope_validated_before_evaluation",
+        "unsafe_watch_expressions_blocked",
+        "watch_values_redacted_before_publish",
+        "watch_snapshot_rollback_ready",
+    } <= {check["id"] for check in generated_runtime["debug_watch_replay"]["checks"] if check["ok"]}
+    assert generated_runtime["debug_watch_replay"]["final_state"]["persisted_writes"] == 0
     assert generated_runtime["compile_package_replay"]["format"] == (
         "appgen.generated-pascal-compile-package-transaction-replay.v1"
     )
@@ -16463,6 +16508,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_runtime["readiness"]["ok"] is True
     assert "reload_runtime_preview" in {item["phase"] for item in generated_runtime["readiness"]["phases"]}
     assert "debug_preview_trace" in {item["phase"] for item in generated_runtime["readiness"]["phases"]}
+    assert "evaluate_debug_watches" in {item["phase"] for item in generated_runtime["readiness"]["phases"]}
     assert "replay_compile_package_transaction" in {
         item["phase"] for item in generated_runtime["readiness"]["phases"]
     }
@@ -16473,6 +16519,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         check["id"] for check in generated_runtime["readiness"]["checks"] if check["ok"]
     }
     assert "debug_preview_ready" in {
+        check["id"] for check in generated_runtime["readiness"]["checks"] if check["ok"]
+    }
+    assert "debug_watch_transaction_ready" in {
         check["id"] for check in generated_runtime["readiness"]["checks"] if check["ok"]
     }
     assert "compile_package_transaction_ready" in {
