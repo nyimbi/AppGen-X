@@ -1,6 +1,61 @@
-"""Generated owned schema evidence for the eam PBC."""
+"""Owned schema evidence for the Enterprise Asset Management PBC."""
 
-SCHEMA_CONTRACT = {'format': 'appgen.eam-owned-schema-contract.v1', 'ok': True, 'tables': ({'logical_table': 'equipment', 'owned_table': 'eam_equipment', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'logical_table': 'maintenance_plan', 'owned_table': 'eam_maintenance_plan', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'equipment_id', 'type': 'integer', 'required': True, 'references': 'eam_equipment.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'equipment_id', 'target_table': 'eam_equipment', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'work_order', 'owned_table': 'eam_work_order', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'equipment_id', 'type': 'integer', 'required': True, 'references': 'eam_equipment.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'equipment_id', 'target_table': 'eam_equipment', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'spare_part_usage', 'owned_table': 'eam_spare_part_usage', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'equipment_id', 'type': 'integer', 'required': True, 'references': 'eam_equipment.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'equipment_id', 'target_table': 'eam_equipment', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'relationships': ({'from': 'maintenance_plan.equipment_id', 'to': 'equipment.equipment_id', 'type': 'owned_plan'}, {'from': 'work_order.equipment_id', 'to': 'equipment.equipment_id', 'type': 'owned_execution'}, {'from': 'work_order.plan_id', 'to': 'maintenance_plan.plan_id', 'type': 'owned_trigger'}, {'from': 'condition_reading.equipment_id', 'to': 'equipment.equipment_id', 'type': 'owned_reading'}, {'from': 'meter_reading.equipment_id', 'to': 'equipment.equipment_id', 'type': 'owned_reading'}, {'from': 'safety_permit.equipment_id', 'to': 'equipment.equipment_id', 'type': 'owned_safety'}, {'from': 'spare_part_usage.work_order_id', 'to': 'work_order.work_order_id', 'type': 'owned_consumption'}, {'from': 'maintenance_schedule.work_order_id', 'to': 'work_order.work_order_id', 'type': 'owned_schedule'}, {'from': 'service_vendor_event.work_order_id', 'to': 'work_order.work_order_id', 'type': 'owned_vendor_flow'}), 'migrations': ('migrations/001_initial.sql',), 'models': ({'class_name': 'EamEquipment', 'table': 'eam_equipment', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'class_name': 'EamMaintenancePlan', 'table': 'eam_maintenance_plan', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'equipment_id', 'type': 'integer', 'required': True, 'references': 'eam_equipment.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'equipment_id', 'target_table': 'eam_equipment', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'EamWorkOrder', 'table': 'eam_work_order', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'equipment_id', 'type': 'integer', 'required': True, 'references': 'eam_equipment.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'equipment_id', 'target_table': 'eam_equipment', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'EamSparePartUsage', 'table': 'eam_spare_part_usage', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'equipment_id', 'type': 'integer', 'required': True, 'references': 'eam_equipment.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'equipment_id', 'target_table': 'eam_equipment', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'datastore_backends': ('postgresql', 'mysql', 'mariadb'), 'shared_table_access': False, 'pbc': 'eam', 'owned_tables': ('eam_equipment', 'eam_maintenance_plan', 'eam_work_order', 'eam_spare_part_usage'), 'database_backends': ('postgresql',)}
+from .runtime import EAM_ALLOWED_DATABASE_BACKENDS
+from .runtime import EAM_OWNED_TABLES
+from .runtime import eam_build_schema_contract
+
+
+def _prefix_table(table: str) -> str:
+    return table if table.startswith("eam_") else f"eam_{table}"
+
+
+def _build_contract() -> dict:
+    runtime_contract = eam_build_schema_contract()
+    runtime_tables = tuple(runtime_contract.get("tables", ()))
+    table_index = {table["table"]: table for table in runtime_tables}
+    tables = tuple(
+        {
+            "logical_table": table,
+            "owned_table": _prefix_table(table),
+            "fields": tuple(
+                {"name": field, "type": "jsonb" if field.endswith("plans") else "string", "required": field.endswith("_id") or field in {"tenant", "status"}}
+                for field in table_index[table]["fields"]
+            ),
+            "relationships": tuple(
+                relationship
+                for relationship in runtime_contract.get("relationships", ())
+                if relationship["from"].startswith(f"{table}.")
+            ),
+        }
+        for table in EAM_OWNED_TABLES
+    )
+    models = tuple(
+        {
+            "class_name": "".join(part.capitalize() for part in _prefix_table(table).split("_")),
+            "table": _prefix_table(table),
+            "fields": next(item["fields"] for item in tables if item["logical_table"] == table),
+            "relationships": next(item["relationships"] for item in tables if item["logical_table"] == table),
+        }
+        for table in EAM_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.eam-owned-schema-contract.v1",
+        "ok": runtime_contract["ok"] and len(tables) == len(EAM_OWNED_TABLES),
+        "pbc": "eam",
+        "tables": tables,
+        "relationships": runtime_contract["relationships"],
+        "migrations": ("migrations/001_initial.sql",),
+        "migration_plan": runtime_contract["migrations"],
+        "models": models,
+        "owned_tables": tuple(_prefix_table(table) for table in EAM_OWNED_TABLES),
+        "logical_owned_tables": EAM_OWNED_TABLES,
+        "datastore_backends": EAM_ALLOWED_DATABASE_BACKENDS,
+        "database_backends": EAM_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+SCHEMA_CONTRACT = _build_contract()
 
 
 def build_schema_contract():
@@ -11,41 +66,31 @@ def build_schema_contract():
 def validate_schema_contract():
     """Validate owned table, migration, model, and datastore evidence."""
     contract = build_schema_contract()
-    pbc = contract['pbc']
-    owned_tables = tuple(contract.get('owned_tables', ()))
-    raw_model_tables = tuple(
-        model.get('table')
-        for model in contract.get('models', ())
-        if isinstance(model, dict) and model.get('table')
-    )
-    model_tables = tuple(
-        table if table.startswith(f'{pbc}_') else f'{pbc}_{table}'
-        for table in raw_model_tables
-    )
-    migration_paths = tuple(contract.get('migrations', ()))
-    allowed_backends = {'postgresql', 'mysql', 'mariadb'}
-    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f'{pbc}_'))
-    missing_models = tuple(table for table in owned_tables if model_tables and table not in model_tables)
-    invalid_backends = tuple(
-        backend for backend in contract.get('database_backends', ()) if backend not in allowed_backends
-    )
+    pbc = contract["pbc"]
+    owned_tables = tuple(contract.get("owned_tables", ()))
+    model_tables = tuple(model["table"] for model in contract.get("models", ()))
+    migration_paths = tuple(contract.get("migrations", ()))
+    allowed_backends = {"postgresql", "mysql", "mariadb"}
+    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f"{pbc}_"))
+    missing_models = tuple(table for table in owned_tables if table not in model_tables)
+    invalid_backends = tuple(backend for backend in contract.get("database_backends", ()) if backend not in allowed_backends)
     return {
-        'ok': contract.get('ok') is True
-        and bool(owned_tables)
+        "ok": contract.get("ok") is True
+        and len(owned_tables) >= 16
         and bool(migration_paths)
         and not invalid_tables
         and not missing_models
         and not invalid_backends
-        and contract.get('shared_table_access') is False,
-        'pbc': pbc,
-        'owned_tables': owned_tables,
-        'raw_model_tables': raw_model_tables,
-        'model_tables': model_tables,
-        'migration_paths': migration_paths,
-        'invalid_tables': invalid_tables,
-        'missing_models': missing_models,
-        'invalid_backends': invalid_backends,
-        'side_effects': (),
+        and contract.get("shared_table_access") is False,
+        "pbc": pbc,
+        "owned_tables": owned_tables,
+        "logical_owned_tables": contract.get("logical_owned_tables", ()),
+        "model_tables": model_tables,
+        "migration_paths": migration_paths,
+        "invalid_tables": invalid_tables,
+        "missing_models": missing_models,
+        "invalid_backends": invalid_backends,
+        "side_effects": (),
     }
 
 

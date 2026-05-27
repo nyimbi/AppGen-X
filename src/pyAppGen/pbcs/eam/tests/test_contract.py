@@ -12,11 +12,14 @@ def test_generated_schema_service_and_release_evidence():
 
     assert SCHEMA_CONTRACT['pbc'] == 'eam'
     assert SCHEMA_CONTRACT['ok'] is True
-    assert SCHEMA_CONTRACT['owned_tables']
+    assert len(SCHEMA_CONTRACT['owned_tables']) >= 16
+    assert 'eam_condition_reading' in SCHEMA_CONTRACT['owned_tables']
+    assert 'eam_maintenance_dead_letter' in SCHEMA_CONTRACT['owned_tables']
     schema_smoke = schema_contract.smoke_test()
     model_smoke = models.smoke_test()
     assert schema_smoke['ok'] is True
     assert model_smoke['ok'] is True
+    assert len(model_smoke['manifest']['model_tables']) == len(SCHEMA_CONTRACT['owned_tables'])
     assert not schema_smoke['side_effects']
     assert not model_smoke['side_effects']
     assert SERVICE_CONTRACT['pbc'] == 'eam'
@@ -47,6 +50,8 @@ def test_manifest_and_event_contract():
     assert PBC_MANIFEST['pbc'] == 'eam'
     assert PBC_MANIFEST['standard_features']
     assert PBC_MANIFEST['advanced_capabilities']
+    assert len(PBC_MANIFEST['tables']) >= 16
+    assert 'POST /maintenance-configuration' in PBC_MANIFEST['apis']
     assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'
     assert EVENT_CONTRACT['outbox_table'].startswith('eam_')
     assert EVENT_CONTRACT['inbox_table'].startswith('eam_')
@@ -57,6 +62,10 @@ def test_manifest_and_event_contract():
     assert validation['ok'] is True
     assert smoke['ok'] is True
     assert manifest['stream_engine_picker_visible'] is False
+    assert len(manifest['emitted']) >= 10
+    assert len(manifest['consumed']) >= 5
+    assert {event['event_type'] for event in manifest['emitted']} >= {'EquipmentRegistered', 'SafetyPermitApproved', 'MaintenanceCompleted'}
+    assert {event['event_type'] for event in manifest['consumed']} >= {'InventoryReservationConfirmed', 'AssetLifecycleUpdated'}
     assert not validation['invalid_tables']
     assert not validation['invalid_emitted']
     assert not validation['invalid_consumed']
@@ -103,7 +112,9 @@ def test_service_and_route_surface_are_executable():
     assert operation_contracts['ok'] is True
     assert route_contracts['ok'] is True
     assert route_validation['ok'] is True
-    assert route_contracts['contracts']
+    assert len(route_contracts['contracts']) >= 13
+    assert 'configure_runtime' in operation_contracts['operations']
+    assert 'build_workbench_view' in operation_contracts['operations']
     assert all(item['permission'] for item in route_contracts['contracts'])
     assert all(item['event_contract'] == 'AppGen-X' for item in route_contracts['contracts'])
     assert all(item['stream_engine_picker_visible'] is False for item in route_contracts['contracts'])

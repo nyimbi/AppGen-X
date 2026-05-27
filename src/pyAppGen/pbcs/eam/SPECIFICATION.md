@@ -125,6 +125,9 @@ Emitted:
 
 - `EquipmentRegistered`
 - `MaintenancePlanReleased`
+- `ConditionReadingRecorded`
+- `MeterReadingRecorded`
+- `SafetyPermitApproved`
 - `WorkOrderCreated`
 - `WorkOrderScheduled`
 - `SparePartUsed`
@@ -186,7 +189,7 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `eam`
 - Mesh: `opsmfg`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
@@ -194,15 +197,45 @@ This appendix is generated from the package manifest and is release-gated so the
 - `maintenance_plan`
 - `work_order`
 - `spare_part_usage`
+- `condition_reading`
+- `meter_reading`
+- `failure_event`
+- `maintenance_schedule`
+- `service_vendor_event`
+- `safety_permit`
+- `maintenance_rule`
+- `maintenance_parameter`
+- `maintenance_configuration`
+- `maintenance_outbox`
+- `maintenance_inbox`
+- `maintenance_dead_letter`
 
 ### API Routes
 
+- `POST /equipment`
+- `POST /maintenance-plans`
 - `POST /work-orders`
-- `GET /maintenance-plan`
-- `POST /asset-events`
+- `POST /work-orders/{id}/schedule`
+- `POST /work-orders/{id}/complete`
+- `POST /condition-readings`
+- `POST /meter-readings`
+- `POST /spare-usage`
+- `POST /safety-permits`
+- `GET /maintenance-workbench`
+- `POST /maintenance-rules`
+- `POST /maintenance-parameters`
+- `POST /maintenance-configuration`
 
 ### Emitted Events
 
+- `EquipmentRegistered`
+- `MaintenancePlanReleased`
+- `ConditionReadingRecorded`
+- `MeterReadingRecorded`
+- `SafetyPermitApproved`
+- `WorkOrderCreated`
+- `WorkOrderScheduled`
+- `SparePartUsed`
 - `MaintenanceCompleted`
 - `VendorPerformanceUpdated`
 
@@ -210,25 +243,115 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - `DowntimeCaptured`
 - `NonConformanceRaised`
+- `InventoryReservationConfirmed`
+- `PurchaseOrderAcknowledged`
+- `AssetLifecycleUpdated`
 
 ### UI Fragments
 
-- None declared
+- `MaintenanceWorkbench`
+- `EquipmentRegistry`
+- `AssetHierarchyMap`
+- `MaintenancePlanConsole`
+- `ConditionMonitoringPanel`
+- `WorkOrderBoard`
+- `MaintenanceScheduler`
+- `SpareUsageConsole`
+- `SafetyPermitConsole`
+- `ReliabilityDashboard`
+- `VendorServicePanel`
+- `MaintenanceRuleStudio`
+- `MaintenanceParameterConsole`
+- `MaintenanceConfigurationPanel`
 
 ### Permissions
 
-- None declared
+- `eam.read`
+- `eam.equipment`
+- `eam.plan`
+- `eam.execute`
+- `eam.safety`
+- `eam.configure`
+- `eam.audit`
 
 ### Configuration Keys
 
-- None declared
+- `database_backend`
+- `event_topic`
+- `retry_limit`
+- `allowed_sites`
+- `allowed_priorities`
+- `allowed_work_types`
+- `allowed_permit_types`
+- `default_timezone`
+- `workbench_limit`
 
 ### Standard Features
 
-- None declared
+- `equipment_registry`
+- `asset_hierarchy`
+- `location_tracking`
+- `criticality_model`
+- `warranty_tracking`
+- `maintenance_strategy`
+- `preventive_maintenance_plan`
+- `predictive_maintenance_plan`
+- `condition_monitoring`
+- `meter_reading`
+- `work_request_intake`
+- `work_order_planning`
+- `work_order_scheduling`
+- `mobile_execution`
+- `safety_permit`
+- `spare_part_reservation`
+- `spare_part_usage`
+- `labor_assignment`
+- `downtime_capture`
+- `failure_analysis`
+- `mtbf_mttr_analytics`
+- `vendor_service_tracking`
+- `compliance_evidence`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_maintenance_lifecycle`
+- `graph_relational_asset_topology`
+- `multi_tenant_maintenance_isolation`
+- `schema_evolution_resilient_maintenance_schema`
+- `probabilistic_failure_safety_cost_scoring`
+- `real_time_reliability_analytics`
+- `counterfactual_strategy_simulation`
+- `temporal_failure_forecasting`
+- `autonomous_maintenance_exception_resolution`
+- `semantic_maintenance_instruction_parsing`
+- `predictive_maintenance_risk_scoring`
+- `self_healing_maintenance_route_selection`
+- `zero_knowledge_maintenance_compliance_proof`
+- `immutable_maintenance_audit_trail`
+- `dynamic_maintenance_policy_screening`
+- `automated_maintenance_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_maintenance_federation`
+- `production_quality_inventory_procurement_integration`
+- `decentralized_equipment_identity`
+- `chaos_engineered_maintenance_tolerance`
+- `quantum_resistant_maintenance_authorization`
+- `carbon_aware_maintenance_scheduling`
+- `algebraic_maintenance_schedule_optimization`
+- `mechanism_design_labor_spare_allocation`
+- `information_theoretic_failure_anomaly_detection`
+- `temporal_maintenance_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_maintenance_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `maintenance_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

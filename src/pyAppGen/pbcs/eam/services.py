@@ -1,126 +1,147 @@
-"""Command service layer for the eam PBC."""
+"""Command and query service layer for the Enterprise Asset Management PBC."""
 
-EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.eam.events', 'inbox_topic': 'pbc.eam.inbox', 'outbox_table': 'eam_appgen_outbox_event', 'inbox_table': 'eam_appgen_inbox_event', 'dead_letter_table': 'eam_appgen_dead_letter_event', 'emitted': ({'event_type': 'MaintenanceCompleted', 'schema': 'eam.maintenance_completed.emitted.v1', 'topic': 'pbc.eam.events', 'outbox_table': 'eam_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'VendorPerformanceUpdated', 'schema': 'eam.vendor_performance_updated.emitted.v1', 'topic': 'pbc.eam.events', 'outbox_table': 'eam_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'DowntimeCaptured', 'schema': 'eam.downtime_captured.consumed.v1', 'topic': 'pbc.eam.inbox', 'inbox_table': 'eam_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'NonConformanceRaised', 'schema': 'eam.non_conformance_raised.consumed.v1', 'topic': 'pbc.eam.inbox', 'inbox_table': 'eam_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'eam_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'eam_appgen_inbox_event'}}
+from .runtime import EAM_EMITTED_EVENT_TYPES
+from .runtime import EAM_OWNED_TABLES
+from .runtime import eam_build_api_contract
+from .runtime import eam_build_service_contract
 
 
-OPERATION_CONTRACTS = ({'operation': 'command_work_orders', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/eam/work-orders', 'permission': 'eam.command.1', 'owned_tables': ('eam_equipment', 'eam_maintenance_plan', 'eam_work_order', 'eam_spare_part_usage'), 'read_tables': (), 'emitted_event': 'MaintenanceCompleted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_maintenance_plan', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/eam/maintenance-plan', 'permission': 'eam.query.2', 'owned_tables': (), 'read_tables': ('eam_equipment', 'eam_maintenance_plan', 'eam_work_order', 'eam_spare_part_usage'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_asset_events', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/eam/asset-events', 'permission': 'eam.command.3', 'owned_tables': ('eam_equipment', 'eam_maintenance_plan', 'eam_work_order', 'eam_spare_part_usage'), 'read_tables': (), 'emitted_event': 'MaintenanceCompleted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
+EVENT_CONTRACT = {
+    "contract": "appgen_event_contract",
+    "runtime_profile_visibility": "read_only_platform_metadata",
+    "adapter": "appgen_event_adapter",
+    "topic": "pbc.eam.events",
+    "inbox_topic": "pbc.eam.inbox",
+    "outbox_table": "eam_appgen_outbox_event",
+    "inbox_table": "eam_appgen_inbox_event",
+    "dead_letter_table": "eam_appgen_dead_letter_event",
+}
+
+
+def _owned_tables() -> tuple[str, ...]:
+    return tuple(table if table.startswith("eam_") else f"eam_{table}" for table in EAM_OWNED_TABLES)
+
+
+def _operation_contracts() -> tuple[dict, ...]:
+    api = eam_build_api_contract()
+    service = eam_build_service_contract()
+    commands = set(service["command_methods"])
+    queries = set(service["query_methods"])
+    emitted = iter(EAM_EMITTED_EVENT_TYPES)
+    contracts = []
+    for route in api["route_definitions"]:
+        operation = route.get("command") or route.get("query")
+        operation_kind = "command" if operation in commands else "query"
+        event_type = next(emitted, "MaintenanceCompleted") if operation_kind == "command" else None
+        contracts.append(
+            {
+                "operation": operation,
+                "operation_kind": operation_kind,
+                "method": route["method"],
+                "path": f"/api/pbc/eam{route['path']}",
+                "permission": api["permissions"][0] if operation_kind == "query" else "eam.execute",
+                "owned_tables": _owned_tables() if operation_kind == "command" else (),
+                "read_tables": () if operation_kind == "command" else _owned_tables(),
+                "emitted_event": event_type,
+                "transaction_boundary": "owned_datastore_plus_outbox",
+                "event_contract": "AppGen-X",
+            }
+        )
+    return tuple(contracts)
+
+
+OPERATION_CONTRACTS = _operation_contracts()
 
 
 def service_operation_contracts():
     """Return route-bound service operation contracts for this PBC."""
-    operations = tuple(item['operation'] for item in OPERATION_CONTRACTS)
-    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'command')
-    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'query')
+    operations = tuple(item["operation"] for item in OPERATION_CONTRACTS)
+    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "command")
+    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "query")
     return {
-        'ok': bool(OPERATION_CONTRACTS)
-        and all(item['event_contract'] == 'AppGen-X' for item in OPERATION_CONTRACTS)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in OPERATION_CONTRACTS)
-        and all(item['emitted_event'] for item in command_contracts)
-        and all(item['owned_tables'] and not item['read_tables'] for item in command_contracts)
-        and all(item['emitted_event'] is None for item in query_contracts)
-        and all(item['read_tables'] and not item['owned_tables'] for item in query_contracts),
-        'pbc': 'eam',
-        'operations': operations,
-        'command_operations': tuple(item['operation'] for item in command_contracts),
-        'query_operations': tuple(item['operation'] for item in query_contracts),
-        'contracts': OPERATION_CONTRACTS,
-        'side_effects': (),
+        "ok": len(OPERATION_CONTRACTS) >= 13
+        and all(item["event_contract"] == "AppGen-X" for item in OPERATION_CONTRACTS)
+        and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in OPERATION_CONTRACTS)
+        and all(item["emitted_event"] for item in command_contracts)
+        and all(item["owned_tables"] and not item["read_tables"] for item in command_contracts)
+        and all(item["emitted_event"] is None for item in query_contracts)
+        and all(item["read_tables"] and not item["owned_tables"] for item in query_contracts),
+        "pbc": "eam",
+        "operations": operations,
+        "command_operations": tuple(item["operation"] for item in command_contracts),
+        "query_operations": tuple(item["operation"] for item in query_contracts),
+        "contracts": OPERATION_CONTRACTS,
+        "side_effects": (),
     }
 
 
 def operation_plan(operation_name, payload=None):
     """Plan one service operation without mutating state."""
-    contract = next((item for item in OPERATION_CONTRACTS if item['operation'] == operation_name), None)
+    contract = next((item for item in OPERATION_CONTRACTS if item["operation"] == operation_name), None)
     if contract is None:
-        return {'ok': False, 'reason': 'unknown_operation', 'operation': operation_name, 'side_effects': ()}
+        return {"ok": False, "reason": "unknown_operation", "operation": operation_name, "side_effects": ()}
     supplied = dict(payload or {})
-    table_scope = contract['owned_tables'] or contract['read_tables']
+    table_scope = contract["owned_tables"] or contract["read_tables"]
     return {
-        'ok': bool(table_scope) and contract['event_contract'] == 'AppGen-X',
-        'pbc': 'eam',
-        'operation': operation_name,
-        'operation_kind': contract['operation_kind'],
-        'route': {'method': contract['method'], 'path': contract['path']},
-        'permission': contract['permission'],
-        'owned_tables': contract['owned_tables'],
-        'read_tables': contract['read_tables'],
-        'emitted_event': contract['emitted_event'],
-        'payload_keys': tuple(sorted(supplied)),
-        'transaction_boundary': contract['transaction_boundary'],
-        'event_contract': contract['event_contract'],
-        'side_effects': (),
+        "ok": bool(table_scope) and contract["event_contract"] == "AppGen-X",
+        "pbc": "eam",
+        "operation": operation_name,
+        "operation_kind": contract["operation_kind"],
+        "route": {"method": contract["method"], "path": contract["path"]},
+        "permission": contract["permission"],
+        "owned_tables": contract["owned_tables"],
+        "read_tables": contract["read_tables"],
+        "emitted_event": contract["emitted_event"],
+        "payload_keys": tuple(sorted(supplied)),
+        "transaction_boundary": contract["transaction_boundary"],
+        "event_contract": contract["event_contract"],
+        "side_effects": (),
     }
 
 
 class EamService:
-    """Side-effect-free generated command facade."""
+    """Side-effect-free EAM command/query facade."""
 
     def _execute(self, operation_name, payload):
         plan = operation_plan(operation_name, payload)
-        operation_kind = plan.get('operation_kind')
+        operation_kind = plan.get("operation_kind")
         result = {
-            'ok': plan['ok'],
-            'pbc': 'eam',
-            'operation': operation_name,
-            'operation_kind': operation_kind,
-            'payload': dict(payload),
-            'operation_contract': plan,
-            'transaction_boundary': plan.get('transaction_boundary'),
-            'side_effects': (),
+            "ok": plan["ok"],
+            "pbc": "eam",
+            "operation": operation_name,
+            "operation_kind": operation_kind,
+            "payload": dict(payload),
+            "operation_contract": plan,
+            "transaction_boundary": plan.get("transaction_boundary"),
+            "side_effects": (),
         }
-        if operation_kind == 'command':
-            event_type = plan.get('emitted_event')
-            result.update({
-                'command': operation_name,
-                'read_only': False,
-                'outbox_table': EVENT_CONTRACT['outbox_table'],
-                'emits': (event_type,) if event_type else (),
-            })
-        elif operation_kind == 'query':
-            result.update({
-                'query': operation_name,
-                'read_only': True,
-                'outbox_table': None,
-                'emits': (),
-            })
+        if operation_kind == "command":
+            event_type = plan.get("emitted_event")
+            result.update({"command": operation_name, "read_only": False, "outbox_table": EVENT_CONTRACT["outbox_table"], "emits": (event_type,) if event_type else ()})
+        elif operation_kind == "query":
+            result.update({"query": operation_name, "read_only": True, "outbox_table": None, "emits": ()})
         return result
 
-    def _command(self, command_name, payload):
-        return self._execute(command_name, payload)
-
-    def _query(self, query_name, payload):
-        return self._execute(query_name, payload)
-
-    def command_work_orders(self, payload=None):
-        return self._command('command_work_orders', payload or {})
-
-    def query_maintenance_plan(self, payload=None):
-        return self._query('query_maintenance_plan', payload or {})
-
-    def command_asset_events(self, payload=None):
-        return self._command('command_asset_events', payload or {})
+    def __getattr__(self, operation_name):
+        if operation_name in service_operation_contracts()["operations"]:
+            return lambda payload=None: self._execute(operation_name, payload or {})
+        raise AttributeError(operation_name)
 
 
 def service_operation_manifest():
     """Return the executable service operation surface."""
-    service = EamService()
-    operations = tuple(
-        name
-        for name in dir(service)
-        if (name.startswith('command_') or name.startswith('query_'))
-        and callable(getattr(service, name))
-    )
+    contracts = service_operation_contracts()
     return {
-        'ok': bool(operations) and service_operation_contracts()['ok'],
-        'pbc': 'eam',
-        'service_class': service.__class__.__name__,
-        'operations': operations,
-        'command_operations': service_operation_contracts()['command_operations'],
-        'query_operations': service_operation_contracts()['query_operations'],
-        'operation_contracts': service_operation_contracts()['contracts'],
-        'transaction_boundary': 'owned_datastore_plus_outbox',
-        'outbox_table': EVENT_CONTRACT['outbox_table'],
-        'side_effects': (),
+        "ok": contracts["ok"],
+        "pbc": "eam",
+        "service_class": "EamService",
+        "operations": contracts["operations"],
+        "command_operations": contracts["command_operations"],
+        "query_operations": contracts["query_operations"],
+        "operation_contracts": contracts["contracts"],
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "outbox_table": EVENT_CONTRACT["outbox_table"],
+        "side_effects": (),
     }
 
 
@@ -128,13 +149,11 @@ def smoke_test():
     """Execute one side-effect-free service operation through the facade."""
     manifest = service_operation_manifest()
     service = EamService()
-    operation = manifest['operations'][0] if manifest['operations'] else None
-    result = getattr(service, operation)({'smoke': True}) if operation else {'ok': False}
+    operation = manifest["operations"][0] if manifest["operations"] else None
+    result = getattr(service, operation)({"smoke": True}) if operation else {"ok": False}
     return {
-        'ok': manifest['ok']
-        and result.get('ok') is True
-        and result.get('operation_contract', {}).get('ok') is True,
-        'manifest': manifest,
-        'result': result,
-        'side_effects': (),
+        "ok": manifest["ok"] and result.get("ok") is True and result.get("operation_contract", {}).get("ok") is True,
+        "manifest": manifest,
+        "result": result,
+        "side_effects": (),
     }
