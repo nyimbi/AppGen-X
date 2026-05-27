@@ -2538,3 +2538,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   artifact publication, lifecycle replay, and runtime pipeline operations
   without unpacking nested validation matrices. Verification is focused under
   the low-battery delivery constraint. Commit: `2384372`.
+- Current package manager runtime smoke pass exposes required design-time
+  package operations plus collected package operations directly from generated
+  package manager runtime smoke. Generated consumers can now inspect metadata
+  resolution, preview loading, palette and editor registration, binding adapter
+  registration, trust validation, lockfile snapshots, updates, uninstall, and
+  registry cleanup without unpacking nested replay matrices. Verification is
+  focused under the low-battery delivery constraint. Commit: `1dcf903`.
