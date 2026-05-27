@@ -10309,6 +10309,16 @@ def binding_lifecycle_release_replay_contract(design: dict | None = None) -> dic
             "evidence": phases,
         },
         {
+            "id": "expression_editor_precedes_runtime_wiring",
+            "ok": phases.index("replay_expression_editor") < phases.index("generate_runtime_wiring")
+            and expression_editor["ok"]
+            and "commit_expression_binding" in replay[4]["pipeline"],
+            "evidence": {
+                "phases": phases,
+                "expression_editor_final_state": expression_editor["final_state"],
+            },
+        },
+        {
             "id": "offline_and_accessibility_precede_runtime",
             "ok": phases.index("replay_offline_queue") < phases.index("propagate_runtime_values")
             and phases.index("verify_accessibility_routes") < phases.index("propagate_runtime_values"),
