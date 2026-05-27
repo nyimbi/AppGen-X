@@ -2403,3 +2403,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   artifact contract, implementation release audit, generation smoke audit,
   specification contract, and restricted legacy-name scan all passed. Commit:
   `7746f0b`.
+- Current visual runtime packaging pass exposes target artifact transaction
+  replay through the generated visual-depth runtime smoke surface. Generated
+  runtime manifests now carry the artifact transaction, runtime replay records
+  manifest, integrity, rollback, and publish operations, and the generated
+  runtime validation gate reports `runtime_artifact_transaction_ready`.
+  Verification is focused under the low-battery delivery constraint. Commit:
+  `3447d57`.
