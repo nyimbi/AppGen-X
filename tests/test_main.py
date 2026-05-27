@@ -1721,6 +1721,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         menu["surface"] for menu in app_shell["context_menus"]
     }
     assert "bind_menu_action" in app_shell["operations"]
+    assert {
+        "edit_splash_screen",
+        "edit_splash_assets",
+        "bind_menu_action",
+        "context_menu_scope_validated",
+        "chrome_transaction_replay_side_effect_free",
+    } <= set(app_shell["required_chrome_operations"]) <= set(app_shell["chrome_operations"])
     chrome_replay = app_shell_chrome_transaction_replay_contract()
     assert chrome_replay["format"] == "appgen.app-shell-chrome-transaction-replay.v1"
     assert chrome_replay["ok"] is True
@@ -5723,6 +5730,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "icon_asset_registration",
         "dependency_conflict_review",
         "versioned_update",
         "hot_reload_design_surfaces",
@@ -5732,6 +5740,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "lifecycle_transaction_replay",
         "dependency_conflict_transaction_replay",
+        "icon_asset_transaction_replay",
         "actionable_package_operations",
         "package_manager_modules",
         "package_manager_module_replay_matrix",
@@ -15601,6 +15610,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert {"web", "mobile", "desktop"} <= set(generated_shell["splash"]["targets"])
     assert "record_undoable_ui_tuning" in generated_shell["operations"]
+    assert {
+        "edit_splash_screen",
+        "edit_splash_assets",
+        "bind_menu_action",
+        "context_menu_scope_validated",
+        "chrome_transaction_replay_side_effect_free",
+    } <= set(generated_shell["required_chrome_operations"]) <= set(generated_shell["chrome_operations"])
     generated_chrome_replay = form_designer.app_shell_chrome_transaction_replay_contract()
     assert generated_chrome_replay["format"] == "appgen.generated-app-shell-chrome-transaction-replay.v1"
     assert generated_chrome_replay["ok"] is True
@@ -16008,6 +16024,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "icon_asset_registration",
         "dependency_conflict_review",
         "versioned_update",
         "hot_reload_design_surfaces",
@@ -16017,6 +16034,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "lifecycle_transaction_replay",
         "dependency_conflict_transaction_replay",
+        "icon_asset_transaction_replay",
         "actionable_package_operations",
         "package_manager_modules",
         "package_manager_module_replay_matrix",

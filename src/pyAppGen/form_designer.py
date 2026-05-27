@@ -26835,6 +26835,41 @@ def app_shell_chrome_contract() -> dict:
         "preview_target_chrome",
         "record_undoable_ui_tuning",
     )
+    required_chrome_operations = (
+        "edit_splash_screen",
+        "edit_splash_assets",
+        "edit_main_menu_tree",
+        "edit_context_menu_surface",
+        "edit_context_menu_actions",
+        "bind_menu_action",
+        "bind_action",
+        "detect_shortcut_conflicts",
+        "resolve_shortcut_conflicts",
+        "preview_target_chrome",
+        "commit_undoable_transaction",
+        "rollback_failed_tuning",
+        "record_undoable_ui_tuning",
+        "stable_menu_ids",
+        "role_visibility_checked",
+        "context_menu_scope_validated",
+        "shortcut_conflicts_block_commit",
+        "chrome_transaction_replay_side_effect_free",
+    )
+    transaction_operations = tuple(
+        operation
+        for item in transaction_replay["transactions"]
+        for group in ("captures", "edits", "guards", "surfaces", "targets", "previews", "commit", "rollback")
+        for operation in item.get(group, ())
+        if isinstance(operation, str)
+    )
+    chrome_operations = tuple(
+        dict.fromkeys(
+            operations
+            + tuple(item["phase"] for item in transaction_replay["transactions"])
+            + transaction_operations
+            + tuple(check["id"] for check in transaction_replay["checks"] if check["ok"])
+        )
+    )
     checks = (
         {
             "id": "required_components_in_palette",
@@ -26870,6 +26905,12 @@ def app_shell_chrome_contract() -> dict:
             "evidence": operations,
         },
         {
+            "id": "required_chrome_operations_exposed",
+            "ok": set(required_chrome_operations) <= set(chrome_operations),
+            "required": required_chrome_operations,
+            "passing": tuple(operation for operation in required_chrome_operations if operation in chrome_operations),
+        },
+        {
             "id": "chrome_transaction_replay",
             "ok": transaction_replay["ok"]
             and {
@@ -26896,6 +26937,8 @@ def app_shell_chrome_contract() -> dict:
         "ui_tuning": ui_tuning,
         "transaction_replay": transaction_replay,
         "operations": operations,
+        "required_chrome_operations": required_chrome_operations,
+        "chrome_operations": chrome_operations,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "side_effects": (),

@@ -349,3 +349,12 @@ This appendix is generated from the package manifest and is release-gated so the
 - None declared
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
+
+## Agent, Chatbot Skills, And Self-Registration Contract
+
+The `dam_core` package exposes a first-class PBC agent and chatbot interface through `agent.py`. The composed application imports these capabilities under the `dam_core_skills` namespace so a single application assistant can route help, task guidance, document instruction intake, governed datastore CRUD planning, workbench navigation, and policy explanation back to the owning PBC instead of inventing cross-package mutations. The agent contract is scoped to the `Digital Asset Management Core` boundary and must name the command, permission, owned tables, idempotency key, expected AppGen-X event, and human confirmation requirement before any create, update, or delete plan is eligible to execute.
+
+Document and instruction intake is explicit release evidence. The chatbot can accept uploaded documents, operational notes, or user instructions, extract candidate facts for owned tables such as `dam_core_asset`, `dam_core_asset_rendition`, `dam_core_rights_policy`, `dam_core_metadata_tag`, validate those facts against package rules, parameters, configuration, and permissions, and return a side-effect-free mutation preview. The preview is not a write. It is a governed plan that references service operations such as , uses AppGen-X event expectations such as `AssetPublished`, `RightsPolicyChanged`, rejects foreign tables, and records whether a read-only query or a confirmed command is required. This keeps AI assistance professional, auditable, and bounded to the PBC datastore.
+
+Self-registration is also part of the specification. `registration_plan()`, `package_metadata_manifest()`, `validate_package_metadata()`, and `package_discovery_plan()` must produce a side-effect-free discovery and registration plan for `dam_core`. Registration metadata identifies the source package directory, required artifacts, owned datastore, AppGen-X event contract, UI fragments, RBAC descriptors, configuration schema, seed data, tests, and release evidence without mutating the global catalog during discovery. Composition tooling may then register the PBC, merge the `dam_core_skills` contribution into the single composed assistant, and expose the workbench UI while preserving owned-table boundaries and declared API/event/projection dependencies.
+

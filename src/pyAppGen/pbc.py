@@ -115,6 +115,14 @@ PBC_SPECIFICATION_REQUIRED_CONCEPTS = (
         "terms": (("rule",), ("parameter",), ("configuration",)),
     },
     {
+        "id": "agent_chatbot_skills",
+        "terms": (("agent", "assistant", "chatbot"), ("skill",), ("document", "instruction"), ("crud", "datastore", "mutation")),
+    },
+    {
+        "id": "side_effect_free_self_registration",
+        "terms": (("registration", "register"), ("side-effect-free", "side effect free", "discovery")),
+    },
+    {
         "id": "standard_and_advanced_capabilities",
         "terms": (("standard",), ("advanced",)),
     },
