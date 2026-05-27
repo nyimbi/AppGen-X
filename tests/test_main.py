@@ -148,6 +148,7 @@ from pyAppGen.form_designer import component_file_manifest
 from pyAppGen.form_designer import component_parity_readiness_contract
 from pyAppGen.form_designer import component_run_parity_scenario_operation
 from pyAppGen.form_designer import component_package_file_manifest
+from pyAppGen.form_designer import component_package_icon_asset_transaction_replay
 from pyAppGen.form_designer import component_package_test_file_manifest
 from pyAppGen.form_designer import component_test_file_manifest
 from pyAppGen.form_designer import component_ide_readiness_catalog
@@ -3732,6 +3733,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert component_package_resolve_metadata_operation("devexpress-native")["pipeline"][-1] == "prepare_lockfile_entry"
     assert "run_adapter_smoke" in component_package_preview_load_operation("devexpress-native")["pipeline"]
     assert "register_inspector_editors" in component_package_registry_commit_operation("devexpress-native")["pipeline"]
+    assert "register_icon_assets" in component_package_registry_commit_operation("devexpress-native")["pipeline"]
     assert "refresh_palette" in component_package_update_operation("devexpress-native")["pipeline"]
     assert "remove_palette_entries" in component_package_uninstall_operation("devexpress-native")["pipeline"]
     package_installation_scenario = component_package_run_installation_scenario_operation("devexpress-native")
@@ -3760,10 +3762,35 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "actionable_package_operations" in {check["id"] for check in package_workbench["checks"]}
     assert "marketplace_publication" in {check["id"] for check in package_workbench["checks"]}
     assert "hot_reload_transaction_replay" in {check["id"] for check in package_workbench["checks"]}
+    assert "icon_asset_transaction_replay" in {check["id"] for check in package_workbench["checks"]}
     assert package_workbench["install_replay"]["ok"] is True
     assert package_workbench["behavior_workbench"]["ok"] is True
     assert package_workbench["actionable_operations"]["ok"] is True
     assert package_workbench["hot_reload"]["ok"] is True
+    assert package_workbench["icon_assets"]["ok"] is True
+    icon_assets = component_package_icon_asset_transaction_replay(("devexpress-native",))
+    assert icon_assets["format"] == "appgen.component-package-icon-asset-transaction-replay.v1"
+    assert icon_assets["ok"] is True
+    assert {
+        "collect_component_icon_specs",
+        "validate_density_variants",
+        "register_palette_icons",
+        "register_inspector_editor_icons",
+        "register_context_menu_icons",
+        "validate_preview_assets",
+        "rollback_icon_registry",
+    } == {phase["phase"] for phase in icon_assets["replay"]}
+    assert {
+        "component_icon_specs_collected",
+        "density_variants_declared",
+        "palette_icons_registered_before_preview",
+        "inspector_icons_registered",
+        "context_menu_icons_have_fallbacks",
+        "preview_assets_validated",
+        "icon_asset_rollback_ready",
+        "icon_asset_transaction_side_effect_free",
+    } == {check["id"] for check in icon_assets["checks"]}
+    assert icon_assets["final_state"]["persisted_writes"] == 0
     marketplace = component_package_marketplace_publication_contract(("devexpress-native",))
     assert marketplace["format"] == "appgen.component-package-marketplace-publication-contract.v1"
     assert marketplace["ok"] is True
@@ -3852,6 +3879,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "failure_isolation",
         "dependency_conflict_transaction_replay",
         "hot_reload_transaction_replay",
+        "icon_asset_transaction_replay",
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
@@ -3899,6 +3927,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "invalidate_cache" in package_manager["palette_refresh"]["palette_actions"]
     assert all("record_diagnostic" in scenario["containment"] for scenario in package_manager["failure_isolation"]["scenarios"])
     assert package_manager["hot_reload"]["ok"] is True
+    assert package_manager["icon_assets"]["ok"] is True
     assert package_manager["actionable_operations"]["ok"] is True
     assert {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= set(
         package_manager["actionable_operations"]["operation_names"]
@@ -3942,6 +3971,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "icon_asset_registration",
         "dependency_conflict_review",
         "versioned_update",
         "hot_reload_design_surfaces",
@@ -3953,9 +3983,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "preview_before_registry_commit",
         "registry_before_update",
         "dependency_conflict_review_before_update",
+        "icon_assets_before_dependency_review",
         "hot_reload_before_failure_rollback",
         "rollback_before_cleanup",
         "marketplace_publication_ready",
+        "icon_asset_transaction_ready",
         "installation_scenario_ready",
         "operation_surface_ready",
         "phase_order_ready",
@@ -16095,6 +16127,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert form_designer.component_package_resolve_metadata_operation("devexpress-native")["pipeline"][-1] == "prepare_lockfile_entry"
     assert "run_adapter_smoke" in form_designer.component_package_preview_load_operation("devexpress-native")["pipeline"]
     assert "register_inspector_editors" in form_designer.component_package_registry_commit_operation("devexpress-native")["pipeline"]
+    assert "register_icon_assets" in form_designer.component_package_registry_commit_operation("devexpress-native")["pipeline"]
     assert "refresh_palette" in form_designer.component_package_update_operation("devexpress-native")["pipeline"]
     assert "remove_palette_entries" in form_designer.component_package_uninstall_operation("devexpress-native")["pipeline"]
     generated_package_scenario = form_designer.component_package_run_installation_scenario_operation("devexpress-native")
@@ -16109,10 +16142,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "actionable_package_operations" in {check["id"] for check in generated_package_workbench["checks"]}
     assert "marketplace_publication" in {check["id"] for check in generated_package_workbench["checks"]}
     assert "hot_reload_transaction_replay" in {check["id"] for check in generated_package_workbench["checks"]}
+    assert "icon_asset_transaction_replay" in {check["id"] for check in generated_package_workbench["checks"]}
     assert generated_package_workbench["install_replay"]["ok"] is True
     assert generated_package_workbench["actionable_operations"]["ok"] is True
     assert generated_package_workbench["marketplace_publication"]["ok"] is True
     assert generated_package_workbench["hot_reload"]["ok"] is True
+    assert generated_package_workbench["icon_assets"]["ok"] is True
+    generated_icon_assets = form_designer.component_package_icon_asset_transaction_replay(("devexpress-native",))
+    assert generated_icon_assets["format"] == "appgen.generated-component-package-icon-asset-transaction-replay.v1"
+    assert generated_icon_assets["ok"] is True
+    assert {
+        "palette_icons_registered_before_preview",
+        "inspector_icons_registered",
+        "context_menu_icons_have_fallbacks",
+        "icon_asset_rollback_ready",
+    } <= {check["id"] for check in generated_icon_assets["checks"] if check["ok"]}
+    assert generated_icon_assets["final_state"]["persisted_writes"] == 0
     assert generated_package_workbench["contracts"][0]["self_registration"]["entrypoint"].endswith(":register")
     assert all(
         {"operation_steps", "validation_steps"} <= set(item["exports"])
@@ -16167,6 +16212,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "failure_isolation",
         "dependency_conflict_transaction_replay",
         "hot_reload_transaction_replay",
+        "icon_asset_transaction_replay",
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
@@ -16186,6 +16232,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "rebuild_toolbox" in generated_package_manager["palette_refresh"]["palette_actions"]
     assert all("disable_package" in scenario["containment"] for scenario in generated_package_manager["failure_isolation"]["scenarios"])
     assert generated_package_manager["hot_reload"]["ok"] is True
+    assert generated_package_manager["icon_assets"]["ok"] is True
     assert generated_package_manager["actionable_operations"]["operations"][0]["preview_load"]["ok"] is True
     assert generated_package_manager["lifecycle_replay"]["ok"] is True
     assert generated_package_manager["lifecycle_replay"]["format"] == "appgen.generated-component-package-lifecycle-transaction-replay.v1"
@@ -16203,6 +16250,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "dependency_conflict_review_before_update" in {
         check["id"] for check in generated_package_manager["package_readiness"]["checks"]
     }
+    assert "icon_asset_transaction_ready" in {
+        check["id"] for check in generated_package_manager["package_readiness"]["checks"]
+    }
     assert generated_package_manager["installation_scenario"]["ok"] is True
     assert "hot_reload_design_surfaces" in generated_package_manager["installation_scenario"]["pipeline"]
     assert {
@@ -16212,6 +16262,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "installation_scenario_operation",
         "marketplace_publication",
         "hot_reload_transaction_replay",
+        "icon_asset_transaction_replay",
         "dependency_conflict_transaction_replay",
         "package_manager_modules",
         "package_manager_module_tests",
@@ -16240,6 +16291,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "icon_asset_registration",
         "dependency_conflict_review",
         "versioned_update",
         "hot_reload_design_surfaces",

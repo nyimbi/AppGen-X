@@ -1113,6 +1113,133 @@ def component_package_marketplace_publication_contract(package_ids: tuple[str, .
     }
 
 
+def component_package_icon_asset_transaction_replay(package_ids: tuple[str, ...] = ()) -> dict:
+    """Replay component package icon and preview-asset registration without host IDE mutation."""
+    install_plan = third_party_component_install_plan(package_ids)
+    icon_records = tuple(
+        {
+            "package_id": package["id"],
+            "component": component,
+            "icon_id": f"{_module_name(package['id'])}.{_module_name(component)}",
+            "palette_icon": f"assets/component-icons/{_module_name(package['id'])}/{_module_name(component)}.svg",
+            "inspector_icon": f"assets/inspector-icons/{_module_name(component)}.svg",
+            "preview_asset": f"assets/component-previews/{_module_name(package['id'])}/{_module_name(component)}.png",
+            "density_variants": ("1x", "1.5x", "2x", "3x"),
+            "fallback": "assets/component-icons/generic-component.svg",
+        }
+        for package in install_plan["packages"]
+        for component in package["components"]
+    )
+    replay = (
+        {
+            "phase": "collect_component_icon_specs",
+            "ok": bool(icon_records) and all(record["palette_icon"].endswith(".svg") for record in icon_records),
+            "artifact": tuple(record["icon_id"] for record in icon_records),
+        },
+        {
+            "phase": "validate_density_variants",
+            "ok": all({"1x", "2x", "3x"} <= set(record["density_variants"]) for record in icon_records),
+            "artifact": tuple(record["density_variants"] for record in icon_records),
+        },
+        {
+            "phase": "register_palette_icons",
+            "ok": all(record["palette_icon"].startswith("assets/component-icons/") for record in icon_records),
+            "artifact": tuple(record["palette_icon"] for record in icon_records),
+        },
+        {
+            "phase": "register_inspector_editor_icons",
+            "ok": all(record["inspector_icon"].startswith("assets/inspector-icons/") for record in icon_records),
+            "artifact": tuple(record["inspector_icon"] for record in icon_records),
+        },
+        {
+            "phase": "register_context_menu_icons",
+            "ok": all(record["fallback"].endswith("generic-component.svg") for record in icon_records),
+            "artifact": tuple((record["icon_id"], record["fallback"]) for record in icon_records),
+        },
+        {
+            "phase": "validate_preview_assets",
+            "ok": all(record["preview_asset"].endswith(".png") for record in icon_records),
+            "artifact": tuple(record["preview_asset"] for record in icon_records),
+        },
+        {
+            "phase": "rollback_icon_registry",
+            "ok": bool(icon_records),
+            "artifact": ("restore_previous_palette_icons", "restore_previous_inspector_icons", "clear_preview_asset_cache"),
+        },
+    )
+    phase_names = tuple(phase["phase"] for phase in replay)
+    checks = (
+        {
+            "id": "component_icon_specs_collected",
+            "ok": replay[0]["ok"],
+            "evidence": tuple(record["icon_id"] for record in icon_records),
+        },
+        {
+            "id": "density_variants_declared",
+            "ok": replay[1]["ok"],
+            "evidence": tuple(record["density_variants"] for record in icon_records),
+        },
+        {
+            "id": "palette_icons_registered_before_preview",
+            "ok": phase_names.index("register_palette_icons") < phase_names.index("validate_preview_assets") and replay[2]["ok"],
+            "evidence": phase_names,
+        },
+        {
+            "id": "inspector_icons_registered",
+            "ok": replay[3]["ok"],
+            "evidence": tuple(record["inspector_icon"] for record in icon_records),
+        },
+        {
+            "id": "context_menu_icons_have_fallbacks",
+            "ok": replay[4]["ok"],
+            "evidence": tuple(record["fallback"] for record in icon_records),
+        },
+        {
+            "id": "preview_assets_validated",
+            "ok": replay[5]["ok"],
+            "evidence": tuple(record["preview_asset"] for record in icon_records),
+        },
+        {
+            "id": "icon_asset_rollback_ready",
+            "ok": replay[6]["ok"] and "restore_previous_palette_icons" in replay[6]["artifact"],
+            "evidence": replay[6]["artifact"],
+        },
+        {
+            "id": "icon_asset_transaction_side_effect_free",
+            "ok": not install_plan["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = install_plan["ok"] and all(phase["ok"] for phase in replay) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-package-icon-asset-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "packages": tuple(package["id"] for package in install_plan["packages"]),
+        "icon_records": icon_records,
+        "replay": replay,
+        "checks": checks,
+        "final_state": {
+            "icon_records": len(icon_records),
+            "palette_icons": sum(1 for record in icon_records if record["palette_icon"]),
+            "inspector_icons": sum(1 for record in icon_records if record["inspector_icon"]),
+            "preview_assets": sum(1 for record in icon_records if record["preview_asset"]),
+            "persisted_writes": 0,
+        },
+        "guards": (
+            "icon_specs_before_palette_registration",
+            "density_variants_before_preview_assets",
+            "palette_icons_before_preview_assets",
+            "inspector_icons_registered_with_palette_icons",
+            "context_menu_icons_have_fallbacks",
+            "rollback_restores_previous_icon_registry",
+            "icon_asset_transactions_have_no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def component_package_load_policy(package_id: str) -> dict:
     """Return design-time package loading guardrails."""
     package = _component_package(package_id)
@@ -1205,13 +1332,15 @@ def component_package_registry_commit_operation(package_id: str) -> dict:
     registration = component_package_registration_consistency_contract((package_id,))
     dependency_order = component_package_dependency_order_contract((package_id,))
     palette_refresh = component_package_palette_refresh_contract((package_id,))
+    icon_assets = component_package_icon_asset_transaction_replay((package_id,))
     return {
         "format": "appgen.component-package-registry-commit-operation.v1",
         "package_id": package_id,
-        "ok": registration["ok"] and dependency_order["ok"] and palette_refresh["ok"],
+        "ok": registration["ok"] and dependency_order["ok"] and palette_refresh["ok"] and icon_assets["ok"],
         "pipeline": (
             "load_adapter",
             "register_palette_entries",
+            "register_icon_assets",
             "register_inspector_editors",
             "register_binding_adapters",
             "commit_project_manifest",
@@ -1220,7 +1349,13 @@ def component_package_registry_commit_operation(package_id: str) -> dict:
         "registration": registration,
         "dependency_order": dependency_order["load_order"],
         "palette_actions": palette_refresh["palette_actions"],
-        "guards": ("adapter_before_registry_commit", "all_design_surfaces_registered", "palette_refreshed_after_commit"),
+        "icon_assets": icon_assets,
+        "guards": (
+            "adapter_before_registry_commit",
+            "icon_assets_before_manifest_commit",
+            "all_design_surfaces_registered",
+            "palette_refreshed_after_commit",
+        ),
         "side_effects": (),
     }
 
@@ -2996,6 +3131,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
     hot_reload = component_package_hot_reload_transaction_replay(package_ids)
+    icon_assets = component_package_icon_asset_transaction_replay(package_ids)
     marketplace = component_package_marketplace_publication_contract(package_ids)
     installation_scenarios = tuple(
         component_package_run_installation_scenario_operation(package["id"])
@@ -3024,11 +3160,21 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             "phase": "registry_commit",
             "ok": registration["ok"]
             and dependency_order["ok"]
+            and icon_assets["ok"]
             and all(operation["registry_commit"]["ok"] for operation in actionable_operations["operations"]),
             "evidence": {
                 "registration_points": registration["registration"]["registration_points"],
                 "operation_names": actionable_operations["operation_names"],
+                "icon_records": icon_assets["final_state"]["icon_records"],
             },
+        },
+        {
+            "phase": "icon_asset_registration",
+            "ok": icon_assets["ok"]
+            and icon_assets["final_state"]["persisted_writes"] == 0
+            and {"palette_icons_registered_before_preview", "icon_asset_rollback_ready"}
+            <= {check["id"] for check in icon_assets["checks"] if check["ok"]},
+            "evidence": icon_assets["final_state"],
         },
         {
             "phase": "dependency_conflict_review",
@@ -3091,20 +3237,26 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             "evidence": phase_names,
         },
         {
-            "id": "dependency_conflict_review_before_update",
-            "ok": phase_names.index("dependency_conflict_review") < phase_names.index("versioned_update")
+            "id": "icon_assets_before_dependency_review",
+            "ok": phase_names.index("icon_asset_registration") < phase_names.index("dependency_conflict_review")
             and phases[3]["ok"],
             "evidence": phase_names,
         },
         {
+            "id": "dependency_conflict_review_before_update",
+            "ok": phase_names.index("dependency_conflict_review") < phase_names.index("versioned_update")
+            and phases[4]["ok"],
+            "evidence": phase_names,
+        },
+        {
             "id": "rollback_before_cleanup",
-            "ok": phase_names.index("failure_and_rollback") < phase_names.index("uninstall_cleanup") and phases[6]["ok"],
+            "ok": phase_names.index("failure_and_rollback") < phase_names.index("uninstall_cleanup") and phases[7]["ok"],
             "evidence": phase_names,
         },
         {
             "id": "hot_reload_before_failure_rollback",
             "ok": phase_names.index("hot_reload_design_surfaces") < phase_names.index("failure_and_rollback")
-            and phases[5]["ok"],
+            and phases[6]["ok"],
             "evidence": phase_names,
         },
         {
@@ -3136,12 +3288,21 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             "evidence": marketplace,
         },
         {
+            "id": "icon_asset_transaction_ready",
+            "ok": icon_assets["ok"]
+            and {"palette_icons_registered_before_preview", "inspector_icons_registered", "context_menu_icons_have_fallbacks"}
+            <= {check["id"] for check in icon_assets["checks"] if check["ok"]}
+            and not icon_assets["side_effects"],
+            "evidence": icon_assets,
+        },
+        {
             "id": "phase_order_ready",
             "ok": phase_names
             == (
                 "trust_and_lockfile",
                 "sandbox_preview",
                 "registry_commit",
+                "icon_asset_registration",
                 "dependency_conflict_review",
                 "versioned_update",
                 "hot_reload_design_surfaces",
@@ -3169,6 +3330,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             and not lifecycle_replay["side_effects"]
             and not lifecycle_execution["side_effects"]
             and not hot_reload["side_effects"]
+            and not icon_assets["side_effects"]
             and all(not scenario["side_effects"] for scenario in installation_scenarios)
             and not marketplace["side_effects"],
             "evidence": (),
@@ -3184,6 +3346,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
         "installation_scenarios": installation_scenarios,
         "dependency_conflicts": dependency_conflicts,
         "hot_reload": hot_reload,
+        "icon_assets": icon_assets,
         "marketplace_publication": marketplace,
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -3212,6 +3375,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     palette_refresh = component_package_palette_refresh_contract(package_ids)
     failure_isolation = component_package_failure_isolation_contract(package_ids)
     hot_reload = component_package_hot_reload_transaction_replay(package_ids)
+    icon_assets = component_package_icon_asset_transaction_replay(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     actionable_operations = component_package_actionable_operations(package_ids)
     installation_scenario = component_package_run_installation_scenario_operation(next(iter(session["packages"]), "devexpress-native"))
@@ -3332,6 +3496,19 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             <= {check["id"] for check in hot_reload["checks"] if check["ok"]}
             and not hot_reload["side_effects"],
             "evidence": hot_reload,
+        },
+        {
+            "id": "icon_asset_transaction_replay",
+            "ok": icon_assets["ok"]
+            and {
+                "palette_icons_registered_before_preview",
+                "inspector_icons_registered",
+                "context_menu_icons_have_fallbacks",
+                "icon_asset_rollback_ready",
+            } <= {check["id"] for check in icon_assets["checks"] if check["ok"]}
+            and icon_assets["final_state"]["persisted_writes"] == 0
+            and not icon_assets["side_effects"],
+            "evidence": icon_assets,
         },
         {
             "id": "lifecycle_transaction_replay",
@@ -3457,6 +3634,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             and not palette_refresh["side_effects"]
             and not failure_isolation["side_effects"]
             and not hot_reload["side_effects"]
+            and not icon_assets["side_effects"]
             and not lifecycle_replay["side_effects"]
             and not signature_validation["side_effects"]
             and not lifecycle_execution["side_effects"]
@@ -3480,6 +3658,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "palette_refresh": palette_refresh["side_effects"],
                 "failure_isolation": failure_isolation["side_effects"],
                 "hot_reload": hot_reload["side_effects"],
+                "icon_assets": icon_assets["side_effects"],
                 "lifecycle_replay": lifecycle_replay["side_effects"],
                 "signature_validation": signature_validation["side_effects"],
                 "lifecycle_execution": lifecycle_execution["side_effects"],
@@ -3514,6 +3693,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "palette_refresh": palette_refresh,
         "failure_isolation": failure_isolation,
         "hot_reload": hot_reload,
+        "icon_assets": icon_assets,
         "lifecycle_replay": lifecycle_replay,
         "actionable_operations": actionable_operations,
         "installation_scenario": installation_scenario,
@@ -3537,6 +3717,7 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
     actionable_operations = component_package_actionable_operations()
     marketplace = component_package_marketplace_publication_contract()
     hot_reload = component_package_hot_reload_transaction_replay()
+    icon_assets = component_package_icon_asset_transaction_replay()
     package_files = component_package_file_manifest()
     existing = set(existing_paths or ())
     checks = (
@@ -3598,6 +3779,13 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
             "evidence": hot_reload,
         },
         {
+            "id": "icon_asset_transaction_replay",
+            "ok": icon_assets["ok"]
+            and icon_assets["final_state"]["palette_icons"] >= sum(len(contract["package"]["components"]) for contract in contracts)
+            and not icon_assets["side_effects"],
+            "evidence": icon_assets,
+        },
+        {
             "id": "package_file_exports",
             "ok": all(
                 {
@@ -3641,6 +3829,7 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
         "actionable_operations": actionable_operations,
         "marketplace_publication": marketplace,
         "hot_reload": hot_reload,
+        "icon_assets": icon_assets,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -19640,6 +19829,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "lifecycle_transaction_replay",
                 "actionable_package_operations",
                 "dependency_conflict_transaction_replay",
+                "icon_asset_transaction_replay",
                 "marketplace_publication",
                 "package_manager_modules",
                 "package_manager_module_replay_matrix",
@@ -20103,7 +20293,9 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "trust_before_preview",
                 "preview_before_registry_commit",
                 "registry_before_update",
+                "icon_assets_before_dependency_review",
                 "dependency_conflict_review_before_update",
+                "icon_asset_transaction_ready",
                 "hot_reload_before_failure_rollback",
                 "rollback_before_cleanup",
                 "marketplace_publication_ready",
@@ -20115,6 +20307,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "lifecycle_transaction_replay",
                 "dependency_conflict_transaction_replay",
                 "hot_reload_transaction_replay",
+                "icon_asset_transaction_replay",
                 "marketplace_publication",
                 "package_manager_modules",
                 "package_manager_module_tests",
@@ -20125,11 +20318,14 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "preview_before_registry_commit",
                 "registry_before_update",
                 "dependency_conflict_review_before_update",
+                "icon_assets_before_dependency_review",
                 "hot_reload_before_failure_rollback",
                 "rollback_before_cleanup",
                 "marketplace_publication_ready",
+                "icon_asset_transaction_ready",
                 "hot_reload_transaction_replay",
                 "dependency_conflict_transaction_replay",
+                "icon_asset_transaction_replay",
                 "package_manager_modules",
                 "package_manager_module_tests",
                 "package_manager_module_replay_matrix",
@@ -23040,6 +23236,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "palette_refresh",
         "failure_isolation",
         "hot_reload_transaction_replay",
+        "icon_asset_transaction_replay",
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
@@ -23634,6 +23831,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "actionable_package_operations",
         "marketplace_publication",
         "hot_reload_transaction_replay",
+        "icon_asset_transaction_replay",
         "package_file_exports",
         "generated_package_files",
     )

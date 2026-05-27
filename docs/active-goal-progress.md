@@ -2255,6 +2255,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   style resource commit, and rollback with zero persisted writes before visual
   runtime delivery. Verification is focused under the low-battery delivery
   constraint. Commit: `b59a007`.
+- Current design-time package ecosystem pass adds icon and preview-asset
+  transaction replay as release-gating evidence. Source and generated package
+  manager contracts now prove package component icon specs, density variants,
+  palette icon registration, inspector/editor icon registration, context-menu
+  fallback icons, preview asset validation, and icon-registry rollback before
+  package readiness and platform parity gates can pass. Verification is focused
+  under the low-battery delivery constraint. Commit: pending.
 - Current `cdp_segmentation` PBC pass promotes advanced CDP intelligence and
   governance surfaces into executable package-local operations: counterfactual
   segment simulation, audience forecasting, exception resolution, semantic rule
