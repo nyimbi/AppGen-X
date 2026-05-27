@@ -6349,6 +6349,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_module_replay_matrix_ready",
         "runtime_load_replay",
     } <= set(native_runtime_smoke["passing_checks"])
+    assert {
+        "stream_decode",
+        "runtime_load",
+        "open_design_stream",
+        "apply_property_delta",
+        "compile_preview",
+        "reload_runtime_preview",
+        "parse_units",
+        "verify_streamed_properties",
+        "side_effects_disallowed",
+    } <= set(native_runtime_smoke["smoke"]["required_native_runtime_operations"]) <= set(
+        native_runtime_smoke["smoke"]["native_runtime_operations"]
+    )
     component_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_component_parity_runtime")
     assert component_runtime_smoke["ok"] is True
     assert {
@@ -18366,6 +18379,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_module_replay_matrix_ready",
         "runtime_load_replay",
     } <= set(native_runtime_smoke["checks"])
+    assert {
+        "stream_decode",
+        "runtime_load",
+        "open_design_stream",
+        "apply_property_delta",
+        "compile_preview",
+        "reload_runtime_preview",
+        "parse_units",
+        "verify_streamed_properties",
+        "side_effects_disallowed",
+    } <= set(native_runtime_smoke["required_native_runtime_operations"]) <= set(
+        native_runtime_smoke["native_runtime_operations"]
+    )
     native_form_module_files = native_runtime.native_form_module_file_manifest("Book")
     native_form_module_tests = native_runtime.native_form_module_test_file_manifest("Book")
     native_runtime_matrix = native_runtime.native_runtime_module_replay_matrix("Book")
