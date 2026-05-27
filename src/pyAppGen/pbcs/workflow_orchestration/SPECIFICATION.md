@@ -24,19 +24,51 @@ The PBC owns exactly these logical tables:
 - `workflow_definition`: tenant-scoped workflow key, semantic version, owner
   PBC, state list, transition graph, participant list, activation status, and
   definition invariants.
+- `workflow_version`: publishable workflow version record with semantic
+  version, status, workflow link, and release hash.
 - `workflow_instance`: immutable lifecycle projection for a running or
   completed workflow, correlation ID, context payload, current state, history,
   tenant, and status.
 - `workflow_signal`: accepted or rejected external signals with source PBC,
   payload, validation result, transition decision, and correlation key.
+- `workflow_transition_guard`: compiled transition guard expressions for state,
+  signal, and workflow-safe admission checks.
 - `timer_task`: deadline, wake-up command, breach risk, jitter, retry budget,
   escalation state, and scheduling evidence.
+- `workflow_retry_policy`: tenant-scoped retry budget, maximum attempts,
+  backoff strategy, and status for workflow or participant operations.
+- `workflow_sla_policy`: SLA threshold, severity, workflow binding, and
+  activation evidence.
+- `workflow_escalation_rule`: breach trigger, target group, status, and policy
+  evidence for escalation routing.
 - `saga_step`: participant PBC, command name, status, duration, idempotency
   key, completion flag, and compensation link.
 - `compensation`: compensation command, failure reason, execution status, and
   side-effect boundary.
 - `human_task`: approval or exception work item, assignee group, SLA, decision,
   escalation state, and evidence payload.
+- `human_task_assignment`: auditable task assignment by group, instance, status,
+  and assignment key.
+- `workflow_approval_decision`: final approval decision, decider, task link,
+  status, and evidence hash.
+- `workflow_integration_endpoint`: declared participant PBC API route endpoint
+  used by orchestration without sharing datastore tables.
+- `workflow_event_correlation`: source event, business key, instance link, and
+  tenant-scoped correlation evidence.
+- `workflow_metric_snapshot`: point-in-time workflow telemetry, completion
+  rate, compensation count, and audit hash.
+- `workflow_exception_case`: exception type, severity, recommended action,
+  instance link, and status.
+- `workflow_simulation_run`: counterfactual simulation scenario, risk delta,
+  workflow link, and result status.
+- `workflow_policy_screening`: policy decision, workflow link, screening state,
+  and evidence hash.
+- `workflow_completion_proof`: sealed completion proof hash, proof type,
+  instance link, and release status.
+- `workflow_audit_entry`: immutable action log with payload hash and sealed
+  status.
+- `workflow_governed_model_evidence`: governed model metrics, drift score,
+  approval state, and model evidence hash.
 - `workflow_rule`: executable rules for signal admission, saga compensation,
   timer escalation, approval routing, release gates, and policy screening.
 - `workflow_parameter`: numeric and textual runtime parameters that tune retry,
@@ -71,9 +103,16 @@ controls, and package registration metadata.
 Service commands are explicit and stable:
 `configure_runtime`, `set_parameter`, `register_rule`,
 `register_schema_extension`, `receive_event`, `define_workflow`,
-`start_instance`, `signal_instance`, `schedule_timer`, `record_step_result`,
-`execute_compensation`, `complete_workflow`, `build_api_contract`,
-`permissions_contract`, `build_workbench_view`, and
+`publish_workflow_version`, `register_transition_guard`, `start_instance`,
+`signal_instance`, `schedule_timer`, `register_retry_policy`,
+`register_sla_policy`, `register_escalation_rule`, `record_step_result`,
+`execute_compensation`, `assign_human_task`, `record_approval_decision`,
+`register_integration_endpoint`, `correlate_event`,
+`capture_metric_snapshot`, `open_exception_case`,
+`record_simulation_run`, `record_policy_screening`,
+`record_completion_proof`, `append_audit_entry`,
+`register_governed_model_evidence`, `complete_workflow`,
+`build_api_contract`, `permissions_contract`, `build_workbench_view`, and
 `verify_owned_table_boundary`. Generated apps can map these commands to
 service classes, API routes, and UI actions without guessing.
 
@@ -114,6 +153,13 @@ or consumed events, required permission, and idempotency key:
 - `POST /workflows/definitions` calls `define_workflow`, writes
   `workflow_definition`, emits `WorkflowDefinitionPublished`, and requires
   `workflow_orchestration.define`.
+- `POST /workflows/versions` calls `publish_workflow_version` and writes
+  `workflow_version`.
+- `POST /workflows/transition-guards` calls `register_transition_guard` and
+  writes `workflow_transition_guard`.
+- `POST /workflows/retry-policies`, `POST /workflows/sla-policies`, and
+  `POST /workflows/escalation-rules` manage workflow retry, SLA, and
+  escalation policy records.
 - `POST /workflows/instances` calls `start_instance`, writes
   `workflow_instance`, emits `WorkflowStarted`, and requires
   `workflow_orchestration.start`.
@@ -128,6 +174,17 @@ or consumed events, required permission, and idempotency key:
 - `POST /workflows/instances/{id}/compensations` calls
   `execute_compensation`, writes `compensation`, emits
   `CompensationExecuted`, and requires `workflow_orchestration.compensate`.
+- `POST /workflows/human-task-assignments` and
+  `POST /workflows/approval-decisions` manage human task assignment and
+  approval decision records.
+- `POST /workflows/integration-endpoints`,
+  `POST /workflows/event-correlations`, `POST /workflows/metric-snapshots`,
+  and `POST /workflows/exception-cases` expose endpoint declaration,
+  correlation, telemetry, and exception case commands.
+- `POST /workflows/simulation-runs`, `POST /workflows/policy-screenings`,
+  `POST /workflows/completion-proofs`, `POST /workflows/audit-entries`, and
+  `POST /workflows/governed-model-evidence` persist advanced simulation,
+  control, proof, audit, and governed-model evidence.
 - `POST /workflows/events/inbox` calls `receive_event`, consumes declared
   AppGen-X events, and requires `workflow_orchestration.event`.
 - `GET /workflows/workbench` calls `build_workbench_view`, reads owned tables,
@@ -220,12 +277,28 @@ This appendix is generated from the package manifest and is release-gated so the
 ### Owned Tables
 
 - `workflow_definition`
+- `workflow_version`
 - `workflow_instance`
 - `workflow_signal`
-- `saga_step`
+- `workflow_transition_guard`
 - `timer_task`
+- `workflow_retry_policy`
+- `workflow_sla_policy`
+- `workflow_escalation_rule`
+- `saga_step`
 - `compensation`
 - `human_task`
+- `human_task_assignment`
+- `workflow_approval_decision`
+- `workflow_integration_endpoint`
+- `workflow_event_correlation`
+- `workflow_metric_snapshot`
+- `workflow_exception_case`
+- `workflow_simulation_run`
+- `workflow_policy_screening`
+- `workflow_completion_proof`
+- `workflow_audit_entry`
+- `workflow_governed_model_evidence`
 - `workflow_rule`
 - `workflow_parameter`
 - `workflow_configuration`
@@ -239,11 +312,27 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /workflows/parameters`
 - `POST /workflows/rules`
 - `POST /workflows/definitions`
+- `POST /workflows/versions`
+- `POST /workflows/transition-guards`
+- `POST /workflows/retry-policies`
+- `POST /workflows/sla-policies`
+- `POST /workflows/escalation-rules`
 - `POST /workflows/instances`
 - `POST /workflows/instances/{id}/signals`
 - `POST /workflows/timers`
 - `POST /workflows/instances/{id}/steps`
 - `POST /workflows/instances/{id}/compensations`
+- `POST /workflows/human-task-assignments`
+- `POST /workflows/approval-decisions`
+- `POST /workflows/integration-endpoints`
+- `POST /workflows/event-correlations`
+- `POST /workflows/metric-snapshots`
+- `POST /workflows/exception-cases`
+- `POST /workflows/simulation-runs`
+- `POST /workflows/policy-screenings`
+- `POST /workflows/completion-proofs`
+- `POST /workflows/audit-entries`
+- `POST /workflows/governed-model-evidence`
 - `POST /workflows/events/inbox`
 - `GET /workflows/workbench`
 - `GET /workflows/schema-contract`

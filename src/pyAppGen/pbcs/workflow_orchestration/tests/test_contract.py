@@ -62,6 +62,67 @@ def test_generated_schema_service_and_release_evidence():
     assert not release_smoke['side_effects']
 
 
+def test_workflow_orchestration_full_table_stakes_records_are_owned_and_executable():
+    from ..runtime import WORKFLOW_ORCHESTRATION_OWNED_TABLES
+    from ..runtime import workflow_orchestration_build_api_contract
+    from ..runtime import workflow_orchestration_build_service_contract
+    from ..runtime import workflow_orchestration_permissions_contract
+    from ..runtime import workflow_orchestration_runtime_smoke
+
+    required_tables = {
+        "workflow_version",
+        "workflow_transition_guard",
+        "workflow_retry_policy",
+        "workflow_sla_policy",
+        "workflow_escalation_rule",
+        "human_task_assignment",
+        "workflow_approval_decision",
+        "workflow_integration_endpoint",
+        "workflow_event_correlation",
+        "workflow_metric_snapshot",
+        "workflow_exception_case",
+        "workflow_simulation_run",
+        "workflow_policy_screening",
+        "workflow_completion_proof",
+        "workflow_audit_entry",
+        "workflow_governed_model_evidence",
+    }
+    required_commands = {
+        "publish_workflow_version",
+        "register_transition_guard",
+        "register_retry_policy",
+        "register_sla_policy",
+        "register_escalation_rule",
+        "assign_human_task",
+        "record_approval_decision",
+        "register_integration_endpoint",
+        "correlate_event",
+        "capture_metric_snapshot",
+        "open_exception_case",
+        "record_simulation_run",
+        "record_policy_screening",
+        "record_completion_proof",
+        "append_audit_entry",
+        "register_governed_model_evidence",
+    }
+
+    smoke = workflow_orchestration_runtime_smoke()
+    service = workflow_orchestration_build_service_contract()
+    api = workflow_orchestration_build_api_contract()
+    permissions = workflow_orchestration_permissions_contract()
+
+    assert smoke["ok"] is True
+    assert required_tables <= set(WORKFLOW_ORCHESTRATION_OWNED_TABLES)
+    assert required_commands <= set(service["command_methods"])
+    assert required_commands <= set(permissions["action_permissions"])
+    assert api["event_contract"] == "AppGen-X"
+    assert api["stream_engine_picker_visible"] is False
+    assert {route["command"] for route in api["routes"] if route.get("command")} >= required_commands
+    assert all(table in service["mutates_only"] for table in required_tables)
+    assert smoke["state"]["workflow_versions"]
+    assert smoke["state"]["workflow_audit_entries"]
+
+
 def test_manifest_and_event_contract():
     from .. import events
 

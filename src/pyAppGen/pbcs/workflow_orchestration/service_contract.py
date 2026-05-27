@@ -1,8 +1,17 @@
 """Generated service evidence for the workflow_orchestration PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.workflow-orchestration-service-contract.v1', 'ok': True, 'transaction_boundary': 'workflow_orchestration_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'define_workflow', 'start_instance', 'signal_instance', 'schedule_timer', 'record_step_result', 'execute_compensation', 'complete_workflow', 'run_control_tests', 'verify_owned_table_boundary'), 'query_methods': ('build_workbench_view', 'simulate_saga_policy', 'forecast_workflow_health', 'parse_workflow_intent', 'score_saga_risk', 'recommend_compensation', 'select_execution_route', 'generate_completion_proof', 'screen_policy', 'build_api_contract', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'ui_binding_contract'), 'idempotent_handlers': ('receive_event', 'signal_instance', 'record_step_result', 'execute_compensation'), 'retry_dead_letter_evidence': {'inbox_table': 'workflow_orchestration_appgen_inbox_event', 'dead_letter_table': 'workflow_orchestration_dead_letter_event', 'retry_limit_source': 'workflow_configuration.retry_limit'}, 'eventing': {'contract': 'AppGen-X', 'topic': 'appgen.workflow.events', 'stream_engine_picker_visible': False}, 'mutates_only': ('workflow_definition', 'workflow_instance', 'workflow_signal', 'timer_task', 'saga_step', 'compensation', 'human_task', 'workflow_rule', 'workflow_parameter', 'workflow_configuration'), 'external_dependencies': {'apis': ('GET /gateway/routes', 'GET /schemas/subjects', 'GET /identity/policies', 'POST /audit/workflow-events', 'POST /composition/workflow-projections'), 'events': ('InvoiceApproved', 'OrderVerified', 'ShipmentDelivered', 'PaymentCaptured', 'SchemaAccepted', 'AccessPolicyChanged', 'RoutePublished'), 'api_projections': ('gateway_workflow_projection', 'schema_workflow_projection', 'audit_workflow_projection', 'identity_workflow_projection', 'composition_workflow_projection', 'order_workflow_projection', 'payment_workflow_projection', 'shipment_workflow_projection', 'invoice_workflow_projection'), 'shared_tables': ()}, 'pbc': 'workflow_orchestration', 'shared_table_access': False}
+from __future__ import annotations
+
+from .runtime import workflow_orchestration_build_service_contract
 
 
-def build_service_contract():
+SERVICE_CONTRACT = {
+    **workflow_orchestration_build_service_contract(),
+    "pbc": "workflow_orchestration",
+    "shared_table_access": False,
+}
+
+
+def build_service_contract() -> dict:
     """Return generated command, eventing, and handler evidence."""
     return dict(SERVICE_CONTRACT)

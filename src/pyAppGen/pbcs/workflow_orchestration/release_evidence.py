@@ -1,109 +1,79 @@
 """Generated release evidence for the workflow_orchestration PBC."""
 
-import importlib.util
-from pathlib import Path
+from __future__ import annotations
+
+from .runtime import workflow_orchestration_build_release_evidence
+from .schema_contract import build_schema_contract
+from .service_contract import build_service_contract
 
 
-RELEASE_EVIDENCE = {'format': 'appgen.workflow-orchestration-release-evidence.v1', 'ok': True, 'checks': ({'id': 'owned_schema_depth', 'ok': True}, {'id': 'migration_per_owned_table', 'ok': True}, {'id': 'runtime_tables_declared', 'ok': True}, {'id': 'service_contract_depth', 'ok': True}, {'id': 'api_event_contract', 'ok': True}, {'id': 'permissions_cover_release_queries', 'ok': True}, {'id': 'ui_binding_evidence', 'ok': True}, {'id': 'workbench_binding_evidence', 'ok': True}, {'id': 'boundary_contract', 'ok': True}, {'id': 'database_allowlist', 'ok': True}), 'schema': {'format': 'appgen.workflow-orchestration-owned-schema-contract.v1', 'ok': True, 'tables': ({'table': 'workflow_definition', 'fields': ('tenant', 'workflow_id', 'owner_pbc', 'semantic_version', 'states', 'transitions', 'participants', 'status', 'audit_hash'), 'owner': 'workflow_orchestration'}, {'table': 'workflow_instance', 'fields': ('tenant', 'instance_id', 'workflow_id', 'correlation_id', 'current_state', 'context_payload', 'history', 'status', 'audit_hash'), 'owner': 'workflow_orchestration'}, {'table': 'workflow_signal', 'fields': ('tenant', 'signal_id', 'instance_id', 'signal', 'source_pbc', 'payload', 'accepted', 'idempotency_key', 'audit_hash'), 'owner': 'workflow_orchestration'}, {'table': 'timer_task', 'fields': ('tenant', 'timer_id', 'instance_id', 'action', 'deadline_seconds', 'breach_risk', 'retry_budget', 'status', 'audit_hash'), 'owner': 'workflow_orchestration'}, {'table': 'saga_step', 'fields': ('tenant', 'step_id', 'instance_id', 'participant_pbc', 'command', 'duration_ms', 'status', 'idempotency_key', 'audit_hash'), 'owner': 'workflow_orchestration'}, {'table': 'compensation', 'fields': ('tenant', 'compensation_id', 'instance_id', 'step_id', 'command', 'reason', 'side_effect_boundary', 'status', 'audit_hash'), 'owner': 'workflow_orchestration'}, {'table': 'human_task', 'fields': ('tenant', 'task_id', 'instance_id', 'task_type', 'assignee_group', 'decision', 'sla_due_at', 'status', 'audit_hash'), 'owner': 'workflow_orchestration'}, {'table': 'workflow_rule', 'fields': ('tenant', 'rule_id', 'scope', 'trigger', 'compiled_hash', 'enabled', 'severity', 'status', 'audit_hash'), 'owner': 'workflow_orchestration'}, {'table': 'workflow_parameter', 'fields': ('tenant', 'parameter_name', 'parameter_value', 'effective_at', 'changed_by', 'audit_hash'), 'owner': 'workflow_orchestration'}, {'table': 'workflow_configuration', 'fields': ('tenant', 'configuration_id', 'database_backend', 'event_topic', 'event_contract', 'stream_engine_picker_visible', 'default_timezone', 'audit_hash'), 'owner': 'workflow_orchestration'}), 'runtime_tables': ({'table': 'workflow_orchestration_appgen_outbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'idempotency_key', 'published_at', 'audit_hash')}, {'table': 'workflow_orchestration_appgen_inbox_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'idempotency_key', 'attempts', 'audit_hash')}, {'table': 'workflow_orchestration_dead_letter_event', 'fields': ('tenant', 'event_id', 'event_type', 'payload', 'reason', 'attempts', 'audit_hash')}), 'relationships': ({'from_table': 'workflow_instance', 'from_field': 'workflow_id', 'to_table': 'workflow_definition', 'to_field': 'workflow_id'}, {'from_table': 'workflow_signal', 'from_field': 'instance_id', 'to_table': 'workflow_instance', 'to_field': 'instance_id'}, {'from_table': 'timer_task', 'from_field': 'instance_id', 'to_table': 'workflow_instance', 'to_field': 'instance_id'}, {'from_table': 'saga_step', 'from_field': 'instance_id', 'to_table': 'workflow_instance', 'to_field': 'instance_id'}, {'from_table': 'compensation', 'from_field': 'instance_id', 'to_table': 'workflow_instance', 'to_field': 'instance_id'}, {'from_table': 'compensation', 'from_field': 'step_id', 'to_table': 'saga_step', 'to_field': 'step_id'}, {'from_table': 'human_task', 'from_field': 'instance_id', 'to_table': 'workflow_instance', 'to_field': 'instance_id'}), 'migrations': ({'path': 'pbcs/workflow_orchestration/migrations/001_workflow_definition.sql', 'operation': 'create_owned_table', 'table': 'workflow_definition', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/workflow_orchestration/migrations/002_workflow_instance.sql', 'operation': 'create_owned_table', 'table': 'workflow_instance', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/workflow_orchestration/migrations/003_workflow_signal.sql', 'operation': 'create_owned_table', 'table': 'workflow_signal', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/workflow_orchestration/migrations/004_timer_task.sql', 'operation': 'create_owned_table', 'table': 'timer_task', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/workflow_orchestration/migrations/005_saga_step.sql', 'operation': 'create_owned_table', 'table': 'saga_step', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/workflow_orchestration/migrations/006_compensation.sql', 'operation': 'create_owned_table', 'table': 'compensation', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/workflow_orchestration/migrations/007_human_task.sql', 'operation': 'create_owned_table', 'table': 'human_task', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/workflow_orchestration/migrations/008_workflow_rule.sql', 'operation': 'create_owned_table', 'table': 'workflow_rule', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/workflow_orchestration/migrations/009_workflow_parameter.sql', 'operation': 'create_owned_table', 'table': 'workflow_parameter', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}, {'path': 'pbcs/workflow_orchestration/migrations/010_workflow_configuration.sql', 'operation': 'create_owned_table', 'table': 'workflow_configuration', 'backend_allowlist': ('postgresql', 'mysql', 'mariadb')}), 'models': ({'class_name': 'WorkflowDefinition', 'table': 'workflow_definition', 'fields': ('tenant', 'workflow_id', 'owner_pbc', 'semantic_version', 'states', 'transitions', 'participants', 'status', 'audit_hash')}, {'class_name': 'WorkflowInstance', 'table': 'workflow_instance', 'fields': ('tenant', 'instance_id', 'workflow_id', 'correlation_id', 'current_state', 'context_payload', 'history', 'status', 'audit_hash')}, {'class_name': 'WorkflowSignal', 'table': 'workflow_signal', 'fields': ('tenant', 'signal_id', 'instance_id', 'signal', 'source_pbc', 'payload', 'accepted', 'idempotency_key', 'audit_hash')}, {'class_name': 'TimerTask', 'table': 'timer_task', 'fields': ('tenant', 'timer_id', 'instance_id', 'action', 'deadline_seconds', 'breach_risk', 'retry_budget', 'status', 'audit_hash')}, {'class_name': 'SagaStep', 'table': 'saga_step', 'fields': ('tenant', 'step_id', 'instance_id', 'participant_pbc', 'command', 'duration_ms', 'status', 'idempotency_key', 'audit_hash')}, {'class_name': 'Compensation', 'table': 'compensation', 'fields': ('tenant', 'compensation_id', 'instance_id', 'step_id', 'command', 'reason', 'side_effect_boundary', 'status', 'audit_hash')}, {'class_name': 'HumanTask', 'table': 'human_task', 'fields': ('tenant', 'task_id', 'instance_id', 'task_type', 'assignee_group', 'decision', 'sla_due_at', 'status', 'audit_hash')}, {'class_name': 'WorkflowRule', 'table': 'workflow_rule', 'fields': ('tenant', 'rule_id', 'scope', 'trigger', 'compiled_hash', 'enabled', 'severity', 'status', 'audit_hash')}, {'class_name': 'WorkflowParameter', 'table': 'workflow_parameter', 'fields': ('tenant', 'parameter_name', 'parameter_value', 'effective_at', 'changed_by', 'audit_hash')}, {'class_name': 'WorkflowConfiguration', 'table': 'workflow_configuration', 'fields': ('tenant', 'configuration_id', 'database_backend', 'event_topic', 'event_contract', 'stream_engine_picker_visible', 'default_timezone', 'audit_hash')}), 'datastore_backends': ('postgresql', 'mysql', 'mariadb'), 'shared_table_access': False}, 'service': {'format': 'appgen.workflow-orchestration-service-contract.v1', 'ok': True, 'transaction_boundary': 'workflow_orchestration_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'define_workflow', 'start_instance', 'signal_instance', 'schedule_timer', 'record_step_result', 'execute_compensation', 'complete_workflow', 'run_control_tests', 'verify_owned_table_boundary'), 'query_methods': ('build_workbench_view', 'simulate_saga_policy', 'forecast_workflow_health', 'parse_workflow_intent', 'score_saga_risk', 'recommend_compensation', 'select_execution_route', 'generate_completion_proof', 'screen_policy', 'build_api_contract', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'ui_binding_contract'), 'idempotent_handlers': ('receive_event', 'signal_instance', 'record_step_result', 'execute_compensation'), 'retry_dead_letter_evidence': {'inbox_table': 'workflow_orchestration_appgen_inbox_event', 'dead_letter_table': 'workflow_orchestration_dead_letter_event', 'retry_limit_source': 'workflow_configuration.retry_limit'}, 'eventing': {'contract': 'AppGen-X', 'topic': 'appgen.workflow.events', 'stream_engine_picker_visible': False}, 'mutates_only': ('workflow_definition', 'workflow_instance', 'workflow_signal', 'timer_task', 'saga_step', 'compensation', 'human_task', 'workflow_rule', 'workflow_parameter', 'workflow_configuration'), 'external_dependencies': {'apis': ('GET /gateway/routes', 'GET /schemas/subjects', 'GET /identity/policies', 'POST /audit/workflow-events', 'POST /composition/workflow-projections'), 'events': ('InvoiceApproved', 'OrderVerified', 'ShipmentDelivered', 'PaymentCaptured', 'SchemaAccepted', 'AccessPolicyChanged', 'RoutePublished'), 'api_projections': ('gateway_workflow_projection', 'schema_workflow_projection', 'audit_workflow_projection', 'identity_workflow_projection', 'composition_workflow_projection', 'order_workflow_projection', 'payment_workflow_projection', 'shipment_workflow_projection', 'invoice_workflow_projection'), 'shared_tables': ()}}, 'api': {'ok': True, 'format': 'appgen.workflow-orchestration-api-contract.v1', 'routes': ({'route': 'PUT /workflows/configuration', 'command': 'configure_runtime', 'owned_tables': ('workflow_configuration',), 'requires_permission': 'workflow_orchestration.configure'}, {'route': 'POST /workflows/parameters', 'command': 'set_parameter', 'owned_tables': ('workflow_parameter',), 'requires_permission': 'workflow_orchestration.configure'}, {'route': 'POST /workflows/rules', 'command': 'register_rule', 'owned_tables': ('workflow_rule',), 'requires_permission': 'workflow_orchestration.configure'}, {'route': 'POST /workflows/definitions', 'command': 'define_workflow', 'owned_tables': ('workflow_definition',), 'emits': ('WorkflowDefinitionPublished',), 'requires_permission': 'workflow_orchestration.define', 'idempotency_key': 'workflow_id:version'}, {'route': 'POST /workflows/instances', 'command': 'start_instance', 'owned_tables': ('workflow_instance',), 'emits': ('WorkflowStarted',), 'requires_permission': 'workflow_orchestration.start', 'idempotency_key': 'instance_id'}, {'route': 'POST /workflows/instances/{id}/signals', 'command': 'signal_instance', 'owned_tables': ('workflow_signal', 'workflow_instance'), 'emits': ('WorkflowSignalAccepted',), 'requires_permission': 'workflow_orchestration.signal', 'idempotency_key': 'signal_id'}, {'route': 'POST /workflows/timers', 'command': 'schedule_timer', 'owned_tables': ('timer_task',), 'emits': ('TimerScheduled',), 'requires_permission': 'workflow_orchestration.start', 'idempotency_key': 'timer_id'}, {'route': 'POST /workflows/instances/{id}/steps', 'command': 'record_step_result', 'owned_tables': ('saga_step',), 'emits': ('SagaStepCompleted',), 'requires_permission': 'workflow_orchestration.signal', 'idempotency_key': 'step_id'}, {'route': 'POST /workflows/instances/{id}/compensations', 'command': 'execute_compensation', 'owned_tables': ('compensation',), 'emits': ('CompensationExecuted',), 'requires_permission': 'workflow_orchestration.compensate', 'idempotency_key': 'compensation_id'}, {'route': 'POST /workflows/events/inbox', 'command': 'receive_event', 'owned_tables': (), 'consumes': ('InvoiceApproved', 'OrderVerified', 'ShipmentDelivered', 'PaymentCaptured', 'SchemaAccepted', 'AccessPolicyChanged', 'RoutePublished'), 'requires_permission': 'workflow_orchestration.event', 'idempotency_key': 'event_id'}, {'route': 'GET /workflows/workbench', 'query': 'build_workbench_view', 'owned_tables': ('workflow_definition', 'workflow_instance', 'workflow_signal', 'timer_task', 'saga_step', 'compensation', 'human_task', 'workflow_rule', 'workflow_parameter', 'workflow_configuration'), 'requires_permission': 'workflow_orchestration.audit'}, {'route': 'GET /workflows/schema-contract', 'query': 'build_schema_contract', 'owned_tables': ('workflow_definition', 'workflow_instance', 'workflow_signal', 'timer_task', 'saga_step', 'compensation', 'human_task', 'workflow_rule', 'workflow_parameter', 'workflow_configuration'), 'requires_permission': 'workflow_orchestration.audit'}, {'route': 'GET /workflows/service-contract', 'query': 'build_service_contract', 'owned_tables': ('workflow_definition', 'workflow_instance', 'workflow_signal', 'timer_task', 'saga_step', 'compensation', 'human_task', 'workflow_rule', 'workflow_parameter', 'workflow_configuration'), 'requires_permission': 'workflow_orchestration.audit'}, {'route': 'GET /workflows/release-evidence', 'query': 'build_release_evidence', 'owned_tables': ('workflow_definition', 'workflow_instance', 'workflow_signal', 'timer_task', 'saga_step', 'compensation', 'human_task', 'workflow_rule', 'workflow_parameter', 'workflow_configuration'), 'requires_permission': 'workflow_orchestration.audit'}), 'declared_catalog_routes': ('PUT /workflows/configuration', 'POST /workflows/parameters', 'POST /workflows/rules', 'POST /workflows/definitions', 'POST /workflows/instances', 'POST /workflows/instances/{id}/signals', 'POST /workflows/timers', 'GET /workflows/workbench'), 'events': {'emits': ('WorkflowDefinitionPublished', 'WorkflowStarted', 'WorkflowSignalAccepted', 'SagaStepCompleted', 'TimerScheduled', 'CompensationExecuted', 'WorkflowCompleted'), 'consumes': ('InvoiceApproved', 'OrderVerified', 'ShipmentDelivered', 'PaymentCaptured', 'SchemaAccepted', 'AccessPolicyChanged', 'RoutePublished')}, 'emits': ('WorkflowDefinitionPublished', 'WorkflowStarted', 'WorkflowSignalAccepted', 'SagaStepCompleted', 'TimerScheduled', 'CompensationExecuted', 'WorkflowCompleted'), 'consumes': ('InvoiceApproved', 'OrderVerified', 'ShipmentDelivered', 'PaymentCaptured', 'SchemaAccepted', 'AccessPolicyChanged', 'RoutePublished'), 'permissions': ('workflow_orchestration.audit', 'workflow_orchestration.compensate', 'workflow_orchestration.configure', 'workflow_orchestration.define', 'workflow_orchestration.event', 'workflow_orchestration.read', 'workflow_orchestration.signal', 'workflow_orchestration.start'), 'database_backends': ('postgresql', 'mysql', 'mariadb'), 'owned_tables': ('workflow_definition', 'workflow_instance', 'workflow_signal', 'timer_task', 'saga_step', 'compensation', 'human_task', 'workflow_rule', 'workflow_parameter', 'workflow_configuration'), 'runtime_tables': ('workflow_orchestration_appgen_outbox_event', 'workflow_orchestration_appgen_inbox_event', 'workflow_orchestration_dead_letter_event'), 'shared_table_access': False, 'event_contract': 'AppGen-X', 'required_event_topic': 'appgen.workflow.events', 'stream_engine_picker_visible': False, 'configuration': ('WORKFLOW_ORCHESTRATION_DATABASE_URL', 'WORKFLOW_ORCHESTRATION_EVENT_TOPIC', 'WORKFLOW_ORCHESTRATION_RETRY_LIMIT', 'WORKFLOW_ORCHESTRATION_DEFAULT_TIMEZONE'), 'dependencies': {'apis': ('GET /gateway/routes', 'GET /schemas/subjects', 'GET /identity/policies', 'POST /audit/workflow-events', 'POST /composition/workflow-projections'), 'events': ('InvoiceApproved', 'OrderVerified', 'ShipmentDelivered', 'PaymentCaptured', 'SchemaAccepted', 'AccessPolicyChanged', 'RoutePublished'), 'api_projections': ('gateway_workflow_projection', 'schema_workflow_projection', 'audit_workflow_projection', 'identity_workflow_projection', 'composition_workflow_projection', 'order_workflow_projection', 'payment_workflow_projection', 'shipment_workflow_projection', 'invoice_workflow_projection'), 'shared_tables': ()}}, 'permissions': {'format': 'appgen.workflow-orchestration-permissions.v1', 'ok': True, 'pbc': 'workflow_orchestration', 'permissions': ('workflow_orchestration.read', 'workflow_orchestration.define', 'workflow_orchestration.start', 'workflow_orchestration.signal', 'workflow_orchestration.compensate', 'workflow_orchestration.event', 'workflow_orchestration.configure', 'workflow_orchestration.audit'), 'action_permissions': {'define_workflow': 'workflow_orchestration.define', 'start_instance': 'workflow_orchestration.start', 'signal_instance': 'workflow_orchestration.signal', 'schedule_timer': 'workflow_orchestration.start', 'record_step_result': 'workflow_orchestration.signal', 'execute_compensation': 'workflow_orchestration.compensate', 'complete_workflow': 'workflow_orchestration.start', 'receive_event': 'workflow_orchestration.event', 'register_rule': 'workflow_orchestration.configure', 'register_schema_extension': 'workflow_orchestration.configure', 'set_parameter': 'workflow_orchestration.configure', 'configure_runtime': 'workflow_orchestration.configure', 'build_workbench_view': 'workflow_orchestration.audit', 'run_control_tests': 'workflow_orchestration.audit', 'build_schema_contract': 'workflow_orchestration.audit', 'build_service_contract': 'workflow_orchestration.audit', 'build_release_evidence': 'workflow_orchestration.audit'}}, 'ui_binding': {'format': 'appgen.workflow-orchestration-ui-binding-contract.v1', 'ok': True, 'binding_evidence': {'owned_tables': ('workflow_definition', 'workflow_instance', 'workflow_signal', 'timer_task', 'saga_step', 'compensation', 'human_task', 'workflow_rule', 'workflow_parameter', 'workflow_configuration'), 'runtime_tables': ('workflow_orchestration_appgen_outbox_event', 'workflow_orchestration_appgen_inbox_event', 'workflow_orchestration_dead_letter_event'), 'workbench_route': '/workbench/pbcs/workflow_orchestration', 'outbox_table': 'workflow_orchestration_appgen_outbox_event', 'inbox_table': 'workflow_orchestration_appgen_inbox_event', 'dead_letter_table': 'workflow_orchestration_dead_letter_event'}}, 'boundary': {'format': 'appgen.workflow-orchestration-boundary.v1', 'ok': True, 'owned_tables': ('workflow_definition', 'workflow_instance', 'workflow_signal', 'timer_task', 'saga_step', 'compensation', 'human_task', 'workflow_rule', 'workflow_parameter', 'workflow_configuration'), 'declared_dependencies': {'apis': ('GET /gateway/routes', 'GET /schemas/subjects', 'GET /identity/policies', 'POST /audit/workflow-events', 'POST /composition/workflow-projections'), 'events': ('InvoiceApproved', 'OrderVerified', 'ShipmentDelivered', 'PaymentCaptured', 'SchemaAccepted', 'AccessPolicyChanged', 'RoutePublished'), 'api_projections': ('gateway_workflow_projection', 'schema_workflow_projection', 'audit_workflow_projection', 'identity_workflow_projection', 'composition_workflow_projection', 'order_workflow_projection', 'payment_workflow_projection', 'shipment_workflow_projection', 'invoice_workflow_projection'), 'shared_tables': ()}, 'references': ('workflow_instance', 'workflow_orchestration_appgen_outbox_event', 'GET /gateway/routes', 'gateway_workflow_projection', 'SchemaAccepted'), 'violations': ()}, 'blocking_gaps': (), 'pbc': 'workflow_orchestration'}
+RELEASE_EVIDENCE = {
+    **workflow_orchestration_build_release_evidence(),
+    "pbc": "workflow_orchestration",
+}
 
 
-def _load_sibling_module(module_name):
-    """Load a sibling generated module when this file is imported directly."""
-    path = Path(__file__).with_name(f'{module_name}.py')
-    spec = importlib.util.spec_from_file_location(f'_pbc_release_{module_name}', path)
-    module = importlib.util.module_from_spec(spec)
-    if spec.loader is None:
-        raise ImportError(module_name)
-    spec.loader.exec_module(module)
-    return module
-
-
-def _build_schema_contract():
-    try:
-        from .schema_contract import build_schema_contract
-    except ImportError:
-        return _load_sibling_module('schema_contract').build_schema_contract()
-    return build_schema_contract()
-
-
-def _build_service_contract():
-    try:
-        from .service_contract import build_service_contract
-    except ImportError:
-        return _load_sibling_module('service_contract').build_service_contract()
-    return build_service_contract()
-
-
-def build_release_evidence():
+def build_release_evidence() -> dict:
     """Return generated release audit evidence for this PBC."""
     evidence = dict(RELEASE_EVIDENCE)
-    evidence.setdefault('schema', _build_schema_contract())
-    evidence.setdefault('service', _build_service_contract())
-    evidence.setdefault('pbc', 'workflow_orchestration')
+    evidence.setdefault("schema", build_schema_contract())
+    evidence.setdefault("service", build_service_contract())
+    evidence.setdefault("pbc", "workflow_orchestration")
     return evidence
 
 
-def release_readiness_manifest():
+def release_readiness_manifest() -> dict:
     """Return side-effect-free release evidence coverage and gate metadata."""
     evidence = build_release_evidence()
-    sections = tuple(
-        name
-        for name in ('schema', 'service', 'api', 'permissions', 'ui', 'events')
-        if isinstance(evidence.get(name), dict)
-    )
-    checks = tuple(evidence.get('checks', ()))
+    sections = tuple(name for name in ("schema", "service", "api", "permissions", "ui_binding", "events") if isinstance(evidence.get(name), dict))
+    checks = tuple(evidence.get("checks", ()))
     return {
-        'ok': evidence.get('ok') is True and bool(checks),
-        'pbc': 'workflow_orchestration',
-        'format': evidence.get('format'),
-        'sections': sections,
-        'checks': checks,
-        'blocking_gaps': tuple(evidence.get('blocking_gaps', ())),
-        'required_sections': ('schema', 'service'),
-        'side_effects': (),
+        "ok": evidence.get("ok") is True and bool(checks),
+        "pbc": "workflow_orchestration",
+        "format": evidence.get("format"),
+        "sections": sections,
+        "checks": checks,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())),
+        "required_sections": ("schema", "service", "api", "permissions", "ui_binding"),
+        "side_effects": (),
     }
 
 
-def validate_release_evidence():
+def validate_release_evidence() -> dict:
     """Validate release evidence, blocking gaps, and owned-boundary proof."""
     evidence = build_release_evidence()
     manifest = release_readiness_manifest()
-    missing_sections = tuple(section for section in manifest['required_sections'] if section not in manifest['sections'])
-    failed_checks = tuple(check for check in manifest['checks'] if check.get('ok') is not True)
-    schema = evidence.get('schema', {}) if isinstance(evidence.get('schema'), dict) else {}
-    service = evidence.get('service', {}) if isinstance(evidence.get('service'), dict) else {}
+    missing_sections = tuple(section for section in manifest["required_sections"] if section not in manifest["sections"])
+    failed_checks = tuple(check for check in manifest["checks"] if check.get("ok") is not True)
+    schema = evidence.get("schema", {}) if isinstance(evidence.get("schema"), dict) else {}
+    service = evidence.get("service", {}) if isinstance(evidence.get("service"), dict) else {}
     boundary_gaps = tuple(
         gap
         for gap, failed in (
-            ('schema_shared_table_access', schema.get('shared_table_access') is not False),
-            ('service_shared_table_access', service.get('shared_table_access') is True),
-            ('service_missing_command_methods', not bool(service.get('command_methods'))),
+            ("schema_shared_table_access", schema.get("shared_table_access") is not False),
+            ("service_shared_table_access", service.get("shared_table_access") is True),
+            ("service_missing_command_methods", not bool(service.get("command_methods"))),
         )
         if failed
     )
     return {
-        'ok': manifest['ok']
-        and evidence.get('pbc') == manifest['pbc']
-        and not manifest['blocking_gaps']
+        "ok": manifest["ok"]
+        and evidence.get("pbc") == manifest["pbc"]
+        and not manifest["blocking_gaps"]
         and not missing_sections
         and not failed_checks
         and not boundary_gaps,
-        'pbc': 'workflow_orchestration',
-        'manifest': manifest,
-        'missing_sections': missing_sections,
-        'failed_checks': failed_checks,
-        'boundary_gaps': boundary_gaps,
-        'side_effects': (),
+        "pbc": "workflow_orchestration",
+        "manifest": manifest,
+        "missing_sections": missing_sections,
+        "failed_checks": failed_checks,
+        "boundary_gaps": boundary_gaps,
+        "side_effects": (),
     }
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Exercise release evidence readiness validation side-effect-free."""
     validation = validate_release_evidence()
     evidence = build_release_evidence()
-    return {
-        'ok': validation['ok'] and evidence.get('ok') is True,
-        'validation': validation,
-        'evidence': evidence,
-        'side_effects': (),
-    }
+    return {"ok": validation["ok"] and evidence.get("ok") is True, "validation": validation, "evidence": evidence, "side_effects": ()}

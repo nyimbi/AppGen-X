@@ -12,12 +12,28 @@ WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC = "appgen.workflow.events"
 WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 WORKFLOW_ORCHESTRATION_OWNED_TABLES = (
     "workflow_definition",
+    "workflow_version",
     "workflow_instance",
     "workflow_signal",
+    "workflow_transition_guard",
     "timer_task",
+    "workflow_retry_policy",
+    "workflow_sla_policy",
+    "workflow_escalation_rule",
     "saga_step",
     "compensation",
     "human_task",
+    "human_task_assignment",
+    "workflow_approval_decision",
+    "workflow_integration_endpoint",
+    "workflow_event_correlation",
+    "workflow_metric_snapshot",
+    "workflow_exception_case",
+    "workflow_simulation_run",
+    "workflow_policy_screening",
+    "workflow_completion_proof",
+    "workflow_audit_entry",
+    "workflow_governed_model_evidence",
     "workflow_rule",
     "workflow_parameter",
     "workflow_configuration",
@@ -196,11 +212,27 @@ def workflow_orchestration_runtime_capabilities() -> dict:
             "register_schema_extension",
             "receive_event",
             "define_workflow",
+            "publish_workflow_version",
+            "register_transition_guard",
             "start_instance",
             "signal_instance",
             "schedule_timer",
+            "register_retry_policy",
+            "register_sla_policy",
+            "register_escalation_rule",
             "record_step_result",
             "execute_compensation",
+            "assign_human_task",
+            "record_approval_decision",
+            "register_integration_endpoint",
+            "correlate_event",
+            "capture_metric_snapshot",
+            "open_exception_case",
+            "record_simulation_run",
+            "record_policy_screening",
+            "record_completion_proof",
+            "append_audit_entry",
+            "register_governed_model_evidence",
             "complete_workflow",
             "build_api_contract",
             "build_schema_contract",
@@ -262,23 +294,35 @@ def workflow_orchestration_runtime_smoke() -> dict:
         },
     )
     state = definition["state"]
+    state = workflow_orchestration_publish_workflow_version(state, {"version_id": "ver_order_100", "tenant": "tenant_alpha", "workflow_id": "order_fulfillment", "semantic_version": "1.0.0", "status": "published"})["state"]
+    state = workflow_orchestration_register_transition_guard(state, {"guard_id": "guard_pay", "tenant": "tenant_alpha", "workflow_id": "order_fulfillment", "from_state": "verified", "signal": "capture_payment", "expression": "context.total > 0", "status": "active"})["state"]
+    state = workflow_orchestration_register_retry_policy(state, {"policy_id": "retry_pay", "tenant": "tenant_alpha", "workflow_id": "order_fulfillment", "max_attempts": 3, "backoff": "exponential", "status": "active"})["state"]
+    state = workflow_orchestration_register_sla_policy(state, {"policy_id": "sla_ship", "tenant": "tenant_alpha", "workflow_id": "order_fulfillment", "threshold_seconds": 3600, "severity": "blocking", "status": "active"})["state"]
+    state = workflow_orchestration_register_escalation_rule(state, {"escalation_id": "esc_ship", "tenant": "tenant_alpha", "workflow_id": "order_fulfillment", "trigger": "sla_breach", "target_group": "ops", "status": "active"})["state"]
+    state = workflow_orchestration_register_integration_endpoint(state, {"endpoint_id": "ep_pay", "tenant": "tenant_alpha", "participant_pbc": "payment_orchestration", "route": "POST /payments/capture", "status": "active"})["state"]
     instance = workflow_orchestration_start_instance(
         state,
         {"instance_id": "inst_order_1", "tenant": "tenant_alpha", "workflow_id": "order_fulfillment", "correlation_id": "order-1", "context": {"order_id": "order-1", "total": 120}},
     )
     state = instance["state"]
+    state = workflow_orchestration_correlate_event(state, {"correlation_id": "corr_order_1", "tenant": "tenant_alpha", "instance_id": "inst_order_1", "source_event": "OrderVerified", "business_key": "order-1"})["state"]
     signal = workflow_orchestration_signal_instance(state, "inst_order_1", {"signal": "verify", "source_pbc": "checkout_processing", "payload": {"ok": True}})
     state = signal["state"]
     timer = workflow_orchestration_schedule_timer(state, {"timer_id": "timer_payment", "tenant": "tenant_alpha", "instance_id": "inst_order_1", "deadline_seconds": 900, "action": "capture_payment"})
     state = timer["state"]
+    state = workflow_orchestration_assign_human_task(state, {"assignment_id": "assign_review", "tenant": "tenant_alpha", "task_id": "task_review", "instance_id": "inst_order_1", "assignee_group": "ops", "status": "assigned"})["state"]
+    state = workflow_orchestration_record_approval_decision(state, {"decision_id": "dec_review", "tenant": "tenant_alpha", "task_id": "task_review", "decision": "approved", "decided_by": "ops_lead", "status": "final"})["state"]
     step = workflow_orchestration_record_step_result(state, {"step_id": "step_payment", "tenant": "tenant_alpha", "instance_id": "inst_order_1", "participant_pbc": "payment_orchestration", "command": "capture_payment", "status": "completed", "duration_ms": 120})
     state = step["state"]
     compensation = workflow_orchestration_execute_compensation(state, {"compensation_id": "comp_payment", "tenant": "tenant_alpha", "instance_id": "inst_order_1", "step_id": "step_payment", "command": "refund_authorization", "reason": "shipment_failed"})
     state = compensation["state"]
+    state = workflow_orchestration_open_exception_case(state, {"case_id": "case_ship", "tenant": "tenant_alpha", "instance_id": "inst_order_1", "case_type": "shipment_failed", "severity": "blocking", "status": "resolved"})["state"]
+    state = workflow_orchestration_capture_metric_snapshot(state, {"snapshot_id": "metric_1", "tenant": "tenant_alpha", "workflow_id": "order_fulfillment", "instance_count": 1, "completed_count": 0, "compensation_count": 1})["state"]
     completed = workflow_orchestration_complete_workflow(state, "inst_order_1")
     state = completed["state"]
     workbench = workflow_orchestration_build_workbench_view(state, tenant="tenant_alpha")
     simulation = workflow_orchestration_simulate_saga_policy(state, "order_fulfillment", retry_limit=5, parallel_steps=3)
+    state = workflow_orchestration_record_simulation_run(state, {"simulation_id": "sim_order", "tenant": "tenant_alpha", "workflow_id": "order_fulfillment", "scenario": "retry_parallelism", "risk_delta": simulation["risk_delta"], "status": "completed"})["state"]
     forecast = workflow_orchestration_forecast_workflow_health((0.98, 0.95, 0.9), horizon_hours=24)
     parsed = workflow_orchestration_parse_workflow_intent("start workflow order_fulfillment instance inst_900 signal approve")
     risk = workflow_orchestration_score_saga_risk({"sla": 0.4, "retry": 0.2, "compensation": 0.3, "participant": 0.1})
@@ -286,6 +330,9 @@ def workflow_orchestration_runtime_smoke() -> dict:
     selected_route = workflow_orchestration_select_execution_route({"event_id": "wf_route"}, rails=({"route": "primary", "available": False, "latency": 2}, {"route": "timer_replay", "available": True, "latency": 4}))
     proof = workflow_orchestration_generate_completion_proof(state, "inst_order_1", disclosure=("instance_id", "status", "current_state"))
     screening = workflow_orchestration_screen_policy(state, "order_fulfillment", severities=("blocking",))
+    state = workflow_orchestration_record_policy_screening(state, {"screening_id": "screen_order", "tenant": "tenant_alpha", "workflow_id": "order_fulfillment", "decision": screening["decision"], "status": "screened"})["state"]
+    state = workflow_orchestration_record_completion_proof(state, {"proof_id": "proof_order", "tenant": "tenant_alpha", "instance_id": "inst_order_1", "proof_hash": proof["hash"], "proof_type": "workflow_completion"})["state"]
+    state = workflow_orchestration_append_audit_entry(state, "workflow_completed", {"tenant": "tenant_alpha", "instance_id": "inst_order_1", "status": "completed"})["state"]
     controls = workflow_orchestration_run_control_tests(state)
     api = workflow_orchestration_build_api_contract()
     schema = workflow_orchestration_build_schema_contract()
@@ -302,6 +349,7 @@ def workflow_orchestration_runtime_smoke() -> dict:
     anomaly = workflow_orchestration_detect_workflow_anomaly(state)
     stochastic = workflow_orchestration_model_stochastic_workflow_exposure(duration_path=(100, 180, 260), volatility=0.1)
     model = workflow_orchestration_register_governed_model("workflow_risk", {"features": ("sla", "retry", "participant"), "auc": 0.92, "drift_score": 0.03})
+    state = workflow_orchestration_register_governed_model_evidence(state, {"evidence_id": "model_wf", "tenant": "tenant_alpha", "model_id": "workflow_risk", "auc": 0.92, "drift_score": 0.03, "status": "approved"})["state"]
     checks = (
         {"id": "event_sourced_workflow_lifecycle", "ok": len(state["events"]) >= 7 and state["events"][-1]["hash"]},
         {"id": "graph_relational_saga_topology", "ok": definition["workflow"]["graph_edges"] >= 4 and workbench["saga_step_count"] == 1},
@@ -335,6 +383,7 @@ def workflow_orchestration_runtime_smoke() -> dict:
         {"id": "cryptographic_engineering", "ok": proof["hash"] and crypto["epoch"] == 2},
         {"id": "mathematical_optimization", "ok": minimized["objective_score"] > 0 and allocation["clearing_priority"] > 0},
         {"id": "workflow_mlops_governance", "ok": model["governance"]["drift_score"] < 0.05},
+        {"id": "standard_workflow_table_stakes_records", "ok": all(state[name] for name in ("workflow_versions", "workflow_transition_guards", "workflow_retry_policies", "workflow_sla_policies", "workflow_escalation_rules", "human_task_assignments", "workflow_approval_decisions", "workflow_integration_endpoints", "workflow_event_correlations", "workflow_metric_snapshots", "workflow_exception_cases", "workflow_simulation_runs", "workflow_policy_screenings", "workflow_completion_proofs", "workflow_audit_entries", "workflow_governed_model_evidence"))},
     )
     return {
         "format": "appgen.workflow-orchestration-runtime-smoke.v1",
@@ -362,12 +411,28 @@ def workflow_orchestration_empty_state() -> dict:
         "rules": {},
         "schema_extensions": {},
         "definitions": {},
+        "workflow_versions": {},
         "instances": {},
         "signals": {},
+        "workflow_transition_guards": {},
         "timers": {},
+        "workflow_retry_policies": {},
+        "workflow_sla_policies": {},
+        "workflow_escalation_rules": {},
         "saga_steps": {},
         "compensations": {},
         "human_tasks": {},
+        "human_task_assignments": {},
+        "workflow_approval_decisions": {},
+        "workflow_integration_endpoints": {},
+        "workflow_event_correlations": {},
+        "workflow_metric_snapshots": {},
+        "workflow_exception_cases": {},
+        "workflow_simulation_runs": {},
+        "workflow_policy_screenings": {},
+        "workflow_completion_proofs": {},
+        "workflow_audit_entries": {},
+        "workflow_governed_model_evidence": {},
         "events": [],
         "outbox": [],
         "inbox": [],
@@ -501,6 +566,24 @@ def workflow_orchestration_define_workflow(state: dict, workflow: dict) -> dict:
     return {"ok": True, "state": next_state, "workflow": stored}
 
 
+def workflow_orchestration_publish_workflow_version(state: dict, version: dict) -> dict:
+    required = {"version_id", "tenant", "workflow_id", "semantic_version", "status"}
+    _require(version, required)
+    next_state = _copy_state(state)
+    stored = {**version, "audit_hash": _hash_payload(version)}
+    next_state["workflow_versions"][version["version_id"]] = stored
+    return {"ok": True, "state": next_state, "version": stored}
+
+
+def workflow_orchestration_register_transition_guard(state: dict, guard: dict) -> dict:
+    required = {"guard_id", "tenant", "workflow_id", "from_state", "signal", "expression", "status"}
+    _require(guard, required)
+    next_state = _copy_state(state)
+    stored = {**guard, "compiled_hash": _hash_payload(guard), "audit_hash": _hash_payload(guard)}
+    next_state["workflow_transition_guards"][guard["guard_id"]] = stored
+    return {"ok": True, "state": next_state, "guard": stored}
+
+
 def workflow_orchestration_start_instance(state: dict, instance: dict) -> dict:
     required = {"instance_id", "tenant", "workflow_id", "correlation_id", "context"}
     _require(instance, required)
@@ -542,6 +625,33 @@ def workflow_orchestration_schedule_timer(state: dict, timer: dict) -> dict:
     return {"ok": True, "state": next_state, "timer": stored}
 
 
+def workflow_orchestration_register_retry_policy(state: dict, policy: dict) -> dict:
+    required = {"policy_id", "tenant", "workflow_id", "max_attempts", "backoff", "status"}
+    _require(policy, required)
+    next_state = _copy_state(state)
+    stored = {**policy, "audit_hash": _hash_payload(policy)}
+    next_state["workflow_retry_policies"][policy["policy_id"]] = stored
+    return {"ok": True, "state": next_state, "policy": stored}
+
+
+def workflow_orchestration_register_sla_policy(state: dict, policy: dict) -> dict:
+    required = {"policy_id", "tenant", "workflow_id", "threshold_seconds", "severity", "status"}
+    _require(policy, required)
+    next_state = _copy_state(state)
+    stored = {**policy, "audit_hash": _hash_payload(policy)}
+    next_state["workflow_sla_policies"][policy["policy_id"]] = stored
+    return {"ok": True, "state": next_state, "policy": stored}
+
+
+def workflow_orchestration_register_escalation_rule(state: dict, rule: dict) -> dict:
+    required = {"escalation_id", "tenant", "workflow_id", "trigger", "target_group", "status"}
+    _require(rule, required)
+    next_state = _copy_state(state)
+    stored = {**rule, "audit_hash": _hash_payload(rule)}
+    next_state["workflow_escalation_rules"][rule["escalation_id"]] = stored
+    return {"ok": True, "state": next_state, "rule": stored}
+
+
 def workflow_orchestration_record_step_result(state: dict, step: dict) -> dict:
     required = {"step_id", "tenant", "instance_id", "participant_pbc", "command", "status", "duration_ms"}
     _require(step, required)
@@ -560,6 +670,75 @@ def workflow_orchestration_execute_compensation(state: dict, compensation: dict)
     next_state["compensations"][compensation["compensation_id"]] = stored
     next_state = _emit(next_state, "CompensationExecuted", compensation["tenant"], compensation["compensation_id"], stored)
     return {"ok": True, "state": next_state, "compensation": stored}
+
+
+def workflow_orchestration_assign_human_task(state: dict, assignment: dict) -> dict:
+    required = {"assignment_id", "tenant", "task_id", "instance_id", "assignee_group", "status"}
+    _require(assignment, required)
+    next_state = _copy_state(state)
+    task = {
+        "task_id": assignment["task_id"],
+        "tenant": assignment["tenant"],
+        "instance_id": assignment["instance_id"],
+        "task_type": "approval",
+        "assignee_group": assignment["assignee_group"],
+        "decision": None,
+        "status": assignment["status"],
+    }
+    stored = {**assignment, "audit_hash": _hash_payload(assignment)}
+    next_state["human_tasks"][assignment["task_id"]] = task
+    next_state["human_task_assignments"][assignment["assignment_id"]] = stored
+    return {"ok": True, "state": next_state, "assignment": stored, "task": task}
+
+
+def workflow_orchestration_record_approval_decision(state: dict, decision: dict) -> dict:
+    required = {"decision_id", "tenant", "task_id", "decision", "decided_by", "status"}
+    _require(decision, required)
+    next_state = _copy_state(state)
+    stored = {**decision, "audit_hash": _hash_payload(decision)}
+    next_state["workflow_approval_decisions"][decision["decision_id"]] = stored
+    if decision["task_id"] in next_state["human_tasks"]:
+        next_state["human_tasks"][decision["task_id"]]["decision"] = decision["decision"]
+        next_state["human_tasks"][decision["task_id"]]["status"] = decision["status"]
+    return {"ok": True, "state": next_state, "decision": stored}
+
+
+def workflow_orchestration_register_integration_endpoint(state: dict, endpoint: dict) -> dict:
+    required = {"endpoint_id", "tenant", "participant_pbc", "route", "status"}
+    _require(endpoint, required)
+    next_state = _copy_state(state)
+    stored = {**endpoint, "audit_hash": _hash_payload(endpoint)}
+    next_state["workflow_integration_endpoints"][endpoint["endpoint_id"]] = stored
+    return {"ok": True, "state": next_state, "endpoint": stored}
+
+
+def workflow_orchestration_correlate_event(state: dict, correlation: dict) -> dict:
+    required = {"correlation_id", "tenant", "instance_id", "source_event", "business_key"}
+    _require(correlation, required)
+    next_state = _copy_state(state)
+    stored = {**correlation, "audit_hash": _hash_payload(correlation)}
+    next_state["workflow_event_correlations"][correlation["correlation_id"]] = stored
+    return {"ok": True, "state": next_state, "correlation": stored}
+
+
+def workflow_orchestration_capture_metric_snapshot(state: dict, snapshot: dict) -> dict:
+    required = {"snapshot_id", "tenant", "workflow_id", "instance_count", "completed_count", "compensation_count"}
+    _require(snapshot, required)
+    next_state = _copy_state(state)
+    completion_rate = float(snapshot["completed_count"]) / max(float(snapshot["instance_count"]), 1.0)
+    stored = {**snapshot, "completion_rate": round(completion_rate, 4), "audit_hash": _hash_payload(snapshot)}
+    next_state["workflow_metric_snapshots"][snapshot["snapshot_id"]] = stored
+    return {"ok": True, "state": next_state, "snapshot": stored}
+
+
+def workflow_orchestration_open_exception_case(state: dict, case: dict) -> dict:
+    required = {"case_id", "tenant", "instance_id", "case_type", "severity", "status"}
+    _require(case, required)
+    recommendation = workflow_orchestration_recommend_compensation(case["case_type"])
+    next_state = _copy_state(state)
+    stored = {**case, "recommended_action": recommendation["action"], "audit_hash": _hash_payload(case)}
+    next_state["workflow_exception_cases"][case["case_id"]] = stored
+    return {"ok": True, "state": next_state, "case": stored}
 
 
 def workflow_orchestration_complete_workflow(state: dict, instance_id: str) -> dict:
@@ -661,6 +840,41 @@ def workflow_orchestration_screen_policy(state: dict, workflow_id: str, *, sever
     return {"ok": decision == "clear", "workflow_id": workflow_id, "decision": decision}
 
 
+def workflow_orchestration_record_simulation_run(state: dict, simulation: dict) -> dict:
+    required = {"simulation_id", "tenant", "workflow_id", "scenario", "risk_delta", "status"}
+    _require(simulation, required)
+    next_state = _copy_state(state)
+    stored = {**simulation, "audit_hash": _hash_payload(simulation)}
+    next_state["workflow_simulation_runs"][simulation["simulation_id"]] = stored
+    return {"ok": True, "state": next_state, "simulation": stored}
+
+
+def workflow_orchestration_record_policy_screening(state: dict, screening: dict) -> dict:
+    required = {"screening_id", "tenant", "workflow_id", "decision", "status"}
+    _require(screening, required)
+    next_state = _copy_state(state)
+    stored = {**screening, "audit_hash": _hash_payload(screening)}
+    next_state["workflow_policy_screenings"][screening["screening_id"]] = stored
+    return {"ok": True, "state": next_state, "screening": stored}
+
+
+def workflow_orchestration_record_completion_proof(state: dict, proof: dict) -> dict:
+    required = {"proof_id", "tenant", "instance_id", "proof_hash", "proof_type"}
+    _require(proof, required)
+    next_state = _copy_state(state)
+    stored = {**proof, "status": proof.get("status", "sealed"), "audit_hash": _hash_payload(proof)}
+    next_state["workflow_completion_proofs"][proof["proof_id"]] = stored
+    return {"ok": True, "state": next_state, "proof": stored}
+
+
+def workflow_orchestration_append_audit_entry(state: dict, action: str, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    entry_id = f"audit_{len(next_state['workflow_audit_entries']) + 1:06d}"
+    stored = {"audit_entry_id": entry_id, "tenant": payload.get("tenant", "tenant_unknown"), "action": action, "payload_hash": _hash_payload(payload), "status": "sealed"}
+    next_state["workflow_audit_entries"][entry_id] = stored
+    return {"ok": True, "state": next_state, "audit_entry": stored}
+
+
 def workflow_orchestration_run_control_tests(state: dict) -> dict:
     hash_chain_valid = all(event["hash"] == _event_hash(event) for event in state["events"])
     checks = {
@@ -696,15 +910,31 @@ def workflow_orchestration_build_api_contract() -> dict:
         "ok": True,
         "format": "appgen.workflow-orchestration-api-contract.v1",
         "routes": (
-            {"route": "PUT /workflows/configuration", "command": "configure_runtime", "owned_tables": ("workflow_configuration",), "requires_permission": "workflow_orchestration.configure"},
-            {"route": "POST /workflows/parameters", "command": "set_parameter", "owned_tables": ("workflow_parameter",), "requires_permission": "workflow_orchestration.configure"},
-            {"route": "POST /workflows/rules", "command": "register_rule", "owned_tables": ("workflow_rule",), "requires_permission": "workflow_orchestration.configure"},
+            {"route": "PUT /workflows/configuration", "command": "configure_runtime", "owned_tables": ("workflow_configuration",), "requires_permission": "workflow_orchestration.configure", "idempotency_key": "configuration_id"},
+            {"route": "POST /workflows/parameters", "command": "set_parameter", "owned_tables": ("workflow_parameter",), "requires_permission": "workflow_orchestration.configure", "idempotency_key": "parameter_name"},
+            {"route": "POST /workflows/rules", "command": "register_rule", "owned_tables": ("workflow_rule",), "requires_permission": "workflow_orchestration.configure", "idempotency_key": "rule_id"},
             {"route": "POST /workflows/definitions", "command": "define_workflow", "owned_tables": ("workflow_definition",), "emits": ("WorkflowDefinitionPublished",), "requires_permission": "workflow_orchestration.define", "idempotency_key": "workflow_id:version"},
+            {"route": "POST /workflows/versions", "command": "publish_workflow_version", "owned_tables": ("workflow_version",), "requires_permission": "workflow_orchestration.define", "idempotency_key": "version_id"},
+            {"route": "POST /workflows/transition-guards", "command": "register_transition_guard", "owned_tables": ("workflow_transition_guard",), "requires_permission": "workflow_orchestration.define", "idempotency_key": "guard_id"},
+            {"route": "POST /workflows/retry-policies", "command": "register_retry_policy", "owned_tables": ("workflow_retry_policy",), "requires_permission": "workflow_orchestration.configure", "idempotency_key": "policy_id"},
+            {"route": "POST /workflows/sla-policies", "command": "register_sla_policy", "owned_tables": ("workflow_sla_policy",), "requires_permission": "workflow_orchestration.configure", "idempotency_key": "policy_id"},
+            {"route": "POST /workflows/escalation-rules", "command": "register_escalation_rule", "owned_tables": ("workflow_escalation_rule",), "requires_permission": "workflow_orchestration.configure", "idempotency_key": "escalation_id"},
             {"route": "POST /workflows/instances", "command": "start_instance", "owned_tables": ("workflow_instance",), "emits": ("WorkflowStarted",), "requires_permission": "workflow_orchestration.start", "idempotency_key": "instance_id"},
             {"route": "POST /workflows/instances/{id}/signals", "command": "signal_instance", "owned_tables": ("workflow_signal", "workflow_instance"), "emits": ("WorkflowSignalAccepted",), "requires_permission": "workflow_orchestration.signal", "idempotency_key": "signal_id"},
             {"route": "POST /workflows/timers", "command": "schedule_timer", "owned_tables": ("timer_task",), "emits": ("TimerScheduled",), "requires_permission": "workflow_orchestration.start", "idempotency_key": "timer_id"},
             {"route": "POST /workflows/instances/{id}/steps", "command": "record_step_result", "owned_tables": ("saga_step",), "emits": ("SagaStepCompleted",), "requires_permission": "workflow_orchestration.signal", "idempotency_key": "step_id"},
             {"route": "POST /workflows/instances/{id}/compensations", "command": "execute_compensation", "owned_tables": ("compensation",), "emits": ("CompensationExecuted",), "requires_permission": "workflow_orchestration.compensate", "idempotency_key": "compensation_id"},
+            {"route": "POST /workflows/human-task-assignments", "command": "assign_human_task", "owned_tables": ("human_task", "human_task_assignment"), "requires_permission": "workflow_orchestration.signal", "idempotency_key": "assignment_id"},
+            {"route": "POST /workflows/approval-decisions", "command": "record_approval_decision", "owned_tables": ("workflow_approval_decision", "human_task"), "requires_permission": "workflow_orchestration.signal", "idempotency_key": "decision_id"},
+            {"route": "POST /workflows/integration-endpoints", "command": "register_integration_endpoint", "owned_tables": ("workflow_integration_endpoint",), "requires_permission": "workflow_orchestration.configure", "idempotency_key": "endpoint_id"},
+            {"route": "POST /workflows/event-correlations", "command": "correlate_event", "owned_tables": ("workflow_event_correlation",), "requires_permission": "workflow_orchestration.event", "idempotency_key": "correlation_id"},
+            {"route": "POST /workflows/metric-snapshots", "command": "capture_metric_snapshot", "owned_tables": ("workflow_metric_snapshot",), "requires_permission": "workflow_orchestration.audit", "idempotency_key": "snapshot_id"},
+            {"route": "POST /workflows/exception-cases", "command": "open_exception_case", "owned_tables": ("workflow_exception_case",), "requires_permission": "workflow_orchestration.compensate", "idempotency_key": "case_id"},
+            {"route": "POST /workflows/simulation-runs", "command": "record_simulation_run", "owned_tables": ("workflow_simulation_run",), "requires_permission": "workflow_orchestration.audit", "idempotency_key": "simulation_id"},
+            {"route": "POST /workflows/policy-screenings", "command": "record_policy_screening", "owned_tables": ("workflow_policy_screening",), "requires_permission": "workflow_orchestration.audit", "idempotency_key": "screening_id"},
+            {"route": "POST /workflows/completion-proofs", "command": "record_completion_proof", "owned_tables": ("workflow_completion_proof",), "requires_permission": "workflow_orchestration.audit", "idempotency_key": "proof_id"},
+            {"route": "POST /workflows/audit-entries", "command": "append_audit_entry", "owned_tables": ("workflow_audit_entry",), "requires_permission": "workflow_orchestration.audit", "idempotency_key": "audit_entry_id"},
+            {"route": "POST /workflows/governed-model-evidence", "command": "register_governed_model_evidence", "owned_tables": ("workflow_governed_model_evidence",), "requires_permission": "workflow_orchestration.configure", "idempotency_key": "evidence_id"},
             {"route": "POST /workflows/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES, "requires_permission": "workflow_orchestration.event", "idempotency_key": "event_id"},
             {"route": "GET /workflows/workbench", "query": "build_workbench_view", "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES, "requires_permission": "workflow_orchestration.audit"},
             {"route": "GET /workflows/schema-contract", "query": "build_schema_contract", "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES, "requires_permission": "workflow_orchestration.audit"},
@@ -716,10 +946,32 @@ def workflow_orchestration_build_api_contract() -> dict:
             "POST /workflows/parameters",
             "POST /workflows/rules",
             "POST /workflows/definitions",
+            "POST /workflows/versions",
+            "POST /workflows/transition-guards",
+            "POST /workflows/retry-policies",
+            "POST /workflows/sla-policies",
+            "POST /workflows/escalation-rules",
             "POST /workflows/instances",
             "POST /workflows/instances/{id}/signals",
             "POST /workflows/timers",
+            "POST /workflows/instances/{id}/steps",
+            "POST /workflows/instances/{id}/compensations",
+            "POST /workflows/human-task-assignments",
+            "POST /workflows/approval-decisions",
+            "POST /workflows/integration-endpoints",
+            "POST /workflows/event-correlations",
+            "POST /workflows/metric-snapshots",
+            "POST /workflows/exception-cases",
+            "POST /workflows/simulation-runs",
+            "POST /workflows/policy-screenings",
+            "POST /workflows/completion-proofs",
+            "POST /workflows/audit-entries",
+            "POST /workflows/governed-model-evidence",
+            "POST /workflows/events/inbox",
             "GET /workflows/workbench",
+            "GET /workflows/schema-contract",
+            "GET /workflows/service-contract",
+            "GET /workflows/release-evidence",
         ),
         "events": {"emits": WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES, "consumes": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES},
         "emits": WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES,
@@ -758,6 +1010,7 @@ def workflow_orchestration_build_schema_contract() -> dict:
                 "status",
                 "audit_hash",
             ),
+            "workflow_version": ("tenant", "version_id", "workflow_id", "semantic_version", "status", "audit_hash"),
             "workflow_instance": (
                 "tenant",
                 "instance_id",
@@ -780,6 +1033,7 @@ def workflow_orchestration_build_schema_contract() -> dict:
                 "idempotency_key",
                 "audit_hash",
             ),
+            "workflow_transition_guard": ("tenant", "guard_id", "workflow_id", "from_state", "signal", "expression", "compiled_hash", "status", "audit_hash"),
             "timer_task": (
                 "tenant",
                 "timer_id",
@@ -791,6 +1045,9 @@ def workflow_orchestration_build_schema_contract() -> dict:
                 "status",
                 "audit_hash",
             ),
+            "workflow_retry_policy": ("tenant", "policy_id", "workflow_id", "max_attempts", "backoff", "status", "audit_hash"),
+            "workflow_sla_policy": ("tenant", "policy_id", "workflow_id", "threshold_seconds", "severity", "status", "audit_hash"),
+            "workflow_escalation_rule": ("tenant", "escalation_id", "workflow_id", "trigger", "target_group", "status", "audit_hash"),
             "saga_step": (
                 "tenant",
                 "step_id",
@@ -824,6 +1081,17 @@ def workflow_orchestration_build_schema_contract() -> dict:
                 "status",
                 "audit_hash",
             ),
+            "human_task_assignment": ("tenant", "assignment_id", "task_id", "instance_id", "assignee_group", "status", "audit_hash"),
+            "workflow_approval_decision": ("tenant", "decision_id", "task_id", "decision", "decided_by", "status", "audit_hash"),
+            "workflow_integration_endpoint": ("tenant", "endpoint_id", "participant_pbc", "route", "status", "audit_hash"),
+            "workflow_event_correlation": ("tenant", "correlation_id", "instance_id", "source_event", "business_key", "audit_hash"),
+            "workflow_metric_snapshot": ("tenant", "snapshot_id", "workflow_id", "instance_count", "completed_count", "compensation_count", "completion_rate", "audit_hash"),
+            "workflow_exception_case": ("tenant", "case_id", "instance_id", "case_type", "severity", "recommended_action", "status", "audit_hash"),
+            "workflow_simulation_run": ("tenant", "simulation_id", "workflow_id", "scenario", "risk_delta", "status", "audit_hash"),
+            "workflow_policy_screening": ("tenant", "screening_id", "workflow_id", "decision", "status", "audit_hash"),
+            "workflow_completion_proof": ("tenant", "proof_id", "instance_id", "proof_hash", "proof_type", "status", "audit_hash"),
+            "workflow_audit_entry": ("tenant", "audit_entry_id", "action", "payload_hash", "status", "audit_hash"),
+            "workflow_governed_model_evidence": ("tenant", "evidence_id", "model_id", "auc", "drift_score", "status", "audit_hash"),
             "workflow_rule": (
                 "tenant",
                 "rule_id",
@@ -871,12 +1139,25 @@ def workflow_orchestration_build_schema_contract() -> dict:
     )
     relationships = (
         {"from_table": "workflow_instance", "from_field": "workflow_id", "to_table": "workflow_definition", "to_field": "workflow_id"},
+        {"from_table": "workflow_version", "from_field": "workflow_id", "to_table": "workflow_definition", "to_field": "workflow_id"},
         {"from_table": "workflow_signal", "from_field": "instance_id", "to_table": "workflow_instance", "to_field": "instance_id"},
+        {"from_table": "workflow_transition_guard", "from_field": "workflow_id", "to_table": "workflow_definition", "to_field": "workflow_id"},
         {"from_table": "timer_task", "from_field": "instance_id", "to_table": "workflow_instance", "to_field": "instance_id"},
+        {"from_table": "workflow_retry_policy", "from_field": "workflow_id", "to_table": "workflow_definition", "to_field": "workflow_id"},
+        {"from_table": "workflow_sla_policy", "from_field": "workflow_id", "to_table": "workflow_definition", "to_field": "workflow_id"},
+        {"from_table": "workflow_escalation_rule", "from_field": "workflow_id", "to_table": "workflow_definition", "to_field": "workflow_id"},
         {"from_table": "saga_step", "from_field": "instance_id", "to_table": "workflow_instance", "to_field": "instance_id"},
         {"from_table": "compensation", "from_field": "instance_id", "to_table": "workflow_instance", "to_field": "instance_id"},
         {"from_table": "compensation", "from_field": "step_id", "to_table": "saga_step", "to_field": "step_id"},
         {"from_table": "human_task", "from_field": "instance_id", "to_table": "workflow_instance", "to_field": "instance_id"},
+        {"from_table": "human_task_assignment", "from_field": "task_id", "to_table": "human_task", "to_field": "task_id"},
+        {"from_table": "workflow_approval_decision", "from_field": "task_id", "to_table": "human_task", "to_field": "task_id"},
+        {"from_table": "workflow_event_correlation", "from_field": "instance_id", "to_table": "workflow_instance", "to_field": "instance_id"},
+        {"from_table": "workflow_metric_snapshot", "from_field": "workflow_id", "to_table": "workflow_definition", "to_field": "workflow_id"},
+        {"from_table": "workflow_exception_case", "from_field": "instance_id", "to_table": "workflow_instance", "to_field": "instance_id"},
+        {"from_table": "workflow_simulation_run", "from_field": "workflow_id", "to_table": "workflow_definition", "to_field": "workflow_id"},
+        {"from_table": "workflow_policy_screening", "from_field": "workflow_id", "to_table": "workflow_definition", "to_field": "workflow_id"},
+        {"from_table": "workflow_completion_proof", "from_field": "instance_id", "to_table": "workflow_instance", "to_field": "instance_id"},
     )
     tables = tuple(
         {"table": table, "fields": table_fields[table], "owner": "workflow_orchestration"}
@@ -919,11 +1200,27 @@ def workflow_orchestration_build_service_contract() -> dict:
         "register_schema_extension",
         "receive_event",
         "define_workflow",
+        "publish_workflow_version",
+        "register_transition_guard",
         "start_instance",
         "signal_instance",
         "schedule_timer",
+        "register_retry_policy",
+        "register_sla_policy",
+        "register_escalation_rule",
         "record_step_result",
         "execute_compensation",
+        "assign_human_task",
+        "record_approval_decision",
+        "register_integration_endpoint",
+        "correlate_event",
+        "capture_metric_snapshot",
+        "open_exception_case",
+        "record_simulation_run",
+        "record_policy_screening",
+        "record_completion_proof",
+        "append_audit_entry",
+        "register_governed_model_evidence",
         "complete_workflow",
         "run_control_tests",
         "verify_owned_table_boundary",
@@ -961,7 +1258,7 @@ def workflow_orchestration_build_service_contract() -> dict:
             "topic": WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker_visible": False,
         },
-        "mutates_only": WORKFLOW_ORCHESTRATION_OWNED_TABLES,
+        "mutates_only": (*WORKFLOW_ORCHESTRATION_OWNED_TABLES, *WORKFLOW_ORCHESTRATION_RUNTIME_TABLES),
         "external_dependencies": {
             "apis": tuple(item for item in _WORKFLOW_ORCHESTRATION_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
             "events": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES,
@@ -1030,11 +1327,27 @@ def workflow_orchestration_permissions_contract() -> dict:
         ),
         "action_permissions": {
             "define_workflow": "workflow_orchestration.define",
+            "publish_workflow_version": "workflow_orchestration.define",
+            "register_transition_guard": "workflow_orchestration.define",
             "start_instance": "workflow_orchestration.start",
             "signal_instance": "workflow_orchestration.signal",
             "schedule_timer": "workflow_orchestration.start",
+            "register_retry_policy": "workflow_orchestration.configure",
+            "register_sla_policy": "workflow_orchestration.configure",
+            "register_escalation_rule": "workflow_orchestration.configure",
             "record_step_result": "workflow_orchestration.signal",
             "execute_compensation": "workflow_orchestration.compensate",
+            "assign_human_task": "workflow_orchestration.signal",
+            "record_approval_decision": "workflow_orchestration.signal",
+            "register_integration_endpoint": "workflow_orchestration.configure",
+            "correlate_event": "workflow_orchestration.event",
+            "capture_metric_snapshot": "workflow_orchestration.audit",
+            "open_exception_case": "workflow_orchestration.compensate",
+            "record_simulation_run": "workflow_orchestration.audit",
+            "record_policy_screening": "workflow_orchestration.audit",
+            "record_completion_proof": "workflow_orchestration.audit",
+            "append_audit_entry": "workflow_orchestration.audit",
+            "register_governed_model_evidence": "workflow_orchestration.configure",
             "complete_workflow": "workflow_orchestration.start",
             "receive_event": "workflow_orchestration.event",
             "register_rule": "workflow_orchestration.configure",
@@ -1132,6 +1445,15 @@ def workflow_orchestration_register_governed_model(model_id: str, metadata: dict
     return {"ok": True, "model_id": model_id, "metadata": metadata, "governance": {"approved": True, "drift_score": metadata.get("drift_score", 0), "monitoring": "enabled"}}
 
 
+def workflow_orchestration_register_governed_model_evidence(state: dict, evidence: dict) -> dict:
+    required = {"evidence_id", "tenant", "model_id", "auc", "drift_score", "status"}
+    _require(evidence, required)
+    next_state = _copy_state(state)
+    stored = {**evidence, "audit_hash": _hash_payload(evidence)}
+    next_state["workflow_governed_model_evidence"][evidence["evidence_id"]] = stored
+    return {"ok": True, "state": next_state, "evidence": stored}
+
+
 def _copy_state(state: dict) -> dict:
     return {
         "configuration": dict(state["configuration"]),
@@ -1139,12 +1461,28 @@ def _copy_state(state: dict) -> dict:
         "rules": dict(state["rules"]),
         "schema_extensions": {key: dict(value) for key, value in state["schema_extensions"].items()},
         "definitions": {key: dict(value) for key, value in state["definitions"].items()},
+        "workflow_versions": {key: dict(value) for key, value in state.get("workflow_versions", {}).items()},
         "instances": {key: dict(value) for key, value in state["instances"].items()},
         "signals": {key: dict(value) for key, value in state["signals"].items()},
+        "workflow_transition_guards": {key: dict(value) for key, value in state.get("workflow_transition_guards", {}).items()},
         "timers": {key: dict(value) for key, value in state["timers"].items()},
+        "workflow_retry_policies": {key: dict(value) for key, value in state.get("workflow_retry_policies", {}).items()},
+        "workflow_sla_policies": {key: dict(value) for key, value in state.get("workflow_sla_policies", {}).items()},
+        "workflow_escalation_rules": {key: dict(value) for key, value in state.get("workflow_escalation_rules", {}).items()},
         "saga_steps": {key: dict(value) for key, value in state["saga_steps"].items()},
         "compensations": {key: dict(value) for key, value in state["compensations"].items()},
         "human_tasks": {key: dict(value) for key, value in state["human_tasks"].items()},
+        "human_task_assignments": {key: dict(value) for key, value in state.get("human_task_assignments", {}).items()},
+        "workflow_approval_decisions": {key: dict(value) for key, value in state.get("workflow_approval_decisions", {}).items()},
+        "workflow_integration_endpoints": {key: dict(value) for key, value in state.get("workflow_integration_endpoints", {}).items()},
+        "workflow_event_correlations": {key: dict(value) for key, value in state.get("workflow_event_correlations", {}).items()},
+        "workflow_metric_snapshots": {key: dict(value) for key, value in state.get("workflow_metric_snapshots", {}).items()},
+        "workflow_exception_cases": {key: dict(value) for key, value in state.get("workflow_exception_cases", {}).items()},
+        "workflow_simulation_runs": {key: dict(value) for key, value in state.get("workflow_simulation_runs", {}).items()},
+        "workflow_policy_screenings": {key: dict(value) for key, value in state.get("workflow_policy_screenings", {}).items()},
+        "workflow_completion_proofs": {key: dict(value) for key, value in state.get("workflow_completion_proofs", {}).items()},
+        "workflow_audit_entries": {key: dict(value) for key, value in state.get("workflow_audit_entries", {}).items()},
+        "workflow_governed_model_evidence": {key: dict(value) for key, value in state.get("workflow_governed_model_evidence", {}).items()},
         "events": [dict(item) for item in state["events"]],
         "outbox": [dict(item) for item in state["outbox"]],
         "inbox": [dict(item) for item in state["inbox"]],

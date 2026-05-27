@@ -19,16 +19,32 @@ from .runtime import workflow_orchestration_build_release_evidence
 from .runtime import workflow_orchestration_build_schema_contract
 from .runtime import workflow_orchestration_build_service_contract
 from .runtime import workflow_orchestration_build_workbench_view
+from .runtime import workflow_orchestration_append_audit_entry
+from .runtime import workflow_orchestration_assign_human_task
+from .runtime import workflow_orchestration_capture_metric_snapshot
 from .runtime import workflow_orchestration_complete_workflow
 from .runtime import workflow_orchestration_configure_runtime
+from .runtime import workflow_orchestration_correlate_event
 from .runtime import workflow_orchestration_define_workflow
 from .runtime import workflow_orchestration_empty_state
 from .runtime import workflow_orchestration_execute_compensation
+from .runtime import workflow_orchestration_open_exception_case
 from .runtime import workflow_orchestration_permissions_contract
+from .runtime import workflow_orchestration_publish_workflow_version
+from .runtime import workflow_orchestration_record_approval_decision
+from .runtime import workflow_orchestration_record_completion_proof
+from .runtime import workflow_orchestration_record_policy_screening
+from .runtime import workflow_orchestration_record_simulation_run
 from .runtime import workflow_orchestration_record_step_result
 from .runtime import workflow_orchestration_receive_event
+from .runtime import workflow_orchestration_register_escalation_rule
+from .runtime import workflow_orchestration_register_governed_model_evidence
+from .runtime import workflow_orchestration_register_integration_endpoint
+from .runtime import workflow_orchestration_register_retry_policy
 from .runtime import workflow_orchestration_register_rule
 from .runtime import workflow_orchestration_register_schema_extension
+from .runtime import workflow_orchestration_register_sla_policy
+from .runtime import workflow_orchestration_register_transition_guard
 from .runtime import workflow_orchestration_runtime_capabilities
 from .runtime import workflow_orchestration_runtime_smoke
 from .runtime import workflow_orchestration_schedule_timer
@@ -113,4 +129,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-
