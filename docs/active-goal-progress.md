@@ -2351,3 +2351,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   artifact contract, implementation release audit, generation smoke audit,
   specification contract, and restricted legacy-name scan all passed. Commit:
   `ce2fd3a`.
+- Current `gl_core` PBC pass removes stale static generated wrappers from the
+  ledger package surface. Generated service, route, service-contract, and
+  release-evidence modules now bind directly to the executable GL runtime
+  contract, including duplicated query operations with distinct route scopes,
+  AppGen-X eventing, owned-table boundaries, idempotency, and release evidence.
+  Verification is focused under the low-battery delivery constraint: package
+  Python compile, runtime smoke, focused package contract tests, package
+  service/route/release smokes, source artifact contract, implementation
+  release audit, generation smoke audit, specification contract, and restricted
+  legacy-name scan all passed. Commit: `pending`.

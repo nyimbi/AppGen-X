@@ -1,6 +1,14 @@
 """Generated service evidence for the gl_core PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.gl-core-service-contract.v1', 'ok': True, 'transaction_boundary': 'gl_core_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_chart_account', 'open_accounting_period', 'append_ledger_event', 'post_recurring_journal', 'post_reversal_entry', 'calculate_allocation', 'translate_currency', 'run_intercompany_settlement', 'build_projection', 'build_trial_balance', 'map_financial_statement', 'create_continuous_close_snapshot', 'suggest_reconciliation', 'compile_regulatory_rules', 'predict_posting_validation', 'generate_audit_proof', 'run_control_tests', 'receive_event'), 'query_methods': ('query_temporal_ledger', 'build_federated_view', 'measure_information_auditability', 'build_workbench_view'), 'mutates_only': ('gl_core_ledger_event_log', 'gl_core_journal_event', 'gl_core_journal_entry', 'gl_core_journal_line', 'gl_core_ledger_account', 'gl_core_accounting_period', 'gl_core_ledger_projection', 'gl_core_account_projection', 'gl_core_consensus_replica', 'gl_core_schema_extension', 'gl_core_tenant_ledger_partition', 'gl_core_probabilistic_posting', 'gl_core_close_snapshot', 'gl_core_causal_scenario', 'gl_core_reconciliation_case', 'gl_core_semantic_source_document', 'gl_core_regulatory_rule_version', 'gl_core_policy_rule', 'gl_core_predictive_validation_run', 'gl_core_audit_proof', 'gl_core_policy_decision', 'gl_core_control_assertion', 'gl_core_ledger_federation_link', 'gl_core_identity_credential', 'gl_core_resilience_drill', 'gl_core_crypto_key_epoch', 'gl_core_carbon_execution_window', 'gl_core_financial_model', 'gl_core_appgen_outbox_event', 'gl_core_appgen_inbox_event', 'gl_core_dead_letter_event'), 'external_dependencies': {'apis': ('invoice_approval_projection', 'payment_capture_projection', 'payroll_posting_projection', 'asset_depreciation_projection', 'tax_calculation_projection', 'GET /ar/invoices/approved', 'GET /payments/captured', 'GET /payroll/postings', 'GET /assets/depreciation', 'GET /tax/calculations'), 'events': ('InvoiceApproved', 'PaymentCaptured', 'PayrollPosted', 'AssetDepreciated', 'TaxCalculated'), 'shared_tables': ()}, 'pbc': 'gl_core', 'shared_table_access': False}
+from __future__ import annotations
+
+from .runtime import gl_core_build_service_contract
+
+SERVICE_CONTRACT = {
+    **gl_core_build_service_contract(),
+    "pbc": "gl_core",
+    "shared_table_access": False,
+}
 
 
 def build_service_contract():
