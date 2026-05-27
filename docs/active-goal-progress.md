@@ -2615,3 +2615,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   source artifact contract, implementation release audit, generation smoke
   audit, specification contract, and restricted legacy-name scan all passed.
   Commit: `3ff58c3`.
+- Current runtime operations smoke pass exposes required native runtime
+  operation names plus collected runtime operation and guard names directly from
+  generated runtime operation smoke. Generated consumers can now inspect design
+  stream opening, property deltas, stream round trips, compile preview, resource
+  refresh, runtime reload, and debug preview without unpacking nested operation
+  results. Verification is focused under the low-battery delivery constraint.
+  Commit: `1b0bbca`.
