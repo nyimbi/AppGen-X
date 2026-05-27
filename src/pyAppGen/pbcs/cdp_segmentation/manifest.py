@@ -1,1 +1,61 @@
-PBC_MANIFEST = {'pbc': 'cdp_segmentation', 'label': 'Customer Data Platform Segmentation', 'mesh': 'relationship', 'description': 'Clickstream, transactions, profiles, and real-time segment activation.', 'datastore_backend': 'postgresql', 'tables': ('customer_event', 'segment_definition', 'segment_membership', 'profile_property'), 'apis': ('POST /events', 'POST /segments', 'GET /memberships'), 'emits': ('CustomerSegmentUpdated', 'ProfileEnriched'), 'consumes': ('CustomerUpdated', 'PaymentCaptured', 'OrderShipped'), 'template': 'crm', 'ui_fragments': ('CdpSegmentationWorkbench', 'CdpSegmentationDetail'), 'permissions': ('cdp_segmentation.read', 'cdp_segmentation.create', 'cdp_segmentation.update', 'cdp_segmentation.approve', 'cdp_segmentation.admin'), 'configuration': ('CDP_SEGMENTATION_DATABASE_URL', 'CDP_SEGMENTATION_EVENT_TOPIC', 'CDP_SEGMENTATION_RETRY_LIMIT'), 'capabilities': ('cdp_segmentation.customer_event', 'cdp_segmentation.segment_definition', 'cdp_segmentation.segment_membership', 'cdp_segmentation.profile_property'), 'standard_features': ('customer_event_ingestion', 'event_identity_link', 'identity_stitching', 'profile_registry', 'segment_definition', 'segment_rule', 'segment_versioning', 'segment_membership', 'membership_evaluation', 'profile_property', 'consent_policy', 'profile_consent', 'real_time_activation', 'activation_destination', 'activation_delivery', 'audience_snapshot', 'profile_enrichment', 'affinity_scoring', 'lifecycle_risk_scoring', 'merge_candidates', 'profile_exception_management', 'data_quality_findings', 'consent_policy_screening', 'payment_projection', 'order_projection', 'customer_update_projection', 'notification_projection', 'loyalty_projection', 'pricing_projection', 'profile_proofs', 'profile_audit_entries', 'control_assertions', 'federation_views', 'resilience_drills', 'crypto_epoch_rotation', 'carbon_activation_windows', 'segment_simulation', 'activation_allocation', 'profile_anomaly_signals', 'audience_exposure_forecasts', 'identity_attestation', 'governed_model_registry', 'tenant_isolation', 'appgen_x_outbox', 'appgen_x_inbox', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench'), 'workflows': ('command_events', 'command_segments', 'query_memberships'), 'analytics': ('response_time', 'engagement_quality', 'segment_lift', 'retention_signal', 'customer_segment_updated_throughput', 'profile_enriched_throughput'), 'advanced_capabilities': ('event_sourced_profile_lifecycle', 'owned_cdp_schema_boundary', 'multi_tenant_profile_isolation', 'schema_evolution_resilient_profile_context', 'customer_event_ingestion', 'identity_and_profile_property_stitching', 'segment_definition_management', 'real_time_segment_membership', 'transaction_payment_shipment_projection_handling', 'profile_enrichment_and_activation', 'probabilistic_affinity_scoring', 'counterfactual_segment_membership_simulation', 'temporal_audience_forecasting', 'autonomous_audience_exception_resolution', 'semantic_segment_rule_understanding', 'predictive_lifecycle_risk', 'self_healing_profile_merge', 'cryptographic_profile_proof', 'immutable_profile_audit_trail', 'dynamic_consent_policy_screening', 'automated_data_quality_control_testing', 'cross_system_customer_payment_order_federation', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions_governance_evidence', 'configuration_schema', 'parameter_engine', 'rule_engine', 'seed_data', 'workbench_ui', 'governed_model_evidence'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+"""Package manifest for the CDP Segmentation PBC."""
+
+from __future__ import annotations
+
+from .runtime import CDP_SEGMENTATION_CONSUMED_EVENT_TYPES
+from .runtime import CDP_SEGMENTATION_EMITTED_EVENT_TYPES
+from .runtime import CDP_SEGMENTATION_OWNED_TABLES
+from .runtime import CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS
+from .runtime import CDP_SEGMENTATION_STANDARD_FEATURE_KEYS
+from .runtime import cdp_segmentation_build_api_contract
+from .runtime import cdp_segmentation_runtime_capabilities
+from .ui import CDP_SEGMENTATION_UI_FRAGMENT_KEYS
+
+
+PBC_KEY = 'cdp_segmentation'
+
+PBC_MANIFEST = {
+    "pbc": "cdp_segmentation",
+    "label": "Customer Data Platform Segmentation",
+    "mesh": "relationship",
+    "description": (
+        "Customer event ingestion, identity stitching, governed profiles, "
+        "consent-aware real-time segmentation, activations, analytics, proofs, "
+        "federation, controls, resilience, and AppGen-X event orchestration."
+    ),
+    "datastore_backend": "postgresql",
+    "tables": CDP_SEGMENTATION_OWNED_TABLES,
+    "apis": tuple(route["route"] for route in cdp_segmentation_build_api_contract()["routes"]),
+    "emits": CDP_SEGMENTATION_EMITTED_EVENT_TYPES,
+    "consumes": CDP_SEGMENTATION_CONSUMED_EVENT_TYPES,
+    "template": "crm",
+    "ui_fragments": CDP_SEGMENTATION_UI_FRAGMENT_KEYS,
+    "permissions": tuple(sorted(cdp_segmentation_build_api_contract()["permissions"])),
+    "configuration": (
+        "CDP_SEGMENTATION_DATABASE_URL",
+        "CDP_SEGMENTATION_EVENT_TOPIC",
+        "CDP_SEGMENTATION_RETRY_LIMIT",
+        "CDP_SEGMENTATION_DEFAULT_REGION",
+        "CDP_SEGMENTATION_DEFAULT_TIMEZONE",
+        "CDP_SEGMENTATION_ACTIVATION_MODE",
+    ),
+    "capabilities": tuple(f"cdp_segmentation.{table}" for table in CDP_SEGMENTATION_OWNED_TABLES),
+    "standard_features": CDP_SEGMENTATION_STANDARD_FEATURE_KEYS,
+    "workflows": cdp_segmentation_runtime_capabilities()["operations"],
+    "analytics": (
+        "segment_membership_rate",
+        "activation_delivery_rate",
+        "profile_merge_confidence",
+        "lifecycle_risk",
+        "consent_risk",
+        "audience_forecast",
+        "profile_anomaly_rate",
+        "customer_segment_updated_throughput",
+        "profile_enriched_throughput",
+    ),
+    "advanced_capabilities": CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS,
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": ("tests/test_contract.py",),
+    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+}

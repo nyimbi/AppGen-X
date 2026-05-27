@@ -9210,6 +9210,39 @@ from .pbcs.cdp_segmentation import cdp_segmentation_set_parameter  # noqa: E402,
 from .pbcs.cdp_segmentation import cdp_segmentation_ui_contract  # noqa: E402,F401
 from .pbcs.cdp_segmentation import cdp_segmentation_upsert_profile_property  # noqa: E402,F401
 from .pbcs.cdp_segmentation import cdp_segmentation_verify_owned_table_boundary  # noqa: E402,F401
+PBC_CATALOG["cdp_segmentation"].update(
+    {
+        "apis": tuple(route["route"] for route in cdp_segmentation_build_api_contract()["routes"]),
+        "ui_fragments": CDP_SEGMENTATION_UI_FRAGMENT_KEYS,
+        "permissions": tuple(sorted(cdp_segmentation_build_api_contract()["permissions"])),
+        "configuration": (
+            "CDP_SEGMENTATION_DATABASE_URL",
+            "CDP_SEGMENTATION_EVENT_TOPIC",
+            "CDP_SEGMENTATION_RETRY_LIMIT",
+            "CDP_SEGMENTATION_DEFAULT_REGION",
+            "CDP_SEGMENTATION_DEFAULT_TIMEZONE",
+            "CDP_SEGMENTATION_ACTIVATION_MODE",
+        ),
+        "capabilities": tuple(
+            f"cdp_segmentation.{table}"
+            for table in cdp_segmentation_build_schema_contract()["owned_tables"]
+        ),
+        "standard_features": CDP_SEGMENTATION_STANDARD_FEATURE_KEYS,
+        "advanced_capabilities": CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS,
+        "workflows": cdp_segmentation_runtime_capabilities()["operations"],
+        "analytics": (
+            "segment_membership_rate",
+            "activation_delivery_rate",
+            "profile_merge_confidence",
+            "lifecycle_risk",
+            "consent_risk",
+            "audience_forecast",
+            "profile_anomaly_rate",
+            "customer_segment_updated_throughput",
+            "profile_enriched_throughput",
+        ),
+    }
+)
 from .pbcs.loyalty_rewards import LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.loyalty_rewards import LOYALTY_REWARDS_RUNTIME_TABLES  # noqa: E402,F401
 from .pbcs.loyalty_rewards import LOYALTY_REWARDS_STANDARD_FEATURE_KEYS  # noqa: E402,F401

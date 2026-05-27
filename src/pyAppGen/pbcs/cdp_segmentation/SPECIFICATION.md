@@ -268,20 +268,72 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `cdp_segmentation`
 - Mesh: `relationship`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
 - `customer_event`
-- `segment_definition`
-- `segment_membership`
+- `event_identity_link`
+- `identity_stitch`
+- `profile`
 - `profile_property`
+- `profile_consent`
+- `profile_enrichment`
+- `segment_definition`
+- `segment_rule`
+- `segment_version`
+- `segment_membership`
+- `membership_evaluation`
+- `activation_destination`
+- `activation_run`
+- `activation_delivery`
+- `audience_snapshot`
+- `audience_forecast`
+- `affinity_score`
+- `lifecycle_risk_score`
+- `merge_candidate`
+- `profile_exception`
+- `data_quality_finding`
+- `consent_policy_screening`
+- `customer_projection`
+- `payment_projection`
+- `order_projection`
+- `notification_projection`
+- `loyalty_projection`
+- `pricing_projection`
+- `profile_proof`
+- `profile_audit_entry`
+- `cdp_control_assertion`
+- `cdp_federation_view`
+- `cdp_resilience_drill`
+- `cdp_crypto_epoch`
+- `carbon_activation_window`
+- `segment_simulation`
+- `activation_allocation`
+- `profile_anomaly_signal`
+- `audience_exposure_forecast`
+- `identity_attestation`
+- `cdp_governed_model`
+- `cdp_seed_data`
+- `cdp_segmentation_rule`
+- `cdp_segmentation_parameter`
+- `cdp_segmentation_configuration`
+- `cdp_segmentation_appgen_outbox_event`
+- `cdp_segmentation_appgen_inbox_event`
+- `cdp_segmentation_dead_letter_event`
 
 ### API Routes
 
 - `POST /events`
+- `POST /profile-properties`
 - `POST /segments`
+- `POST /segment-evaluations`
+- `POST /segment-activations`
+- `POST /cdp-segmentation/events/inbox`
 - `GET /memberships`
+- `GET /cdp-segmentation/schema-contract`
+- `GET /cdp-segmentation/service-contract`
+- `GET /cdp-segmentation/release-evidence`
 
 ### Emitted Events
 
@@ -296,22 +348,130 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `CdpSegmentationWorkbench`
+- `CustomerEventStream`
+- `ProfilePropertyPanel`
+- `SegmentDefinitionBuilder`
+- `MembershipEvaluationBoard`
+- `ActivationConsole`
+- `ConsentPolicyPanel`
+- `IdentityStitchingPanel`
+- `CdpRuleStudio`
+- `CdpParameterConsole`
+- `CdpConfigurationPanel`
+- `CdpEventOutbox`
+- `CdpDeadLetterQueue`
+- `CdpSchemaContractExplorer`
+- `CdpServiceContractExplorer`
+- `CdpReleaseEvidencePanel`
 
 ### Permissions
 
-- None declared
+- `cdp_segmentation.audit`
+- `cdp_segmentation.configure`
+- `cdp_segmentation.event.consume`
+- `cdp_segmentation.event.write`
+- `cdp_segmentation.membership.evaluate`
+- `cdp_segmentation.segment.write`
 
 ### Configuration Keys
 
-- None declared
+- `CDP_SEGMENTATION_DATABASE_URL`
+- `CDP_SEGMENTATION_EVENT_TOPIC`
+- `CDP_SEGMENTATION_RETRY_LIMIT`
+- `CDP_SEGMENTATION_DEFAULT_REGION`
+- `CDP_SEGMENTATION_DEFAULT_TIMEZONE`
+- `CDP_SEGMENTATION_ACTIVATION_MODE`
 
 ### Standard Features
 
-- None declared
+- `customer_event_ingestion`
+- `event_identity_link`
+- `identity_stitching`
+- `profile_registry`
+- `segment_definition`
+- `segment_rule`
+- `segment_versioning`
+- `segment_membership`
+- `membership_evaluation`
+- `profile_property`
+- `consent_policy`
+- `profile_consent`
+- `real_time_activation`
+- `activation_destination`
+- `activation_delivery`
+- `audience_snapshot`
+- `profile_enrichment`
+- `affinity_scoring`
+- `lifecycle_risk_scoring`
+- `merge_candidates`
+- `profile_exception_management`
+- `data_quality_findings`
+- `consent_policy_screening`
+- `payment_projection`
+- `order_projection`
+- `customer_update_projection`
+- `notification_projection`
+- `loyalty_projection`
+- `pricing_projection`
+- `profile_proofs`
+- `profile_audit_entries`
+- `control_assertions`
+- `federation_views`
+- `resilience_drills`
+- `crypto_epoch_rotation`
+- `carbon_activation_windows`
+- `segment_simulation`
+- `activation_allocation`
+- `profile_anomaly_signals`
+- `audience_exposure_forecasts`
+- `identity_attestation`
+- `governed_model_registry`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_profile_lifecycle`
+- `owned_cdp_schema_boundary`
+- `multi_tenant_profile_isolation`
+- `schema_evolution_resilient_profile_context`
+- `customer_event_ingestion`
+- `identity_and_profile_property_stitching`
+- `segment_definition_management`
+- `real_time_segment_membership`
+- `transaction_payment_shipment_projection_handling`
+- `profile_enrichment_and_activation`
+- `probabilistic_affinity_scoring`
+- `counterfactual_segment_membership_simulation`
+- `temporal_audience_forecasting`
+- `autonomous_audience_exception_resolution`
+- `semantic_segment_rule_understanding`
+- `predictive_lifecycle_risk`
+- `self_healing_profile_merge`
+- `cryptographic_profile_proof`
+- `immutable_profile_audit_trail`
+- `dynamic_consent_policy_screening`
+- `automated_data_quality_control_testing`
+- `cross_system_customer_payment_order_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
+- `governed_model_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
