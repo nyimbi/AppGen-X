@@ -2632,6 +2632,23 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   release smokes, source artifact contract, implementation release audit,
   generation smoke audit, specification contract, and restricted legacy-name
   scan all passed. Commit: `c636d67`.
+- Current app-shell chrome contract pass exposes required chrome design
+  operations plus collected chrome operations directly from source and
+  generated form-designer contracts. Generated consumers can now inspect splash
+  editing, menu tree edits, context-menu edits, shortcut conflict validation,
+  target preview, undoable commits, rollback, and side-effect guards without
+  unpacking nested transaction replay. Verification is focused under the
+  low-battery delivery constraint. Commit: `0ab539a`.
+- Current PBC specification gate pass makes first-class agent/chatbot skills
+  and side-effect-free self-registration explicit specification requirements.
+  All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,
+  skill, document instruction intake, governed datastore CRUD planning,
+  composed-assistant namespace, and self-registration/discovery contract
+  language tied to owned tables, commands, permissions, AppGen-X events, and
+  boundary-safe mutation previews. Focused verification passed: Python compile
+  for the specification gate files, `tests/test_pbc_specification_contract.py`,
+  `pbc_specification_release_audit()` for all 47 PBCs, `pbc_release_audit()`,
+  and restricted legacy-name scan. Commit: `0ab539a`.
 - Current remaining-PBC assurance pass locks executable capability coverage
   into the package-local tests for `dom`, `federated_iam`,
   `global_inventory_visibility`, `inventory_positioning`,
