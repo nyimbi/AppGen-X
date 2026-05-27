@@ -6470,6 +6470,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_artifact_transaction_ready",
         "runtime_replay_ready",
     } <= set(visual_depth_smoke["passing_checks"])
+    assert {
+        "author_style",
+        "validate_style_tokens",
+        "export_timeline_runtime",
+        "validate_effect_stack",
+        "author_scene_graph",
+        "scene_hit_testing",
+        "runtime_and_designer_replay",
+        "publish_target_artifact",
+        "resolve_scene_asset",
+    } <= set(visual_depth_smoke["smoke"]["required_visual_operations"]) <= set(
+        visual_depth_smoke["smoke"]["visual_operations"]
+    )
     visual_asset_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_visual_runtime_assets")
     assert visual_asset_smoke["ok"] is True
     assert {
@@ -19212,6 +19225,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "record_rollback_snapshot",
         "publish_target_artifact",
     } <= set(visual_depth_runtime_smoke["validation"]["replay"]["artifact_operations"])
+    assert {
+        "author_style",
+        "validate_style_tokens",
+        "export_timeline_runtime",
+        "validate_effect_stack",
+        "author_scene_graph",
+        "scene_hit_testing",
+        "runtime_and_designer_replay",
+        "publish_target_artifact",
+        "resolve_scene_asset",
+    } <= set(visual_depth_runtime_smoke["required_visual_operations"]) <= set(
+        visual_depth_runtime_smoke["visual_operations"]
+    )
     visual_module_manifest = visual_depth_runtime.visual_component_module_manifest()
     visual_test_manifest = visual_depth_runtime.visual_component_test_module_manifest()
     visual_design_manifest = visual_depth_runtime.visual_design_ide_module_manifest()
