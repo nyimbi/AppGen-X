@@ -2323,7 +2323,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   events, queues offline replay, and commits a runtime snapshot before
   workbench, lifecycle, readiness, and platform parity gates can pass.
   Verification is focused under the low-battery delivery constraint. Commit:
-  pending.
+  `b24ac98`.
 - Current `multi_sided_market` PBC pass promotes deeper market table-stakes
   into executable package-local operations: listing assets, availability
   windows, exchange proposals, escrow release policies, escrow release,
