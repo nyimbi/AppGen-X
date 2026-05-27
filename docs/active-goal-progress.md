@@ -2654,7 +2654,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   component validation, device scenarios, native-call replay, offline queue
   guards, and runtime/designer ordering without unpacking nested workbench
   payloads. Verification is focused under the low-battery delivery constraint.
-  Commit: `2fd1889`.
+  Commit: `e372371`.
 - Current PBC specification gate pass makes first-class agent/chatbot skills
   and side-effect-free self-registration explicit specification requirements.
   All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,
