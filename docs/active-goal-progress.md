@@ -2671,7 +2671,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   inspector-editor registration, marketplace publication, hot reload, rollback,
   uninstall cleanup, dependency-conflict review, and package-manager module
   execution without unpacking nested payloads. Verification is focused under
-  the low-battery delivery constraint. Commit: pending.
+  the low-battery delivery constraint. Commit: `36e9e0e`.
 - Current PBC specification gate pass makes first-class agent/chatbot skills
   and side-effect-free self-registration explicit specification requirements.
   All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,
