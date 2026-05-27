@@ -6449,6 +6449,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "package_manager_module_runtime_replay_matrix_ready",
         "runtime_replay_ready",
     } <= set(package_runtime_smoke["passing_checks"])
+    assert {
+        "resolve_metadata",
+        "preview_load",
+        "registry_commit",
+        "install_and_register",
+        "trust_validation",
+        "register_palette_entries",
+        "register_inspector_editors",
+        "register_binding_adapters",
+        "snapshot_lockfile",
+        "verify_registry_clean",
+    } <= set(package_runtime_smoke["smoke"]["required_package_operations"]) <= set(
+        package_runtime_smoke["smoke"]["package_operations"]
+    )
     visual_depth_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_visual_depth_runtime")
     assert visual_depth_smoke["ok"] is True
     assert {
@@ -18115,6 +18129,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "package_manager_module_runtime_replay_matrix_ready",
         "runtime_replay_ready",
     } <= set(package_manager_runtime_smoke["checks"])
+    assert {
+        "resolve_metadata",
+        "preview_load",
+        "registry_commit",
+        "install_and_register",
+        "trust_validation",
+        "register_palette_entries",
+        "register_inspector_editors",
+        "register_binding_adapters",
+        "snapshot_lockfile",
+        "verify_registry_clean",
+    } <= set(package_manager_runtime_smoke["required_package_operations"]) <= set(
+        package_manager_runtime_smoke["package_operations"]
+    )
     package_manager_module_files = package_manager_runtime.package_manager_module_file_manifest()
     package_manager_module_tests = package_manager_runtime.package_manager_module_test_file_manifest()
     package_manager_module_runtime_matrix = package_manager_runtime.package_manager_module_runtime_replay_matrix()
