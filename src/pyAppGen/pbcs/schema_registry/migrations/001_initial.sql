@@ -1,76 +1,52 @@
 CREATE SCHEMA IF NOT EXISTS schema_registry;
 
-CREATE TABLE schema_registry_schema_subject (
-  id INTEGER PRIMARY KEY NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE schema_registry_schema_version (
-  id INTEGER PRIMARY KEY NOT NULL,
-  schema_subject_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (schema_subject_id) REFERENCES schema_registry_schema_subject(id)
-);
-
-CREATE TABLE schema_registry_compatibility_rule (
-  id INTEGER PRIMARY KEY NOT NULL,
-  schema_subject_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (schema_subject_id) REFERENCES schema_registry_schema_subject(id)
-);
-
-CREATE TABLE schema_registry_contract_violation (
-  id INTEGER PRIMARY KEY NOT NULL,
-  schema_subject_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (schema_subject_id) REFERENCES schema_registry_schema_subject(id)
-);
-
-CREATE TABLE schema_registry_appgen_outbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE schema_registry_appgen_inbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE schema_registry_appgen_dead_letter_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
+CREATE TABLE schema_registry_schema_subject (tenant VARCHAR(120) NOT NULL, subject_id VARCHAR(160) NOT NULL, owner_pbc VARCHAR(160) NOT NULL, name VARCHAR(200) NOT NULL, channel VARCHAR(80) NOT NULL, format VARCHAR(80) NOT NULL, namespace VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_subject_alias (tenant VARCHAR(120) NOT NULL, alias_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, alias VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, created_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_namespace (tenant VARCHAR(120) NOT NULL, namespace_id VARCHAR(160) NOT NULL, namespace VARCHAR(200) NOT NULL, owner_pbc VARCHAR(160) NOT NULL, policy VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_version (tenant VARCHAR(120) NOT NULL, version_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, semantic_version VARCHAR(80) NOT NULL, version_number INTEGER NOT NULL, fingerprint VARCHAR(200) NOT NULL, decision VARCHAR(80) NOT NULL, risk_score DECIMAL(12,4) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_field (tenant VARCHAR(120) NOT NULL, field_id VARCHAR(160) NOT NULL, version_id VARCHAR(160) NOT NULL, field_name VARCHAR(160) NOT NULL, field_type VARCHAR(80) NOT NULL, required BOOLEAN NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_fingerprint (tenant VARCHAR(120) NOT NULL, fingerprint_id VARCHAR(160) NOT NULL, version_id VARCHAR(160) NOT NULL, algorithm VARCHAR(120) NOT NULL, fingerprint VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_semantic_tag (tenant VARCHAR(120) NOT NULL, tag_id VARCHAR(160) NOT NULL, field_id VARCHAR(160) NOT NULL, tag VARCHAR(160) NOT NULL, classification VARCHAR(120) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_diff (tenant VARCHAR(120) NOT NULL, diff_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, from_version_id VARCHAR(160) NOT NULL, to_version_id VARCHAR(160) NOT NULL, breaking_changes VARCHAR(240) NOT NULL, risk_score DECIMAL(12,4) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_evolution_plan (tenant VARCHAR(120) NOT NULL, plan_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, strategy VARCHAR(160) NOT NULL, steps TEXT NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_compatibility_rule (tenant VARCHAR(120) NOT NULL, rule_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, mode VARCHAR(120) NOT NULL, status VARCHAR(80) NOT NULL, transitive BOOLEAN NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_compatibility_matrix (tenant VARCHAR(120) NOT NULL, matrix_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, producer_version VARCHAR(80) NOT NULL, consumer_version VARCHAR(80) NOT NULL, decision VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_compatibility_exception (tenant VARCHAR(120) NOT NULL, exception_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, reason VARCHAR(240) NOT NULL, approved_by VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_consumer_binding (tenant VARCHAR(120) NOT NULL, binding_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, consumer_pbc VARCHAR(160) NOT NULL, consumer_type VARCHAR(120) NOT NULL, min_version VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_consumer_impact (tenant VARCHAR(120) NOT NULL, impact_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, consumer_pbc VARCHAR(160) NOT NULL, criticality DECIMAL(12,4) NOT NULL, review_slots INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_producer_binding (tenant VARCHAR(120) NOT NULL, producer_binding_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, producer_pbc VARCHAR(160) NOT NULL, producer_type VARCHAR(120) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_validation_run (tenant VARCHAR(120) NOT NULL, run_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, decision VARCHAR(80) NOT NULL, risk_score DECIMAL(12,4) NOT NULL, payload_hash VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_payload_validation_sample (tenant VARCHAR(120) NOT NULL, sample_id VARCHAR(160) NOT NULL, run_id VARCHAR(160) NOT NULL, payload_hash VARCHAR(200) NOT NULL, sampled_at TIMESTAMP NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_payload_validation_error (tenant VARCHAR(120) NOT NULL, error_id VARCHAR(160) NOT NULL, run_id VARCHAR(160) NOT NULL, field_name VARCHAR(160) NOT NULL, error_code VARCHAR(120) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_contract_violation (tenant VARCHAR(120) NOT NULL, violation_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, producer_pbc VARCHAR(160) NOT NULL, consumer_pbc VARCHAR(160) NOT NULL, severity VARCHAR(80) NOT NULL, release_blocking BOOLEAN NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_contract_remediation (tenant VARCHAR(120) NOT NULL, remediation_id VARCHAR(160) NOT NULL, violation_id VARCHAR(160) NOT NULL, action VARCHAR(160) NOT NULL, owner VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_contract_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, subject_id VARCHAR(160) NOT NULL, latest_version VARCHAR(80) NOT NULL, systems TEXT NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_gateway_contract_projection (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_audit_contract_projection (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_composition_contract_projection (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_workflow_contract_projection (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_route_contract_projection (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_access_policy_projection (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_package_registration_projection (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_pbc_deployment_projection (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_acceptance_proof (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_policy_screening (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_federation_view (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_resilience_drill (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_crypto_epoch (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_carbon_validation_window (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_diff_optimization (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_consumer_review_allocation (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_validation_anomaly_signal (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_contract_exposure_forecast (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_identity_attestation (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_governed_model (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_seed_data (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_control_assertion (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_extension (tenant VARCHAR(120) NOT NULL, record_id VARCHAR(160) NOT NULL, source_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, effective_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_rule (tenant VARCHAR(120) NOT NULL, rule_id VARCHAR(160) NOT NULL, scope VARCHAR(120) NOT NULL, mode VARCHAR(120) NOT NULL, classification VARCHAR(120) NOT NULL, severity VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_parameter (tenant VARCHAR(120) NOT NULL, parameter_id VARCHAR(160) NOT NULL, key VARCHAR(160) NOT NULL, value VARCHAR(255) NOT NULL, effective_at TIMESTAMP NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_schema_configuration (tenant VARCHAR(120) NOT NULL, configuration_id VARCHAR(160) NOT NULL, database_backend VARCHAR(80) NOT NULL, event_topic VARCHAR(200) NOT NULL, retry_limit INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_appgen_outbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, idempotency_key VARCHAR(240) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_appgen_inbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, idempotency_key VARCHAR(240) NOT NULL, attempts INTEGER NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE schema_registry_dead_letter_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, reason VARCHAR(240) NOT NULL, payload TEXT NOT NULL, attempts INTEGER NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);

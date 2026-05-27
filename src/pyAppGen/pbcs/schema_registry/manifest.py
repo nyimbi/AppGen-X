@@ -1,1 +1,81 @@
-PBC_MANIFEST = {'pbc': 'schema_registry', 'label': 'Schema Registry and Contract Validation', 'mesh': 'platform', 'description': 'Synchronous and asynchronous contract validation with compatibility gates.', 'datastore_backend': 'postgresql', 'tables': ('schema_subject', 'schema_version', 'compatibility_rule', 'contract_violation'), 'apis': ('POST /schemas', 'POST /compatibility-checks', 'GET /subjects'), 'emits': ('SchemaAccepted', 'BreakingSchemaBlocked'), 'consumes': ('PbcDeployed', 'EventContractProposed'), 'template': None, 'ui_fragments': ('SchemaRegistryWorkbench', 'SchemaRegistryDetail'), 'permissions': ('schema_registry.read', 'schema_registry.create', 'schema_registry.update', 'schema_registry.approve', 'schema_registry.admin'), 'configuration': ('SCHEMA_REGISTRY_DATABASE_URL', 'SCHEMA_REGISTRY_EVENT_TOPIC', 'SCHEMA_REGISTRY_RETRY_LIMIT'), 'capabilities': ('schema_registry.schema_subject', 'schema_registry.schema_version', 'schema_registry.compatibility_rule', 'schema_registry.contract_violation'), 'standard_features': ('subject_catalog', 'subject_aliases', 'namespace_governance', 'schema_versioning', 'schema_fields', 'immutable_fingerprints', 'semantic_tags', 'schema_diffing', 'schema_evolution_plans', 'compatibility_policy', 'compatibility_matrix', 'compatibility_exceptions', 'backward_compatibility', 'forward_compatibility', 'transitive_compatibility', 'payload_validation', 'producer_binding', 'consumer_binding', 'consumer_impact', 'impact_analysis', 'breaking_change_blocking', 'remediation_plans', 'violation_triage', 'semantic_classification', 'schema_extension_registry', 'contract_projection', 'idempotent_handlers', 'retry_dead_letter', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench', 'release_gate', 'audit_evidence', 'package_registration_validation', 'appgen_event_contract', 'schema_acceptance_proofs', 'policy_screening', 'federation_views', 'resilience_drills', 'crypto_epoch_rotation', 'carbon_validation_windows', 'diff_optimization', 'consumer_review_allocation', 'validation_anomaly_signals', 'contract_exposure_forecasts', 'identity_attestation', 'governed_model_evidence', 'control_assertions'), 'workflows': ('command_schemas', 'command_compatibility_checks', 'query_subjects'), 'analytics': ('policy_latency', 'contract_break_rate', 'deployment_safety', 'audit_completeness', 'schema_accepted_throughput', 'breaking_schema_blocked_throughput'), 'advanced_capabilities': ('event_sourced_schema_lifecycle', 'graph_relational_contract_topology', 'multi_tenant_contract_isolation', 'schema_on_read_contract_extensibility', 'probabilistic_breaking_change_scoring', 'real_time_contract_analytics', 'counterfactual_schema_evolution_simulation', 'temporal_compatibility_health_forecasting', 'autonomous_contract_remediation', 'semantic_schema_intent_parsing', 'predictive_contract_risk_scoring', 'self_healing_contract_validation_route_selection', 'zero_knowledge_schema_acceptance_proof', 'immutable_contract_audit_trail', 'dynamic_contract_policy_screening', 'automated_contract_control_testing', 'universal_api_async_contract_surface', 'cross_system_schema_federation', 'gateway_identity_audit_workflow_composition_integration', 'decentralized_producer_consumer_identity', 'chaos_engineered_contract_validation_tolerance', 'quantum_resistant_schema_signing', 'carbon_aware_contract_validation', 'algebraic_schema_diff_minimization', 'mechanism_design_consumer_impact_allocation', 'information_theoretic_validation_anomaly_detection', 'temporal_contract_exposure_stochastic_modeling', 'distributed_systems_engineering', 'probabilistic_ml_contract_risk', 'cryptographic_engineering', 'mathematical_optimization', 'contract_mlops_governance'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+"""Package manifest for the schema_registry PBC."""
+
+from .runtime import SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES
+from .runtime import SCHEMA_REGISTRY_EMITTED_EVENT_TYPES
+from .runtime import SCHEMA_REGISTRY_OWNED_TABLES
+from .runtime import SCHEMA_REGISTRY_RUNTIME_CAPABILITY_KEYS
+from .runtime import SCHEMA_REGISTRY_STANDARD_FEATURE_KEYS
+from .runtime import schema_registry_build_api_contract
+
+
+PBC_MANIFEST = {
+    "pbc": 'schema_registry',
+    "label": "Schema Registry and Contract Validation",
+    "mesh": "platform",
+    "description": "Contract-first subject catalog, schema versioning, compatibility gates, payload validation, impact analysis, projection publication, and governed schema evolution.",
+    "datastore_backend": "postgresql",
+    "tables": SCHEMA_REGISTRY_OWNED_TABLES,
+    "apis": tuple(route["route"] for route in schema_registry_build_api_contract()["routes"]),
+    "emits": SCHEMA_REGISTRY_EMITTED_EVENT_TYPES,
+    "consumes": SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES,
+    "template": None,
+    "ui_fragments": (
+        "SchemaRegistryWorkbench",
+        "SubjectCatalogConsole",
+        "SchemaVersionWorkbench",
+        "CompatibilityPolicyPanel",
+        "PayloadValidationConsole",
+        "ConsumerImpactBoard",
+        "ContractViolationTriage",
+        "ProjectionPublicationPanel",
+        "SchemaGovernancePanel",
+    ),
+    "permissions": (
+        "schema_registry.register",
+        "schema_registry.approve",
+        "schema_registry.validate",
+        "schema_registry.triage",
+        "schema_registry.publish",
+        "schema_registry.event",
+        "schema_registry.configure",
+        "schema_registry.audit",
+        "schema_registry.read",
+    ),
+    "configuration": (
+        "SCHEMA_REGISTRY_DATABASE_URL",
+        "SCHEMA_REGISTRY_EVENT_TOPIC",
+        "SCHEMA_REGISTRY_RETRY_LIMIT",
+        "SCHEMA_REGISTRY_DEFAULT_TIMEZONE",
+        "SCHEMA_REGISTRY_ALLOWED_FORMATS",
+        "SCHEMA_REGISTRY_DEFAULT_COMPATIBILITY",
+        "SCHEMA_REGISTRY_NAMESPACE_POLICY",
+    ),
+    "capabilities": tuple(f"schema_registry.{table}" for table in SCHEMA_REGISTRY_OWNED_TABLES),
+    "standard_features": SCHEMA_REGISTRY_STANDARD_FEATURE_KEYS,
+    "workflows": (
+        "command_subject_registration",
+        "command_schema_version_submission",
+        "command_compatibility_checks",
+        "command_payload_validation",
+        "command_contract_violations",
+        "command_contract_projections",
+        "command_event_inbox",
+        "query_schema_registry_workbench",
+    ),
+    "analytics": (
+        "schema_acceptance_rate",
+        "breaking_change_block_rate",
+        "payload_validation_latency",
+        "consumer_impact_exposure",
+        "contract_violation_age",
+        "projection_publish_latency",
+        "policy_screening_clearance",
+        "schema_accepted_throughput",
+        "breaking_schema_blocked_throughput",
+    ),
+    "advanced_capabilities": SCHEMA_REGISTRY_RUNTIME_CAPABILITY_KEYS,
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": ("tests/test_contract.py",),
+    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+}

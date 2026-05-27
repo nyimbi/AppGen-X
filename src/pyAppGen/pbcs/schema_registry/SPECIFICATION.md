@@ -243,49 +243,215 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `schema_registry`
 - Mesh: `platform`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
 - `schema_subject`
+- `schema_subject_alias`
+- `schema_namespace`
 - `schema_version`
+- `schema_field`
+- `schema_fingerprint`
+- `schema_semantic_tag`
+- `schema_diff`
+- `schema_evolution_plan`
 - `compatibility_rule`
+- `compatibility_matrix`
+- `compatibility_exception`
+- `consumer_binding`
+- `consumer_impact`
+- `producer_binding`
+- `validation_run`
+- `payload_validation_sample`
+- `payload_validation_error`
 - `contract_violation`
+- `contract_remediation`
+- `contract_projection`
+- `gateway_contract_projection`
+- `audit_contract_projection`
+- `composition_contract_projection`
+- `workflow_contract_projection`
+- `route_contract_projection`
+- `access_policy_projection`
+- `package_registration_projection`
+- `pbc_deployment_projection`
+- `schema_acceptance_proof`
+- `schema_policy_screening`
+- `schema_federation_view`
+- `schema_resilience_drill`
+- `schema_crypto_epoch`
+- `carbon_validation_window`
+- `schema_diff_optimization`
+- `consumer_review_allocation`
+- `validation_anomaly_signal`
+- `contract_exposure_forecast`
+- `schema_identity_attestation`
+- `schema_governed_model`
+- `schema_seed_data`
+- `schema_control_assertion`
+- `schema_registry_extension`
+- `schema_rule`
+- `schema_parameter`
+- `schema_configuration`
+- `schema_registry_appgen_outbox_event`
+- `schema_registry_appgen_inbox_event`
+- `schema_registry_dead_letter_event`
 
 ### API Routes
 
-- `POST /schemas`
-- `POST /compatibility-checks`
-- `GET /subjects`
+- `POST /schemas/subjects`
+- `POST /schemas/versions`
+- `POST /schemas/compatibility-rules`
+- `POST /schemas/consumer-bindings`
+- `POST /schemas/compatibility-checks`
+- `POST /schemas/payload-validations`
+- `POST /schemas/violations`
+- `POST /schemas/projections`
+- `POST /schemas/events/inbox`
+- `GET /schemas/subjects`
+- `GET /schemas/schema-contract`
+- `GET /schemas/service-contract`
+- `GET /schemas/release-evidence`
 
 ### Emitted Events
 
+- `SchemaSubjectRegistered`
 - `SchemaAccepted`
 - `BreakingSchemaBlocked`
+- `PayloadValidated`
+- `ContractViolationRecorded`
+- `ContractProjectionPublished`
 
 ### Consumed Events
 
 - `PbcDeployed`
 - `EventContractProposed`
+- `RoutePublished`
+- `AccessPolicyChanged`
+- `PackageRegistrationRequested`
 
 ### UI Fragments
 
-- None declared
+- `SchemaRegistryWorkbench`
+- `SubjectCatalogConsole`
+- `SchemaVersionWorkbench`
+- `CompatibilityPolicyPanel`
+- `PayloadValidationConsole`
+- `ConsumerImpactBoard`
+- `ContractViolationTriage`
+- `ProjectionPublicationPanel`
+- `SchemaGovernancePanel`
 
 ### Permissions
 
-- None declared
+- `schema_registry.register`
+- `schema_registry.approve`
+- `schema_registry.validate`
+- `schema_registry.triage`
+- `schema_registry.publish`
+- `schema_registry.event`
+- `schema_registry.configure`
+- `schema_registry.audit`
+- `schema_registry.read`
 
 ### Configuration Keys
 
-- None declared
+- `SCHEMA_REGISTRY_DATABASE_URL`
+- `SCHEMA_REGISTRY_EVENT_TOPIC`
+- `SCHEMA_REGISTRY_RETRY_LIMIT`
+- `SCHEMA_REGISTRY_DEFAULT_TIMEZONE`
+- `SCHEMA_REGISTRY_ALLOWED_FORMATS`
+- `SCHEMA_REGISTRY_DEFAULT_COMPATIBILITY`
+- `SCHEMA_REGISTRY_NAMESPACE_POLICY`
 
 ### Standard Features
 
-- None declared
+- `subject_catalog`
+- `subject_aliases`
+- `namespace_governance`
+- `schema_versioning`
+- `schema_fields`
+- `immutable_fingerprints`
+- `semantic_tags`
+- `schema_diffing`
+- `schema_evolution_plans`
+- `compatibility_policy`
+- `compatibility_matrix`
+- `compatibility_exceptions`
+- `backward_compatibility`
+- `forward_compatibility`
+- `transitive_compatibility`
+- `payload_validation`
+- `producer_binding`
+- `consumer_binding`
+- `consumer_impact`
+- `impact_analysis`
+- `breaking_change_blocking`
+- `remediation_plans`
+- `violation_triage`
+- `semantic_classification`
+- `schema_extension_registry`
+- `contract_projection`
+- `idempotent_handlers`
+- `retry_dead_letter`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
+- `release_gate`
+- `audit_evidence`
+- `package_registration_validation`
+- `appgen_event_contract`
+- `schema_acceptance_proofs`
+- `policy_screening`
+- `federation_views`
+- `resilience_drills`
+- `crypto_epoch_rotation`
+- `carbon_validation_windows`
+- `diff_optimization`
+- `consumer_review_allocation`
+- `validation_anomaly_signals`
+- `contract_exposure_forecasts`
+- `identity_attestation`
+- `governed_model_evidence`
+- `control_assertions`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_schema_lifecycle`
+- `graph_relational_contract_topology`
+- `multi_tenant_contract_isolation`
+- `schema_on_read_contract_extensibility`
+- `probabilistic_breaking_change_scoring`
+- `real_time_contract_analytics`
+- `counterfactual_schema_evolution_simulation`
+- `temporal_compatibility_health_forecasting`
+- `autonomous_contract_remediation`
+- `semantic_schema_intent_parsing`
+- `predictive_contract_risk_scoring`
+- `self_healing_contract_validation_route_selection`
+- `zero_knowledge_schema_acceptance_proof`
+- `immutable_contract_audit_trail`
+- `dynamic_contract_policy_screening`
+- `automated_contract_control_testing`
+- `universal_api_async_contract_surface`
+- `cross_system_schema_federation`
+- `gateway_identity_audit_workflow_composition_integration`
+- `decentralized_producer_consumer_identity`
+- `chaos_engineered_contract_validation_tolerance`
+- `quantum_resistant_schema_signing`
+- `carbon_aware_contract_validation`
+- `algebraic_schema_diff_minimization`
+- `mechanism_design_consumer_impact_allocation`
+- `information_theoretic_validation_anomaly_detection`
+- `temporal_contract_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_contract_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `contract_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

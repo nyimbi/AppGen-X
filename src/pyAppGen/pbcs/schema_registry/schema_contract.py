@@ -1,6 +1,84 @@
 """Generated owned schema evidence for the schema_registry PBC."""
 
-SCHEMA_CONTRACT = {'format': 'appgen.schema-registry-owned-schema-contract.v1', 'ok': True, 'tables': ({'logical_table': 'schema_subject', 'owned_table': 'schema_registry_schema_subject', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'logical_table': 'schema_version', 'owned_table': 'schema_registry_schema_version', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'schema_subject_id', 'type': 'integer', 'required': True, 'references': 'schema_registry_schema_subject.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'schema_subject_id', 'target_table': 'schema_registry_schema_subject', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'compatibility_rule', 'owned_table': 'schema_registry_compatibility_rule', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'schema_subject_id', 'type': 'integer', 'required': True, 'references': 'schema_registry_schema_subject.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'schema_subject_id', 'target_table': 'schema_registry_schema_subject', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'contract_violation', 'owned_table': 'schema_registry_contract_violation', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'schema_subject_id', 'type': 'integer', 'required': True, 'references': 'schema_registry_schema_subject.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'schema_subject_id', 'target_table': 'schema_registry_schema_subject', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'relationships': (('schema_subject_alias', 'schema_subject', 'subject_id'), ('schema_version', 'schema_subject', 'subject_id'), ('schema_field', 'schema_version', 'version_id'), ('schema_fingerprint', 'schema_version', 'version_id'), ('schema_semantic_tag', 'schema_field', 'field_id'), ('schema_diff', 'schema_subject', 'subject_id'), ('schema_evolution_plan', 'schema_subject', 'subject_id'), ('compatibility_rule', 'schema_subject', 'subject_id'), ('compatibility_matrix', 'schema_subject', 'subject_id'), ('compatibility_exception', 'schema_subject', 'subject_id'), ('consumer_binding', 'schema_subject', 'subject_id'), ('consumer_impact', 'schema_subject', 'subject_id'), ('producer_binding', 'schema_subject', 'subject_id'), ('validation_run', 'schema_subject', 'subject_id'), ('payload_validation_sample', 'validation_run', 'run_id'), ('payload_validation_error', 'validation_run', 'run_id'), ('contract_violation', 'schema_subject', 'subject_id'), ('contract_remediation', 'contract_violation', 'violation_id'), ('contract_projection', 'schema_subject', 'subject_id')), 'migrations': ('migrations/001_initial.sql',), 'models': ({'class_name': 'SchemaRegistrySchemaSubject', 'table': 'schema_registry_schema_subject', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'class_name': 'SchemaRegistrySchemaVersion', 'table': 'schema_registry_schema_version', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'schema_subject_id', 'type': 'integer', 'required': True, 'references': 'schema_registry_schema_subject.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'schema_subject_id', 'target_table': 'schema_registry_schema_subject', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'SchemaRegistryCompatibilityRule', 'table': 'schema_registry_compatibility_rule', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'schema_subject_id', 'type': 'integer', 'required': True, 'references': 'schema_registry_schema_subject.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'schema_subject_id', 'target_table': 'schema_registry_schema_subject', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'SchemaRegistryContractViolation', 'table': 'schema_registry_contract_violation', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'schema_subject_id', 'type': 'integer', 'required': True, 'references': 'schema_registry_schema_subject.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'schema_subject_id', 'target_table': 'schema_registry_schema_subject', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'allowed_prefixes': ('schema_', 'compatibility_', 'consumer_', 'producer_', 'validation_', 'payload_', 'contract_', 'gateway_', 'audit_', 'composition_', 'workflow_', 'route_', 'access_', 'package_', 'pbc_', 'carbon_'), 'datastore_backends': ('postgresql', 'mysql', 'mariadb'), 'required_event_topic': 'appgen.schema.events', 'shared_table_access': False, 'invalid_prefixes': (), 'pbc': 'schema_registry', 'owned_tables': ('schema_registry_schema_subject', 'schema_registry_schema_version', 'schema_registry_compatibility_rule', 'schema_registry_contract_violation'), 'database_backends': ('postgresql',)}
+from .domain_schema import LOGICAL_TABLES
+from .domain_schema import RUNTIME_TABLE_NAMES
+from .domain_schema import class_name_for
+from .domain_schema import fields_for
+from .domain_schema import migration_path_for
+from .domain_schema import owned_table
+from .domain_schema import relationships_for
+from .domain_schema import supported_backends
+from .runtime import SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC
+
+
+def _table_contract(table: str) -> dict:
+    return {
+        "logical_table": table,
+        "owned_table": owned_table(table),
+        "fields": fields_for(table),
+        "relationships": relationships_for(table),
+    }
+
+
+def _model_contract(table: str) -> dict:
+    return {
+        "class_name": class_name_for(table),
+        "table": owned_table(table),
+        "fields": fields_for(table),
+        "relationships": relationships_for(table),
+    }
+
+
+SCHEMA_CONTRACT = {
+    "format": "appgen.schema-registry-owned-schema-contract.v1",
+    "ok": True,
+    "pbc": "schema_registry",
+    "owned_tables": tuple(owned_table(table) for table in LOGICAL_TABLES),
+    "logical_owned_tables": LOGICAL_TABLES,
+    "tables": tuple(_table_contract(table) for table in LOGICAL_TABLES),
+    "runtime_tables": tuple(_table_contract(table) for table in RUNTIME_TABLE_NAMES),
+    "relationships": tuple(relationship for table in LOGICAL_TABLES for relationship in relationships_for(table)),
+    "migrations": (migration_path_for("schema_subject"),),
+    "migration_plan": tuple(
+        {"path": migration_path_for(table), "operation": "create_owned_table", "table": owned_table(table)}
+        for table in LOGICAL_TABLES
+    ),
+    "models": tuple(_model_contract(table) for table in LOGICAL_TABLES),
+    "allowed_prefixes": (
+        "schema_",
+        "compatibility_",
+        "consumer_",
+        "producer_",
+        "validation_",
+        "payload_",
+        "contract_",
+        "gateway_",
+        "audit_",
+        "composition_",
+        "workflow_",
+        "route_",
+        "access_",
+        "package_",
+        "pbc_",
+        "carbon_",
+    ),
+    "datastore_backends": supported_backends(),
+    "database_backends": supported_backends(),
+    "required_event_topic": SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC,
+    "event_contract": "AppGen-X",
+    "shared_table_access": False,
+    "schema_extensions": {"allowed": True, "owned_tables_only": True},
+    "declared_dependencies": {
+        "apis": (
+            "GET /gateway/routes",
+            "GET /identity/policies",
+            "POST /audit/contract-events",
+            "POST /composition/contracts",
+        ),
+        "events": ("PbcDeployed", "EventContractProposed", "RoutePublished", "AccessPolicyChanged", "PackageRegistrationRequested"),
+        "shared_tables": (),
+    },
+}
 
 
 def build_schema_contract():
@@ -11,41 +89,37 @@ def build_schema_contract():
 def validate_schema_contract():
     """Validate owned table, migration, model, and datastore evidence."""
     contract = build_schema_contract()
-    pbc = contract['pbc']
-    owned_tables = tuple(contract.get('owned_tables', ()))
-    raw_model_tables = tuple(
-        model.get('table')
-        for model in contract.get('models', ())
-        if isinstance(model, dict) and model.get('table')
-    )
+    pbc = contract["pbc"]
+    owned_tables = tuple(contract.get("owned_tables", ()))
     model_tables = tuple(
-        table if table.startswith(f'{pbc}_') else f'{pbc}_{table}'
-        for table in raw_model_tables
+        model.get("table")
+        for model in contract.get("models", ())
+        if isinstance(model, dict) and model.get("table")
     )
-    migration_paths = tuple(contract.get('migrations', ()))
-    allowed_backends = {'postgresql', 'mysql', 'mariadb'}
-    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f'{pbc}_'))
-    missing_models = tuple(table for table in owned_tables if model_tables and table not in model_tables)
-    invalid_backends = tuple(
-        backend for backend in contract.get('database_backends', ()) if backend not in allowed_backends
-    )
+    migration_paths = tuple(contract.get("migrations", ()))
+    allowed_backends = {"postgresql", "mysql", "mariadb"}
+    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f"{pbc}_"))
+    missing_models = tuple(table for table in owned_tables if table not in model_tables)
+    invalid_backends = tuple(backend for backend in contract.get("database_backends", ()) if backend not in allowed_backends)
+    thin_tables = tuple(table["owned_table"] for table in contract["tables"] if len(table["fields"]) < 6)
     return {
-        'ok': contract.get('ok') is True
-        and bool(owned_tables)
+        "ok": contract.get("ok") is True
+        and len(owned_tables) >= 45
         and bool(migration_paths)
         and not invalid_tables
         and not missing_models
         and not invalid_backends
-        and contract.get('shared_table_access') is False,
-        'pbc': pbc,
-        'owned_tables': owned_tables,
-        'raw_model_tables': raw_model_tables,
-        'model_tables': model_tables,
-        'migration_paths': migration_paths,
-        'invalid_tables': invalid_tables,
-        'missing_models': missing_models,
-        'invalid_backends': invalid_backends,
-        'side_effects': (),
+        and not thin_tables
+        and contract.get("shared_table_access") is False,
+        "pbc": pbc,
+        "owned_tables": owned_tables,
+        "model_tables": model_tables,
+        "migration_paths": migration_paths,
+        "invalid_tables": invalid_tables,
+        "missing_models": missing_models,
+        "invalid_backends": invalid_backends,
+        "thin_tables": thin_tables,
+        "side_effects": (),
     }
 
 
