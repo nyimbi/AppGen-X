@@ -5944,6 +5944,51 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     deep_runtime_modules = deep_runtime_module_file_manifest()
     deep_runtime_module_tests = deep_runtime_module_test_file_manifest()
     runtime_module_replay_matrix = pascal_runtime_module_replay_matrix(design)
+    required_stream_runtime_operations = (
+        "open_design_stream",
+        "read_text_stream",
+        "parse_text_stream",
+        "decode_binary_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "parse_units",
+        "type_check",
+        "resource_link",
+        "emit_target",
+        "refresh_resources",
+        "reload_runtime_preview",
+        "start_debug_preview",
+        "verify_runtime_state",
+        "stream_before_unit_parse",
+        "resources_linked_before_runtime_load",
+        "unknown_properties_preserved_during_edit",
+        "source_stream_before_unit_semantics",
+        "rollback_proves_no_persisted_writes",
+    )
+    runtime_operation_steps = tuple(
+        step
+        for operation in actionable_operations["operations"].values()
+        for step in operation.get("pipeline", ())
+    )
+    runtime_operation_guards = tuple(
+        guard
+        for operation in actionable_operations["operations"].values()
+        for guard in operation.get("guards", ())
+    )
+    stream_runtime_operations = tuple(
+        dict.fromkeys(
+            actionable_operations["operation_names"]
+            + runtime_operation_steps
+            + runtime_operation_guards
+            + compiler["stages"]
+            + tuple(compile_package_replay["guards"])
+            + tuple(runtime_replay["guards"])
+            + tuple(design_edit_replay["guards"])
+            + tuple(phase["phase"] for phase in readiness["phases"])
+            + tuple(authoring_scenario["pipeline"])
+        )
+    )
     checks = (
         {"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]},
         {"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip},
@@ -6231,6 +6276,12 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "evidence": authoring_replay_matrix,
         },
         {
+            "id": "stream_runtime_operations_exposed",
+            "ok": set(required_stream_runtime_operations) <= set(stream_runtime_operations),
+            "required": required_stream_runtime_operations,
+            "passing": tuple(operation for operation in required_stream_runtime_operations if operation in stream_runtime_operations),
+        },
+        {
             "id": "native_form_modules",
             "ok": len(native_form_modules) == 6
             and all(item["ok"] and "native_form_manifest" in item["exports"] for item in native_form_modules),
@@ -6353,6 +6404,8 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "runtime_replay": runtime_replay,
         "design_edit_replay": design_edit_replay,
         "actionable_operations": actionable_operations,
+        "required_stream_runtime_operations": required_stream_runtime_operations,
+        "stream_runtime_operations": stream_runtime_operations,
         "authoring_scenario": authoring_scenario,
         "readiness": readiness,
         "authoring_replay_matrix": authoring_replay_matrix,

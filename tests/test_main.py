@@ -4366,6 +4366,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_authoring_scenario",
         "runtime_readiness_contract",
         "runtime_authoring_replay_matrix",
+        "stream_runtime_operations_exposed",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -4377,6 +4378,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_module_replay_matrix",
     } == {check["id"] for check in runtime["checks"]}
     assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
+    assert {
+        "open_design_stream",
+        "read_text_stream",
+        "apply_property_delta",
+        "compile_preview",
+        "reload_runtime_preview",
+        "rollback_proves_no_persisted_writes",
+    } <= set(runtime["required_stream_runtime_operations"]) <= set(runtime["stream_runtime_operations"])
     assert runtime["binary_round_trip"]["decoded"] == dfm_text
     assert {"text", "binary", "json"} <= {item["format"] for item in runtime["stream_variants"]["variants"]}
     assert "package_manager" in runtime["diagnostics"]["designer_surfaces"]
@@ -16595,6 +16604,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_authoring_scenario",
         "runtime_readiness_contract",
         "runtime_authoring_replay_matrix",
+        "stream_runtime_operations_exposed",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -16607,6 +16617,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {
         check["id"] for check in generated_runtime["checks"]
     }
+    assert {
+        "open_design_stream",
+        "read_text_stream",
+        "apply_property_delta",
+        "compile_preview",
+        "reload_runtime_preview",
+        "rollback_proves_no_persisted_writes",
+    } <= set(generated_runtime["required_stream_runtime_operations"]) <= set(generated_runtime["stream_runtime_operations"])
     assert generated_runtime["compiler"]["outputs"] == (
         "runtime_package",
         "design_package",

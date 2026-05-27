@@ -2639,6 +2639,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   target preview, undoable commits, rollback, and side-effect guards without
   unpacking nested transaction replay. Verification is focused under the
   low-battery delivery constraint. Commit: `0ab539a`.
+- Current native stream runtime pass exposes required stream/runtime operations
+  plus collected operation, pipeline, and guard names directly from the source
+  and generated runtime workbench contracts. Generated consumers can now inspect
+  stream opening, text parsing, binary decode, property deltas, stream
+  round-trips, compile preview, resource refresh, runtime reload, debug preview,
+  and rollback guards without unpacking nested operation payloads. Verification
+  is focused under the low-battery delivery constraint. Commit: pending.
 - Current PBC specification gate pass makes first-class agent/chatbot skills
   and side-effect-free self-registration explicit specification requirements.
   All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,
