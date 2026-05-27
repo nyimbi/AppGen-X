@@ -1997,6 +1997,20 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   scan is clean; implementation smoke, schema-registry generation smoke, all
   implemented generation smoke, and `pbc_release_audit()` all return true.
   Commit: `de59cee`.
+- Current Workflow Orchestration PBC hardening pass makes
+  `workflow_orchestration` source artifacts match the runtime saga and workflow
+  state boundary instead of the old four-table placeholder. The central
+  catalog, package manifest, specification traceability, domain schema source,
+  source schema contract, model metadata, migration, and tests now cover
+  workflow definitions, instances, signals, timers, saga steps, compensations,
+  human tasks, rules, parameters, configuration, AppGen-X outbox/inbox/dead
+  letters, owned relationships, idempotency keys, UI fragments, permissions,
+  and advanced orchestration capabilities. Py compile passed for
+  `src/pyAppGen/pbc.py`, the touched workflow package, and runtime tests;
+  focused workflow tests pass (`14 passed`); source package and traceability
+  tests pass (`23 passed`); banned legacy name scan is clean; implementation
+  smoke, workflow generation smoke, all implemented generation smoke, and
+  `pbc_release_audit()` all return true. Commit: `8d6c604`.
 
 ## Open Completion Areas
 
