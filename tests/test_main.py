@@ -155,6 +155,7 @@ from pyAppGen.form_designer import app_shell_chrome_contract
 from pyAppGen.form_designer import cross_target_author_scene_operation
 from pyAppGen.form_designer import cross_target_author_style_operation
 from pyAppGen.form_designer import cross_target_author_timeline_operation
+from pyAppGen.form_designer import cross_target_effect_editor_transaction_replay_contract
 from pyAppGen.form_designer import cross_target_hit_test_transform_operation
 from pyAppGen.form_designer import cross_target_import_visual_asset_operation
 from pyAppGen.form_designer import cross_target_run_visual_component_scenario_operation
@@ -3043,6 +3044,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "timeline_interpolation_runtime",
         "timeline_editor_transaction_replay",
         "effect_fallback_matrix",
+        "effect_editor_transaction_replay",
         "scene_transform_gizmos",
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
@@ -3094,9 +3096,22 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         for transaction in visual_depth["timeline_editor_transaction"]["transactions"]
     )
     assert any(row["decision"] == "use_fallback" for row in visual_depth["effect_fallback_matrix"]["rows"])
+    assert visual_depth["effect_editor_transaction"]["ok"] is True
+    assert visual_depth["effect_editor_transaction"]["transactions"]
+    assert {
+        "effect_stack_editable",
+        "budget_validated_before_render",
+        "target_fallbacks_assigned",
+        "runtime_effect_plan_after_edit",
+    } <= {check["id"] for check in visual_depth["effect_editor_transaction"]["checks"] if check["ok"]}
+    assert all(
+        "emit_runtime_effect_plan" in transaction["operations"]
+        for transaction in visual_depth["effect_editor_transaction"]["transactions"]
+    )
+    assert cross_target_effect_editor_transaction_replay_contract()["ok"] is True
     assert all("sync_inspector" in item["pipeline"] for item in visual_depth["scene_transform_gizmos"]["transforms"])
     assert visual_depth["runtime_replay"]["ok"] is True
-    assert {"style_resolution", "timeline_interpolation", "effect_fallback", "scene_hit_testing", "scene_transform_sync"} <= {
+    assert {"style_resolution", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_hit_testing", "scene_transform_sync"} <= {
         item["phase"] for item in visual_depth["runtime_replay"]["replay"]
     }
     assert visual_depth["runtime_replay"]["final_state"]["timeline_samples"] > 0
@@ -3287,6 +3302,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "timeline_ready",
         "timeline_editor_transaction_ready",
         "effects_ready",
+        "effect_editor_transaction_ready",
         "scene_assets_ready",
         "hit_test_component_ready",
         "runtime_designer_replay_ready",
@@ -3295,6 +3311,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "phase_order_ready",
     } == {check["id"] for check in visual_readiness["checks"]}
     assert visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert visual_readiness["final_state"]["effect_editor_transactions"] == len(
+        visual_depth["effect_editor_transaction"]["transactions"]
+    )
     assert visual_readiness["final_state"]["timeline_editor_transactions"] == len(
         visual_depth["timeline_editor_transaction"]["transactions"]
     )
@@ -5302,6 +5321,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_package_ready",
         "timeline_editor_transaction_ready",
         "timeline_editor_transaction_replay",
+        "effect_editor_transaction_ready",
+        "effect_editor_transaction_replay",
         "visual_component_modules",
         "visual_component_module_tests",
         "visual_design_modules",
@@ -15405,6 +15426,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_package_ready",
         "timeline_editor_transaction_ready",
         "timeline_editor_transaction_replay",
+        "effect_editor_transaction_ready",
+        "effect_editor_transaction_replay",
         "visual_component_modules",
         "visual_component_module_tests",
         "visual_design_modules",
@@ -17741,6 +17764,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "timeline_interpolation_runtime",
         "timeline_editor_transaction_replay",
         "effect_fallback_matrix",
+        "effect_editor_transaction_replay",
         "scene_transform_gizmos",
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
@@ -17783,9 +17807,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_export_after_edit",
     } <= {check["id"] for check in generated_visual_depth["timeline_editor_transaction"]["checks"] if check["ok"]}
     assert any(row["decision"] == "use_fallback" for row in generated_visual_depth["effect_fallback_matrix"]["rows"])
+    assert generated_visual_depth["effect_editor_transaction"]["ok"] is True
+    assert generated_visual_depth["effect_editor_transaction"]["transactions"]
+    assert {
+        "effect_stack_editable",
+        "budget_validated_before_render",
+        "target_fallbacks_assigned",
+        "runtime_effect_plan_after_edit",
+    } <= {check["id"] for check in generated_visual_depth["effect_editor_transaction"]["checks"] if check["ok"]}
     assert "inspector_sync_after_transform" in generated_visual_depth["scene_transform_gizmos"]["guards"]
     assert generated_visual_depth["runtime_replay"]["ok"] is True
-    assert {"style_resolution", "timeline_interpolation", "effect_fallback", "scene_hit_testing", "scene_transform_sync"} <= {
+    assert {"style_resolution", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_hit_testing", "scene_transform_sync"} <= {
         item["phase"] for item in generated_visual_depth["runtime_replay"]["replay"]
     }
     assert generated_visual_depth["runtime_replay"]["final_state"]["effect_fallbacks"] >= 1
@@ -17960,6 +17992,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "timeline_ready",
         "timeline_editor_transaction_ready",
         "effects_ready",
+        "effect_editor_transaction_ready",
         "scene_assets_ready",
         "hit_test_component_ready",
         "runtime_designer_replay_ready",
@@ -17968,6 +18001,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "phase_order_ready",
     } == {check["id"] for check in generated_visual_readiness["checks"]}
     assert generated_visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert generated_visual_readiness["final_state"]["effect_editor_transactions"] == len(
+        generated_visual_depth["effect_editor_transaction"]["transactions"]
+    )
     assert generated_visual_readiness["final_state"]["timeline_editor_transactions"] == len(
         generated_visual_depth["timeline_editor_transaction"]["transactions"]
     )
