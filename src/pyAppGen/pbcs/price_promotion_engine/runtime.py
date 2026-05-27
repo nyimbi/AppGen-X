@@ -350,6 +350,8 @@ _TABLE_FIELDS = {
         "promotion_id",
         "code",
         "reuse_limit",
+        "redemption_count",
+        "redeemed_decision_ids",
         "status",
         "audit_hash",
     ),
@@ -533,10 +535,12 @@ def price_promotion_engine_runtime_capabilities() -> dict:
             "register_schema_extension",
             "register_price_rule",
             "register_promotion",
+            "approve_promotion",
             "register_loyalty_tier",
             "receive_event",
             "quote_price",
             "apply_promotion",
+            "redeem_coupon",
             "build_workbench_view",
             "binding_evidence",
             "build_api_contract",
@@ -656,9 +660,10 @@ def price_promotion_engine_runtime_smoke() -> dict:
             "status": "active",
             "budget_amount": 1500.0,
             "budget_currency": "USD",
-            "approval_status": "approved",
+            "approval_status": "pending",
         },
     )["state"]
+    state = price_promotion_engine_approve_promotion(state, "promo_alpha", approved_by="pricing_manager")["state"]
     state = price_promotion_engine_receive_event(
         state,
         {
@@ -690,7 +695,7 @@ def price_promotion_engine_runtime_smoke() -> dict:
         },
     )
     state = quoted["state"]
-    state = price_promotion_engine_apply_promotion(state, "decision_alpha", "promo_alpha")["state"]
+    state = price_promotion_engine_redeem_coupon(state, "decision_alpha", "GROWTH10")["state"]
     checks = tuple(
         {"id": key, "ok": True, "evidence": _capability_evidence(state, key)}
         for key in PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS
@@ -706,12 +711,15 @@ def price_promotion_engine_runtime_smoke() -> dict:
         and bool(state["coupons"])
         and bool(state["campaign_budgets"])
         and bool(state["promotion_approvals"])
+        and bool(tuple(item for item in state["promotion_approvals"].values() if item["approval_status"] == "approved"))
+        and bool(tuple(item for item in state["coupons"].values() if item.get("redemption_count", 0) >= 1))
         and bool(state["price_simulations"])
         and bool(state["price_performance_telemetry"])
         and not tuple(check for check in checks if not check["ok"]),
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "state_digest": _digest({"events": state["events"], "outbox": state["outbox"], "decisions": state["price_decisions"]}),
+        "state": state,
     }
 
 
@@ -1011,6 +1019,8 @@ def price_promotion_engine_register_promotion(state: dict, command: dict) -> dic
         "promotion_id": promotion["promotion_id"],
         "code": promotion["code"],
         "reuse_limit": int(command.get("coupon_reuse_limit", runtime["parameters"].get("coupon_reuse_limit", {"value": 1})["value"])),
+        "redemption_count": 0,
+        "redeemed_decision_ids": (),
         "status": "active",
         "audit_hash": _digest({"promotion_id": promotion["promotion_id"], "code": promotion["code"]}),
     }
@@ -1081,6 +1091,47 @@ def price_promotion_engine_register_promotion(state: dict, command: dict) -> dic
         payload=promotion,
     )
     return {"ok": True, "state": runtime, "promotion": promotion}
+
+
+def price_promotion_engine_approve_promotion(
+    state: dict,
+    promotion_id: str,
+    *,
+    approved_by: str,
+    approval_status: str = "approved",
+) -> dict:
+    if approval_status not in {"approved", "rejected", "pending"}:
+        raise ValueError("Price Promotion Engine promotion approval status must be approved, rejected, or pending")
+    promotion = state["promotions"].get(promotion_id)
+    if not promotion:
+        raise ValueError(f"Unknown Price Promotion Engine promotion for approval: {promotion_id}")
+    approval_key = f"{promotion_id}:approval"
+    if approval_key not in state["promotion_approvals"]:
+        raise ValueError(f"Promotion {promotion_id} does not have owned approval evidence")
+    runtime = _copy_state(state)
+    approval = dict(runtime["promotion_approvals"][approval_key])
+    approval["approval_status"] = approval_status
+    approval["approved_by"] = approved_by
+    approval["audit_hash"] = _digest(
+        {
+            "promotion_id": promotion_id,
+            "approval_status": approval_status,
+            "approved_by": approved_by,
+            "previous": state["promotion_approvals"][approval_key],
+        }
+    )
+    runtime["promotion_approvals"][approval_key] = approval
+    runtime["promotions"][promotion_id]["approval_status"] = approval_status
+    _append_state_event(runtime, "PromotionApprovalUpdated", promotion_id, approval)
+    _record_audit_trace(
+        runtime,
+        tenant=promotion["tenant"],
+        trace_type="promotion_approval",
+        subject_id=promotion_id,
+        related_tables=("promotion", "promotion_approval"),
+        payload=approval,
+    )
+    return {"ok": approval_status == "approved", "state": runtime, "promotion_approval": approval}
 
 
 def price_promotion_engine_register_loyalty_tier(state: dict, command: dict) -> dict:
@@ -1303,6 +1354,70 @@ def price_promotion_engine_apply_promotion(state: dict, decision_id: str, promot
     return {"ok": True, "state": runtime, "promotion_application": applied}
 
 
+def price_promotion_engine_redeem_coupon(state: dict, decision_id: str, coupon_code: str) -> dict:
+    decision = state["price_decisions"].get(decision_id)
+    if not decision:
+        raise ValueError(f"Unknown Price Promotion Engine decision for coupon redemption: {decision_id}")
+    coupon = next(
+        (
+            item
+            for item in state["coupons"].values()
+            if item["code"] == coupon_code and item["tenant"] == decision["tenant"]
+        ),
+        None,
+    )
+    if not coupon:
+        raise ValueError(f"Unknown Price Promotion Engine coupon for decision {decision_id}: {coupon_code}")
+    if coupon["status"] != "active":
+        raise ValueError(f"Coupon {coupon_code} is not active")
+    if int(coupon.get("redemption_count", 0)) >= int(coupon["reuse_limit"]):
+        raise ValueError(f"Coupon {coupon_code} exceeded its reuse limit")
+    promotion_id = coupon["promotion_id"]
+    applied = price_promotion_engine_apply_promotion(state, decision_id, promotion_id)
+    runtime = applied["state"]
+    runtime_coupon = runtime["coupons"][coupon["coupon_id"]]
+    runtime_coupon["redemption_count"] = int(runtime_coupon.get("redemption_count", 0)) + 1
+    runtime_coupon["redeemed_decision_ids"] = tuple(
+        sorted(set(runtime_coupon.get("redeemed_decision_ids", ())) | {decision_id})
+    )
+    runtime_coupon["audit_hash"] = _digest(
+        {
+            "coupon_id": coupon["coupon_id"],
+            "redemption_count": runtime_coupon["redemption_count"],
+            "redeemed_decision_ids": runtime_coupon["redeemed_decision_ids"],
+        }
+    )
+    redemption = {
+        "tenant": decision["tenant"],
+        "decision_id": decision_id,
+        "coupon_id": coupon["coupon_id"],
+        "coupon_code": coupon_code,
+        "promotion_id": promotion_id,
+        "redemption_count": runtime_coupon["redemption_count"],
+        "reuse_limit": runtime_coupon["reuse_limit"],
+        "audit_proof": _digest({"decision_id": decision_id, "coupon_code": coupon_code, "promotion_id": promotion_id}),
+    }
+    _append_state_event(runtime, "CouponRedeemed", coupon["coupon_id"], redemption)
+    _record_audit_trace(
+        runtime,
+        tenant=decision["tenant"],
+        trace_type="coupon_redemption",
+        subject_id=decision_id,
+        related_tables=("coupon", "price_decision", "campaign_budget"),
+        payload=redemption,
+    )
+    _record_performance_telemetry(
+        runtime,
+        tenant=decision["tenant"],
+        metric_key="coupon_redeem_latency",
+        subject_id=decision_id,
+        sample_ms=6,
+        rule_hits=1,
+        status="redeemed",
+    )
+    return {"ok": True, "state": runtime, "coupon_redemption": redemption}
+
+
 def price_promotion_engine_build_workbench_view(state: dict, *, tenant: str) -> dict:
     rules = tuple(item for item in state.get("price_rules", {}).values() if item["tenant"] == tenant)
     promotions = tuple(item for item in state.get("promotions", {}).values() if item["tenant"] == tenant)
@@ -1321,7 +1436,9 @@ def price_promotion_engine_build_workbench_view(state: dict, *, tenant: str) -> 
         "currency_price_count": bindings["tenant_counts"]["currency_prices"],
         "promotion_count": len(promotions),
         "coupon_count": bindings["tenant_counts"]["coupons"],
+        "coupon_redemption_count": bindings["tenant_counts"]["coupon_redemptions"],
         "approval_count": bindings["tenant_counts"]["approvals"],
+        "approved_promotion_count": bindings["tenant_counts"]["approved_promotions"],
         "budget_count": bindings["tenant_counts"]["budgets"],
         "loyalty_tier_count": len(tiers),
         "simulation_count": bindings["tenant_counts"]["simulations"],
@@ -1364,8 +1481,20 @@ def price_promotion_engine_binding_evidence(state: dict, *, tenant: str) -> dict
             "channel_prices": _count("channel_prices"),
             "currency_prices": _count("currency_prices"),
             "coupons": _count("coupons"),
+            "coupon_redemptions": sum(
+                int(item.get("redemption_count", 0))
+                for item in state.get("coupons", {}).values()
+                if item.get("tenant") == tenant
+            ),
             "budgets": _count("campaign_budgets"),
             "approvals": _count("promotion_approvals"),
+            "approved_promotions": len(
+                tuple(
+                    item
+                    for item in state.get("promotion_approvals", {}).values()
+                    if item.get("tenant") == tenant and item.get("approval_status") == "approved"
+                )
+            ),
             "simulations": _count("price_simulations"),
             "guardrails": _count("price_margin_guardrails"),
             "telemetry": _count("price_performance_telemetry"),
@@ -1491,10 +1620,12 @@ def price_promotion_engine_build_service_contract() -> dict:
         "register_schema_extension",
         "register_price_rule",
         "register_promotion",
+        "approve_promotion",
         "register_loyalty_tier",
         "receive_event",
         "quote_price",
         "apply_promotion",
+        "redeem_coupon",
         "verify_owned_table_boundary",
     )
     query_methods = (
@@ -1509,6 +1640,7 @@ def price_promotion_engine_build_service_contract() -> dict:
     return {
         "format": "appgen.price-promotion-engine-service-contract.v1",
         "ok": len(command_methods) >= 10 and len(query_methods) >= 7,
+        "pbc": "price_promotion_engine",
         "transaction_boundary": "price_promotion_engine_owned_datastore_plus_appgen_outbox",
         "command_methods": command_methods,
         "query_methods": query_methods,
@@ -1603,6 +1735,14 @@ def price_promotion_engine_build_api_contract() -> dict:
                 "idempotency_key": "promotion_id",
             },
             {
+                "route": "POST /promotions/{promotion_id}/approval",
+                "command": "approve_promotion",
+                "owned_tables": ("promotion", "promotion_approval", "price_audit_trace"),
+                "emits": (),
+                "requires_permission": "price_promotion_engine.promotion.approve",
+                "idempotency_key": "promotion_id:approved_by",
+            },
+            {
                 "route": "POST /loyalty-tiers",
                 "command": "register_loyalty_tier",
                 "owned_tables": ("loyalty_tier",),
@@ -1625,6 +1765,14 @@ def price_promotion_engine_build_api_contract() -> dict:
                 "emits": ("PromotionApplied",),
                 "requires_permission": "price_promotion_engine.quote",
                 "idempotency_key": "decision_id:promotion_id",
+            },
+            {
+                "route": "POST /coupon-redemptions",
+                "command": "redeem_coupon",
+                "owned_tables": ("coupon", "price_decision", "campaign_budget", "price_audit_trace", "price_performance_telemetry"),
+                "emits": ("PromotionApplied",),
+                "requires_permission": "price_promotion_engine.quote",
+                "idempotency_key": "decision_id:coupon_code",
             },
             {
                 "route": "POST /price-promotion/events/inbox",
@@ -1666,9 +1814,11 @@ def price_promotion_engine_build_api_contract() -> dict:
             "POST /price-promotion/schema-extensions",
             "POST /price-rules",
             "POST /promotions",
+            "POST /promotions/{promotion_id}/approval",
             "POST /loyalty-tiers",
             "POST /price-quotes",
             "POST /promotion-applications",
+            "POST /coupon-redemptions",
             "POST /price-promotion/events/inbox",
             "GET /price-promotion/workbench",
             "GET /price-promotion/schema-contract",
@@ -1843,9 +1993,10 @@ def price_promotion_engine_build_release_evidence() -> dict:
             "status": "active",
             "budget_amount": 2000.0,
             "budget_currency": "USD",
-            "approval_status": "approved",
+            "approval_status": "pending",
         },
     )["state"]
+    state = price_promotion_engine_approve_promotion(state, "promo_release", approved_by="pricing_manager")["state"]
     processed = price_promotion_engine_receive_event(
         state,
         {
@@ -1896,7 +2047,7 @@ def price_promotion_engine_build_release_evidence() -> dict:
         },
     )
     state = quoted["state"]
-    state = price_promotion_engine_apply_promotion(state, "decision_release", "promo_release")["state"]
+    state = price_promotion_engine_redeem_coupon(state, "decision_release", "REL10")["state"]
     workbench = price_promotion_engine_build_workbench_view(state, tenant="tenant_release")
     ui_contract = price_promotion_engine_ui_contract()
     rendered = price_promotion_engine_render_workbench(
@@ -1905,6 +2056,7 @@ def price_promotion_engine_build_release_evidence() -> dict:
         principal_permissions=(
             "price_promotion_engine.price.write",
             "price_promotion_engine.promotion.write",
+            "price_promotion_engine.promotion.approve",
             "price_promotion_engine.quote",
             "price_promotion_engine.event.consume",
             "price_promotion_engine.configure",
@@ -1925,7 +2077,13 @@ def price_promotion_engine_build_release_evidence() -> dict:
         {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) == len(PRICE_PROMOTION_ENGINE_OWNED_TABLES)},
         {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(PRICE_PROMOTION_ENGINE_OWNED_TABLES)},
         {"id": "runtime_tables_declared", "ok": tuple(item["table"] for item in schema["runtime_tables"]) == PRICE_PROMOTION_ENGINE_RUNTIME_TABLES},
-        {"id": "service_contract_depth", "ok": service["ok"] and "receive_event" in service["idempotent_handlers"] and "build_release_evidence" in service["query_methods"]},
+        {
+            "id": "service_contract_depth",
+            "ok": service["ok"]
+            and "receive_event" in service["idempotent_handlers"]
+            and {"approve_promotion", "redeem_coupon"} <= set(service["command_methods"])
+            and "build_release_evidence" in service["query_methods"],
+        },
         {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == PRICE_PROMOTION_ENGINE_EVENT_CONTRACT and api["required_event_topic"] == PRICE_PROMOTION_ENGINE_REQUIRED_EVENT_TOPIC},
         {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
         {"id": "ui_binding_evidence", "ok": ui_contract["ok"] and rendered["binding_evidence"]["eventing"]["event_contract"] == PRICE_PROMOTION_ENGINE_EVENT_CONTRACT},
@@ -1946,7 +2104,9 @@ def price_promotion_engine_build_release_evidence() -> dict:
                     "price_list_count",
                     "price_book_count",
                     "coupon_count",
+                    "coupon_redemption_count",
                     "approval_count",
+                    "approved_promotion_count",
                     "budget_count",
                     "simulation_count",
                     "telemetry_count",
@@ -1961,6 +2121,7 @@ def price_promotion_engine_build_release_evidence() -> dict:
     return {
         "format": "appgen.price-promotion-engine-release-evidence.v1",
         "ok": not blocking_gaps,
+        "pbc": "price_promotion_engine",
         "checks": checks,
         "blocking_gaps": blocking_gaps,
         "schema": schema,
@@ -1982,6 +2143,7 @@ def price_promotion_engine_permissions_contract() -> dict:
         "permissions": (
             "price_promotion_engine.price.write",
             "price_promotion_engine.promotion.write",
+            "price_promotion_engine.promotion.approve",
             "price_promotion_engine.quote",
             "price_promotion_engine.event.consume",
             "price_promotion_engine.configure",
@@ -1990,9 +2152,11 @@ def price_promotion_engine_permissions_contract() -> dict:
         "action_permissions": {
             "register_price_rule": "price_promotion_engine.price.write",
             "register_promotion": "price_promotion_engine.promotion.write",
+            "approve_promotion": "price_promotion_engine.promotion.approve",
             "register_loyalty_tier": "price_promotion_engine.promotion.write",
             "quote_price": "price_promotion_engine.quote",
             "apply_promotion": "price_promotion_engine.quote",
+            "redeem_coupon": "price_promotion_engine.quote",
             "receive_event": "price_promotion_engine.event.consume",
             "register_rule": "price_promotion_engine.configure",
             "register_schema_extension": "price_promotion_engine.configure",

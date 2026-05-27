@@ -15,6 +15,7 @@ from .runtime import PRICE_PROMOTION_ENGINE_REQUIRED_EVENT_TOPIC
 from .runtime import PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS
 from .runtime import PRICE_PROMOTION_ENGINE_RUNTIME_TABLES
 from .runtime import PRICE_PROMOTION_ENGINE_STANDARD_FEATURE_KEYS
+from .runtime import price_promotion_engine_approve_promotion
 from .runtime import price_promotion_engine_apply_promotion
 from .runtime import price_promotion_engine_build_api_contract
 from .runtime import price_promotion_engine_build_release_evidence
@@ -32,6 +33,7 @@ from .runtime import price_promotion_engine_register_price_rule
 from .runtime import price_promotion_engine_register_promotion
 from .runtime import price_promotion_engine_register_rule
 from .runtime import price_promotion_engine_register_schema_extension
+from .runtime import price_promotion_engine_redeem_coupon
 from .runtime import price_promotion_engine_runtime_capabilities
 from .runtime import price_promotion_engine_runtime_smoke
 from .runtime import price_promotion_engine_set_parameter
@@ -112,4 +114,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

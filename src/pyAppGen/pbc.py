@@ -9048,6 +9048,7 @@ from .pbcs.price_promotion_engine import PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILI
 from .pbcs.price_promotion_engine import PRICE_PROMOTION_ENGINE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.price_promotion_engine import PRICE_PROMOTION_ENGINE_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_apply_promotion  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_approve_promotion  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_build_api_contract  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_build_release_evidence  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_build_schema_contract  # noqa: E402,F401
@@ -9058,6 +9059,7 @@ from .pbcs.price_promotion_engine import price_promotion_engine_empty_state  # n
 from .pbcs.price_promotion_engine import price_promotion_engine_permissions_contract  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_quote_price  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_receive_event  # noqa: E402,F401
+from .pbcs.price_promotion_engine import price_promotion_engine_redeem_coupon  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_register_loyalty_tier  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_register_price_rule  # noqa: E402,F401
 from .pbcs.price_promotion_engine import price_promotion_engine_register_promotion  # noqa: E402,F401

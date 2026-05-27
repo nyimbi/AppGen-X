@@ -114,6 +114,8 @@ The complete package covers:
   policy evidence
 - promotion rules, coupons, eligibility, stacking, exclusions, budgets, and
   approvals
+- executable promotion approval updates and coupon redemption validation with
+  reuse-limit enforcement, budget consumption, audit traces, and telemetry
 - loyalty-tier pricing
 - quote decisions with counterfactual simulations
 - margin guardrails and review routing
@@ -142,10 +144,12 @@ The runtime supports these commands:
 - `register_schema_extension(table, fields)`
 - `register_price_rule(command)`
 - `register_promotion(command)`
+- `approve_promotion(promotion_id, approved_by, approval_status)`
 - `register_loyalty_tier(command)`
 - `receive_event(event, simulate_failure=False)`
 - `quote_price(command)`
 - `apply_promotion(decision_id, promotion_id)`
+- `redeem_coupon(decision_id, coupon_code)`
 
 Quote generation performs:
 
@@ -167,6 +171,20 @@ Promotion application performs:
 - campaign-budget consumption updates
 - audit and telemetry evidence
 - `PromotionApplied` outbox emission
+
+Coupon redemption performs:
+
+- active coupon lookup inside the owned `coupon` table
+- reuse-limit enforcement and redeemed decision tracking
+- promotion application through the same owned transaction boundary
+- campaign-budget consumption, audit-trace, and telemetry updates
+
+Promotion approval performs:
+
+- approval-state mutation inside `promotion_approval`
+- synchronization of the promotion approval status
+- pricing-manager audit trace generation
+- eligibility gating so pending or rejected promotions cannot be quoted
 
 ## Schema Contract Expectations
 

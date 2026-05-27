@@ -22,6 +22,8 @@ def test_generated_schema_service_and_release_evidence():
     assert SERVICE_CONTRACT['pbc'] == 'price_promotion_engine'
     assert SERVICE_CONTRACT['ok'] is True
     assert SERVICE_CONTRACT.get('shared_table_access') is False
+    assert 'approve_promotion' in SERVICE_CONTRACT['command_methods']
+    assert 'redeem_coupon' in SERVICE_CONTRACT['command_methods']
     assert RELEASE_EVIDENCE['pbc'] == 'price_promotion_engine'
     assert RELEASE_EVIDENCE['ok'] is True
 
@@ -104,6 +106,8 @@ def test_service_and_route_surface_are_executable():
     assert route_contracts['ok'] is True
     assert route_validation['ok'] is True
     assert route_contracts['contracts']
+    assert 'command_promotion_approvals' in operation_contracts['command_operations']
+    assert 'command_coupon_redemptions' in operation_contracts['command_operations']
     assert all(item['permission'] for item in route_contracts['contracts'])
     assert all(item['event_contract'] == 'AppGen-X' for item in route_contracts['contracts'])
     assert all(item['stream_engine_picker_visible'] is False for item in route_contracts['contracts'])
@@ -121,6 +125,20 @@ def test_service_and_route_surface_are_executable():
     assert not route_contracts['side_effects']
     assert not route_validation['side_effects']
     assert not route_smoke['side_effects']
+
+
+def test_runtime_approval_and_coupon_redemption_are_executable():
+    from ..runtime import price_promotion_engine_build_workbench_view
+    from ..runtime import price_promotion_engine_runtime_smoke
+
+    smoke = price_promotion_engine_runtime_smoke()
+    assert smoke['ok'] is True
+    state = smoke['state']
+    assert any(item['approval_status'] == 'approved' for item in state['promotion_approvals'].values())
+    assert any(item.get('redemption_count', 0) == 1 for item in state['coupons'].values())
+    workbench = price_promotion_engine_build_workbench_view(state, tenant='tenant_alpha')
+    assert workbench['coupon_redemption_count'] == 1
+    assert workbench['approved_promotion_count'] == 1
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():

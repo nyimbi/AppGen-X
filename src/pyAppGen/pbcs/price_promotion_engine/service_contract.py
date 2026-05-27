@@ -1,8 +1,29 @@
 """Generated service evidence for the price_promotion_engine PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.price-promotion-engine-service-contract.v1', 'ok': True, 'transaction_boundary': 'price_promotion_engine_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'register_price_rule', 'register_promotion', 'register_loyalty_tier', 'receive_event', 'quote_price', 'apply_promotion', 'verify_owned_table_boundary'), 'query_methods': ('build_workbench_view', 'binding_evidence', 'build_api_contract', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'permissions_contract'), 'mutates_only': ('price_configuration', 'price_parameter', 'price_policy_rule', 'price_schema_extension', 'price_list', 'price_book', 'price_book_entry', 'price_rule', 'customer_price', 'channel_price', 'currency_price', 'promotion', 'promotion_rule', 'coupon', 'promotion_eligibility', 'promotion_stacking_policy', 'promotion_exclusion', 'campaign_budget', 'promotion_approval', 'loyalty_tier', 'price_simulation', 'price_margin_guardrail', 'price_decision', 'price_audit_trace', 'price_performance_telemetry', 'price_promotion_engine_appgen_outbox_event', 'price_promotion_engine_appgen_inbox_event', 'price_promotion_engine_dead_letter_event'), 'external_dependencies': {'apis': ('POST /customer-segment-projections/resolve', 'POST /forecast-projections/resolve', 'POST /checkout-projections/price-context', 'GET /currency-rate-projections/{currency}'), 'events': ('CustomerSegmentUpdated', 'ForecastUpdated'), 'api_projections': ('customer_segment_projection', 'forecast_projection', 'checkout_projection', 'currency_rate_projection'), 'shared_tables': ()}, 'idempotent_handlers': ('receive_event',), 'retry_dead_letter_evidence': {'outbox_table': 'price_promotion_engine_appgen_outbox_event', 'inbox_table': 'price_promotion_engine_appgen_inbox_event', 'dead_letter_table': 'price_promotion_engine_dead_letter_event', 'retry_limit_source': 'price_configuration.retry_limit'}, 'shared_table_access': False, 'rules_parameters_configuration': ('register_rule', 'set_parameter', 'configure_runtime'), 'eventing': {'contract': 'AppGen-X', 'topic': 'appgen.price_promotion.events', 'stream_engine_picker_visible': False, 'user_eventing_choice_visible': False}, 'standard_capabilities': ('price_list_management', 'price_book_management', 'price_rule_catalog', 'customer_channel_currency_prices', 'promotion_lifecycle', 'promotion_rules', 'coupon_management', 'promotion_eligibility', 'promotion_stacking_exclusions', 'campaign_budgets', 'promotion_approvals', 'loyalty_tier_management', 'price_decision_history', 'price_simulations', 'margin_guardrails', 'performance_telemetry', 'contextual_price_quotes', 'promotion_redemption_validation', 'volume_breaks', 'currency_region_constraints', 'customer_segment_inputs', 'forecast_signal_inputs', 'checkout_handoff', 'tenant_isolation', 'appgen_x_outbox', 'appgen_x_inbox', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench'), 'advanced_capabilities': ('event_sourced_pricing_lifecycle', 'owned_price_schema_boundary', 'price_list_and_book_management', 'multi_tenant_price_isolation', 'schema_evolution_resilient_price_context', 'contextual_price_quote_optimization', 'promotion_stacking_and_exclusion_engine', 'coupon_and_eligibility_governance', 'campaign_budget_and_approval_evidence', 'loyalty_tier_price_personalization', 'volume_break_and_contract_price_support', 'forecast_signal_price_adjustment', 'customer_segment_price_adjustment', 'probabilistic_margin_elasticity_scoring', 'counterfactual_promotion_margin_simulation', 'simulation_margin_guardrail_evidence', 'temporal_price_effectivity_forecasting', 'autonomous_price_exception_resolution', 'semantic_promotion_instruction_parsing', 'predictive_margin_and_demand_risk', 'self_healing_price_decision_selection', 'cryptographic_price_decision_proof', 'immutable_price_audit_trail', 'dynamic_price_policy_screening', 'automated_promotion_control_testing', 'performance_telemetry_evidence', 'cross_system_customer_forecast_checkout_federation', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions_governance_evidence', 'configuration_schema', 'parameter_engine', 'rule_engine', 'generated_schema_and_service_contracts', 'seed_data', 'workbench_ui', 'governed_model_evidence'), 'pbc': 'price_promotion_engine'}
+from __future__ import annotations
+
+from .runtime import price_promotion_engine_build_service_contract
+
+
+SERVICE_CONTRACT = price_promotion_engine_build_service_contract()
 
 
 def build_service_contract():
     """Return generated command, eventing, and handler evidence."""
     return dict(SERVICE_CONTRACT)
+
+
+def validate_service_contract():
+    contract = build_service_contract()
+    return {
+        "ok": contract["ok"]
+        and contract["shared_table_access"] is False
+        and "receive_event" in contract["idempotent_handlers"]
+        and {"approve_promotion", "redeem_coupon"} <= set(contract["command_methods"]),
+        "contract": contract,
+        "side_effects": (),
+    }
+
+
+def smoke_test():
+    return validate_service_contract()
