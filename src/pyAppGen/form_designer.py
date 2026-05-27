@@ -11890,7 +11890,7 @@ def data_tooling_publish_transaction_replay_contract() -> dict:
     service_traces = data_service_invocation_trace_contract()
     service_security = data_service_security_contract()
     service_versioning = data_service_versioning_contract()
-    resource_publish = data_resource_publish_contract()
+    resource_publish = data_tooling_publish_resource()
     telemetry = data_service_telemetry_contract()
     local_maintenance = local_database_maintenance_contract()
     backup_restore = local_backup_restore_verification_contract()
@@ -12015,6 +12015,158 @@ def data_tooling_publish_transaction_replay_contract() -> dict:
     }
 
 
+def data_tooling_query_designer_transaction_replay_contract() -> dict:
+    """Replay visual query design from schema selection to side-effect-free runtime adapter."""
+    connection = data_connection_test_contract()
+    schema_browser = data_schema_browser_contract()
+    parameter_binding = data_parameter_binding_contract()
+    query_preview = data_query_preview_contract()
+    query_plan = data_query_plan_visualizer_contract()
+    dataset_fields = data_dataset_field_catalog_contract()
+    relationship_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
+    resource_publish = data_tooling_publish_resource()
+    service_tests = data_service_contract_test_plan()
+    runtime_replay = data_tooling_runtime_replay_contract()
+    named_query = {
+        "name": "inventory_move_with_invoice_account",
+        "selected_fields": ("inventory_move.id", "invoice.number", "account.code", "ledger.name"),
+        "parameters": (":warehouse_id", ":posted_after", ":search"),
+        "where": "warehouse_id = :warehouse_id and posted_at >= :posted_after and search_text ilike :search",
+        "joins": tuple(alias["alias"] for alias in relationship_lifecycle["join_aliases"]),
+        "result_dataset": "InventoryMoveAccountLookup",
+        "runtime_adapter": "InventoryMoveAccountLookupAdapter",
+    }
+    transactions = (
+        {
+            "phase": "select_connection",
+            "operations": ("open_connection_profile", "test_connection", "rollback_test_transaction"),
+            "ok": connection["ok"] and connection["steps"][-1] == "rollback_test_transaction",
+        },
+        {
+            "phase": "drag_schema_fields",
+            "operations": ("browse_tables", "trace_relations", "drop_fields_on_query_canvas"),
+            "ok": {"browse_tables", "trace_relations"} <= set(schema_browser["operations"])
+            and {"table", "relation"} <= {item["kind"] for item in schema_browser["objects"]},
+        },
+        {
+            "phase": "bind_parameters",
+            "operations": tuple(binding["name"] for binding in parameter_binding["bindings"]),
+            "ok": parameter_binding["ok"]
+            and all("no_string_interpolation" in binding["guards"] for binding in parameter_binding["bindings"])
+            and all(parameter.startswith(":") for parameter in named_query["parameters"]),
+        },
+        {
+            "phase": "preview_read_only_plan",
+            "operations": query_preview["plan"] + tuple(node["kind"] for node in query_plan["plan_nodes"]),
+            "ok": {"bind_parameters", "explain_plan"} <= set(query_preview["plan"])
+            and query_plan["ok"]
+            and "read_only_explain" in query_plan["guards"],
+        },
+        {
+            "phase": "bind_dataset_fields",
+            "operations": tuple(field["name"] for field in dataset_fields["fields"]),
+            "ok": dataset_fields["ok"]
+            and {"persistent", "lookup", "calculated", "aggregate"} <= {field["kind"] for field in dataset_fields["fields"]}
+            and relationship_lifecycle["ok"],
+        },
+        {
+            "phase": "save_named_query",
+            "operations": ("name_query", "persist_query_metadata", "round_trip_query_definition"),
+            "ok": named_query["name"]
+            and bool(named_query["selected_fields"])
+            and bool(named_query["joins"])
+            and "search_parameterized" in relationship_lifecycle["preview_query"]["where"],
+        },
+        {
+            "phase": "publish_runtime_adapter",
+            "operations": resource_publish["pipeline"] + tuple(test["surface"] for test in service_tests["tests"]),
+            "ok": resource_publish["ok"]
+            and {"run_contract_tests", "attach_security", "register_analytics"} <= set(resource_publish["pipeline"])
+            and all(test["assertions"] for test in service_tests["tests"]),
+        },
+        {
+            "phase": "rollback_snapshot",
+            "operations": ("restore_query_snapshot", "drop_preview_rows", "assert_no_persisted_changes"),
+            "ok": runtime_replay["ok"]
+            and runtime_replay["final_state"]["persisted_writes"] == 0
+            and any("assert_no_persisted_changes" in item["pipeline"] for item in runtime_replay["trace"]),
+        },
+    )
+    phase_names = tuple(transaction["phase"] for transaction in transactions)
+    checks = (
+        {
+            "id": "query_designer_uses_parameterized_read_only_plan",
+            "ok": transactions[2]["ok"]
+            and transactions[3]["ok"]
+            and {"parameterized_queries_before_preview", "query_preview_is_read_only"}
+            <= set(data_tooling_publish_transaction_replay_contract()["guards"] + runtime_replay["guards"]),
+            "evidence": {"parameters": named_query["parameters"], "preview": query_preview, "plan": query_plan},
+        },
+        {
+            "id": "schema_browser_drives_dataset_fields",
+            "ok": transactions[1]["ok"] and transactions[4]["ok"] and len(dataset_fields["fields"]) >= 4,
+            "evidence": {"schema": schema_browser["objects"], "fields": dataset_fields["fields"]},
+        },
+        {
+            "id": "query_preview_before_runtime_adapter",
+            "ok": phase_names.index("preview_read_only_plan") < phase_names.index("publish_runtime_adapter"),
+            "evidence": phase_names,
+        },
+        {
+            "id": "named_query_round_trips",
+            "ok": transactions[5]["ok"] and named_query["runtime_adapter"].endswith("Adapter"),
+            "evidence": named_query,
+        },
+        {
+            "id": "rollback_restores_query_snapshot",
+            "ok": transactions[7]["ok"],
+            "evidence": runtime_replay["final_state"],
+        },
+        {
+            "id": "query_designer_transactions_side_effect_free",
+            "ok": not connection["side_effects"]
+            and not schema_browser["side_effects"]
+            and not parameter_binding["side_effects"]
+            and not query_preview["side_effects"]
+            and not query_plan["side_effects"]
+            and not dataset_fields["side_effects"]
+            and not relationship_lifecycle["side_effects"]
+            and not resource_publish["side_effects"]
+            and not runtime_replay["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = all(transaction["ok"] for transaction in transactions) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.data-tooling-query-designer-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "named_query": named_query,
+        "transactions": transactions,
+        "checks": checks,
+        "final_state": {
+            "query_transactions": len(transactions),
+            "selected_fields": len(named_query["selected_fields"]),
+            "parameters": len(named_query["parameters"]),
+            "join_aliases": len(named_query["joins"]),
+            "dataset_fields": len(dataset_fields["fields"]),
+            "service_tests": len(service_tests["tests"]),
+            "persisted_writes": runtime_replay["final_state"]["persisted_writes"],
+        },
+        "guards": (
+            "connection_profile_before_schema_drag",
+            "parameterized_queries_before_preview",
+            "query_preview_before_runtime_adapter",
+            "schema_fields_before_dataset_binding",
+            "named_query_round_trip_before_publish",
+            "rollback_restores_query_snapshot",
+            "query_designer_transactions_are_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def data_tooling_failover_transaction_replay_contract() -> dict:
     """Replay a degraded data connection through failover, rollback preview, restore, and replay gates."""
     connection = data_connection_test_contract()
@@ -12127,6 +12279,7 @@ def data_tooling_run_ide_scenario_operation() -> dict:
     dataset = data_tooling_design_dataset_operation()
     lookup_editors = data_tooling_generate_lookup_editors()
     relationship_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
+    query_designer_replay = data_tooling_query_designer_transaction_replay_contract()
     publish_resource = data_tooling_publish_resource()
     offline_replay = data_tooling_rehearse_offline_replay_operation()
     replication = data_tooling_monitor_replication_operation()
@@ -12153,6 +12306,13 @@ def data_tooling_run_ide_scenario_operation() -> dict:
             "ok": dataset["ok"]
             and {"validate_dataset_state_machine", "preview_dataset_rows", "add_lookup_field"} <= set(dataset["pipeline"]),
             "evidence": dataset,
+        },
+        {
+            "step": "design_query",
+            "ok": query_designer_replay["ok"]
+            and {"query_preview_before_runtime_adapter", "rollback_restores_query_snapshot"}
+            <= {check["id"] for check in query_designer_replay["checks"] if check["ok"]},
+            "evidence": query_designer_replay,
         },
         {
             "step": "generate_relationship_lookups",
@@ -12210,6 +12370,7 @@ def data_tooling_run_ide_scenario_operation() -> dict:
         "connection": "verified",
         "schema_pipeline_steps": len(schema_browser["pipeline"]),
         "dataset_transitions": len(dataset["transitions"]),
+        "query_designer_transactions": len(query_designer_replay["transactions"]),
         "lookup_endpoints": len(lookup_editors["lookup_endpoints"]),
         "publish_steps": len(publish_resource["pipeline"]),
         "offline_items": len(offline_replay["queue"]),
@@ -12228,6 +12389,7 @@ def data_tooling_run_ide_scenario_operation() -> dict:
                 "open_connection_profile",
                 "introspect_schema",
                 "design_dataset_and_fields",
+                "design_query",
                 "generate_relationship_lookups",
                 "publish_service_resource",
                 "stage_offline_replay",
@@ -12262,6 +12424,8 @@ def data_tooling_run_ide_scenario_operation() -> dict:
         "guards": (
             "connection_profile_before_schema_introspection",
             "schema_introspection_before_dataset_design",
+            "dataset_design_before_query_design",
+            "query_design_before_relationship_lookups",
             "relationship_lookups_before_publish",
             "publish_before_offline_replay",
             "offline_replay_before_failover_monitoring",
@@ -12284,6 +12448,7 @@ def data_tooling_readiness_contract() -> dict:
     runtime_replay = data_tooling_runtime_replay_contract()
     lookup_editors = data_tooling_generate_lookup_editors()
     relationship_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
+    query_designer_replay = data_tooling_query_designer_transaction_replay_contract()
     design_runtime = data_tooling_design_runtime_session_replay_contract()
     publish_replay = data_tooling_publish_transaction_replay_contract()
     failover_replay = data_tooling_failover_transaction_replay_contract()
@@ -12299,6 +12464,13 @@ def data_tooling_readiness_contract() -> dict:
             "phase": "design_dataset",
             "pipeline": dataset["pipeline"],
             "ok": dataset["ok"] and "validate_dataset_state_machine" in dataset["pipeline"],
+        },
+        {
+            "phase": "design_query",
+            "pipeline": tuple(transaction["phase"] for transaction in query_designer_replay["transactions"]),
+            "ok": query_designer_replay["ok"]
+            and {"query_preview_before_runtime_adapter", "named_query_round_trips"}
+            <= {check["id"] for check in query_designer_replay["checks"] if check["ok"]},
         },
         {
             "phase": "generate_relationship_lookups",
@@ -12351,19 +12523,24 @@ def data_tooling_readiness_contract() -> dict:
         {"id": "connection_ready", "ok": phases[0]["ok"], "evidence": connection},
         {"id": "dataset_ready", "ok": phases[1]["ok"], "evidence": dataset},
         {
-            "id": "relationship_lookup_ready",
+            "id": "query_designer_ready",
             "ok": phases[2]["ok"],
+            "evidence": query_designer_replay,
+        },
+        {
+            "id": "relationship_lookup_ready",
+            "ok": phases[3]["ok"],
             "evidence": {"operation": lookup_editors, "lifecycle": relationship_lifecycle},
         },
-        {"id": "publish_ready", "ok": phases[3]["ok"], "evidence": {"operation": publish_resource, "replay": publish_replay}},
-        {"id": "offline_replay_ready", "ok": phases[4]["ok"], "evidence": offline_replay},
-        {"id": "replication_failover_ready", "ok": phases[5]["ok"], "evidence": {"replication": replication, "failover": failover_replay}},
+        {"id": "publish_ready", "ok": phases[4]["ok"], "evidence": {"operation": publish_resource, "replay": publish_replay}},
+        {"id": "offline_replay_ready", "ok": phases[5]["ok"], "evidence": offline_replay},
+        {"id": "replication_failover_ready", "ok": phases[6]["ok"], "evidence": {"replication": replication, "failover": failover_replay}},
         {
             "id": "design_runtime_session_ready",
-            "ok": phases[6]["ok"],
+            "ok": phases[7]["ok"],
             "evidence": design_runtime,
         },
-        {"id": "diagnostics_ready", "ok": phases[7]["ok"], "evidence": {"module_smoke": module_smoke, "runtime_replay": runtime_replay}},
+        {"id": "diagnostics_ready", "ok": phases[8]["ok"], "evidence": {"module_smoke": module_smoke, "runtime_replay": runtime_replay}},
         {"id": "operation_surface_ready", "ok": actionable_operations["ok"] and not actionable_operations["side_effects"], "evidence": actionable_operations},
         {
             "id": "ide_scenario_ready",
@@ -12380,6 +12557,7 @@ def data_tooling_readiness_contract() -> dict:
             == (
                 "probe_connection",
                 "design_dataset",
+                "design_query",
                 "generate_relationship_lookups",
                 "publish_service_resources",
                 "rehearse_offline_replay",
@@ -12399,6 +12577,7 @@ def data_tooling_readiness_contract() -> dict:
             "connection": "verified",
             "dataset_transitions": len(dataset["transitions"]),
             "published_resources": len(publish_resource["pipeline"]),
+            "query_designer_transactions": len(query_designer_replay["transactions"]),
             "lookup_endpoints": len(relationship_lifecycle["lookup_endpoints"]),
             "offline_queue": len(offline_replay["queue"]),
             "replication_monitors": len(replication["monitors"]),
@@ -12472,6 +12651,7 @@ def rad_data_tooling_workbench() -> dict:
     runtime_replay = data_tooling_runtime_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
+    query_designer_transaction_replay = data_tooling_query_designer_transaction_replay_contract()
     failover_transaction_replay = data_tooling_failover_transaction_replay_contract()
     ide_scenario = data_tooling_run_ide_scenario_operation()
     readiness = data_tooling_readiness_contract()
@@ -12861,6 +13041,21 @@ def rad_data_tooling_workbench() -> dict:
             "evidence": publish_transaction_replay,
         },
         {
+            "id": "data_tooling_query_designer_transaction_replay",
+            "ok": query_designer_transaction_replay["ok"]
+            and {
+                "query_designer_uses_parameterized_read_only_plan",
+                "schema_browser_drives_dataset_fields",
+                "query_preview_before_runtime_adapter",
+                "named_query_round_trips",
+                "rollback_restores_query_snapshot",
+                "query_designer_transactions_side_effect_free",
+            } <= {check["id"] for check in query_designer_transaction_replay["checks"] if check["ok"]}
+            and query_designer_transaction_replay["final_state"]["persisted_writes"] == 0
+            and not query_designer_transaction_replay["side_effects"],
+            "evidence": query_designer_transaction_replay,
+        },
+        {
             "id": "data_tooling_failover_transaction_replay",
             "ok": failover_transaction_replay["ok"]
             and {"failed_route_quarantined_before_retry", "offline_replay_pauses_for_manual_review"} <= set(failover_transaction_replay["guards"])
@@ -12950,8 +13145,9 @@ def rad_data_tooling_workbench() -> dict:
         "module_replay_matrix": module_replay_matrix,
         "runtime_replay": runtime_replay,
         "design_runtime_replay": design_runtime_replay,
-        "publish_transaction_replay": publish_transaction_replay,
-        "failover_transaction_replay": failover_transaction_replay,
+            "publish_transaction_replay": publish_transaction_replay,
+            "query_designer_transaction_replay": query_designer_transaction_replay,
+            "failover_transaction_replay": failover_transaction_replay,
         "ide_scenario": ide_scenario,
         "readiness": readiness,
         "checks": checks,
@@ -17218,11 +17414,13 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and data_readiness["ok"]
             and "phase_order_ready" in {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["publish_transaction_replay"]["ok"]
+            and data_tooling["query_designer_transaction_replay"]["ok"]
             and data_tooling["ide_scenario"]["ok"]
             and {
                 "relationship_lookup_lifecycle_replay",
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
+                "data_tooling_query_designer_transaction_replay",
                 "data_tooling_ide_scenario",
             } <= data_tooling_passing_checks
             and {
@@ -17234,6 +17432,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "checks": tuple(check["id"] for check in data_tooling["checks"]),
                 "passing_checks": tuple(sorted(data_tooling_passing_checks)),
                 "publish_state": data_tooling["publish_transaction_replay"]["final_state"],
+                "query_designer_state": data_tooling["query_designer_transaction_replay"]["final_state"],
                 "scenario_state": data_tooling["ide_scenario"]["final_state"],
                 "readiness_phases": tuple(phase["phase"] for phase in data_readiness["phases"]),
             },
@@ -17638,6 +17837,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             and {
                 "connection_ready",
                 "dataset_ready",
+                "query_designer_ready",
                 "publish_ready",
                 "offline_replay_ready",
                 "replication_failover_ready",
@@ -17648,9 +17848,11 @@ def platform_parity_requirement_audit_contract() -> dict:
             <= {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["runtime_replay"]["ok"]
             and data_tooling["publish_transaction_replay"]["ok"]
+            and data_tooling["query_designer_transaction_replay"]["ok"]
             and data_tooling["ide_scenario"]["ok"]
             and {
                 "relationship_lookup_lifecycle_replay",
+                "data_tooling_query_designer_transaction_replay",
                 "data_tooling_ide_scenario",
                 "data_tooling_modules",
                 "data_tooling_module_tests",
@@ -17671,6 +17873,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "data_tooling_module_replay_matrix",
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
+                "data_tooling_query_designer_transaction_replay",
                 "data_tooling_ide_scenario",
                 "phase_order_ready",
             ),
@@ -19282,9 +19485,12 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     required_data_readiness_phases = (
         "probe_connection",
         "design_dataset",
+        "design_query",
+        "generate_relationship_lookups",
         "publish_service_resources",
         "rehearse_offline_replay",
         "monitor_replication_and_failover",
+        "prove_design_runtime_session",
         "surface_runtime_diagnostics",
     )
     passing_data_readiness_phases = tuple(
@@ -19314,11 +19520,15 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     required_data_readiness_checks = (
         "connection_ready",
         "dataset_ready",
+        "query_designer_ready",
+        "relationship_lookup_ready",
         "publish_ready",
         "offline_replay_ready",
         "replication_failover_ready",
+        "design_runtime_session_ready",
         "diagnostics_ready",
         "operation_surface_ready",
+        "ide_scenario_ready",
         "phase_order_ready",
     )
     passing_data_readiness_checks = tuple(
