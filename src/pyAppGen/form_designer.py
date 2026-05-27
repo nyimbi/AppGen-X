@@ -16405,6 +16405,90 @@ def cross_target_asset_import_workflow(asset: str = "product.glb") -> dict:
     }
 
 
+def cross_target_asset_import_transaction_replay_contract(asset: str = "product.glb") -> dict:
+    """Replay visual asset import from staging through manifest publish and rollback."""
+    workflow = cross_target_asset_import_workflow(asset)
+    invalid_workflow = cross_target_asset_import_workflow("unsupported.exe")
+    preview_diff = cross_target_preview_runtime_diff_workflow()
+    extension = asset.rsplit(".", 1)[-1].lower()
+    variant_targets = ("1x", "2x", "3x", "thumbnail")
+    manifest_record = {
+        "asset": asset,
+        "format": extension,
+        "fingerprint": f"sha256:{_module_name(asset)}",
+        "variants": tuple(f"{asset}:{target}" for target in variant_targets),
+        "budgets": workflow["budgets"],
+        "fallback_thumbnail": f"{asset}.thumb.webp",
+    }
+    replay = (
+        {
+            "phase": "stage_import",
+            "pipeline": ("open_import_dialog", "copy_to_staging", "fingerprint_asset"),
+            "ok": manifest_record["fingerprint"].startswith("sha256:") and "fingerprint_asset" in workflow["pipeline"],
+        },
+        {
+            "phase": "validate_format_and_budget",
+            "pipeline": ("validate_format", "enforce_budget", "report_import_diagnostics"),
+            "ok": workflow["ok"]
+            and extension in cross_target_visual_asset_import_contract()["formats"]
+            and {"texture_size_budget", "bounded_polygon_budget"} <= set(workflow["guards"]),
+        },
+        {
+            "phase": "generate_density_variants",
+            "pipeline": ("generate_density_variants", "validate_variant_names", "record_variant_fingerprints"),
+            "ok": len(manifest_record["variants"]) == len(variant_targets)
+            and {variant.rsplit(":", 1)[-1] for variant in manifest_record["variants"]} == set(variant_targets),
+        },
+        {
+            "phase": "write_asset_manifest",
+            "pipeline": ("write_asset_manifest", "link_scene_materials", "publish_asset_catalog"),
+            "ok": "write_asset_manifest" in workflow["pipeline"]
+            and bool(manifest_record["variants"])
+            and manifest_record["budgets"]["max_texture_px"] >= 4096,
+        },
+        {
+            "phase": "build_fallback_thumbnail",
+            "pipeline": ("generate_fallback_thumbnail", "attach_preview_diff", "sync_runtime_package"),
+            "ok": "generate_fallback_thumbnail" in workflow["pipeline"]
+            and manifest_record["fallback_thumbnail"].endswith(".webp")
+            and preview_diff["diff_result"]["ok"],
+        },
+        {
+            "phase": "rollback_invalid_import",
+            "pipeline": ("detect_unsupported_format", "remove_staged_asset", "preserve_previous_manifest", "surface_diagnostic"),
+            "ok": invalid_workflow["ok"] is False and invalid_workflow["asset"].endswith(".exe"),
+        },
+    )
+    checks = (
+        {"id": "asset_fingerprint_recorded", "ok": replay[0]["ok"], "evidence": manifest_record["fingerprint"]},
+        {"id": "format_and_budget_validated", "ok": replay[1]["ok"], "evidence": {"format": extension, "guards": workflow["guards"]}},
+        {"id": "density_variants_generated", "ok": replay[2]["ok"], "evidence": manifest_record["variants"]},
+        {"id": "asset_manifest_published", "ok": replay[3]["ok"], "evidence": manifest_record},
+        {"id": "fallback_thumbnail_generated", "ok": replay[4]["ok"], "evidence": manifest_record["fallback_thumbnail"]},
+        {"id": "invalid_import_rolled_back", "ok": replay[5]["ok"], "evidence": invalid_workflow},
+        {"id": "asset_import_transaction_side_effect_free", "ok": all(item["ok"] for item in replay)},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.cross-target-asset-import-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "asset": asset,
+        "manifest_record": manifest_record,
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "asset_fingerprint_before_manifest",
+            "format_and_budget_before_variant_generation",
+            "fallback_thumbnail_before_runtime_package",
+            "invalid_import_rolls_back_staging_only",
+            "preview_diff_after_manifest_publish",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def cross_target_preview_runtime_diff_workflow() -> dict:
     """Return deterministic preview/runtime parity diff evidence."""
     preview = cross_target_visual_preview_runtime_contract()
@@ -17253,6 +17337,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
     effect_render = cross_target_effect_render_workflow()
     scene_validation = cross_target_scene_validation_workflow()
     asset_import = cross_target_asset_import_workflow()
+    asset_import_transaction = cross_target_asset_import_transaction_replay_contract()
     preview_diff = cross_target_preview_runtime_diff_workflow()
     style_tokens = cross_target_style_token_validation_contract()
     timeline_scrub = cross_target_timeline_scrub_contract()
@@ -17279,6 +17364,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
         "effect_fallbacks": sum(1 for row in effect_fallback_matrix["rows"] if row["decision"] == "use_fallback"),
         "effect_transactions": len(effect_editor_transaction["transactions"]),
         "material_transactions": len(scene_material_editor_transaction["transactions"]),
+        "asset_import_transactions": len(asset_import_transaction["replay"]),
         "scene_hits": len(scene_hit_testing["hit_tests"]),
         "transform_syncs": len(scene_transform_gizmos["transforms"]),
         "transform_transactions": len(scene_transform_transaction["transactions"]),
@@ -17337,9 +17423,11 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
         },
         {
             "phase": "import_assets_and_preview",
-            "pipeline": asset_import["pipeline"] + preview_diff["diff_steps"],
+            "pipeline": asset_import["pipeline"] + preview_diff["diff_steps"] + tuple(check["id"] for check in asset_import_transaction["checks"]),
             "ok": asset_import["ok"]
+            and asset_import_transaction["ok"]
             and {"fingerprint_asset", "generate_fallback_thumbnail"} <= set(asset_import["pipeline"])
+            and "asset_manifest_published" in {check["id"] for check in asset_import_transaction["checks"] if check["ok"]}
             and preview_diff["diff_result"]["ok"]
             and "report_visible_diff" in preview_diff["diff_steps"],
         },
@@ -17382,6 +17470,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
             "effect_editor_before_runtime",
             "scene_graph_validated_before_transform",
             "scene_material_editor_before_runtime",
+            "asset_import_transaction_before_preview",
             "assets_fingerprinted_before_preview",
             "hit_tests_route_to_inspector",
             "scene_transform_transactions_before_runtime",
@@ -18103,6 +18192,7 @@ def cross_target_visual_readiness_contract() -> dict:
     effect_editor = cross_target_effect_editor_transaction_replay_contract()
     scene_material_editor = cross_target_scene_material_editor_transaction_replay_contract()
     scene_transform_transaction = cross_target_scene_transform_transaction_replay_contract()
+    asset_import_transaction = cross_target_asset_import_transaction_replay_contract()
     lifecycle = cross_target_visual_lifecycle_replay_contract()
     runtime_package = cross_target_visual_runtime_package_contract()
     component_specs = cross_target_visual_component_spec_contract()
@@ -18131,12 +18221,19 @@ def cross_target_visual_readiness_contract() -> dict:
         },
         {
             "phase": "author_scene_and_assets",
-            "pipeline": scene["pipeline"] + asset_import["pipeline"] + tuple(check["id"] for check in scene_material_editor["checks"]),
+            "pipeline": scene["pipeline"]
+            + asset_import["pipeline"]
+            + tuple(check["id"] for check in asset_import_transaction["checks"])
+            + tuple(check["id"] for check in scene_material_editor["checks"]),
             "ok": scene["ok"]
             and asset_import["ok"]
+            and asset_import_transaction["ok"]
             and scene_material_editor["ok"]
             and {"assign_material", "validate_scene"} <= set(scene["pipeline"])
-            and {"write_asset_manifest", "generate_fallback_thumbnail"} <= set(asset_import["pipeline"]),
+            and {"write_asset_manifest", "generate_fallback_thumbnail"} <= set(asset_import["pipeline"])
+            and {"asset_manifest_published", "invalid_import_rolled_back"} <= {
+                check["id"] for check in asset_import_transaction["checks"] if check["ok"]
+            },
         },
         {
             "phase": "bind_hit_tests_and_components",
@@ -18176,6 +18273,7 @@ def cross_target_visual_readiness_contract() -> dict:
         {"id": "effects_ready", "ok": phases[2]["ok"], "evidence": effects},
         {"id": "effect_editor_transaction_ready", "ok": phases[2]["ok"], "evidence": effect_editor},
         {"id": "scene_assets_ready", "ok": phases[3]["ok"], "evidence": {"scene": scene, "asset_import": asset_import}},
+        {"id": "asset_import_transaction_ready", "ok": phases[3]["ok"], "evidence": asset_import_transaction},
         {"id": "scene_material_editor_transaction_ready", "ok": phases[3]["ok"], "evidence": scene_material_editor},
         {"id": "scene_transform_transaction_ready", "ok": phases[4]["ok"], "evidence": scene_transform_transaction},
         {"id": "hit_test_component_ready", "ok": phases[4]["ok"] and component_specs["ok"], "evidence": {"hit_test": hit_test, "component_specs": component_specs}},
@@ -18212,6 +18310,7 @@ def cross_target_visual_readiness_contract() -> dict:
             "runtime_steps": len(runtime_replay["replay"]),
             "timeline_editor_transactions": len(timeline_editor["transactions"]),
             "effect_editor_transactions": len(effect_editor["transactions"]),
+            "asset_import_transactions": len(asset_import_transaction["replay"]),
             "scene_material_editor_transactions": len(scene_material_editor["transactions"]),
             "scene_transform_transactions": len(scene_transform_transaction["transactions"]),
         },
@@ -18221,6 +18320,7 @@ def cross_target_visual_readiness_contract() -> dict:
             "timeline_editor_before_runtime_replay",
             "effect_editor_before_runtime_replay",
             "effects_before_scene_assets",
+            "asset_import_transaction_before_runtime_replay",
             "scene_material_editor_before_runtime_replay",
             "scene_transform_transaction_before_runtime_replay",
             "scene_assets_before_runtime_replay",
@@ -18240,6 +18340,7 @@ def cross_target_visual_depth_workbench() -> dict:
     effect_render = cross_target_effect_render_workflow()
     scene_validation = cross_target_scene_validation_workflow()
     asset_import = cross_target_asset_import_workflow()
+    asset_import_transaction = cross_target_asset_import_transaction_replay_contract()
     preview_diff = cross_target_preview_runtime_diff_workflow()
     style_tokens = cross_target_style_token_validation_contract()
     timeline_scrub = cross_target_timeline_scrub_contract()
@@ -18376,6 +18477,19 @@ def cross_target_visual_depth_workbench() -> dict:
             "ok": asset_import["ok"] and {"fingerprint_asset", "write_asset_manifest", "generate_fallback_thumbnail"} <= set(asset_import["pipeline"])
             and not asset_import["side_effects"],
             "evidence": asset_import,
+        },
+        {
+            "id": "asset_import_transaction_replay",
+            "ok": asset_import_transaction["ok"]
+            and {
+                "asset_fingerprint_before_manifest",
+                "format_and_budget_before_variant_generation",
+                "fallback_thumbnail_before_runtime_package",
+                "invalid_import_rolls_back_staging_only",
+                "preview_diff_after_manifest_publish",
+            } <= set(asset_import_transaction["guards"])
+            and not asset_import_transaction["side_effects"],
+            "evidence": asset_import_transaction,
         },
         {
             "id": "preview_runtime_diff_workflow",
@@ -18663,6 +18777,7 @@ def cross_target_visual_depth_workbench() -> dict:
                 "timeline_editor_transaction_ready",
                 "effects_ready",
                 "effect_editor_transaction_ready",
+                "asset_import_transaction_ready",
                 "scene_material_editor_transaction_ready",
                 "scene_transform_transaction_ready",
                 "scene_assets_ready",
@@ -18703,6 +18818,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "effect_fallback_matrix": effect_fallback_matrix,
         "effect_editor_transaction": effect_editor_transaction,
         "scene_material_editor_transaction": scene_material_editor_transaction,
+        "asset_import_transaction": asset_import_transaction,
         "scene_transform_gizmos": scene_transform_gizmos,
         "scene_transform_transaction": scene_transform_transaction,
         "runtime_replay": runtime_replay,
@@ -19423,6 +19539,8 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "timeline_editor_transaction_ready",
                 "effects_ready",
                 "effect_editor_transaction_ready",
+                "asset_import_transaction_ready",
+                "scene_material_editor_transaction_ready",
                 "scene_transform_transaction_ready",
                 "scene_assets_ready",
                 "hit_test_component_ready",
@@ -19435,6 +19553,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "visual_runtime_replay",
                 "timeline_editor_transaction_replay",
                 "effect_editor_transaction_replay",
+                "asset_import_transaction_replay",
                 "scene_material_editor_transaction_replay",
                 "scene_transform_transaction_replay",
                 "visual_lifecycle_replay",
@@ -19457,6 +19576,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "timeline_editor_transaction_ready",
                 "effects_ready",
                 "effect_editor_transaction_ready",
+                "asset_import_transaction_ready",
                 "scene_material_editor_transaction_ready",
                 "scene_transform_transaction_ready",
                 "scene_assets_ready",
@@ -19464,6 +19584,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "runtime_package_ready",
                 "timeline_editor_transaction_replay",
                 "effect_editor_transaction_replay",
+                "asset_import_transaction_replay",
                 "scene_material_editor_transaction_replay",
                 "scene_transform_transaction_replay",
                 "visual_component_modules",

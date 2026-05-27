@@ -2164,3 +2164,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   focused package contract tests, source artifact contract, implementation
   release audit, generation smoke audit, specification contract, and restricted
   legacy-name scan all passed. Commit: `83585f8`.
+- Current cross-target visual runtime pass adds asset import transaction replay
+  as release-gating evidence. Source and generated visual contracts now replay
+  import staging, format and budget validation, density variant generation,
+  manifest publishing, fallback thumbnail generation, preview diff linkage, and
+  invalid import rollback before runtime packaging. Verified with Python compile,
+  direct source parity audit probe, and direct generated form-designer template
+  audit probe. Commit: `pending`.
