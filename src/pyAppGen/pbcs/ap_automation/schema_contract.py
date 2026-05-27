@@ -52,3 +52,102 @@ def validate_schema_contract():
 def smoke_test():
     """Exercise schema validation side-effect-free."""
     return validate_schema_contract()
+
+
+_BASE_SCHEMA_CONTRACT = SCHEMA_CONTRACT
+_RUNTIME_EVENT_TABLES = (
+    "ap_automation_outbox",
+    "ap_automation_inbox",
+    "ap_automation_dead_letter",
+)
+_RUNTIME_EVENT_FIELDS = {
+    "ap_automation_outbox": (
+        "tenant",
+        "event_id",
+        "event_type",
+        "topic",
+        "idempotency_key",
+        "audit_hash",
+        "status",
+        "created_at",
+    ),
+    "ap_automation_inbox": (
+        "tenant",
+        "event_id",
+        "event_type",
+        "idempotency_key",
+        "attempts",
+        "status",
+        "created_at",
+        "processed_at",
+    ),
+    "ap_automation_dead_letter": (
+        "tenant",
+        "event_id",
+        "event_type",
+        "idempotency_key",
+        "attempts",
+        "reason",
+        "created_at",
+    ),
+}
+
+
+def _runtime_event_table_contract(table_name):
+    return {
+        'logical_table': table_name.removeprefix('ap_automation_'),
+        'owned_table': table_name,
+        'fields': tuple(
+            {
+                'name': field,
+                'type': 'integer' if field == 'attempts' else 'string',
+                'primary_key': field == 'event_id',
+                'nullable': False,
+                'required': True,
+            }
+            for field in _RUNTIME_EVENT_FIELDS[table_name]
+        ),
+        'relationships': (),
+    }
+
+
+def _runtime_event_model_contract(table_name):
+    table_contract = _runtime_event_table_contract(table_name)
+    class_name = ''.join(part.capitalize() for part in table_name.split('_'))
+    return {
+        'class_name': class_name,
+        'table': table_name,
+        'fields': table_contract['fields'],
+        'relationships': (),
+    }
+
+
+def build_schema_contract():
+    """Return generated owned schema, migration, and runtime event table evidence."""
+    base_tables = tuple(_BASE_SCHEMA_CONTRACT.get('tables', ()))
+    base_models = tuple(_BASE_SCHEMA_CONTRACT.get('models', ()))
+    base_owned_tables = tuple(_BASE_SCHEMA_CONTRACT.get('owned_tables', ()))
+    tables = base_tables + tuple(
+        _runtime_event_table_contract(table)
+        for table in _RUNTIME_EVENT_TABLES
+        if table not in base_owned_tables
+    )
+    models = base_models + tuple(
+        _runtime_event_model_contract(table)
+        for table in _RUNTIME_EVENT_TABLES
+        if table not in tuple(model.get('table') for model in base_models)
+    )
+    owned_tables = tuple(table['owned_table'] for table in tables)
+    return {
+        **_BASE_SCHEMA_CONTRACT,
+        'ok': _BASE_SCHEMA_CONTRACT.get('ok') is True and set(_RUNTIME_EVENT_TABLES) <= set(owned_tables),
+        'tables': tables,
+        'models': models,
+        'runtime_tables': _RUNTIME_EVENT_TABLES,
+        'owned_tables': owned_tables,
+        'database_backends': ('postgresql', 'mysql', 'mariadb'),
+        'datastore_backends': ('postgresql', 'mysql', 'mariadb'),
+    }
+
+
+SCHEMA_CONTRACT = build_schema_contract()

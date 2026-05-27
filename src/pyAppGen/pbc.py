@@ -2206,6 +2206,9 @@ PBC_CATALOG: dict[str, dict] = {
             "schema_extension",
             "control_assertion",
             "governed_model",
+            "outbox",
+            "inbox",
+            "dead_letter",
         ),
         "apis": (
             "POST /ap/vendors",

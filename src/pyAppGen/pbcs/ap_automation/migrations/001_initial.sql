@@ -306,7 +306,7 @@ CREATE TABLE ap_automation_governed_model (
   FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
 );
 
-CREATE TABLE ap_automation_appgen_outbox_event (
+CREATE TABLE ap_automation_outbox (
   id INTEGER PRIMARY KEY,
   event_id VARCHAR(255) NOT NULL,
   event_type VARCHAR(255) NOT NULL,
@@ -317,7 +317,7 @@ CREATE TABLE ap_automation_appgen_outbox_event (
   processed_at TIMESTAMP
 );
 
-CREATE TABLE ap_automation_appgen_inbox_event (
+CREATE TABLE ap_automation_inbox (
   id INTEGER PRIMARY KEY,
   event_id VARCHAR(255) NOT NULL,
   event_type VARCHAR(255) NOT NULL,
@@ -328,7 +328,7 @@ CREATE TABLE ap_automation_appgen_inbox_event (
   processed_at TIMESTAMP
 );
 
-CREATE TABLE ap_automation_appgen_dead_letter_event (
+CREATE TABLE ap_automation_dead_letter (
   id INTEGER PRIMARY KEY,
   event_id VARCHAR(255) NOT NULL,
   event_type VARCHAR(255) NOT NULL,

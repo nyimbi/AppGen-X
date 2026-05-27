@@ -41,6 +41,42 @@ def test_generated_schema_service_and_release_evidence():
     assert not release_smoke['side_effects']
 
 
+def test_runtime_owned_tables_have_schema_models_and_migrations():
+    from pathlib import Path
+
+    from .. import models, schema_contract
+    from ..runtime import ap_automation_runtime_capabilities
+
+    runtime_owned = tuple(ap_automation_runtime_capabilities()['owned_tables'])
+    schema = schema_contract.build_schema_contract()
+    model_manifest = models.model_manifest()
+    migration_sql = Path(__file__).parents[1].joinpath('migrations/001_initial.sql').read_text()
+
+    assert set(runtime_owned) <= set(schema['owned_tables'])
+    assert set(runtime_owned) <= set(model_manifest['model_tables'])
+    assert all(f'CREATE TABLE {table}' in migration_sql for table in runtime_owned)
+    assert schema['database_backends'] == ('postgresql', 'mysql', 'mariadb')
+    assert not schema_contract.validate_schema_contract()['missing_models']
+    assert not model_manifest['cross_pbc_relationships']
+
+
+def test_appgen_event_tables_follow_runtime_owned_contract():
+    from .. import events, handlers, schema_contract
+
+    runtime_event_tables = {
+        'ap_automation_outbox',
+        'ap_automation_inbox',
+        'ap_automation_dead_letter',
+    }
+    schema = schema_contract.build_schema_contract()
+
+    assert runtime_event_tables <= set(schema['owned_tables'])
+    assert events.EVENT_CONTRACT['outbox_table'] == 'ap_automation_outbox'
+    assert events.EVENT_CONTRACT['inbox_table'] == 'ap_automation_inbox'
+    assert events.EVENT_CONTRACT['dead_letter_table'] == 'ap_automation_dead_letter'
+    assert set(handlers.handler_manifest()['dead_letter_tables']) == {'ap_automation_dead_letter'}
+
+
 def test_manifest_and_event_contract():
     from .. import events
 
