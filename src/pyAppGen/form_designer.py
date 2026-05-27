@@ -15826,6 +15826,117 @@ def mobile_permission_revocation_transaction_replay_contract() -> dict:
     }
 
 
+def mobile_native_call_transaction_replay_contract() -> dict:
+    """Replay native adapter calls from permission grant through event dispatch."""
+    contract = mobile_native_api_contract()
+    event_traces = mobile_device_event_trace_contract()
+    offline_queue = mobile_offline_device_event_queue_contract()
+    fixtures = mobile_simulator_fixture_integrity_contract()
+    bridges = mobile_native_bridge_matrix_contract()
+    adapters = {item["api"]: item for item in contract["component_adapters"]["adapters"]}
+    trace_by_api = {item["api"]: item for item in event_traces["traces"]}
+    fixture_by_api = {item["api"]: item for item in fixtures["fixtures"]}
+    queued_apis = {item["api"] for item in offline_queue["queued_events"]}
+    bridge_targets = tuple(bridge["target"] for bridge in bridges["bridges"])
+    transactions = tuple(
+        {
+            "api": api,
+            "component": adapters[api]["component"],
+            "bridge_targets": bridge_targets,
+            "operations": (
+                "resolve_component_adapter",
+                "validate_props",
+                "confirm_permission_grant",
+                "load_simulator_fixture",
+                "dispatch_native_call",
+                "normalize_native_payload",
+                "emit_component_event",
+                "record_event_trace",
+                "enqueue_offline_replay",
+                "commit_runtime_snapshot",
+            ),
+            "fixture": fixture_by_api[api]["fixture"],
+            "events": len(trace_by_api[api]["events"]),
+            "rollback": ("restore_runtime_snapshot", "clear_pending_native_call", "record_diagnostic"),
+            "ok": api in adapters
+            and api in trace_by_api
+            and api in fixture_by_api
+            and {"android", "ios"} <= set(adapters[api]["targets"])
+            and api in queued_apis,
+        }
+        for api in contract["apis"]
+    )
+    checks = (
+        {
+            "id": "native_adapter_resolved_for_each_api",
+            "ok": len(transactions) == len(contract["apis"]) and all(item["ok"] for item in transactions),
+        },
+        {
+            "id": "permission_grant_before_native_call",
+            "ok": all(
+                transaction["operations"].index("confirm_permission_grant")
+                < transaction["operations"].index("dispatch_native_call")
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "fixture_loaded_before_native_call",
+            "ok": all(
+                transaction["operations"].index("load_simulator_fixture")
+                < transaction["operations"].index("dispatch_native_call")
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "native_payload_normalized_before_event",
+            "ok": all(
+                transaction["operations"].index("normalize_native_payload")
+                < transaction["operations"].index("emit_component_event")
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "offline_replay_after_event",
+            "ok": all(
+                transaction["operations"].index("emit_component_event")
+                < transaction["operations"].index("enqueue_offline_replay")
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "runtime_snapshot_after_replay",
+            "ok": all(transaction["operations"][-1] == "commit_runtime_snapshot" for transaction in transactions),
+        },
+        {"id": "native_call_transactions_side_effect_free", "ok": not event_traces["side_effects"] and not offline_queue["side_effects"] and not fixtures["side_effects"] and not bridges["side_effects"]},
+    )
+    ok = event_traces["ok"] and offline_queue["ok"] and bridges["ok"] and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.mobile-native-call-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "transactions": transactions,
+        "checks": checks,
+        "guards": (
+            "adapter_resolved_before_call",
+            "permission_grant_before_native_call",
+            "fixture_loaded_before_native_call",
+            "native_payload_normalized_before_event",
+            "offline_replay_after_event",
+            "runtime_snapshot_after_replay",
+            "no_side_effects",
+        ),
+        "final_state": {
+            "api_count": len(transactions),
+            "native_calls": len(transactions),
+            "events": sum(transaction["events"] for transaction in transactions),
+            "offline_replays": len(transactions),
+            "snapshots": len(transactions),
+        },
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def mobile_deep_link_routing_contract() -> dict:
     """Return deep-link route parsing, authorization, and fallback evidence."""
     routes = (
@@ -15960,6 +16071,7 @@ def mobile_native_api_runtime_replay_contract() -> dict:
     lifecycle = mobile_app_lifecycle_delivery_contract()
     offline_queue = mobile_offline_device_event_queue_contract()
     fixtures = mobile_simulator_fixture_integrity_contract()
+    native_call = mobile_native_call_transaction_replay_contract()
     traces_by_api = {trace["api"]: trace for trace in event_traces["traces"]}
     states_by_api = {item["api"]: item for item in permission_states["transitions"]}
     fixtures_by_api = {item["api"]: item for item in fixtures["fixtures"]}
@@ -15978,6 +16090,7 @@ def mobile_native_api_runtime_replay_contract() -> dict:
             "transition_prompting_to_granted",
             "load_simulator_fixture",
             "invoke_target_bridge",
+            "dispatch_native_call",
             "normalize_payload",
             "dispatch_component_events",
             "record_diagnostic",
@@ -16032,13 +16145,15 @@ def mobile_native_api_runtime_replay_contract() -> dict:
         and all(item["ok"] for item in bridge_recovery)
         and all(item["ok"] for item in lifecycle_replay)
         and offline_queue["ok"]
+        and native_call["ok"]
         and state["side_effects"] == (),
         "replay": tuple(replay),
         "bridge_recovery": bridge_recovery,
         "lifecycle_replay": lifecycle_replay,
         "offline_queue": offline_queue,
+        "native_call_transaction": native_call,
         "final_state": state,
-        "guards": ("permission_replayed_before_bridge", "fixture_replayed_before_events", "payloads_normalized_before_dispatch", "background_delivery_checkpointed", "offline_events_persisted_before_drain", "offline_replay_idempotent", "bridge_errors_recoverable", "lifecycle_resume_replays_pending_events"),
+        "guards": ("permission_replayed_before_bridge", "fixture_replayed_before_events", "native_call_transaction_replayed", "payloads_normalized_before_dispatch", "background_delivery_checkpointed", "offline_events_persisted_before_drain", "offline_replay_idempotent", "bridge_errors_recoverable", "lifecycle_resume_replays_pending_events"),
         "side_effects": (),
     }
 
@@ -16061,6 +16176,7 @@ def mobile_device_designer_transaction_replay_contract() -> dict:
     bridge_matrix = mobile_native_bridge_matrix_contract()
     permission_revocation = mobile_permission_revocation_contract()
     revocation_transaction = mobile_permission_revocation_transaction_replay_contract()
+    native_call_transaction = mobile_native_call_transaction_replay_contract()
     background_delivery = mobile_background_delivery_contract()
     media_file_pipeline = mobile_media_file_pipeline_contract()
     bridge_errors = mobile_native_bridge_error_contract()
@@ -16071,6 +16187,7 @@ def mobile_device_designer_transaction_replay_contract() -> dict:
     offline_queue = mobile_offline_device_event_queue_contract()
     simulator_fixture_integrity = mobile_simulator_fixture_integrity_contract()
     runtime_replay = mobile_native_api_runtime_replay_contract()
+    native_call = mobile_native_call_transaction_replay_contract()
     state = {
         "apis": len(api_set),
         "permission_entries": len(permissions["permissions"]),
@@ -16081,6 +16198,7 @@ def mobile_device_designer_transaction_replay_contract() -> dict:
         "revocation_transactions": len(revocation_transaction["transactions"]),
         "background_deliveries": len(background_delivery["deliveries"]),
         "privacy_entries": len(store_privacy_manifest["entries"]),
+        "native_call_transactions": len(native_call["transactions"]),
         "runtime_replays": len(runtime_replay["replay"]),
         "bridge_recoveries": len(runtime_replay["bridge_recovery"]),
         "side_effects": (),
@@ -16112,6 +16230,17 @@ def mobile_device_designer_transaction_replay_contract() -> dict:
             "ok": adapter_dispatch["ok"]
             and {"check_permission", "invoke_platform_adapter", "emit_component_event"} <= set(adapter_dispatch["pipeline"])
             and event_traces["ok"],
+        },
+        {
+            "phase": "replay_native_call_transaction",
+            "pipeline": tuple(check["id"] for check in native_call["checks"]),
+            "ok": native_call["ok"]
+            and native_call["final_state"]["api_count"] == len(api_set)
+            and {
+                "permission_grant_before_native_call",
+                "native_payload_normalized_before_event",
+                "runtime_snapshot_after_replay",
+            } <= {check["id"] for check in native_call["checks"] if check["ok"]},
         },
         {
             "phase": "validate_privacy_and_fallbacks",
@@ -16163,6 +16292,7 @@ def mobile_device_designer_transaction_replay_contract() -> dict:
         and state["component_adapters"] == state["apis"]
         and state["simulator_fixtures"] == state["apis"]
         and state["event_traces"] == state["apis"]
+        and state["native_call_transactions"] == state["apis"]
         and state["revocation_flows"] == state["apis"]
         and state["runtime_replays"] == state["apis"]
         and state["bridge_recoveries"] > 0
@@ -16173,6 +16303,7 @@ def mobile_device_designer_transaction_replay_contract() -> dict:
             "component_authoring_before_permission_generation",
             "permission_manifest_before_adapter_dispatch",
             "simulator_fixture_before_preview",
+            "native_call_transaction_before_runtime",
             "privacy_and_fallbacks_before_runtime",
             "revocation_visible_before_adapter_call",
             "revocation_transaction_before_adapter_reenable",
@@ -16199,12 +16330,14 @@ def mobile_device_capability_lifecycle_replay_contract() -> dict:
     app_lifecycle = mobile_app_lifecycle_delivery_contract()
     bridge_errors = mobile_native_bridge_error_contract()
     revocation_transaction = mobile_permission_revocation_transaction_replay_contract()
+    native_call = mobile_native_call_transaction_replay_contract()
     runtime_replay = mobile_native_api_runtime_replay_contract()
     designer_replay = mobile_device_designer_transaction_replay_contract()
     privacy_by_api = {item["api"]: item for item in privacy["entries"]}
     permission_by_api = {item["api"]: item for item in permission_states["transitions"]}
     fixture_by_api = {item["api"]: item for item in simulator["fixtures"]}
     runtime_by_api = {item["api"]: item for item in runtime_replay["replay"]}
+    native_call_by_api = {item["api"]: item for item in native_call["transactions"]}
     revocation_apis = {item["api"] for item in permission_revocation["revocations"]}
     background_apis = {item["api"] for item in background_delivery["deliveries"]}
     media_apis = {item["api"] for item in media_pipeline["pipelines"]}
@@ -16238,6 +16371,14 @@ def mobile_device_capability_lifecycle_replay_contract() -> dict:
                     "ok": {"android", "ios", "desktop", "web-pwa"} <= set(target_bridges)
                     and all("emit_event" in bridge["lifecycle"] for bridge in target_bridges.values()),
                     "evidence": tuple(target_bridges),
+                },
+                {
+                    "phase": "replay_native_call_transaction",
+                    "ok": api in native_call_by_api
+                    and native_call_by_api[api]["ok"]
+                    and "dispatch_native_call" in native_call_by_api[api]["operations"]
+                    and "commit_runtime_snapshot" in native_call_by_api[api]["operations"],
+                    "evidence": native_call_by_api.get(api),
                 },
                 {
                     "phase": "run_api_specific_pipeline",
@@ -16317,12 +16458,25 @@ def mobile_device_capability_lifecycle_replay_contract() -> dict:
             "id": "runtime_and_designer_replay_aligned",
             "ok": runtime_replay["ok"]
             and designer_replay["ok"]
+            and native_call["ok"]
             and {item["api"] for item in runtime_replay["replay"]} == set(contract["apis"])
             and designer_replay["final_state"]["runtime_replays"] == len(contract["apis"]),
             "evidence": {
                 "runtime_apis": tuple(item["api"] for item in runtime_replay["replay"]),
                 "designer_runtime_replays": designer_replay["final_state"]["runtime_replays"],
             },
+        },
+        {
+            "id": "native_call_transaction_replay",
+            "ok": native_call["ok"]
+            and native_call["final_state"]["api_count"] == len(contract["apis"])
+            and {
+                "native_adapter_resolved_for_each_api",
+                "permission_grant_before_native_call",
+                "native_payload_normalized_before_event",
+                "runtime_snapshot_after_replay",
+            } <= {check["id"] for check in native_call["checks"] if check["ok"]},
+            "evidence": native_call,
         },
         {
             "id": "permission_revocation_transaction_replay",
@@ -16344,6 +16498,7 @@ def mobile_device_capability_lifecycle_replay_contract() -> dict:
             and not bridge_matrix["side_effects"]
             and not permission_revocation["side_effects"]
             and not revocation_transaction["side_effects"]
+            and not native_call["side_effects"]
             and not background_delivery["side_effects"]
             and not media_pipeline["side_effects"]
             and not deep_link_routing["side_effects"]
@@ -16366,6 +16521,7 @@ def mobile_device_capability_lifecycle_replay_contract() -> dict:
             "privacy_before_permission",
             "simulator_before_bridge",
             "api_specific_pipelines_covered",
+            "native_call_transaction_replay",
             "permission_revocation_transaction_replay",
             "runtime_and_designer_replay_aligned",
             "no_side_effects",
@@ -16389,6 +16545,7 @@ def mobile_native_api_readiness_contract() -> dict:
     scenario_matrix = mobile_device_scenario_matrix_contract()
     target_scenario_matrix = mobile_device_target_scenario_matrix_contract()
     revocation_transaction = mobile_permission_revocation_transaction_replay_contract()
+    native_call = mobile_native_call_transaction_replay_contract()
     designer_replay = mobile_device_designer_transaction_replay_contract()
     lifecycle = mobile_device_capability_lifecycle_replay_contract()
     offline_queue = mobile_offline_device_event_queue_contract()
@@ -16430,6 +16587,14 @@ def mobile_native_api_readiness_contract() -> dict:
             and revocation_transaction["final_state"]["api_count"] == len(contract["apis"])
             and revocation_transaction["final_state"]["reenabled_adapters"] == len(contract["apis"])
             and "adapter_reenabled_after_grant" in revocation_transaction["guards"],
+        },
+        {
+            "phase": "replay_native_call_transactions",
+            "pipeline": tuple(check["id"] for check in native_call["checks"]) + tuple(native_call["guards"]),
+            "ok": native_call["ok"]
+            and native_call["final_state"]["api_count"] == len(contract["apis"])
+            and native_call["final_state"]["native_calls"] == len(contract["apis"])
+            and "runtime_snapshot_after_replay" in native_call["guards"],
         },
         {
             "phase": "replay_runtime_delivery",
@@ -16477,11 +16642,12 @@ def mobile_native_api_readiness_contract() -> dict:
         {"id": "bridge_component_ready", "ok": phases[2]["ok"], "evidence": {"component_validation": component_validation, "adapter": adapter}},
         {"id": "fallback_lifecycle_ready", "ok": phases[3]["ok"], "evidence": {"fallback": fallback, "background": background}},
         {"id": "permission_revocation_ready", "ok": phases[4]["ok"], "evidence": revocation_transaction},
-        {"id": "runtime_delivery_ready", "ok": phases[5]["ok"], "evidence": runtime_replay},
-        {"id": "device_scenarios_ready", "ok": phases[6]["ok"], "evidence": scenario_matrix},
-        {"id": "offline_queue_ready", "ok": phases[7]["ok"], "evidence": offline_queue},
-        {"id": "target_scenario_matrix_ready", "ok": phases[8]["ok"], "evidence": target_scenario_matrix},
-        {"id": "designer_capability_ready", "ok": phases[9]["ok"], "evidence": {"designer": designer_replay, "lifecycle": lifecycle}},
+        {"id": "native_call_transaction_ready", "ok": phases[5]["ok"], "evidence": native_call},
+        {"id": "runtime_delivery_ready", "ok": phases[6]["ok"], "evidence": runtime_replay},
+        {"id": "device_scenarios_ready", "ok": phases[7]["ok"], "evidence": scenario_matrix},
+        {"id": "offline_queue_ready", "ok": phases[8]["ok"], "evidence": offline_queue},
+        {"id": "target_scenario_matrix_ready", "ok": phases[9]["ok"], "evidence": target_scenario_matrix},
+        {"id": "designer_capability_ready", "ok": phases[10]["ok"], "evidence": {"designer": designer_replay, "lifecycle": lifecycle}},
         {"id": "operation_surface_ready", "ok": actionable["ok"] and not actionable["side_effects"], "evidence": actionable},
         {
             "id": "phase_order_ready",
@@ -16492,6 +16658,7 @@ def mobile_native_api_readiness_contract() -> dict:
                 "bind_components_and_bridges",
                 "review_fallbacks_and_lifecycle",
                 "replay_permission_revocation",
+                "replay_native_call_transactions",
                 "replay_runtime_delivery",
                 "replay_device_scenarios",
                 "replay_offline_device_queue",
@@ -16518,6 +16685,8 @@ def mobile_native_api_readiness_contract() -> dict:
             "background_checkpoints": runtime_replay["final_state"]["checkpoints"],
             "permission_revocation_transactions": revocation_transaction["final_state"]["api_count"],
             "reenabled_adapters": revocation_transaction["final_state"]["reenabled_adapters"],
+            "native_call_transactions": native_call["final_state"]["native_calls"],
+            "native_call_events": native_call["final_state"]["events"],
             "offline_queued_events": len(offline_queue["queued_events"]),
             "offline_replays": runtime_replay["final_state"].get("offline_replays", 0),
         },
@@ -16527,6 +16696,7 @@ def mobile_native_api_readiness_contract() -> dict:
             "simulator_before_bridge",
             "fallbacks_before_runtime",
             "permission_revocation_before_runtime",
+            "native_call_transaction_before_runtime",
             "runtime_before_device_scenarios",
             "offline_queue_before_target_matrix",
             "target_matrix_before_designer_claim",
@@ -16559,6 +16729,7 @@ def mobile_native_api_workbench() -> dict:
     bridge_matrix = mobile_native_bridge_matrix_contract()
     permission_revocation = mobile_permission_revocation_contract()
     revocation_transaction = mobile_permission_revocation_transaction_replay_contract()
+    native_call_transaction = mobile_native_call_transaction_replay_contract()
     background_delivery = mobile_background_delivery_contract()
     media_file_pipeline = mobile_media_file_pipeline_contract()
     bridge_errors = mobile_native_bridge_error_contract()
@@ -16739,6 +16910,21 @@ def mobile_native_api_workbench() -> dict:
             "evidence": revocation_transaction,
         },
         {
+            "id": "native_call_transaction_replay",
+            "ok": native_call_transaction["ok"]
+            and native_call_transaction["final_state"]["api_count"] == len(api_set)
+            and {
+                "native_adapter_resolved_for_each_api",
+                "permission_grant_before_native_call",
+                "fixture_loaded_before_native_call",
+                "native_payload_normalized_before_event",
+                "offline_replay_after_event",
+                "runtime_snapshot_after_replay",
+            } <= {check["id"] for check in native_call_transaction["checks"] if check["ok"]}
+            and not native_call_transaction["side_effects"],
+            "evidence": native_call_transaction,
+        },
+        {
             "id": "background_delivery",
             "ok": background_delivery["ok"] and "delivery_checkpointed" in background_delivery["guards"]
             and not background_delivery["side_effects"],
@@ -16842,6 +17028,7 @@ def mobile_native_api_workbench() -> dict:
                 "bridge_component_ready",
                 "fallback_lifecycle_ready",
                 "permission_revocation_ready",
+                "native_call_transaction_ready",
                 "runtime_delivery_ready",
                 "device_scenarios_ready",
                 "target_scenario_matrix_ready",
@@ -16895,6 +17082,7 @@ def mobile_native_api_workbench() -> dict:
         "bridge_matrix": bridge_matrix,
         "permission_revocation": permission_revocation,
         "revocation_transaction": revocation_transaction,
+        "native_call_transaction": native_call_transaction,
         "background_delivery": background_delivery,
         "media_file_pipeline": media_file_pipeline,
         "bridge_errors": bridge_errors,
@@ -20205,6 +20393,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and "phase_order_ready" in {check["id"] for check in mobile_readiness["checks"] if check["ok"]}
             and {
                 "capability_lifecycle_replay",
+                "native_call_transaction_replay",
                 "permission_revocation_transaction_replay",
                 "device_scenario_matrix",
                 "device_target_scenario_matrix",
@@ -20704,6 +20893,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "bridge_component_ready",
                 "fallback_lifecycle_ready",
                 "permission_revocation_ready",
+                "native_call_transaction_ready",
                 "runtime_delivery_ready",
                 "device_scenarios_ready",
                 "target_scenario_matrix_ready",
@@ -20717,16 +20907,19 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "device_component_module_tests",
                 "device_scenario_matrix",
                 "device_target_scenario_matrix",
+                "native_call_transaction_replay",
                 "permission_revocation_transaction_replay",
             } <= {check["id"] for check in mobile["checks"] if check["ok"]},
             "deep_checks": (
                 "privacy_permission_ready",
                 "bridge_component_ready",
                 "permission_revocation_ready",
+                "native_call_transaction_ready",
                 "runtime_delivery_ready",
                 "device_scenarios_ready",
                 "target_scenario_matrix_ready",
                 "designer_capability_ready",
+                "native_call_transaction_replay",
                 "permission_revocation_transaction_replay",
                 "device_scenario_matrix",
                 "device_target_scenario_matrix",
@@ -22828,6 +23021,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "generate_permission_manifest",
         "configure_simulator_fixtures",
         "preview_and_dispatch_adapter",
+        "replay_native_call_transaction",
         "validate_privacy_and_fallbacks",
         "handle_permission_revocation",
         "deliver_background_and_lifecycle",
@@ -22844,6 +23038,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "transition_permission",
         "load_simulator_fixture",
         "invoke_target_bridges",
+        "replay_native_call_transaction",
         "run_api_specific_pipeline",
         "recover_revocation_or_bridge_error",
         "dispatch_runtime_events",
@@ -22859,6 +23054,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "configure_simulator_fixtures",
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
+        "replay_permission_revocation",
+        "replay_native_call_transactions",
         "replay_runtime_delivery",
         "replay_device_scenarios",
         "replay_offline_device_queue",
@@ -22894,6 +23091,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "simulator_ready",
         "bridge_component_ready",
         "fallback_lifecycle_ready",
+        "permission_revocation_ready",
+        "native_call_transaction_ready",
         "runtime_delivery_ready",
         "device_scenarios_ready",
         "offline_queue_ready",
@@ -22911,6 +23110,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "transition_prompting_to_granted",
         "load_simulator_fixture",
         "invoke_target_bridge",
+        "dispatch_native_call",
         "normalize_payload",
         "dispatch_component_events",
         "record_diagnostic",
@@ -23077,6 +23277,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "device_event_traces",
         "native_bridge_matrix",
         "permission_revocation",
+        "permission_revocation_transaction_replay",
+        "native_call_transaction_replay",
         "background_delivery",
         "media_file_pipeline",
         "native_bridge_errors",

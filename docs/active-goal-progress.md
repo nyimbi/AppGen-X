@@ -2316,6 +2316,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   export, undo grouping, and snapshot-scoped rollback before visual runtime,
   designer, lifecycle, and readiness gates can pass. Verification is focused
   under the low-battery delivery constraint. Commit: `381e2d5`.
+- Current mobile/native device API pass adds native-call transaction replay as
+  release-gating evidence. Source and generated mobile contracts now prove each
+  device API resolves its adapter, confirms permission grants, loads simulator
+  fixtures, dispatches the native call, normalizes payloads before component
+  events, queues offline replay, and commits a runtime snapshot before
+  workbench, lifecycle, readiness, and platform parity gates can pass.
+  Verification is focused under the low-battery delivery constraint. Commit:
+  pending.
 - Current `multi_sided_market` PBC pass promotes deeper market table-stakes
   into executable package-local operations: listing assets, availability
   windows, exchange proposals, escrow release policies, escrow release,

@@ -212,6 +212,7 @@ from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_con
 from pyAppGen.form_designer import mobile_device_component_spec_contract
 from pyAppGen.form_designer import mobile_device_scenario_matrix_contract
 from pyAppGen.form_designer import mobile_dispatch_adapter_operation
+from pyAppGen.form_designer import mobile_native_call_transaction_replay_contract
 from pyAppGen.form_designer import mobile_native_api_actionable_operations
 from pyAppGen.form_designer import mobile_offline_device_event_queue_contract
 from pyAppGen.form_designer import mobile_native_api_readiness_contract
@@ -3049,6 +3050,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "native_bridge_matrix",
         "permission_revocation",
         "permission_revocation_transaction_replay",
+        "native_call_transaction_replay",
         "background_delivery",
         "media_file_pipeline",
         "native_bridge_errors",
@@ -3143,6 +3145,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "revocation_transactions_side_effect_free",
     } == {check["id"] for check in revocation_transaction["checks"]}
     assert mobile_workbench["revocation_transaction"]["ok"] is True
+    native_call_transaction = mobile_native_call_transaction_replay_contract()
+    assert native_call_transaction["format"] == "appgen.mobile-native-call-transaction-replay.v1"
+    assert native_call_transaction["ok"] is True
+    assert native_call_transaction["final_state"]["api_count"] == len(mobile_apis)
+    assert {
+        "native_adapter_resolved_for_each_api",
+        "permission_grant_before_native_call",
+        "fixture_loaded_before_native_call",
+        "native_payload_normalized_before_event",
+        "offline_replay_after_event",
+        "runtime_snapshot_after_replay",
+        "native_call_transactions_side_effect_free",
+    } == {check["id"] for check in native_call_transaction["checks"]}
+    assert all("dispatch_native_call" in item["operations"] for item in native_call_transaction["transactions"])
+    assert mobile_workbench["native_call_transaction"]["ok"] is True
     assert all("checkpoint_delivery" in item["lifecycle"] for item in mobile_workbench["background_delivery"]["deliveries"])
     assert all("validate_mime" in item["stages"] for item in mobile_workbench["media_file_pipeline"]["pipelines"])
     assert all("emit_error_event" in scenario["recovery"] for scenario in mobile_workbench["bridge_errors"]["scenarios"])
@@ -3184,6 +3201,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "generate_permission_manifest",
         "configure_simulator_fixtures",
         "preview_and_dispatch_adapter",
+        "replay_native_call_transaction",
         "validate_privacy_and_fallbacks",
         "handle_permission_revocation",
         "deliver_background_and_lifecycle",
@@ -3201,10 +3219,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "simulator_before_bridge",
         "api_specific_pipelines_covered",
         "permission_revocation_transaction_replay",
+        "native_call_transaction_replay",
         "runtime_and_designer_replay_aligned",
     } <= {check["id"] for check in capability_lifecycle["checks"] if check["ok"]}
     assert all(
-        {"declare_privacy", "transition_permission", "load_simulator_fixture", "invoke_target_bridges", "dispatch_runtime_events"}
+        {"declare_privacy", "transition_permission", "load_simulator_fixture", "invoke_target_bridges", "replay_native_call_transaction", "dispatch_runtime_events"}
         <= {phase["phase"] for phase in item["phases"]}
         for item in capability_lifecycle["replay"]
     )
@@ -3217,6 +3236,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
         "replay_permission_revocation",
+        "replay_native_call_transactions",
         "replay_runtime_delivery",
         "replay_device_scenarios",
         "replay_offline_device_queue",
@@ -3229,6 +3249,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "bridge_component_ready",
         "fallback_lifecycle_ready",
         "permission_revocation_ready",
+        "native_call_transaction_ready",
         "runtime_delivery_ready",
         "device_scenarios_ready",
         "offline_queue_ready",
@@ -3240,6 +3261,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mobile_readiness["final_state"]["api_count"] == len(mobile_apis)
     assert mobile_readiness["final_state"]["permission_revocation_transactions"] == len(mobile_apis)
     assert mobile_readiness["final_state"]["reenabled_adapters"] == len(mobile_apis)
+    assert mobile_readiness["final_state"]["native_call_transactions"] == len(mobile_apis)
     assert mobile_readiness["final_state"]["runtime_replays"] == len(mobile_apis)
     assert mobile_readiness["final_state"]["device_scenarios"] == len(mobile_apis)
     assert mobile_readiness["final_state"]["target_scenarios"] == mobile_workbench["target_scenario_matrix"]["row_count"]
@@ -5696,6 +5718,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
         "replay_permission_revocation",
+        "replay_native_call_transactions",
         "replay_runtime_delivery",
         "replay_device_scenarios",
         "replay_offline_device_queue",
@@ -5704,6 +5727,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert {
         "capability_lifecycle_replay",
+        "native_call_transaction_replay",
         "permission_revocation_transaction_replay",
         "device_scenario_matrix",
         "device_target_scenario_matrix",
@@ -5876,6 +5900,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "device_component_modules",
         "device_component_module_tests",
         "permission_revocation_ready",
+        "native_call_transaction_ready",
+        "native_call_transaction_replay",
         "permission_revocation_transaction_replay",
         "runtime_delivery_ready",
     } <= set(requirements_by_id["device_api_component_coverage"]["deep_checks"])
@@ -15872,6 +15898,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
         "replay_permission_revocation",
+        "replay_native_call_transactions",
         "replay_runtime_delivery",
         "replay_device_scenarios",
         "replay_offline_device_queue",
@@ -15880,6 +15907,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert {
         "capability_lifecycle_replay",
+        "native_call_transaction_replay",
         "permission_revocation_transaction_replay",
         "device_scenario_matrix",
         "device_target_scenario_matrix",
@@ -16066,6 +16094,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "device_component_modules",
         "device_component_module_tests",
         "permission_revocation_ready",
+        "native_call_transaction_ready",
+        "native_call_transaction_replay",
         "permission_revocation_transaction_replay",
         "runtime_delivery_ready",
     } <= set(generated_requirements_by_id["device_api_component_coverage"]["deep_checks"])
@@ -18350,6 +18380,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "native_bridge_matrix",
         "permission_revocation",
         "permission_revocation_transaction_replay",
+        "native_call_transaction_replay",
         "background_delivery",
         "media_file_pipeline",
         "native_bridge_errors",
@@ -18443,6 +18474,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_revocation_transaction["final_state"]["api_count"] == len(generated_mobile_apis)
     assert generated_revocation_transaction["final_state"]["reenabled_adapters"] == len(generated_mobile_apis)
     assert generated_mobile["revocation_transaction"]["ok"] is True
+    generated_native_call_transaction = form_designer.mobile_native_call_transaction_replay_contract()
+    assert generated_native_call_transaction["format"] == "appgen.generated-mobile-native-call-transaction-replay.v1"
+    assert generated_native_call_transaction["ok"] is True
+    assert generated_native_call_transaction["final_state"]["api_count"] == len(generated_mobile_apis)
+    assert {
+        "native_adapter_resolved_for_each_api",
+        "permission_grant_before_native_call",
+        "fixture_loaded_before_native_call",
+        "native_payload_normalized_before_event",
+        "offline_replay_after_event",
+        "runtime_snapshot_after_replay",
+        "native_call_transactions_side_effect_free",
+    } == {check["id"] for check in generated_native_call_transaction["checks"]}
+    assert all("dispatch_native_call" in item["operations"] for item in generated_native_call_transaction["transactions"])
+    assert generated_mobile["native_call_transaction"]["ok"] is True
     assert all("dispatch_component_event" in item["lifecycle"] for item in generated_mobile["background_delivery"]["deliveries"])
     assert all("copy_to_app_storage" in item["stages"] for item in generated_mobile["media_file_pipeline"]["pipelines"])
     assert all("record_diagnostic" in scenario["recovery"] for scenario in generated_mobile["bridge_errors"]["scenarios"])
@@ -18484,6 +18530,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "generate_permission_manifest",
         "configure_simulator_fixtures",
         "preview_and_dispatch_adapter",
+        "replay_native_call_transaction",
         "validate_privacy_and_fallbacks",
         "handle_permission_revocation",
         "deliver_background_and_lifecycle",
@@ -18496,7 +18543,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile["capability_lifecycle_replay"]["format"] == "appgen.generated-mobile-device-capability-lifecycle-replay.v1"
     assert generated_mobile["capability_lifecycle_replay"]["api_count"] == len(generated_mobile_apis)
     assert all(
-        {"declare_privacy", "transition_permission", "load_simulator_fixture", "invoke_target_bridges", "dispatch_runtime_events"}
+        {"declare_privacy", "transition_permission", "load_simulator_fixture", "invoke_target_bridges", "replay_native_call_transaction", "dispatch_runtime_events"}
         <= {phase["phase"] for phase in item["phases"]}
         for item in generated_mobile["capability_lifecycle_replay"]["replay"]
     )
@@ -18509,6 +18556,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
         "replay_permission_revocation",
+        "replay_native_call_transactions",
         "replay_runtime_delivery",
         "replay_device_scenarios",
         "replay_offline_device_queue",
@@ -18521,6 +18569,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "bridge_component_ready",
         "fallback_lifecycle_ready",
         "permission_revocation_ready",
+        "native_call_transaction_ready",
         "runtime_delivery_ready",
         "device_scenarios_ready",
         "offline_queue_ready",
@@ -18532,6 +18581,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile_readiness["final_state"]["api_count"] == len(generated_mobile_apis)
     assert generated_mobile_readiness["final_state"]["permission_revocation_transactions"] == len(generated_mobile_apis)
     assert generated_mobile_readiness["final_state"]["reenabled_adapters"] == len(generated_mobile_apis)
+    assert generated_mobile_readiness["final_state"]["native_call_transactions"] == len(generated_mobile_apis)
     assert generated_mobile_readiness["final_state"]["runtime_replays"] == len(generated_mobile_apis)
     assert generated_mobile_readiness["final_state"]["device_scenarios"] == len(generated_mobile_apis)
     assert generated_mobile_readiness["final_state"]["target_scenarios"] == generated_mobile["target_scenario_matrix"]["row_count"]
