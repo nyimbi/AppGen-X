@@ -13338,7 +13338,7 @@ def data_tooling_connection_designer_transaction_replay_contract() -> dict:
         },
         {
             "phase": "validate_pool_and_failover",
-            "operations": pooling["guards"] + failover["guards"],
+            "operations": ("validate_pool_profile",) + pooling["guards"] + failover["guards"],
             "ok": pooling["ok"]
             and failover["ok"]
             and {"session_reset_before_reuse", "leak_detection_enabled"} <= set(pooling["guards"])
@@ -13742,13 +13742,13 @@ def data_tooling_query_designer_transaction_replay_contract() -> dict:
         },
         {
             "phase": "drag_schema_fields",
-            "operations": ("browse_tables", "trace_relations", "drop_fields_on_query_canvas"),
+            "operations": ("drag_schema_field", "browse_tables", "trace_relations", "drop_fields_on_query_canvas"),
             "ok": {"browse_tables", "trace_relations"} <= set(schema_browser["operations"])
             and {"table", "relation"} <= {item["kind"] for item in schema_browser["objects"]},
         },
         {
             "phase": "bind_parameters",
-            "operations": tuple(binding["name"] for binding in parameter_binding["bindings"]),
+            "operations": ("bind_query_parameters",) + tuple(binding["name"] for binding in parameter_binding["bindings"]),
             "ok": parameter_binding["ok"]
             and all("no_string_interpolation" in binding["guards"] for binding in parameter_binding["bindings"])
             and all(parameter.startswith(":") for parameter in named_query["parameters"]),
@@ -13777,7 +13777,7 @@ def data_tooling_query_designer_transaction_replay_contract() -> dict:
         },
         {
             "phase": "publish_runtime_adapter",
-            "operations": resource_publish["pipeline"] + tuple(test["surface"] for test in service_tests["tests"]),
+            "operations": ("publish_runtime_query_adapter",) + resource_publish["pipeline"] + tuple(test["surface"] for test in service_tests["tests"]),
             "ok": resource_publish["ok"]
             and {"run_contract_tests", "attach_security", "register_analytics"} <= set(resource_publish["pipeline"])
             and all(test["assertions"] for test in service_tests["tests"]),
@@ -13892,27 +13892,27 @@ def data_tooling_service_method_transaction_replay_contract() -> dict:
     transactions = (
         {
             "phase": "select_service_methods",
-            "operations": methods["method_kinds"] + ("choose_transaction_method",),
+            "operations": ("select_service_method",) + methods["method_kinds"] + ("choose_transaction_method",),
             "ok": {"query", "command", "transaction", "background_job"} <= set(methods["method_kinds"])
             and method_spec["kind"] in methods["method_kinds"],
         },
         {
             "phase": "bind_parameter_schemas",
-            "operations": tuple(parameter["name"] for parameter in method_spec["parameters"]),
+            "operations": ("bind_method_parameters",) + tuple(parameter["name"] for parameter in method_spec["parameters"]),
             "ok": bool(method_spec["parameters"])
             and all({"name", "type", "required"} <= set(parameter) for parameter in method_spec["parameters"])
             and "typed_parameters_required" in stored_procedures["guards"],
         },
         {
             "phase": "generate_server_methods",
-            "operations": ("server_method_stub", "transaction_scope", "response_mapper"),
+            "operations": ("generate_server_stub", "server_method_stub", "transaction_scope", "response_mapper"),
             "ok": "server_method_stub" in methods["generated_artifacts"]
             and "transaction_scope" in methods["session_lifecycle"]
             and invocation["session"]["transaction_scope"] in {"read_only", "transaction"},
         },
         {
             "phase": "generate_client_proxies",
-            "operations": ("client_proxy", "transport_binding", "error_mapper"),
+            "operations": ("generate_client_proxy", "client_proxy", "transport_binding", "error_mapper"),
             "ok": "client_proxy" in methods["generated_artifacts"]
             and invocation["transport"] in methods["transports"]
             and method_spec["client_proxy"].startswith("approve"),
@@ -14535,6 +14535,125 @@ def rad_data_tooling_workbench() -> dict:
     ide_scenario = data_tooling_run_ide_scenario_operation()
     readiness = data_tooling_readiness_contract()
     actionable_operations = data_tooling_actionable_operations()
+    required_data_tooling_operations = (
+        "test_connection",
+        "preview_query",
+        "preview_schema_diff",
+        "generate_lookup_editors",
+        "publish_resource",
+        "browse_schema",
+        "design_dataset",
+        "rehearse_offline_replay",
+        "monitor_replication",
+        "run_module_smoke",
+        "rollback_test_transaction",
+        "bind_parameters",
+        "explain_plan",
+        "run_contract_tests",
+        "attach_security",
+        "register_analytics",
+        "browse_tables",
+        "inspect_fields",
+        "trace_relations",
+        "validate_dataset_state_machine",
+        "pause_for_manual_review",
+        "surface_conflict_alerts",
+        "verify_no_side_effects",
+        "select_connection_profile",
+        "bind_secret_reference",
+        "validate_pool_profile",
+        "publish_schema_visibility",
+        "drag_schema_field",
+        "bind_query_parameters",
+        "preview_read_only_plan",
+        "bind_dataset_fields",
+        "publish_runtime_query_adapter",
+        "select_service_method",
+        "bind_method_parameters",
+        "generate_server_stub",
+        "generate_client_proxy",
+        "publish_runtime_adapter",
+        "relationship_lookups_before_publish",
+        "release_data_tooling",
+        "run_data_operation",
+        "run_ide_operation",
+    )
+
+    def _collect_strings(value) -> tuple[str, ...]:
+        if isinstance(value, str):
+            return (value,)
+        if isinstance(value, dict):
+            return tuple(text for item in value.values() for text in _collect_strings(item))
+        if isinstance(value, (tuple, list, set)):
+            return tuple(text for item in value for text in _collect_strings(item))
+        return ()
+
+    data_tooling_operations = tuple(
+        dict.fromkeys(
+            tuple(actionable_operations["operations"])
+            + tuple(text for operation in actionable_operations["operations"].values() for text in _collect_strings(operation))
+            + tuple(
+                text
+                for surface in (
+                    contract,
+                    connection_test,
+                    query_preview,
+                    method_invocation,
+                    resource_publish,
+                    local_maintenance,
+                    conflict_review,
+                    driver_matrix,
+                    schema_diff,
+                    transaction_rehearsal,
+                    offline_replay,
+                    service_tests,
+                    schema_browser,
+                    parameter_binding,
+                    dataset_fields,
+                    service_security,
+                    offline_queue_integrity,
+                    migration_rehearsal,
+                    dataset_designer,
+                    service_invocation_traces,
+                    maintenance_schedule,
+                    schema_checkpoints,
+                    data_modules,
+                    query_plan_visualizer,
+                    relationship_navigation,
+                    service_versioning,
+                    connection_failover,
+                    change_capture_lineage,
+                    connection_pooling,
+                    stored_procedures,
+                    sql_authoring_safety,
+                    backup_restore_verification,
+                    replication_monitor,
+                    service_telemetry,
+                    dataset_state_machine,
+                    lookup_editor_pipeline,
+                    relationship_lookup_lifecycle,
+                    module_runtime_smoke,
+                    data_module_artifacts,
+                    data_module_test_artifacts,
+                    deep_data_tooling_module_artifacts,
+                    deep_data_tooling_module_test_artifacts,
+                    enterprise_data_ide_module_artifacts,
+                    enterprise_data_ide_module_test_artifacts,
+                    module_replay_matrix,
+                    runtime_replay,
+                    connection_designer_transaction_replay,
+                    design_runtime_replay,
+                    publish_transaction_replay,
+                    query_designer_transaction_replay,
+                    service_method_transaction_replay,
+                    failover_transaction_replay,
+                    ide_scenario,
+                    readiness,
+                )
+                for text in _collect_strings(surface)
+            )
+        )
+    )
     checks = (
         {
             "id": "connection_catalog",
@@ -14979,6 +15098,12 @@ def rad_data_tooling_workbench() -> dict:
             "evidence": failover_transaction_replay,
         },
         {
+            "id": "data_tooling_operations_exposed",
+            "ok": set(required_data_tooling_operations) <= set(data_tooling_operations),
+            "required": required_data_tooling_operations,
+            "passing": tuple(operation for operation in required_data_tooling_operations if operation in data_tooling_operations),
+        },
+        {
             "id": "data_tooling_readiness_contract",
             "ok": readiness["ok"]
             and {
@@ -15062,10 +15187,12 @@ def rad_data_tooling_workbench() -> dict:
         "runtime_replay": runtime_replay,
         "connection_designer_transaction_replay": connection_designer_transaction_replay,
         "design_runtime_replay": design_runtime_replay,
-            "publish_transaction_replay": publish_transaction_replay,
-            "query_designer_transaction_replay": query_designer_transaction_replay,
-            "service_method_transaction_replay": service_method_transaction_replay,
-            "failover_transaction_replay": failover_transaction_replay,
+        "publish_transaction_replay": publish_transaction_replay,
+        "query_designer_transaction_replay": query_designer_transaction_replay,
+        "service_method_transaction_replay": service_method_transaction_replay,
+        "failover_transaction_replay": failover_transaction_replay,
+        "required_data_tooling_operations": required_data_tooling_operations,
+        "data_tooling_operations": data_tooling_operations,
         "ide_scenario": ide_scenario,
         "readiness": readiness,
         "checks": checks,

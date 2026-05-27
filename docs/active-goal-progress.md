@@ -2672,6 +2672,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   uninstall cleanup, dependency-conflict review, and package-manager module
   execution without unpacking nested payloads. Verification is focused under
   the low-battery delivery constraint. Commit: `36e9e0e`.
+- Current native data-tooling workbench pass exposes required data IDE
+  operations plus collected operation, pipeline, guard, transaction, module,
+  relationship lookup, and runtime replay names directly from source and
+  generated workbench contracts. Generated consumers can now inspect connection
+  tests, query previews, schema diffs, dataset design, service publication,
+  service-method adapters, relationship lookups, offline replay, replication
+  monitoring, module smokes, and release scenarios without unpacking nested
+  payloads. Verification is focused under the low-battery delivery constraint.
+  Commit: pending.
 - Current PBC specification gate pass makes first-class agent/chatbot skills
   and side-effect-free self-registration explicit specification requirements.
   All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,
@@ -2724,3 +2733,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   AP schema/model/capability/event/handler smokes, AP implementation release
   audit, AP generation smoke audit, AP specification contract, direct
   runtime/schema gap check, and restricted legacy-name scan. Commit: `b4e499e`.
+- Current treasury ownership pass closes the AppGen-X dead-letter and runtime
+  event-table materialization gap for `treasury_cash`. Runtime-owned
+  `treasury_cash_appgen_outbox_event`, `treasury_cash_appgen_inbox_event`, and
+  `treasury_cash_dead_letter_event` are now materialized in package schema,
+  model metadata, migration DDL, package manifest, PBC catalog metadata, event
+  contract, handler evidence, and service metadata. Focused verification under
+  the low-battery constraint passed: Python compile for touched treasury/PBC
+  modules, `src/pyAppGen/pbcs/treasury_cash/tests/test_contract.py`, treasury
+  schema/model/capability/event/handler smokes, treasury implementation release
+  audit, treasury generation smoke audit, treasury specification contract,
+  direct runtime/schema gap check, and restricted legacy-name scan. Commit:
+  `0d89c8e`.

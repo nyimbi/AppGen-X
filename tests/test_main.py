@@ -2658,9 +2658,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_tooling_query_designer_transaction_replay",
         "data_tooling_service_method_transaction_replay",
         "data_tooling_failover_transaction_replay",
+        "data_tooling_operations_exposed",
         "data_tooling_readiness_contract",
         "data_tooling_ide_scenario",
     } == {check["id"] for check in data_workbench["checks"]}
+    assert {
+        "test_connection",
+        "preview_query",
+        "rollback_test_transaction",
+        "bind_parameters",
+        "run_contract_tests",
+        "publish_runtime_adapter",
+        "relationship_lookups_before_publish",
+        "run_ide_operation",
+    } <= set(data_workbench["required_data_tooling_operations"]) <= set(data_workbench["data_tooling_operations"])
     assert data_tooling_test_connection()["ok"] is True
     assert data_tooling_test_connection()["pipeline"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_tooling_preview_query()["pipeline"]
@@ -17377,9 +17388,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_tooling_query_designer_transaction_replay",
         "data_tooling_service_method_transaction_replay",
         "data_tooling_failover_transaction_replay",
+        "data_tooling_operations_exposed",
         "data_tooling_readiness_contract",
         "data_tooling_ide_scenario",
     } == {check["id"] for check in generated_data_tooling["checks"]}
+    assert {
+        "test_connection",
+        "preview_query",
+        "rollback_test_transaction",
+        "bind_parameters",
+        "run_contract_tests",
+        "publish_runtime_adapter",
+        "relationship_lookups_before_publish",
+        "run_ide_operation",
+    } <= set(generated_data_tooling["required_data_tooling_operations"]) <= set(
+        generated_data_tooling["data_tooling_operations"]
+    )
     generated_connection = form_designer.data_tooling_test_connection()
     assert generated_connection["ok"] is True
     assert generated_connection["pipeline"][-1] == "rollback_test_transaction"
