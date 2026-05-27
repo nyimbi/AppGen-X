@@ -1,5 +1,6 @@
 from .. import package_discovery_plan, package_metadata_manifest, registration_plan, validate_package_metadata
 from .. import events, handlers, release_evidence, routes, services, config, permissions, seed_data, agent, models
+from .. import capability_assurance
 from ..runtime import multi_sided_market_compile_escrow_release_policy
 from ..runtime import multi_sided_market_empty_state
 from ..runtime import multi_sided_market_open_escrow
@@ -126,3 +127,16 @@ def test_agent_chatbot_skills_are_executable():
     assert create_plan['ok'] is True
     assert rejected['ok'] is False
     assert agent.composed_agent_contribution()['single_agent_skill_namespace'] == 'multi_sided_market_skills'
+
+
+def test_capability_assurance_maps_features_to_runtime_operations():
+    coverage = capability_assurance.validate_table_stakes_capability_coverage()
+    manifest = coverage['manifest']
+    assert coverage['ok'] is True
+    assert coverage['missing_standard'] == ()
+    assert coverage['missing_advanced'] == ()
+    assert coverage['missing_operations'] == ()
+    assert set(coverage['covered_standard']) == set(manifest['standard_features'])
+    assert set(coverage['covered_advanced']) == set(manifest['advanced_capabilities'])
+    assert {'configure_runtime', 'receive_event', 'parse_market_instruction', 'release_escrow'} <= set(manifest['runtime_operations'])
+    assert all(table.startswith('multi_sided_market_') for table in manifest['owned_tables'])
