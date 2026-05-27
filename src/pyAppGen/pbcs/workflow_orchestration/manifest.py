@@ -1,1 +1,76 @@
-PBC_MANIFEST = {'pbc': 'workflow_orchestration', 'label': 'Distributed Workflow Orchestration Engine', 'mesh': 'platform', 'description': 'Visual state-machine orchestration, sagas, timers, retries, and compensation.', 'datastore_backend': 'postgresql', 'tables': ('workflow_definition', 'workflow_instance', 'saga_step', 'timer_task'), 'apis': ('POST /workflows', 'POST /instances', 'POST /signals', 'GET /workflow-orchestration-workbench'), 'emits': ('WorkflowStarted', 'SagaCompensated', 'WorkflowCompleted'), 'consumes': ('InvoiceApproved', 'OrderVerified', 'ShipmentDelivered'), 'template': None, 'ui_fragments': ('WorkflowOrchestrationWorkbench', 'WorkflowOrchestrationDetail'), 'permissions': ('workflow_orchestration.read', 'workflow_orchestration.create', 'workflow_orchestration.update', 'workflow_orchestration.approve', 'workflow_orchestration.admin'), 'configuration': ('WORKFLOW_ORCHESTRATION_DATABASE_URL', 'WORKFLOW_ORCHESTRATION_EVENT_TOPIC', 'WORKFLOW_ORCHESTRATION_RETRY_LIMIT'), 'capabilities': ('workflow_orchestration.workflow_definition', 'workflow_orchestration.workflow_instance', 'workflow_orchestration.saga_step', 'workflow_orchestration.timer_task'), 'standard_features': ('workflow_definition_catalog', 'state_machine_authoring', 'definition_versioning', 'instance_orchestration', 'signal_handling', 'timer_scheduling', 'retry_policy', 'saga_step_execution', 'compensation_execution', 'human_task_queue', 'approval_routing', 'sla_policy', 'escalation_policy', 'correlation_id', 'idempotent_handlers', 'retry_dead_letter', 'workflow_telemetry', 'policy_gate', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench', 'release_gate', 'audit_evidence', 'package_registration_validation', 'appgen_event_contract'), 'workflows': ('command_workflows', 'command_instances', 'command_signals', 'query_workflow_orchestration_workbench'), 'analytics': ('policy_latency', 'contract_break_rate', 'deployment_safety', 'audit_completeness', 'workflow_started_throughput', 'saga_compensated_throughput'), 'advanced_capabilities': ('event_sourced_workflow_lifecycle', 'graph_relational_saga_topology', 'multi_tenant_workflow_isolation', 'schema_on_read_workflow_context', 'probabilistic_sla_breach_scoring', 'real_time_workflow_analytics', 'counterfactual_saga_policy_simulation', 'temporal_workflow_forecasting', 'autonomous_compensation_recommendation', 'semantic_workflow_intent_parsing', 'predictive_saga_risk_scoring', 'self_healing_workflow_route_selection', 'zero_knowledge_workflow_completion_proof', 'immutable_workflow_audit_trail', 'dynamic_workflow_policy_screening', 'automated_workflow_control_testing', 'universal_api_async_workflow_surface', 'cross_system_workflow_federation', 'gateway_schema_audit_identity_composition_integration', 'decentralized_workflow_actor_identity', 'chaos_engineered_workflow_tolerance', 'quantum_resistant_workflow_authorization', 'carbon_aware_workflow_scheduling', 'algebraic_state_machine_minimization', 'mechanism_design_saga_resource_allocation', 'information_theoretic_workflow_anomaly_detection', 'temporal_workflow_exposure_stochastic_modeling', 'distributed_systems_engineering', 'probabilistic_ml_workflow_risk', 'cryptographic_engineering', 'mathematical_optimization', 'workflow_mlops_governance'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+"""Package manifest for the workflow_orchestration PBC."""
+
+from .runtime import WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES
+from .runtime import WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES
+from .runtime import WORKFLOW_ORCHESTRATION_OWNED_TABLES
+from .runtime import WORKFLOW_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS
+from .runtime import WORKFLOW_ORCHESTRATION_RUNTIME_TABLES
+from .runtime import WORKFLOW_ORCHESTRATION_STANDARD_FEATURE_KEYS
+from .runtime import workflow_orchestration_build_api_contract
+
+
+PBC_MANIFEST = {
+    "pbc": 'workflow_orchestration',
+    "label": "Distributed Workflow Orchestration Engine",
+    "mesh": "platform",
+    "description": "Workflow definitions, instances, signals, timers, sagas, compensations, human tasks, rules, parameters, configuration, AppGen-X eventing, and governed orchestration telemetry.",
+    "datastore_backend": "postgresql",
+    "tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES + WORKFLOW_ORCHESTRATION_RUNTIME_TABLES,
+    "apis": tuple(route["route"] for route in workflow_orchestration_build_api_contract()["routes"]),
+    "emits": WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES,
+    "consumes": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES,
+    "template": None,
+    "ui_fragments": (
+        "WorkflowOrchestrationWorkbench",
+        "WorkflowDefinitionConsole",
+        "WorkflowInstanceBoard",
+        "SignalInboxPanel",
+        "TimerTaskConsole",
+        "SagaStepTimeline",
+        "CompensationConsole",
+        "HumanTaskQueue",
+        "WorkflowConfigurationPanel",
+    ),
+    "permissions": (
+        "workflow_orchestration.define",
+        "workflow_orchestration.start",
+        "workflow_orchestration.signal",
+        "workflow_orchestration.compensate",
+        "workflow_orchestration.event",
+        "workflow_orchestration.configure",
+        "workflow_orchestration.audit",
+        "workflow_orchestration.read",
+    ),
+    "configuration": (
+        "WORKFLOW_ORCHESTRATION_DATABASE_URL",
+        "WORKFLOW_ORCHESTRATION_EVENT_TOPIC",
+        "WORKFLOW_ORCHESTRATION_RETRY_LIMIT",
+        "WORKFLOW_ORCHESTRATION_DEFAULT_TIMEZONE",
+        "WORKFLOW_ORCHESTRATION_ALLOWED_SIGNAL_SOURCES",
+    ),
+    "capabilities": tuple(f"workflow_orchestration.{table}" for table in WORKFLOW_ORCHESTRATION_OWNED_TABLES + WORKFLOW_ORCHESTRATION_RUNTIME_TABLES),
+    "standard_features": WORKFLOW_ORCHESTRATION_STANDARD_FEATURE_KEYS,
+    "workflows": (
+        "command_workflow_definitions",
+        "command_workflow_instances",
+        "command_workflow_signals",
+        "command_timer_tasks",
+        "command_saga_steps",
+        "command_compensations",
+        "command_event_inbox",
+        "query_workflow_orchestration_workbench",
+    ),
+    "analytics": (
+        "workflow_start_rate",
+        "saga_step_latency",
+        "timer_breach_risk",
+        "compensation_rate",
+        "human_task_sla",
+        "workflow_completed_throughput",
+    ),
+    "advanced_capabilities": WORKFLOW_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS,
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": ("tests/test_contract.py",),
+    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+}

@@ -1,76 +1,15 @@
 CREATE SCHEMA IF NOT EXISTS workflow_orchestration;
 
-CREATE TABLE workflow_orchestration_workflow_definition (
-  id INTEGER PRIMARY KEY NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE workflow_orchestration_workflow_instance (
-  id INTEGER PRIMARY KEY NOT NULL,
-  workflow_definition_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (workflow_definition_id) REFERENCES workflow_orchestration_workflow_definition(id)
-);
-
-CREATE TABLE workflow_orchestration_saga_step (
-  id INTEGER PRIMARY KEY NOT NULL,
-  workflow_definition_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (workflow_definition_id) REFERENCES workflow_orchestration_workflow_definition(id)
-);
-
-CREATE TABLE workflow_orchestration_timer_task (
-  id INTEGER PRIMARY KEY NOT NULL,
-  workflow_definition_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (workflow_definition_id) REFERENCES workflow_orchestration_workflow_definition(id)
-);
-
-CREATE TABLE workflow_orchestration_appgen_outbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE workflow_orchestration_appgen_inbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE workflow_orchestration_appgen_dead_letter_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
+CREATE TABLE workflow_orchestration_workflow_definition (tenant VARCHAR(120) NOT NULL, workflow_id VARCHAR(160) NOT NULL, owner_pbc VARCHAR(160) NOT NULL, semantic_version VARCHAR(80) NOT NULL, states TEXT NOT NULL, transitions TEXT NOT NULL, participants TEXT NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_workflow_instance (tenant VARCHAR(120) NOT NULL, instance_id VARCHAR(160) NOT NULL, workflow_id VARCHAR(160) NOT NULL, correlation_id VARCHAR(160) NOT NULL, current_state VARCHAR(120) NOT NULL, context_payload TEXT NOT NULL, history TEXT NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_workflow_signal (tenant VARCHAR(120) NOT NULL, signal_id VARCHAR(160) NOT NULL, instance_id VARCHAR(160) NOT NULL, signal VARCHAR(160) NOT NULL, source_pbc VARCHAR(160) NOT NULL, payload TEXT NOT NULL, accepted BOOLEAN NOT NULL, idempotency_key VARCHAR(240) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_timer_task (tenant VARCHAR(120) NOT NULL, timer_id VARCHAR(160) NOT NULL, instance_id VARCHAR(160) NOT NULL, action VARCHAR(160) NOT NULL, deadline_seconds INTEGER NOT NULL, breach_risk DECIMAL(12,4) NOT NULL, retry_budget INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_saga_step (tenant VARCHAR(120) NOT NULL, step_id VARCHAR(160) NOT NULL, instance_id VARCHAR(160) NOT NULL, participant_pbc VARCHAR(160) NOT NULL, command VARCHAR(200) NOT NULL, duration_ms INTEGER NOT NULL, status VARCHAR(80) NOT NULL, idempotency_key VARCHAR(240) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_compensation (tenant VARCHAR(120) NOT NULL, compensation_id VARCHAR(160) NOT NULL, instance_id VARCHAR(160) NOT NULL, step_id VARCHAR(160) NOT NULL, command VARCHAR(200) NOT NULL, reason VARCHAR(240) NOT NULL, side_effect_boundary VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_human_task (tenant VARCHAR(120) NOT NULL, task_id VARCHAR(160) NOT NULL, instance_id VARCHAR(160) NOT NULL, task_type VARCHAR(120) NOT NULL, assignee_group VARCHAR(160) NOT NULL, decision VARCHAR(120) NOT NULL, sla_due_at TIMESTAMP NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_workflow_rule (tenant VARCHAR(120) NOT NULL, rule_id VARCHAR(160) NOT NULL, scope VARCHAR(120) NOT NULL, trigger VARCHAR(160) NOT NULL, compiled_hash VARCHAR(200) NOT NULL, enabled BOOLEAN NOT NULL, severity VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_workflow_parameter (tenant VARCHAR(120) NOT NULL, parameter_name VARCHAR(160) NOT NULL, parameter_value VARCHAR(255) NOT NULL, effective_at TIMESTAMP NOT NULL, changed_by VARCHAR(160) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_workflow_configuration (tenant VARCHAR(120) NOT NULL, configuration_id VARCHAR(160) NOT NULL, database_backend VARCHAR(80) NOT NULL, event_topic VARCHAR(200) NOT NULL, event_contract VARCHAR(80) NOT NULL, stream_engine_picker_visible BOOLEAN NOT NULL, default_timezone VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_appgen_outbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, idempotency_key VARCHAR(240) NOT NULL, published_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_appgen_inbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, idempotency_key VARCHAR(240) NOT NULL, attempts INTEGER NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE workflow_orchestration_dead_letter_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, reason VARCHAR(240) NOT NULL, attempts INTEGER NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);

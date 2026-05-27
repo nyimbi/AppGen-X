@@ -13,10 +13,31 @@ def test_generated_schema_service_and_release_evidence():
     assert SCHEMA_CONTRACT['pbc'] == 'workflow_orchestration'
     assert SCHEMA_CONTRACT['ok'] is True
     assert SCHEMA_CONTRACT['owned_tables']
+    assert len(SCHEMA_CONTRACT['owned_tables']) >= 13
+    assert all(table.startswith('workflow_orchestration_') for table in SCHEMA_CONTRACT['owned_tables'])
+    assert any(
+        field['name'] == 'workflow_id'
+        for table in SCHEMA_CONTRACT['tables']
+        if table['owned_table'] == 'workflow_orchestration_workflow_definition'
+        for field in table['fields']
+    )
+    assert any(
+        field['name'] == 'idempotency_key'
+        for table in SCHEMA_CONTRACT['tables']
+        if table['owned_table'] == 'workflow_orchestration_workflow_signal'
+        for field in table['fields']
+    )
+    assert any(
+        field['name'] == 'idempotency_key'
+        for table in SCHEMA_CONTRACT['tables']
+        if table['owned_table'] == 'workflow_orchestration_appgen_outbox_event'
+        for field in table['fields']
+    )
     schema_smoke = schema_contract.smoke_test()
     model_smoke = models.smoke_test()
     assert schema_smoke['ok'] is True
     assert model_smoke['ok'] is True
+    assert not model_smoke['manifest']['thin_models']
     assert not schema_smoke['side_effects']
     assert not model_smoke['side_effects']
     assert SERVICE_CONTRACT['pbc'] == 'workflow_orchestration'

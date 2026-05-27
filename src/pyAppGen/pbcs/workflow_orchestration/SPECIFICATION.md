@@ -215,25 +215,49 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `workflow_orchestration`
 - Mesh: `platform`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
 - `workflow_definition`
 - `workflow_instance`
+- `workflow_signal`
 - `saga_step`
 - `timer_task`
+- `compensation`
+- `human_task`
+- `workflow_rule`
+- `workflow_parameter`
+- `workflow_configuration`
+- `workflow_orchestration_appgen_outbox_event`
+- `workflow_orchestration_appgen_inbox_event`
+- `workflow_orchestration_dead_letter_event`
 
 ### API Routes
 
-- `POST /workflows`
-- `POST /instances`
-- `POST /signals`
+- `PUT /workflows/configuration`
+- `POST /workflows/parameters`
+- `POST /workflows/rules`
+- `POST /workflows/definitions`
+- `POST /workflows/instances`
+- `POST /workflows/instances/{id}/signals`
+- `POST /workflows/timers`
+- `POST /workflows/instances/{id}/steps`
+- `POST /workflows/instances/{id}/compensations`
+- `POST /workflows/events/inbox`
+- `GET /workflows/workbench`
+- `GET /workflows/schema-contract`
+- `GET /workflows/service-contract`
+- `GET /workflows/release-evidence`
 
 ### Emitted Events
 
+- `WorkflowDefinitionPublished`
 - `WorkflowStarted`
-- `SagaCompensated`
+- `WorkflowSignalAccepted`
+- `SagaStepCompleted`
+- `TimerScheduled`
+- `CompensationExecuted`
 - `WorkflowCompleted`
 
 ### Consumed Events
@@ -241,25 +265,106 @@ This appendix is generated from the package manifest and is release-gated so the
 - `InvoiceApproved`
 - `OrderVerified`
 - `ShipmentDelivered`
+- `PaymentCaptured`
+- `SchemaAccepted`
+- `AccessPolicyChanged`
+- `RoutePublished`
 
 ### UI Fragments
 
-- None declared
+- `WorkflowOrchestrationWorkbench`
+- `WorkflowDefinitionConsole`
+- `WorkflowInstanceBoard`
+- `SignalInboxPanel`
+- `TimerTaskConsole`
+- `SagaStepTimeline`
+- `CompensationConsole`
+- `HumanTaskQueue`
+- `WorkflowConfigurationPanel`
 
 ### Permissions
 
-- None declared
+- `workflow_orchestration.define`
+- `workflow_orchestration.start`
+- `workflow_orchestration.signal`
+- `workflow_orchestration.compensate`
+- `workflow_orchestration.event`
+- `workflow_orchestration.configure`
+- `workflow_orchestration.audit`
+- `workflow_orchestration.read`
 
 ### Configuration Keys
 
-- None declared
+- `WORKFLOW_ORCHESTRATION_DATABASE_URL`
+- `WORKFLOW_ORCHESTRATION_EVENT_TOPIC`
+- `WORKFLOW_ORCHESTRATION_RETRY_LIMIT`
+- `WORKFLOW_ORCHESTRATION_DEFAULT_TIMEZONE`
+- `WORKFLOW_ORCHESTRATION_ALLOWED_SIGNAL_SOURCES`
 
 ### Standard Features
 
-- None declared
+- `workflow_definition_catalog`
+- `state_machine_authoring`
+- `definition_versioning`
+- `instance_orchestration`
+- `signal_handling`
+- `timer_scheduling`
+- `retry_policy`
+- `saga_step_execution`
+- `compensation_execution`
+- `human_task_queue`
+- `approval_routing`
+- `sla_policy`
+- `escalation_policy`
+- `correlation_id`
+- `idempotent_handlers`
+- `retry_dead_letter`
+- `workflow_telemetry`
+- `policy_gate`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
+- `release_gate`
+- `audit_evidence`
+- `package_registration_validation`
+- `appgen_event_contract`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_workflow_lifecycle`
+- `graph_relational_saga_topology`
+- `multi_tenant_workflow_isolation`
+- `schema_on_read_workflow_context`
+- `probabilistic_sla_breach_scoring`
+- `real_time_workflow_analytics`
+- `counterfactual_saga_policy_simulation`
+- `temporal_workflow_forecasting`
+- `autonomous_compensation_recommendation`
+- `semantic_workflow_intent_parsing`
+- `predictive_saga_risk_scoring`
+- `self_healing_workflow_route_selection`
+- `zero_knowledge_workflow_completion_proof`
+- `immutable_workflow_audit_trail`
+- `dynamic_workflow_policy_screening`
+- `automated_workflow_control_testing`
+- `universal_api_async_workflow_surface`
+- `cross_system_workflow_federation`
+- `gateway_schema_audit_identity_composition_integration`
+- `decentralized_workflow_actor_identity`
+- `chaos_engineered_workflow_tolerance`
+- `quantum_resistant_workflow_authorization`
+- `carbon_aware_workflow_scheduling`
+- `algebraic_state_machine_minimization`
+- `mechanism_design_saga_resource_allocation`
+- `information_theoretic_workflow_anomaly_detection`
+- `temporal_workflow_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_workflow_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `workflow_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
