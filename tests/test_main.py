@@ -3076,6 +3076,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "mobile_readiness_contract",
         "device_component_modules",
         "device_component_module_tests",
+        "device_api_operations_exposed",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert {
@@ -3096,6 +3097,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mobile_apis == {permission["api"] for permission in mobile_workbench["contract"]["permission_manifest"]["permissions"]}
     assert mobile_apis == {adapter["api"] for adapter in mobile_workbench["contract"]["component_adapters"]["adapters"]}
     assert mobile_apis == {fixture["api"] for fixture in mobile_workbench["contract"]["simulator"]["fixtures"]}
+    assert {
+        "request_permission",
+        "show_reviewable_prompt",
+        "invoke_platform_adapter",
+        "emit_component_event",
+        "disable_component_with_explanation",
+        "transition_permission",
+        "replay_native_call_transaction",
+        "offline_queue_before_target_matrix",
+    } <= set(mobile_workbench["required_device_api_operations"]) <= set(mobile_workbench["device_api_operations"])
     assert {"media_permission_denied", "clipboard_sandbox", "lifecycle_resume"} <= set(
         mobile_workbench["contract"]["component_adapters"]["test_harnesses"]
     )
@@ -18650,6 +18661,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "mobile_readiness_contract",
         "device_component_modules",
         "device_component_module_tests",
+        "device_api_operations_exposed",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert {
@@ -18676,6 +18688,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile_apis == {
         fixture["api"] for fixture in generated_mobile["contract"]["simulator"]["fixtures"]
     }
+    assert {
+        "request_permission",
+        "show_reviewable_prompt",
+        "invoke_platform_adapter",
+        "emit_component_event",
+        "disable_component_with_explanation",
+        "transition_permission",
+        "replay_native_call_transaction",
+        "offline_queue_before_target_matrix",
+    } <= set(generated_mobile["required_device_api_operations"]) <= set(generated_mobile["device_api_operations"])
     assert {"media_permission_denied", "clipboard_sandbox", "lifecycle_resume"} <= set(
         generated_mobile["contract"]["component_adapters"]["test_harnesses"]
     )

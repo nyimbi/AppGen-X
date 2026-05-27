@@ -2646,6 +2646,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   round-trips, compile preview, resource refresh, runtime reload, debug preview,
   and rollback guards without unpacking nested operation payloads. Verification
   is focused under the low-battery delivery constraint. Commit: `fcc06a1`.
+- Current mobile/native device workbench pass exposes required device API
+  operations plus collected operation, pipeline, guard, transaction phase, and
+  fallback names directly from source and generated workbench contracts.
+  Generated consumers can now inspect permission prompts, adapter dispatch,
+  simulator replay, privacy review, fallback handling, lifecycle resume,
+  component validation, device scenarios, native-call replay, offline queue
+  guards, and runtime/designer ordering without unpacking nested workbench
+  payloads. Verification is focused under the low-battery delivery constraint.
+  Commit: `2fd1889`.
 - Current PBC specification gate pass makes first-class agent/chatbot skills
   and side-effect-free self-registration explicit specification requirements.
   All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,

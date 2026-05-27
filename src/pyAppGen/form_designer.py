@@ -16800,6 +16800,66 @@ def mobile_native_api_workbench() -> dict:
     device_component_module_artifacts = device_api_component_module_file_manifest()
     device_component_test_artifacts = device_api_component_test_module_file_manifest()
     readiness = mobile_native_api_readiness_contract()
+    required_device_api_operations = (
+        "request_permission",
+        "check_cached_grant",
+        "show_reviewable_prompt",
+        "dispatch_result",
+        "dispatch_adapter",
+        "invoke_platform_adapter",
+        "emit_component_event",
+        "replay_simulator",
+        "load_fixture",
+        "assert_component_events",
+        "review_platform_fallback",
+        "disable_component_with_explanation",
+        "review_privacy",
+        "least_privilege",
+        "resume_background",
+        "persist_checkpoint",
+        "resume_foreground",
+        "validate_device_component",
+        "bind_permission_editor",
+        "bind_simulator_fixture",
+        "run_device_scenario",
+        "permission_before_bridge",
+        "fixture_before_adapter",
+        "unsupported_targets_disable_component",
+        "declare_privacy",
+        "transition_permission",
+        "invoke_target_bridges",
+        "replay_native_call_transaction",
+        "dispatch_runtime_events",
+        "offline_queue_before_target_matrix",
+        "runtime_before_designer_claim",
+    )
+
+    def _collect_strings(value) -> tuple[str, ...]:
+        if isinstance(value, str):
+            return (value,)
+        if isinstance(value, dict):
+            return tuple(text for item in value.values() for text in _collect_strings(item))
+        if isinstance(value, (tuple, list, set)):
+            return tuple(text for item in value for text in _collect_strings(item))
+        return ()
+
+    device_api_operations = tuple(
+        dict.fromkeys(
+            tuple(actionable_operations["operations"])
+            + tuple(
+                text
+                for operation in actionable_operations["operations"].values()
+                for text in _collect_strings(operation)
+            )
+            + tuple(item["phase"] for item in readiness["phases"])
+            + tuple(text for item in designer_transaction_replay["replay"] for text in _collect_strings(item))
+            + tuple(text for item in capability_lifecycle_replay["replay"] for text in _collect_strings(item))
+            + tuple(text for item in runtime_replay["replay"] for text in _collect_strings(item))
+            + tuple(capability_lifecycle_replay["guards"])
+            + tuple(readiness["guards"])
+            + tuple(runtime_replay["guards"])
+        )
+    )
     checks = (
         {
             "id": "api_breadth",
@@ -17115,6 +17175,12 @@ def mobile_native_api_workbench() -> dict:
             ),
             "evidence": device_component_test_artifacts,
         },
+        {
+            "id": "device_api_operations_exposed",
+            "ok": set(required_device_api_operations) <= set(device_api_operations),
+            "required": required_device_api_operations,
+            "passing": tuple(operation for operation in required_device_api_operations if operation in device_api_operations),
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -17152,6 +17218,8 @@ def mobile_native_api_workbench() -> dict:
         "capability_lifecycle_replay": capability_lifecycle_replay,
         "device_component_module_artifacts": device_component_module_artifacts,
         "device_component_test_artifacts": device_component_test_artifacts,
+        "required_device_api_operations": required_device_api_operations,
+        "device_api_operations": device_api_operations,
         "readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
