@@ -19383,7 +19383,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "target_artifact_transaction" in {
         check["id"] for check in visual_assets.validate_runtime_assets()["checks"] if check["ok"]
     }
-    assert visual_assets.smoke_test()["ok"] is True
+    visual_assets_smoke = visual_assets.smoke_test()
+    assert visual_assets_smoke["ok"] is True
+    assert {
+        "write_artifact_manifest",
+        "verify_bundle_integrity",
+        "record_rollback_snapshot",
+        "publish_target_artifact",
+    } <= set(visual_assets_smoke["required_artifact_operations"]) <= set(visual_assets_smoke["artifact_operations"])
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True
