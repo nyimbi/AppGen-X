@@ -1,1 +1,60 @@
-PBC_MANIFEST = {'pbc': 'loyalty_rewards', 'label': 'Customer Loyalty Points and Rewards', 'mesh': 'relationship', 'description': 'Rewards, tiers, point balances, earning rules, and redemption validation.', 'datastore_backend': 'postgresql', 'tables': ('reward_account', 'points_ledger', 'earning_rule', 'redemption'), 'apis': ('POST /points', 'POST /redemptions', 'GET /reward-accounts'), 'emits': ('RewardBalanceChanged', 'CustomerSegmentUpdated'), 'consumes': ('PaymentCaptured', 'PromotionApplied'), 'template': None, 'ui_fragments': ('LoyaltyRewardsWorkbench', 'LoyaltyRewardsDetail'), 'permissions': ('loyalty_rewards.read', 'loyalty_rewards.create', 'loyalty_rewards.update', 'loyalty_rewards.approve', 'loyalty_rewards.admin'), 'configuration': ('LOYALTY_REWARDS_DATABASE_URL', 'LOYALTY_REWARDS_EVENT_TOPIC', 'LOYALTY_REWARDS_RETRY_LIMIT'), 'capabilities': ('loyalty_rewards.reward_account', 'loyalty_rewards.points_ledger', 'loyalty_rewards.earning_rule', 'loyalty_rewards.redemption'), 'standard_features': ('member_accounts', 'member_enrollment', 'points_ledger', 'points_earning', 'points_adjustment', 'redemptions', 'tier_qualification', 'earning_rules', 'referrals', 'partner_accruals', 'offer_eligibility', 'expiration', 'liability_controls', 'fraud_controls', 'payment_projection', 'promotion_projection', 'tenant_isolation', 'appgen_x_outbox', 'appgen_x_inbox', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench'), 'workflows': ('command_points', 'command_redemptions', 'query_reward_accounts'), 'analytics': ('response_time', 'engagement_quality', 'segment_lift', 'retention_signal', 'reward_balance_changed_throughput', 'customer_segment_updated_throughput'), 'advanced_capabilities': ('event_sourced_rewards_lifecycle', 'owned_rewards_schema_boundary', 'multi_tenant_rewards_isolation', 'schema_evolution_resilient_rewards_context', 'member_enrollment_and_wallets', 'points_earn_and_adjustment_ledger', 'redemption_validation_and_reservation', 'tier_qualification_and_benefits', 'earning_rule_management', 'partner_accrual_and_offer_projection', 'expiration_and_liability_control', 'probabilistic_breakage_and_ltv_scoring', 'counterfactual_offer_simulation', 'temporal_rewards_liability_forecasting', 'autonomous_loyalty_exception_resolution', 'semantic_rewards_rule_understanding', 'predictive_fraud_and_churn_risk', 'self_healing_balance_reconciliation', 'cryptographic_reward_balance_proof', 'immutable_rewards_audit_trail', 'dynamic_rewards_policy_screening', 'automated_liability_control_testing', 'cross_system_payment_promotion_segment_federation', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions_governance_evidence', 'configuration_schema', 'parameter_engine', 'rule_engine', 'seed_data', 'workbench_ui', 'governed_model_evidence'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+"""Package manifest for the Loyalty Rewards PBC."""
+
+from __future__ import annotations
+
+from .runtime import LOYALTY_REWARDS_CONSUMED_EVENT_TYPES
+from .runtime import LOYALTY_REWARDS_EMITTED_EVENT_TYPES
+from .runtime import LOYALTY_REWARDS_OWNED_TABLES
+from .runtime import LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS
+from .runtime import LOYALTY_REWARDS_STANDARD_FEATURE_KEYS
+from .runtime import loyalty_rewards_build_api_contract
+from .runtime import loyalty_rewards_runtime_capabilities
+from .ui import LOYALTY_REWARDS_UI_FRAGMENT_KEYS
+
+
+PBC_KEY = 'loyalty_rewards'
+
+PBC_MANIFEST = {
+    "pbc": "loyalty_rewards",
+    "label": "Customer Loyalty Points and Rewards",
+    "mesh": "relationship",
+    "description": (
+        "Member wallets, point accrual, adjustments, redemptions, tiers, "
+        "earning rules, referrals, partner accruals, fraud controls, liability, "
+        "forecasting, governance, and AppGen-X event orchestration."
+    ),
+    "datastore_backend": "postgresql",
+    "tables": LOYALTY_REWARDS_OWNED_TABLES,
+    "apis": tuple(route["route"] for route in loyalty_rewards_build_api_contract()["routes"]),
+    "emits": LOYALTY_REWARDS_EMITTED_EVENT_TYPES,
+    "consumes": LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
+    "template": None,
+    "ui_fragments": LOYALTY_REWARDS_UI_FRAGMENT_KEYS,
+    "permissions": tuple(sorted(loyalty_rewards_build_api_contract()["permissions"])),
+    "configuration": (
+        "LOYALTY_REWARDS_DATABASE_URL",
+        "LOYALTY_REWARDS_EVENT_TOPIC",
+        "LOYALTY_REWARDS_RETRY_LIMIT",
+        "LOYALTY_REWARDS_DEFAULT_CURRENCY",
+        "LOYALTY_REWARDS_DEFAULT_TIMEZONE",
+        "LOYALTY_REWARDS_LIABILITY_MODE",
+    ),
+    "capabilities": tuple(f"loyalty_rewards.{table}" for table in LOYALTY_REWARDS_OWNED_TABLES),
+    "standard_features": LOYALTY_REWARDS_STANDARD_FEATURE_KEYS,
+    "workflows": loyalty_rewards_runtime_capabilities()["operations"],
+    "analytics": (
+        "points_earned",
+        "points_redeemed",
+        "liability_amount",
+        "breakage_risk",
+        "fraud_review_rate",
+        "tier_progression",
+        "reward_balance_changed_throughput",
+        "customer_segment_updated_throughput",
+    ),
+    "advanced_capabilities": LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS,
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": ("tests/test_contract.py",),
+    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+}

@@ -280,7 +280,7 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `loyalty_rewards`
 - Mesh: `relationship`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
@@ -291,9 +291,15 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### API Routes
 
+- `POST /reward-accounts`
 - `POST /points`
+- `POST /points/adjustments`
 - `POST /redemptions`
+- `POST /loyalty-rewards/events/inbox`
 - `GET /reward-accounts`
+- `GET /loyalty-rewards/schema-contract`
+- `GET /loyalty-rewards/service-contract`
+- `GET /loyalty-rewards/release-evidence`
 
 ### Emitted Events
 
@@ -307,22 +313,103 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `LoyaltyRewardsWorkbench`
+- `RewardAccountRegistry`
+- `PointsLedgerPanel`
+- `EarningRuleStudio`
+- `RedemptionConsole`
+- `TierQualificationBoard`
+- `ReferralAndPartnerPanel`
+- `ExpirationLiabilityPanel`
+- `RewardsFraudReviewQueue`
+- `RewardsRuleStudio`
+- `RewardsParameterConsole`
+- `RewardsConfigurationPanel`
+- `RewardsEventOutbox`
+- `RewardsDeadLetterQueue`
 
 ### Permissions
 
-- None declared
+- `loyalty_rewards.account.write`
+- `loyalty_rewards.audit`
+- `loyalty_rewards.configure`
+- `loyalty_rewards.event.consume`
+- `loyalty_rewards.points.write`
+- `loyalty_rewards.redemption.write`
 
 ### Configuration Keys
 
-- None declared
+- `LOYALTY_REWARDS_DATABASE_URL`
+- `LOYALTY_REWARDS_EVENT_TOPIC`
+- `LOYALTY_REWARDS_RETRY_LIMIT`
+- `LOYALTY_REWARDS_DEFAULT_CURRENCY`
+- `LOYALTY_REWARDS_DEFAULT_TIMEZONE`
+- `LOYALTY_REWARDS_LIABILITY_MODE`
 
 ### Standard Features
 
-- None declared
+- `member_accounts`
+- `member_enrollment`
+- `points_ledger`
+- `points_earning`
+- `points_adjustment`
+- `redemptions`
+- `tier_qualification`
+- `earning_rules`
+- `referrals`
+- `partner_accruals`
+- `offer_eligibility`
+- `expiration`
+- `liability_controls`
+- `fraud_controls`
+- `payment_projection`
+- `promotion_projection`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_rewards_lifecycle`
+- `owned_rewards_schema_boundary`
+- `multi_tenant_rewards_isolation`
+- `schema_evolution_resilient_rewards_context`
+- `member_enrollment_and_wallets`
+- `points_earn_and_adjustment_ledger`
+- `redemption_validation_and_reservation`
+- `tier_qualification_and_benefits`
+- `earning_rule_management`
+- `partner_accrual_and_offer_projection`
+- `expiration_and_liability_control`
+- `probabilistic_breakage_and_ltv_scoring`
+- `counterfactual_offer_simulation`
+- `temporal_rewards_liability_forecasting`
+- `autonomous_loyalty_exception_resolution`
+- `semantic_rewards_rule_understanding`
+- `predictive_fraud_and_churn_risk`
+- `self_healing_balance_reconciliation`
+- `cryptographic_reward_balance_proof`
+- `immutable_rewards_audit_trail`
+- `dynamic_rewards_policy_screening`
+- `automated_liability_control_testing`
+- `cross_system_payment_promotion_segment_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
+- `governed_model_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -9270,6 +9270,38 @@ from .pbcs.loyalty_rewards import loyalty_rewards_runtime_smoke  # noqa: E402,F4
 from .pbcs.loyalty_rewards import loyalty_rewards_set_parameter  # noqa: E402,F401
 from .pbcs.loyalty_rewards import loyalty_rewards_ui_contract  # noqa: E402,F401
 from .pbcs.loyalty_rewards import loyalty_rewards_verify_owned_table_boundary  # noqa: E402,F401
+PBC_CATALOG["loyalty_rewards"].update(
+    {
+        "apis": tuple(route["route"] for route in loyalty_rewards_build_api_contract()["routes"]),
+        "ui_fragments": LOYALTY_REWARDS_UI_FRAGMENT_KEYS,
+        "permissions": tuple(sorted(loyalty_rewards_build_api_contract()["permissions"])),
+        "configuration": (
+            "LOYALTY_REWARDS_DATABASE_URL",
+            "LOYALTY_REWARDS_EVENT_TOPIC",
+            "LOYALTY_REWARDS_RETRY_LIMIT",
+            "LOYALTY_REWARDS_DEFAULT_CURRENCY",
+            "LOYALTY_REWARDS_DEFAULT_TIMEZONE",
+            "LOYALTY_REWARDS_LIABILITY_MODE",
+        ),
+        "capabilities": tuple(
+            f"loyalty_rewards.{table['table']}"
+            for table in loyalty_rewards_build_schema_contract()["tables"]
+        ),
+        "standard_features": LOYALTY_REWARDS_STANDARD_FEATURE_KEYS,
+        "advanced_capabilities": LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS,
+        "workflows": loyalty_rewards_runtime_capabilities()["operations"],
+        "analytics": (
+            "points_earned",
+            "points_redeemed",
+            "liability_amount",
+            "breakage_risk",
+            "fraud_review_rate",
+            "tier_progression",
+            "reward_balance_changed_throughput",
+            "customer_segment_updated_throughput",
+        ),
+    }
+)
 from .pbcs.streaming_analytics import STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.streaming_analytics import STREAMING_ANALYTICS_RUNTIME_TABLES  # noqa: E402,F401
 from .pbcs.streaming_analytics import STREAMING_ANALYTICS_STANDARD_FEATURE_KEYS  # noqa: E402,F401
