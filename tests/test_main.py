@@ -6527,6 +6527,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "failover_transaction_replay",
         "runtime_replay",
     } <= set(data_tooling_smoke["passing_checks"])
+    assert {
+        "connection_probe",
+        "service_invocation",
+        "generate_lookup_editors",
+        "publish_lookup_endpoints",
+        "open_connection_profile",
+        "connection_catalog",
+        "contract_tests",
+        "queue_integrity",
+        "data_tooling_generate_lookup_editors",
+        "manual_review_offline_replay",
+    } <= set(data_tooling_smoke["smoke"]["required_data_operations"]) <= set(
+        data_tooling_smoke["smoke"]["data_operations"]
+    )
     runtime_operation_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_runtime_operations")
     assert runtime_operation_smoke["ok"] is True
     assert {
@@ -17792,6 +17806,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_replay",
     } <= set(data_runtime_smoke["checks"])
     assert data_runtime_smoke["ok"] is True
+    assert {
+        "connection_probe",
+        "service_invocation",
+        "generate_lookup_editors",
+        "publish_lookup_endpoints",
+        "open_connection_profile",
+        "connection_catalog",
+        "contract_tests",
+        "queue_integrity",
+        "data_tooling_generate_lookup_editors",
+        "manual_review_offline_replay",
+    } <= set(data_runtime_smoke["required_data_operations"]) <= set(data_runtime_smoke["data_operations"])
     component_parity_runtime_file = output_dir / "component_parity_runtime.py"
     assert component_parity_runtime_file.exists()
     py_compile.compile(str(component_parity_runtime_file), doraise=True)
