@@ -2226,6 +2226,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   service/route/UI/agent smokes, focused package contract tests, source artifact
   contract, implementation release audit, generation smoke audit, specification
   contract, and restricted legacy-name scan all passed. Commit: `20bf64a`.
+- Current native runtime/package authoring pass adds compile-package transaction
+  replay as release-gating evidence. Source and generated form-designer runtime
+  contracts now prove stream decode, unit semantic validation, dependency graph
+  staging, target package planning, diagnostic normalization, debug preview
+  linkage, and rollback with zero persisted writes before runtime delivery.
+  Verification is focused under the low-battery delivery constraint. Commit:
+  pending.
 - Current `notifications` PBC pass promotes declared orchestration surfaces
   into executable package-local operations: campaign creation, notification
   scheduling, transactional request creation, provider route override,

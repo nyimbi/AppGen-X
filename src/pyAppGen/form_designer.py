@@ -4745,6 +4745,93 @@ def pascal_debug_session_transaction_replay_contract(design: dict | None = None)
     }
 
 
+def pascal_compile_package_transaction_replay_contract(design: dict | None = None) -> dict:
+    """Replay compile/package authoring from stream decode through rollback proof."""
+    design = design or form_design()
+    round_trip = dfm_round_trip(design)
+    unit = pascal_unit_contract(design)
+    unit_parse = pascal_unit_parse_contract(design)
+    semantic_validation = pascal_semantic_validation_contract(design)
+    compiler = pascal_compiler_pipeline_contract(design)
+    package_targets = pascal_package_target_matrix_contract(design)
+    diagnostics = pascal_diagnostic_mapping_contract(design)
+    resources = pascal_resource_manifest_hash_contract(design)
+    runtime_replay = pascal_runtime_session_replay_contract(design)
+    debug_symbols = pascal_debug_symbol_contract(design)
+    replay = (
+        {
+            "phase": "decode_source_stream",
+            "pipeline": ("read_form_stream", "decode_binary_stream", "parse_text_stream", "index_component_identity"),
+            "ok": round_trip["ok"] and len(round_trip["round_trip_components"]) == len(design["components"]),
+        },
+        {
+            "phase": "validate_unit_semantics",
+            "pipeline": ("parse_unit", "bind_resource_directive", "resolve_component_declarations", "run_semantic_checks"),
+            "ok": unit_parse["class_name"] == unit["class_name"] and semantic_validation["ok"],
+        },
+        {
+            "phase": "build_dependency_graph",
+            "pipeline": ("collect_package_requires", "order_resource_manifest", "verify_acyclic_units", "stage_response_file"),
+            "ok": {"runtime-core", "native-desktop-ui", "cross-platform-ui"} <= set(unit["package_manifest"]["requires"])
+            and resources["ok"],
+        },
+        {
+            "phase": "select_compile_targets",
+            "pipeline": ("resolve_target_matrix", "select_toolchain_adapter", "stage_runtime_package", "stage_design_package"),
+            "ok": package_targets["ok"] and {"win64", "android", "ios"} <= {item["target"] for item in package_targets["targets"]},
+        },
+        {
+            "phase": "normalize_compile_diagnostics",
+            "pipeline": ("run_frontend_checks", "map_source_span", "route_to_designer_surface", "block_emit_on_fatal"),
+            "ok": {"parse_units", "type_check", "resource_link", "emit_target"} <= set(compiler["stages"])
+            and all("source_span" in mapping["maps_to"] for mapping in diagnostics["mappings"]),
+        },
+        {
+            "phase": "link_debug_preview",
+            "pipeline": ("write_symbol_map", "attach_preview_artifacts", "load_runtime_preview", "verify_runtime_state"),
+            "ok": runtime_replay["ok"] and debug_symbols["ok"] and runtime_replay["final_state"]["emit_allowed"],
+        },
+        {
+            "phase": "rollback_package_stage",
+            "pipeline": ("drop_staged_artifacts", "clear_response_file", "restore_compile_cache", "report_no_persisted_writes"),
+            "ok": runtime_replay["side_effects"] == () and compiler["side_effects"] == () and package_targets["side_effects"] == (),
+        },
+    )
+    checks = (
+        {"id": "source_stream_decoded", "ok": replay[0]["ok"], "evidence": replay[0]},
+        {"id": "unit_semantics_validated", "ok": replay[1]["ok"], "evidence": replay[1]},
+        {"id": "dependency_graph_ready", "ok": replay[2]["ok"], "evidence": replay[2]},
+        {"id": "target_package_plan_ready", "ok": replay[3]["ok"], "evidence": replay[3]},
+        {"id": "compile_diagnostics_normalized", "ok": replay[4]["ok"], "evidence": replay[4]},
+        {"id": "debug_preview_linked", "ok": replay[5]["ok"], "evidence": replay[5]},
+        {"id": "package_stage_rollback_ready", "ok": replay[6]["ok"], "evidence": replay[6]},
+        {"id": "compile_package_transaction_side_effect_free", "ok": all(item["ok"] for item in replay)},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.pascal-compile-package-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "source_stream_before_unit_semantics",
+            "dependency_graph_before_target_package_plan",
+            "diagnostics_normalized_before_preview_link",
+            "rollback_proves_no_persisted_writes",
+        ),
+        "final_state": {
+            "components_streamed": len(round_trip["round_trip_components"]),
+            "targets_planned": len(package_targets["targets"]),
+            "diagnostics_mapped": len(diagnostics["mappings"]),
+            "debug_symbols": len(debug_symbols["symbols"]),
+            "persisted_writes": 0,
+        },
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def pascal_runtime_memory_model_contract(design: dict | None = None) -> dict:
     """Return runtime ownership, lifetime, and exception-boundary evidence."""
     unit = pascal_unit_contract(design)
@@ -5351,6 +5438,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
     compiler = pascal_compiler_pipeline_contract(design)
     package_targets = pascal_package_target_matrix_contract(design)
     diagnostics = pascal_diagnostic_mapping_contract(design)
+    compile_package_replay = pascal_compile_package_transaction_replay_contract(design)
     debug_session = pascal_runtime_debug_authoring_contract(design)
     runtime_replay = pascal_runtime_session_replay_contract(design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design)
@@ -5393,6 +5481,18 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
             },
         },
         {
+            "phase": "replay_compile_package_transaction",
+            "ok": compile_package_replay["ok"]
+            and compile_package_replay["final_state"]["persisted_writes"] == 0
+            and {
+                "source_stream_before_unit_semantics",
+                "dependency_graph_before_target_package_plan",
+                "rollback_proves_no_persisted_writes",
+            }
+            <= set(compile_package_replay["guards"]),
+            "evidence": compile_package_replay,
+        },
+        {
             "phase": "debug_preview_trace",
             "ok": debug_session["ok"]
             and {
@@ -5425,8 +5525,9 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
         {"id": "unit_semantics_ready", "ok": phases[1]["ok"]},
         {"id": "compile_targets_ready", "ok": phases[2]["ok"]},
         {"id": "diagnostics_route_ready", "ok": phases[3]["ok"]},
-        {"id": "debug_preview_ready", "ok": phases[4]["ok"]},
-        {"id": "runtime_preview_ready", "ok": phases[5]["ok"]},
+        {"id": "compile_package_transaction_ready", "ok": phases[4]["ok"]},
+        {"id": "debug_preview_ready", "ok": phases[5]["ok"]},
+        {"id": "runtime_preview_ready", "ok": phases[6]["ok"]},
         {"id": "operation_surface_ready", "ok": operations["ok"]},
         {"id": "authoring_scenario_ready", "ok": authoring_scenario["ok"] and "verify_runtime_state" in authoring_scenario["pipeline"]},
         {
@@ -5437,6 +5538,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
                 "parse_unit_and_cross_check",
                 "plan_compile_and_targets",
                 "normalize_diagnostics",
+                "replay_compile_package_transaction",
                 "debug_preview_trace",
                 "reload_runtime_preview",
             ),
@@ -5449,10 +5551,12 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
         "decision": "approved" if ok else "blocked",
         "phases": phases,
         "checks": checks,
+        "compile_package_replay": compile_package_replay,
         "authoring_scenario": authoring_scenario,
         "guards": (
             "stream_identity_before_unit_cross_check",
             "unit_semantics_before_target_emit",
+            "compile_package_replay_before_debug_trace",
             "diagnostics_before_runtime_preview",
             "debug_trace_before_runtime_reload",
             "reload_preview_uses_actionable_operation",
@@ -5495,6 +5599,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     debug_symbols = pascal_debug_symbol_contract(design)
     debug_session = pascal_runtime_debug_authoring_contract(design)
     debug_transaction_replay = pascal_debug_session_transaction_replay_contract(design)
+    compile_package_replay = pascal_compile_package_transaction_replay_contract(design)
     runtime_memory_model = pascal_runtime_memory_model_contract(design)
     toolchain_adapters = pascal_toolchain_adapter_contract(design)
     runtime_replay = pascal_runtime_session_replay_contract(design)
@@ -5706,6 +5811,18 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "evidence": debug_transaction_replay,
         },
         {
+            "id": "compile_package_transaction_replay",
+            "ok": compile_package_replay["ok"]
+            and {
+                "source_stream_before_unit_semantics",
+                "dependency_graph_before_target_package_plan",
+                "rollback_proves_no_persisted_writes",
+            } <= set(compile_package_replay["guards"])
+            and compile_package_replay["final_state"]["persisted_writes"] == 0
+            and not compile_package_replay["side_effects"],
+            "evidence": compile_package_replay,
+        },
+        {
             "id": "runtime_memory_model",
             "ok": runtime_memory_model["ok"] and "owner_releases_children" in runtime_memory_model["guards"] and not runtime_memory_model["side_effects"],
             "evidence": runtime_memory_model,
@@ -5891,6 +6008,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "debug_symbols": debug_symbols,
         "debug_session": debug_session,
         "debug_transaction_replay": debug_transaction_replay,
+        "compile_package_replay": compile_package_replay,
         "runtime_memory_model": runtime_memory_model,
         "toolchain_adapters": toolchain_adapters,
         "runtime_replay": runtime_replay,
@@ -19562,6 +19680,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "unit_semantics_ready",
                 "compile_targets_ready",
                 "diagnostics_route_ready",
+                "compile_package_transaction_ready",
                 "debug_preview_ready",
                 "runtime_preview_ready",
                 "phase_order_ready",
@@ -19573,6 +19692,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "design_edit_session_replay",
                 "runtime_debug_authoring",
                 "debug_session_transaction_replay",
+                "compile_package_transaction_replay",
                 "native_form_modules",
                 "native_form_module_tests",
                 "runtime_operation_modules",
@@ -19588,10 +19708,12 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "stream_identity_ready",
                 "compile_targets_ready",
                 "diagnostics_route_ready",
+                "compile_package_transaction_ready",
                 "debug_preview_ready",
                 "runtime_preview_ready",
                 "runtime_debug_authoring",
                 "debug_session_transaction_replay",
+                "compile_package_transaction_replay",
                 "native_form_modules",
                 "native_form_module_tests",
                 "runtime_operation_modules",
@@ -23117,6 +23239,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "form_stream_schema",
         "stream_migration",
         "debug_symbols",
+        "compile_package_transaction_replay",
         "runtime_memory_model",
         "toolchain_adapters",
         "runtime_session_replay",
@@ -23226,6 +23349,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "parse_unit_and_cross_check",
         "plan_compile_and_targets",
         "normalize_diagnostics",
+        "replay_compile_package_transaction",
         "debug_preview_trace",
         "reload_runtime_preview",
     )
@@ -23237,6 +23361,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "unit_semantics_ready",
         "compile_targets_ready",
         "diagnostics_route_ready",
+        "compile_package_transaction_ready",
         "debug_preview_ready",
         "runtime_preview_ready",
         "operation_surface_ready",
