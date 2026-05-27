@@ -2,13 +2,25 @@
 
 from __future__ import annotations
 
+from .runtime import production_control_build_api_contract
 from .runtime import production_control_build_release_evidence
+from .runtime import production_control_build_schema_contract
+from .runtime import production_control_build_service_contract
+from .runtime import production_control_permissions_contract
+
+PBC_KEY = "production_control"
 
 
 def build_release_evidence() -> dict:
     """Return generated release audit evidence for this PBC."""
-    evidence = production_control_build_release_evidence()
-    return {**evidence, "pbc": "production_control"}
+    return {
+        **production_control_build_release_evidence(),
+        "pbc": PBC_KEY,
+        "schema": production_control_build_schema_contract(),
+        "service": production_control_build_service_contract(),
+        "api": production_control_build_api_contract(),
+        "permissions": production_control_permissions_contract(),
+    }
 
 
 RELEASE_EVIDENCE = build_release_evidence()
@@ -21,7 +33,7 @@ def release_readiness_manifest() -> dict:
     checks = tuple(evidence.get("checks", ()))
     return {
         "ok": evidence.get("ok") is True and bool(checks),
-        "pbc": "production_control",
+        "pbc": PBC_KEY,
         "format": evidence.get("format"),
         "sections": sections,
         "checks": checks,
@@ -50,7 +62,7 @@ def validate_release_evidence() -> dict:
     )
     return {
         "ok": manifest["ok"] and not manifest["blocking_gaps"] and not missing_sections and not failed_checks and not boundary_gaps,
-        "pbc": "production_control",
+        "pbc": PBC_KEY,
         "manifest": manifest,
         "missing_sections": missing_sections,
         "failed_checks": failed_checks,
