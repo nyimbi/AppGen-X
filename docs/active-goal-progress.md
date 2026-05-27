@@ -2421,3 +2421,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   runtime validation gate reports `runtime_artifact_transaction_ready`.
   Verification is focused under the low-battery delivery constraint. Commit:
   `3447d57`.
+- Current visual runtime asset packaging pass exposes the same target artifact
+  transaction from generated visual runtime asset manifests. Asset validation
+  now requires `target_artifact_transaction`, proving rollback-before-publish
+  and side-effect-free artifact replay alongside style, timeline, effect, scene,
+  and target package asset checks. Verification is focused under the
+  low-battery delivery constraint. Commit: `2711b0b`.
