@@ -5,6 +5,23 @@ EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibili
 
 OPERATION_CONTRACTS = ({'operation': 'command_assets', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/assets', 'permission': 'dam_core.command.1', 'owned_tables': ('dam_core_asset', 'dam_core_asset_rendition', 'dam_core_rights_policy', 'dam_core_metadata_tag'), 'read_tables': (), 'emitted_event': 'AssetPublished', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_renditions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/renditions', 'permission': 'dam_core.command.2', 'owned_tables': ('dam_core_asset', 'dam_core_asset_rendition', 'dam_core_rights_policy', 'dam_core_metadata_tag'), 'read_tables': (), 'emitted_event': 'RightsPolicyChanged', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_rights', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/dam_core/rights', 'permission': 'dam_core.query.3', 'owned_tables': (), 'read_tables': ('dam_core_asset', 'dam_core_asset_rendition', 'dam_core_rights_policy', 'dam_core_metadata_tag'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
 
+OPERATION_CONTRACTS = OPERATION_CONTRACTS + (
+    {'operation': 'command_collections', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/collections', 'permission': 'dam_core.asset.write', 'owned_tables': ('dam_core_asset_collection',), 'read_tables': (), 'emitted_event': 'AssetCollectionCreated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_collection_members', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/collection-members', 'permission': 'dam_core.asset.write', 'owned_tables': ('dam_core_asset_collection_member',), 'read_tables': (), 'emitted_event': 'AssetAddedToCollection', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_license_agreements', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/license-agreements', 'permission': 'dam_core.rights.manage', 'owned_tables': ('dam_core_license_agreement',), 'read_tables': (), 'emitted_event': 'LicenseAgreementRegistered', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_usage_entitlements', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/usage-entitlements', 'permission': 'dam_core.rights.manage', 'owned_tables': ('dam_core_usage_entitlement',), 'read_tables': (), 'emitted_event': 'UsageEntitlementGranted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_metadata_taxonomies', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/metadata-taxonomies', 'permission': 'dam_core.metadata.write', 'owned_tables': ('dam_core_metadata_taxonomy',), 'read_tables': (), 'emitted_event': 'MetadataTaxonomyRegistered', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_metadata_enrichments', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/metadata-enrichments', 'permission': 'dam_core.metadata.write', 'owned_tables': ('dam_core_metadata_enrichment',), 'read_tables': (), 'emitted_event': 'MetadataEnriched', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_semantic_annotations', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/semantic-annotations', 'permission': 'dam_core.metadata.write', 'owned_tables': ('dam_core_semantic_annotation',), 'read_tables': (), 'emitted_event': 'SemanticAnnotationAdded', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_asset_workflows', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/asset-workflows', 'permission': 'dam_core.workflow', 'owned_tables': ('dam_core_asset_workflow_case', 'dam_core_asset_review_task'), 'read_tables': (), 'emitted_event': 'AssetWorkflowStarted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_review_tasks', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/review-tasks', 'permission': 'dam_core.workflow', 'owned_tables': ('dam_core_asset_review_task',), 'read_tables': (), 'emitted_event': 'AssetReviewTaskCompleted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_asset_exceptions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/asset-exceptions', 'permission': 'dam_core.workflow', 'owned_tables': ('dam_core_asset_exception',), 'read_tables': (), 'emitted_event': 'AssetExceptionOpened', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_exception_resolutions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/exception-resolutions', 'permission': 'dam_core.workflow', 'owned_tables': ('dam_core_asset_exception',), 'read_tables': (), 'emitted_event': 'AssetExceptionResolved', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_usage_snapshots', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/usage-snapshots', 'permission': 'dam_core.audit', 'owned_tables': ('dam_core_asset_usage_snapshot',), 'read_tables': (), 'emitted_event': 'AssetUsageSnapshotRecorded', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_duplicate_candidates', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/duplicate-candidates', 'permission': 'dam_core.audit', 'owned_tables': ('dam_core_asset_duplicate_candidate',), 'read_tables': (), 'emitted_event': 'AssetDuplicateCandidateDetected', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_asset_lineage', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/dam_core/asset-lineage', 'permission': 'dam_core.audit', 'owned_tables': ('dam_core_asset_lineage',), 'read_tables': (), 'emitted_event': 'AssetLineageRecorded', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+)
+
 
 def service_operation_contracts():
     """Return route-bound service operation contracts for this PBC."""
@@ -96,6 +113,48 @@ class DamCoreService:
 
     def command_renditions(self, payload=None):
         return self._command('command_renditions', payload or {})
+
+    def command_collections(self, payload=None):
+        return self._command('command_collections', payload or {})
+
+    def command_collection_members(self, payload=None):
+        return self._command('command_collection_members', payload or {})
+
+    def command_license_agreements(self, payload=None):
+        return self._command('command_license_agreements', payload or {})
+
+    def command_usage_entitlements(self, payload=None):
+        return self._command('command_usage_entitlements', payload or {})
+
+    def command_metadata_taxonomies(self, payload=None):
+        return self._command('command_metadata_taxonomies', payload or {})
+
+    def command_metadata_enrichments(self, payload=None):
+        return self._command('command_metadata_enrichments', payload or {})
+
+    def command_semantic_annotations(self, payload=None):
+        return self._command('command_semantic_annotations', payload or {})
+
+    def command_asset_workflows(self, payload=None):
+        return self._command('command_asset_workflows', payload or {})
+
+    def command_review_tasks(self, payload=None):
+        return self._command('command_review_tasks', payload or {})
+
+    def command_asset_exceptions(self, payload=None):
+        return self._command('command_asset_exceptions', payload or {})
+
+    def command_exception_resolutions(self, payload=None):
+        return self._command('command_exception_resolutions', payload or {})
+
+    def command_usage_snapshots(self, payload=None):
+        return self._command('command_usage_snapshots', payload or {})
+
+    def command_duplicate_candidates(self, payload=None):
+        return self._command('command_duplicate_candidates', payload or {})
+
+    def command_asset_lineage(self, payload=None):
+        return self._command('command_asset_lineage', payload or {})
 
     def query_rights(self, payload=None):
         return self._query('query_rights', payload or {})

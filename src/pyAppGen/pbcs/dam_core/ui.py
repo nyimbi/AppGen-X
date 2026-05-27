@@ -58,8 +58,14 @@ def dam_core_ui_contract() -> dict:
             {
                 "key": "assets",
                 "fragment": "AssetLibraryConsole",
-                "binds_to": ("asset", "metadata_tag", "rights_policy"),
-                "commands": ("register_asset", "add_metadata_tag", "attach_rights_policy"),
+                "binds_to": ("asset", "asset_collection", "asset_collection_member", "metadata_tag", "rights_policy"),
+                "commands": (
+                    "register_asset",
+                    "create_asset_collection",
+                    "add_asset_to_collection",
+                    "add_metadata_tag",
+                    "attach_rights_policy",
+                ),
             },
             {
                 "key": "renditions",
@@ -70,8 +76,26 @@ def dam_core_ui_contract() -> dict:
             {
                 "key": "rights",
                 "fragment": "RightsPolicyWorkbench",
-                "binds_to": ("rights_policy", "rights_decision", "policy_evidence"),
-                "commands": ("attach_rights_policy", "enforce_rights"),
+                "binds_to": ("rights_policy", "license_agreement", "usage_entitlement", "rights_decision", "policy_evidence"),
+                "commands": ("attach_rights_policy", "register_license_agreement", "grant_usage_entitlement", "enforce_rights"),
+            },
+            {
+                "key": "metadata_enrichment",
+                "fragment": "MetadataTagStudio",
+                "binds_to": ("metadata_taxonomy", "metadata_enrichment", "semantic_annotation"),
+                "commands": ("register_metadata_taxonomy", "enrich_metadata", "add_semantic_annotation"),
+            },
+            {
+                "key": "workflow_exceptions",
+                "fragment": "AssetQualityRiskPanel",
+                "binds_to": ("asset_workflow_case", "asset_review_task", "asset_exception"),
+                "commands": ("start_asset_workflow", "complete_asset_review_task", "open_asset_exception", "resolve_asset_exception_case"),
+            },
+            {
+                "key": "usage_lineage",
+                "fragment": "AssetQualityRiskPanel",
+                "binds_to": ("asset_usage_snapshot", "asset_duplicate_candidate", "asset_lineage"),
+                "commands": ("record_asset_usage_snapshot", "detect_asset_duplicate_candidate", "record_asset_lineage"),
             },
             {
                 "key": "product_projection",
@@ -183,6 +207,10 @@ def dam_core_render_workbench(
             {"key": "renditions", "value": snapshot["rendition_count"], "fragment": "RenditionPipelineBoard"},
             {"key": "rights", "value": snapshot["rights_policy_count"], "fragment": "RightsPolicyWorkbench"},
             {"key": "metadata", "value": snapshot["metadata_tag_count"], "fragment": "MetadataTagStudio"},
+            {"key": "collections", "value": snapshot["collection_count"], "fragment": "AssetLibraryConsole"},
+            {"key": "license_agreements", "value": snapshot["license_agreement_count"], "fragment": "RightsPolicyWorkbench"},
+            {"key": "workflow_approvals", "value": snapshot["approved_workflow_count"], "fragment": "AssetQualityRiskPanel"},
+            {"key": "resolved_exceptions", "value": snapshot["resolved_exception_count"], "fragment": "AssetQualityRiskPanel"},
             {"key": "product_projection", "value": snapshot["product_projection_count"], "fragment": "ProductPublishedProjectionPanel"},
             {"key": "dead_letters", "value": snapshot["dead_letter_count"], "fragment": "DamDeadLetterQueue"},
         ),

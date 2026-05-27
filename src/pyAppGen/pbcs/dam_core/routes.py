@@ -9,8 +9,37 @@ ROUTES = (
     {'method': 'GET', 'path': '/api/pbc/dam_core/rights', 'handler': 'query_rights', 'permission': 'dam_core.query.3'},
 )
 
+ROUTES = ROUTES + (
+    {'method': 'POST', 'path': '/api/pbc/dam_core/collections', 'handler': 'command_collections', 'permission': 'dam_core.asset.write'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/collection-members', 'handler': 'command_collection_members', 'permission': 'dam_core.asset.write'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/license-agreements', 'handler': 'command_license_agreements', 'permission': 'dam_core.rights.manage'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/usage-entitlements', 'handler': 'command_usage_entitlements', 'permission': 'dam_core.rights.manage'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/metadata-taxonomies', 'handler': 'command_metadata_taxonomies', 'permission': 'dam_core.metadata.write'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/metadata-enrichments', 'handler': 'command_metadata_enrichments', 'permission': 'dam_core.metadata.write'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/semantic-annotations', 'handler': 'command_semantic_annotations', 'permission': 'dam_core.metadata.write'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/asset-workflows', 'handler': 'command_asset_workflows', 'permission': 'dam_core.workflow'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/review-tasks', 'handler': 'command_review_tasks', 'permission': 'dam_core.workflow'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/asset-exceptions', 'handler': 'command_asset_exceptions', 'permission': 'dam_core.workflow'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/exception-resolutions', 'handler': 'command_exception_resolutions', 'permission': 'dam_core.workflow'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/usage-snapshots', 'handler': 'command_usage_snapshots', 'permission': 'dam_core.audit'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/duplicate-candidates', 'handler': 'command_duplicate_candidates', 'permission': 'dam_core.audit'},
+    {'method': 'POST', 'path': '/api/pbc/dam_core/asset-lineage', 'handler': 'command_asset_lineage', 'permission': 'dam_core.audit'},
+)
+
 
 API_ROUTE_CONTRACTS = ({'method': 'POST', 'path': '/api/pbc/dam_core/assets', 'handler': 'command_assets', 'permission': 'dam_core.command.1', 'operation': 'command_assets', 'operation_kind': 'command', 'owned_tables': ('dam_core_asset', 'dam_core_asset_rendition', 'dam_core_rights_policy', 'dam_core_metadata_tag'), 'read_tables': (), 'emitted_event': 'AssetPublished', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'dam_core:command_assets:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/dam_core/renditions', 'handler': 'command_renditions', 'permission': 'dam_core.command.2', 'operation': 'command_renditions', 'operation_kind': 'command', 'owned_tables': ('dam_core_asset', 'dam_core_asset_rendition', 'dam_core_rights_policy', 'dam_core_metadata_tag'), 'read_tables': (), 'emitted_event': 'RightsPolicyChanged', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'dam_core:command_renditions:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/dam_core/rights', 'handler': 'query_rights', 'permission': 'dam_core.query.3', 'operation': 'query_rights', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('dam_core_asset', 'dam_core_asset_rendition', 'dam_core_rights_policy', 'dam_core_metadata_tag'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False})
+
+API_ROUTE_CONTRACTS = API_ROUTE_CONTRACTS + tuple(
+    {
+        **contract,
+        'idempotency_required': True,
+        'idempotency_key': f"dam_core:{contract['operation']}:idempotency_key",
+        'shared_table_access': False,
+        'stream_engine_picker_visible': False,
+    }
+    for contract in service_operation_contracts()['contracts']
+    if contract['operation'] not in {item['operation'] for item in API_ROUTE_CONTRACTS}
+)
 
 
 def register_routes(app=None):

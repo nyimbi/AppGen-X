@@ -50,6 +50,8 @@ digital asset management package:
 - Asset registration with tenant, product projection, filename, MIME type, size,
   storage URI, binary fingerprint, locale, creator, status, and audit evidence.
 - Duplicate and binary fingerprint evidence through content hashes.
+- Asset collections and collection membership with owned collection/member
+  records, tenant validation, and membership counts.
 - Product projection consumption from `ProductPublished` with idempotent
   handler records.
 - Runtime configuration for database backend, event topic, retry limit,
@@ -64,9 +66,16 @@ digital asset management package:
 - Schema extension for owned tables only.
 - Rights policy attachment, rights enforcement, market blocking, use-case
   decisions, and policy evidence.
+- License agreement registration and usage-entitlement grants linked to owned
+  rights policies and assets.
+- Metadata taxonomy registration, metadata enrichment intake, and semantic
+  annotation capture with confidence gates.
 - Metadata tagging with taxonomy validation and confidence-floor enforcement.
 - Rendition request and completion for declared profiles, output URI, quality
   score, duration, status, and AppGen-X outbox events.
+- Asset workflow cases, generated review tasks, review completion, approval
+  status, asset exception open/resolve, usage snapshots, duplicate-candidate
+  review, and lineage records.
 - Workbench views for asset counts, ready renditions, rights policies,
   metadata tags, product projections, outbox, dead letters, configuration,
   rules, and parameters.
@@ -119,11 +128,25 @@ The service layer exposes these package-local commands:
 - `register_schema_extension(table, fields)`.
 - `receive_event(envelope, simulate_failure=False)`.
 - `register_asset(asset)`.
+- `create_asset_collection(collection)`.
+- `add_asset_to_collection(member)`.
 - `attach_rights_policy(policy)`.
+- `register_license_agreement(agreement)`.
+- `grant_usage_entitlement(entitlement)`.
 - `add_metadata_tag(tag)`.
+- `register_metadata_taxonomy(taxonomy)`.
+- `enrich_metadata(enrichment)`.
+- `add_semantic_annotation(annotation)`.
 - `request_rendition(rendition)`.
 - `complete_rendition(rendition_id, result)`.
 - `enforce_rights(asset_id, market=..., use_case=...)`.
+- `start_asset_workflow(workflow)`.
+- `complete_asset_review_task(task_id, decision)`.
+- `open_asset_exception(exception)`.
+- `resolve_asset_exception_case(exception_id, resolution)`.
+- `record_asset_usage_snapshot(snapshot)`.
+- `detect_asset_duplicate_candidate(candidate)`.
+- `record_asset_lineage(lineage)`.
 - `build_api_contract()`.
 - `permissions_contract()`.
 - `build_workbench_view(tenant=...)`.
@@ -145,9 +168,27 @@ The package-local API contract exposes:
 - `POST /dam/assets/{asset_id}/rights` for `attach_rights_policy`, writing
   `rights_policy`, requiring `dam_core.rights.manage`, and emitting
   `AssetRightsPolicyAttached`.
+- `POST /dam/assets/{asset_id}/license-agreements` for
+  `register_license_agreement`.
+- `POST /dam/assets/{asset_id}/usage-entitlements` for
+  `grant_usage_entitlement`.
 - `POST /dam/assets/{asset_id}/tags` for `add_metadata_tag`, writing
   `metadata_tag`, requiring `dam_core.metadata.write`, and emitting
   `AssetMetadataTagged`.
+- `POST /dam/collections` and `POST /dam/collections/{collection_id}/members`
+  for collection lifecycle.
+- `POST /dam/metadata-taxonomies`, `POST /dam/assets/{asset_id}/metadata-enrichments`,
+  and `POST /dam/assets/{asset_id}/semantic-annotations` for metadata
+  governance.
+- `POST /dam/assets/{asset_id}/workflows`,
+  `POST /dam/review-tasks/{task_id}/complete`,
+  `POST /dam/assets/{asset_id}/exceptions`, and
+  `POST /dam/exceptions/{exception_id}/resolve` for workflow and exception
+  lifecycle.
+- `POST /dam/assets/{asset_id}/usage-snapshots`,
+  `POST /dam/assets/{asset_id}/duplicate-candidates`, and
+  `POST /dam/assets/{asset_id}/lineage` for usage, dedupe, and lineage
+  evidence.
 - `POST /dam/events/inbox` for `receive_event`, consuming AppGen-X events and
   requiring `dam_core.event.consume`.
 - `GET /dam/workbench` for `build_workbench_view`, reading owned DAM state and
@@ -171,6 +212,20 @@ Emitted events include:
 - `AssetRenditionReady`.
 - `AssetRightsPolicyAttached`.
 - `AssetMetadataTagged`.
+- `AssetCollectionCreated`.
+- `AssetAddedToCollection`.
+- `LicenseAgreementRegistered`.
+- `UsageEntitlementGranted`.
+- `MetadataTaxonomyRegistered`.
+- `MetadataEnriched`.
+- `SemanticAnnotationAdded`.
+- `AssetWorkflowStarted`.
+- `AssetReviewTaskCompleted`.
+- `AssetExceptionOpened`.
+- `AssetExceptionResolved`.
+- `AssetUsageSnapshotRecorded`.
+- `AssetDuplicateCandidateDetected`.
+- `AssetLineageRecorded`.
 
 Handlers require event IDs and AppGen-X envelopes, deduplicate already handled
 messages, write inbox records, maintain dead-letter evidence on simulated

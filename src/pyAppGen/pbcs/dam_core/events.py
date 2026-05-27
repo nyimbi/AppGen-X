@@ -1,6 +1,35 @@
 """AppGen-X event contract for the dam_core PBC."""
 
 EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.dam_core.events', 'inbox_topic': 'pbc.dam_core.inbox', 'outbox_table': 'dam_core_appgen_outbox_event', 'inbox_table': 'dam_core_appgen_inbox_event', 'dead_letter_table': 'dam_core_appgen_dead_letter_event', 'emitted': ({'event_type': 'AssetPublished', 'schema': 'dam_core.asset_published.emitted.v1', 'topic': 'pbc.dam_core.events', 'outbox_table': 'dam_core_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'RightsPolicyChanged', 'schema': 'dam_core.rights_policy_changed.emitted.v1', 'topic': 'pbc.dam_core.events', 'outbox_table': 'dam_core_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'ProductPublished', 'schema': 'dam_core.product_published.consumed.v1', 'topic': 'pbc.dam_core.inbox', 'inbox_table': 'dam_core_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')},), 'retry_policy': {'name': 'dam_core_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'dam_core_appgen_inbox_event'}}
+EVENT_CONTRACT = {
+    **EVENT_CONTRACT,
+    'emitted': EVENT_CONTRACT['emitted']
+    + tuple(
+        {
+            'event_type': event_type,
+            'schema': f"dam_core.{event_type[0].lower()}{''.join('_' + char.lower() if char.isupper() else char for char in event_type[1:])}.emitted.v1",
+            'topic': EVENT_CONTRACT['topic'],
+            'outbox_table': EVENT_CONTRACT['outbox_table'],
+            'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data'),
+        }
+        for event_type in (
+            'AssetCollectionCreated',
+            'AssetAddedToCollection',
+            'LicenseAgreementRegistered',
+            'UsageEntitlementGranted',
+            'MetadataTaxonomyRegistered',
+            'MetadataEnriched',
+            'SemanticAnnotationAdded',
+            'AssetWorkflowStarted',
+            'AssetReviewTaskCompleted',
+            'AssetExceptionOpened',
+            'AssetExceptionResolved',
+            'AssetUsageSnapshotRecorded',
+            'AssetDuplicateCandidateDetected',
+            'AssetLineageRecorded',
+        )
+    ),
+}
 EMITTED_EVENTS = EVENT_CONTRACT['emitted']
 CONSUMED_EVENTS = EVENT_CONTRACT['consumed']
 

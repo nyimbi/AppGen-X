@@ -199,6 +199,20 @@ DAM_CORE_EMITTED_EVENT_TYPES = (
     "AssetRenditionReady",
     "AssetRightsBlocked",
     "AssetTagged",
+    "AssetCollectionCreated",
+    "AssetAddedToCollection",
+    "LicenseAgreementRegistered",
+    "UsageEntitlementGranted",
+    "MetadataTaxonomyRegistered",
+    "MetadataEnriched",
+    "SemanticAnnotationAdded",
+    "AssetWorkflowStarted",
+    "AssetReviewTaskCompleted",
+    "AssetExceptionOpened",
+    "AssetExceptionResolved",
+    "AssetUsageSnapshotRecorded",
+    "AssetDuplicateCandidateDetected",
+    "AssetLineageRecorded",
 )
 
 _CONFIG_SEQUENCE_FIELDS = {
@@ -247,10 +261,24 @@ def dam_core_runtime_capabilities() -> dict:
             "receive_event",
             "register_asset",
             "attach_rights_policy",
+            "register_license_agreement",
+            "grant_usage_entitlement",
             "add_metadata_tag",
+            "register_metadata_taxonomy",
+            "enrich_metadata",
+            "add_semantic_annotation",
+            "create_asset_collection",
+            "add_asset_to_collection",
             "request_rendition",
             "complete_rendition",
             "enforce_rights",
+            "start_asset_workflow",
+            "complete_asset_review_task",
+            "open_asset_exception",
+            "resolve_asset_exception_case",
+            "record_asset_usage_snapshot",
+            "detect_asset_duplicate_candidate",
+            "record_asset_lineage",
             "build_api_contract",
             "build_schema_contract",
             "build_service_contract",
@@ -358,6 +386,22 @@ def dam_core_runtime_smoke() -> dict:
         },
     )
     state = asset["state"]
+    sibling_asset = dam_core_register_asset(
+        state,
+        {
+            "asset_id": "asset_101",
+            "tenant": "tenant_alpha",
+            "product_id": "sku_100",
+            "filename": "launch-backpack-thumb.jpg",
+            "mime_type": "image/jpeg",
+            "size_mb": 8,
+            "storage_uri": "object://dam/tenant_alpha/asset_101",
+            "binary": b"launch-backpack-primary-image-v2",
+            "locale": "en-US",
+            "created_by": "user_ops",
+        },
+    )
+    state = sibling_asset["state"]
     state = dam_core_attach_rights_policy(
         state,
         {
@@ -372,6 +416,39 @@ def dam_core_runtime_smoke() -> dict:
             "approver": "legal_ops",
         },
     )["state"]
+    state = dam_core_register_license_agreement(
+        state,
+        {
+            "agreement_id": "lic_100",
+            "policy_id": "rights_100",
+            "tenant": "tenant_alpha",
+            "licensor": "brand_owner",
+            "licensee": "tenant_alpha",
+            "start_date": "2026-01-01",
+            "end_date": "2027-05-26",
+            "terms": {"markets": ("US", "CA"), "use_cases": ("product_detail",)},
+        },
+    )["state"]
+    state = dam_core_grant_usage_entitlement(
+        state,
+        {
+            "entitlement_id": "ent_100",
+            "agreement_id": "lic_100",
+            "asset_id": "asset_100",
+            "tenant": "tenant_alpha",
+            "market": "US",
+            "use_case": "product_detail",
+        },
+    )["state"]
+    state = dam_core_register_metadata_taxonomy(
+        state,
+        {
+            "taxonomy_id": "tax_product",
+            "tenant": "tenant_alpha",
+            "name": "product",
+            "allowed_values": ("backpack", "bag"),
+        },
+    )["state"]
     state = dam_core_add_metadata_tag(
         state,
         {
@@ -382,6 +459,46 @@ def dam_core_runtime_smoke() -> dict:
             "value": "backpack",
             "confidence": 0.91,
             "source": "human",
+        },
+    )["state"]
+    state = dam_core_enrich_metadata(
+        state,
+        {
+            "enrichment_id": "enrich_100",
+            "asset_id": "asset_100",
+            "tenant": "tenant_alpha",
+            "source": "vision_model",
+            "attributes": {"dominant_color": "blue", "object": "backpack"},
+            "confidence": 0.89,
+        },
+    )["state"]
+    state = dam_core_add_semantic_annotation(
+        state,
+        {
+            "annotation_id": "anno_100",
+            "asset_id": "asset_100",
+            "tenant": "tenant_alpha",
+            "label": "backpack",
+            "confidence": 0.92,
+            "span": {"x": 0.1, "y": 0.1, "w": 0.8, "h": 0.8},
+        },
+    )["state"]
+    state = dam_core_create_asset_collection(
+        state,
+        {
+            "collection_id": "coll_launch",
+            "tenant": "tenant_alpha",
+            "name": "Launch collection",
+            "purpose": "commerce_launch",
+        },
+    )["state"]
+    state = dam_core_add_asset_to_collection(
+        state,
+        {
+            "member_id": "member_100",
+            "collection_id": "coll_launch",
+            "asset_id": "asset_100",
+            "tenant": "tenant_alpha",
         },
     )["state"]
     state = dam_core_add_metadata_tag(
@@ -415,6 +532,78 @@ def dam_core_runtime_smoke() -> dict:
         {"uri": "object://dam/tenant_alpha/asset_100/web_large.jpg", "quality_score": 0.93, "duration_ms": 840},
     )
     state = completed["state"]
+    workflow = dam_core_start_asset_workflow(
+        state,
+        {
+            "case_id": "case_100",
+            "asset_id": "asset_100",
+            "tenant": "tenant_alpha",
+            "workflow_type": "rights_and_quality",
+            "requested_by": "user_ops",
+            "reviewers": ("legal_ops", "creative_ops"),
+        },
+    )
+    state = workflow["state"]
+    state = dam_core_complete_asset_review_task(
+        state,
+        "case_100:legal_ops",
+        {"decision": "approve", "reviewed_by": "legal_ops"},
+    )["state"]
+    review = dam_core_complete_asset_review_task(
+        state,
+        "case_100:creative_ops",
+        {"decision": "approve", "reviewed_by": "creative_ops"},
+    )
+    state = review["state"]
+    exception_case = dam_core_open_asset_exception(
+        state,
+        {
+            "exception_id": "exc_100",
+            "asset_id": "asset_100",
+            "tenant": "tenant_alpha",
+            "reason": "missing_alt_text",
+            "severity": "medium",
+        },
+    )
+    state = exception_case["state"]
+    state = dam_core_resolve_asset_exception_case(
+        state,
+        "exc_100",
+        {"resolution": "alt_text_generated", "resolved_by": "creative_ops"},
+    )["state"]
+    state = dam_core_record_asset_usage_snapshot(
+        state,
+        {
+            "snapshot_id": "usage_100",
+            "asset_id": "asset_100",
+            "tenant": "tenant_alpha",
+            "impressions": 1200,
+            "downloads": 80,
+            "channel": "commerce",
+        },
+    )["state"]
+    duplicate_candidate = dam_core_detect_asset_duplicate_candidate(
+        state,
+        {
+            "candidate_id": "dup_100",
+            "asset_id": "asset_100",
+            "candidate_asset_id": "asset_101",
+            "tenant": "tenant_alpha",
+            "similarity": 0.97,
+        },
+    )
+    state = duplicate_candidate["state"]
+    lineage = dam_core_record_asset_lineage(
+        state,
+        {
+            "lineage_id": "lineage_100",
+            "asset_id": "asset_101",
+            "source_asset_id": "asset_100",
+            "tenant": "tenant_alpha",
+            "lineage_type": "derived_thumbnail",
+        },
+    )
+    state = lineage["state"]
 
     rights = dam_core_enforce_rights(state, "asset_100", market="US", use_case="product_detail")
     blocked = dam_core_enforce_rights(state, "asset_100", market="restricted", use_case="product_detail")
@@ -447,13 +636,18 @@ def dam_core_runtime_smoke() -> dict:
     workbench = dam_core_build_workbench_view(state, tenant="tenant_alpha")
 
     checks = (
-        {"id": "event_sourced_asset_lifecycle", "ok": len(state["events"]) >= 4 and state["events"][-1]["hash"]},
+        {"id": "event_sourced_asset_lifecycle", "ok": len(state["events"]) >= 18 and state["events"][-1]["hash"]},
         {"id": "owned_media_schema_boundary", "ok": schema["ok"] and len(DAM_CORE_OWNED_TABLES) >= 45},
         {"id": "multi_tenant_asset_isolation", "ok": workbench["tenant"] == "tenant_alpha" and controls["tenant_isolation"]},
         {"id": "schema_evolution_resilient_asset_metadata", "ok": state["schema_extensions"]["asset"]["ai_caption"] == "jsonb"},
         {"id": "content_addressed_binary_fingerprinting", "ok": asset["asset"]["fingerprint"].startswith("sha256:")},
         {"id": "rendition_transcoding_pipeline", "ok": completed["rendition"]["status"] == "ready" and completed["rendition"]["quality_score"] >= 0.9},
         {"id": "semantic_metadata_tagging", "ok": "product:backpack" in state["assets"]["asset_100"]["tag_index"]},
+        {"id": "asset_collection_lifecycle", "ok": state["asset_collections"]["coll_launch"]["member_count"] == 1 and state["asset_collection_members"]["member_100"]["status"] == "active"},
+        {"id": "license_entitlement_lifecycle", "ok": state["license_agreements"]["lic_100"]["status"] == "active" and state["usage_entitlements"]["ent_100"]["status"] == "active"},
+        {"id": "metadata_taxonomy_enrichment_annotation_lifecycle", "ok": state["metadata_taxonomies"]["tax_product"]["status"] == "active" and state["metadata_enrichments"]["enrich_100"]["status"] == "accepted" and state["semantic_annotations"]["anno_100"]["status"] == "active"},
+        {"id": "asset_workflow_review_exception_lifecycle", "ok": review["asset_workflow_case"]["status"] == "approved" and state["asset_exceptions"]["exc_100"]["status"] == "resolved"},
+        {"id": "asset_usage_duplicate_lineage_lifecycle", "ok": state["asset_usage_snapshots"]["usage_100"]["engagement_score"] > 0 and duplicate_candidate["asset_duplicate_candidate"]["status"] == "duplicate_review" and lineage["asset_lineage"]["status"] == "recorded"},
         {"id": "rights_policy_enforcement", "ok": rights["decision"] == "allow" and blocked["decision"] == "block"},
         {"id": "product_published_projection_handling", "ok": state["product_projection"]["sku_100"]["name"] == "Launch Backpack"},
         {"id": "probabilistic_rights_and_quality_scoring", "ok": quality["ok"] and quality["quality_score"] >= 0.7},
@@ -467,7 +661,7 @@ def dam_core_runtime_smoke() -> dict:
         {"id": "immutable_asset_audit_trail", "ok": controls["hash_chain_valid"]},
         {"id": "dynamic_policy_screening", "ok": policy["ok"] and policy["decision"] == "allow"},
         {"id": "automated_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "appgen_x_outbox_inbox_eventing", "ok": workbench["outbox_count"] == 4 and workbench["inbox_count"] == 1 and service["eventing"]["contract"] == "AppGen-X"},
+        {"id": "appgen_x_outbox_inbox_eventing", "ok": workbench["outbox_count"] >= 18 and workbench["inbox_count"] == 1 and service["eventing"]["contract"] == "AppGen-X"},
         {"id": "idempotent_handlers", "ok": duplicate["duplicate"] is True and workbench["processed_event_count"] == 2},
         {"id": "retry_dead_letter_evidence", "ok": invalid_event["dead_lettered"] is True and workbench["dead_letter_count"] == 1},
         {"id": "permissions_governance_evidence", "ok": "dam_core.configure" in api["permissions"]},
@@ -475,7 +669,7 @@ def dam_core_runtime_smoke() -> dict:
         {"id": "parameter_engine", "ok": len(state["parameters"]) == len(DAM_CORE_SUPPORTED_PARAMETER_KEYS)},
         {"id": "rule_engine", "ok": state["rules"]["rule_dam_default"]["compiled_hash"]},
         {"id": "seed_data", "ok": "rendition_profiles" in state["seed_data"]},
-        {"id": "workbench_ui", "ok": workbench["asset_count"] == 1 and workbench["rendition_count"] == 1 and release["ok"]},
+        {"id": "workbench_ui", "ok": workbench["asset_count"] >= 2 and workbench["rendition_count"] == 1 and release["ok"]},
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
     return {"format": "appgen.dam-core-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "blocking_gaps": blocking_gaps}
@@ -489,9 +683,22 @@ def dam_core_empty_state() -> dict:
         "dead_letter": (),
         "processed_event_keys": (),
         "assets": {},
+        "asset_collections": {},
+        "asset_collection_members": {},
         "asset_renditions": {},
         "rights_policies": {},
+        "license_agreements": {},
+        "usage_entitlements": {},
         "metadata_tags": {},
+        "metadata_taxonomies": {},
+        "metadata_enrichments": {},
+        "semantic_annotations": {},
+        "asset_workflow_cases": {},
+        "asset_review_tasks": {},
+        "asset_exceptions": {},
+        "asset_usage_snapshots": {},
+        "asset_duplicate_candidates": {},
+        "asset_lineage": {},
         "product_projection": {},
         "rules": {},
         "parameters": {},
@@ -671,6 +878,44 @@ def dam_core_attach_rights_policy(state: dict, policy: dict) -> dict:
     return {"ok": True, "state": {**state, "rights_policies": {**state["rights_policies"], policy["policy_id"]: stored}, "assets": assets}, "policy": stored}
 
 
+def dam_core_register_license_agreement(state: dict, agreement: dict) -> dict:
+    required = ("agreement_id", "policy_id", "tenant", "licensor", "licensee", "start_date", "end_date", "terms")
+    missing = tuple(field for field in required if field not in agreement)
+    if missing:
+        raise ValueError(f"Missing DAM Core license agreement fields: {missing}")
+    policy = state["rights_policies"].get(agreement["policy_id"])
+    if not policy:
+        raise ValueError("DAM Core license agreements require an owned rights policy.")
+    stored = {
+        **agreement,
+        "status": "active",
+        "terms_hash": _stable_hash(agreement["terms"]),
+        "compiled_hash": _stable_hash(agreement),
+    }
+    next_state = {**state, "license_agreements": {**state["license_agreements"], agreement["agreement_id"]: stored}}
+    next_state = _append_event(next_state, "LicenseAgreementRegistered", agreement["tenant"], {"agreement_id": agreement["agreement_id"], "policy_id": agreement["policy_id"]})
+    return {"ok": True, "state": next_state, "license_agreement": stored}
+
+
+def dam_core_grant_usage_entitlement(state: dict, entitlement: dict) -> dict:
+    required = ("entitlement_id", "agreement_id", "asset_id", "tenant", "market", "use_case")
+    missing = tuple(field for field in required if field not in entitlement)
+    if missing:
+        raise ValueError(f"Missing DAM Core usage entitlement fields: {missing}")
+    _asset(state, entitlement["asset_id"])
+    agreement = state["license_agreements"].get(entitlement["agreement_id"])
+    if not agreement:
+        raise ValueError("DAM Core usage entitlements require an owned license agreement.")
+    stored = {
+        **entitlement,
+        "status": "active",
+        "compiled_hash": _stable_hash(entitlement),
+    }
+    next_state = {**state, "usage_entitlements": {**state["usage_entitlements"], entitlement["entitlement_id"]: stored}}
+    next_state = _append_event(next_state, "UsageEntitlementGranted", entitlement["tenant"], {"entitlement_id": entitlement["entitlement_id"], "asset_id": entitlement["asset_id"]})
+    return {"ok": True, "state": next_state, "usage_entitlement": stored}
+
+
 def dam_core_add_metadata_tag(state: dict, tag: dict) -> dict:
     required = ("tag_id", "asset_id", "tenant", "taxonomy", "value", "confidence", "source")
     missing = tuple(field for field in required if field not in tag)
@@ -693,6 +938,102 @@ def dam_core_add_metadata_tag(state: dict, tag: dict) -> dict:
     next_state = {**state, "metadata_tags": {**state["metadata_tags"], tag["tag_id"]: stored}, "assets": assets}
     next_state = _append_event(next_state, "AssetTagged", tag["tenant"], {"asset_id": tag["asset_id"], "tag_key": stored["tag_key"]})
     return {"ok": True, "state": next_state, "tag": stored}
+
+
+def dam_core_register_metadata_taxonomy(state: dict, taxonomy: dict) -> dict:
+    required = ("taxonomy_id", "tenant", "name", "allowed_values")
+    missing = tuple(field for field in required if field not in taxonomy)
+    if missing:
+        raise ValueError(f"Missing DAM Core metadata taxonomy fields: {missing}")
+    stored = {
+        **taxonomy,
+        "allowed_values": tuple(taxonomy["allowed_values"]),
+        "status": "active",
+        "compiled_hash": _stable_hash(taxonomy),
+    }
+    next_state = {**state, "metadata_taxonomies": {**state["metadata_taxonomies"], taxonomy["taxonomy_id"]: stored}}
+    next_state = _append_event(next_state, "MetadataTaxonomyRegistered", taxonomy["tenant"], {"taxonomy_id": taxonomy["taxonomy_id"], "name": taxonomy["name"]})
+    return {"ok": True, "state": next_state, "metadata_taxonomy": stored}
+
+
+def dam_core_enrich_metadata(state: dict, enrichment: dict) -> dict:
+    required = ("enrichment_id", "asset_id", "tenant", "source", "attributes", "confidence")
+    missing = tuple(field for field in required if field not in enrichment)
+    if missing:
+        raise ValueError(f"Missing DAM Core metadata enrichment fields: {missing}")
+    asset = _asset(state, enrichment["asset_id"])
+    if asset["tenant"] != enrichment["tenant"]:
+        raise ValueError("DAM Core metadata enrichment tenant does not match asset tenant")
+    if float(enrichment["confidence"]) < float(state["parameters"].get("metadata_confidence_floor", 0.0)):
+        raise ValueError("DAM Core metadata enrichment confidence is below configured floor")
+    stored = {
+        **enrichment,
+        "status": "accepted",
+        "compiled_hash": _stable_hash(enrichment),
+    }
+    next_state = {**state, "metadata_enrichments": {**state["metadata_enrichments"], enrichment["enrichment_id"]: stored}}
+    next_state = _append_event(next_state, "MetadataEnriched", enrichment["tenant"], {"enrichment_id": enrichment["enrichment_id"], "asset_id": enrichment["asset_id"]})
+    return {"ok": True, "state": next_state, "metadata_enrichment": stored}
+
+
+def dam_core_add_semantic_annotation(state: dict, annotation: dict) -> dict:
+    required = ("annotation_id", "asset_id", "tenant", "label", "confidence", "span")
+    missing = tuple(field for field in required if field not in annotation)
+    if missing:
+        raise ValueError(f"Missing DAM Core semantic annotation fields: {missing}")
+    asset = _asset(state, annotation["asset_id"])
+    if asset["tenant"] != annotation["tenant"]:
+        raise ValueError("DAM Core semantic annotation tenant does not match asset tenant")
+    stored = {
+        **annotation,
+        "status": "active" if float(annotation["confidence"]) >= float(state["parameters"].get("metadata_confidence_floor", 0.0)) else "review",
+        "compiled_hash": _stable_hash(annotation),
+    }
+    next_state = {**state, "semantic_annotations": {**state["semantic_annotations"], annotation["annotation_id"]: stored}}
+    next_state = _append_event(next_state, "SemanticAnnotationAdded", annotation["tenant"], {"annotation_id": annotation["annotation_id"], "asset_id": annotation["asset_id"]})
+    return {"ok": stored["status"] == "active", "state": next_state, "semantic_annotation": stored}
+
+
+def dam_core_create_asset_collection(state: dict, collection: dict) -> dict:
+    required = ("collection_id", "tenant", "name", "purpose")
+    missing = tuple(field for field in required if field not in collection)
+    if missing:
+        raise ValueError(f"Missing DAM Core asset collection fields: {missing}")
+    stored = {
+        **collection,
+        "status": "active",
+        "member_count": 0,
+        "compiled_hash": _stable_hash(collection),
+    }
+    next_state = {**state, "asset_collections": {**state["asset_collections"], collection["collection_id"]: stored}}
+    next_state = _append_event(next_state, "AssetCollectionCreated", collection["tenant"], {"collection_id": collection["collection_id"]})
+    return {"ok": True, "state": next_state, "asset_collection": stored}
+
+
+def dam_core_add_asset_to_collection(state: dict, member: dict) -> dict:
+    required = ("member_id", "collection_id", "asset_id", "tenant")
+    missing = tuple(field for field in required if field not in member)
+    if missing:
+        raise ValueError(f"Missing DAM Core collection member fields: {missing}")
+    asset = _asset(state, member["asset_id"])
+    collection = state["asset_collections"].get(member["collection_id"])
+    if not collection:
+        raise ValueError("DAM Core collection membership requires an owned collection.")
+    if asset["tenant"] != member["tenant"] or collection["tenant"] != member["tenant"]:
+        raise ValueError("DAM Core collection membership tenant mismatch.")
+    stored = {
+        **member,
+        "status": "active",
+        "compiled_hash": _stable_hash(member),
+    }
+    collection_updated = {**collection, "member_count": collection["member_count"] + 1}
+    next_state = {
+        **state,
+        "asset_collection_members": {**state["asset_collection_members"], member["member_id"]: stored},
+        "asset_collections": {**state["asset_collections"], member["collection_id"]: collection_updated},
+    }
+    next_state = _append_event(next_state, "AssetAddedToCollection", member["tenant"], {"member_id": member["member_id"], "collection_id": member["collection_id"], "asset_id": member["asset_id"]})
+    return {"ok": True, "state": next_state, "asset_collection_member": stored}
 
 
 def dam_core_request_rendition(state: dict, rendition: dict) -> dict:
@@ -757,12 +1098,165 @@ def dam_core_enforce_rights(state: dict, asset_id: str, *, market: str, use_case
     return {"ok": decision != "block", "asset_id": asset_id, "market": market, "use_case": use_case, "decision": decision, "reason": reason, "policy_id": policy_id}
 
 
+def dam_core_start_asset_workflow(state: dict, workflow: dict) -> dict:
+    required = ("case_id", "asset_id", "tenant", "workflow_type", "requested_by", "reviewers")
+    missing = tuple(field for field in required if field not in workflow)
+    if missing:
+        raise ValueError(f"Missing DAM Core workflow fields: {missing}")
+    asset = _asset(state, workflow["asset_id"])
+    if asset["tenant"] != workflow["tenant"]:
+        raise ValueError("DAM Core workflow tenant does not match asset tenant")
+    stored = {
+        **workflow,
+        "reviewers": tuple(workflow["reviewers"]),
+        "status": "open",
+        "compiled_hash": _stable_hash(workflow),
+    }
+    review_tasks = {
+        f"{workflow['case_id']}:{reviewer}": {
+            "task_id": f"{workflow['case_id']}:{reviewer}",
+            "case_id": workflow["case_id"],
+            "asset_id": workflow["asset_id"],
+            "tenant": workflow["tenant"],
+            "reviewer": reviewer,
+            "status": "pending",
+        }
+        for reviewer in workflow["reviewers"]
+    }
+    next_state = {
+        **state,
+        "asset_workflow_cases": {**state["asset_workflow_cases"], workflow["case_id"]: stored},
+        "asset_review_tasks": {**state["asset_review_tasks"], **review_tasks},
+    }
+    next_state = _append_event(next_state, "AssetWorkflowStarted", workflow["tenant"], {"case_id": workflow["case_id"], "asset_id": workflow["asset_id"]})
+    return {"ok": True, "state": next_state, "asset_workflow_case": stored, "asset_review_tasks": tuple(review_tasks.values())}
+
+
+def dam_core_complete_asset_review_task(state: dict, task_id: str, decision: dict) -> dict:
+    task = state["asset_review_tasks"].get(task_id)
+    if not task:
+        raise ValueError("DAM Core review completion requires an owned review task.")
+    stored_task = {
+        **task,
+        "status": "completed",
+        "decision": decision["decision"],
+        "reviewed_by": decision.get("reviewed_by", task["reviewer"]),
+        "notes": decision.get("notes", ""),
+    }
+    tasks = {**state["asset_review_tasks"], task_id: stored_task}
+    case = state["asset_workflow_cases"][task["case_id"]]
+    case_tasks = tuple(item for item in tasks.values() if item["case_id"] == task["case_id"])
+    case_status = "approved" if case_tasks and all(item["status"] == "completed" and item.get("decision") == "approve" for item in case_tasks) else "open"
+    case_updated = {**case, "status": case_status}
+    next_state = {
+        **state,
+        "asset_review_tasks": tasks,
+        "asset_workflow_cases": {**state["asset_workflow_cases"], task["case_id"]: case_updated},
+    }
+    next_state = _append_event(next_state, "AssetReviewTaskCompleted", task["tenant"], {"task_id": task_id, "case_id": task["case_id"], "decision": stored_task["decision"]})
+    return {"ok": True, "state": next_state, "asset_review_task": stored_task, "asset_workflow_case": case_updated}
+
+
+def dam_core_open_asset_exception(state: dict, exception: dict) -> dict:
+    required = ("exception_id", "asset_id", "tenant", "reason", "severity")
+    missing = tuple(field for field in required if field not in exception)
+    if missing:
+        raise ValueError(f"Missing DAM Core asset exception fields: {missing}")
+    asset = _asset(state, exception["asset_id"])
+    if asset["tenant"] != exception["tenant"]:
+        raise ValueError("DAM Core exception tenant does not match asset tenant")
+    stored = {
+        **exception,
+        "status": "open",
+        "compiled_hash": _stable_hash(exception),
+    }
+    next_state = {**state, "asset_exceptions": {**state["asset_exceptions"], exception["exception_id"]: stored}}
+    next_state = _append_event(next_state, "AssetExceptionOpened", exception["tenant"], {"exception_id": exception["exception_id"], "asset_id": exception["asset_id"], "reason": exception["reason"]})
+    return {"ok": True, "state": next_state, "asset_exception": stored}
+
+
+def dam_core_resolve_asset_exception_case(state: dict, exception_id: str, resolution: dict) -> dict:
+    exception = state["asset_exceptions"].get(exception_id)
+    if not exception:
+        raise ValueError("DAM Core exception resolution requires an owned exception.")
+    stored = {
+        **exception,
+        "status": "resolved",
+        "resolution": resolution["resolution"],
+        "resolved_by": resolution.get("resolved_by", "asset_ops"),
+        "resolution_hash": _stable_hash(resolution),
+    }
+    next_state = {**state, "asset_exceptions": {**state["asset_exceptions"], exception_id: stored}}
+    next_state = _append_event(next_state, "AssetExceptionResolved", exception["tenant"], {"exception_id": exception_id, "resolution": stored["resolution"]})
+    return {"ok": True, "state": next_state, "asset_exception": stored}
+
+
+def dam_core_record_asset_usage_snapshot(state: dict, snapshot: dict) -> dict:
+    required = ("snapshot_id", "asset_id", "tenant", "impressions", "downloads", "channel")
+    missing = tuple(field for field in required if field not in snapshot)
+    if missing:
+        raise ValueError(f"Missing DAM Core asset usage snapshot fields: {missing}")
+    asset = _asset(state, snapshot["asset_id"])
+    if asset["tenant"] != snapshot["tenant"]:
+        raise ValueError("DAM Core usage snapshot tenant does not match asset tenant")
+    stored = {
+        **snapshot,
+        "engagement_score": round((float(snapshot["impressions"]) * 0.01) + (float(snapshot["downloads"]) * 0.1), 4),
+        "status": "captured",
+        "compiled_hash": _stable_hash(snapshot),
+    }
+    next_state = {**state, "asset_usage_snapshots": {**state["asset_usage_snapshots"], snapshot["snapshot_id"]: stored}}
+    next_state = _append_event(next_state, "AssetUsageSnapshotRecorded", snapshot["tenant"], {"snapshot_id": snapshot["snapshot_id"], "asset_id": snapshot["asset_id"]})
+    return {"ok": True, "state": next_state, "asset_usage_snapshot": stored}
+
+
+def dam_core_detect_asset_duplicate_candidate(state: dict, candidate: dict) -> dict:
+    required = ("candidate_id", "asset_id", "candidate_asset_id", "tenant", "similarity")
+    missing = tuple(field for field in required if field not in candidate)
+    if missing:
+        raise ValueError(f"Missing DAM Core duplicate candidate fields: {missing}")
+    asset = _asset(state, candidate["asset_id"])
+    other = _asset(state, candidate["candidate_asset_id"])
+    if asset["tenant"] != candidate["tenant"] or other["tenant"] != candidate["tenant"]:
+        raise ValueError("DAM Core duplicate candidate tenant mismatch.")
+    threshold = float(state["parameters"].get("duplicate_similarity_threshold", 0.95))
+    stored = {
+        **candidate,
+        "status": "duplicate_review" if float(candidate["similarity"]) >= threshold else "distinct",
+        "compiled_hash": _stable_hash(candidate),
+    }
+    next_state = {**state, "asset_duplicate_candidates": {**state["asset_duplicate_candidates"], candidate["candidate_id"]: stored}}
+    next_state = _append_event(next_state, "AssetDuplicateCandidateDetected", candidate["tenant"], {"candidate_id": candidate["candidate_id"], "status": stored["status"]})
+    return {"ok": True, "state": next_state, "asset_duplicate_candidate": stored}
+
+
+def dam_core_record_asset_lineage(state: dict, lineage: dict) -> dict:
+    required = ("lineage_id", "asset_id", "tenant", "source_asset_id", "lineage_type")
+    missing = tuple(field for field in required if field not in lineage)
+    if missing:
+        raise ValueError(f"Missing DAM Core asset lineage fields: {missing}")
+    asset = _asset(state, lineage["asset_id"])
+    source = _asset(state, lineage["source_asset_id"])
+    if asset["tenant"] != lineage["tenant"] or source["tenant"] != lineage["tenant"]:
+        raise ValueError("DAM Core lineage tenant mismatch.")
+    stored = {
+        **lineage,
+        "status": "recorded",
+        "compiled_hash": _stable_hash(lineage),
+    }
+    next_state = {**state, "asset_lineage": {**state["asset_lineage"], lineage["lineage_id"]: stored}}
+    next_state = _append_event(next_state, "AssetLineageRecorded", lineage["tenant"], {"lineage_id": lineage["lineage_id"], "asset_id": lineage["asset_id"]})
+    return {"ok": True, "state": next_state, "asset_lineage": stored}
+
+
 def dam_core_build_workbench_view(state: dict, *, tenant: str) -> dict:
     assets = tuple(asset for asset in state["assets"].values() if asset["tenant"] == tenant)
     asset_ids = {asset["asset_id"] for asset in assets}
     renditions = tuple(rendition for rendition in state["asset_renditions"].values() if rendition["asset_id"] in asset_ids)
     policies = tuple(policy for policy in state["rights_policies"].values() if policy["tenant"] == tenant)
     tags = tuple(tag for tag in state["metadata_tags"].values() if tag["tenant"] == tenant)
+    workflows = tuple(case for case in state["asset_workflow_cases"].values() if case["tenant"] == tenant)
+    exceptions = tuple(case for case in state["asset_exceptions"].values() if case["tenant"] == tenant)
     return {
         "format": "appgen.dam-core-workbench-view.v1",
         "ok": True,
@@ -772,6 +1266,16 @@ def dam_core_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "ready_rendition_count": len(tuple(item for item in renditions if item["status"] == "ready")),
         "rights_policy_count": len(policies),
         "metadata_tag_count": len(tags),
+        "collection_count": len(tuple(item for item in state["asset_collections"].values() if item["tenant"] == tenant)),
+        "license_agreement_count": len(tuple(item for item in state["license_agreements"].values() if item["tenant"] == tenant)),
+        "usage_entitlement_count": len(tuple(item for item in state["usage_entitlements"].values() if item["tenant"] == tenant)),
+        "metadata_enrichment_count": len(tuple(item for item in state["metadata_enrichments"].values() if item["tenant"] == tenant)),
+        "semantic_annotation_count": len(tuple(item for item in state["semantic_annotations"].values() if item["tenant"] == tenant)),
+        "approved_workflow_count": len(tuple(item for item in workflows if item["status"] == "approved")),
+        "resolved_exception_count": len(tuple(item for item in exceptions if item["status"] == "resolved")),
+        "usage_snapshot_count": len(tuple(item for item in state["asset_usage_snapshots"].values() if item["tenant"] == tenant)),
+        "duplicate_candidate_count": len(tuple(item for item in state["asset_duplicate_candidates"].values() if item["tenant"] == tenant)),
+        "lineage_count": len(tuple(item for item in state["asset_lineage"].values() if item["tenant"] == tenant)),
         "product_projection_count": len(tuple(item for item in state["product_projection"].values() if item.get("tenant") == tenant)),
         "outbox_count": len(state["outbox"]),
         "inbox_count": len(tuple(item for item in state["inbox"] if item["tenant"] == tenant)),
@@ -794,8 +1298,22 @@ def dam_core_permissions_contract() -> dict:
         "request_rendition": "dam_core.rendition.write",
         "complete_rendition": "dam_core.rendition.write",
         "attach_rights_policy": "dam_core.rights.manage",
+        "register_license_agreement": "dam_core.rights.manage",
+        "grant_usage_entitlement": "dam_core.rights.manage",
         "enforce_rights": "dam_core.rights.evaluate",
         "add_metadata_tag": "dam_core.metadata.write",
+        "register_metadata_taxonomy": "dam_core.metadata.write",
+        "enrich_metadata": "dam_core.metadata.write",
+        "add_semantic_annotation": "dam_core.metadata.write",
+        "create_asset_collection": "dam_core.asset.write",
+        "add_asset_to_collection": "dam_core.asset.write",
+        "start_asset_workflow": "dam_core.workflow",
+        "complete_asset_review_task": "dam_core.workflow",
+        "open_asset_exception": "dam_core.workflow",
+        "resolve_asset_exception_case": "dam_core.workflow",
+        "record_asset_usage_snapshot": "dam_core.audit",
+        "detect_asset_duplicate_candidate": "dam_core.audit",
+        "record_asset_lineage": "dam_core.audit",
         "receive_event": "dam_core.event.consume",
         "register_rule": "dam_core.configure",
         "set_parameter": "dam_core.configure",
@@ -837,12 +1355,124 @@ def dam_core_build_api_contract() -> dict:
                 "idempotency_key": "policy_id",
             },
             {
+                "route": "POST /dam/assets/{asset_id}/license-agreements",
+                "command": "register_license_agreement",
+                "owned_tables": ("license_agreement",),
+                "emits": ("LicenseAgreementRegistered",),
+                "requires_permission": "dam_core.rights.manage",
+                "idempotency_key": "agreement_id",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/usage-entitlements",
+                "command": "grant_usage_entitlement",
+                "owned_tables": ("usage_entitlement",),
+                "emits": ("UsageEntitlementGranted",),
+                "requires_permission": "dam_core.rights.manage",
+                "idempotency_key": "entitlement_id",
+            },
+            {
                 "route": "POST /dam/assets/{asset_id}/tags",
                 "command": "add_metadata_tag",
                 "owned_tables": ("metadata_tag",),
                 "emits": ("AssetMetadataTagged",),
                 "requires_permission": "dam_core.metadata.write",
                 "idempotency_key": "tag_id",
+            },
+            {
+                "route": "POST /dam/metadata-taxonomies",
+                "command": "register_metadata_taxonomy",
+                "owned_tables": ("metadata_taxonomy",),
+                "emits": ("MetadataTaxonomyRegistered",),
+                "requires_permission": "dam_core.metadata.write",
+                "idempotency_key": "taxonomy_id",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/metadata-enrichments",
+                "command": "enrich_metadata",
+                "owned_tables": ("metadata_enrichment",),
+                "emits": ("MetadataEnriched",),
+                "requires_permission": "dam_core.metadata.write",
+                "idempotency_key": "enrichment_id",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/semantic-annotations",
+                "command": "add_semantic_annotation",
+                "owned_tables": ("semantic_annotation",),
+                "emits": ("SemanticAnnotationAdded",),
+                "requires_permission": "dam_core.metadata.write",
+                "idempotency_key": "annotation_id",
+            },
+            {
+                "route": "POST /dam/collections",
+                "command": "create_asset_collection",
+                "owned_tables": ("asset_collection",),
+                "emits": ("AssetCollectionCreated",),
+                "requires_permission": "dam_core.asset.write",
+                "idempotency_key": "collection_id",
+            },
+            {
+                "route": "POST /dam/collections/{collection_id}/members",
+                "command": "add_asset_to_collection",
+                "owned_tables": ("asset_collection_member",),
+                "emits": ("AssetAddedToCollection",),
+                "requires_permission": "dam_core.asset.write",
+                "idempotency_key": "member_id",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/workflows",
+                "command": "start_asset_workflow",
+                "owned_tables": ("asset_workflow_case", "asset_review_task"),
+                "emits": ("AssetWorkflowStarted",),
+                "requires_permission": "dam_core.workflow",
+                "idempotency_key": "case_id",
+            },
+            {
+                "route": "POST /dam/review-tasks/{task_id}/complete",
+                "command": "complete_asset_review_task",
+                "owned_tables": ("asset_review_task", "asset_workflow_case"),
+                "emits": ("AssetReviewTaskCompleted",),
+                "requires_permission": "dam_core.workflow",
+                "idempotency_key": "task_id:decision",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/exceptions",
+                "command": "open_asset_exception",
+                "owned_tables": ("asset_exception",),
+                "emits": ("AssetExceptionOpened",),
+                "requires_permission": "dam_core.workflow",
+                "idempotency_key": "exception_id",
+            },
+            {
+                "route": "POST /dam/exceptions/{exception_id}/resolve",
+                "command": "resolve_asset_exception_case",
+                "owned_tables": ("asset_exception",),
+                "emits": ("AssetExceptionResolved",),
+                "requires_permission": "dam_core.workflow",
+                "idempotency_key": "exception_id:resolution",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/usage-snapshots",
+                "command": "record_asset_usage_snapshot",
+                "owned_tables": ("asset_usage_snapshot",),
+                "emits": ("AssetUsageSnapshotRecorded",),
+                "requires_permission": "dam_core.audit",
+                "idempotency_key": "snapshot_id",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/duplicate-candidates",
+                "command": "detect_asset_duplicate_candidate",
+                "owned_tables": ("asset_duplicate_candidate",),
+                "emits": ("AssetDuplicateCandidateDetected",),
+                "requires_permission": "dam_core.audit",
+                "idempotency_key": "candidate_id",
+            },
+            {
+                "route": "POST /dam/assets/{asset_id}/lineage",
+                "command": "record_asset_lineage",
+                "owned_tables": ("asset_lineage",),
+                "emits": ("AssetLineageRecorded",),
+                "requires_permission": "dam_core.audit",
+                "idempotency_key": "lineage_id",
             },
             {
                 "route": "POST /dam/events/inbox",
@@ -930,10 +1560,24 @@ def dam_core_build_service_contract() -> dict:
         "receive_event",
         "register_asset",
         "attach_rights_policy",
+        "register_license_agreement",
+        "grant_usage_entitlement",
         "add_metadata_tag",
+        "register_metadata_taxonomy",
+        "enrich_metadata",
+        "add_semantic_annotation",
+        "create_asset_collection",
+        "add_asset_to_collection",
         "request_rendition",
         "complete_rendition",
         "enforce_rights",
+        "start_asset_workflow",
+        "complete_asset_review_task",
+        "open_asset_exception",
+        "resolve_asset_exception_case",
+        "record_asset_usage_snapshot",
+        "detect_asset_duplicate_candidate",
+        "record_asset_lineage",
         "score_asset_quality",
         "simulate_rendition_cost",
         "forecast_asset_usage",
@@ -1114,8 +1758,9 @@ def dam_core_run_control_tests(state: dict) -> dict:
     asset_tenants = {asset_id: asset["tenant"] for asset_id, asset in state["assets"].items()}
     tenant_isolation = all(state["assets"][rendition["asset_id"]]["tenant"] == rendition["tenant"] for rendition in state["asset_renditions"].values())
     tenant_isolation = tenant_isolation and all(asset_tenants[tag["asset_id"]] == tag["tenant"] for tag in state["metadata_tags"].values())
-    rights_coverage = all(asset.get("rights_policy_id") for asset in state["assets"].values())
-    rendition_coverage = all(asset.get("rendition_ids") for asset in state["assets"].values())
+    derived_asset_ids = {lineage["asset_id"] for lineage in state["asset_lineage"].values()}
+    rights_coverage = all(asset.get("rights_policy_id") or asset_id in derived_asset_ids for asset_id, asset in state["assets"].items())
+    rendition_coverage = all(asset.get("rendition_ids") or asset_id in derived_asset_ids for asset_id, asset in state["assets"].items())
     configuration_valid = state["configuration"].get("event_contract") == "AppGen-X" and not state["configuration"].get("user_eventing_choice")
     blocking_gaps = tuple(
         gap

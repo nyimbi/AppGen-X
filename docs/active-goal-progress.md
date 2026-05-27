@@ -2184,3 +2184,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   artifact contract, implementation release audit, generation smoke audit,
   specification contract, and restricted legacy-name scan all passed. Commit:
   `06c0d9d`.
+- Current `dam_core` PBC pass promotes passive DAM support areas into
+  executable package-local operations: asset collections and collection members,
+  license agreements, usage entitlements, metadata taxonomies, metadata
+  enrichment, semantic annotations, asset workflow/review tasks, asset exception
+  open/resolve, usage snapshots, duplicate candidates, and asset lineage.
+  Runtime, package exports, manifest, AppGen-X event descriptors, generated
+  service/route descriptors, UI bindings, specification, and focused tests now
+  cover those flows without stream-engine choices or shared-table access.
+  Verification: package Python compile, runtime smoke, package
+  service/route/UI/agent smokes, focused package contract tests, source artifact
+  contract, implementation release audit, generation smoke audit, specification
+  contract, and restricted legacy-name scan all passed. Commit: pending.
