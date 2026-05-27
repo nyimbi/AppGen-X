@@ -2372,3 +2372,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   artifact contract, implementation release audit, generation smoke audit,
   specification contract, and restricted legacy-name scan all passed. Commit:
   `d58d944`.
+- Current runtime target packaging pass adds target artifact transaction replay
+  as release-gating evidence. Source and generated visual runtime contracts now
+  prove each web, mobile, desktop, and PWA artifact resolves runtime inputs,
+  writes target manifests, attaches signature metadata, builds install bundles,
+  verifies bundle integrity, records rollback snapshots, and publishes target
+  artifacts before visual runtime package and readiness gates can pass.
+  Verification is focused under the low-battery delivery constraint. Commit:
+  `8467917`.
