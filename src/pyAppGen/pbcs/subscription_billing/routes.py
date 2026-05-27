@@ -5,8 +5,43 @@ from .services import SubscriptionBillingService, service_operation_contracts
 
 ROUTES = ({'method': 'POST', 'path': '/api/pbc/subscription_billing/subscriptions', 'handler': 'command_subscriptions', 'permission': 'subscription_billing.command.1'}, {'method': 'POST', 'path': '/api/pbc/subscription_billing/usage', 'handler': 'command_usage', 'permission': 'subscription_billing.command.2'}, {'method': 'POST', 'path': '/api/pbc/subscription_billing/renewals', 'handler': 'command_renewals', 'permission': 'subscription_billing.command.3'}, {'method': 'GET', 'path': '/api/pbc/subscription_billing/subscription-billing-workbench', 'handler': 'query_subscription_billing_workbench', 'permission': 'subscription_billing.query.4'})
 
+ROUTES = ROUTES + (
+    {'method': 'POST', 'path': '/api/pbc/subscription_billing/trials', 'handler': 'command_trials', 'permission': 'subscription_billing.subscription'},
+    {'method': 'POST', 'path': '/api/pbc/subscription_billing/change-orders', 'handler': 'command_change_orders', 'permission': 'subscription_billing.subscription'},
+    {'method': 'POST', 'path': '/api/pbc/subscription_billing/cancellations', 'handler': 'command_cancellations', 'permission': 'subscription_billing.subscription'},
+    {'method': 'POST', 'path': '/api/pbc/subscription_billing/addons', 'handler': 'command_addons', 'permission': 'subscription_billing.subscription'},
+    {'method': 'POST', 'path': '/api/pbc/subscription_billing/credit-memos', 'handler': 'command_credit_memos', 'permission': 'subscription_billing.invoice'},
+    {'method': 'POST', 'path': '/api/pbc/subscription_billing/payment-applications', 'handler': 'command_payment_applications', 'permission': 'subscription_billing.invoice'},
+    {'method': 'POST', 'path': '/api/pbc/subscription_billing/entitlements', 'handler': 'command_entitlements', 'permission': 'subscription_billing.entitlement'},
+    {'method': 'POST', 'path': '/api/pbc/subscription_billing/revenue-recognition', 'handler': 'command_revenue', 'permission': 'subscription_billing.revenue'},
+    {'method': 'POST', 'path': '/api/pbc/subscription_billing/billing-exceptions', 'handler': 'command_billing_exceptions', 'permission': 'subscription_billing.audit'},
+)
+
 
 API_ROUTE_CONTRACTS = ({'method': 'POST', 'path': '/api/pbc/subscription_billing/subscriptions', 'handler': 'command_subscriptions', 'permission': 'subscription_billing.command.1', 'operation': 'command_subscriptions', 'operation_kind': 'command', 'owned_tables': ('subscription_billing_subscription', 'subscription_billing_usage_meter', 'subscription_billing_billing_schedule', 'subscription_billing_dunning_notice'), 'read_tables': (), 'emitted_event': 'SubscriptionRenewed', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'subscription_billing:command_subscriptions:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/subscription_billing/usage', 'handler': 'command_usage', 'permission': 'subscription_billing.command.2', 'operation': 'command_usage', 'operation_kind': 'command', 'owned_tables': ('subscription_billing_subscription', 'subscription_billing_usage_meter', 'subscription_billing_billing_schedule', 'subscription_billing_dunning_notice'), 'read_tables': (), 'emitted_event': 'UsageRated', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'subscription_billing:command_usage:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/subscription_billing/renewals', 'handler': 'command_renewals', 'permission': 'subscription_billing.command.3', 'operation': 'command_renewals', 'operation_kind': 'command', 'owned_tables': ('subscription_billing_subscription', 'subscription_billing_usage_meter', 'subscription_billing_billing_schedule', 'subscription_billing_dunning_notice'), 'read_tables': (), 'emitted_event': 'InvoiceApproved', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'subscription_billing:command_renewals:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/subscription_billing/subscription-billing-workbench', 'handler': 'query_subscription_billing_workbench', 'permission': 'subscription_billing.query.4', 'operation': 'query_subscription_billing_workbench', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('subscription_billing_subscription', 'subscription_billing_usage_meter', 'subscription_billing_billing_schedule', 'subscription_billing_dunning_notice'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False})
+
+API_ROUTE_CONTRACTS = API_ROUTE_CONTRACTS + tuple(
+    {
+        'method': item['method'],
+        'path': item['path'],
+        'handler': item['operation'],
+        'permission': item['permission'],
+        'operation': item['operation'],
+        'operation_kind': item['operation_kind'],
+        'owned_tables': item['owned_tables'],
+        'read_tables': item['read_tables'],
+        'emitted_event': item['emitted_event'],
+        'event_contract': item['event_contract'],
+        'transaction_boundary': item['transaction_boundary'],
+        'idempotency_required': True,
+        'idempotency_key': f"subscription_billing:{item['operation']}:idempotency_key",
+        'shared_table_access': False,
+        'stream_engine_picker_visible': False,
+    }
+    for item in service_operation_contracts()['contracts']
+    if item['operation'].startswith('command_')
+    and item['operation'] not in {'command_subscriptions', 'command_usage', 'command_renewals'}
+)
 
 
 def register_routes(app=None):

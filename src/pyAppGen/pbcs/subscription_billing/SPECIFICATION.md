@@ -36,7 +36,11 @@ The executable schema contract also covers package-local support and evidence
 tables:
 
 - `plan_catalog`, `invoice`, `billing_rule`, `billing_parameter`,
-  `billing_configuration`, and `billing_schema_extension`.
+  `subscription_phase`, `trial_period`, `subscription_addon`,
+  `subscription_change_order`, `invoice_line`, `credit_memo`,
+  `payment_application`, `entitlement_grant`, `revenue_schedule`,
+  `billing_exception`, `billing_configuration`, and
+  `billing_schema_extension`.
 - AppGen-X evidence tables: `subscription_billing_appgen_outbox_event`,
   `subscription_billing_appgen_inbox_event`, and
   `subscription_billing_dead_letter_event`.
@@ -56,13 +60,22 @@ from a production recurring-revenue system:
 - Plan catalog, rate schedules, currencies, supported regions, billing periods,
   base prices, included units, and usage rates.
 - Subscription lifecycle: activation, schedule creation, active state,
+  trial start, phase creation, add-on management, plan changes, cancellation,
   renewal review, renewal approval, customer binding, tenant isolation, and
   audit-proof generation.
 - Usage metering: quantity capture, included-unit calculation, effective-rate
   selection, rounding precision, rated amount, and `UsageRated` outbox events.
 - Invoice generation: period invoices, base plus usage amount, approval
-  threshold enforcement, deferred-revenue schedule, tax handoff marker,
-  ledger handoff marker, entitlement handoff marker, and invoice audit proof.
+  threshold enforcement, invoice lines, credit memos, payment application,
+  deferred-revenue schedule, tax handoff marker, ledger handoff marker,
+  entitlement handoff marker, and invoice audit proof.
+- Entitlement and revenue operations: entitlement grants are generated from
+  subscription state, revenue schedules are recognized from approved invoices,
+  and every grant or recognition produces owned audit evidence and AppGen-X
+  outbox evidence.
+- Billing exception management: usage spikes, payment delays, tax mismatches,
+  entitlement mismatches, and revenue variances produce package-local
+  exception records with recommended actions and resolution proofs.
 - Renewal management: confidence thresholds, churn-risk evaluation, renewal
   count, and review state when thresholds are not met.
 - Dunning management: notice creation, reason tracking, risk scoring, retry
@@ -139,10 +152,20 @@ The service layer exposes these package-local command methods:
 - `register_rule(rule)`.
 - `register_schema_extension(table, fields)`.
 - `register_plan(plan)`.
+- `start_trial(command)`.
 - `create_subscription(command)`.
+- `change_subscription_plan(subscription_id, target_plan_id=..., effective_date=..., reason=...)`.
+- `cancel_subscription(subscription_id, effective_date=..., reason=...)`.
+- `add_subscription_addon(addon)`.
 - `record_usage(usage)`.
 - `generate_invoice(subscription_id, period=...)`.
+- `issue_credit_memo(invoice_id, amount=..., reason=...)`.
+- `apply_payment_to_invoice(invoice_id, payment_event_id=..., amount=...)`.
+- `grant_entitlement(subscription_id, entitlement_key=..., scope=...)`.
+- `recognize_revenue(invoice_id, period=...)`.
 - `renew_subscription(subscription_id)`.
+- `open_billing_exception(subscription_id, exception_type=..., severity=..., description=...)`.
+- `resolve_billing_exception(exception_id, resolution=...)`.
 - `create_dunning_notice(subscription_id, reason=...)`.
 - `receive_event(event, simulate_failure=False)`.
 - `run_control_tests(state)`.
@@ -173,6 +196,15 @@ contract entries:
 
 - `POST /subscriptions` maps to `create_subscription`, owns `subscription` and
   `billing_schedule`, and emits `SubscriptionActivated`.
+- `POST /trials` maps to `start_trial`, owns `trial_period`, and records
+  conversion-scoring evidence.
+- `POST /subscription-change-orders` maps to `change_subscription_plan`, owns
+  `subscription_change_order`, `subscription_phase`, and `subscription`, and
+  emits `SubscriptionChanged`.
+- `POST /subscription-cancellations` maps to `cancel_subscription`, owns
+  `subscription` and `billing_schedule`, and emits `SubscriptionCancelled`.
+- `POST /subscription-addons` maps to `add_subscription_addon`, owns
+  `subscription_addon` and updates subscription MRR.
 - `POST /usage` maps to `record_usage`, owns `usage_meter`, and emits
   `UsageRated`.
 - `POST /renewals` maps to `renew_subscription`, owns `subscription` and
@@ -181,6 +213,17 @@ contract entries:
   emits `InvoiceApproved` or `InvoiceApprovalRequested`.
 - `POST /dunning-notices` maps to `create_dunning_notice`, owns
   `dunning_notice`, and emits `DunningNoticeCreated`.
+- `POST /credit-memos` maps to `issue_credit_memo`, owns `credit_memo` and
+  invoice net-amount evidence, and emits `CreditMemoIssued`.
+- `POST /payment-applications` maps to `apply_payment_to_invoice`, owns
+  `payment_application` and invoice payment state, and emits `PaymentApplied`.
+- `POST /entitlements` maps to `grant_entitlement`, owns
+  `entitlement_grant`, and emits `EntitlementGranted`.
+- `POST /revenue-recognition` maps to `recognize_revenue`, owns
+  `revenue_schedule`, and emits `RevenueRecognized`.
+- `POST /billing-exceptions` maps to `open_billing_exception` and
+  `resolve_billing_exception`, owns `billing_exception`, and records
+  exception-resolution proof.
 - `POST /subscription-billing/events/inbox` maps to `receive_event`, consumes
   AppGen-X events with event ID idempotency.
 - `GET /subscription-billing/workbench` maps to `build_workbench_view` and
@@ -192,7 +235,9 @@ Emitted events use AppGen-X outbox records with event IDs, event types, tenant,
 payload, idempotency key, retry policy, dead-letter target, and audit hash.
 
 - Emitted: `SubscriptionActivated`, `SubscriptionRenewed`, `UsageRated`,
-  `InvoiceApproved`, `InvoiceApprovalRequested`, and `DunningNoticeCreated`.
+  `SubscriptionChanged`, `SubscriptionCancelled`, `InvoiceApproved`,
+  `InvoiceApprovalRequested`, `CreditMemoIssued`, `PaymentApplied`,
+  `EntitlementGranted`, `RevenueRecognized`, and `DunningNoticeCreated`.
 - Catalog emitted: `SubscriptionActivated`, `SubscriptionRenewed`,
   `UsageRated`, `InvoiceApproved`, `InvoiceApprovalRequested`, and
   `DunningNoticeCreated`.

@@ -201,3 +201,165 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['owned_boundary_rejection']['ok'] is False
     assert validation['owned_boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_subscription_lifecycle_covers_trials_changes_credits_entitlements_and_revenue():
+    from .. import runtime
+
+    state = runtime.subscription_billing_empty_state()
+    state = runtime.subscription_billing_configure_runtime(state, {
+        "database_backend": "postgresql",
+        "event_topic": runtime.SUBSCRIPTION_BILLING_REQUIRED_EVENT_TOPIC,
+        "retry_limit": 3,
+        "default_currency": "USD",
+        "supported_currencies": ("USD",),
+        "supported_regions": ("US",),
+        "billing_calendars": ("monthly",),
+        "default_timezone": "UTC",
+        "invoice_approval_mode": "policy",
+        "workbench_limit": 100,
+    })["state"]
+    for name, value in (
+        ("renewal_confidence_threshold", 0.7),
+        ("churn_risk_threshold", 0.8),
+        ("dunning_risk_threshold", 0.5),
+        ("usage_rating_precision", 2),
+        ("proration_rounding_precision", 2),
+        ("retry_limit", 3),
+        ("carbon_batch_window_hours", 8),
+        ("discount_guardrail_percent", 25.0),
+        ("approval_amount_threshold", 10000.0),
+        ("workbench_limit", 100),
+    ):
+        state = runtime.subscription_billing_set_parameter(state, name, value)["state"]
+    state = runtime.subscription_billing_register_rule(state, {
+        "rule_id": "rule_subscription",
+        "tenant": "tenant_billing",
+        "rule_type": "renewal",
+        "allowed_plan_families": ("growth",),
+        "allowed_currencies": ("USD",),
+        "allowed_regions": ("US",),
+        "renewal_policy": "auto",
+        "invoice_policy": "approve_below_threshold",
+        "status": "active",
+    })["state"]
+    for plan_id, base_price in (("plan_growth", 100.0), ("plan_scale", 175.0)):
+        state = runtime.subscription_billing_register_plan(state, {
+            "plan_id": plan_id,
+            "tenant": "tenant_billing",
+            "family": "growth",
+            "name": plan_id,
+            "currency": "USD",
+            "region": "US",
+            "billing_period": "monthly",
+            "base_price": base_price,
+            "usage_rate": 2.0,
+            "included_units": 10.0,
+            "status": "active",
+        })["state"]
+
+    trial = runtime.subscription_billing_start_trial(state, {
+        "trial_id": "trial_billing",
+        "tenant": "tenant_billing",
+        "customer_id": "cust_billing",
+        "plan_id": "plan_growth",
+        "start_date": "2026-01-01",
+        "end_date": "2026-01-15",
+        "region": "US",
+        "currency": "USD",
+    })
+    state = trial["state"]
+    state = runtime.subscription_billing_create_subscription(state, {
+        "subscription_id": "sub_billing",
+        "tenant": "tenant_billing",
+        "customer_id": "cust_billing",
+        "plan_id": "plan_growth",
+        "start_date": "2026-01-15",
+        "renewal_date": "2026-02-15",
+        "region": "US",
+        "currency": "USD",
+        "seats": 3,
+    })["state"]
+    state = runtime.subscription_billing_add_subscription_addon(state, {
+        "addon_id": "addon_billing",
+        "tenant": "tenant_billing",
+        "subscription_id": "sub_billing",
+        "name": "support",
+        "quantity": 1,
+        "unit_price": 20.0,
+        "effective_date": "2026-01-15",
+    })["state"]
+    state = runtime.subscription_billing_record_usage(state, {
+        "usage_id": "usage_billing",
+        "tenant": "tenant_billing",
+        "subscription_id": "sub_billing",
+        "meter_name": "api_calls",
+        "quantity": 30.0,
+        "occurred_at": "2026-01-20T00:00:00Z",
+    })["state"]
+    invoice = runtime.subscription_billing_generate_invoice(state, "sub_billing", period="2026-01")
+    state = invoice["state"]
+    credit = runtime.subscription_billing_issue_credit_memo(
+        state,
+        invoice["invoice"]["invoice_id"],
+        amount=10.0,
+        reason="service_adjustment",
+    )
+    state = credit["state"]
+    payment = runtime.subscription_billing_apply_payment_to_invoice(
+        state,
+        invoice["invoice"]["invoice_id"],
+        payment_event_id="payment_billing",
+        amount=invoice["invoice"]["amount"],
+    )
+    state = payment["state"]
+    entitlement = runtime.subscription_billing_grant_entitlement(
+        state,
+        "sub_billing",
+        entitlement_key="support",
+        scope="tenant_billing",
+    )
+    state = entitlement["state"]
+    revenue = runtime.subscription_billing_recognize_revenue(
+        state,
+        invoice["invoice"]["invoice_id"],
+        period="2026-01",
+    )
+    state = revenue["state"]
+    changed = runtime.subscription_billing_change_subscription_plan(
+        state,
+        "sub_billing",
+        target_plan_id="plan_scale",
+        effective_date="2026-02-01",
+        reason="upgrade",
+    )
+    state = changed["state"]
+    exception = runtime.subscription_billing_open_billing_exception(
+        state,
+        "sub_billing",
+        exception_type="usage_spike",
+        severity="medium",
+        description="usage review",
+    )
+    state = exception["state"]
+    resolved = runtime.subscription_billing_resolve_billing_exception(
+        state,
+        exception["exception"]["exception_id"],
+        resolution="accepted",
+    )
+    state = resolved["state"]
+    cancelled = runtime.subscription_billing_cancel_subscription(
+        state,
+        "sub_billing",
+        effective_date="2026-03-01",
+        reason="customer_request",
+    )
+
+    assert trial["trial"]["status"] == "active"
+    assert credit["credit_memo"]["status"] == "issued"
+    assert payment["invoice"]["status"] == "paid"
+    assert entitlement["entitlement"]["projection"] == "entitlement_projection"
+    assert len(revenue["revenue_schedules"]) == 2
+    assert changed["subscription"]["plan_id"] == "plan_scale"
+    assert resolved["exception"]["status"] == "resolved"
+    assert cancelled["subscription"]["status"] == "cancelled"

@@ -39,9 +39,16 @@ SUBSCRIPTION_BILLING_RUNTIME_CAPABILITY_KEYS = (
 )
 SUBSCRIPTION_BILLING_STANDARD_FEATURE_KEYS = (
     "plan_catalog",
+    "trial_management",
     "subscription_lifecycle",
+    "subscription_change_orders",
+    "subscription_cancellation",
+    "addon_management",
     "usage_metering",
+    "invoice_line_rating",
     "rating_and_invoice_approval",
+    "credit_memos",
+    "payment_application",
     "renewal_management",
     "proration_and_crediting",
     "dunning_management",
@@ -61,19 +68,31 @@ SUBSCRIPTION_BILLING_STANDARD_FEATURE_KEYS = (
     "seed_data",
     "workbench",
 )
-SUBSCRIPTION_BILLING_OWNED_TABLES = ("subscription", "usage_meter", "billing_schedule", "dunning_notice")
+SUBSCRIPTION_BILLING_OWNED_TABLES = (
+    "plan_catalog",
+    "subscription",
+    "subscription_phase",
+    "trial_period",
+    "subscription_addon",
+    "subscription_change_order",
+    "usage_meter",
+    "billing_schedule",
+    "invoice",
+    "invoice_line",
+    "credit_memo",
+    "payment_application",
+    "dunning_notice",
+    "entitlement_grant",
+    "revenue_schedule",
+    "billing_exception",
+)
 SUBSCRIPTION_BILLING_RUNTIME_TABLES = (
     "subscription_billing_appgen_outbox_event",
     "subscription_billing_appgen_inbox_event",
     "subscription_billing_dead_letter_event",
 )
 SUBSCRIPTION_BILLING_SCHEMA_TABLES = (
-    "plan_catalog",
-    "subscription",
-    "usage_meter",
-    "billing_schedule",
-    "invoice",
-    "dunning_notice",
+    *SUBSCRIPTION_BILLING_OWNED_TABLES,
     "billing_rule",
     "billing_parameter",
     "billing_configuration",
@@ -93,6 +112,12 @@ SUBSCRIPTION_BILLING_EMITTED_EVENT_TYPES = (
     "SubscriptionActivated",
     "SubscriptionRenewed",
     "UsageRated",
+    "SubscriptionChanged",
+    "SubscriptionCancelled",
+    "CreditMemoIssued",
+    "PaymentApplied",
+    "EntitlementGranted",
+    "RevenueRecognized",
     "InvoiceApproved",
     "InvoiceApprovalRequested",
     "DunningNoticeCreated",
@@ -188,10 +213,20 @@ def subscription_billing_runtime_capabilities() -> dict:
             "register_rule",
             "register_schema_extension",
             "register_plan",
+            "start_trial",
             "create_subscription",
+            "change_subscription_plan",
+            "cancel_subscription",
+            "add_subscription_addon",
             "record_usage",
             "generate_invoice",
+            "issue_credit_memo",
+            "apply_payment_to_invoice",
+            "grant_entitlement",
+            "recognize_revenue",
             "renew_subscription",
+            "open_billing_exception",
+            "resolve_billing_exception",
             "create_dunning_notice",
             "receive_event",
             "build_api_contract",
@@ -274,6 +309,35 @@ def subscription_billing_runtime_smoke() -> dict:
             "status": "active",
         },
     )["state"]
+    state = subscription_billing_register_plan(
+        state,
+        {
+            "plan_id": "plan_scale",
+            "tenant": "tenant_alpha",
+            "family": "growth",
+            "name": "Scale",
+            "currency": "USD",
+            "region": "US",
+            "billing_period": "monthly",
+            "base_price": 180.0,
+            "usage_rate": 2.0,
+            "included_units": 25.0,
+            "status": "active",
+        },
+    )["state"]
+    state = subscription_billing_start_trial(
+        state,
+        {
+            "trial_id": "trial_alpha",
+            "tenant": "tenant_alpha",
+            "customer_id": "cust_alpha",
+            "plan_id": "plan_growth",
+            "start_date": "2025-12-15",
+            "end_date": "2025-12-31",
+            "region": "US",
+            "currency": "USD",
+        },
+    )["state"]
     state = subscription_billing_receive_event(
         state,
         {
@@ -296,6 +360,18 @@ def subscription_billing_runtime_smoke() -> dict:
             "seats": 5,
         },
     )["state"]
+    state = subscription_billing_add_subscription_addon(
+        state,
+        {
+            "addon_id": "addon_support",
+            "tenant": "tenant_alpha",
+            "subscription_id": "sub_alpha",
+            "name": "premium_support",
+            "quantity": 1,
+            "unit_price": 25.0,
+            "effective_date": "2026-01-01",
+        },
+    )["state"]
     state = subscription_billing_record_usage(
         state,
         {
@@ -309,6 +385,13 @@ def subscription_billing_runtime_smoke() -> dict:
     )["state"]
     invoice = subscription_billing_generate_invoice(state, "sub_alpha", period="2026-01")
     state = invoice["state"]
+    credit = subscription_billing_issue_credit_memo(
+        state,
+        invoice["invoice"]["invoice_id"],
+        amount=5.0,
+        reason="service_credit",
+    )
+    state = credit["state"]
     state = subscription_billing_receive_event(
         state,
         {
@@ -327,6 +410,40 @@ def subscription_billing_runtime_smoke() -> dict:
     )
     renewed = subscription_billing_renew_subscription(state, "sub_alpha")
     state = renewed["state"]
+    changed = subscription_billing_change_subscription_plan(
+        state,
+        "sub_alpha",
+        target_plan_id="plan_scale",
+        effective_date="2026-02-15",
+        reason="growth_upgrade",
+    )
+    state = changed["state"]
+    entitlement = subscription_billing_grant_entitlement(
+        state,
+        "sub_alpha",
+        entitlement_key="premium_support",
+        scope="tenant_alpha",
+    )
+    state = entitlement["state"]
+    revenue = subscription_billing_recognize_revenue(
+        state,
+        invoice["invoice"]["invoice_id"],
+        period="2026-01",
+    )
+    state = revenue["state"]
+    exception = subscription_billing_open_billing_exception(
+        state,
+        "sub_alpha",
+        exception_type="usage_spike",
+        severity="medium",
+        description="usage increased materially above baseline",
+    )
+    state = exception["state"]
+    state = subscription_billing_resolve_billing_exception(
+        state,
+        exception["exception"]["exception_id"],
+        resolution="usage reviewed and accepted",
+    )["state"]
     retrying = subscription_billing_receive_event(
         state,
         {
@@ -349,6 +466,12 @@ def subscription_billing_runtime_smoke() -> dict:
     state = dead_lettered["state"]
     dunning = subscription_billing_create_dunning_notice(state, "sub_alpha", reason="payment_watch")
     state = dunning["state"]
+    state = subscription_billing_cancel_subscription(
+        state,
+        "sub_alpha",
+        effective_date="2026-03-01",
+        reason="customer_request",
+    )["state"]
     checks = tuple(
         {
             "id": key,
@@ -393,10 +516,20 @@ def subscription_billing_empty_state() -> dict:
         "schema_extensions": {},
         "plans": {},
         "subscriptions": {},
+        "subscription_phases": {},
+        "trial_periods": {},
+        "subscription_addons": {},
+        "change_orders": {},
         "usage_meters": {},
         "billing_schedules": {},
         "invoices": {},
+        "invoice_lines": {},
+        "credit_memos": {},
+        "payment_applications": {},
         "dunning_notices": {},
+        "entitlement_grants": {},
+        "revenue_schedules": {},
+        "billing_exceptions": {},
         "price_decisions": {},
         "payment_captures": {},
         "event_attempts": {},
@@ -498,6 +631,28 @@ def subscription_billing_register_plan(state: dict, plan: dict) -> dict:
     return {"ok": True, "state": runtime, "plan": normalized}
 
 
+def subscription_billing_start_trial(state: dict, command: dict) -> dict:
+    required = {"trial_id", "tenant", "customer_id", "plan_id", "start_date", "end_date", "region", "currency"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Subscription Billing trial fields: {tuple(sorted(missing))}")
+    _require_configured(state)
+    plan = state["plans"].get(command["plan_id"])
+    if not plan:
+        raise ValueError(f"Unknown Subscription Billing plan: {command['plan_id']}")
+    _assert_supported_currency_region(state, command["currency"], command["region"])
+    runtime = _copy_state(state)
+    trial = {
+        **command,
+        "status": "active",
+        "conversion_score": round(1 - _subscription_risk({"seats": 1}, plan)["churn_risk"], 4),
+        "audit_proof": _digest(command),
+    }
+    runtime["trial_periods"][trial["trial_id"]] = trial
+    runtime["events"].append(_state_event("TrialStarted", trial["trial_id"], trial))
+    return {"ok": True, "state": runtime, "trial": trial}
+
+
 def subscription_billing_create_subscription(state: dict, command: dict) -> dict:
     required = {"subscription_id", "tenant", "customer_id", "plan_id", "start_date", "renewal_date", "region", "currency", "seats"}
     missing = required - set(command)
@@ -523,6 +678,15 @@ def subscription_billing_create_subscription(state: dict, command: dict) -> dict
         "audit_proof": _digest(command),
     }
     runtime["subscriptions"][subscription["subscription_id"]] = subscription
+    runtime["subscription_phases"][f"phase_{subscription['subscription_id']}_1"] = {
+        "phase_id": f"phase_{subscription['subscription_id']}_1",
+        "tenant": subscription["tenant"],
+        "subscription_id": subscription["subscription_id"],
+        "plan_id": subscription["plan_id"],
+        "start_date": subscription["start_date"],
+        "end_date": subscription["renewal_date"],
+        "status": "active",
+    }
     runtime["billing_schedules"][subscription["subscription_id"]] = {
         "subscription_id": subscription["subscription_id"],
         "tenant": subscription["tenant"],
@@ -532,6 +696,103 @@ def subscription_billing_create_subscription(state: dict, command: dict) -> dict
     }
     _emit(runtime, "SubscriptionActivated", subscription["tenant"], subscription)
     return {"ok": True, "state": runtime, "subscription": subscription}
+
+
+def subscription_billing_change_subscription_plan(
+    state: dict,
+    subscription_id: str,
+    *,
+    target_plan_id: str,
+    effective_date: str,
+    reason: str,
+) -> dict:
+    subscription = state["subscriptions"].get(subscription_id)
+    if not subscription:
+        raise ValueError(f"Unknown Subscription Billing subscription: {subscription_id}")
+    target_plan = state["plans"].get(target_plan_id)
+    if not target_plan:
+        raise ValueError(f"Unknown Subscription Billing plan: {target_plan_id}")
+    _assert_supported_currency_region(state, target_plan["currency"], target_plan["region"])
+    runtime = _copy_state(state)
+    old_plan = runtime["plans"][subscription["plan_id"]]
+    proration = subscription_billing_simulate_proration_quote(
+        runtime,
+        subscription_id,
+        target_seats=int(subscription["seats"]),
+        remaining_ratio=0.5,
+    )
+    order = {
+        "change_order_id": f"chg_{subscription_id}_{len(runtime['change_orders']) + 1}",
+        "tenant": subscription["tenant"],
+        "subscription_id": subscription_id,
+        "from_plan_id": old_plan["plan_id"],
+        "to_plan_id": target_plan_id,
+        "effective_date": effective_date,
+        "reason": reason,
+        "proration_amount": proration["prorated_amount"],
+        "status": "applied",
+        "audit_proof": _digest({"subscription_id": subscription_id, "target_plan_id": target_plan_id, "effective_date": effective_date}),
+    }
+    updated = {
+        **subscription,
+        "plan_id": target_plan_id,
+        "mrr": round(float(target_plan["base_price"]) + float(target_plan["usage_rate"]) * max(int(subscription["seats"]) - 1, 0), 2),
+        "status": "active",
+        "last_change_order_id": order["change_order_id"],
+    }
+    runtime["subscriptions"][subscription_id] = updated
+    runtime["change_orders"][order["change_order_id"]] = order
+    _emit(runtime, "SubscriptionChanged", updated["tenant"], {**order, "subscription": updated})
+    return {"ok": True, "state": runtime, "subscription": updated, "change_order": order}
+
+
+def subscription_billing_cancel_subscription(
+    state: dict,
+    subscription_id: str,
+    *,
+    effective_date: str,
+    reason: str,
+) -> dict:
+    subscription = state["subscriptions"].get(subscription_id)
+    if not subscription:
+        raise ValueError(f"Unknown Subscription Billing subscription: {subscription_id}")
+    runtime = _copy_state(state)
+    updated = {
+        **subscription,
+        "status": "cancelled",
+        "cancelled_at": effective_date,
+        "cancellation_reason": reason,
+        "renewal_confidence": 0.0,
+        "audit_proof": _digest({"subscription_id": subscription_id, "cancelled_at": effective_date, "reason": reason}),
+    }
+    runtime["subscriptions"][subscription_id] = updated
+    if subscription_id in runtime["billing_schedules"]:
+        runtime["billing_schedules"][subscription_id]["status"] = "cancelled"
+    _emit(runtime, "SubscriptionCancelled", updated["tenant"], updated)
+    return {"ok": True, "state": runtime, "subscription": updated}
+
+
+def subscription_billing_add_subscription_addon(state: dict, addon: dict) -> dict:
+    required = {"addon_id", "tenant", "subscription_id", "name", "quantity", "unit_price", "effective_date"}
+    missing = required - set(addon)
+    if missing:
+        raise ValueError(f"Missing Subscription Billing addon fields: {tuple(sorted(missing))}")
+    subscription = state["subscriptions"].get(addon["subscription_id"])
+    if not subscription:
+        raise ValueError(f"Unknown Subscription Billing subscription: {addon['subscription_id']}")
+    runtime = _copy_state(state)
+    normalized = {
+        **addon,
+        "quantity": float(addon["quantity"]),
+        "unit_price": float(addon["unit_price"]),
+        "mrr_delta": round(float(addon["quantity"]) * float(addon["unit_price"]), 2),
+        "status": "active",
+        "audit_proof": _digest(addon),
+    }
+    runtime["subscription_addons"][normalized["addon_id"]] = normalized
+    runtime["subscriptions"][addon["subscription_id"]]["mrr"] = round(float(subscription["mrr"]) + normalized["mrr_delta"], 2)
+    runtime["events"].append(_state_event("SubscriptionAddonAdded", normalized["addon_id"], normalized))
+    return {"ok": True, "state": runtime, "addon": normalized}
 
 
 def subscription_billing_record_usage(state: dict, usage: dict) -> dict:
@@ -590,9 +851,162 @@ def subscription_billing_generate_invoice(state: dict, subscription_id: str, *, 
         "entitlement_handoff": "entitlement_projection",
         "audit_proof": _digest({"subscription": subscription, "period": period, "subtotal": subtotal}),
     }
+    base_line = {
+        "invoice_line_id": f"line_{invoice['invoice_id']}_base",
+        "tenant": subscription["tenant"],
+        "invoice_id": invoice["invoice_id"],
+        "subscription_id": subscription_id,
+        "line_type": "base_fee",
+        "quantity": 1.0,
+        "unit_price": float(plan["base_price"]),
+        "amount": float(plan["base_price"]),
+        "status": "rated",
+    }
+    usage_lines = tuple(
+        {
+            "invoice_line_id": f"line_{invoice['invoice_id']}_{item['usage_id']}",
+            "tenant": subscription["tenant"],
+            "invoice_id": invoice["invoice_id"],
+            "subscription_id": subscription_id,
+            "line_type": "usage",
+            "quantity": item["billable_units"],
+            "unit_price": _effective_usage_rate(runtime, plan["plan_id"]),
+            "amount": item["rated_amount"],
+            "status": "rated",
+        }
+        for item in usage
+    )
+    for line in (base_line, *usage_lines):
+        runtime["invoice_lines"][line["invoice_line_id"]] = line
     runtime["invoices"][invoice["invoice_id"]] = invoice
     _emit(runtime, "InvoiceApproved" if status == "approved" else "InvoiceApprovalRequested", invoice["tenant"], invoice)
     return {"ok": True, "state": runtime, "invoice": invoice}
+
+
+def subscription_billing_issue_credit_memo(
+    state: dict,
+    invoice_id: str,
+    *,
+    amount: float,
+    reason: str,
+) -> dict:
+    invoice = state["invoices"].get(invoice_id)
+    if not invoice:
+        raise ValueError(f"Unknown Subscription Billing invoice: {invoice_id}")
+    runtime = _copy_state(state)
+    credit = {
+        "credit_memo_id": f"cm_{invoice_id}_{len(runtime['credit_memos']) + 1}",
+        "tenant": invoice["tenant"],
+        "invoice_id": invoice_id,
+        "subscription_id": invoice["subscription_id"],
+        "amount": round(min(float(amount), float(invoice["amount"])), 2),
+        "currency": invoice["currency"],
+        "reason": reason,
+        "status": "issued",
+        "audit_proof": _digest({"invoice_id": invoice_id, "amount": amount, "reason": reason}),
+    }
+    runtime["credit_memos"][credit["credit_memo_id"]] = credit
+    runtime["invoices"][invoice_id] = {
+        **invoice,
+        "credit_amount": round(float(invoice.get("credit_amount", 0)) + credit["amount"], 2),
+        "net_amount": round(float(invoice["amount"]) - credit["amount"], 2),
+    }
+    _emit(runtime, "CreditMemoIssued", credit["tenant"], credit)
+    return {"ok": True, "state": runtime, "credit_memo": credit, "invoice": runtime["invoices"][invoice_id]}
+
+
+def subscription_billing_apply_payment_to_invoice(
+    state: dict,
+    invoice_id: str,
+    *,
+    payment_event_id: str,
+    amount: float,
+) -> dict:
+    invoice = state["invoices"].get(invoice_id)
+    if not invoice:
+        raise ValueError(f"Unknown Subscription Billing invoice: {invoice_id}")
+    runtime = _copy_state(state)
+    net_amount = float(invoice.get("net_amount", invoice["amount"]))
+    applied = min(float(amount), net_amount)
+    application = {
+        "payment_application_id": f"payapp_{invoice_id}_{len(runtime['payment_applications']) + 1}",
+        "tenant": invoice["tenant"],
+        "invoice_id": invoice_id,
+        "subscription_id": invoice["subscription_id"],
+        "payment_event_id": payment_event_id,
+        "amount": round(applied, 2),
+        "currency": invoice["currency"],
+        "status": "applied",
+        "audit_proof": _digest({"invoice_id": invoice_id, "payment_event_id": payment_event_id, "amount": applied}),
+    }
+    runtime["payment_applications"][application["payment_application_id"]] = application
+    paid_amount = round(float(invoice.get("paid_amount", 0)) + applied, 2)
+    runtime["invoices"][invoice_id] = {
+        **invoice,
+        "paid_amount": paid_amount,
+        "status": "paid" if paid_amount >= net_amount else "partially_paid",
+        "payment_event_id": payment_event_id,
+    }
+    _emit(runtime, "PaymentApplied", application["tenant"], application)
+    return {"ok": True, "state": runtime, "payment_application": application, "invoice": runtime["invoices"][invoice_id]}
+
+
+def subscription_billing_grant_entitlement(
+    state: dict,
+    subscription_id: str,
+    *,
+    entitlement_key: str,
+    scope: str,
+) -> dict:
+    subscription = state["subscriptions"].get(subscription_id)
+    if not subscription:
+        raise ValueError(f"Unknown Subscription Billing subscription: {subscription_id}")
+    runtime = _copy_state(state)
+    grant = {
+        "entitlement_grant_id": f"ent_{subscription_id}_{len(runtime['entitlement_grants']) + 1}",
+        "tenant": subscription["tenant"],
+        "subscription_id": subscription_id,
+        "customer_id": subscription["customer_id"],
+        "entitlement_key": entitlement_key,
+        "scope": scope,
+        "status": "active",
+        "projection": "entitlement_projection",
+        "audit_proof": _digest({"subscription_id": subscription_id, "entitlement_key": entitlement_key, "scope": scope}),
+    }
+    runtime["entitlement_grants"][grant["entitlement_grant_id"]] = grant
+    _emit(runtime, "EntitlementGranted", grant["tenant"], grant)
+    return {"ok": True, "state": runtime, "entitlement": grant}
+
+
+def subscription_billing_recognize_revenue(
+    state: dict,
+    invoice_id: str,
+    *,
+    period: str,
+) -> dict:
+    invoice = state["invoices"].get(invoice_id)
+    if not invoice:
+        raise ValueError(f"Unknown Subscription Billing invoice: {invoice_id}")
+    runtime = _copy_state(state)
+    schedules = tuple(
+        {
+            "revenue_schedule_id": f"rev_{invoice_id}_{index + 1}",
+            "tenant": invoice["tenant"],
+            "invoice_id": invoice_id,
+            "subscription_id": invoice["subscription_id"],
+            "period": period,
+            "recognition_type": item["recognition_type"],
+            "amount": item["amount"],
+            "status": "recognized",
+            "ledger_handoff": "ledger_journal_projection",
+            "audit_proof": _digest({"invoice_id": invoice_id, "period": period, "item": item}),
+        }
+        for index, item in enumerate(invoice["revenue_schedule"])
+    )
+    for schedule in schedules:
+        runtime["revenue_schedules"][schedule["revenue_schedule_id"]] = schedule
+    _emit(runtime, "RevenueRecognized", invoice["tenant"], {"invoice_id": invoice_id, "period": period, "schedules": schedules})
+    return {"ok": True, "state": runtime, "revenue_schedules": schedules}
 
 
 def subscription_billing_renew_subscription(state: dict, subscription_id: str) -> dict:
@@ -608,6 +1022,55 @@ def subscription_billing_renew_subscription(state: dict, subscription_id: str) -
     runtime["subscriptions"][subscription_id] = renewed
     _emit(runtime, "SubscriptionRenewed", renewed["tenant"], renewed)
     return {"ok": renewed["status"] == "renewed", "state": runtime, "subscription": renewed}
+
+
+def subscription_billing_open_billing_exception(
+    state: dict,
+    subscription_id: str,
+    *,
+    exception_type: str,
+    severity: str,
+    description: str,
+) -> dict:
+    subscription = state["subscriptions"].get(subscription_id)
+    if not subscription:
+        raise ValueError(f"Unknown Subscription Billing subscription: {subscription_id}")
+    runtime = _copy_state(state)
+    exception = {
+        "exception_id": f"bex_{subscription_id}_{len(runtime['billing_exceptions']) + 1}",
+        "tenant": subscription["tenant"],
+        "subscription_id": subscription_id,
+        "exception_type": exception_type,
+        "severity": severity,
+        "description": description,
+        "status": "open",
+        "recommended_action": _billing_exception_action(exception_type),
+        "audit_proof": _digest({"subscription_id": subscription_id, "exception_type": exception_type, "severity": severity, "description": description}),
+    }
+    runtime["billing_exceptions"][exception["exception_id"]] = exception
+    runtime["events"].append(_state_event("BillingExceptionOpened", exception["exception_id"], exception))
+    return {"ok": True, "state": runtime, "exception": exception}
+
+
+def subscription_billing_resolve_billing_exception(
+    state: dict,
+    exception_id: str,
+    *,
+    resolution: str,
+) -> dict:
+    exception = state["billing_exceptions"].get(exception_id)
+    if not exception:
+        raise ValueError(f"Unknown Subscription Billing exception: {exception_id}")
+    runtime = _copy_state(state)
+    resolved = {
+        **exception,
+        "status": "resolved",
+        "resolution": resolution,
+        "resolution_proof": _digest({"exception_id": exception_id, "resolution": resolution}),
+    }
+    runtime["billing_exceptions"][exception_id] = resolved
+    runtime["events"].append(_state_event("BillingExceptionResolved", exception_id, resolved))
+    return {"ok": True, "state": runtime, "exception": resolved}
 
 
 def subscription_billing_create_dunning_notice(state: dict, subscription_id: str, *, reason: str) -> dict:
@@ -668,7 +1131,23 @@ def subscription_billing_receive_event(state: dict, event: dict, *, simulate_fai
         runtime["payment_captures"][event_id] = payload
         invoice_id = payload.get("invoice_id")
         if invoice_id in runtime["invoices"]:
-            runtime["invoices"][invoice_id]["status"] = "paid"
+            invoice = runtime["invoices"][invoice_id]
+            net_amount = float(invoice.get("net_amount", invoice["amount"]))
+            applied = min(float(payload.get("amount", 0)), net_amount)
+            application = {
+                "payment_application_id": f"payapp_{invoice_id}_{len(runtime['payment_applications']) + 1}",
+                "tenant": invoice["tenant"],
+                "invoice_id": invoice_id,
+                "subscription_id": invoice["subscription_id"],
+                "payment_event_id": event_id,
+                "amount": round(applied, 2),
+                "currency": payload.get("currency", invoice["currency"]),
+                "status": "applied",
+                "audit_proof": _digest({"invoice_id": invoice_id, "payment_event_id": event_id, "amount": applied}),
+            }
+            runtime["payment_applications"][application["payment_application_id"]] = application
+            runtime["invoices"][invoice_id]["paid_amount"] = round(float(invoice.get("paid_amount", 0)) + applied, 2)
+            runtime["invoices"][invoice_id]["status"] = "paid" if runtime["invoices"][invoice_id]["paid_amount"] >= net_amount else "partially_paid"
             runtime["invoices"][invoice_id]["payment_event_id"] = event_id
     elif event["event_type"] == "PriceOptimized":
         plan_id = payload.get("plan_id", event_id)
@@ -686,6 +1165,11 @@ def subscription_billing_build_workbench_view(state: dict, *, tenant: str) -> di
     invoices = tuple(item for item in state.get("invoices", {}).values() if item["tenant"] == tenant)
     dunning = tuple(item for item in state.get("dunning_notices", {}).values() if item["tenant"] == tenant)
     usage = tuple(item for item in state.get("usage_meters", {}).values() if item["tenant"] == tenant)
+    credits = tuple(item for item in state.get("credit_memos", {}).values() if item["tenant"] == tenant)
+    payments = tuple(item for item in state.get("payment_applications", {}).values() if item["tenant"] == tenant)
+    entitlements = tuple(item for item in state.get("entitlement_grants", {}).values() if item["tenant"] == tenant)
+    revenue = tuple(item for item in state.get("revenue_schedules", {}).values() if item["tenant"] == tenant)
+    exceptions = tuple(item for item in state.get("billing_exceptions", {}).values() if item["tenant"] == tenant)
     return {
         "format": "appgen.subscription-billing-workbench-view.v1",
         "tenant": tenant,
@@ -694,7 +1178,12 @@ def subscription_billing_build_workbench_view(state: dict, *, tenant: str) -> di
         "invoice_count": len(invoices),
         "paid_invoice_count": len(tuple(item for item in invoices if item["status"] == "paid")),
         "usage_count": len(usage),
+        "credit_memo_count": len(credits),
+        "payment_application_count": len(payments),
+        "entitlement_count": len(entitlements),
+        "revenue_schedule_count": len(revenue),
         "dunning_count": len(dunning),
+        "exception_count": len(exceptions),
         "mrr": round(sum(item["mrr"] for item in subscriptions), 2),
         "outbox_count": len(state.get("outbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
@@ -702,7 +1191,7 @@ def subscription_billing_build_workbench_view(state: dict, *, tenant: str) -> di
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
         "binding_evidence": {
-            "owned_tables": ("subscription", "usage_meter", "billing_schedule", "dunning_notice"),
+            "owned_tables": SUBSCRIPTION_BILLING_OWNED_TABLES,
             "outbox_table": "subscription_billing_appgen_outbox_event",
             "inbox_table": "subscription_billing_appgen_inbox_event",
             "dead_letter_table": "subscription_billing_dead_letter_event",
@@ -723,10 +1212,40 @@ def subscription_billing_build_api_contract() -> dict:
             {
                 "route": "POST /subscriptions",
                 "command": "create_subscription",
-                "owned_tables": ("subscription", "billing_schedule"),
+                "owned_tables": ("subscription", "subscription_phase", "billing_schedule"),
                 "emits": ("SubscriptionActivated",),
                 "requires_permission": "subscription_billing.subscription",
                 "idempotency_key": "subscription_id",
+            },
+            {
+                "route": "POST /trials",
+                "command": "start_trial",
+                "owned_tables": ("trial_period",),
+                "requires_permission": "subscription_billing.subscription",
+                "idempotency_key": "trial_id",
+            },
+            {
+                "route": "POST /subscription-change-orders",
+                "command": "change_subscription_plan",
+                "owned_tables": ("subscription", "subscription_change_order", "subscription_phase"),
+                "emits": ("SubscriptionChanged",),
+                "requires_permission": "subscription_billing.subscription",
+                "idempotency_key": "change_order_id",
+            },
+            {
+                "route": "POST /subscription-cancellations",
+                "command": "cancel_subscription",
+                "owned_tables": ("subscription", "billing_schedule"),
+                "emits": ("SubscriptionCancelled",),
+                "requires_permission": "subscription_billing.subscription",
+                "idempotency_key": "subscription_id:cancelled_at",
+            },
+            {
+                "route": "POST /subscription-addons",
+                "command": "add_subscription_addon",
+                "owned_tables": ("subscription_addon", "subscription"),
+                "requires_permission": "subscription_billing.subscription",
+                "idempotency_key": "addon_id",
             },
             {
                 "route": "POST /usage",
@@ -747,10 +1266,42 @@ def subscription_billing_build_api_contract() -> dict:
             {
                 "route": "POST /invoices",
                 "command": "generate_invoice",
-                "owned_tables": ("billing_schedule",),
+                "owned_tables": ("invoice", "invoice_line", "billing_schedule"),
                 "emits": ("InvoiceApproved", "InvoiceApprovalRequested"),
                 "requires_permission": "subscription_billing.invoice",
                 "idempotency_key": "subscription_id:period",
+            },
+            {
+                "route": "POST /credit-memos",
+                "command": "issue_credit_memo",
+                "owned_tables": ("credit_memo", "invoice"),
+                "emits": ("CreditMemoIssued",),
+                "requires_permission": "subscription_billing.invoice",
+                "idempotency_key": "credit_memo_id",
+            },
+            {
+                "route": "POST /payment-applications",
+                "command": "apply_payment_to_invoice",
+                "owned_tables": ("payment_application", "invoice"),
+                "emits": ("PaymentApplied",),
+                "requires_permission": "subscription_billing.invoice",
+                "idempotency_key": "payment_application_id",
+            },
+            {
+                "route": "POST /entitlements",
+                "command": "grant_entitlement",
+                "owned_tables": ("entitlement_grant",),
+                "emits": ("EntitlementGranted",),
+                "requires_permission": "subscription_billing.entitlement",
+                "idempotency_key": "entitlement_grant_id",
+            },
+            {
+                "route": "POST /revenue-recognition",
+                "command": "recognize_revenue",
+                "owned_tables": ("revenue_schedule",),
+                "emits": ("RevenueRecognized",),
+                "requires_permission": "subscription_billing.revenue",
+                "idempotency_key": "invoice_id:period",
             },
             {
                 "route": "POST /dunning-notices",
@@ -759,6 +1310,13 @@ def subscription_billing_build_api_contract() -> dict:
                 "emits": ("DunningNoticeCreated",),
                 "requires_permission": "subscription_billing.dunning",
                 "idempotency_key": "subscription_id:reason",
+            },
+            {
+                "route": "POST /billing-exceptions",
+                "command": "open_billing_exception",
+                "owned_tables": ("billing_exception",),
+                "requires_permission": "subscription_billing.audit",
+                "idempotency_key": "exception_id",
             },
             {
                 "route": "POST /subscription-billing/events/inbox",
@@ -793,10 +1351,20 @@ def subscription_billing_build_schema_contract() -> dict:
     table_fields = {
         "plan_catalog": ("tenant", "plan_id", "family", "name", "currency", "region", "billing_period", "base_price", "usage_rate", "included_units", "status", "proof"),
         "subscription": ("tenant", "subscription_id", "customer_id", "plan_id", "status", "region", "currency", "mrr", "renewal_confidence", "churn_risk", "audit_proof"),
+        "subscription_phase": ("tenant", "phase_id", "subscription_id", "plan_id", "start_date", "end_date", "status"),
+        "trial_period": ("tenant", "trial_id", "customer_id", "plan_id", "start_date", "end_date", "conversion_score", "status", "audit_proof"),
+        "subscription_addon": ("tenant", "addon_id", "subscription_id", "name", "quantity", "unit_price", "mrr_delta", "effective_date", "status", "audit_proof"),
+        "subscription_change_order": ("tenant", "change_order_id", "subscription_id", "from_plan_id", "to_plan_id", "effective_date", "reason", "proration_amount", "status", "audit_proof"),
         "usage_meter": ("tenant", "usage_id", "subscription_id", "meter_name", "quantity", "billable_units", "rated_amount", "currency", "status", "audit_proof"),
         "billing_schedule": ("tenant", "subscription_id", "next_invoice_date", "period", "status"),
         "invoice": ("tenant", "invoice_id", "subscription_id", "customer_id", "period", "amount", "currency", "usage_amount", "risk_score", "status", "audit_proof"),
+        "invoice_line": ("tenant", "invoice_line_id", "invoice_id", "subscription_id", "line_type", "quantity", "unit_price", "amount", "status"),
+        "credit_memo": ("tenant", "credit_memo_id", "invoice_id", "subscription_id", "amount", "currency", "reason", "status", "audit_proof"),
+        "payment_application": ("tenant", "payment_application_id", "invoice_id", "subscription_id", "payment_event_id", "amount", "currency", "status", "audit_proof"),
         "dunning_notice": ("tenant", "dunning_id", "subscription_id", "customer_id", "reason", "risk_score", "status", "retry_policy", "audit_proof"),
+        "entitlement_grant": ("tenant", "entitlement_grant_id", "subscription_id", "customer_id", "entitlement_key", "scope", "projection", "status", "audit_proof"),
+        "revenue_schedule": ("tenant", "revenue_schedule_id", "invoice_id", "subscription_id", "period", "recognition_type", "amount", "ledger_handoff", "status", "audit_proof"),
+        "billing_exception": ("tenant", "exception_id", "subscription_id", "exception_type", "severity", "description", "recommended_action", "status", "audit_proof"),
         "billing_rule": ("tenant", "rule_id", "rule_type", "status", "allowed_plan_families", "allowed_currencies", "allowed_regions", "compiled_hash"),
         "billing_parameter": ("name", "value", "bounds", "compiled_hash"),
         "billing_configuration": ("database_backend", "event_topic", "retry_limit", "default_currency", "supported_currencies", "supported_regions", "billing_calendars", "default_timezone", "invoice_approval_mode", "workbench_limit"),
@@ -807,10 +1375,19 @@ def subscription_billing_build_schema_contract() -> dict:
     }
     relationships = (
         {"from": "plan_catalog.plan_id", "to": "subscription.plan_id", "type": "owned_reference"},
+        {"from": "subscription.subscription_id", "to": "subscription_phase.subscription_id", "type": "owned_reference"},
+        {"from": "subscription.subscription_id", "to": "subscription_addon.subscription_id", "type": "owned_reference"},
+        {"from": "subscription.subscription_id", "to": "subscription_change_order.subscription_id", "type": "owned_reference"},
         {"from": "subscription.subscription_id", "to": "billing_schedule.subscription_id", "type": "owned_reference"},
         {"from": "subscription.subscription_id", "to": "usage_meter.subscription_id", "type": "owned_reference"},
         {"from": "subscription.subscription_id", "to": "invoice.subscription_id", "type": "owned_reference"},
+        {"from": "invoice.invoice_id", "to": "invoice_line.invoice_id", "type": "owned_reference"},
+        {"from": "invoice.invoice_id", "to": "credit_memo.invoice_id", "type": "owned_reference"},
+        {"from": "invoice.invoice_id", "to": "payment_application.invoice_id", "type": "owned_reference"},
+        {"from": "subscription.subscription_id", "to": "entitlement_grant.subscription_id", "type": "owned_reference"},
+        {"from": "invoice.invoice_id", "to": "revenue_schedule.invoice_id", "type": "owned_reference"},
         {"from": "subscription.subscription_id", "to": "dunning_notice.subscription_id", "type": "owned_reference"},
+        {"from": "subscription.subscription_id", "to": "billing_exception.subscription_id", "type": "owned_reference"},
     )
     tables = tuple(
         {
@@ -857,10 +1434,20 @@ def subscription_billing_build_service_contract() -> dict:
         "register_rule",
         "register_schema_extension",
         "register_plan",
+        "start_trial",
         "create_subscription",
+        "change_subscription_plan",
+        "cancel_subscription",
+        "add_subscription_addon",
         "record_usage",
         "generate_invoice",
+        "issue_credit_memo",
+        "apply_payment_to_invoice",
+        "grant_entitlement",
+        "recognize_revenue",
         "renew_subscription",
+        "open_billing_exception",
+        "resolve_billing_exception",
         "create_dunning_notice",
         "receive_event",
         "run_control_tests",
@@ -876,6 +1463,8 @@ def subscription_billing_build_service_contract() -> dict:
             "build_schema_contract",
             "score_revenue_exposure",
             "simulate_proration_quote",
+            "build_release_evidence",
+            "verify_owned_table_boundary",
         ),
         "mutates_only": SUBSCRIPTION_BILLING_SCHEMA_TABLES,
         "external_dependencies": {
@@ -936,6 +1525,8 @@ def subscription_billing_permissions_contract() -> dict:
         "subscription_billing.invoice",
         "subscription_billing.renewal",
         "subscription_billing.dunning",
+        "subscription_billing.entitlement",
+        "subscription_billing.revenue",
         "subscription_billing.event",
         "subscription_billing.audit",
     )
@@ -952,6 +1543,8 @@ def subscription_billing_permissions_contract() -> dict:
                 "subscription_billing.invoice",
                 "subscription_billing.renewal",
                 "subscription_billing.dunning",
+                "subscription_billing.entitlement",
+                "subscription_billing.revenue",
             ),
             "subscription_billing_auditor": ("subscription_billing.audit", "subscription_billing.event"),
         },
@@ -968,10 +1561,20 @@ def subscription_billing_permissions_contract() -> dict:
             "register_rule": "subscription_billing.configure",
             "register_schema_extension": "subscription_billing.configure",
             "register_plan": "subscription_billing.configure",
+            "start_trial": "subscription_billing.subscription",
             "create_subscription": "subscription_billing.subscription",
+            "change_subscription_plan": "subscription_billing.subscription",
+            "cancel_subscription": "subscription_billing.subscription",
+            "add_subscription_addon": "subscription_billing.subscription",
             "record_usage": "subscription_billing.usage",
             "generate_invoice": "subscription_billing.invoice",
+            "issue_credit_memo": "subscription_billing.invoice",
+            "apply_payment_to_invoice": "subscription_billing.invoice",
+            "grant_entitlement": "subscription_billing.entitlement",
+            "recognize_revenue": "subscription_billing.revenue",
             "renew_subscription": "subscription_billing.renewal",
+            "open_billing_exception": "subscription_billing.audit",
+            "resolve_billing_exception": "subscription_billing.audit",
             "create_dunning_notice": "subscription_billing.dunning",
             "receive_event": "subscription_billing.event",
             "build_workbench_view": "subscription_billing.audit",
@@ -1161,6 +1764,17 @@ def _subscription_risk(command: dict, plan: dict) -> dict:
 def _billing_risk(subscription: dict, usage_amount: float) -> float:
     exposure = min(usage_amount / max(subscription["mrr"], 1), 1.0) * 0.25
     return round(min(subscription["churn_risk"] + exposure, 0.99), 4)
+
+
+def _billing_exception_action(exception_type: str) -> str:
+    actions = {
+        "payment_delay": "create_dunning_notice",
+        "usage_spike": "request_usage_review",
+        "tax_mismatch": "request_tax_requote",
+        "entitlement_mismatch": "replay_entitlement_projection",
+        "revenue_variance": "recompute_revenue_schedule",
+    }
+    return actions.get(exception_type, "manual_billing_review")
 
 
 def _revenue_schedule(period: str, amount: float) -> tuple[dict, ...]:

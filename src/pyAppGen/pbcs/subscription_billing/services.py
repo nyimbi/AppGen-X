@@ -5,6 +5,18 @@ EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibili
 
 OPERATION_CONTRACTS = ({'operation': 'command_subscriptions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/subscriptions', 'permission': 'subscription_billing.command.1', 'owned_tables': ('subscription_billing_subscription', 'subscription_billing_usage_meter', 'subscription_billing_billing_schedule', 'subscription_billing_dunning_notice'), 'read_tables': (), 'emitted_event': 'SubscriptionRenewed', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_usage', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/usage', 'permission': 'subscription_billing.command.2', 'owned_tables': ('subscription_billing_subscription', 'subscription_billing_usage_meter', 'subscription_billing_billing_schedule', 'subscription_billing_dunning_notice'), 'read_tables': (), 'emitted_event': 'UsageRated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_renewals', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/renewals', 'permission': 'subscription_billing.command.3', 'owned_tables': ('subscription_billing_subscription', 'subscription_billing_usage_meter', 'subscription_billing_billing_schedule', 'subscription_billing_dunning_notice'), 'read_tables': (), 'emitted_event': 'InvoiceApproved', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_subscription_billing_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/subscription_billing/subscription-billing-workbench', 'permission': 'subscription_billing.query.4', 'owned_tables': (), 'read_tables': ('subscription_billing_subscription', 'subscription_billing_usage_meter', 'subscription_billing_billing_schedule', 'subscription_billing_dunning_notice'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
 
+OPERATION_CONTRACTS = OPERATION_CONTRACTS + (
+    {'operation': 'command_trials', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/trials', 'permission': 'subscription_billing.subscription', 'owned_tables': ('subscription_billing_trial_period',), 'read_tables': (), 'emitted_event': 'SubscriptionActivated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_change_orders', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/change-orders', 'permission': 'subscription_billing.subscription', 'owned_tables': ('subscription_billing_subscription_change_order', 'subscription_billing_subscription', 'subscription_billing_subscription_phase'), 'read_tables': (), 'emitted_event': 'SubscriptionChanged', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_cancellations', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/cancellations', 'permission': 'subscription_billing.subscription', 'owned_tables': ('subscription_billing_subscription', 'subscription_billing_billing_schedule'), 'read_tables': (), 'emitted_event': 'SubscriptionCancelled', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_addons', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/addons', 'permission': 'subscription_billing.subscription', 'owned_tables': ('subscription_billing_subscription_addon', 'subscription_billing_subscription'), 'read_tables': (), 'emitted_event': 'SubscriptionChanged', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_credit_memos', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/credit-memos', 'permission': 'subscription_billing.invoice', 'owned_tables': ('subscription_billing_credit_memo', 'subscription_billing_invoice'), 'read_tables': (), 'emitted_event': 'CreditMemoIssued', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_payment_applications', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/payment-applications', 'permission': 'subscription_billing.invoice', 'owned_tables': ('subscription_billing_payment_application', 'subscription_billing_invoice'), 'read_tables': (), 'emitted_event': 'PaymentApplied', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_entitlements', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/entitlements', 'permission': 'subscription_billing.entitlement', 'owned_tables': ('subscription_billing_entitlement_grant',), 'read_tables': (), 'emitted_event': 'EntitlementGranted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_revenue', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/revenue-recognition', 'permission': 'subscription_billing.revenue', 'owned_tables': ('subscription_billing_revenue_schedule',), 'read_tables': (), 'emitted_event': 'RevenueRecognized', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_billing_exceptions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/subscription_billing/billing-exceptions', 'permission': 'subscription_billing.audit', 'owned_tables': ('subscription_billing_billing_exception',), 'read_tables': (), 'emitted_event': 'DunningNoticeCreated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+)
+
 
 def service_operation_contracts():
     """Return route-bound service operation contracts for this PBC."""
@@ -99,6 +111,34 @@ class SubscriptionBillingService:
 
     def command_renewals(self, payload=None):
         return self._command('command_renewals', payload or {})
+
+    def command_trials(self, payload=None):
+        return self._command('command_trials', payload or {})
+
+    def command_change_orders(self, payload=None):
+        return self._command('command_change_orders', payload or {})
+
+    def command_cancellations(self, payload=None):
+        return self._command('command_cancellations', payload or {})
+
+    def command_addons(self, payload=None):
+        return self._command('command_addons', payload or {})
+
+    def command_credit_memos(self, payload=None):
+        return self._command('command_credit_memos', payload or {})
+
+    def command_payment_applications(self, payload=None):
+        return self._command('command_payment_applications', payload or {})
+
+    def command_entitlements(self, payload=None):
+        return self._command('command_entitlements', payload or {})
+
+    def command_revenue(self, payload=None):
+        return self._command('command_revenue', payload or {})
+
+    def command_billing_exceptions(self, payload=None):
+        return self._command('command_billing_exceptions', payload or {})
+
     def query_subscription_billing_workbench(self, payload=None):
         return self._query('query_subscription_billing_workbench', payload or {})
 

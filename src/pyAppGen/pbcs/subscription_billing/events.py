@@ -2,6 +2,26 @@
 
 EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.subscription_billing.events', 'inbox_topic': 'pbc.subscription_billing.inbox', 'outbox_table': 'subscription_billing_appgen_outbox_event', 'inbox_table': 'subscription_billing_appgen_inbox_event', 'dead_letter_table': 'subscription_billing_appgen_dead_letter_event', 'emitted': ({'event_type': 'SubscriptionRenewed', 'schema': 'subscription_billing.subscription_renewed.emitted.v1', 'topic': 'pbc.subscription_billing.events', 'outbox_table': 'subscription_billing_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'UsageRated', 'schema': 'subscription_billing.usage_rated.emitted.v1', 'topic': 'pbc.subscription_billing.events', 'outbox_table': 'subscription_billing_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'InvoiceApproved', 'schema': 'subscription_billing.invoice_approved.emitted.v1', 'topic': 'pbc.subscription_billing.events', 'outbox_table': 'subscription_billing_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'PaymentCaptured', 'schema': 'subscription_billing.payment_captured.consumed.v1', 'topic': 'pbc.subscription_billing.inbox', 'inbox_table': 'subscription_billing_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'PriceOptimized', 'schema': 'subscription_billing.price_optimized.consumed.v1', 'topic': 'pbc.subscription_billing.inbox', 'inbox_table': 'subscription_billing_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'subscription_billing_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'subscription_billing_appgen_inbox_event'}}
 EMITTED_EVENTS = EVENT_CONTRACT['emitted']
+EMITTED_EVENTS = EMITTED_EVENTS + tuple(
+    {
+        'event_type': event_type,
+        'schema': f"subscription_billing.{event_type[0].lower()}{''.join('_' + c.lower() if c.isupper() else c for c in event_type[1:])}.emitted.v1",
+        'topic': EVENT_CONTRACT['topic'],
+        'outbox_table': EVENT_CONTRACT['outbox_table'],
+        'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data'),
+    }
+    for event_type in (
+        'SubscriptionActivated',
+        'SubscriptionChanged',
+        'SubscriptionCancelled',
+        'InvoiceApprovalRequested',
+        'DunningNoticeCreated',
+        'CreditMemoIssued',
+        'PaymentApplied',
+        'EntitlementGranted',
+        'RevenueRecognized',
+    )
+)
 CONSUMED_EVENTS = EVENT_CONTRACT['consumed']
 
 

@@ -21,11 +21,19 @@ from .runtime import subscription_billing_build_release_evidence
 from .runtime import subscription_billing_build_schema_contract
 from .runtime import subscription_billing_build_service_contract
 from .runtime import subscription_billing_build_workbench_view
+from .runtime import subscription_billing_add_subscription_addon
+from .runtime import subscription_billing_apply_payment_to_invoice
+from .runtime import subscription_billing_cancel_subscription
+from .runtime import subscription_billing_change_subscription_plan
 from .runtime import subscription_billing_configure_runtime
 from .runtime import subscription_billing_create_dunning_notice
 from .runtime import subscription_billing_create_subscription
 from .runtime import subscription_billing_empty_state
 from .runtime import subscription_billing_generate_invoice
+from .runtime import subscription_billing_grant_entitlement
+from .runtime import subscription_billing_issue_credit_memo
+from .runtime import subscription_billing_open_billing_exception
+from .runtime import subscription_billing_recognize_revenue
 from .runtime import subscription_billing_run_control_tests
 from .runtime import subscription_billing_receive_event
 from .runtime import subscription_billing_record_usage
@@ -33,12 +41,14 @@ from .runtime import subscription_billing_register_plan
 from .runtime import subscription_billing_register_rule
 from .runtime import subscription_billing_register_schema_extension
 from .runtime import subscription_billing_renew_subscription
+from .runtime import subscription_billing_resolve_billing_exception
 from .runtime import subscription_billing_permissions_contract
 from .runtime import subscription_billing_runtime_capabilities
 from .runtime import subscription_billing_runtime_smoke
 from .runtime import subscription_billing_score_revenue_exposure
 from .runtime import subscription_billing_set_parameter
 from .runtime import subscription_billing_simulate_proration_quote
+from .runtime import subscription_billing_start_trial
 from .runtime import subscription_billing_ui_binding_contract
 from .runtime import subscription_billing_verify_owned_table_boundary
 from .ui import SUBSCRIPTION_BILLING_UI_FRAGMENT_KEYS
@@ -118,4 +128,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-
