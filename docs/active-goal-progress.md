@@ -2270,7 +2270,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   watch rejection, safe runtime-state reads, value redaction, watch-panel
   publish, and watch snapshot rollback with zero persisted writes before
   runtime preview reload. Verification is focused under the low-battery
-  delivery constraint. Commit: pending.
+  delivery constraint. Commit: `c2783bb`.
 - Current `cdp_segmentation` PBC pass promotes advanced CDP intelligence and
   governance surfaces into executable package-local operations: counterfactual
   segment simulation, audience forecasting, exception resolution, semantic rule
