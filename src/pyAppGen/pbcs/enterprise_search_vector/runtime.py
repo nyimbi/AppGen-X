@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 
+from .domain_schema import class_name_for, field_names_for, fields_for, relationships_for
 
 ENTERPRISE_SEARCH_VECTOR_REQUIRED_EVENT_TOPIC = "appgen.enterprise_search_vector.events"
 ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -1073,66 +1074,20 @@ def enterprise_search_vector_permissions_contract() -> dict:
 
 
 def _class_name(table: str) -> str:
-    return "".join(part.capitalize() for part in table.split("_"))
+    return class_name_for(table)
 
 
 def _table_fields(table: str) -> tuple[dict, ...]:
-    common = (
-        {"name": "id", "type": "uuid", "required": True},
-        {"name": "tenant", "type": "text", "required": True},
-        {"name": "created_at", "type": "timestamp", "required": True},
-        {"name": "updated_at", "type": "timestamp", "required": True},
-    )
-    extras = {
-        "search_index": (
-            {"name": "index_id", "type": "text", "required": True},
-            {"name": "source", "type": "text", "required": True},
-            {"name": "locale", "type": "text", "required": True},
-            {"name": "status", "type": "text", "required": True},
-        ),
-        "embedding_job": (
-            {"name": "job_id", "type": "text", "required": True},
-            {"name": "index_id", "type": "text", "required": True},
-            {"name": "document_ids", "type": "jsonb", "required": True},
-            {"name": "status", "type": "text", "required": True},
-        ),
-        "vector_document": (
-            {"name": "document_id", "type": "text", "required": True},
-            {"name": "index_id", "type": "text", "required": True},
-            {"name": "body", "type": "text", "required": True},
-            {"name": "embedding", "type": "jsonb", "required": False},
-            {"name": "acl", "type": "jsonb", "required": True},
-        ),
-        "query_trace": (
-            {"name": "query_id", "type": "text", "required": True},
-            {"name": "query_text", "type": "text", "required": True},
-            {"name": "principal_permissions", "type": "jsonb", "required": True},
-            {"name": "results", "type": "jsonb", "required": True},
-        ),
-        "enterprise_search_vector_appgen_outbox_event": (
-            {"name": "event_type", "type": "text", "required": True},
-            {"name": "payload", "type": "jsonb", "required": True},
-            {"name": "idempotency_key", "type": "text", "required": True},
-        ),
-        "enterprise_search_vector_appgen_inbox_event": (
-            {"name": "event_type", "type": "text", "required": True},
-            {"name": "payload", "type": "jsonb", "required": True},
-            {"name": "attempts", "type": "integer", "required": True},
-        ),
-        "enterprise_search_vector_dead_letter_event": (
-            {"name": "event_type", "type": "text", "required": True},
-            {"name": "payload", "type": "jsonb", "required": True},
-            {"name": "reason", "type": "text", "required": True},
-        ),
-    }
-    return (*common, *extras.get(table, ()))
+    return fields_for(table)
+
+
+def _table_field_names(table: str) -> tuple[str, ...]:
+    return field_names_for(table)
 
 
 def _table_relationships(table: str) -> tuple[dict, ...]:
-    if table in {"embedding_job", "vector_document"}:
-        return ({"type": "owned_reference", "from": table, "to": "search_index", "field": "index_id"},)
-    if table == "query_trace":
-        return ({"type": "acl_projection", "from": table, "to": "vector_document", "via": "result_document_ids"},)
+    if table in ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES:
+        return relationships_for(table)
     if table in ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES:
         return ({"type": "event_contract", "to": "AppGen-X", "topic": ENTERPRISE_SEARCH_VECTOR_REQUIRED_EVENT_TOPIC},)
     return ()

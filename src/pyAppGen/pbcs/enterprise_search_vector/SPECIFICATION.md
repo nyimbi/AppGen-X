@@ -121,6 +121,28 @@ schema descriptors for business tables and AppGen-X runtime tables:
   on owned tables, and declared dependencies remain APIs, AppGen-X events, or
   projections.
 
+The schema is search-domain specific rather than a generic status table set.
+`search_index` records tenant, index id, source, locale, ranking mode,
+document count, ready document count, feedback count, last embedding job,
+last refresh id, and cryptographic audit proof. `embedding_job` records job id,
+index id, document ids, document count, vector dimensions, start/completion
+timing, failure reason, status, and audit proof. `vector_document` records
+document id, source, locale, title, body, chunks, token and chunk counts,
+embedding payload, ACL, embedding job id, feedback score, freshness score,
+authority score, quality review status, and audit proof. `query_trace` records
+query id, optional index id, query text, principal permissions, locale, ranking
+mode, result count, results, explanations, feedback, and audit proof. Runtime
+event tables include tenant, event id, event type, payload, idempotency key,
+attempts, status, version, timestamps, and dead-letter failure reason where
+applicable.
+
+Owned relationships are explicit. Embedding jobs and vector documents refer to
+owned search indexes by `index_id`. Vector documents can refer to owned
+embedding jobs by `embedding_job_id`. Query traces can refer to owned indexes
+and retain result projections back to owned vector documents. Product,
+customer, audit, and knowledge sources remain external facts projected through
+events or declared APIs; no external source table is part of this PBC schema.
+
 ## Service Layer
 
 `enterprise_search_vector_build_service_contract()` defines the generated
@@ -139,6 +161,16 @@ Enterprise Search Vector owned tables plus its AppGen-X runtime tables, uses the
 fixed `appgen.enterprise_search_vector.events` topic, requires idempotent
 handlers, and records retry/dead-letter evidence through the
 `enterprise_search_vector_dead_letter_event` table.
+
+The service layer covers ordinary search table stakes: index creation, source
+registration, document ingestion, document chunking, ACL capture, embedding job
+execution, refresh orchestration, semantic search, hybrid search, ranking,
+query tracing, relevance feedback, freshness tracking, authority scoring,
+retention evidence, permissions, configuration, parameter updates, rule
+registration, schema extension registration, event intake, retry handling, and
+dead-letter routing. It also exposes advanced operations for counterfactual
+ranking, freshness forecasting, quality remediation, policy screening,
+relevance-control tests, index proof generation, and federated source views.
 
 ## UI and Workbench
 
@@ -162,6 +194,16 @@ The package exports a UI contract with fragments for:
 Workbench rendering must expose configuration, rule, and parameter bindings,
 owned-table evidence, and AppGen-X event-contract evidence while keeping the
 stream-engine picker hidden.
+
+The PBC agent is part of the user-facing workbench. It contributes
+`enterprise_search_vector` skills to the composed application assistant for
+source registration, document ingestion, ACL troubleshooting, hybrid-query
+debugging, relevance tuning, parameter changes, rule drafting, embedding job
+review, freshness remediation, dead-letter investigation, and governed CRUD.
+When users provide documents or instructions, the agent can extract searchable
+document facts, propose ingestion commands, explain ACL outcomes, draft ranking
+rule updates, and produce a side-effect-free datastore mutation plan that names
+the owned tables, required permission, expected event, and idempotency key.
 
 ## Runtime Completeness Contract
 
@@ -226,8 +268,12 @@ This appendix is generated from the package manifest and is release-gated so the
 ### API Routes
 
 - `POST /indexes`
+- `POST /indexes/{id}/refresh`
 - `POST /embeddings`
 - `POST /search`
+- `POST /query-feedback`
+- `GET /query-traces`
+- `GET /enterprise-search-vector-workbench`
 
 ### Emitted Events
 
@@ -242,22 +288,89 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `EnterpriseSearchVectorWorkbench`
+- `EnterpriseSearchVectorDetail`
 
 ### Permissions
 
-- None declared
+- `enterprise_search_vector.read`
+- `enterprise_search_vector.create`
+- `enterprise_search_vector.update`
+- `enterprise_search_vector.approve`
+- `enterprise_search_vector.admin`
 
 ### Configuration Keys
 
-- None declared
+- `ENTERPRISE_SEARCH_VECTOR_DATABASE_URL`
+- `ENTERPRISE_SEARCH_VECTOR_EVENT_TOPIC`
+- `ENTERPRISE_SEARCH_VECTOR_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `search_indexes`
+- `source_registration`
+- `document_ingestion`
+- `document_chunking`
+- `embedding_jobs`
+- `semantic_search`
+- `hybrid_search`
+- `ranking`
+- `acl_filtering`
+- `query_traces`
+- `feedback_capture`
+- `query_observability`
+- `index_freshness`
+- `authority_scoring`
+- `retention_policy`
+- `product_projection`
+- `customer_projection`
+- `audit_projection`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_search_index_lifecycle`
+- `owned_search_schema_boundary`
+- `multi_tenant_search_isolation`
+- `schema_evolution_resilient_document_context`
+- `source_index_management`
+- `document_chunk_and_acl_ingestion`
+- `embedding_job_orchestration`
+- `semantic_and_hybrid_query`
+- `ranking_and_relevance_feedback`
+- `retention_and_deletion_evidence`
+- `access_control_filtered_retrieval`
+- `probabilistic_relevance_confidence`
+- `counterfactual_ranking_simulation`
+- `temporal_index_freshness_forecasting`
+- `autonomous_search_quality_remediation`
+- `semantic_document_understanding`
+- `predictive_query_intent_risk`
+- `self_healing_index_refresh`
+- `cryptographic_index_proof`
+- `immutable_query_audit_trail`
+- `dynamic_search_policy_screening`
+- `automated_relevance_control_testing`
+- `cross_system_product_customer_audit_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
+- `governed_model_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -269,6 +269,16 @@ def test_enterprise_search_vector_runtime_applies_rules_parameters_queries_and_u
     assert set(ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES) <= set(schema["owned_tables"])
     assert len(schema["migrations"]) == len(schema["owned_tables"])
     assert all(path.startswith("pbcs/enterprise_search_vector/migrations/") for path in schema["migrations"])
+    vector_table = next(table for table in schema["tables"] if table["table"] == "vector_document")
+    query_table = next(table for table in schema["tables"] if table["table"] == "query_trace")
+    index_table = next(table for table in schema["tables"] if table["table"] == "search_index")
+    vector_fields = {field["name"] for field in vector_table["fields"]}
+    query_fields = {field["name"] for field in query_table["fields"]}
+    index_fields = {field["name"] for field in index_table["fields"]}
+    assert {"embedding", "acl", "freshness_score", "authority_score", "quality_review_status"} <= vector_fields
+    assert {"principal_permissions", "results", "explanations", "audit_proof"} <= query_fields
+    assert {"ranking_mode", "document_count", "ready_document_count", "audit_proof"} <= index_fields
+    assert any(item["type"] == "owned_reference" for item in schema["tables"][2]["relationships"])
     assert service["eventing"]["contract"] == "AppGen-X"
     assert service["eventing"]["dead_letter_table"] == ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES[2]
     assert "receive_event" in service["idempotent_handlers"]

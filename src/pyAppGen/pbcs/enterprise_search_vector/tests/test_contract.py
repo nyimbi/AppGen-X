@@ -13,10 +13,25 @@ def test_generated_schema_service_and_release_evidence():
     assert SCHEMA_CONTRACT['pbc'] == 'enterprise_search_vector'
     assert SCHEMA_CONTRACT['ok'] is True
     assert SCHEMA_CONTRACT['owned_tables']
+    assert all(table.startswith('enterprise_search_vector_') for table in SCHEMA_CONTRACT['owned_tables'])
+    assert any(
+        field['name'] == 'embedding' and field['type'] == 'json'
+        for table in SCHEMA_CONTRACT['tables']
+        if table['owned_table'] == 'enterprise_search_vector_vector_document'
+        for field in table['fields']
+    )
+    assert any(
+        field['name'] == 'explanations'
+        for table in SCHEMA_CONTRACT['tables']
+        if table['owned_table'] == 'enterprise_search_vector_query_trace'
+        for field in table['fields']
+    )
+    assert all(len(table['fields']) >= 12 for table in SCHEMA_CONTRACT['tables'])
     schema_smoke = schema_contract.smoke_test()
     model_smoke = models.smoke_test()
     assert schema_smoke['ok'] is True
     assert model_smoke['ok'] is True
+    assert not model_smoke['manifest']['thin_models']
     assert not schema_smoke['side_effects']
     assert not model_smoke['side_effects']
     assert SERVICE_CONTRACT['pbc'] == 'enterprise_search_vector'
