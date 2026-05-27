@@ -694,7 +694,7 @@ def composition_engine_build_schema_contract() -> dict:
         "composition_plan": ("tenant", "workspace_id", "selected_pbcs", "route_count", "bindings", "status"),
         "composition_validation_run": ("tenant", "validation_id", "workspace_id", "decision", "blockers", "missing_fragments", "route_count"),
         "package_registration_plan": ("tenant", "plan_id", "workspace_id", "requested_by", "status", "side_effect_free", "writes_performed"),
-        "package_index_entry": ("tenant", "workspace_id", "selected_pbcs", "status", "entry_source"),
+        "package_index_entry": ("tenant", "workspace_id", "selected_pbcs", "status", "entry_source", "indexed_at"),
         "release_evidence": ("tenant", "workspace_id", "version", "route_count", "release_risk", "status", "package_registration_plan"),
         "composition_rule": ("tenant", "rule_id", "scope", "required_fragments", "allowed_meshes", "route_policy", "requires_approval", "status"),
         "composition_parameter": ("tenant", "parameter_id", "key", "value", "effective_at", "status"),

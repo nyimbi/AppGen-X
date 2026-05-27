@@ -12,7 +12,16 @@ def test_generated_schema_service_and_release_evidence():
 
     assert SCHEMA_CONTRACT['pbc'] == 'composition_engine'
     assert SCHEMA_CONTRACT['ok'] is True
-    assert SCHEMA_CONTRACT['owned_tables']
+    assert len(SCHEMA_CONTRACT['owned_tables']) == 13
+    assert len(SCHEMA_CONTRACT['models']) == len(SCHEMA_CONTRACT['owned_tables'])
+    assert len(SCHEMA_CONTRACT['migrations']) == len(SCHEMA_CONTRACT['owned_tables'])
+    assert {'dsl_artifact', 'package_registration_plan', 'release_evidence'} <= set(SCHEMA_CONTRACT['owned_tables'])
+    assert tuple(table['owned_table'] for table in SCHEMA_CONTRACT['runtime_tables']) == (
+        'composition_engine_appgen_outbox_event',
+        'composition_engine_appgen_inbox_event',
+        'composition_engine_dead_letter_event',
+    )
+    assert all(len(table['fields']) >= 6 for table in SCHEMA_CONTRACT['all_tables'])
     schema_smoke = schema_contract.smoke_test()
     model_smoke = models.smoke_test()
     assert schema_smoke['ok'] is True
@@ -45,6 +54,12 @@ def test_manifest_and_event_contract():
     from .. import events
 
     assert PBC_MANIFEST['pbc'] == 'composition_engine'
+    assert len(PBC_MANIFEST['tables']) == 13
+    assert 'package_registration_plan' in PBC_MANIFEST['tables']
+    assert 'POST /composition-publications' in PBC_MANIFEST['apis']
+    assert 'PackageRegistrationPlanned' in PBC_MANIFEST['emits']
+    assert 'PackageRegistrationRequested' in PBC_MANIFEST['consumes']
+    assert 'CompositionConfigurationPanel' in PBC_MANIFEST['ui_fragments']
     assert PBC_MANIFEST['standard_features']
     assert PBC_MANIFEST['advanced_capabilities']
     assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'
@@ -104,6 +119,9 @@ def test_service_and_route_surface_are_executable():
     assert route_contracts['ok'] is True
     assert route_validation['ok'] is True
     assert route_contracts['contracts']
+    assert len(route_contracts['contracts']) >= 14
+    assert 'create_workspace' in operation_contracts['command_operations']
+    assert 'build_release_evidence' in operation_contracts['query_operations']
     assert all(item['permission'] for item in route_contracts['contracts'])
     assert all(item['event_contract'] == 'AppGen-X' for item in route_contracts['contracts'])
     assert all(item['stream_engine_picker_visible'] is False for item in route_contracts['contracts'])
@@ -173,6 +191,7 @@ def test_event_handlers_are_idempotent_and_retryable():
     smoke = handlers.smoke_test()
     assert smoke['ok'] is True
     assert smoke['manifest']['handlers']
+    assert set(smoke['manifest']['event_types']) == set(PBC_MANIFEST['consumes'])
     assert smoke['first_result']['retry_policy']
     assert smoke['first_result']['dead_letter_table'].startswith('composition_engine_')
     assert smoke['duplicate_result']['duplicate'] is True

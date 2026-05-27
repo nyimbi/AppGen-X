@@ -271,23 +271,50 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `composition_engine`
 - Mesh: `platform`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
 - `composition_workspace`
-- `ui_fragment`
 - `component_registry`
+- `ui_fragment`
 - `layout_binding`
+- `dsl_artifact`
+- `composition_plan`
+- `composition_validation_run`
+- `package_registration_plan`
+- `package_index_entry`
+- `release_evidence`
+- `composition_rule`
+- `composition_parameter`
+- `composition_configuration`
 
 ### API Routes
 
-- `POST /compositions`
-- `POST /fragments`
-- `GET /component-registry`
+- `POST /composition-workspaces`
+- `POST /composition-workspaces/{id}/pbcs`
+- `POST /component-registry`
+- `POST /ui-fragments`
+- `POST /layout-bindings`
+- `POST /composition-plans/validate`
+- `POST /package-registration-plans`
+- `POST /composition-dsl`
+- `POST /composition-publications`
+- `POST /composition/events/inbox`
+- `GET /composition-workbench`
+- `GET /composition/schema-contract`
+- `GET /composition/service-contract`
+- `GET /composition/release-evidence`
 
 ### Emitted Events
 
+- `CompositionWorkspaceCreated`
+- `PbcSelectedForComposition`
+- `ComponentRegistered`
+- `UiFragmentRegistered`
+- `LayoutBound`
+- `CompositionPlanValidated`
+- `PackageRegistrationPlanned`
 - `CompositionPublished`
 - `PbcDeployed`
 
@@ -295,25 +322,108 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - `SchemaAccepted`
 - `RoutePublished`
+- `AuditEventSealed`
+- `AccessPolicyChanged`
+- `WorkflowCompleted`
+- `PackageRegistrationRequested`
 
 ### UI Fragments
 
-- None declared
+- `CompositionEngineWorkbench`
+- `CompositionWorkspaceBoard`
+- `ComponentRegistryConsole`
+- `UiFragmentCatalog`
+- `LayoutBindingDesigner`
+- `CompositionPublicationConsole`
+- `CompositionReleaseEvidencePanel`
+- `CompositionRuleStudio`
+- `CompositionParameterConsole`
+- `CompositionConfigurationPanel`
 
 ### Permissions
 
-- None declared
+- `composition_engine.read`
+- `composition_engine.compose`
+- `composition_engine.approve`
+- `composition_engine.publish`
+- `composition_engine.event`
+- `composition_engine.configure`
+- `composition_engine.audit`
 
 ### Configuration Keys
 
-- None declared
+- `COMPOSITION_ENGINE_DATABASE_URL`
+- `COMPOSITION_ENGINE_EVENT_TOPIC`
+- `COMPOSITION_ENGINE_RETRY_LIMIT`
+- `COMPOSITION_ENGINE_ALLOWED_TARGETS`
+- `COMPOSITION_ENGINE_ALLOWED_LAYOUT_MODES`
+- `COMPOSITION_ENGINE_PUBLICATION_MODE`
+- `COMPOSITION_ENGINE_DEFAULT_TIMEZONE`
 
 ### Standard Features
 
-- None declared
+- `workspace_management`
+- `pbc_selection`
+- `component_registry`
+- `ui_fragment_registry`
+- `layout_binding`
+- `page_composition`
+- `route_map_generation`
+- `permission_mapping`
+- `schema_compatibility_check`
+- `composition_dsl_generation`
+- `package_registration_plan`
+- `publication_workflow`
+- `release_gate_evidence`
+- `preview_rendering`
+- `responsive_layout_rules`
+- `fragment_slotting`
+- `idempotent_handlers`
+- `retry_dead_letter`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
+- `audit_evidence`
+- `release_gate`
+- `package_registration_validation`
+- `appgen_event_contract`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_composition_lifecycle`
+- `graph_relational_component_topology`
+- `multi_tenant_workspace_isolation`
+- `schema_on_read_layout_extension`
+- `probabilistic_release_risk_scoring`
+- `real_time_composition_analytics`
+- `counterfactual_layout_simulation`
+- `temporal_release_readiness_forecasting`
+- `autonomous_layout_remediation`
+- `semantic_composition_intent_parsing`
+- `predictive_composition_risk_scoring`
+- `self_healing_publication_route_selection`
+- `zero_knowledge_publication_proof`
+- `immutable_composition_audit_trail`
+- `dynamic_composition_policy_screening`
+- `automated_composition_control_testing`
+- `universal_api_async_composition_surface`
+- `cross_system_composition_federation`
+- `identity_gateway_schema_workflow_audit_integration`
+- `decentralized_publisher_identity`
+- `chaos_engineered_composition_tolerance`
+- `quantum_resistant_publication_signing`
+- `carbon_aware_composition_build`
+- `algebraic_layout_optimization`
+- `mechanism_design_fragment_slot_allocation`
+- `information_theoretic_composition_anomaly_detection`
+- `temporal_release_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_composition_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `composition_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -1,8 +1,16 @@
-"""Generated service evidence for the composition_engine PBC."""
+"""Service evidence for the composition_engine PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.composition-engine-service-contract.v1', 'ok': True, 'transaction_boundary': 'composition_engine_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'create_workspace', 'select_pbc', 'register_component', 'register_ui_fragment', 'bind_layout', 'validate_composition_plan', 'plan_package_registration', 'generate_composition_dsl', 'publish_composition', 'run_control_tests', 'verify_owned_table_boundary', 'register_governed_model'), 'query_methods': ('build_workbench_view', 'simulate_layout', 'forecast_release_readiness', 'parse_composition_intent', 'score_composition_risk', 'recommend_layout_remediation', 'select_publication_route', 'generate_publication_proof', 'screen_policy', 'build_api_contract', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'federate_composition_view', 'verify_publisher_identity', 'run_resilience_drill', 'rotate_crypto_epoch', 'schedule_carbon_aware_build', 'optimize_layout', 'allocate_fragment_slots', 'detect_composition_anomaly', 'model_stochastic_release_exposure'), 'mutates_only': ('composition_workspace', 'component_registry', 'ui_fragment', 'layout_binding', 'dsl_artifact', 'composition_plan', 'composition_validation_run', 'package_registration_plan', 'package_index_entry', 'release_evidence', 'composition_rule', 'composition_parameter', 'composition_configuration'), 'runtime_tables': ('composition_engine_appgen_outbox_event', 'composition_engine_appgen_inbox_event', 'composition_engine_dead_letter_event'), 'external_dependencies': {'apis': ('GET /identity/policies', 'GET /gateway/routes', 'GET /schemas/contracts', 'POST /workflow/composition-approvals', 'POST /audit/composition-events'), 'events': ('SchemaAccepted', 'RoutePublished', 'AuditEventSealed', 'AccessPolicyChanged', 'WorkflowCompleted', 'PackageRegistrationRequested'), 'api_projections': ('identity_composition_projection', 'gateway_composition_projection', 'schema_composition_projection', 'workflow_composition_projection', 'audit_composition_projection', 'pbc_deployment_projection', 'package_registration_projection'), 'shared_tables': ()}, 'idempotent_handlers': ('receive_event', 'plan_package_registration', 'publish_composition'), 'side_effect_free_commands': ('plan_package_registration',), 'retry_dead_letter_evidence': {'outbox_table': 'composition_engine_appgen_outbox_event', 'inbox_table': 'composition_engine_appgen_inbox_event', 'dead_letter_table': 'composition_engine_dead_letter_event', 'idempotency_prefix': 'composition_engine:'}, 'eventing': {'contract': 'AppGen-X', 'topic': 'appgen.composition.events', 'stream_engine_picker_visible': False, 'user_selectable_event_contract': False}, 'rules_parameters_configuration': ('register_rule', 'set_parameter', 'configure_runtime'), 'pbc': 'composition_engine', 'shared_table_access': False}
+from __future__ import annotations
+
+from .runtime import composition_engine_build_service_contract
+
+SERVICE_CONTRACT = {
+    **composition_engine_build_service_contract(),
+    "pbc": "composition_engine",
+    "shared_table_access": False,
+}
 
 
-def build_service_contract():
-    """Return generated command, eventing, and handler evidence."""
+def build_service_contract() -> dict:
+    """Return command, query, dependency, and boundary evidence."""
     return dict(SERVICE_CONTRACT)

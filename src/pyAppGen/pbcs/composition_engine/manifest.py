@@ -1,1 +1,78 @@
-PBC_MANIFEST = {'pbc': 'composition_engine', 'label': 'Low-Code Composition Engine', 'mesh': 'platform', 'description': 'Drag-and-drop PBC assembly, component registry, layout engine, and experience composition.', 'datastore_backend': 'postgresql', 'tables': ('composition_workspace', 'ui_fragment', 'component_registry', 'layout_binding'), 'apis': ('POST /compositions', 'POST /fragments', 'GET /component-registry'), 'emits': ('CompositionPublished', 'PbcDeployed'), 'consumes': ('SchemaAccepted', 'RoutePublished'), 'template': None, 'ui_fragments': ('CompositionEngineWorkbench', 'CompositionEngineDetail'), 'permissions': ('composition_engine.read', 'composition_engine.create', 'composition_engine.update', 'composition_engine.approve', 'composition_engine.admin'), 'configuration': ('COMPOSITION_ENGINE_DATABASE_URL', 'COMPOSITION_ENGINE_EVENT_TOPIC', 'COMPOSITION_ENGINE_RETRY_LIMIT'), 'capabilities': ('composition_engine.composition_workspace', 'composition_engine.ui_fragment', 'composition_engine.component_registry', 'composition_engine.layout_binding'), 'standard_features': ('workspace_management', 'pbc_selection', 'component_registry', 'ui_fragment_registry', 'layout_binding', 'page_composition', 'route_map_generation', 'permission_mapping', 'schema_compatibility_check', 'composition_dsl_generation', 'package_registration_plan', 'publication_workflow', 'release_gate_evidence', 'preview_rendering', 'responsive_layout_rules', 'fragment_slotting', 'idempotent_handlers', 'retry_dead_letter', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench', 'audit_evidence', 'release_gate', 'package_registration_validation', 'appgen_event_contract'), 'workflows': ('command_compositions', 'command_fragments', 'query_component_registry'), 'analytics': ('policy_latency', 'contract_break_rate', 'deployment_safety', 'audit_completeness', 'composition_published_throughput', 'pbc_deployed_throughput'), 'advanced_capabilities': ('event_sourced_composition_lifecycle', 'graph_relational_component_topology', 'multi_tenant_workspace_isolation', 'schema_on_read_layout_extension', 'probabilistic_release_risk_scoring', 'real_time_composition_analytics', 'counterfactual_layout_simulation', 'temporal_release_readiness_forecasting', 'autonomous_layout_remediation', 'semantic_composition_intent_parsing', 'predictive_composition_risk_scoring', 'self_healing_publication_route_selection', 'zero_knowledge_publication_proof', 'immutable_composition_audit_trail', 'dynamic_composition_policy_screening', 'automated_composition_control_testing', 'universal_api_async_composition_surface', 'cross_system_composition_federation', 'identity_gateway_schema_workflow_audit_integration', 'decentralized_publisher_identity', 'chaos_engineered_composition_tolerance', 'quantum_resistant_publication_signing', 'carbon_aware_composition_build', 'algebraic_layout_optimization', 'mechanism_design_fragment_slot_allocation', 'information_theoretic_composition_anomaly_detection', 'temporal_release_exposure_stochastic_modeling', 'distributed_systems_engineering', 'probabilistic_ml_composition_risk', 'cryptographic_engineering', 'mathematical_optimization', 'composition_mlops_governance'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+"""Package manifest for the composition_engine PBC."""
+
+from __future__ import annotations
+
+from .runtime import COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS
+from .runtime import COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES
+from .runtime import COMPOSITION_ENGINE_EMITTED_EVENT_TYPES
+from .runtime import COMPOSITION_ENGINE_OWNED_TABLES
+from .runtime import COMPOSITION_ENGINE_RUNTIME_CAPABILITY_KEYS
+from .runtime import COMPOSITION_ENGINE_STANDARD_FEATURE_KEYS
+from .runtime import composition_engine_build_api_contract
+
+PBC_KEY = 'composition_engine'
+
+PBC_MANIFEST = {
+    "pbc": "composition_engine",
+    "label": "Low-Code Composition Engine",
+    "mesh": "platform",
+    "description": "Drag-and-drop PBC assembly, component registry, layout engine, package registration, and experience composition.",
+    "datastore_backend": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS[0],
+    "tables": COMPOSITION_ENGINE_OWNED_TABLES,
+    "apis": tuple(route["route"] for route in composition_engine_build_api_contract()["routes"]),
+    "emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES,
+    "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES,
+    "template": None,
+    "ui_fragments": (
+        "CompositionEngineWorkbench",
+        "CompositionWorkspaceBoard",
+        "ComponentRegistryConsole",
+        "UiFragmentCatalog",
+        "LayoutBindingDesigner",
+        "CompositionPublicationConsole",
+        "CompositionReleaseEvidencePanel",
+        "CompositionRuleStudio",
+        "CompositionParameterConsole",
+        "CompositionConfigurationPanel",
+    ),
+    "permissions": (
+        "composition_engine.read",
+        "composition_engine.compose",
+        "composition_engine.approve",
+        "composition_engine.publish",
+        "composition_engine.event",
+        "composition_engine.configure",
+        "composition_engine.audit",
+    ),
+    "configuration": (
+        "COMPOSITION_ENGINE_DATABASE_URL",
+        "COMPOSITION_ENGINE_EVENT_TOPIC",
+        "COMPOSITION_ENGINE_RETRY_LIMIT",
+        "COMPOSITION_ENGINE_ALLOWED_TARGETS",
+        "COMPOSITION_ENGINE_ALLOWED_LAYOUT_MODES",
+        "COMPOSITION_ENGINE_PUBLICATION_MODE",
+        "COMPOSITION_ENGINE_DEFAULT_TIMEZONE",
+    ),
+    "capabilities": COMPOSITION_ENGINE_RUNTIME_CAPABILITY_KEYS,
+    "standard_features": COMPOSITION_ENGINE_STANDARD_FEATURE_KEYS,
+    "workflows": tuple(
+        item
+        for route in composition_engine_build_api_contract()["routes"]
+        for item in (route.get("command") or route.get("query"),)
+        if item
+    ),
+    "analytics": (
+        "composition_published_throughput",
+        "pbc_deployed_throughput",
+        "composition_plan_validation_rate",
+        "package_registration_plan_latency",
+        "layout_density_score",
+        "release_risk_score",
+        "dead_letter_recovery_rate",
+    ),
+    "advanced_capabilities": COMPOSITION_ENGINE_RUNTIME_CAPABILITY_KEYS,
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": ("tests/test_contract.py", "tests/test_runtime_capabilities.py"),
+    "docs": ("SPECIFICATION.md", "RELEASE_EVIDENCE.md"),
+}
