@@ -2501,3 +2501,20 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   bridge operations without unpacking the nested validation manifest.
   Verification is focused under the low-battery delivery constraint. Commit:
   `99124c8`.
+- Current binding runtime smoke pass exposes required binding designer
+  operations and collected binding operations directly from generated binding
+  runtime smoke. Generated consumers can now inspect graph authoring,
+  expression validation, runtime wiring, diagnostics, conflict handling,
+  lifecycle release, and inspector bridge operations without unpacking the
+  nested validation manifest. Verification is focused under the low-battery
+  delivery constraint. Commit: `54443ca`.
+- Current `checkout_processing` PBC pass attaches full runtime release sections
+  to the generated checkout package surface. Release evidence now includes
+  runtime schema, service, API, and permission contracts for cart, checkout,
+  inventory confirmation, payment authorization, payment capture, coupon, and
+  workbench flows, while retaining AppGen-X eventing and owned-table boundary
+  evidence. Verification is focused to the PBC slice: package Python compile,
+  runtime smoke, focused package contract tests, package
+  service/route/service-contract/release smokes, source artifact contract,
+  implementation release audit, generation smoke audit, specification contract,
+  and restricted legacy-name scan all passed. Commit: `8c82a8e`.
