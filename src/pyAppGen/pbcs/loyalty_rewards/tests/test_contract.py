@@ -201,3 +201,56 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['owned_boundary_rejection']['ok'] is False
     assert validation['owned_boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_advanced_loyalty_rewards_runtime_surface_is_executable():
+    from ..runtime import LOYALTY_REWARDS_OWNED_TABLES
+    from ..runtime import loyalty_rewards_build_api_contract
+    from ..runtime import loyalty_rewards_build_service_contract
+    from ..runtime import loyalty_rewards_runtime_smoke
+
+    smoke = loyalty_rewards_runtime_smoke()
+    api = loyalty_rewards_build_api_contract()
+    service = loyalty_rewards_build_service_contract()
+    required_tables = {
+        "reward_tier",
+        "tier_benefit",
+        "referral_reward",
+        "partner_accrual",
+        "offer_eligibility",
+        "liability_snapshot",
+        "fraud_review",
+        "churn_risk_score",
+        "breakage_forecast",
+        "offer_simulation",
+        "loyalty_exception",
+        "balance_reconciliation",
+        "reward_balance_proof",
+        "loyalty_audit_entry",
+        "rewards_policy_screening",
+        "liability_control_assertion",
+        "loyalty_federation_view",
+        "loyalty_governed_model",
+    }
+    required_commands = {
+        "qualify_tier",
+        "grant_referral_reward",
+        "record_partner_accrual",
+        "evaluate_offer_eligibility",
+        "snapshot_liability",
+        "review_fraud_risk",
+        "forecast_breakage",
+        "simulate_offer",
+        "resolve_loyalty_exception",
+        "reconcile_balance",
+        "generate_balance_proof",
+        "run_liability_controls",
+        "register_governed_model",
+    }
+    assert smoke["ok"] is True
+    assert required_tables <= set(LOYALTY_REWARDS_OWNED_TABLES)
+    assert required_commands <= set(service["command_methods"])
+    assert service["configuration_schema"]["event_contract"] == "AppGen-X"
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert api["shared_table_access"] is False
+    assert api["stream_engine_picker_visible"] is False

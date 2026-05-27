@@ -10,7 +10,31 @@ import math
 
 LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC = "appgen.loyalty_rewards.events"
 LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
-LOYALTY_REWARDS_OWNED_TABLES = ("reward_account", "points_ledger", "earning_rule", "redemption")
+LOYALTY_REWARDS_OWNED_TABLES = (
+    "reward_account",
+    "points_ledger",
+    "earning_rule",
+    "redemption",
+    "reward_tier",
+    "tier_benefit",
+    "referral_reward",
+    "partner_accrual",
+    "offer_eligibility",
+    "expiration_schedule",
+    "liability_snapshot",
+    "fraud_review",
+    "churn_risk_score",
+    "breakage_forecast",
+    "offer_simulation",
+    "loyalty_exception",
+    "balance_reconciliation",
+    "reward_balance_proof",
+    "loyalty_audit_entry",
+    "rewards_policy_screening",
+    "liability_control_assertion",
+    "loyalty_federation_view",
+    "loyalty_governed_model",
+)
 LOYALTY_REWARDS_RUNTIME_TABLES = (
     "loyalty_rewards_appgen_outbox_event",
     "loyalty_rewards_appgen_inbox_event",
@@ -161,6 +185,23 @@ def loyalty_rewards_runtime_capabilities() -> dict:
             "adjust_points",
             "create_redemption",
             "expire_points",
+            "qualify_tier",
+            "grant_referral_reward",
+            "record_partner_accrual",
+            "evaluate_offer_eligibility",
+            "schedule_expiration",
+            "snapshot_liability",
+            "review_fraud_risk",
+            "score_churn_risk",
+            "forecast_breakage",
+            "simulate_offer",
+            "resolve_loyalty_exception",
+            "reconcile_balance",
+            "generate_balance_proof",
+            "screen_rewards_policy",
+            "run_liability_controls",
+            "federate_rewards_view",
+            "register_governed_model",
             "build_api_contract",
             "build_schema_contract",
             "build_service_contract",
@@ -251,6 +292,50 @@ def loyalty_rewards_runtime_smoke() -> dict:
         {"redemption_id": "red_alpha", "account_id": "acct_alpha", "tenant": "tenant_alpha", "points": 500, "order_id": "ord_alpha", "status": "reserved"},
     )["state"]
     state = loyalty_rewards_expire_points(state, "acct_alpha", points=50)["state"]
+    state = loyalty_rewards_qualify_tier(state, "acct_alpha")["state"]
+    state = loyalty_rewards_grant_referral_reward(
+        state,
+        {"referral_id": "ref_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha", "referred_customer_id": "cust_beta", "points": 200, "status": "approved"},
+    )["state"]
+    state = loyalty_rewards_record_partner_accrual(
+        state,
+        {"partner_accrual_id": "partner_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha", "partner_id": "partner_alpha", "activity_ref": "stay_alpha", "points": 300, "status": "posted"},
+    )["state"]
+    state = loyalty_rewards_evaluate_offer_eligibility(
+        state,
+        {"eligibility_id": "offer_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha", "offer_id": "offer_gold_bonus", "required_tier": "gold"},
+    )["state"]
+    state = loyalty_rewards_schedule_expiration(
+        state,
+        {"schedule_id": "exp_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha", "points": 100, "expires_in_days": 365},
+    )["state"]
+    state = loyalty_rewards_snapshot_liability(state, "tenant_alpha")["state"]
+    state = loyalty_rewards_review_fraud_risk(
+        state,
+        {"review_id": "fraud_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha", "signals": {"velocity": 0.2, "redemption_ratio": 0.1}},
+    )["state"]
+    state = loyalty_rewards_score_churn_risk(state, {"score_id": "churn_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha"})["state"]
+    state = loyalty_rewards_forecast_breakage(state, {"forecast_id": "break_alpha", "tenant": "tenant_alpha", "horizon_days": 180})["state"]
+    state = loyalty_rewards_simulate_offer(
+        state,
+        {"simulation_id": "sim_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha", "offer_id": "double_points", "bonus_multiplier": 2.0},
+    )["state"]
+    state = loyalty_rewards_resolve_loyalty_exception(
+        state,
+        {"exception_id": "exception_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha", "reason": "partner_delay", "resolution": "manual_credit"},
+    )["state"]
+    state = loyalty_rewards_reconcile_balance(state, "acct_alpha")["state"]
+    state = loyalty_rewards_generate_balance_proof(state, {"proof_id": "proof_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha"})["state"]
+    state = loyalty_rewards_screen_rewards_policy(
+        state,
+        {"screening_id": "policy_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha", "activity_type": "redemption", "points": 100},
+    )["state"]
+    state = loyalty_rewards_run_liability_controls(state, "tenant_alpha")["state"]
+    state = loyalty_rewards_federate_rewards_view(state, {"view_id": "view_alpha", "tenant": "tenant_alpha", "account_id": "acct_alpha"})["state"]
+    state = loyalty_rewards_register_governed_model(
+        state,
+        {"model_id": "model_alpha", "tenant": "tenant_alpha", "model_type": "breakage_forecast", "version": "1.0", "status": "approved"},
+    )["state"]
     api = loyalty_rewards_build_api_contract()
     schema = loyalty_rewards_build_schema_contract()
     service = loyalty_rewards_build_service_contract()
@@ -291,6 +376,25 @@ def loyalty_rewards_empty_state() -> dict:
         "points_ledger": {},
         "earning_rules": {},
         "redemptions": {},
+        "reward_tiers": {},
+        "tier_benefits": {},
+        "referral_rewards": {},
+        "partner_accruals": {},
+        "offer_eligibilities": {},
+        "expiration_schedules": {},
+        "liability_snapshots": {},
+        "fraud_reviews": {},
+        "churn_risk_scores": {},
+        "breakage_forecasts": {},
+        "offer_simulations": {},
+        "loyalty_exceptions": {},
+        "balance_reconciliations": {},
+        "reward_balance_proofs": {},
+        "loyalty_audit_entries": {},
+        "rewards_policy_screenings": {},
+        "liability_control_assertions": {},
+        "loyalty_federation_views": {},
+        "loyalty_governed_models": {},
         "seed_data": {"tiers": ("bronze", "silver", "gold", "platinum"), "activity_types": ("payment", "promotion", "referral", "partner")},
     }
 
@@ -455,6 +559,246 @@ def loyalty_rewards_expire_points(state: dict, account_id: str, *, points: int) 
     return _post_ledger(state, {"ledger_id": f"expire:{account_id}:{len(state['points_ledger']) + 1}", "account_id": account_id, "tenant": account["tenant"], "points": -expired, "source": "expiration", "source_ref": "scheduled_expiration"}, "expiration")
 
 
+def loyalty_rewards_qualify_tier(state: dict, account_id: str) -> dict:
+    account = state["reward_accounts"].get(account_id)
+    if not account:
+        raise ValueError(f"Unknown Loyalty Rewards account: {account_id}")
+    runtime = _copy_state(state)
+    account = runtime["reward_accounts"][account_id]
+    tier = _qualify_tier(runtime, int(account["lifetime_points"]))
+    account["tier"] = tier
+    runtime["reward_tiers"][account_id] = {"account_id": account_id, "tenant": account["tenant"], "tier": tier, "lifetime_points": account["lifetime_points"], "status": "qualified"}
+    runtime["tier_benefits"][account_id] = {"account_id": account_id, "tenant": account["tenant"], "tier": tier, "benefits": _tier_benefits(tier), "status": "active"}
+    runtime["events"].append(_state_event("RewardTierQualified", account_id, runtime["reward_tiers"][account_id]))
+    return {"ok": True, "state": runtime, "tier": runtime["reward_tiers"][account_id]}
+
+
+def loyalty_rewards_grant_referral_reward(state: dict, command: dict) -> dict:
+    required = {"referral_id", "tenant", "account_id", "referred_customer_id", "points", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards referral fields: {tuple(sorted(missing))}")
+    runtime = _post_ledger(state, {**command, "ledger_id": f"referral:{command['referral_id']}", "source": "referral", "source_ref": command["referred_customer_id"]}, "referral")["state"]
+    referral = {**command, "audit_proof": _digest(command)}
+    runtime["referral_rewards"][command["referral_id"]] = referral
+    runtime["events"].append(_state_event("ReferralRewardGranted", command["referral_id"], referral))
+    return {"ok": True, "state": runtime, "referral": referral}
+
+
+def loyalty_rewards_record_partner_accrual(state: dict, command: dict) -> dict:
+    required = {"partner_accrual_id", "tenant", "account_id", "partner_id", "activity_ref", "points", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards partner accrual fields: {tuple(sorted(missing))}")
+    runtime = _post_ledger(state, {**command, "ledger_id": f"partner:{command['partner_accrual_id']}", "source": "partner", "source_ref": command["activity_ref"]}, "partner_accrual")["state"]
+    accrual = {**command, "audit_proof": _digest(command)}
+    runtime["partner_accruals"][command["partner_accrual_id"]] = accrual
+    runtime["events"].append(_state_event("PartnerAccrualRecorded", command["partner_accrual_id"], accrual))
+    return {"ok": True, "state": runtime, "partner_accrual": accrual}
+
+
+def loyalty_rewards_evaluate_offer_eligibility(state: dict, command: dict) -> dict:
+    required = {"eligibility_id", "tenant", "account_id", "offer_id", "required_tier"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards offer eligibility fields: {tuple(sorted(missing))}")
+    account = state["reward_accounts"].get(command["account_id"])
+    if not account:
+        raise ValueError(f"Unknown Loyalty Rewards account: {command['account_id']}")
+    tiers = ("bronze", "silver", "gold", "platinum")
+    eligible = tiers.index(account["tier"]) >= tiers.index(command["required_tier"])
+    runtime = _copy_state(state)
+    eligibility = {**command, "decision": "eligible" if eligible else "ineligible", "account_tier": account["tier"], "audit_proof": _digest(command)}
+    runtime["offer_eligibilities"][command["eligibility_id"]] = eligibility
+    runtime["events"].append(_state_event("OfferEligibilityEvaluated", command["eligibility_id"], eligibility))
+    return {"ok": True, "state": runtime, "eligibility": eligibility}
+
+
+def loyalty_rewards_schedule_expiration(state: dict, command: dict) -> dict:
+    required = {"schedule_id", "tenant", "account_id", "points", "expires_in_days"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards expiration fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    schedule = {**command, "status": "scheduled", "audit_proof": _digest(command)}
+    runtime["expiration_schedules"][command["schedule_id"]] = schedule
+    runtime["events"].append(_state_event("RewardExpirationScheduled", command["schedule_id"], schedule))
+    return {"ok": True, "state": runtime, "expiration_schedule": schedule}
+
+
+def loyalty_rewards_snapshot_liability(state: dict, tenant: str) -> dict:
+    runtime = _copy_state(state)
+    accounts = tuple(account for account in runtime["reward_accounts"].values() if account["tenant"] == tenant)
+    liability = round(sum(float(account["liability_amount"]) for account in accounts), 2)
+    reserve = round(liability * float(runtime["parameters"].get("liability_reserve_percent", {"value": 0})["value"]) / 100, 2)
+    snapshot_id = f"liability_{tenant}_{len(runtime['liability_snapshots']) + 1}"
+    snapshot = {"snapshot_id": snapshot_id, "tenant": tenant, "liability_amount": liability, "reserve_amount": reserve, "account_count": len(accounts), "status": "captured"}
+    runtime["liability_snapshots"][snapshot_id] = snapshot
+    runtime["events"].append(_state_event("RewardsLiabilitySnapshotted", snapshot_id, snapshot))
+    return {"ok": True, "state": runtime, "liability_snapshot": snapshot}
+
+
+def loyalty_rewards_review_fraud_risk(state: dict, command: dict) -> dict:
+    required = {"review_id", "tenant", "account_id", "signals"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards fraud review fields: {tuple(sorted(missing))}")
+    threshold = float(state["parameters"].get("fraud_review_threshold", {"value": 0.72})["value"])
+    score = round(min(0.99, sum(float(v) for v in command["signals"].values()) / max(len(command["signals"]), 1)), 4)
+    runtime = _copy_state(state)
+    review = {**command, "signals": dict(command["signals"]), "fraud_score": score, "decision": "review" if score >= threshold else "clear", "audit_proof": _digest(command)}
+    runtime["fraud_reviews"][command["review_id"]] = review
+    runtime["events"].append(_state_event("RewardsFraudRiskReviewed", command["review_id"], review))
+    return {"ok": True, "state": runtime, "fraud_review": review}
+
+
+def loyalty_rewards_score_churn_risk(state: dict, command: dict) -> dict:
+    required = {"score_id", "tenant", "account_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards churn risk fields: {tuple(sorted(missing))}")
+    account = state["reward_accounts"].get(command["account_id"])
+    if not account:
+        raise ValueError(f"Unknown Loyalty Rewards account: {command['account_id']}")
+    risk = round(max(0.05, min(0.95, 0.8 - int(account["lifetime_points"]) / 20000)), 4)
+    runtime = _copy_state(state)
+    score = {**command, "churn_risk": risk, "risk_band": "high" if risk >= 0.6 else "normal", "audit_proof": _digest(command)}
+    runtime["churn_risk_scores"][command["score_id"]] = score
+    runtime["events"].append(_state_event("RewardsChurnRiskScored", command["score_id"], score))
+    return {"ok": True, "state": runtime, "churn_risk": score}
+
+
+def loyalty_rewards_forecast_breakage(state: dict, command: dict) -> dict:
+    required = {"forecast_id", "tenant", "horizon_days"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards breakage forecast fields: {tuple(sorted(missing))}")
+    accounts = tuple(account for account in state["reward_accounts"].values() if account["tenant"] == command["tenant"])
+    outstanding = sum(int(account["balance"]) for account in accounts)
+    rate = min(0.35, int(command["horizon_days"]) / 3650)
+    runtime = _copy_state(state)
+    forecast = {**command, "outstanding_points": outstanding, "expected_breakage_points": int(round(outstanding * rate)), "confidence": round(1 - rate / 2, 4)}
+    runtime["breakage_forecasts"][command["forecast_id"]] = forecast
+    runtime["events"].append(_state_event("RewardsBreakageForecasted", command["forecast_id"], forecast))
+    return {"ok": True, "state": runtime, "breakage_forecast": forecast}
+
+
+def loyalty_rewards_simulate_offer(state: dict, command: dict) -> dict:
+    required = {"simulation_id", "tenant", "account_id", "offer_id", "bonus_multiplier"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards offer simulation fields: {tuple(sorted(missing))}")
+    account = state["reward_accounts"].get(command["account_id"])
+    if not account:
+        raise ValueError(f"Unknown Loyalty Rewards account: {command['account_id']}")
+    runtime = _copy_state(state)
+    projected_points = int(account["balance"] * float(command["bonus_multiplier"]))
+    simulation = {**command, "current_balance": account["balance"], "projected_balance": projected_points, "incremental_points": projected_points - account["balance"]}
+    runtime["offer_simulations"][command["simulation_id"]] = simulation
+    runtime["events"].append(_state_event("RewardsOfferSimulated", command["simulation_id"], simulation))
+    return {"ok": True, "state": runtime, "simulation": simulation}
+
+
+def loyalty_rewards_resolve_loyalty_exception(state: dict, command: dict) -> dict:
+    required = {"exception_id", "tenant", "account_id", "reason", "resolution"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards exception fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    exception = {**command, "status": "resolved", "audit_proof": _digest(command)}
+    runtime["loyalty_exceptions"][command["exception_id"]] = exception
+    _record_loyalty_audit(runtime, command["tenant"], command["account_id"], "resolve_loyalty_exception", exception)
+    runtime["events"].append(_state_event("LoyaltyExceptionResolved", command["exception_id"], exception))
+    return {"ok": True, "state": runtime, "exception": exception}
+
+
+def loyalty_rewards_reconcile_balance(state: dict, account_id: str) -> dict:
+    account = state["reward_accounts"].get(account_id)
+    if not account:
+        raise ValueError(f"Unknown Loyalty Rewards account: {account_id}")
+    computed = sum(int(item["points"]) for item in state["points_ledger"].values() if item["account_id"] == account_id)
+    runtime = _copy_state(state)
+    reconciliation_id = f"recon_{account_id}_{len(runtime['balance_reconciliations']) + 1}"
+    reconciliation = {"reconciliation_id": reconciliation_id, "tenant": account["tenant"], "account_id": account_id, "recorded_balance": account["balance"], "computed_balance": computed, "status": "matched" if computed == account["balance"] else "corrected"}
+    runtime["balance_reconciliations"][reconciliation_id] = reconciliation
+    runtime["reward_accounts"][account_id]["balance"] = computed
+    runtime["events"].append(_state_event("RewardsBalanceReconciled", reconciliation_id, reconciliation))
+    return {"ok": True, "state": runtime, "reconciliation": reconciliation}
+
+
+def loyalty_rewards_generate_balance_proof(state: dict, command: dict) -> dict:
+    required = {"proof_id", "tenant", "account_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards balance proof fields: {tuple(sorted(missing))}")
+    account = state["reward_accounts"].get(command["account_id"])
+    if not account:
+        raise ValueError(f"Unknown Loyalty Rewards account: {command['account_id']}")
+    runtime = _copy_state(state)
+    ledger = tuple(item for item in runtime["points_ledger"].values() if item["account_id"] == command["account_id"])
+    proof = {**command, "balance": account["balance"], "ledger_hash": _digest({"ledger": ledger}), "account_hash": _digest(account), "status": "issued"}
+    runtime["reward_balance_proofs"][command["proof_id"]] = proof
+    _record_loyalty_audit(runtime, command["tenant"], command["account_id"], "generate_balance_proof", proof)
+    runtime["events"].append(_state_event("RewardBalanceProofGenerated", command["proof_id"], proof))
+    return {"ok": True, "state": runtime, "proof": proof}
+
+
+def loyalty_rewards_screen_rewards_policy(state: dict, command: dict) -> dict:
+    required = {"screening_id", "tenant", "account_id", "activity_type", "points"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards policy screening fields: {tuple(sorted(missing))}")
+    account = state["reward_accounts"].get(command["account_id"])
+    if not account:
+        raise ValueError(f"Unknown Loyalty Rewards account: {command['account_id']}")
+    max_daily = int(state["parameters"].get("max_daily_earn_points", {"value": 100000})["value"])
+    decision = "allowed" if abs(int(command["points"])) <= max_daily else "blocked"
+    runtime = _copy_state(state)
+    screening = {**command, "decision": decision, "max_daily_earn_points": max_daily, "audit_proof": _digest(command)}
+    runtime["rewards_policy_screenings"][command["screening_id"]] = screening
+    runtime["events"].append(_state_event("RewardsPolicyScreened", command["screening_id"], screening))
+    return {"ok": decision == "allowed", "state": runtime, "screening": screening}
+
+
+def loyalty_rewards_run_liability_controls(state: dict, tenant: str) -> dict:
+    runtime = _copy_state(state)
+    snapshot_result = loyalty_rewards_snapshot_liability(runtime, tenant)
+    runtime = snapshot_result["state"]
+    snapshot = snapshot_result["liability_snapshot"]
+    assertion_id = f"control_{tenant}_{len(runtime['liability_control_assertions']) + 1}"
+    assertion = {"assertion_id": assertion_id, "tenant": tenant, "liability_amount": snapshot["liability_amount"], "reserve_amount": snapshot["reserve_amount"], "status": "passed"}
+    runtime["liability_control_assertions"][assertion_id] = assertion
+    runtime["events"].append(_state_event("RewardsLiabilityControlsRun", assertion_id, assertion))
+    return {"ok": True, "state": runtime, "control_assertion": assertion}
+
+
+def loyalty_rewards_federate_rewards_view(state: dict, command: dict) -> dict:
+    required = {"view_id", "tenant", "account_id"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards federation fields: {tuple(sorted(missing))}")
+    account = state["reward_accounts"].get(command["account_id"])
+    if not account:
+        raise ValueError(f"Unknown Loyalty Rewards account: {command['account_id']}")
+    runtime = _copy_state(state)
+    view = {**command, "customer_id": account["customer_id"], "balance": account["balance"], "tier": account["tier"], "projection_sources": ("payment_projection", "promotion_projection", "customer_segment_projection"), "status": "materialized"}
+    runtime["loyalty_federation_views"][command["view_id"]] = view
+    runtime["events"].append(_state_event("LoyaltyFederationViewBuilt", command["view_id"], view))
+    return {"ok": True, "state": runtime, "federation_view": view}
+
+
+def loyalty_rewards_register_governed_model(state: dict, command: dict) -> dict:
+    required = {"model_id", "tenant", "model_type", "version", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Loyalty Rewards governed model fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    model = {**command, "training_boundary": "loyalty_rewards_owned_tables", "governance_hash": _digest(command)}
+    runtime["loyalty_governed_models"][command["model_id"]] = model
+    runtime["events"].append(_state_event("LoyaltyGovernedModelRegistered", command["model_id"], model))
+    return {"ok": True, "state": runtime, "model": model}
+
+
 def loyalty_rewards_build_workbench_view(state: dict, *, tenant: str) -> dict:
     accounts = tuple(item for item in state.get("reward_accounts", {}).values() if item["tenant"] == tenant)
     ledger = tuple(item for item in state.get("points_ledger", {}).values() if item["tenant"] == tenant)
@@ -552,6 +896,142 @@ def loyalty_rewards_build_api_contract() -> dict:
                 "idempotency_key": "redemption_id",
             },
             {
+                "route": "POST /tiers/qualification",
+                "command": "qualify_tier",
+                "owned_tables": ("reward_tier", "tier_benefit", "reward_account"),
+                "emits": ("CustomerSegmentUpdated",),
+                "requires_permission": "loyalty_rewards.operations.write",
+                "idempotency_key": "account_id",
+            },
+            {
+                "route": "POST /referrals",
+                "command": "grant_referral_reward",
+                "owned_tables": ("referral_reward", "points_ledger", "reward_account"),
+                "emits": ("RewardBalanceChanged",),
+                "requires_permission": "loyalty_rewards.operations.write",
+                "idempotency_key": "referral_id",
+            },
+            {
+                "route": "POST /partner-accruals",
+                "command": "record_partner_accrual",
+                "owned_tables": ("partner_accrual", "points_ledger", "reward_account"),
+                "emits": ("RewardBalanceChanged",),
+                "requires_permission": "loyalty_rewards.operations.write",
+                "idempotency_key": "partner_accrual_id",
+            },
+            {
+                "route": "POST /offers/eligibility",
+                "command": "evaluate_offer_eligibility",
+                "owned_tables": ("offer_eligibility", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.operations.write",
+                "idempotency_key": "eligibility_id",
+            },
+            {
+                "route": "POST /expirations/schedules",
+                "command": "schedule_expiration",
+                "owned_tables": ("expiration_schedule", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.liability.write",
+                "idempotency_key": "schedule_id",
+            },
+            {
+                "route": "POST /liability/snapshots",
+                "command": "snapshot_liability",
+                "owned_tables": ("liability_snapshot", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.liability.write",
+                "idempotency_key": "tenant",
+            },
+            {
+                "route": "POST /risk/fraud-reviews",
+                "command": "review_fraud_risk",
+                "owned_tables": ("fraud_review", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.risk.write",
+                "idempotency_key": "review_id",
+            },
+            {
+                "route": "POST /risk/churn-scores",
+                "command": "score_churn_risk",
+                "owned_tables": ("churn_risk_score", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.risk.write",
+                "idempotency_key": "score_id",
+            },
+            {
+                "route": "POST /intelligence/breakage-forecasts",
+                "command": "forecast_breakage",
+                "owned_tables": ("breakage_forecast", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.intelligence.write",
+                "idempotency_key": "forecast_id",
+            },
+            {
+                "route": "POST /intelligence/offer-simulations",
+                "command": "simulate_offer",
+                "owned_tables": ("offer_simulation", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.intelligence.write",
+                "idempotency_key": "simulation_id",
+            },
+            {
+                "route": "POST /exceptions/resolutions",
+                "command": "resolve_loyalty_exception",
+                "owned_tables": ("loyalty_exception", "loyalty_audit_entry", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.operations.write",
+                "idempotency_key": "exception_id",
+            },
+            {
+                "route": "POST /balances/reconciliations",
+                "command": "reconcile_balance",
+                "owned_tables": ("balance_reconciliation", "reward_account", "points_ledger"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.operations.write",
+                "idempotency_key": "account_id",
+            },
+            {
+                "route": "POST /balances/proofs",
+                "command": "generate_balance_proof",
+                "owned_tables": ("reward_balance_proof", "loyalty_audit_entry", "reward_account", "points_ledger"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.audit",
+                "idempotency_key": "proof_id",
+            },
+            {
+                "route": "POST /policy/screenings",
+                "command": "screen_rewards_policy",
+                "owned_tables": ("rewards_policy_screening", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.risk.write",
+                "idempotency_key": "screening_id",
+            },
+            {
+                "route": "POST /liability/controls",
+                "command": "run_liability_controls",
+                "owned_tables": ("liability_control_assertion", "liability_snapshot", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.liability.write",
+                "idempotency_key": "tenant",
+            },
+            {
+                "route": "POST /federation/views",
+                "command": "federate_rewards_view",
+                "owned_tables": ("loyalty_federation_view", "reward_account"),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.audit",
+                "idempotency_key": "view_id",
+            },
+            {
+                "route": "POST /governed-models",
+                "command": "register_governed_model",
+                "owned_tables": ("loyalty_governed_model",),
+                "emits": (),
+                "requires_permission": "loyalty_rewards.intelligence.write",
+                "idempotency_key": "model_id",
+            },
+            {
                 "route": "POST /loyalty-rewards/events/inbox",
                 "command": "receive_event",
                 "owned_tables": (),
@@ -644,6 +1124,25 @@ def loyalty_rewards_build_schema_contract() -> dict:
             "monetary_value",
             "audit_proof",
         ),
+        "reward_tier": ("account_id", "tenant", "tier", "lifetime_points", "status", "qualified_at", "audit_proof"),
+        "tier_benefit": ("account_id", "tenant", "tier", "benefits", "benefit_count", "status", "audit_proof"),
+        "referral_reward": ("referral_id", "tenant", "account_id", "referred_customer_id", "points", "status", "audit_proof"),
+        "partner_accrual": ("partner_accrual_id", "tenant", "account_id", "partner_id", "activity_ref", "points", "status", "audit_proof"),
+        "offer_eligibility": ("eligibility_id", "tenant", "account_id", "offer_id", "required_tier", "decision", "account_tier", "audit_proof"),
+        "expiration_schedule": ("schedule_id", "tenant", "account_id", "points", "expires_in_days", "status", "audit_proof"),
+        "liability_snapshot": ("snapshot_id", "tenant", "liability_amount", "reserve_amount", "account_count", "status"),
+        "fraud_review": ("review_id", "tenant", "account_id", "signals", "fraud_score", "decision", "audit_proof"),
+        "churn_risk_score": ("score_id", "tenant", "account_id", "churn_risk", "risk_band", "audit_proof"),
+        "breakage_forecast": ("forecast_id", "tenant", "horizon_days", "outstanding_points", "expected_breakage_points", "confidence"),
+        "offer_simulation": ("simulation_id", "tenant", "account_id", "offer_id", "bonus_multiplier", "current_balance", "projected_balance", "incremental_points"),
+        "loyalty_exception": ("exception_id", "tenant", "account_id", "reason", "resolution", "status", "audit_proof"),
+        "balance_reconciliation": ("reconciliation_id", "tenant", "account_id", "recorded_balance", "computed_balance", "status"),
+        "reward_balance_proof": ("proof_id", "tenant", "account_id", "balance", "ledger_hash", "account_hash", "status"),
+        "loyalty_audit_entry": ("audit_id", "tenant", "account_id", "action", "payload_hash", "payload", "status"),
+        "rewards_policy_screening": ("screening_id", "tenant", "account_id", "activity_type", "points", "decision", "max_daily_earn_points", "audit_proof"),
+        "liability_control_assertion": ("assertion_id", "tenant", "liability_amount", "reserve_amount", "status", "checked_at", "control_hash"),
+        "loyalty_federation_view": ("view_id", "tenant", "account_id", "customer_id", "balance", "tier", "projection_sources", "status"),
+        "loyalty_governed_model": ("model_id", "tenant", "model_type", "version", "status", "training_boundary", "governance_hash"),
     }
     runtime_table_fields = {
         "loyalty_rewards_appgen_outbox_event": (
@@ -768,6 +1267,23 @@ def loyalty_rewards_build_service_contract() -> dict:
         "adjust_points",
         "create_redemption",
         "expire_points",
+        "qualify_tier",
+        "grant_referral_reward",
+        "record_partner_accrual",
+        "evaluate_offer_eligibility",
+        "schedule_expiration",
+        "snapshot_liability",
+        "review_fraud_risk",
+        "score_churn_risk",
+        "forecast_breakage",
+        "simulate_offer",
+        "resolve_loyalty_exception",
+        "reconcile_balance",
+        "generate_balance_proof",
+        "screen_rewards_policy",
+        "run_liability_controls",
+        "federate_rewards_view",
+        "register_governed_model",
         "verify_owned_table_boundary",
     )
     query_methods = (
@@ -795,29 +1311,21 @@ def loyalty_rewards_build_service_contract() -> dict:
         "ok": len(command_methods) >= 10
         and not api["shared_table_access"]
         and tuple(item["event_type"] for item in idempotent_handlers) == LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
+        "pbc": "loyalty_rewards",
         "transaction_boundary": "loyalty_rewards_owned_datastore_plus_appgen_outbox",
+        "shared_table_access": False,
         "command_methods": command_methods,
         "query_methods": query_methods,
         "mutates_only": LOYALTY_REWARDS_OWNED_TABLES,
         "runtime_tables": LOYALTY_REWARDS_RUNTIME_TABLES,
         "permission_requirements": {
             name: permissions["action_permissions"][name]
-            for name in (
-                "configure_runtime",
-                "set_parameter",
-                "register_rule",
-                "register_schema_extension",
-                "register_earning_rule",
-                "enroll_member",
-                "receive_event",
-                "issue_points",
-                "adjust_points",
-                "create_redemption",
-                "expire_points",
+            for name in command_methods
+            + (
+                "build_api_contract",
                 "build_schema_contract",
                 "build_service_contract",
                 "build_release_evidence",
-                "verify_owned_table_boundary",
             )
         },
         "configuration_schema": {
@@ -978,6 +1486,10 @@ def loyalty_rewards_permissions_contract() -> dict:
             "loyalty_rewards.event.consume",
             "loyalty_rewards.configure",
             "loyalty_rewards.audit",
+            "loyalty_rewards.operations.write",
+            "loyalty_rewards.liability.write",
+            "loyalty_rewards.risk.write",
+            "loyalty_rewards.intelligence.write",
         ),
         "action_permissions": {
             "enroll_member": "loyalty_rewards.account.write",
@@ -985,6 +1497,23 @@ def loyalty_rewards_permissions_contract() -> dict:
             "adjust_points": "loyalty_rewards.points.write",
             "expire_points": "loyalty_rewards.points.write",
             "create_redemption": "loyalty_rewards.redemption.write",
+            "qualify_tier": "loyalty_rewards.operations.write",
+            "grant_referral_reward": "loyalty_rewards.operations.write",
+            "record_partner_accrual": "loyalty_rewards.operations.write",
+            "evaluate_offer_eligibility": "loyalty_rewards.operations.write",
+            "schedule_expiration": "loyalty_rewards.liability.write",
+            "snapshot_liability": "loyalty_rewards.liability.write",
+            "review_fraud_risk": "loyalty_rewards.risk.write",
+            "score_churn_risk": "loyalty_rewards.risk.write",
+            "forecast_breakage": "loyalty_rewards.intelligence.write",
+            "simulate_offer": "loyalty_rewards.intelligence.write",
+            "resolve_loyalty_exception": "loyalty_rewards.operations.write",
+            "reconcile_balance": "loyalty_rewards.operations.write",
+            "generate_balance_proof": "loyalty_rewards.audit",
+            "screen_rewards_policy": "loyalty_rewards.risk.write",
+            "run_liability_controls": "loyalty_rewards.liability.write",
+            "federate_rewards_view": "loyalty_rewards.audit",
+            "register_governed_model": "loyalty_rewards.intelligence.write",
             "receive_event": "loyalty_rewards.event.consume",
             "register_earning_rule": "loyalty_rewards.configure",
             "register_rule": "loyalty_rewards.configure",
@@ -1057,10 +1586,36 @@ def _qualify_tier(state: dict, lifetime_points: int) -> str:
     return "bronze"
 
 
+def _tier_benefits(tier: str) -> tuple[str, ...]:
+    benefit_map = {
+        "bronze": ("standard_earn",),
+        "silver": ("standard_earn", "priority_campaigns"),
+        "gold": ("accelerated_earn", "priority_campaigns", "redemption_fee_waiver"),
+        "platinum": ("accelerated_earn", "priority_campaigns", "redemption_fee_waiver", "concierge_recovery"),
+    }
+    return benefit_map.get(tier, benefit_map["bronze"])
+
+
 def _emit(state: dict, event_type: str, tenant: str, payload: dict) -> None:
     event = {"event_id": f"{event_type.lower()}_{len(state['outbox']) + 1}", "event_type": event_type, "tenant": tenant, "payload": payload, "contract": "AppGen-X", "idempotency_key": f"loyalty_rewards:{event_type}:{payload.get('account_id') or payload.get('customer_id') or len(state['outbox']) + 1}", "retry_policy": {"max_attempts": int(state.get("configuration", {}).get("retry_limit", 3)), "dead_letter": "loyalty_rewards_dead_letter_event"}, "audit_hash": _digest({"event_type": event_type, "tenant": tenant, "payload": payload})}
     state["outbox"].append(event)
     state["events"].append(_state_event(event_type, event["event_id"], payload))
+
+
+def _record_loyalty_audit(state: dict, tenant: str, account_id: str, action: str, payload: dict) -> dict:
+    audit_id = f"audit_{tenant}_{len(state['loyalty_audit_entries']) + 1}"
+    entry = {
+        "audit_id": audit_id,
+        "tenant": tenant,
+        "account_id": account_id,
+        "action": action,
+        "payload_hash": _digest(payload),
+        "payload": payload,
+        "status": "recorded",
+    }
+    state["loyalty_audit_entries"][audit_id] = entry
+    state["events"].append(_state_event("LoyaltyAuditRecorded", audit_id, entry))
+    return entry
 
 
 def _state_event(event_type: str, key: str, payload: dict) -> dict:

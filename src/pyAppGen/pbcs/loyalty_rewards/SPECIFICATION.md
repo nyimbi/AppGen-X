@@ -33,6 +33,22 @@ The package owns exactly these operational tables:
   currency unit, tier multipliers, status, and compiled hash.
 - `redemption`: reward reservation state, account, order reference, points,
   monetary value, status, and audit proof.
+- `reward_tier` and `tier_benefit`: qualified tier state and active benefit
+  bundles.
+- `referral_reward` and `partner_accrual`: referral and partner earn evidence.
+- `offer_eligibility`, `offer_simulation`, and `breakage_forecast`: offer
+  decisioning, counterfactual projection, and probabilistic breakage evidence.
+- `expiration_schedule`, `liability_snapshot`, and
+  `liability_control_assertion`: expiration planning, reward liability, and
+  automated control testing.
+- `fraud_review`, `churn_risk_score`, `rewards_policy_screening`, and
+  `loyalty_exception`: risk scoring, dynamic policy screening, and exception
+  resolution.
+- `balance_reconciliation`, `reward_balance_proof`, and `loyalty_audit_entry`:
+  self-healing ledger reconciliation, cryptographic balance proof, and
+  immutable audit evidence.
+- `loyalty_federation_view` and `loyalty_governed_model`: declared projection
+  federation and governed model registration.
 
 No customer, payment, promotion, segment, commerce, or finance tables are shared
 or directly accessed. External information enters through declared AppGen-X
@@ -130,7 +146,14 @@ modern relationship PBC:
 descriptor for Loyalty Rewards. It proves:
 
 - Every owned table in `LOYALTY_REWARDS_OWNED_TABLES` is present exactly once:
-  `reward_account`, `points_ledger`, `earning_rule`, and `redemption`.
+  `reward_account`, `points_ledger`, `earning_rule`, `redemption`,
+  `reward_tier`, `tier_benefit`, `referral_reward`, `partner_accrual`,
+  `offer_eligibility`, `expiration_schedule`, `liability_snapshot`,
+  `fraud_review`, `churn_risk_score`, `breakage_forecast`,
+  `offer_simulation`, `loyalty_exception`, `balance_reconciliation`,
+  `reward_balance_proof`, `loyalty_audit_entry`,
+  `rewards_policy_screening`, `liability_control_assertion`,
+  `loyalty_federation_view`, and `loyalty_governed_model`.
 - Generated migration artifacts exist for every owned table in
   `pbcs/loyalty_rewards/migrations/{sequence}_{table}.sql`.
 - Generated model artifacts exist for every owned table in
@@ -162,6 +185,23 @@ The service layer exposes these package-local commands:
 - `adjust_points(command)`.
 - `create_redemption(command)`.
 - `expire_points(account_id, points=...)`.
+- `qualify_tier(account_id)`.
+- `grant_referral_reward(command)`.
+- `record_partner_accrual(command)`.
+- `evaluate_offer_eligibility(command)`.
+- `schedule_expiration(command)`.
+- `snapshot_liability(tenant)`.
+- `review_fraud_risk(command)`.
+- `score_churn_risk(command)`.
+- `forecast_breakage(command)`.
+- `simulate_offer(command)`.
+- `resolve_loyalty_exception(command)`.
+- `reconcile_balance(account_id)`.
+- `generate_balance_proof(command)`.
+- `screen_rewards_policy(command)`.
+- `run_liability_controls(tenant)`.
+- `federate_rewards_view(command)`.
+- `register_governed_model(command)`.
 - `build_api_contract()`.
 - `permissions_contract()`.
 - `build_workbench_view(tenant=...)`.
@@ -203,6 +243,23 @@ The package-local API contract exposes route descriptors:
   `points_ledger`, and `reward_account`, requires
   `loyalty_rewards.redemption.write`, emits `RewardBalanceChanged`, and is
   idempotent by `redemption_id`.
+- `POST /tiers/qualification` runs `qualify_tier`.
+- `POST /referrals` runs `grant_referral_reward`.
+- `POST /partner-accruals` runs `record_partner_accrual`.
+- `POST /offers/eligibility` runs `evaluate_offer_eligibility`.
+- `POST /expirations/schedules` runs `schedule_expiration`.
+- `POST /liability/snapshots` runs `snapshot_liability`.
+- `POST /risk/fraud-reviews` runs `review_fraud_risk`.
+- `POST /risk/churn-scores` runs `score_churn_risk`.
+- `POST /intelligence/breakage-forecasts` runs `forecast_breakage`.
+- `POST /intelligence/offer-simulations` runs `simulate_offer`.
+- `POST /exceptions/resolutions` runs `resolve_loyalty_exception`.
+- `POST /balances/reconciliations` runs `reconcile_balance`.
+- `POST /balances/proofs` runs `generate_balance_proof`.
+- `POST /policy/screenings` runs `screen_rewards_policy`.
+- `POST /liability/controls` runs `run_liability_controls`.
+- `POST /federation/views` runs `federate_rewards_view`.
+- `POST /governed-models` runs `register_governed_model`.
 - `POST /loyalty-rewards/events/inbox` runs `receive_event`, consumes declared
   AppGen-X events, requires `loyalty_rewards.event.consume`, and is idempotent
   by `event_id`.
@@ -288,6 +345,25 @@ This appendix is generated from the package manifest and is release-gated so the
 - `points_ledger`
 - `earning_rule`
 - `redemption`
+- `reward_tier`
+- `tier_benefit`
+- `referral_reward`
+- `partner_accrual`
+- `offer_eligibility`
+- `expiration_schedule`
+- `liability_snapshot`
+- `fraud_review`
+- `churn_risk_score`
+- `breakage_forecast`
+- `offer_simulation`
+- `loyalty_exception`
+- `balance_reconciliation`
+- `reward_balance_proof`
+- `loyalty_audit_entry`
+- `rewards_policy_screening`
+- `liability_control_assertion`
+- `loyalty_federation_view`
+- `loyalty_governed_model`
 
 ### API Routes
 
@@ -295,6 +371,23 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /points`
 - `POST /points/adjustments`
 - `POST /redemptions`
+- `POST /tiers/qualification`
+- `POST /referrals`
+- `POST /partner-accruals`
+- `POST /offers/eligibility`
+- `POST /expirations/schedules`
+- `POST /liability/snapshots`
+- `POST /risk/fraud-reviews`
+- `POST /risk/churn-scores`
+- `POST /intelligence/breakage-forecasts`
+- `POST /intelligence/offer-simulations`
+- `POST /exceptions/resolutions`
+- `POST /balances/reconciliations`
+- `POST /balances/proofs`
+- `POST /policy/screenings`
+- `POST /liability/controls`
+- `POST /federation/views`
+- `POST /governed-models`
 - `POST /loyalty-rewards/events/inbox`
 - `GET /reward-accounts`
 - `GET /loyalty-rewards/schema-contract`
@@ -334,8 +427,12 @@ This appendix is generated from the package manifest and is release-gated so the
 - `loyalty_rewards.audit`
 - `loyalty_rewards.configure`
 - `loyalty_rewards.event.consume`
+- `loyalty_rewards.intelligence.write`
+- `loyalty_rewards.liability.write`
+- `loyalty_rewards.operations.write`
 - `loyalty_rewards.points.write`
 - `loyalty_rewards.redemption.write`
+- `loyalty_rewards.risk.write`
 
 ### Configuration Keys
 

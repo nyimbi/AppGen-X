@@ -25,15 +25,32 @@ from .runtime import loyalty_rewards_create_redemption
 from .runtime import loyalty_rewards_empty_state
 from .runtime import loyalty_rewards_enroll_member
 from .runtime import loyalty_rewards_expire_points
+from .runtime import loyalty_rewards_evaluate_offer_eligibility
+from .runtime import loyalty_rewards_federate_rewards_view
+from .runtime import loyalty_rewards_forecast_breakage
+from .runtime import loyalty_rewards_generate_balance_proof
+from .runtime import loyalty_rewards_grant_referral_reward
 from .runtime import loyalty_rewards_issue_points
 from .runtime import loyalty_rewards_permissions_contract
+from .runtime import loyalty_rewards_qualify_tier
 from .runtime import loyalty_rewards_receive_event
+from .runtime import loyalty_rewards_reconcile_balance
+from .runtime import loyalty_rewards_record_partner_accrual
 from .runtime import loyalty_rewards_register_earning_rule
+from .runtime import loyalty_rewards_register_governed_model
 from .runtime import loyalty_rewards_register_rule
 from .runtime import loyalty_rewards_register_schema_extension
+from .runtime import loyalty_rewards_resolve_loyalty_exception
+from .runtime import loyalty_rewards_review_fraud_risk
+from .runtime import loyalty_rewards_run_liability_controls
 from .runtime import loyalty_rewards_runtime_capabilities
 from .runtime import loyalty_rewards_runtime_smoke
+from .runtime import loyalty_rewards_schedule_expiration
+from .runtime import loyalty_rewards_score_churn_risk
+from .runtime import loyalty_rewards_screen_rewards_policy
 from .runtime import loyalty_rewards_set_parameter
+from .runtime import loyalty_rewards_simulate_offer
+from .runtime import loyalty_rewards_snapshot_liability
 from .runtime import loyalty_rewards_verify_owned_table_boundary
 from .ui import LOYALTY_REWARDS_UI_FRAGMENT_KEYS
 from .ui import loyalty_rewards_render_workbench
@@ -110,4 +127,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-
