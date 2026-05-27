@@ -2254,7 +2254,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   staging, local override resolution, accessible preview validation, runtime
   style resource commit, and rollback with zero persisted writes before visual
   runtime delivery. Verification is focused under the low-battery delivery
-  constraint. Commit: pending.
+  constraint. Commit: `b59a007`.
 - Current `cdp_segmentation` PBC pass promotes advanced CDP intelligence and
   governance surfaces into executable package-local operations: counterfactual
   segment simulation, audience forecasting, exception resolution, semantic rule
