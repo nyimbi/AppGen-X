@@ -3041,6 +3041,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "scene_hit_testing",
         "style_inheritance_trace",
         "timeline_interpolation_runtime",
+        "timeline_editor_transaction_replay",
         "effect_fallback_matrix",
         "scene_transform_gizmos",
         "visual_runtime_replay",
@@ -3080,6 +3081,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all(
         "interpolated" in {item["value_source"] for item in sample["runtime_samples"]}
         for sample in visual_depth["timeline_interpolation"]["samples"]
+    )
+    assert visual_depth["timeline_editor_transaction"]["ok"] is True
+    assert visual_depth["timeline_editor_transaction"]["transactions"]
+    assert {
+        "timeline_tracks_editable",
+        "undo_redo_round_trip",
+        "runtime_export_after_edit",
+    } <= {check["id"] for check in visual_depth["timeline_editor_transaction"]["checks"] if check["ok"]}
+    assert all(
+        "verify_runtime_samples" in transaction["operations"]
+        for transaction in visual_depth["timeline_editor_transaction"]["transactions"]
     )
     assert any(row["decision"] == "use_fallback" for row in visual_depth["effect_fallback_matrix"]["rows"])
     assert all("sync_inspector" in item["pipeline"] for item in visual_depth["scene_transform_gizmos"]["transforms"])
@@ -3273,6 +3285,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "style_ready",
         "timeline_ready",
+        "timeline_editor_transaction_ready",
         "effects_ready",
         "scene_assets_ready",
         "hit_test_component_ready",
@@ -3282,6 +3295,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "phase_order_ready",
     } == {check["id"] for check in visual_readiness["checks"]}
     assert visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert visual_readiness["final_state"]["timeline_editor_transactions"] == len(
+        visual_depth["timeline_editor_transaction"]["transactions"]
+    )
     assert visual_depth["readiness"]["ok"] is True
     assert visual_depth["readiness"]["final_state"]["component_specs"] >= 9
     third_party_registry = third_party_component_registry()
@@ -5087,9 +5103,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
         "probe_connection",
         "design_dataset",
+        "generate_relationship_lookups",
         "publish_service_resources",
         "rehearse_offline_replay",
         "monitor_replication_and_failover",
+        "prove_design_runtime_session",
         "surface_runtime_diagnostics",
     )
     assert {
@@ -5282,6 +5300,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(requirements_by_id["device_api_component_coverage"]["deep_checks"])
     assert {
         "runtime_package_ready",
+        "timeline_editor_transaction_ready",
+        "timeline_editor_transaction_replay",
         "visual_component_modules",
         "visual_component_module_tests",
         "visual_design_modules",
@@ -15175,9 +15195,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
         "probe_connection",
         "design_dataset",
+        "generate_relationship_lookups",
         "publish_service_resources",
         "rehearse_offline_replay",
         "monitor_replication_and_failover",
+        "prove_design_runtime_session",
         "surface_runtime_diagnostics",
     )
     assert {
@@ -15381,6 +15403,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= set(generated_requirements_by_id["device_api_component_coverage"]["deep_checks"])
     assert {
         "runtime_package_ready",
+        "timeline_editor_transaction_ready",
+        "timeline_editor_transaction_replay",
         "visual_component_modules",
         "visual_component_module_tests",
         "visual_design_modules",
@@ -17715,6 +17739,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "scene_hit_testing",
         "style_inheritance_trace",
         "timeline_interpolation_runtime",
+        "timeline_editor_transaction_replay",
         "effect_fallback_matrix",
         "scene_transform_gizmos",
         "visual_runtime_replay",
@@ -17750,6 +17775,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("open_inspector" in item["route"] for item in generated_visual_depth["scene_hit_testing"]["hit_tests"])
     assert "effective_value_traceable" in generated_visual_depth["style_inheritance_trace"]["guards"]
     assert "runtime_samples_match_preview" in generated_visual_depth["timeline_interpolation"]["guards"]
+    assert generated_visual_depth["timeline_editor_transaction"]["ok"] is True
+    assert generated_visual_depth["timeline_editor_transaction"]["transactions"]
+    assert {
+        "timeline_tracks_editable",
+        "undo_redo_round_trip",
+        "runtime_export_after_edit",
+    } <= {check["id"] for check in generated_visual_depth["timeline_editor_transaction"]["checks"] if check["ok"]}
     assert any(row["decision"] == "use_fallback" for row in generated_visual_depth["effect_fallback_matrix"]["rows"])
     assert "inspector_sync_after_transform" in generated_visual_depth["scene_transform_gizmos"]["guards"]
     assert generated_visual_depth["runtime_replay"]["ok"] is True
@@ -17926,6 +17958,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "style_ready",
         "timeline_ready",
+        "timeline_editor_transaction_ready",
         "effects_ready",
         "scene_assets_ready",
         "hit_test_component_ready",
@@ -17935,6 +17968,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "phase_order_ready",
     } == {check["id"] for check in generated_visual_readiness["checks"]}
     assert generated_visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert generated_visual_readiness["final_state"]["timeline_editor_transactions"] == len(
+        generated_visual_depth["timeline_editor_transaction"]["transactions"]
+    )
     assert generated_visual_depth["readiness"]["ok"] is True
     assert generated_visual_depth["readiness"]["final_state"]["component_specs"] >= 9
     visual_depth_runtime_file = output_dir / "visual_depth_runtime.py"

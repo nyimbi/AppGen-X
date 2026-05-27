@@ -15063,6 +15063,99 @@ def cross_target_timeline_interpolation_contract() -> dict:
     }
 
 
+def cross_target_timeline_editor_transaction_replay_contract() -> dict:
+    """Replay timeline editor keyframe transactions through runtime export."""
+    timeline = cross_target_animation_timeline_contract()
+    scrub = cross_target_timeline_scrub_contract()
+    runtime_export = cross_target_timeline_runtime_export_contract()
+    interpolation = cross_target_timeline_interpolation_contract()
+    samples_by_track = {sample["track"]: sample["runtime_samples"] for sample in interpolation["samples"]}
+    transactions = tuple(
+        {
+            "track": track["id"],
+            "property": track["property"],
+            "operations": (
+                "select_track",
+                "insert_keyframe",
+                "snap_keyframe_to_frame",
+                "move_keyframe",
+                "edit_easing",
+                "scrub_preview",
+                "undo_edit",
+                "redo_edit",
+                "export_runtime_timeline",
+                "verify_runtime_samples",
+            ),
+            "before": track["keyframes"],
+            "after": track["keyframes"] + ((track["keyframes"][-1][0] + 60, track["keyframes"][-1][1]),),
+            "undo_restores": track["keyframes"],
+            "redo_restores": track["keyframes"] + ((track["keyframes"][-1][0] + 60, track["keyframes"][-1][1]),),
+            "snap_grid_ms": 30,
+            "runtime_samples": samples_by_track[track["id"]],
+        }
+        for track in timeline["tracks"]
+    )
+    checks = (
+        {
+            "id": "timeline_tracks_editable",
+            "ok": bool(transactions)
+            and all(
+                {"select_track", "insert_keyframe", "move_keyframe", "edit_easing"} <= set(transaction["operations"])
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "snap_and_scrub_ready",
+            "ok": scrub["ok"]
+            and all(transaction["snap_grid_ms"] > 0 and "scrub_preview" in transaction["operations"] for transaction in transactions),
+        },
+        {
+            "id": "undo_redo_round_trip",
+            "ok": all(
+                transaction["undo_restores"] == transaction["before"]
+                and transaction["redo_restores"] == transaction["after"]
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "runtime_export_after_edit",
+            "ok": runtime_export["ok"]
+            and "runtime_timeline_exported" in runtime_export["guards"]
+            and all("export_runtime_timeline" in transaction["operations"] for transaction in transactions)
+            and all("native_timeline" in export["artifacts"] for export in runtime_export["exports"]),
+        },
+        {
+            "id": "runtime_samples_match_preview",
+            "ok": interpolation["ok"]
+            and "runtime_samples_match_preview" in interpolation["guards"]
+            and all(transaction["runtime_samples"] for transaction in transactions),
+        },
+        {
+            "id": "side_effect_free_timeline_editor",
+            "ok": not timeline["side_effects"]
+            and not scrub["side_effects"]
+            and not runtime_export["side_effects"]
+            and not interpolation["side_effects"],
+        },
+    )
+    return {
+        "format": "appgen.cross-target-timeline-editor-transaction-replay.v1",
+        "ok": all(check["ok"] for check in checks),
+        "transactions": transactions,
+        "checks": checks,
+        "guards": (
+            "track_selection_before_keyframe_edit",
+            "snap_before_scrub",
+            "undo_redo_preserves_keyframes",
+            "runtime_export_after_edit",
+            "runtime_samples_match_preview",
+            "side_effect_free_timeline_editor",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def cross_target_effect_fallback_matrix_contract() -> dict:
     """Return target-specific effect fallback behavior for constrained devices."""
     budget = cross_target_effect_budget_contract()
@@ -15947,6 +16040,7 @@ def cross_target_visual_readiness_contract() -> dict:
     component_validation = cross_target_validate_visual_component_operation()
     runtime_replay = cross_target_visual_runtime_replay_contract()
     designer_replay = cross_target_visual_designer_transaction_replay_contract()
+    timeline_editor = cross_target_timeline_editor_transaction_replay_contract()
     lifecycle = cross_target_visual_lifecycle_replay_contract()
     runtime_package = cross_target_visual_runtime_package_contract()
     component_specs = cross_target_visual_component_spec_contract()
@@ -15959,8 +16053,11 @@ def cross_target_visual_readiness_contract() -> dict:
         },
         {
             "phase": "author_animation_timeline",
-            "pipeline": timeline["pipeline"],
-            "ok": timeline["ok"] and {"scrub_preview", "export_runtime_timeline"} <= set(timeline["pipeline"]),
+            "pipeline": timeline["pipeline"] + tuple(check["id"] for check in timeline_editor["checks"]),
+            "ok": timeline["ok"]
+            and timeline_editor["ok"]
+            and {"scrub_preview", "export_runtime_timeline"} <= set(timeline["pipeline"])
+            and "undo_redo_preserves_keyframes" in timeline_editor["guards"],
         },
         {
             "phase": "validate_effect_stack",
@@ -16006,6 +16103,7 @@ def cross_target_visual_readiness_contract() -> dict:
     checks = (
         {"id": "style_ready", "ok": phases[0]["ok"], "evidence": style},
         {"id": "timeline_ready", "ok": phases[1]["ok"], "evidence": timeline},
+        {"id": "timeline_editor_transaction_ready", "ok": phases[1]["ok"], "evidence": timeline_editor},
         {"id": "effects_ready", "ok": phases[2]["ok"], "evidence": effects},
         {"id": "scene_assets_ready", "ok": phases[3]["ok"], "evidence": {"scene": scene, "asset_import": asset_import}},
         {"id": "hit_test_component_ready", "ok": phases[4]["ok"] and component_specs["ok"], "evidence": {"hit_test": hit_test, "component_specs": component_specs}},
@@ -16040,10 +16138,12 @@ def cross_target_visual_readiness_contract() -> dict:
             "component_specs": len(component_specs["specs"]),
             "runtime_targets": len(runtime_package["targets"]),
             "runtime_steps": len(runtime_replay["replay"]),
+            "timeline_editor_transactions": len(timeline_editor["transactions"]),
         },
         "guards": (
             "style_before_animation",
             "animation_before_effects",
+            "timeline_editor_before_runtime_replay",
             "effects_before_scene_assets",
             "scene_assets_before_runtime_replay",
             "runtime_replay_before_package",
@@ -16073,6 +16173,7 @@ def cross_target_visual_depth_workbench() -> dict:
     scene_hit_testing = cross_target_scene_hit_test_contract()
     style_inheritance_trace = cross_target_style_inheritance_trace_contract()
     timeline_interpolation = cross_target_timeline_interpolation_contract()
+    timeline_editor_transaction = cross_target_timeline_editor_transaction_replay_contract()
     effect_fallback_matrix = cross_target_effect_fallback_matrix_contract()
     scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
     runtime_replay = cross_target_visual_runtime_replay_contract()
@@ -16262,6 +16363,13 @@ def cross_target_visual_depth_workbench() -> dict:
             "evidence": timeline_interpolation,
         },
         {
+            "id": "timeline_editor_transaction_replay",
+            "ok": timeline_editor_transaction["ok"]
+            and {"undo_redo_preserves_keyframes", "runtime_export_after_edit"} <= set(timeline_editor_transaction["guards"])
+            and not timeline_editor_transaction["side_effects"],
+            "evidence": timeline_editor_transaction,
+        },
+        {
             "id": "effect_fallback_matrix",
             "ok": effect_fallback_matrix["ok"] and "fallback_declared_per_target" in effect_fallback_matrix["guards"]
             and not effect_fallback_matrix["side_effects"],
@@ -16434,6 +16542,7 @@ def cross_target_visual_depth_workbench() -> dict:
             and {
                 "style_ready",
                 "timeline_ready",
+                "timeline_editor_transaction_ready",
                 "effects_ready",
                 "scene_assets_ready",
                 "hit_test_component_ready",
@@ -16469,6 +16578,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "scene_hit_testing": scene_hit_testing,
         "style_inheritance_trace": style_inheritance_trace,
         "timeline_interpolation": timeline_interpolation,
+        "timeline_editor_transaction": timeline_editor_transaction,
         "effect_fallback_matrix": effect_fallback_matrix,
         "scene_transform_gizmos": scene_transform_gizmos,
         "runtime_replay": runtime_replay,
@@ -17152,6 +17262,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             and {
                 "style_ready",
                 "timeline_ready",
+                "timeline_editor_transaction_ready",
                 "effects_ready",
                 "scene_assets_ready",
                 "hit_test_component_ready",
@@ -17160,7 +17271,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "phase_order_ready",
             }
             <= {check["id"] for check in visual_readiness["checks"] if check["ok"]}
-            and {"visual_runtime_replay", "visual_lifecycle_replay"} <= {
+            and {"visual_runtime_replay", "timeline_editor_transaction_replay", "visual_lifecycle_replay"} <= {
                 check["id"] for check in visual["checks"] if check["ok"]
             }
             and {
@@ -17176,10 +17287,12 @@ def platform_parity_requirement_audit_contract() -> dict:
             "deep_checks": (
                 "style_ready",
                 "timeline_ready",
+                "timeline_editor_transaction_ready",
                 "effects_ready",
                 "scene_assets_ready",
                 "runtime_designer_replay_ready",
                 "runtime_package_ready",
+                "timeline_editor_transaction_replay",
                 "visual_component_modules",
                 "visual_component_module_tests",
                 "visual_design_modules",
@@ -19608,6 +19721,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "scene_hit_testing",
         "style_inheritance_trace",
         "timeline_interpolation_runtime",
+        "timeline_editor_transaction_replay",
         "effect_fallback_matrix",
         "scene_transform_gizmos",
         "visual_runtime_replay",
@@ -19640,6 +19754,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     required_visual_readiness_checks = (
         "style_ready",
         "timeline_ready",
+        "timeline_editor_transaction_ready",
         "effects_ready",
         "scene_assets_ready",
         "hit_test_component_ready",
@@ -19681,8 +19796,13 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "interpolation_deterministic",
         "reduced_motion_value_available",
         "runtime_samples_match_preview",
+        "undo_redo_preserves_keyframes",
+        "runtime_export_after_edit",
     )
-    passing_visual_timeline_guards = tuple(visual_depth_workbench["timeline_interpolation"]["guards"])
+    passing_visual_timeline_guards = tuple(
+        set(visual_depth_workbench["timeline_interpolation"]["guards"])
+        | set(visual_depth_workbench["timeline_editor_transaction"]["guards"])
+    )
     required_visual_fallback_targets = ("web", "mobile", "desktop", "pwa")
     passing_visual_fallback_targets = tuple(
         sorted({row["target"] for row in visual_depth_workbench["effect_fallback_matrix"]["rows"]})
