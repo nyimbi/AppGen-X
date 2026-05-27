@@ -2597,3 +2597,21 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   release smokes, source artifact contract, implementation release audit,
   generation smoke audit, specification contract, and restricted legacy-name
   scan all passed. Commit: `2292f6c`.
+- Current native form runtime smoke pass exposes required native runtime
+  operations plus collected native runtime operations directly from generated
+  native form runtime smoke. Generated consumers can now inspect stream decode,
+  design stream edits, property deltas, round trips, compile preview, resource
+  refresh, runtime reload, debug preview, compiler steps, streamed-property
+  verification, release hooks, and side-effect guards without unpacking nested
+  replay matrices. Verification is focused under the low-battery delivery
+  constraint. Commit: `c502913`.
+- Current `audit_ledger` PBC pass locks platform-fabric audit capability
+  assurance into focused package tests. The package test suite now proves
+  standard and advanced audit coverage, required runtime operation groups,
+  owned-boundary rejection, AppGen-X eventing, hidden stream-picker behavior,
+  and side-effect-free assurance smoke output. Verification is focused to the
+  PBC slice: package Python compile, runtime smoke, focused package contract
+  tests, package capability/service/route/service-contract/release smokes,
+  source artifact contract, implementation release audit, generation smoke
+  audit, specification contract, and restricted legacy-name scan all passed.
+  Commit: `3ff58c3`.
