@@ -12,7 +12,7 @@ MULTI_SIDED_MARKET_OWNED_TABLES = ('multi_sided_market_participant_profile', 'mu
 MULTI_SIDED_MARKET_RUNTIME_TABLES = ('multi_sided_market_participant_profile', 'multi_sided_market_marketplace_listing', 'multi_sided_market_listing_asset', 'multi_sided_market_service_offer', 'multi_sided_market_availability_window', 'multi_sided_market_booking_reservation', 'multi_sided_market_rental_contract', 'multi_sided_market_loan_agreement', 'multi_sided_market_barter_offer', 'multi_sided_market_trade_order', 'multi_sided_market_sale_order', 'multi_sided_market_exchange_proposal', 'multi_sided_market_escrow_account', 'multi_sided_market_settlement_instruction', 'multi_sided_market_dispute_case', 'multi_sided_market_reputation_signal', 'multi_sided_market_market_rule', 'multi_sided_market_market_parameter', 'multi_sided_market_schema_extension', 'multi_sided_market_governed_model', 'multi_sided_market_appgen_outbox_event', 'multi_sided_market_appgen_inbox_event', 'multi_sided_market_appgen_dead_letter_event')
 MULTI_SIDED_MARKET_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb')
 MULTI_SIDED_MARKET_REQUIRED_EVENT_TOPIC = 'pbc.multi_sided_market.events'
-MULTI_SIDED_MARKET_EMITTED_EVENT_TYPES = ('MarketParticipantVerified', 'MarketListingPublished', 'TradeOrderPlaced', 'BarterOfferMatched', 'SaleCompleted', 'BookingReserved', 'RentalStarted', 'LoanIssued', 'MarketSettlementPrepared', 'MarketDisputeOpened')
+MULTI_SIDED_MARKET_EMITTED_EVENT_TYPES = ('MarketParticipantVerified', 'MarketListingPublished', 'ServiceOfferCreated', 'TradeOrderPlaced', 'BarterOfferMatched', 'SaleCompleted', 'BookingReserved', 'RentalStarted', 'LoanIssued', 'EscrowOpened', 'MarketSettlementPrepared', 'MarketDisputeOpened')
 MULTI_SIDED_MARKET_CONSUMED_EVENT_TYPES = ('ProductPublished', 'InventoryPoolChanged', 'PaymentCaptured', 'TaxCalculated', 'FraudRiskScored', 'AccessPolicyChanged')
 MULTI_SIDED_MARKET_STANDARD_FEATURE_KEYS = ('participant_onboarding', 'seller_buyer_provider_borrower_roles', 'goods_listing', 'service_listing', 'availability_calendar', 'booking_reservation', 'rental_contracting', 'loan_agreement_management', 'barter_negotiation', 'trade_order_management', 'direct_sale_checkout_handoff', 'escrow_hold_and_release', 'settlement_instruction', 'reputation_scoring', 'dispute_resolution', 'policy_rule_engine', 'runtime_parameter_engine', 'configuration_schema', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
 MULTI_SIDED_MARKET_RUNTIME_CAPABILITY_KEYS = ('multi_party_exchange_graph_matching', 'barter_equivalence_valuation', 'combinatorial_trade_optimization', 'dynamic_liquidity_and_trust_scoring', 'availability_aware_booking_optimization', 'rental_condition_and_collateral_modeling', 'loan_term_risk_simulation', 'escrow_release_policy_compilation', 'real_time_market_clearing_projection', 'counterfactual_price_and_slot_simulation', 'semantic_listing_instruction_understanding', 'autonomous_dispute_triage_with_audit_trail', 'fraud_and_collusion_anomaly_detection', 'privacy_preserving_reputation_proofs', 'carbon_aware_fulfillment_and_meetup_selection', 'cross_pbc_catalog_inventory_payment_tax_integration')
@@ -109,6 +109,7 @@ def multi_sided_market_create_service_offer(state, payload):
     offer_id = payload['offer_id']
     offer = {'offer_id': offer_id, 'listing_id': payload.get('listing_id'), 'service_type': payload.get('service_type', 'appointment'), 'duration_minutes': int(payload.get('duration_minutes', 60)), 'status': 'active'}
     next_state['service_offers'][offer_id] = offer
+    _event(next_state, 'ServiceOfferCreated', offer)
     return {'ok': True, 'state': next_state, 'service_offer': offer, 'side_effects': ()}
 
 
@@ -165,6 +166,23 @@ def multi_sided_market_issue_loan(state, payload):
     next_state['loans'][loan_id] = loan
     _event(next_state, 'LoanIssued', loan)
     return {'ok': True, 'state': next_state, 'loan': loan, 'side_effects': ()}
+
+
+def multi_sided_market_open_escrow(state, payload):
+    next_state = _copy(state)
+    escrow_id = payload['escrow_id']
+    escrow = {
+        'escrow_id': escrow_id,
+        'exchange_id': payload.get('exchange_id'),
+        'amount': float(payload.get('amount', 0)),
+        'currency': payload.get('currency', 'USD'),
+        'hold_until': payload.get('hold_until'),
+        'release_policy_hash': _digest(payload.get('release_policy', {'type': 'delivery_confirmation'})),
+        'status': 'open',
+    }
+    next_state['escrow_accounts'][escrow_id] = escrow
+    _event(next_state, 'EscrowOpened', escrow)
+    return {'ok': True, 'state': next_state, 'escrow': escrow, 'side_effects': ()}
 
 
 def multi_sided_market_prepare_settlement(state, payload):
@@ -233,7 +251,21 @@ def multi_sided_market_build_schema_contract():
 
 
 def multi_sided_market_build_service_contract():
-    return {'format': 'appgen.multi-sided-market-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('command_market_participants', 'command_market_listings', 'command_market_service_offers', 'command_market_trade_orders', 'command_market_barter_offers', 'command_market_sale_orders', 'command_market_bookings', 'command_market_rentals', 'command_market_loans', 'command_market_escrow', 'command_market_settlements', 'command_market_disputes'), 'query_methods': ('query_market_workbench',), 'transaction_boundary': 'owned_datastore_plus_outbox', 'mutates_only': MULTI_SIDED_MARKET_OWNED_TABLES, 'external_dependencies': {'apis': ('payment_orchestration', 'tax_localization', 'inventory_positioning'), 'events': MULTI_SIDED_MARKET_CONSUMED_EVENT_TYPES, 'shared_tables': ()}}
+    operation_event_map = {
+        'command_market_participants': 'MarketParticipantVerified',
+        'command_market_listings': 'MarketListingPublished',
+        'command_market_service_offers': 'ServiceOfferCreated',
+        'command_market_trade_orders': 'TradeOrderPlaced',
+        'command_market_barter_offers': 'BarterOfferMatched',
+        'command_market_sale_orders': 'SaleCompleted',
+        'command_market_bookings': 'BookingReserved',
+        'command_market_rentals': 'RentalStarted',
+        'command_market_loans': 'LoanIssued',
+        'command_market_escrow': 'EscrowOpened',
+        'command_market_settlements': 'MarketSettlementPrepared',
+        'command_market_disputes': 'MarketDisputeOpened',
+    }
+    return {'format': 'appgen.multi-sided-market-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': tuple(operation_event_map), 'query_methods': ('query_market_workbench',), 'operation_event_map': operation_event_map, 'transaction_boundary': 'owned_datastore_plus_outbox', 'mutates_only': MULTI_SIDED_MARKET_OWNED_TABLES, 'external_dependencies': {'apis': ('payment_orchestration', 'tax_localization', 'inventory_positioning'), 'events': MULTI_SIDED_MARKET_CONSUMED_EVENT_TYPES, 'shared_tables': ()}}
 
 
 def multi_sided_market_build_api_contract():
@@ -265,7 +297,7 @@ def multi_sided_market_build_release_evidence():
 
 
 def multi_sided_market_permissions_contract():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('multi_sided_market.read', 'multi_sided_market.create', 'multi_sided_market.update', 'multi_sided_market.approve', 'multi_sided_market.settle', 'multi_sided_market.admin'), 'action_permissions': {'publish_listing': 'multi_sided_market.create', 'place_trade_order': 'multi_sided_market.create', 'match_barter_offer': 'multi_sided_market.approve', 'execute_sale': 'multi_sided_market.settle', 'reserve_booking': 'multi_sided_market.create', 'start_rental': 'multi_sided_market.approve', 'issue_loan': 'multi_sided_market.approve', 'prepare_settlement': 'multi_sided_market.settle', 'open_dispute': 'multi_sided_market.update', 'receive_event': 'multi_sided_market.event.consume'}, 'side_effects': ()}
+    return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('multi_sided_market.read', 'multi_sided_market.create', 'multi_sided_market.update', 'multi_sided_market.approve', 'multi_sided_market.settle', 'multi_sided_market.admin'), 'action_permissions': {'publish_listing': 'multi_sided_market.create', 'place_trade_order': 'multi_sided_market.create', 'match_barter_offer': 'multi_sided_market.approve', 'execute_sale': 'multi_sided_market.settle', 'reserve_booking': 'multi_sided_market.create', 'start_rental': 'multi_sided_market.approve', 'issue_loan': 'multi_sided_market.approve', 'open_escrow': 'multi_sided_market.settle', 'prepare_settlement': 'multi_sided_market.settle', 'open_dispute': 'multi_sided_market.update', 'receive_event': 'multi_sided_market.event.consume'}, 'side_effects': ()}
 
 
 def multi_sided_market_build_workbench_view(state, tenant='default'):
@@ -289,6 +321,7 @@ def multi_sided_market_runtime_capabilities():
         'reserve_booking',
         'start_rental',
         'issue_loan',
+        'open_escrow',
         'prepare_settlement',
         'open_dispute',
         'score_reputation',
@@ -321,6 +354,7 @@ def multi_sided_market_runtime_smoke():
     state = multi_sided_market_reserve_booking(state, {'booking_id': 'booking_1', 'listing_id': 'listing_1', 'starts_at': '2026-06-01T10:00:00Z', 'ends_at': '2026-06-01T12:00:00Z'})['state']
     state = multi_sided_market_start_rental(state, {'rental_id': 'rental_1', 'listing_id': 'listing_1', 'collateral_amount': 50})['state']
     state = multi_sided_market_issue_loan(state, {'loan_id': 'loan_1', 'listing_id': 'listing_1', 'borrower_id': 'borrower_1', 'collateral_rate': 0.2})['state']
+    state = multi_sided_market_open_escrow(state, {'escrow_id': 'escrow_1', 'exchange_id': 'sale_1', 'amount': 125})['state']
     state = multi_sided_market_prepare_settlement(state, {'settlement_id': 'settlement_1', 'exchange_id': 'sale_1', 'amount': 125})['state']
     state = multi_sided_market_open_dispute(state, {'dispute_id': 'dispute_1', 'exchange_id': 'rental_1'})['state']
     duplicate = multi_sided_market_receive_event(state, {'event_id': 'evt_1', 'event_type': 'PaymentCaptured', 'idempotency_key': 'payment:1', 'payload': {'tenant': 'default'}})

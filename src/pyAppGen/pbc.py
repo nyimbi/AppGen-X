@@ -3831,12 +3831,14 @@ PBC_CATALOG.update(
             "emits": (
                 "MarketParticipantVerified",
                 "MarketListingPublished",
+                "ServiceOfferCreated",
                 "TradeOrderPlaced",
                 "BarterOfferMatched",
                 "SaleCompleted",
                 "BookingReserved",
                 "RentalStarted",
                 "LoanIssued",
+                "EscrowOpened",
                 "MarketSettlementPrepared",
                 "MarketDisputeOpened",
             ),
@@ -8925,6 +8927,7 @@ from .pbcs.multi_sided_market import multi_sided_market_execute_sale  # noqa: E4
 from .pbcs.multi_sided_market import multi_sided_market_issue_loan  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_match_barter_offer  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_open_dispute  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_open_escrow  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_optimize_exchange_match  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_permissions_contract  # noqa: E402,F401
 from .pbcs.multi_sided_market import multi_sided_market_place_trade_order  # noqa: E402,F401

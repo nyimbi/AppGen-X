@@ -1,5 +1,6 @@
 from .. import package_discovery_plan, package_metadata_manifest, registration_plan, validate_package_metadata
 from .. import events, handlers, release_evidence, routes, services, config, permissions, seed_data, agent, models
+from ..runtime import multi_sided_market_empty_state, multi_sided_market_open_escrow, multi_sided_market_runtime_smoke
 from ..schema_contract import build_schema_contract
 from ..service_contract import build_service_contract
 
@@ -59,6 +60,20 @@ def test_service_and_route_surface_are_executable():
     assert smoke['ok'] is True
     assert all(item['event_contract'] == 'AppGen-X' for item in service['contracts'])
     assert all('idempotency_key' in item for item in route['contracts'])
+    assert service['operation_event_map']['command_market_service_offers'] == 'ServiceOfferCreated'
+    assert service['operation_event_map']['command_market_escrow'] == 'EscrowOpened'
+    assert routes.dispatch_route('command_market_escrow', {'escrow_id': 'escrow_1'})['emits'] == ('EscrowOpened',)
+
+
+def test_runtime_supports_full_exchange_modes_and_escrow():
+    escrow = multi_sided_market_open_escrow(
+        multi_sided_market_empty_state(),
+        {'escrow_id': 'escrow_1', 'exchange_id': 'sale_1', 'amount': 75, 'release_policy': {'type': 'delivery'}},
+    )
+    assert escrow['ok'] is True
+    assert escrow['escrow']['status'] == 'open'
+    assert escrow['state']['outbox'][-1]['event_type'] == 'EscrowOpened'
+    assert multi_sided_market_runtime_smoke()['ok'] is True
 
 
 def test_event_handlers_are_idempotent_and_retryable():
