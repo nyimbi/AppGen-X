@@ -2143,4 +2143,4 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   path injection. The generated workbench and release gate now default to local
   generated artifact discovery plus the required app/template paths, while
   partial explicit path sets still fail coverage. Verified with Python compile
-  and a direct fresh generated-app self-discovery probe. Commit: `pending`.
+  and a direct fresh generated-app self-discovery probe. Commit: `9b58b2d`.
