@@ -2562,3 +2562,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   component event emission, validation traces, and unsupported-target fallback
   behavior without unpacking nested replay matrices. Verification is focused
   under the low-battery delivery constraint. Commit: `f6451b5`.
+- Current data tooling runtime smoke pass exposes required native data IDE
+  operations plus collected data operations directly from generated data tooling
+  runtime smoke. Generated consumers can now inspect connection probes, schema
+  introspection, dataset opening, lookup generation, service contract tests,
+  publish flows, offline replay, failover review, replication monitoring, and
+  enterprise relationship lookup operations without unpacking nested replay
+  matrices. Verification is focused under the low-battery delivery constraint.
+  Commit: `425fbed`.
