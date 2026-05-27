@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
+from .runtime import checkout_processing_build_api_contract
 from .runtime import checkout_processing_build_release_evidence
+from .runtime import checkout_processing_build_schema_contract
+from .runtime import checkout_processing_build_service_contract
+from .runtime import checkout_processing_permissions_contract
 
+PBC_KEY = "checkout_processing"
 
-RELEASE_EVIDENCE = checkout_processing_build_release_evidence()
+RELEASE_EVIDENCE = {
+    **checkout_processing_build_release_evidence(),
+    "pbc": PBC_KEY,
+    "schema": checkout_processing_build_schema_contract(),
+    "service": checkout_processing_build_service_contract(),
+    "api": checkout_processing_build_api_contract(),
+    "permissions": checkout_processing_permissions_contract(),
+}
 
 
 def build_release_evidence():
@@ -24,7 +36,7 @@ def release_readiness_manifest():
     checks = tuple(evidence.get("checks", ()))
     return {
         "ok": evidence.get("ok") is True and bool(checks),
-        "pbc": "checkout_processing",
+        "pbc": PBC_KEY,
         "format": evidence.get("format"),
         "sections": sections,
         "checks": checks,
@@ -54,12 +66,12 @@ def validate_release_evidence():
     )
     return {
         "ok": manifest["ok"]
-        and evidence.get("pbc", "checkout_processing") == manifest["pbc"]
+        and evidence.get("pbc", PBC_KEY) == manifest["pbc"]
         and not manifest["blocking_gaps"]
         and not missing_sections
         and not failed_checks
         and not boundary_gaps,
-        "pbc": "checkout_processing",
+        "pbc": PBC_KEY,
         "manifest": manifest,
         "missing_sections": missing_sections,
         "failed_checks": failed_checks,
