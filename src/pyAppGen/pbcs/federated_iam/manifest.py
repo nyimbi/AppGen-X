@@ -1,1 +1,84 @@
-PBC_MANIFEST = {'pbc': 'federated_iam', 'label': 'Federated Identity and Access Management', 'mesh': 'platform', 'description': 'Context-aware RBAC/ABAC, tenant isolation, OIDC, verification loops, and token issuance.', 'datastore_backend': 'postgresql', 'tables': ('tenant', 'principal', 'access_policy', 'token_grant'), 'apis': ('POST /tokens', 'GET /principals', 'POST /policy-decisions'), 'emits': ('AccessPolicyChanged', 'PrincipalVerified'), 'consumes': ('RoleChanged', 'TenantProvisioned'), 'template': None, 'ui_fragments': ('FederatedIamWorkbench', 'FederatedIamDetail'), 'permissions': ('federated_iam.read', 'federated_iam.create', 'federated_iam.update', 'federated_iam.approve', 'federated_iam.admin'), 'configuration': ('FEDERATED_IAM_DATABASE_URL', 'FEDERATED_IAM_EVENT_TOPIC', 'FEDERATED_IAM_RETRY_LIMIT'), 'capabilities': ('federated_iam.tenant', 'federated_iam.principal', 'federated_iam.access_policy', 'federated_iam.token_grant'), 'standard_features': ('tenant_registry', 'principal_registry', 'identity_provider_registry', 'federated_identity_link', 'claim_mapping', 'credential_verification', 'role_assignment', 'rbac_policy', 'abac_policy', 'relationship_policy', 'policy_decision', 'deny_override', 'segregation_of_duties', 'token_grant', 'session_governance', 'step_up_authentication', 'privileged_access_request', 'break_glass_evidence', 'revocation', 'access_analytics', 'idempotent_handlers', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench'), 'workflows': ('command_tokens', 'query_principals', 'command_policy_decisions'), 'analytics': ('policy_latency', 'contract_break_rate', 'deployment_safety', 'audit_completeness', 'access_policy_changed_throughput', 'principal_verified_throughput'), 'advanced_capabilities': ('event_sourced_identity_lifecycle', 'graph_relational_trust_topology', 'multi_tenant_access_isolation', 'schema_evolution_resilient_claim_schema', 'probabilistic_identity_session_policy_scoring', 'real_time_access_analytics', 'counterfactual_policy_simulation', 'temporal_access_risk_forecasting', 'autonomous_identity_exception_resolution', 'semantic_access_request_parsing', 'predictive_access_risk_scoring', 'self_healing_authorization_route_selection', 'zero_knowledge_policy_decision_proof', 'immutable_identity_audit_trail', 'dynamic_access_policy_screening', 'automated_identity_control_testing', 'universal_api_async_streaming', 'cross_system_identity_federation', 'workforce_customer_service_account_integration', 'decentralized_principal_identity', 'chaos_engineered_identity_tolerance', 'quantum_resistant_token_authorization', 'carbon_aware_access_processing', 'algebraic_role_optimization', 'mechanism_design_privileged_access_allocation', 'information_theoretic_access_anomaly_detection', 'temporal_access_exposure_stochastic_modeling', 'distributed_systems_engineering', 'probabilistic_ml_access_risk', 'cryptographic_engineering', 'mathematical_optimization', 'identity_mlops_governance'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+"""Package manifest for the federated_iam PBC."""
+
+from .runtime import FEDERATED_IAM_CONSUMED_EVENT_TYPES
+from .runtime import FEDERATED_IAM_EMITTED_EVENT_TYPES
+from .runtime import FEDERATED_IAM_OWNED_TABLES
+from .runtime import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS
+from .runtime import FEDERATED_IAM_RUNTIME_TABLES
+from .runtime import FEDERATED_IAM_STANDARD_FEATURE_KEYS
+from .runtime import federated_iam_build_api_contract
+
+
+PBC_MANIFEST = {
+    "pbc": 'federated_iam',
+    "label": "Federated Identity and Access Management",
+    "mesh": "platform",
+    "description": "Tenant, principal, identity provider, identity link, role, policy, token, session, credential verification, privileged access, rules, parameters, configuration, and AppGen-X identity event orchestration.",
+    "datastore_backend": "postgresql",
+    "tables": FEDERATED_IAM_OWNED_TABLES + FEDERATED_IAM_RUNTIME_TABLES,
+    "apis": tuple(route["route"] for route in federated_iam_build_api_contract()["routes"]),
+    "emits": FEDERATED_IAM_EMITTED_EVENT_TYPES,
+    "consumes": FEDERATED_IAM_CONSUMED_EVENT_TYPES,
+    "template": None,
+    "ui_fragments": (
+        "FederatedIamWorkbench",
+        "TenantRegistryConsole",
+        "PrincipalRegistryPanel",
+        "IdentityProviderConsole",
+        "AccessPolicyDecisionConsole",
+        "TokenGrantConsole",
+        "SessionGovernancePanel",
+        "CredentialVerificationPanel",
+        "PrivilegedAccessBoard",
+        "IamConfigurationPanel",
+    ),
+    "permissions": (
+        "federated_iam.read",
+        "federated_iam.tenant",
+        "federated_iam.principal",
+        "federated_iam.policy",
+        "federated_iam.token",
+        "federated_iam.privileged",
+        "federated_iam.event",
+        "federated_iam.configure",
+        "federated_iam.audit",
+    ),
+    "configuration": (
+        "FEDERATED_IAM_DATABASE_URL",
+        "FEDERATED_IAM_EVENT_TOPIC",
+        "FEDERATED_IAM_RETRY_LIMIT",
+        "FEDERATED_IAM_DEFAULT_TIMEZONE",
+        "FEDERATED_IAM_ALLOWED_REGIONS",
+        "FEDERATED_IAM_ALLOWED_PROVIDER_TYPES",
+        "FEDERATED_IAM_ALLOWED_GRANT_TYPES",
+    ),
+    "capabilities": tuple(f"federated_iam.{table}" for table in FEDERATED_IAM_OWNED_TABLES + FEDERATED_IAM_RUNTIME_TABLES),
+    "standard_features": FEDERATED_IAM_STANDARD_FEATURE_KEYS,
+    "workflows": (
+        "command_tenants",
+        "command_principals",
+        "command_identity_providers",
+        "command_identity_links",
+        "command_credential_verifications",
+        "command_role_assignments",
+        "command_policy_decisions",
+        "command_token_grants",
+        "command_privileged_access",
+        "command_event_inbox",
+        "query_federated_iam_workbench",
+    ),
+    "analytics": (
+        "policy_latency",
+        "access_risk",
+        "tenant_isolation_health",
+        "token_grant_rate",
+        "privileged_access_risk",
+        "principal_verified_throughput",
+        "access_policy_changed_throughput",
+    ),
+    "advanced_capabilities": FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS,
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": ("tests/test_contract.py",),
+    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+}

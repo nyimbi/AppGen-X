@@ -230,49 +230,164 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `federated_iam`
 - Mesh: `platform`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
 - `tenant`
 - `principal`
+- `identity_provider`
+- `principal_identity`
+- `role_assignment`
 - `access_policy`
+- `policy_decision`
 - `token_grant`
+- `session`
+- `credential_verification`
+- `privileged_access_request`
+- `iam_rule`
+- `iam_parameter`
+- `iam_configuration`
+- `federated_iam_appgen_outbox_event`
+- `federated_iam_appgen_inbox_event`
+- `federated_iam_dead_letter_event`
 
 ### API Routes
 
-- `POST /tokens`
-- `GET /principals`
+- `PUT /iam/configuration`
+- `POST /iam/parameters`
+- `POST /iam/rules`
+- `POST /iam/schema-extensions`
+- `POST /tenants`
+- `POST /principals`
+- `POST /identity-providers`
+- `POST /identity-links`
+- `POST /credential-verifications`
+- `POST /role-assignments`
 - `POST /policy-decisions`
+- `POST /token-grants`
+- `POST /privileged-access-requests`
+- `POST /iam/events/inbox`
+- `GET /iam-workbench`
+- `GET /iam/schema-contract`
+- `GET /iam/service-contract`
+- `GET /iam/release-evidence`
 
 ### Emitted Events
 
-- `AccessPolicyChanged`
+- `TenantProvisioned`
 - `PrincipalVerified`
+- `AccessPolicyChanged`
+- `PolicyDecisionRecorded`
+- `TokenGranted`
+- `PrivilegedAccessApproved`
 
 ### Consumed Events
 
 - `RoleChanged`
-- `TenantProvisioned`
+- `TenantLifecycleChanged`
+- `CustomerUpdated`
+- `EmployeeProvisioned`
+- `ServiceAccountRequested`
 
 ### UI Fragments
 
-- None declared
+- `FederatedIamWorkbench`
+- `TenantRegistryConsole`
+- `PrincipalRegistryPanel`
+- `IdentityProviderConsole`
+- `AccessPolicyDecisionConsole`
+- `TokenGrantConsole`
+- `SessionGovernancePanel`
+- `CredentialVerificationPanel`
+- `PrivilegedAccessBoard`
+- `IamConfigurationPanel`
 
 ### Permissions
 
-- None declared
+- `federated_iam.read`
+- `federated_iam.tenant`
+- `federated_iam.principal`
+- `federated_iam.policy`
+- `federated_iam.token`
+- `federated_iam.privileged`
+- `federated_iam.event`
+- `federated_iam.configure`
+- `federated_iam.audit`
 
 ### Configuration Keys
 
-- None declared
+- `FEDERATED_IAM_DATABASE_URL`
+- `FEDERATED_IAM_EVENT_TOPIC`
+- `FEDERATED_IAM_RETRY_LIMIT`
+- `FEDERATED_IAM_DEFAULT_TIMEZONE`
+- `FEDERATED_IAM_ALLOWED_REGIONS`
+- `FEDERATED_IAM_ALLOWED_PROVIDER_TYPES`
+- `FEDERATED_IAM_ALLOWED_GRANT_TYPES`
 
 ### Standard Features
 
-- None declared
+- `tenant_registry`
+- `principal_registry`
+- `identity_provider_registry`
+- `federated_identity_link`
+- `claim_mapping`
+- `credential_verification`
+- `role_assignment`
+- `rbac_policy`
+- `abac_policy`
+- `relationship_policy`
+- `policy_decision`
+- `deny_override`
+- `segregation_of_duties`
+- `token_grant`
+- `session_governance`
+- `step_up_authentication`
+- `privileged_access_request`
+- `break_glass_evidence`
+- `revocation`
+- `access_analytics`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_identity_lifecycle`
+- `graph_relational_trust_topology`
+- `multi_tenant_access_isolation`
+- `schema_evolution_resilient_claim_schema`
+- `probabilistic_identity_session_policy_scoring`
+- `real_time_access_analytics`
+- `counterfactual_policy_simulation`
+- `temporal_access_risk_forecasting`
+- `autonomous_identity_exception_resolution`
+- `semantic_access_request_parsing`
+- `predictive_access_risk_scoring`
+- `self_healing_authorization_route_selection`
+- `zero_knowledge_policy_decision_proof`
+- `immutable_identity_audit_trail`
+- `dynamic_access_policy_screening`
+- `automated_identity_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_identity_federation`
+- `workforce_customer_service_account_integration`
+- `decentralized_principal_identity`
+- `chaos_engineered_identity_tolerance`
+- `quantum_resistant_token_authorization`
+- `carbon_aware_access_processing`
+- `algebraic_role_optimization`
+- `mechanism_design_privileged_access_allocation`
+- `information_theoretic_access_anomaly_detection`
+- `temporal_access_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_access_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `identity_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

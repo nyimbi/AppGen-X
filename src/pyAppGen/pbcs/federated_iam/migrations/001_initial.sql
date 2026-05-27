@@ -1,76 +1,19 @@
 CREATE SCHEMA IF NOT EXISTS federated_iam;
 
-CREATE TABLE federated_iam_tenant (
-  id INTEGER PRIMARY KEY NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE federated_iam_principal (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (tenant_id) REFERENCES federated_iam_tenant(id)
-);
-
-CREATE TABLE federated_iam_access_policy (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (tenant_id) REFERENCES federated_iam_tenant(id)
-);
-
-CREATE TABLE federated_iam_token_grant (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (tenant_id) REFERENCES federated_iam_tenant(id)
-);
-
-CREATE TABLE federated_iam_appgen_outbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE federated_iam_appgen_inbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE federated_iam_appgen_dead_letter_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
+CREATE TABLE federated_iam_tenant (tenant_id VARCHAR(160) NOT NULL, name VARCHAR(200) NOT NULL, region VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_principal (tenant VARCHAR(120) NOT NULL, principal_id VARCHAR(160) NOT NULL, principal_type VARCHAR(120) NOT NULL, display_name VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, graph_degree INTEGER NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_identity_provider (tenant VARCHAR(120) NOT NULL, provider_id VARCHAR(160) NOT NULL, provider_type VARCHAR(120) NOT NULL, issuer VARCHAR(255) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_principal_identity (tenant VARCHAR(120) NOT NULL, identity_id VARCHAR(160) NOT NULL, principal_id VARCHAR(160) NOT NULL, provider_id VARCHAR(160) NOT NULL, subject VARCHAR(200) NOT NULL, claims TEXT NOT NULL, trust_score DECIMAL(12,4) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_role_assignment (tenant VARCHAR(120) NOT NULL, assignment_id VARCHAR(160) NOT NULL, principal_id VARCHAR(160) NOT NULL, role VARCHAR(160) NOT NULL, scope VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_access_policy (tenant VARCHAR(120) NOT NULL, policy_id VARCHAR(160) NOT NULL, principal_id VARCHAR(160) NOT NULL, role VARCHAR(160) NOT NULL, decision_basis TEXT NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_policy_decision (tenant VARCHAR(120) NOT NULL, decision_id VARCHAR(160) NOT NULL, principal_id VARCHAR(160) NOT NULL, action VARCHAR(160) NOT NULL, resource VARCHAR(200) NOT NULL, decision VARCHAR(80) NOT NULL, risk_score DECIMAL(12,4) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_token_grant (tenant VARCHAR(120) NOT NULL, grant_id VARCHAR(160) NOT NULL, principal_id VARCHAR(160) NOT NULL, grant_type VARCHAR(120) NOT NULL, audience VARCHAR(160) NOT NULL, scopes TEXT NOT NULL, ttl_minutes INTEGER NOT NULL, token_hash VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_session (tenant VARCHAR(120) NOT NULL, session_id VARCHAR(160) NOT NULL, principal_id VARCHAR(160) NOT NULL, token_grant_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, expires_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_credential_verification (tenant VARCHAR(120) NOT NULL, verification_id VARCHAR(160) NOT NULL, principal_id VARCHAR(160) NOT NULL, credential_type VARCHAR(120) NOT NULL, issuer VARCHAR(200) NOT NULL, confidence DECIMAL(12,4) NOT NULL, verified BOOLEAN NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_privileged_access_request (tenant VARCHAR(120) NOT NULL, request_id VARCHAR(160) NOT NULL, principal_id VARCHAR(160) NOT NULL, action VARCHAR(160) NOT NULL, resource VARCHAR(200) NOT NULL, risk DECIMAL(12,4) NOT NULL, approved_by VARCHAR(160) NOT NULL, ttl_minutes INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_iam_rule (tenant VARCHAR(120) NOT NULL, rule_id VARCHAR(160) NOT NULL, scope VARCHAR(120) NOT NULL, rule_type VARCHAR(120) NOT NULL, compiled_hash VARCHAR(200) NOT NULL, allowed_regions TEXT NOT NULL, allowed_roles TEXT NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_iam_parameter (tenant VARCHAR(120) NOT NULL, parameter_name VARCHAR(160) NOT NULL, parameter_value VARCHAR(255) NOT NULL, effective_at TIMESTAMP NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_iam_configuration (configuration_id VARCHAR(160) NOT NULL, database_backend VARCHAR(80) NOT NULL, event_topic VARCHAR(200) NOT NULL, event_contract VARCHAR(80) NOT NULL, retry_limit INTEGER NOT NULL, default_timezone VARCHAR(80) NOT NULL, workbench_limit INTEGER NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_appgen_outbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, topic VARCHAR(200) NOT NULL, hash VARCHAR(200) NOT NULL, idempotency_key VARCHAR(240) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_appgen_inbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, idempotency_key VARCHAR(240) NOT NULL, attempts INTEGER NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE federated_iam_dead_letter_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, payload TEXT NOT NULL, reason VARCHAR(240) NOT NULL, attempts INTEGER NOT NULL, idempotency_key VARCHAR(240) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
