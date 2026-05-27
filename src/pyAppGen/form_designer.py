@@ -17140,6 +17140,114 @@ def cross_target_style_inheritance_trace_contract(component: str = "Button") -> 
     }
 
 
+def cross_target_style_override_transaction_replay_contract(component: str = "Button") -> dict:
+    """Replay visual style override authoring from inspection through rollback."""
+    cascade = cross_target_style_cascade_contract()
+    resources = cross_target_style_resource_contract()
+    resolution = cross_target_style_resolution_workflow(component)
+    tokens = cross_target_style_token_validation_contract()
+    inheritance = cross_target_style_inheritance_trace_contract(component)
+    preview_diff = cross_target_preview_runtime_diff_workflow()
+    layers = {layer["layer"] for layer in cascade["layers"]}
+    override_record = {
+        "component": component,
+        "state": "focused",
+        "platform": "mobile",
+        "token": "color",
+        "before": "#2f6fed",
+        "after": "#174ea6",
+        "winning_layer": "local_override",
+        "contrast_checked": True,
+    }
+    replay = (
+        {
+            "phase": "inspect_effective_style",
+            "pipeline": ("select_component", "inspect_effective_value", "trace_inheritance", "show_override_source"),
+            "ok": "inspect_effective_value" in cascade["operations"]
+            and inheritance["ok"]
+            and "effective_value_traceable" in inheritance["guards"],
+        },
+        {
+            "phase": "stage_state_override",
+            "pipeline": ("choose_state", "stage_token_delta", "validate_token_name", "preview_state_layer"),
+            "ok": "state_override" in layers
+            and override_record["state"] in resources["states"]
+            and override_record["token"] in {token["token"] for token in tokens["tokens"]},
+        },
+        {
+            "phase": "stage_platform_override",
+            "pipeline": ("choose_target", "stage_platform_delta", "validate_platform_override", "preview_target_layer"),
+            "ok": "platform_override" in layers
+            and override_record["platform"] in resources["targets"]
+            and "platform_overrides_reviewed" in tokens["guards"],
+        },
+        {
+            "phase": "stage_local_override",
+            "pipeline": ("apply_local_override", "resolve_cascade", "publish_effective_value", "show_diff"),
+            "ok": "local_override" in layers
+            and "apply_local_override" in resolution["resolution_steps"]
+            and override_record["winning_layer"] == "local_override",
+        },
+        {
+            "phase": "validate_accessible_preview",
+            "pipeline": ("contrast_checked", "state_overrides_reviewed", "compare_preview_runtime", "surface_diagnostics"),
+            "ok": override_record["contrast_checked"]
+            and "contrast_checked" in tokens["guards"]
+            and "compare_styles" in preview_diff["diff_steps"],
+        },
+        {
+            "phase": "commit_runtime_style_resources",
+            "pipeline": ("write_style_delta", "refresh_stylebook", "emit_runtime_style_resource", "sync_preview_diff"),
+            "ok": "stylebook" in resources["resources"]
+            and "theme_tokens" in resources["resources"]
+            and preview_diff["diff_result"]["ok"],
+        },
+        {
+            "phase": "rollback_style_override",
+            "pipeline": ("revert_override", "restore_previous_effective_value", "clear_local_delta", "verify_no_persisted_writes"),
+            "ok": "revert_override" in cascade["operations"]
+            and override_record["before"] != override_record["after"]
+            and resolution["side_effects"] == (),
+        },
+    )
+    checks = (
+        {"id": "effective_style_inspected", "ok": replay[0]["ok"], "evidence": inheritance["traces"]},
+        {"id": "state_override_staged", "ok": replay[1]["ok"], "evidence": override_record},
+        {"id": "platform_override_staged", "ok": replay[2]["ok"], "evidence": override_record},
+        {"id": "local_override_resolved", "ok": replay[3]["ok"], "evidence": resolution},
+        {"id": "accessible_preview_validated", "ok": replay[4]["ok"], "evidence": {"tokens": tokens, "preview": preview_diff}},
+        {"id": "runtime_style_resources_committed", "ok": replay[5]["ok"], "evidence": resources},
+        {"id": "style_override_rollback_ready", "ok": replay[6]["ok"], "evidence": override_record},
+        {"id": "style_override_transaction_side_effect_free", "ok": all(item["ok"] for item in replay)},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.cross-target-style-override-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "component": component,
+        "override_record": override_record,
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "effective_style_inspected_before_override",
+            "state_override_before_platform_override",
+            "platform_override_before_local_override",
+            "contrast_checked_before_runtime_commit",
+            "runtime_style_resource_after_preview_diff",
+            "rollback_restores_previous_effective_value",
+        ),
+        "final_state": {
+            "style_layers": len(cascade["layers"]),
+            "tokens_validated": len(tokens["tokens"]),
+            "preview_diffs": len(preview_diff["diff_steps"]),
+            "persisted_writes": 0,
+        },
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def cross_target_timeline_interpolation_contract() -> dict:
     """Return interpolated timeline samples for runtime animation playback."""
     timeline = cross_target_animation_timeline_contract()
@@ -17658,6 +17766,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
     """Replay visual authoring contracts through deterministic runtime delivery."""
     style_resolution = cross_target_style_resolution_workflow()
     inheritance = cross_target_style_inheritance_trace_contract()
+    style_transaction = cross_target_style_override_transaction_replay_contract()
     timeline = cross_target_timeline_interpolation_contract()
     timeline_export = cross_target_timeline_runtime_export_contract()
     effects = cross_target_effect_fallback_matrix_contract()
@@ -17668,6 +17777,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
     transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     state = {
         "style_published": False,
+        "style_transactions": 0,
         "timeline_samples": 0,
         "effect_fallbacks": 0,
         "effect_transactions": 0,
@@ -17688,6 +17798,17 @@ def cross_target_visual_runtime_replay_contract() -> dict:
             "phase": "style_inheritance",
             "pipeline": next(iter(inheritance["traces"]))["trace"] if inheritance["traces"] else (),
             "ok": inheritance["ok"] and all("publish_effective_value" in trace["trace"] for trace in inheritance["traces"]),
+        },
+        {
+            "phase": "style_override_transaction",
+            "pipeline": tuple(check["id"] for check in style_transaction["checks"]),
+            "ok": style_transaction["ok"]
+            and {
+                "effective_style_inspected_before_override",
+                "contrast_checked_before_runtime_commit",
+                "rollback_restores_previous_effective_value",
+            }
+            <= set(style_transaction["guards"]),
         },
         {
             "phase": "timeline_interpolation",
@@ -17735,6 +17856,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
         },
     )
     state["style_published"] = replay[1]["ok"]
+    state["style_transactions"] = len(style_transaction["replay"])
     state["timeline_samples"] = sum(len(sample["runtime_samples"]) for sample in timeline["samples"])
     state["effect_fallbacks"] = sum(1 for row in effects["rows"] if row["decision"] == "use_fallback")
     state["effect_transactions"] = len(effect_editor["transactions"])
@@ -17746,6 +17868,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
         "format": "appgen.cross-target-visual-runtime-replay-contract.v1",
         "ok": all(item["ok"] for item in replay)
         and state["style_published"]
+        and state["style_transactions"] > 0
         and state["timeline_samples"] > 0
         and state["effect_transactions"] > 0
         and state["material_transactions"] > 0
@@ -17757,6 +17880,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
         "final_state": state,
         "guards": (
             "style_published_before_runtime_diff",
+            "style_override_transaction_before_runtime_diff",
             "timeline_samples_match_preview",
             "effect_fallbacks_are_targeted",
             "effect_editor_transactions_emit_runtime_plan",
@@ -17773,6 +17897,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
     """Replay one ordered visual designer transaction from authoring to runtime."""
     contract = cross_target_visual_depth_contract()
     style_resolution = cross_target_style_resolution_workflow()
+    style_transaction = cross_target_style_override_transaction_replay_contract()
     timeline_playback = cross_target_timeline_playback_workflow()
     effect_render = cross_target_effect_render_workflow()
     scene_validation = cross_target_scene_validation_workflow()
@@ -17796,6 +17921,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
     runtime_replay = cross_target_visual_runtime_replay_contract()
     state = {
         "style_layers": len(contract["style_cascade"]["layers"]),
+        "style_transactions": len(style_transaction["replay"]),
         "timeline_tracks": len(contract["timeline_authoring"]["tracks"]),
         "effect_stack": len(contract["effect_stack"]["stack"]),
         "scene_nodes": len(contract["scene_designer"]["scene_graph"]),
@@ -17818,7 +17944,11 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
             <= {layer["layer"] for layer in contract["style_cascade"]["layers"]}
             and {"inspect_effective_value", "revert_override"} <= set(contract["style_cascade"]["operations"])
             and style_resolution["ordered_layers"][0] == "base_theme"
-            and style_tokens["ok"],
+            and style_tokens["ok"]
+            and style_transaction["ok"]
+            and "runtime_style_resources_committed" in {
+                check["id"] for check in style_transaction["checks"] if check["ok"]
+            },
         },
         {
             "phase": "author_timeline",
@@ -17885,7 +18015,14 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
             "phase": "runtime_replay",
             "pipeline": tuple(item["phase"] for item in runtime_replay["replay"]),
             "ok": runtime_replay["ok"]
-            and {"style_resolution", "timeline_interpolation", "effect_fallback", "scene_hit_testing", "scene_transform_sync"}
+            and {
+                "style_resolution",
+                "style_override_transaction",
+                "timeline_interpolation",
+                "effect_fallback",
+                "scene_hit_testing",
+                "scene_transform_sync",
+            }
             <= {item["phase"] for item in runtime_replay["replay"]},
         },
     )
@@ -17893,6 +18030,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
         "format": "appgen.cross-target-visual-designer-transaction-replay-contract.v1",
         "ok": all(item["ok"] for item in replay)
         and state["style_layers"] >= 4
+        and state["style_transactions"] > 0
         and state["timeline_samples"] > 0
         and state["effect_fallbacks"] > 0
         and state["effect_transactions"] > 0
@@ -17905,6 +18043,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
         "final_state": state,
         "guards": (
             "style_before_preview",
+            "style_override_transaction_before_timeline",
             "timeline_export_before_runtime",
             "effect_budget_before_runtime",
             "effect_editor_before_runtime",
@@ -17924,6 +18063,7 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
     """Replay visual authoring assets through preview, runtime, and designer synchronization."""
     style_tokens = cross_target_style_token_validation_contract()
     style_inheritance = cross_target_style_inheritance_trace_contract()
+    style_transaction = cross_target_style_override_transaction_replay_contract()
     timeline_scrub = cross_target_timeline_scrub_contract()
     timeline_export = cross_target_timeline_runtime_export_contract()
     effect_budget = cross_target_effect_budget_contract()
@@ -17945,11 +18085,20 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
             "phase": "validate_style_tokens",
             "ok": style_tokens["ok"]
             and style_inheritance["ok"]
+            and style_transaction["ok"]
             and "effective_value_traceable" in style_inheritance["guards"],
             "evidence": {
                 "tokens": style_tokens["tokens"],
                 "inheritance": tuple(trace["token"] for trace in style_inheritance["traces"]),
+                "style_transaction": tuple(check["id"] for check in style_transaction["checks"] if check["ok"]),
             },
+        },
+        {
+            "phase": "replay_style_override_transaction",
+            "ok": style_transaction["ok"]
+            and {"runtime_style_resources_committed", "style_override_rollback_ready"}
+            <= {check["id"] for check in style_transaction["checks"] if check["ok"]},
+            "evidence": style_transaction,
         },
         {
             "phase": "export_timeline_runtime",
@@ -18045,6 +18194,13 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
         {
             "id": "style_before_timeline",
             "ok": tuple(item["phase"] for item in replay).index("validate_style_tokens")
+            < tuple(item["phase"] for item in replay).index("replay_style_override_transaction")
+            < tuple(item["phase"] for item in replay).index("export_timeline_runtime"),
+            "evidence": replay,
+        },
+        {
+            "id": "style_transaction_before_timeline",
+            "ok": tuple(item["phase"] for item in replay).index("replay_style_override_transaction")
             < tuple(item["phase"] for item in replay).index("export_timeline_runtime"),
             "evidence": replay,
         },
@@ -18082,6 +18238,7 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
             "id": "side_effect_guards",
             "ok": not style_tokens["side_effects"]
             and not style_inheritance["side_effects"]
+            and not style_transaction["side_effects"]
             and not timeline_scrub["side_effects"]
             and not timeline_export["side_effects"]
             and not effect_budget["side_effects"]
@@ -18110,6 +18267,7 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
         "checks": checks,
         "guards": (
             "style_before_timeline",
+            "style_transaction_before_timeline",
             "effects_before_runtime",
             "effect_editor_before_runtime",
             "scene_assets_before_preview_diff",
@@ -18233,24 +18391,38 @@ def cross_target_author_style_operation(component: str = "Button") -> dict:
     resolution = cross_target_style_resolution_workflow(component)
     tokens = cross_target_style_token_validation_contract()
     inheritance = cross_target_style_inheritance_trace_contract(component)
+    transaction = cross_target_style_override_transaction_replay_contract(component)
     return {
         "format": "appgen.cross-target-author-style-operation.v1",
         "ok": resolution["ordered_layers"][0] == "base_theme"
         and "apply_local_override" in resolution["resolution_steps"]
         and tokens["ok"]
-        and inheritance["ok"],
+        and inheritance["ok"]
+        and transaction["ok"],
         "component": component,
         "pipeline": (
             "load_tokens",
             "inspect_effective_value",
+            "stage_state_override",
+            "stage_platform_override",
             "apply_local_override",
+            "validate_accessible_preview",
             "publish_effective_value",
             "sync_preview",
+            "rollback_style_override",
         ),
         "effective_values": resolution["effective_values"],
         "tokens": tokens["tokens"],
         "inheritance": inheritance["traces"],
-        "guards": ("token_names_stable", "effective_value_traceable", "override_diff_visible"),
+        "transaction": transaction,
+        "guards": (
+            "token_names_stable",
+            "effective_value_traceable",
+            "override_diff_visible",
+            "effective_style_inspected_before_override",
+            "contrast_checked_before_runtime_commit",
+            "rollback_restores_previous_effective_value",
+        ),
         "side_effects": (),
     }
 
@@ -18620,6 +18792,7 @@ def cross_target_visual_actionable_operations() -> dict:
 def cross_target_visual_readiness_contract() -> dict:
     """Prove the visual styling, animation, effects, and 3D path as one ordered contract."""
     style = cross_target_author_style_operation()
+    style_transaction = cross_target_style_override_transaction_replay_contract()
     timeline = cross_target_author_timeline_operation()
     effects = cross_target_validate_effect_stack_operation()
     scene = cross_target_author_scene_operation()
@@ -18640,8 +18813,13 @@ def cross_target_visual_readiness_contract() -> dict:
     phases = (
         {
             "phase": "author_style_resources",
-            "pipeline": style["pipeline"],
-            "ok": style["ok"] and {"inspect_effective_value", "publish_effective_value"} <= set(style["pipeline"]),
+            "pipeline": style["pipeline"] + tuple(check["id"] for check in style_transaction["checks"]),
+            "ok": style["ok"]
+            and style_transaction["ok"]
+            and {"inspect_effective_value", "stage_state_override", "publish_effective_value"} <= set(style["pipeline"])
+            and "runtime_style_resources_committed" in {
+                check["id"] for check in style_transaction["checks"] if check["ok"]
+            },
         },
         {
             "phase": "author_animation_timeline",
@@ -18708,6 +18886,7 @@ def cross_target_visual_readiness_contract() -> dict:
     )
     checks = (
         {"id": "style_ready", "ok": phases[0]["ok"], "evidence": style},
+        {"id": "style_override_transaction_ready", "ok": phases[0]["ok"], "evidence": style_transaction},
         {"id": "timeline_ready", "ok": phases[1]["ok"], "evidence": timeline},
         {"id": "timeline_editor_transaction_ready", "ok": phases[1]["ok"], "evidence": timeline_editor},
         {"id": "effects_ready", "ok": phases[2]["ok"], "evidence": effects},
@@ -18742,6 +18921,7 @@ def cross_target_visual_readiness_contract() -> dict:
         "checks": checks,
         "final_state": {
             "style_tokens": len(style["tokens"]),
+            "style_override_transactions": len(style_transaction["replay"]),
             "timeline_samples": len(timeline["samples"]),
             "effect_fallbacks": sum(1 for row in effects["fallback_matrix"]["rows"] if row["decision"] == "use_fallback"),
             "scene_nodes": len(scene["scene_integrity"]["nodes"]),
@@ -18756,6 +18936,7 @@ def cross_target_visual_readiness_contract() -> dict:
         },
         "guards": (
             "style_before_animation",
+            "style_override_transaction_before_animation",
             "animation_before_effects",
             "timeline_editor_before_runtime_replay",
             "effect_editor_before_runtime_replay",
@@ -18783,6 +18964,7 @@ def cross_target_visual_depth_workbench() -> dict:
     asset_import_transaction = cross_target_asset_import_transaction_replay_contract()
     preview_diff = cross_target_preview_runtime_diff_workflow()
     style_tokens = cross_target_style_token_validation_contract()
+    style_transaction = cross_target_style_override_transaction_replay_contract()
     timeline_scrub = cross_target_timeline_scrub_contract()
     effect_budget = cross_target_effect_budget_contract()
     scene_integrity = cross_target_scene_graph_integrity_contract()
@@ -18942,6 +19124,19 @@ def cross_target_visual_depth_workbench() -> dict:
             "ok": style_tokens["ok"] and {"token_names_stable", "state_overrides_reviewed"} <= set(style_tokens["guards"])
             and not style_tokens["side_effects"],
             "evidence": style_tokens,
+        },
+        {
+            "id": "style_override_transaction_replay",
+            "ok": style_transaction["ok"]
+            and {
+                "effective_style_inspected_before_override",
+                "contrast_checked_before_runtime_commit",
+                "rollback_restores_previous_effective_value",
+            }
+            <= set(style_transaction["guards"])
+            and style_transaction["final_state"]["persisted_writes"] == 0
+            and not style_transaction["side_effects"],
+            "evidence": style_transaction,
         },
         {
             "id": "timeline_scrub_validation",
@@ -19213,6 +19408,7 @@ def cross_target_visual_depth_workbench() -> dict:
             "ok": readiness["ok"]
             and {
                 "style_ready",
+                "style_override_transaction_ready",
                 "timeline_ready",
                 "timeline_editor_transaction_ready",
                 "effects_ready",
@@ -19245,6 +19441,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "asset_import_workflow": asset_import,
         "preview_diff": preview_diff,
         "style_tokens": style_tokens,
+        "style_override_transaction": style_transaction,
         "timeline_scrub": timeline_scrub,
         "effect_budget": effect_budget,
         "scene_integrity": scene_integrity,
@@ -19991,6 +20188,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             and visual_lifecycle["ok"]
             and {
                 "style_ready",
+                "style_override_transaction_ready",
                 "timeline_ready",
                 "timeline_editor_transaction_ready",
                 "effects_ready",
@@ -20007,6 +20205,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             <= {check["id"] for check in visual_readiness["checks"] if check["ok"]}
             and {
                 "visual_runtime_replay",
+                "style_override_transaction_replay",
                 "timeline_editor_transaction_replay",
                 "effect_editor_transaction_replay",
                 "asset_import_transaction_replay",
@@ -20028,6 +20227,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             } <= {check["id"] for check in visual["checks"] if check["ok"]},
             "deep_checks": (
                 "style_ready",
+                "style_override_transaction_ready",
                 "timeline_ready",
                 "timeline_editor_transaction_ready",
                 "effects_ready",
@@ -20038,6 +20238,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "scene_assets_ready",
                 "runtime_designer_replay_ready",
                 "runtime_package_ready",
+                "style_override_transaction_replay",
                 "timeline_editor_transaction_replay",
                 "effect_editor_transaction_replay",
                 "asset_import_transaction_replay",
@@ -22379,6 +22580,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     required_visual_runtime_phases = (
         "style_resolution",
         "style_inheritance",
+        "style_override_transaction",
         "timeline_interpolation",
         "timeline_export",
         "effect_fallback",
@@ -22406,6 +22608,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     )
     required_visual_lifecycle_phases = (
         "validate_style_tokens",
+        "replay_style_override_transaction",
         "export_timeline_runtime",
         "assign_effect_fallbacks",
         "validate_scene_materials",
@@ -22489,6 +22692,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "asset_import_workflow",
         "preview_runtime_diff_workflow",
         "style_token_validation",
+        "style_override_transaction_replay",
         "timeline_scrub_validation",
         "effect_budget_validation",
         "scene_graph_integrity",
@@ -22533,6 +22737,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_visual_operation_names = tuple(visual_depth_workbench["actionable_operations"]["operations"])
     required_visual_readiness_checks = (
         "style_ready",
+        "style_override_transaction_ready",
         "timeline_ready",
         "timeline_editor_transaction_ready",
         "effects_ready",

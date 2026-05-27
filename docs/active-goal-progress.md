@@ -2248,6 +2248,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   artifact contract, implementation release audit, generation smoke audit,
   specification contract, and restricted legacy-name scan all passed. Commit:
   `10d4316`.
+- Current cross-target visual style pass adds style override transaction replay
+  as release-gating evidence. Source and generated visual contracts now prove
+  effective style inspection, state override staging, platform override
+  staging, local override resolution, accessible preview validation, runtime
+  style resource commit, and rollback with zero persisted writes before visual
+  runtime delivery. Verification is focused under the low-battery delivery
+  constraint. Commit: pending.
 - Current `cdp_segmentation` PBC pass promotes advanced CDP intelligence and
   governance surfaces into executable package-local operations: counterfactual
   segment simulation, audience forecasting, exception resolution, semantic rule

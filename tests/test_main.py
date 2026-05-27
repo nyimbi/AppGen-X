@@ -165,6 +165,7 @@ from pyAppGen.form_designer import cross_target_import_visual_asset_operation
 from pyAppGen.form_designer import cross_target_run_visual_component_scenario_operation
 from pyAppGen.form_designer import cross_target_scene_material_editor_transaction_replay_contract
 from pyAppGen.form_designer import cross_target_scene_transform_transaction_replay_contract
+from pyAppGen.form_designer import cross_target_style_override_transaction_replay_contract
 from pyAppGen.form_designer import cross_target_validate_effect_stack_operation
 from pyAppGen.form_designer import cross_target_validate_visual_component_operation
 from pyAppGen.form_designer import cross_target_visual_actionable_operations
@@ -3281,6 +3282,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "asset_import_transaction_replay",
         "preview_runtime_diff_workflow",
         "style_token_validation",
+        "style_override_transaction_replay",
         "timeline_scrub_validation",
         "effect_budget_validation",
         "scene_graph_integrity",
@@ -3339,6 +3341,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     }
     assert visual_depth["preview_diff"]["diff_result"]["ok"] is True
     assert visual_depth["style_tokens"]["ok"] is True
+    style_transaction = cross_target_style_override_transaction_replay_contract()
+    assert style_transaction["format"] == "appgen.cross-target-style-override-transaction-replay.v1"
+    assert style_transaction["ok"] is True
+    assert {
+        "effective_style_inspected",
+        "state_override_staged",
+        "platform_override_staged",
+        "local_override_resolved",
+        "accessible_preview_validated",
+        "runtime_style_resources_committed",
+        "style_override_rollback_ready",
+        "style_override_transaction_side_effect_free",
+    } == {check["id"] for check in style_transaction["checks"]}
+    assert visual_depth["style_override_transaction"]["ok"] is True
+    assert visual_depth["style_override_transaction"]["final_state"]["persisted_writes"] == 0
     assert visual_depth["timeline_scrub"]["samples"]
     assert visual_depth["effect_budget"]["ok"] is True
     assert visual_depth["scene_integrity"]["ok"] is True
@@ -3404,9 +3421,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("emit_runtime_transform_plan" in transaction["operations"] for transaction in transform_transaction["transactions"])
     assert visual_depth["scene_transform_transaction"]["ok"] is True
     assert visual_depth["runtime_replay"]["ok"] is True
-    assert {"style_resolution", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_hit_testing", "scene_material_editor_transaction", "scene_transform_sync", "scene_transform_transaction"} <= {
+    assert {"style_resolution", "style_override_transaction", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_hit_testing", "scene_material_editor_transaction", "scene_transform_sync", "scene_transform_transaction"} <= {
         item["phase"] for item in visual_depth["runtime_replay"]["replay"]
     }
+    assert visual_depth["runtime_replay"]["final_state"]["style_transactions"] > 0
     assert visual_depth["runtime_replay"]["final_state"]["timeline_samples"] > 0
     assert visual_depth["runtime_replay"]["final_state"]["inspector_syncs"] > 0
     assert visual_depth["designer_transaction_replay"]["ok"] is True
@@ -3453,6 +3471,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert visual_lifecycle["ok"] is True
     assert {
         "style_before_timeline",
+        "style_transaction_before_timeline",
         "effects_before_runtime",
         "scene_assets_before_preview_diff",
         "scene_material_transactions_before_preview_diff",
@@ -3461,6 +3480,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {check["id"] for check in visual_lifecycle["checks"] if check["ok"]}
     assert {
         "validate_style_tokens",
+        "replay_style_override_transaction",
         "export_timeline_runtime",
         "assign_effect_fallbacks",
         "validate_scene_materials",
@@ -3600,6 +3620,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } == {item["phase"] for item in visual_readiness["phases"]}
     assert {
         "style_ready",
+        "style_override_transaction_ready",
         "timeline_ready",
         "timeline_editor_transaction_ready",
         "effects_ready",
@@ -3615,6 +3636,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "phase_order_ready",
     } == {check["id"] for check in visual_readiness["checks"]}
     assert visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert visual_readiness["final_state"]["style_override_transactions"] == len(
+        visual_depth["style_override_transaction"]["replay"]
+    )
     assert visual_readiness["final_state"]["effect_editor_transactions"] == len(
         visual_depth["effect_editor_transaction"]["transactions"]
     )
@@ -18523,6 +18547,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "asset_import_transaction_replay",
         "preview_runtime_diff_workflow",
         "style_token_validation",
+        "style_override_transaction_replay",
         "timeline_scrub_validation",
         "effect_budget_validation",
         "scene_graph_integrity",
@@ -18557,6 +18582,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
     assert generated_visual_depth["style_tokens"]["ok"] is True
+    generated_style_transaction = form_designer.cross_target_style_override_transaction_replay_contract()
+    assert generated_style_transaction["format"] == (
+        "appgen.generated-cross-target-style-override-transaction-replay.v1"
+    )
+    assert generated_style_transaction["ok"] is True
+    assert {
+        "effective_style_inspected",
+        "state_override_staged",
+        "platform_override_staged",
+        "local_override_resolved",
+        "accessible_preview_validated",
+        "runtime_style_resources_committed",
+        "style_override_rollback_ready",
+        "style_override_transaction_side_effect_free",
+    } == {check["id"] for check in generated_style_transaction["checks"]}
+    assert generated_visual_depth["style_override_transaction"]["ok"] is True
+    assert generated_visual_depth["style_override_transaction"]["final_state"]["persisted_writes"] == 0
     assert generated_visual_depth["timeline_scrub"]["samples"]
     assert generated_visual_depth["effect_budget"]["ok"] is True
     assert generated_visual_depth["scene_integrity"]["ok"] is True
@@ -18628,9 +18670,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {check["id"] for check in generated_transform_transaction["checks"] if check["ok"]}
     assert generated_visual_depth["scene_transform_transaction"]["ok"] is True
     assert generated_visual_depth["runtime_replay"]["ok"] is True
-    assert {"style_resolution", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_hit_testing", "scene_material_editor_transaction", "scene_transform_sync", "scene_transform_transaction"} <= {
+    assert {"style_resolution", "style_override_transaction", "timeline_interpolation", "effect_fallback", "effect_editor_transaction", "scene_hit_testing", "scene_material_editor_transaction", "scene_transform_sync", "scene_transform_transaction"} <= {
         item["phase"] for item in generated_visual_depth["runtime_replay"]["replay"]
     }
+    assert generated_visual_depth["runtime_replay"]["final_state"]["style_transactions"] > 0
     assert generated_visual_depth["runtime_replay"]["final_state"]["effect_fallbacks"] >= 1
     assert generated_visual_depth["runtime_replay"]["final_state"]["scene_hits"] > 0
     assert generated_visual_depth["designer_transaction_replay"]["ok"] is True
@@ -18676,6 +18719,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_visual_depth["lifecycle_replay"]["format"] == "appgen.generated-cross-target-visual-lifecycle-replay.v1"
     assert {
         "validate_style_tokens",
+        "replay_style_override_transaction",
         "export_timeline_runtime",
         "assign_effect_fallbacks",
         "validate_scene_materials",
@@ -18805,6 +18849,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } == {item["phase"] for item in generated_visual_readiness["phases"]}
     assert {
         "style_ready",
+        "style_override_transaction_ready",
         "timeline_ready",
         "timeline_editor_transaction_ready",
         "effects_ready",
@@ -18820,6 +18865,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "phase_order_ready",
     } == {check["id"] for check in generated_visual_readiness["checks"]}
     assert generated_visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert generated_visual_readiness["final_state"]["style_override_transactions"] == len(
+        generated_visual_depth["style_override_transaction"]["replay"]
+    )
     assert generated_visual_readiness["final_state"]["effect_editor_transactions"] == len(
         generated_visual_depth["effect_editor_transaction"]["transactions"]
     )
