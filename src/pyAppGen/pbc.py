@@ -1211,6 +1211,7 @@ IMPLEMENTED_PBC_KEYS = (
     "subscription_billing",
     "returns_reverse_logistics",
     "cross_border_trade",
+    "multi_sided_market",
     "enterprise_pim",
     "dam_core",
     "price_promotion_engine",
@@ -3311,6 +3312,69 @@ PBC_CATALOG.update(
             "consumes": ("ProductClassified", "OrderPriced"),
             "template": None,
         },
+        "multi_sided_market": {
+            "label": "Multi-Sided Market Exchange",
+            "mesh": "commerce",
+            "description": "Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.",
+            "tables": (
+                "participant_profile",
+                "marketplace_listing",
+                "listing_asset",
+                "service_offer",
+                "availability_window",
+                "booking_reservation",
+                "rental_contract",
+                "loan_agreement",
+                "barter_offer",
+                "trade_order",
+                "sale_order",
+                "exchange_proposal",
+                "escrow_account",
+                "settlement_instruction",
+                "dispute_case",
+                "reputation_signal",
+                "market_rule",
+                "market_parameter",
+                "schema_extension",
+                "governed_model",
+            ),
+            "apis": (
+                "POST /market/participants",
+                "POST /market/listings",
+                "POST /market/service-offers",
+                "POST /market/trade-orders",
+                "POST /market/barter-offers",
+                "POST /market/sale-orders",
+                "POST /market/bookings",
+                "POST /market/rentals",
+                "POST /market/loans",
+                "POST /market/escrow",
+                "POST /market/settlements",
+                "POST /market/disputes",
+                "GET /market-workbench",
+            ),
+            "emits": (
+                "MarketParticipantVerified",
+                "MarketListingPublished",
+                "TradeOrderPlaced",
+                "BarterOfferMatched",
+                "SaleCompleted",
+                "BookingReserved",
+                "RentalStarted",
+                "LoanIssued",
+                "MarketSettlementPrepared",
+                "MarketDisputeOpened",
+            ),
+            "consumes": (
+                "ProductPublished",
+                "InventoryPoolChanged",
+                "PaymentCaptured",
+                "TaxCalculated",
+                "FraudRiskScored",
+                "AccessPolicyChanged",
+            ),
+            "template": "sales",
+        },
         "enterprise_pim": {
             "label": "Enterprise Product Information Management",
             "mesh": "content",
@@ -5171,6 +5235,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = returns_reverse_logistics_runtime_capabilities()
     elif key == "cross_border_trade":
         advanced_runtime = cross_border_trade_runtime_capabilities()
+    elif key == "multi_sided_market":
+        advanced_runtime = multi_sided_market_runtime_capabilities()
     elif key == "dam_core":
         advanced_runtime = dam_core_runtime_capabilities()
     elif key == "price_promotion_engine":
@@ -8136,6 +8202,43 @@ from .pbcs.cross_border_trade import cross_border_trade_screen_export_control  #
 from .pbcs.cross_border_trade import cross_border_trade_set_parameter  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_ui_contract  # noqa: E402,F401
 from .pbcs.cross_border_trade import cross_border_trade_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.multi_sided_market import MULTI_SIDED_MARKET_ALLOWED_DATABASE_BACKENDS  # noqa: E402,F401
+from .pbcs.multi_sided_market import MULTI_SIDED_MARKET_CONSUMED_EVENT_TYPES  # noqa: E402,F401
+from .pbcs.multi_sided_market import MULTI_SIDED_MARKET_EMITTED_EVENT_TYPES  # noqa: E402,F401
+from .pbcs.multi_sided_market import MULTI_SIDED_MARKET_OWNED_TABLES  # noqa: E402,F401
+from .pbcs.multi_sided_market import MULTI_SIDED_MARKET_REQUIRED_EVENT_TOPIC  # noqa: E402,F401
+from .pbcs.multi_sided_market import MULTI_SIDED_MARKET_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.multi_sided_market import MULTI_SIDED_MARKET_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_build_api_contract  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_build_release_evidence  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_build_schema_contract  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_build_service_contract  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_build_workbench_view  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_configure_runtime  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_create_service_offer  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_empty_state  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_execute_sale  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_issue_loan  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_match_barter_offer  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_open_dispute  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_optimize_exchange_match  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_permissions_contract  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_place_trade_order  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_prepare_settlement  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_publish_listing  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_receive_event  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_register_rule  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_register_schema_extension  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_render_workbench  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_reserve_booking  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_runtime_capabilities  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_runtime_smoke  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_score_reputation  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_set_parameter  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_start_rental  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_ui_contract  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_verify_owned_table_boundary  # noqa: E402,F401
+from .pbcs.multi_sided_market import multi_sided_market_verify_participant  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_ALLOWED_DATABASE_BACKENDS  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_OWNED_TABLES  # noqa: E402,F401
 from .pbcs.returns_reverse_logistics import RETURNS_REVERSE_LOGISTICS_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
