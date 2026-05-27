@@ -1918,6 +1918,20 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   EAM/source/specification tests pass (`17 passed`), EAM implementation and
   generation smoke pass, all implemented generation smoke passes, and
   `pbc_release_audit()` returns true. Commit: `4fb237e`.
+- Current Fraud Anomaly Detection PBC pass aligns
+  `fraud_anomaly_detection` catalog, manifest, specification traceability,
+  migration, schema/model evidence, service facade, route surface, runtime
+  owned-table boundary, and package-local tests with its broader fraud/risk
+  domain. The PBC now exposes risk signals, anomaly scores, fraud rules, risk
+  cases, identity links, behavior baselines, device fingerprints, network
+  indicators, velocity windows, decision explanations, loss exposure, analyst
+  queue items, fraud parameters, and fraud configuration as owned tables;
+  generated/package artifacts now cover expanded APIs, UI fragments, RBAC,
+  AppGen-X eventing, and advanced fraud intelligence capabilities. Py compile
+  passed for `src/pyAppGen/pbc.py` and fraud package modules; focused
+  fraud/source/specification tests pass (`17 passed`), fraud implementation
+  and generation smoke pass, all implemented generation smoke passes, and
+  `pbc_release_audit()` returns true. Commit: `1562a15`.
 
 ## Open Completion Areas
 
