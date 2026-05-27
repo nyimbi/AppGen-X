@@ -6364,6 +6364,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "component_family_runtime_replay_matrix_ready",
         "runtime_replay_ready",
     } <= set(component_runtime_smoke["passing_checks"])
+    assert {
+        "render_nodes",
+        "property_validation",
+        "event_dispatch",
+        "target_adapters",
+        "release_component_to_ide",
+        "replay_family_components",
+        "verify_target_renderers",
+        "verify_runtime_adapters",
+        "side_effects_disallowed",
+    } <= set(component_runtime_smoke["smoke"]["required_component_operations"]) <= set(
+        component_runtime_smoke["smoke"]["component_operations"]
+    )
     inspector_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_inspector_runtime")
     assert inspector_runtime_smoke["ok"] is True
     assert {
@@ -17839,6 +17852,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "component_parity_scenario_ready",
         "runtime_replay_ready",
     } <= set(component_parity_smoke["checks"])
+    assert {
+        "render_nodes",
+        "property_validation",
+        "event_dispatch",
+        "target_adapters",
+        "release_component_to_ide",
+        "replay_family_components",
+        "verify_target_renderers",
+        "verify_runtime_adapters",
+        "side_effects_disallowed",
+    } <= set(component_parity_smoke["required_component_operations"]) <= set(
+        component_parity_smoke["component_operations"]
+    )
     component_parity_replay = component_parity_runtime.replay_component_parity_runtime()
     assert component_parity_replay["ok"] is True
     assert REQUESTED_COMPONENT_ANALOGS == set(component_parity_replay["analog_components"])
