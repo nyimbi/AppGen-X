@@ -6661,6 +6661,165 @@ def inspector_multi_select_contract(components: tuple[str, ...] = ("TextBox", "G
     }
 
 
+def inspector_multi_select_property_transaction_replay_contract(components: tuple[str, ...] = ()) -> dict:
+    """Replay multi-selected property edits as one undoable inspector transaction."""
+    selected = components or ("TextBox", "Grid", "Rectangle")
+    multi_select = inspector_multi_select_contract(selected)
+    contracts = tuple(object_inspector_contract(component) for component in selected)
+    property_maps = tuple(
+        {
+            editor["name"]: {
+                "editor": editor["editor"],
+                "read_only": editor.get("read_only", False),
+                "supports_binding": editor.get("supports_binding", False),
+            }
+            for editor in contract["property_editors"]
+        }
+        for contract in contracts
+    )
+    common_properties = multi_select["common_properties"]
+    editable_common_properties = tuple(
+        property_name
+        for property_name in common_properties
+        if all(property_name in property_map and not property_map[property_name]["read_only"] for property_map in property_maps)
+    )
+    if not editable_common_properties:
+        editable_common_properties = common_properties
+    mixed_values = tuple(
+        {
+            "property": property_name,
+            "indicator": "mixed",
+            "components": tuple(
+                contract["component"]
+                for contract, property_map in zip(contracts, property_maps)
+                if property_name in property_map
+            ),
+        }
+        for property_name in tuple(dict.fromkeys(multi_select["mixed_properties"] or editable_common_properties[:2]))
+    )
+    transactions = tuple(
+        {
+            "property": property_name,
+            "targets": selected,
+            "editor": next(
+                (property_map[property_name]["editor"] for property_map in property_maps if property_name in property_map),
+                "string",
+            ),
+            "pipeline": (
+                "capture_selection_snapshot",
+                "filter_common_editable_properties",
+                "show_mixed_value_indicator",
+                "begin_multi_property_transaction",
+                "validate_each_target",
+                "stage_component_delta",
+                "apply_delta_to_all_targets",
+                "record_group_undo",
+                "refresh_design_surface",
+                "refresh_binding_routes"
+                if any(property_map[property_name]["supports_binding"] for property_map in property_maps if property_name in property_map)
+                else "skip_binding_routes",
+            ),
+            "rollback": (
+                "restore_component_snapshot",
+                "rollback_failed_component_delta",
+                "keep_successful_targets_staged_until_commit",
+                "clear_mixed_value_preview",
+            ),
+            "guards": (
+                "selection_snapshot_before_edit",
+                "common_property_filtering",
+                "per_component_validation_before_apply",
+                "group_undo_records_all_targets",
+                "failed_component_rollback_is_scoped",
+            ),
+        }
+        for property_name in editable_common_properties
+    )
+    replay = (
+        {
+            "phase": "capture_multi_selection",
+            "pipeline": tuple(transaction["pipeline"][0] for transaction in transactions),
+            "ok": bool(selected) and all("capture_selection_snapshot" in transaction["pipeline"] for transaction in transactions),
+        },
+        {
+            "phase": "compute_common_editable_properties",
+            "pipeline": editable_common_properties,
+            "ok": bool(editable_common_properties)
+            and set(editable_common_properties) <= set(common_properties)
+            and all(
+                property_name not in property_map or not property_map[property_name]["read_only"]
+                for property_name in editable_common_properties
+                for property_map in property_maps
+            ),
+        },
+        {
+            "phase": "surface_mixed_values",
+            "pipeline": tuple(item["property"] for item in mixed_values),
+            "ok": bool(mixed_values) and all(item["indicator"] == "mixed" and item["components"] for item in mixed_values),
+        },
+        {
+            "phase": "validate_and_stage_each_target",
+            "pipeline": tuple(step for transaction in transactions for step in transaction["pipeline"][4:7]),
+            "ok": all(
+                transaction["pipeline"].index("validate_each_target")
+                < transaction["pipeline"].index("apply_delta_to_all_targets")
+                for transaction in transactions
+            ),
+        },
+        {
+            "phase": "commit_group_undo_and_refresh",
+            "pipeline": tuple(step for transaction in transactions for step in transaction["pipeline"][7:]),
+            "ok": all({"record_group_undo", "refresh_design_surface"} <= set(transaction["pipeline"]) for transaction in transactions),
+        },
+        {
+            "phase": "rollback_failed_component_only",
+            "pipeline": tuple(step for transaction in transactions for step in transaction["rollback"]),
+            "ok": all("rollback_failed_component_delta" in transaction["rollback"] for transaction in transactions),
+        },
+    )
+    checks = (
+        {"id": "multi_selection_declared", "ok": bool(selected) and len(selected) >= 2, "evidence": selected},
+        {"id": "common_properties_computed", "ok": replay[1]["ok"], "evidence": editable_common_properties},
+        {"id": "mixed_values_visible", "ok": replay[2]["ok"], "evidence": mixed_values},
+        {"id": "per_component_validation_before_apply", "ok": replay[3]["ok"]},
+        {"id": "undo_group_recorded", "ok": replay[4]["ok"] and all("record_group_undo" in transaction["pipeline"] for transaction in transactions)},
+        {"id": "rollback_is_component_scoped", "ok": replay[5]["ok"]},
+        {"id": "transaction_side_effect_free", "ok": multi_select["side_effects"] == () and all(contract.get("side_effects", ()) == () for contract in contracts)},
+    )
+    ok = bool(transactions) and all(item["ok"] for item in replay) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.inspector-multi-select-property-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "components": selected,
+        "common_properties": common_properties,
+        "editable_common_properties": editable_common_properties,
+        "mixed_values": mixed_values,
+        "transactions": transactions,
+        "replay": replay,
+        "checks": checks,
+        "final_state": {
+            "component_count": len(selected),
+            "editable_common_properties": len(editable_common_properties),
+            "transaction_count": len(transactions),
+            "mixed_value_indicators": len(mixed_values),
+            "rollback_steps": sum(len(transaction["rollback"]) for transaction in transactions),
+            "undo_groups": sum(1 for transaction in transactions if "record_group_undo" in transaction["pipeline"]),
+        },
+        "guards": (
+            "selection_snapshot_before_edit",
+            "common_property_filtering",
+            "mixed_value_indicator_required",
+            "validation_before_apply",
+            "undo_group_before_refresh",
+            "failed_component_rollback_is_scoped",
+            "multi_select_property_transactions_have_no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def inspector_property_dependency_contract(component: str = "Grid") -> dict:
     """Return dependent-property recalculation evidence."""
     contract = object_inspector_contract(component)
@@ -7288,6 +7447,7 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
     custom_lifecycle = tuple(inspector_custom_designer_lifecycle_contract(component) for component in selected)
     state_restore = inspector_state_restore_workflow()
     multi_select = inspector_multi_select_contract(tuple(selected[:3]))
+    multi_select_transaction = inspector_multi_select_property_transaction_replay_contract(tuple(selected[:3]))
     design_surface_replay = inspector_design_surface_transaction_replay_contract(selected)
     custom_registration_replay = inspector_custom_designer_registration_replay_contract(selected)
     custom_transaction_replay = inspector_custom_designer_transaction_replay_contract(selected)
@@ -7345,9 +7505,13 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
             "phase": "replay_state_and_design_surface",
             "pipeline": state_restore["workflow"]
             + tuple(operation["op"] for operation in multi_select["operations"])
+            + tuple(item["phase"] for item in multi_select_transaction["replay"])
             + tuple(item["phase"] for item in design_surface_replay["replay"]),
             "ok": "restore_selected_tab" in state_restore["workflow"]
             and multi_select["ok"]
+            and multi_select_transaction["ok"]
+            and {"undo_group_recorded", "rollback_is_component_scoped"}
+            <= {check["id"] for check in multi_select_transaction["checks"] if check["ok"]}
             and design_surface_replay["ok"]
             and {"selection_before_edit", "event_references_sync_after_rename"} <= set(design_surface_replay["guards"]),
         },
@@ -7413,7 +7577,22 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
             and not custom_transaction_replay["side_effects"],
             "evidence": custom_transaction_replay,
         },
-        {"id": "state_design_surface_ready", "ok": phases[3]["ok"], "evidence": {"state_restore": state_restore, "multi_select": multi_select, "design_surface": design_surface_replay}},
+        {
+            "id": "multi_select_property_transaction_ready",
+            "ok": multi_select_transaction["ok"]
+            and {
+                "common_properties_computed",
+                "mixed_values_visible",
+                "per_component_validation_before_apply",
+                "undo_group_recorded",
+                "rollback_is_component_scoped",
+                "transaction_side_effect_free",
+            }
+            <= {check["id"] for check in multi_select_transaction["checks"] if check["ok"]}
+            and not multi_select_transaction["side_effects"],
+            "evidence": multi_select_transaction,
+        },
+        {"id": "state_design_surface_ready", "ok": phases[3]["ok"], "evidence": {"state_restore": state_restore, "multi_select": multi_select, "multi_select_transaction": multi_select_transaction, "design_surface": design_surface_replay}},
         {"id": "binding_handler_ready", "ok": phases[4]["ok"], "evidence": {"binding_bridge": binding_bridge, "action_registry": action_registry, "cross_handler": cross_handler, "handler_invoke": handler_invoke}},
         {"id": "lifecycle_round_trip_ready", "ok": phases[5]["ok"], "evidence": {"lifecycle": editor_lifecycle_replay, "round_trips": round_trips}},
         {
@@ -7467,6 +7646,7 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
             "component_editor_transactions": len(component_transactions),
             "custom_designer_hooks": custom_registration_replay["final_state"]["registered_hooks"],
             "custom_designer_hook_transactions": custom_transaction_replay["final_state"]["hook_transactions"],
+            "multi_select_property_transactions": multi_select_transaction["final_state"]["transaction_count"],
             "round_trips": sum(1 for contract in round_trips if contract["ok"]),
             "handler_routes": len(cross_handler["routes"]),
         },
@@ -7476,6 +7656,7 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
             "property_and_event_validation_before_design_surface_replay",
             "component_transactions_before_custom_registration_claim",
             "custom_designer_transactions_before_release_claim",
+            "multi_select_property_transactions_before_design_surface_release",
             "state_restore_before_binding_bridge",
             "binding_bridge_before_release_claim",
             "side_effect_free_readiness",
@@ -7676,6 +7857,7 @@ def object_inspector_workbench() -> dict:
     event_handler_signatures = tuple(inspector_event_handler_signature_contract(component) for component in sample_components)
     custom_designer_lifecycle = tuple(inspector_custom_designer_lifecycle_contract(component) for component in sample_components)
     multi_select = inspector_multi_select_contract()
+    multi_select_transaction = inspector_multi_select_property_transaction_replay_contract()
     property_dependencies = tuple(inspector_property_dependency_contract(component) for component in sample_components)
     diagnostics = tuple(inspector_diagnostics_contract(component) for component in sample_components)
     component_tree_sync = inspector_component_tree_sync_contract()
@@ -7898,6 +8080,28 @@ def object_inspector_workbench() -> dict:
             "evidence": multi_select,
         },
         {
+            "id": "multi_select_property_transaction_replay",
+            "ok": multi_select_transaction["ok"]
+            and {
+                "multi_selection_declared",
+                "common_properties_computed",
+                "mixed_values_visible",
+                "per_component_validation_before_apply",
+                "undo_group_recorded",
+                "rollback_is_component_scoped",
+                "transaction_side_effect_free",
+            }
+            <= {check["id"] for check in multi_select_transaction["checks"] if check["ok"]}
+            and {
+                "selection_snapshot_before_edit",
+                "mixed_value_indicator_required",
+                "failed_component_rollback_is_scoped",
+            }
+            <= set(multi_select_transaction["guards"])
+            and not multi_select_transaction["side_effects"],
+            "evidence": multi_select_transaction,
+        },
+        {
             "id": "property_dependency_recalculation",
             "ok": all(contract["ok"] and not contract["side_effects"] for contract in property_dependencies),
             "evidence": property_dependencies,
@@ -8029,6 +8233,7 @@ def object_inspector_workbench() -> dict:
                 "property_editor_surface_transaction_ready",
                 "component_custom_designer_ready",
                 "custom_designer_transaction_ready",
+                "multi_select_property_transaction_ready",
                 "state_design_surface_ready",
                 "binding_handler_ready",
                 "lifecycle_round_trip_ready",
@@ -8325,6 +8530,7 @@ def object_inspector_workbench() -> dict:
         "event_handler_signatures": event_handler_signatures,
         "custom_designer_lifecycle": custom_designer_lifecycle,
         "multi_select": multi_select,
+        "multi_select_transaction": multi_select_transaction,
         "property_dependencies": property_dependencies,
         "diagnostics": diagnostics,
         "component_tree_sync": component_tree_sync,
@@ -18298,6 +18504,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "property_event_ready",
                 "component_custom_designer_ready",
                 "custom_designer_transaction_ready",
+                "multi_select_property_transaction_ready",
                 "state_design_surface_ready",
                 "binding_handler_ready",
                 "lifecycle_round_trip_ready",
@@ -18308,6 +18515,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "property_editor_types",
                 "event_editor_lifecycle",
                 "property_editor_surface_transaction_replay",
+                "multi_select_property_transaction_replay",
                 "component_editor_transaction",
                 "custom_designer_registration_replay",
                 "editor_lifecycle_replay",
@@ -18333,6 +18541,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "design_surface_transaction_replay",
                 "custom_designer_registration_replay",
                 "custom_designer_transaction_replay",
+                "multi_select_property_transaction_replay",
                 "inspector_generated_modules",
                 "inspector_generated_module_tests",
                 "property_editor_family_contract",
@@ -19135,6 +19344,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "property_editor_surface_transaction_ready",
         "component_custom_designer_ready",
         "custom_designer_transaction_ready",
+        "multi_select_property_transaction_ready",
         "state_design_surface_ready",
         "binding_handler_ready",
         "lifecycle_round_trip_ready",

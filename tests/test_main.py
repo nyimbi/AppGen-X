@@ -226,6 +226,7 @@ from pyAppGen.form_designer import inspector_editor_lifecycle_replay_contract
 from pyAppGen.form_designer import inspector_execute_component_editor
 from pyAppGen.form_designer import inspector_invoke_component_handler
 from pyAppGen.form_designer import inspector_binding_designer_bridge_contract
+from pyAppGen.form_designer import inspector_multi_select_property_transaction_replay_contract
 from pyAppGen.form_designer import inspector_property_editor_surface_transaction_replay_contract
 from pyAppGen.form_designer import inspector_register_custom_designer
 from pyAppGen.form_designer import inspector_rename_event_handler
@@ -1821,6 +1822,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "event_handler_signature_pipeline",
         "custom_designer_lifecycle",
         "multi_select_property_merge",
+        "multi_select_property_transaction_replay",
         "property_dependency_recalculation",
         "inspector_diagnostics",
         "component_tree_sync",
@@ -1905,6 +1907,28 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         for item in contract["lifecycle"]
     )
     assert "mark_mixed_values" in inspector_workbench["multi_select"]["operations"][0]["stage"]
+    multi_select_transaction = inspector_multi_select_property_transaction_replay_contract()
+    assert multi_select_transaction["format"] == "appgen.inspector-multi-select-property-transaction-replay.v1"
+    assert multi_select_transaction["ok"] is True
+    assert {
+        "capture_multi_selection",
+        "compute_common_editable_properties",
+        "surface_mixed_values",
+        "validate_and_stage_each_target",
+        "commit_group_undo_and_refresh",
+        "rollback_failed_component_only",
+    } <= {item["phase"] for item in multi_select_transaction["replay"]}
+    assert {
+        "multi_selection_declared",
+        "common_properties_computed",
+        "mixed_values_visible",
+        "per_component_validation_before_apply",
+        "undo_group_recorded",
+        "rollback_is_component_scoped",
+        "transaction_side_effect_free",
+    } <= {check["id"] for check in multi_select_transaction["checks"] if check["ok"]}
+    assert multi_select_transaction["final_state"]["undo_groups"] == multi_select_transaction["final_state"]["transaction_count"]
+    assert inspector_workbench["multi_select_transaction"]["ok"] is True
     assert all(
         "refresh_inspector" in recalculation["stage"]
         for contract in inspector_workbench["property_dependencies"]
@@ -2106,6 +2130,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "property_editor_surface_transaction_ready",
         "component_custom_designer_ready",
         "custom_designer_transaction_ready",
+        "multi_select_property_transaction_ready",
         "state_design_surface_ready",
         "binding_handler_ready",
         "lifecycle_round_trip_ready",
@@ -2119,6 +2144,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_readiness["final_state"]["round_trips"] == len(inspector_workbench["contracts"])
     assert inspector_readiness["final_state"]["custom_designer_hook_transactions"] == (
         inspector_workbench["custom_designer_transaction_replay"]["final_state"]["hook_transactions"]
+    )
+    assert inspector_readiness["final_state"]["multi_select_property_transactions"] == (
+        inspector_workbench["multi_select_transaction"]["final_state"]["transaction_count"]
     )
     assert inspector_readiness["checks"][4]["evidence"]["final_state"]["metadata_round_trips"] == len(
         inspector_workbench["contracts"]
@@ -5445,6 +5473,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
         "custom_designer_transaction_replay",
+        "multi_select_property_transaction_replay",
         "inspector_family_replay_matrix",
         "phase_order_ready",
     } <= set(requirements_by_id["inspector_design_surface"]["deep_checks"])
@@ -15563,6 +15592,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
         "custom_designer_transaction_replay",
+        "multi_select_property_transaction_replay",
         "inspector_family_replay_matrix",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["inspector_design_surface"]["deep_checks"])
@@ -18578,6 +18608,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "event_handler_signature_pipeline",
         "custom_designer_lifecycle",
         "multi_select_property_merge",
+        "multi_select_property_transaction_replay",
         "property_dependency_recalculation",
         "inspector_diagnostics",
         "component_tree_sync",
@@ -18709,6 +18740,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for item in contract["lifecycle"]
     )
     assert "mixed_values_visible" in generated_inspector["multi_select"]["guards"]
+    generated_multi_select_transaction = form_designer.inspector_multi_select_property_transaction_replay_contract()
+    assert generated_multi_select_transaction["format"] == "appgen.generated-inspector-multi-select-property-transaction-replay.v1"
+    assert generated_multi_select_transaction["ok"] is True
+    assert {
+        "capture_multi_selection",
+        "compute_common_editable_properties",
+        "surface_mixed_values",
+        "validate_and_stage_each_target",
+        "commit_group_undo_and_refresh",
+        "rollback_failed_component_only",
+    } <= {item["phase"] for item in generated_multi_select_transaction["replay"]}
+    assert {
+        "multi_selection_declared",
+        "common_properties_computed",
+        "mixed_values_visible",
+        "per_component_validation_before_apply",
+        "undo_group_recorded",
+        "rollback_is_component_scoped",
+        "transaction_side_effect_free",
+    } <= {check["id"] for check in generated_multi_select_transaction["checks"] if check["ok"]}
+    assert generated_inspector["multi_select_transaction"]["ok"] is True
     assert all(
         "recalculate_dependents" in recalculation["stage"]
         for contract in generated_inspector["property_dependencies"]
@@ -18873,6 +18925,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "property_editor_surface_transaction_ready",
         "component_custom_designer_ready",
         "custom_designer_transaction_ready",
+        "multi_select_property_transaction_ready",
         "state_design_surface_ready",
         "binding_handler_ready",
         "lifecycle_round_trip_ready",
@@ -18886,6 +18939,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_inspector_readiness["final_state"]["round_trips"] == len(generated_inspector["contracts"])
     assert generated_inspector_readiness["final_state"]["custom_designer_hook_transactions"] == (
         generated_inspector["custom_designer_transaction_replay"]["final_state"]["hook_transactions"]
+    )
+    assert generated_inspector_readiness["final_state"]["multi_select_property_transactions"] == (
+        generated_inspector["multi_select_transaction"]["final_state"]["transaction_count"]
     )
     assert generated_inspector_readiness["checks"][4]["evidence"]["final_state"]["metadata_round_trips"] == len(
         generated_inspector["contracts"]
