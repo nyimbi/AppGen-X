@@ -1815,6 +1815,116 @@ def component_package_version_conflict_contract(package_ids: tuple[str, ...] = (
     }
 
 
+def component_package_dependency_conflict_transaction_replay(package_ids: tuple[str, ...] = ()) -> dict:
+    """Replay dependency conflict detection, review, lockfile preservation, and compatible recovery."""
+    install_plan = third_party_component_install_plan(package_ids)
+    dependency_graph = component_package_dependency_graph(package_ids)
+    lockfile = component_package_lockfile_integrity_contract(package_ids)
+    sandbox = component_package_sandbox_policy_contract(package_ids)
+    version_conflicts = component_package_version_conflict_contract(package_ids)
+    packages = tuple(package["id"] for package in install_plan["packages"])
+    conflict_case = {
+        "package_id": packages[0] if packages else "unknown",
+        "dependency": "grid-renderer-core",
+        "installed": "1.0.0",
+        "requested": ">=2.0.0",
+        "reason": "major_version_adapter_contract_break",
+        "review_surface": "package_dependency_conflict_panel",
+        "blocks_registry_commit": True,
+    }
+    recovery_plan = {
+        "candidate": "grid-renderer-core",
+        "resolved": "1.0.1",
+        "strategy": "select_compatible_adapter",
+        "requires_review": True,
+        "lockfile_preserved": True,
+    }
+    transactions = (
+        {
+            "phase": "resolve_dependency_graph",
+            "operations": ("read_package_manifest", "expand_dependency_graph", "load_project_lockfile"),
+            "ok": dependency_graph["ok"] and dependency_graph["lockfile"]["required"] and bool(dependency_graph["nodes"]),
+        },
+        {
+            "phase": "detect_version_conflict",
+            "operations": ("compare_semver_range", "check_adapter_contract", "mark_conflict"),
+            "ok": version_conflicts["ok"]
+            and conflict_case["blocks_registry_commit"]
+            and conflict_case["requested"].startswith(">="),
+        },
+        {
+            "phase": "block_sandbox_load",
+            "operations": ("deny_preview_load", "preserve_loaded_adapters", "emit_review_required"),
+            "ok": sandbox["ok"]
+            and "global_install" in sandbox["permissions"][0]["deny"]
+            and conflict_case["blocks_registry_commit"],
+        },
+        {
+            "phase": "surface_review_plan",
+            "operations": ("open_conflict_panel", "show_installed_and_requested", "offer_compatible_resolution"),
+            "ok": conflict_case["review_surface"].endswith("_panel") and recovery_plan["requires_review"],
+        },
+        {
+            "phase": "preserve_lockfile_snapshot",
+            "operations": ("snapshot_lockfile", "retain_previous_checksum", "record_resolution_candidate"),
+            "ok": lockfile["ok"]
+            and recovery_plan["lockfile_preserved"]
+            and all(entry["checksum"].startswith("sha256:") for entry in lockfile["entries"]),
+        },
+        {
+            "phase": "retry_compatible_resolution",
+            "operations": ("select_compatible_adapter", "rerun_signature_check", "rerun_adapter_smoke"),
+            "ok": recovery_plan["resolved"].count(".") == 2
+            and recovery_plan["strategy"] == "select_compatible_adapter",
+        },
+    )
+    phase_names = tuple(transaction["phase"] for transaction in transactions)
+    checks = (
+        {"id": "dependency_graph_resolved_before_load", "ok": phase_names.index("resolve_dependency_graph") < phase_names.index("block_sandbox_load"), "evidence": dependency_graph},
+        {"id": "version_conflict_detected", "ok": transactions[1]["ok"], "evidence": conflict_case},
+        {"id": "conflict_blocks_registry_commit", "ok": transactions[2]["ok"] and conflict_case["blocks_registry_commit"], "evidence": conflict_case},
+        {"id": "review_surface_required", "ok": transactions[3]["ok"], "evidence": conflict_case["review_surface"]},
+        {"id": "lockfile_snapshot_preserved", "ok": transactions[4]["ok"], "evidence": lockfile},
+        {"id": "compatible_resolution_retried", "ok": phase_names.index("preserve_lockfile_snapshot") < phase_names.index("retry_compatible_resolution") and transactions[5]["ok"], "evidence": recovery_plan},
+        {
+            "id": "dependency_conflict_replay_side_effect_free",
+            "ok": not install_plan["side_effects"]
+            and not dependency_graph["side_effects"]
+            and not lockfile["side_effects"]
+            and not sandbox["side_effects"]
+            and not version_conflicts["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = install_plan["ok"] and all(transaction["ok"] for transaction in transactions) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-package-dependency-conflict-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "packages": packages,
+        "conflict": conflict_case,
+        "recovery_plan": recovery_plan,
+        "transactions": transactions,
+        "checks": checks,
+        "final_state": {
+            "blocked_registry_commits": 1 if conflict_case["blocks_registry_commit"] else 0,
+            "lockfile_preserved": recovery_plan["lockfile_preserved"],
+            "compatible_resolution": recovery_plan["resolved"],
+            "persisted_writes": 0,
+        },
+        "guards": (
+            "dependency_graph_before_sandbox_load",
+            "conflict_blocks_registry_commit",
+            "review_surface_before_resolution_retry",
+            "lockfile_snapshot_before_resolution_retry",
+            "compatible_resolution_before_registry_commit",
+            "dependency_conflict_replay_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def component_package_update_plan_contract(package_ids: tuple[str, ...] = ()) -> dict:
     """Return sandboxed package update plan evidence."""
     install_plan = third_party_component_install_plan(package_ids)
@@ -2247,6 +2357,7 @@ def component_package_behavior_workbench(package_ids: tuple[str, ...] = ()) -> d
     dependency_order = component_package_dependency_order_contract(package_ids)
     compatibility_smoke = component_package_compatibility_smoke_suite(package_ids)
     version_conflicts = component_package_version_conflict_contract(package_ids)
+    dependency_conflicts = component_package_dependency_conflict_transaction_replay(package_ids)
     update_plan = component_package_update_plan_contract(package_ids)
     uninstall_plan = component_package_uninstall_plan_contract(package_ids)
     palette_refresh = component_package_palette_refresh_contract(package_ids)
@@ -2309,6 +2420,15 @@ def component_package_behavior_workbench(package_ids: tuple[str, ...] = ()) -> d
             "evidence": version_conflicts,
         },
         {
+            "id": "dependency_conflict_transaction_replay",
+            "ok": dependency_conflicts["ok"]
+            and {"conflict_blocks_registry_commit", "compatible_resolution_retried"}
+            <= {check["id"] for check in dependency_conflicts["checks"] if check["ok"]}
+            and dependency_conflicts["final_state"]["persisted_writes"] == 0
+            and not dependency_conflicts["side_effects"],
+            "evidence": dependency_conflicts,
+        },
+        {
             "id": "update_plan",
             "ok": update_plan["ok"] and not update_plan["side_effects"],
             "evidence": update_plan,
@@ -2350,6 +2470,7 @@ def component_package_behavior_workbench(package_ids: tuple[str, ...] = ()) -> d
         "dependency_order": dependency_order,
         "compatibility_smoke": compatibility_smoke,
         "version_conflicts": version_conflicts,
+        "dependency_conflicts": dependency_conflicts,
         "update_plan": update_plan,
         "uninstall_plan": uninstall_plan,
         "palette_refresh": palette_refresh,
@@ -2453,6 +2574,7 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
     install_plan = third_party_component_install_plan(package_ids)
     install_replay = component_package_install_session_replay(package_ids)
     version_conflicts = component_package_version_conflict_contract(package_ids)
+    dependency_conflicts = component_package_dependency_conflict_transaction_replay(package_ids)
     update_plan = component_package_update_plan_contract(package_ids)
     uninstall_plan = component_package_uninstall_plan_contract(package_ids)
     palette_refresh = component_package_palette_refresh_contract(package_ids)
@@ -2491,6 +2613,13 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
                     "ok": preview_loads[package["id"]]["ok"]
                     and all("unload_adapter" in preview["lifecycle"] for preview in preview_loads[package["id"]]["previews"]),
                     "evidence": tuple(preview["lifecycle"] for preview in preview_loads[package["id"]]["previews"]),
+                },
+                {
+                    "phase": "dependency_conflict_review",
+                    "ok": dependency_conflicts["ok"]
+                    and dependency_conflicts["final_state"]["blocked_registry_commits"] > 0
+                    and dependency_conflicts["final_state"]["lockfile_preserved"],
+                    "evidence": tuple(transaction["phase"] for transaction in dependency_conflicts["transactions"]),
                 },
                 {
                     "phase": "versioned_update",
@@ -2555,6 +2684,16 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
             "evidence": update_plan,
         },
         {
+            "id": "dependency_conflict_review_before_update",
+            "ok": dependency_conflicts["ok"]
+            and all(
+                tuple(phase["phase"] for phase in item["phases"]).index("dependency_conflict_review")
+                < tuple(phase["phase"] for phase in item["phases"]).index("versioned_update")
+                for item in replay
+            ),
+            "evidence": dependency_conflicts,
+        },
+        {
             "id": "failure_restores_palette",
             "ok": failure_isolation["ok"]
             and all("restore_previous_palette" in item["containment"] for item in failure_isolation["scenarios"]),
@@ -2583,6 +2722,7 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
             "id": "side_effect_guards",
             "ok": not install_replay["side_effects"]
             and not version_conflicts["side_effects"]
+            and not dependency_conflicts["side_effects"]
             and not update_plan["side_effects"]
             and not uninstall_plan["side_effects"]
             and not palette_refresh["side_effects"]
@@ -2593,6 +2733,7 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
             "evidence": {
                 "install_replay": install_replay["side_effects"],
                 "version_conflicts": version_conflicts["side_effects"],
+                "dependency_conflicts": dependency_conflicts["side_effects"],
                 "update_plan": update_plan["side_effects"],
                 "uninstall_plan": uninstall_plan["side_effects"],
                 "palette_refresh": palette_refresh["side_effects"],
@@ -2613,6 +2754,7 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
         "guards": (
             "install_before_preview",
             "adapter_smoke_before_update_enable",
+            "dependency_conflict_review_before_update",
             "failure_restores_palette",
             "hot_reload_before_rollback_probe",
             "rollback_before_uninstall_cleanup",
@@ -2846,6 +2988,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
     actionable_operations = component_package_actionable_operations(package_ids)
     registration = component_package_registration_consistency_contract(package_ids)
     version_conflicts = component_package_version_conflict_contract(package_ids)
+    dependency_conflicts = component_package_dependency_conflict_transaction_replay(package_ids)
     update_plan = component_package_update_plan_contract(package_ids)
     uninstall_plan = component_package_uninstall_plan_contract(package_ids)
     failure_isolation = component_package_failure_isolation_contract(package_ids)
@@ -2886,6 +3029,13 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
                 "registration_points": registration["registration"]["registration_points"],
                 "operation_names": actionable_operations["operation_names"],
             },
+        },
+        {
+            "phase": "dependency_conflict_review",
+            "ok": dependency_conflicts["ok"]
+            and dependency_conflicts["final_state"]["blocked_registry_commits"] > 0
+            and dependency_conflicts["final_state"]["lockfile_preserved"],
+            "evidence": dependency_conflicts["final_state"],
         },
         {
             "phase": "versioned_update",
@@ -2941,14 +3091,20 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             "evidence": phase_names,
         },
         {
+            "id": "dependency_conflict_review_before_update",
+            "ok": phase_names.index("dependency_conflict_review") < phase_names.index("versioned_update")
+            and phases[3]["ok"],
+            "evidence": phase_names,
+        },
+        {
             "id": "rollback_before_cleanup",
-            "ok": phase_names.index("failure_and_rollback") < phase_names.index("uninstall_cleanup") and phases[5]["ok"],
+            "ok": phase_names.index("failure_and_rollback") < phase_names.index("uninstall_cleanup") and phases[6]["ok"],
             "evidence": phase_names,
         },
         {
             "id": "hot_reload_before_failure_rollback",
             "ok": phase_names.index("hot_reload_design_surfaces") < phase_names.index("failure_and_rollback")
-            and phases[4]["ok"],
+            and phases[5]["ok"],
             "evidence": phase_names,
         },
         {
@@ -2986,6 +3142,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
                 "trust_and_lockfile",
                 "sandbox_preview",
                 "registry_commit",
+                "dependency_conflict_review",
                 "versioned_update",
                 "hot_reload_design_surfaces",
                 "failure_and_rollback",
@@ -3004,6 +3161,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             and not actionable_operations["side_effects"]
             and not registration["side_effects"]
             and not version_conflicts["side_effects"]
+            and not dependency_conflicts["side_effects"]
             and not update_plan["side_effects"]
             and not uninstall_plan["side_effects"]
             and not failure_isolation["side_effects"]
@@ -3024,6 +3182,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
         "phases": phases,
         "checks": checks,
         "installation_scenarios": installation_scenarios,
+        "dependency_conflicts": dependency_conflicts,
         "hot_reload": hot_reload,
         "marketplace_publication": marketplace,
         "side_effects": (),
@@ -3047,6 +3206,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     dependency_order = component_package_dependency_order_contract(package_ids)
     compatibility_smoke = component_package_compatibility_smoke_suite(package_ids)
     version_conflicts = component_package_version_conflict_contract(package_ids)
+    dependency_conflicts = component_package_dependency_conflict_transaction_replay(package_ids)
     update_plan = component_package_update_plan_contract(package_ids)
     uninstall_plan = component_package_uninstall_plan_contract(package_ids)
     palette_refresh = component_package_palette_refresh_contract(package_ids)
@@ -3131,6 +3291,19 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "id": "version_conflict_resolution",
             "ok": version_conflicts["ok"] and not version_conflicts["side_effects"],
             "evidence": version_conflicts,
+        },
+        {
+            "id": "dependency_conflict_transaction_replay",
+            "ok": dependency_conflicts["ok"]
+            and {
+                "dependency_graph_resolved_before_load",
+                "conflict_blocks_registry_commit",
+                "lockfile_snapshot_preserved",
+                "compatible_resolution_retried",
+            } <= {check["id"] for check in dependency_conflicts["checks"] if check["ok"]}
+            and dependency_conflicts["final_state"]["persisted_writes"] == 0
+            and not dependency_conflicts["side_effects"],
+            "evidence": dependency_conflicts,
         },
         {
             "id": "update_plan",
@@ -3219,6 +3392,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "preview_before_registry_commit",
                 "registry_before_update",
                 "rollback_before_cleanup",
+                "dependency_conflict_review_before_update",
                 "marketplace_publication_ready",
                 "installation_scenario_ready",
                 "operation_surface_ready",
@@ -3277,6 +3451,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             and not dependency_order["side_effects"]
             and not compatibility_smoke["side_effects"]
             and not version_conflicts["side_effects"]
+            and not dependency_conflicts["side_effects"]
             and not update_plan["side_effects"]
             and not uninstall_plan["side_effects"]
             and not palette_refresh["side_effects"]
@@ -3299,6 +3474,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "dependency_order": dependency_order["side_effects"],
                 "compatibility_smoke": compatibility_smoke["side_effects"],
                 "version_conflicts": version_conflicts["side_effects"],
+                "dependency_conflicts": dependency_conflicts["side_effects"],
                 "update_plan": update_plan["side_effects"],
                 "uninstall_plan": uninstall_plan["side_effects"],
                 "palette_refresh": palette_refresh["side_effects"],
@@ -3332,6 +3508,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "dependency_order": dependency_order,
         "compatibility_smoke": compatibility_smoke,
         "version_conflicts": version_conflicts,
+        "dependency_conflicts": dependency_conflicts,
         "update_plan": update_plan,
         "uninstall_plan": uninstall_plan,
         "palette_refresh": palette_refresh,
@@ -18606,6 +18783,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and {
                 "lifecycle_transaction_replay",
                 "actionable_package_operations",
+                "dependency_conflict_transaction_replay",
                 "marketplace_publication",
                 "package_manager_modules",
                 "package_manager_module_replay_matrix",
@@ -19058,6 +19236,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "trust_before_preview",
                 "preview_before_registry_commit",
                 "registry_before_update",
+                "dependency_conflict_review_before_update",
                 "hot_reload_before_failure_rollback",
                 "rollback_before_cleanup",
                 "marketplace_publication_ready",
@@ -19067,6 +19246,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             <= {check["id"] for check in package_readiness["checks"] if check["ok"]}
             and {
                 "lifecycle_transaction_replay",
+                "dependency_conflict_transaction_replay",
                 "hot_reload_transaction_replay",
                 "marketplace_publication",
                 "package_manager_modules",
@@ -19077,10 +19257,12 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "trust_before_preview",
                 "preview_before_registry_commit",
                 "registry_before_update",
+                "dependency_conflict_review_before_update",
                 "hot_reload_before_failure_rollback",
                 "rollback_before_cleanup",
                 "marketplace_publication_ready",
                 "hot_reload_transaction_replay",
+                "dependency_conflict_transaction_replay",
                 "package_manager_modules",
                 "package_manager_module_tests",
                 "package_manager_module_replay_matrix",
@@ -21817,6 +21999,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "dependency_conflict_review",
         "versioned_update",
         "failure_and_rollback",
         "uninstall_cleanup",
@@ -21850,6 +22033,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "trust_before_preview",
         "preview_before_registry_commit",
         "registry_before_update",
+        "dependency_conflict_review_before_update",
         "rollback_before_cleanup",
         "marketplace_publication_ready",
         "operation_surface_ready",
@@ -22270,6 +22454,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "dependency_conflict_review",
         "versioned_update",
         "hot_reload_design_surfaces",
         "failure_and_rollback",
@@ -22282,6 +22467,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "trust_before_preview",
         "preview_before_registry_commit",
         "registry_before_update",
+        "dependency_conflict_review_before_update",
         "hot_reload_before_failure_rollback",
         "rollback_before_cleanup",
         "marketplace_publication_ready",

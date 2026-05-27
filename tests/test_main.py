@@ -88,6 +88,7 @@ from pyAppGen.form_designer import component_package_behavior_contract
 from pyAppGen.form_designer import component_package_behavior_workbench
 from pyAppGen.form_designer import component_package_compatibility_smoke_suite
 from pyAppGen.form_designer import component_package_dependency_graph
+from pyAppGen.form_designer import component_package_dependency_conflict_transaction_replay
 from pyAppGen.form_designer import component_package_dependency_order_contract
 from pyAppGen.form_designer import component_package_install_session_replay
 from pyAppGen.form_designer import component_package_hot_reload_transaction_replay
@@ -3661,6 +3662,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "uninstall_plan",
         "palette_refresh",
         "failure_isolation",
+        "dependency_conflict_transaction_replay",
         "hot_reload_transaction_replay",
     } == {check["id"] for check in behavior_workbench["checks"]}
     hot_reload = component_package_hot_reload_transaction_replay(("devexpress-native",))
@@ -3671,7 +3673,28 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     }
     assert "designer_restart_required" in hot_reload["transactions"][0]["final_state"]
     assert hot_reload["transactions"][0]["final_state"]["designer_restart_required"] is False
+    dependency_conflicts = component_package_dependency_conflict_transaction_replay(("devexpress-native",))
+    assert dependency_conflicts["format"] == "appgen.component-package-dependency-conflict-transaction-replay.v1"
+    assert dependency_conflicts["ok"] is True
+    assert {
+        "resolve_dependency_graph",
+        "detect_version_conflict",
+        "block_sandbox_load",
+        "surface_review_plan",
+        "preserve_lockfile_snapshot",
+        "retry_compatible_resolution",
+    } <= {phase["phase"] for phase in dependency_conflicts["transactions"]}
+    assert {
+        "dependency_graph_resolved_before_load",
+        "conflict_blocks_registry_commit",
+        "lockfile_snapshot_preserved",
+        "compatible_resolution_retried",
+        "dependency_conflict_replay_side_effect_free",
+    } <= {check["id"] for check in dependency_conflicts["checks"] if check["ok"]}
+    assert dependency_conflicts["final_state"]["blocked_registry_commits"] > 0
+    assert dependency_conflicts["final_state"]["persisted_writes"] == 0
     assert behavior_workbench["version_conflicts"]["ok"] is True
+    assert behavior_workbench["dependency_conflicts"]["ok"] is True
     assert all("run_adapter_smoke" in update["phases"] for update in behavior_workbench["update_plan"]["updates"])
     assert all("disable_adapters" in item["phases"] for item in behavior_workbench["uninstall_plan"]["uninstalls"])
     assert "rebuild_toolbox" in behavior_workbench["palette_refresh"]["palette_actions"]
@@ -3697,6 +3720,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "uninstall_plan",
         "palette_refresh",
         "failure_isolation",
+        "dependency_conflict_transaction_replay",
         "hot_reload_transaction_replay",
         "lifecycle_transaction_replay",
         "lifecycle_execution",
@@ -3739,6 +3763,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "package_module_replays_side_effect_free",
     } <= {check["id"] for check in package_manager["module_replay_matrix"]["checks"] if check["ok"]}
     assert package_manager["version_conflicts"]["ok"] is True
+    assert package_manager["dependency_conflicts"]["ok"] is True
     assert all("refresh_palette" in update["phases"] for update in package_manager["update_plan"]["updates"])
     assert all("find_palette_references" in item["phases"] for item in package_manager["uninstall_plan"]["uninstalls"])
     assert "invalidate_cache" in package_manager["palette_refresh"]["palette_actions"]
@@ -3757,6 +3782,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "install_before_preview",
         "adapter_smoke_before_update_enable",
+        "dependency_conflict_review_before_update",
         "failure_restores_palette",
         "hot_reload_before_rollback_probe",
         "rollback_before_uninstall_cleanup",
@@ -3786,6 +3812,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "dependency_conflict_review",
         "versioned_update",
         "hot_reload_design_surfaces",
         "failure_and_rollback",
@@ -3795,6 +3822,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "trust_before_preview",
         "preview_before_registry_commit",
         "registry_before_update",
+        "dependency_conflict_review_before_update",
         "hot_reload_before_failure_rollback",
         "rollback_before_cleanup",
         "marketplace_publication_ready",
@@ -5379,12 +5407,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "dependency_conflict_review",
         "versioned_update",
         "failure_and_rollback",
         "uninstall_cleanup",
     )
     assert {
         "lifecycle_transaction_replay",
+        "dependency_conflict_transaction_replay",
         "actionable_package_operations",
         "package_manager_modules",
         "package_manager_module_replay_matrix",
@@ -5495,8 +5525,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "trust_before_preview",
         "registry_before_update",
+        "dependency_conflict_review_before_update",
         "hot_reload_before_failure_rollback",
         "rollback_before_cleanup",
+        "dependency_conflict_transaction_replay",
         "hot_reload_transaction_replay",
         "package_manager_modules",
         "package_manager_module_tests",
@@ -15494,12 +15526,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "dependency_conflict_review",
         "versioned_update",
         "failure_and_rollback",
         "uninstall_cleanup",
     )
     assert {
         "lifecycle_transaction_replay",
+        "dependency_conflict_transaction_replay",
         "actionable_package_operations",
         "package_manager_modules",
         "package_manager_module_replay_matrix",
@@ -15621,7 +15655,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert {
         "trust_before_preview",
+        "registry_before_update",
+        "dependency_conflict_review_before_update",
         "hot_reload_before_failure_rollback",
+        "dependency_conflict_transaction_replay",
         "hot_reload_transaction_replay",
         "package_manager_modules",
         "package_manager_module_tests",
@@ -15847,6 +15884,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_package_manager = form_designer.design_time_package_manager_workbench()
     assert generated_package_manager["format"] == "appgen.generated-design-time-package-manager-workbench.v1"
     assert generated_package_manager["ok"] is True
+    generated_dependency_conflicts = form_designer.component_package_dependency_conflict_transaction_replay(("devexpress-native",))
+    assert generated_dependency_conflicts["format"] == "appgen.generated-component-package-dependency-conflict-transaction-replay.v1"
+    assert generated_dependency_conflicts["ok"] is True
+    assert {
+        "resolve_dependency_graph",
+        "detect_version_conflict",
+        "block_sandbox_load",
+        "surface_review_plan",
+        "preserve_lockfile_snapshot",
+        "retry_compatible_resolution",
+    } <= {phase["phase"] for phase in generated_dependency_conflicts["transactions"]}
+    assert {
+        "dependency_graph_resolved_before_load",
+        "conflict_blocks_registry_commit",
+        "lockfile_snapshot_preserved",
+        "compatible_resolution_retried",
+        "dependency_conflict_replay_side_effect_free",
+    } <= {check["id"] for check in generated_dependency_conflicts["checks"] if check["ok"]}
+    assert generated_dependency_conflicts["final_state"]["persisted_writes"] == 0
     assert {
         "install_session_phases",
         "palette_registration",
@@ -15863,6 +15919,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "uninstall_plan",
         "palette_refresh",
         "failure_isolation",
+        "dependency_conflict_transaction_replay",
         "hot_reload_transaction_replay",
         "lifecycle_transaction_replay",
         "lifecycle_execution",
@@ -15876,6 +15933,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         check["id"] for check in generated_package_manager["checks"]
     }
     assert generated_package_manager["behavior"]["ok"] is True
+    assert generated_package_manager["dependency_conflicts"]["ok"] is True
     assert generated_package_manager["version_conflicts"]["ok"] is True
     assert all("run_adapter_smoke" in update["phases"] for update in generated_package_manager["update_plan"]["updates"])
     assert all("disable_adapters" in item["phases"] for item in generated_package_manager["uninstall_plan"]["uninstalls"])
@@ -15896,6 +15954,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "hot_reload_before_failure_rollback" in {
         check["id"] for check in generated_package_manager["package_readiness"]["checks"]
     }
+    assert "dependency_conflict_review_before_update" in {
+        check["id"] for check in generated_package_manager["package_readiness"]["checks"]
+    }
     assert generated_package_manager["installation_scenario"]["ok"] is True
     assert "hot_reload_design_surfaces" in generated_package_manager["installation_scenario"]["pipeline"]
     assert {
@@ -15905,6 +15966,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "installation_scenario_operation",
         "marketplace_publication",
         "hot_reload_transaction_replay",
+        "dependency_conflict_transaction_replay",
         "package_manager_modules",
         "package_manager_module_tests",
         "package_manager_module_replay_matrix",
@@ -15932,13 +15994,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "trust_and_lockfile",
         "sandbox_preview",
         "registry_commit",
+        "dependency_conflict_review",
         "versioned_update",
         "hot_reload_design_surfaces",
         "failure_and_rollback",
         "uninstall_cleanup",
     )
     assert all(
-        {"install_and_register", "preview_load", "versioned_update", "failure_containment", "hot_reload_design_surfaces", "rollback_probe", "uninstall_cleanup"}
+        {"install_and_register", "preview_load", "dependency_conflict_review", "versioned_update", "failure_containment", "hot_reload_design_surfaces", "rollback_probe", "uninstall_cleanup"}
         <= {phase["phase"] for phase in item["phases"]}
         for item in generated_package_manager["lifecycle_replay"]["replay"]
     )
