@@ -17822,6 +17822,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "inspector_module_runtime_replay_matrix_ready",
         "runtime_replay",
     } <= set(inspector_runtime_smoke["checks"])
+    assert {
+        "property_edit",
+        "event_rename",
+        "component_editor",
+        "custom_designer_overlay",
+        "open_property_editor",
+        "create_or_rename_handler",
+        "open_component_editor",
+        "register_custom_designer",
+        "invoke_handler",
+        "author_binding_link",
+    } <= set(inspector_runtime_smoke["required_editor_operations"]) <= set(
+        inspector_runtime_smoke["editor_operations"]
+    )
     inspector_module_files = inspector_runtime.inspector_module_file_manifest("Grid")
     inspector_module_tests = inspector_runtime.inspector_module_test_file_manifest("Grid")
     inspector_module_runtime_matrix = inspector_runtime.inspector_module_runtime_replay_matrix("Grid")
