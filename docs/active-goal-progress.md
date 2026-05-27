@@ -2028,6 +2028,24 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   implementation smoke, federated IAM generation smoke, all implemented
   generation smoke, and `pbc_release_audit()` all return true. Commit:
   `b9f876f`.
+- Current API Gateway Mesh PBC hardening pass makes `api_gateway_mesh` source
+  artifacts match the gateway runtime boundary instead of the old four-table
+  placeholder. The central catalog, package manifest, specification
+  traceability, domain schema source, source schema contract, model metadata,
+  migration, and tests now cover service registration, endpoint catalog,
+  service routes, route versions, rate limits, mTLS identities, traffic
+  policies, retry budgets, circuit breakers, fallbacks, health, traffic
+  samples, rules, parameters, configuration, service-map and route-contract
+  projections, policy screening, route publication proofs, federation,
+  resilience, crypto epochs, carbon routing, route optimization, traffic
+  allocation, anomaly signals, stochastic exposure, parsed requests, controls,
+  governed models, retry evidence, forecasts, exception resolution, route risk
+  and selection, and AppGen-X outbox/inbox/dead letters. Py compile passed for
+  `src/pyAppGen/pbc.py`, the touched gateway package, and runtime tests;
+  focused gateway tests pass (`13 passed`); source package and traceability
+  tests pass (`22 passed`); banned legacy name scan is clean; implementation
+  smoke, gateway generation smoke, all implemented generation smoke, and
+  `pbc_release_audit()` all return true. Commit: `8564c0b`.
 
 ## Open Completion Areas
 
