@@ -2,9 +2,22 @@
 
 from __future__ import annotations
 
+from .runtime import time_labor_build_api_contract
 from .runtime import time_labor_build_release_evidence
+from .runtime import time_labor_build_schema_contract
+from .runtime import time_labor_build_service_contract
+from .runtime import time_labor_permissions_contract
 
-RELEASE_EVIDENCE = {**time_labor_build_release_evidence(), "pbc": "time_labor"}
+PBC_KEY = "time_labor"
+
+RELEASE_EVIDENCE = {
+    **time_labor_build_release_evidence(),
+    "pbc": PBC_KEY,
+    "schema": time_labor_build_schema_contract(),
+    "service": time_labor_build_service_contract(),
+    "api": time_labor_build_api_contract(),
+    "permissions": time_labor_permissions_contract(),
+}
 
 
 def build_release_evidence():
@@ -23,7 +36,7 @@ def release_readiness_manifest():
     checks = tuple(evidence.get("checks", ()))
     return {
         "ok": evidence.get("ok") is True and bool(checks),
-        "pbc": "time_labor",
+        "pbc": PBC_KEY,
         "format": evidence.get("format"),
         "sections": sections,
         "checks": checks,
@@ -57,7 +70,7 @@ def validate_release_evidence():
         and not missing_sections
         and not failed_checks
         and not boundary_gaps,
-        "pbc": "time_labor",
+        "pbc": PBC_KEY,
         "manifest": manifest,
         "missing_sections": missing_sections,
         "failed_checks": failed_checks,
