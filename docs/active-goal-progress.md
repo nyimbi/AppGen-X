@@ -1947,6 +1947,23 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`20 passed`); banned legacy name scan is clean; implementation smoke,
   market generation smoke, all implemented generation smoke, and
   `pbc_release_audit()` all return true. Commit: `748140f`.
+- Current Enterprise Search Vector PBC hardening pass makes
+  `enterprise_search_vector` schema and model evidence executable rather than
+  generic. The PBC now has a local domain schema source for search indexes,
+  embedding jobs, vector documents, query traces, and AppGen-X runtime event
+  tables; runtime schema contracts, source schema contracts, model metadata,
+  migrations, and tests now expose search-specific fields for ranking mode,
+  document readiness, vector dimensions, chunks, embeddings, ACLs, feedback,
+  freshness, authority, explanations, audit proofs, idempotency, and
+  dead-letter failure reasons. The specification now documents the richer
+  owned schema, explicit search relationships, table-stakes search workflows,
+  advanced relevance/freshness/policy/proof capabilities, UI/agent skills, and
+  manifest traceability. Py compile passed for the touched search package and
+  runtime tests; focused enterprise-search tests pass (`11 passed`); source
+  package and traceability tests pass (`20 passed`); banned legacy name scan
+  is clean; implementation smoke, enterprise-search generation smoke, all
+  implemented generation smoke, and `pbc_release_audit()` all return true.
+  Commit: `33a4c69`.
 
 ## Open Completion Areas
 
