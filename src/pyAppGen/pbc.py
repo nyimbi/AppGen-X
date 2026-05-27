@@ -6115,6 +6115,109 @@ def pbc_specification_release_audit(selected_pbcs: tuple[str, ...] | list[str] |
     }
 
 
+def pbc_agent_capability_contract(key: str) -> dict:
+    """Verify a PBC contributes executable agent, chatbot, skill, and CRUD evidence."""
+    if key not in PBC_CATALOG:
+        return {
+            "format": "appgen.pbc-agent-capability-contract.v1",
+            "ok": False,
+            "pbc": key,
+            "error": "unknown PBC",
+        }
+    try:
+        agent_module = importlib.import_module(f"pyAppGen.pbcs.{key}.agent")
+        skills = agent_module.agent_skill_manifest()
+        chatbot = agent_module.chatbot_interface_contract()
+        document = agent_module.document_instruction_plan("release evidence document", "create governed market record")
+        read_plan = agent_module.datastore_crud_plan("read")
+        create_plan = agent_module.datastore_crud_plan("create", payload={"status": "draft"})
+        rejected_plan = agent_module.datastore_crud_plan("update", table="foreign_operational_table")
+        contribution = agent_module.composed_agent_contribution()
+        smoke = agent_module.smoke_test()
+    except Exception as exc:  # pragma: no cover - returned as release evidence
+        return {
+            "format": "appgen.pbc-agent-capability-contract.v1",
+            "ok": False,
+            "pbc": key,
+            "error": str(exc),
+            "blocking_gaps": ({"id": "agent_module_import_or_execution", "ok": False, "error": str(exc)},),
+        }
+    skill_rows = tuple(skills.get("skills", ()))
+    namespace = f"{key}_skills"
+    owned_table_prefix = f"{key}_"
+    checks = (
+        {
+            "id": "agent_skill_manifest",
+            "ok": skills.get("ok") is True
+            and bool(skill_rows)
+            and all(row.get("scope") == key for row in skill_rows)
+            and all(row.get("requires_confirmation_for_mutation") is True for row in skill_rows)
+            and all(row.get("uses_appgen_event_contract") is True for row in skill_rows),
+        },
+        {
+            "id": "chatbot_interface_contract",
+            "ok": chatbot.get("ok") is True
+            and chatbot.get("entrypoint") == f"/assistant/pbc/{key}"
+            and chatbot.get("single_agent_contribution") == namespace
+            and "governed_datastore_crud" in tuple(chatbot.get("capabilities", ())),
+        },
+        {
+            "id": "document_instruction_intake",
+            "ok": document.get("ok") is True
+            and document.get("requires_human_confirmation") is True
+            and all(str(table).startswith(owned_table_prefix) for table in document.get("candidate_tables", ())),
+        },
+        {
+            "id": "governed_crud_plans",
+            "ok": read_plan.get("ok") is True
+            and create_plan.get("ok") is True
+            and create_plan.get("requires_confirmation") is True
+            and rejected_plan.get("ok") is False
+            and create_plan.get("event_contract") == "AppGen-X",
+        },
+        {
+            "id": "composed_agent_contribution",
+            "ok": contribution.get("ok") is True
+            and contribution.get("single_agent_skill_namespace") == namespace
+            and namespace in tuple(contribution.get("dsl_tools", ())),
+        },
+        {
+            "id": "agent_smoke",
+            "ok": smoke.get("ok") is True and smoke.get("side_effects") == (),
+        },
+    )
+    return {
+        "format": "appgen.pbc-agent-capability-contract.v1",
+        "ok": all(check["ok"] for check in checks),
+        "pbc": key,
+        "namespace": namespace,
+        "skills": skills,
+        "chatbot": chatbot,
+        "document": document,
+        "read_plan": read_plan,
+        "create_plan": create_plan,
+        "rejected_plan": rejected_plan,
+        "contribution": contribution,
+        "smoke": smoke,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "side_effects": (),
+    }
+
+
+def pbc_agent_capability_release_audit(selected_pbcs: tuple[str, ...] | list[str] | None = None) -> dict:
+    """Verify every requested PBC contributes executable composed-agent skills."""
+    selected = tuple(dict.fromkeys(selected_pbcs or tuple(PBC_CATALOG)))
+    contracts = tuple(pbc_agent_capability_contract(key) for key in selected)
+    return {
+        "format": "appgen.pbc-agent-capability-release-audit.v1",
+        "ok": bool(contracts) and all(contract["ok"] for contract in contracts),
+        "pbc_count": len(contracts),
+        "contracts": contracts,
+        "blocking_gaps": tuple(contract for contract in contracts if not contract["ok"]),
+    }
+
+
 def pbc_implementation_contract(key: str) -> dict:
     """Return the generated implementation contract for one built-in PBC."""
     if key not in PBC_CATALOG:
@@ -7176,6 +7279,7 @@ def pbc_release_audit() -> dict:
     source_artifact_audit = pbc_source_artifact_release_audit()
     source_test_coverage = pbc_source_runtime_test_coverage_audit()
     package_local_assurance = pbc_package_local_assurance_audit()
+    agent_capability_audit = pbc_agent_capability_release_audit()
     implementation_audit = pbc_implementation_release_audit()
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
@@ -7208,6 +7312,7 @@ def pbc_release_audit() -> dict:
             and source_artifact_audit["ok"]
             and source_test_coverage["ok"]
             and package_local_assurance["ok"]
+            and agent_capability_audit["ok"]
             and implementation_audit["ok"]
             and implementation_audit["pbc_count"] == len(PBC_CATALOG),
             "specification_checks": tuple(
@@ -7222,6 +7327,7 @@ def pbc_release_audit() -> dict:
             "source_artifacts": source_artifact_audit,
             "source_test_coverage": source_test_coverage,
             "package_local_assurance": package_local_assurance,
+            "agent_capability": agent_capability_audit,
             "checks": implementation_audit["checks"],
         },
         {
@@ -7343,6 +7449,7 @@ def pbc_release_audit() -> dict:
         "source_artifacts": source_artifact_audit,
         "source_test_coverage": source_test_coverage,
         "package_local_assurance": package_local_assurance,
+        "agent_capability": agent_capability_audit,
         "implementation_audit": implementation_audit,
         "sample_composition": composition,
         "nl_selection": nl_selection,

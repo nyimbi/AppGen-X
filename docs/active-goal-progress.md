@@ -2645,7 +2645,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   stream opening, text parsing, binary decode, property deltas, stream
   round-trips, compile preview, resource refresh, runtime reload, debug preview,
   and rollback guards without unpacking nested operation payloads. Verification
-  is focused under the low-battery delivery constraint. Commit: pending.
+  is focused under the low-battery delivery constraint. Commit: `fcc06a1`.
 - Current PBC specification gate pass makes first-class agent/chatbot skills
   and side-effect-free self-registration explicit specification requirements.
   All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,
@@ -2656,6 +2656,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   for the specification gate files, `tests/test_pbc_specification_contract.py`,
   `pbc_specification_release_audit()` for all 47 PBCs, `pbc_release_audit()`,
   and restricted legacy-name scan. Commit: `0ab539a`.
+- Current PBC agent capability pass makes first-class agents executable
+  release evidence instead of source-text evidence only. The top-level PBC
+  release audit now imports every package `agent.py`, exercises agent skill
+  manifests, chatbot interface contracts, document instruction plans, governed
+  read/create CRUD plans, foreign-table mutation rejection, composed assistant
+  namespace contribution, and agent smoke output for all 47 PBCs. Focused
+  verification passed: `tests/test_pbc_specification_contract.py`,
+  `pbc_agent_capability_release_audit()` for all 47 PBCs, `pbc_release_audit()`,
+  Python compile, and restricted legacy-name scan. Commit: `443afc5`.
 - Current remaining-PBC assurance pass locks executable capability coverage
   into the package-local tests for `dom`, `federated_iam`,
   `global_inventory_visibility`, `inventory_positioning`,
