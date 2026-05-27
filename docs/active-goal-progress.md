@@ -2632,3 +2632,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   release smokes, source artifact contract, implementation release audit,
   generation smoke audit, specification contract, and restricted legacy-name
   scan all passed. Commit: `c636d67`.
+- Current remaining-PBC assurance pass locks executable capability coverage
+  into the package-local tests for `dom`, `federated_iam`,
+  `global_inventory_visibility`, `inventory_positioning`,
+  `order_routing_optimization`, `procurement_sourcing`,
+  `returns_reverse_logistics`, `transportation_management`, and `wms_core`.
+  Every built-in PBC package test now includes runtime-backed standard and
+  advanced capability assurance. Verification is focused under the low-battery
+  constraint: Python compile for the nine changed package tests, per-PBC
+  capability assurance smoke, focused package contract tests for all nine,
+  release audit for the changed PBC set, per-PBC generation smoke audits,
+  source/spec contracts, and restricted legacy-name scan passed. Commit:
+  `96bf80f`.
