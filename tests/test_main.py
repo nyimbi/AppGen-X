@@ -6578,6 +6578,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_operation_modules_ready",
         "runtime_operation_module_tests_ready",
     } <= set(runtime_operation_smoke["passing_checks"])
+    assert {
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "refresh_resources",
+        "reload_runtime_preview",
+        "start_debug_preview",
+    } <= set(runtime_operation_smoke["smoke"]["required_runtime_operations"]) <= set(
+        runtime_operation_smoke["smoke"]["runtime_operations"]
+    )
     mobile_device_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_mobile_device_runtime")
     assert mobile_device_smoke["ok"] is True
     assert {
@@ -18316,6 +18327,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_operation_modules_ready",
         "runtime_operation_module_tests_ready",
     } <= set(runtime_operations_smoke["checks"])
+    assert {
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "refresh_resources",
+        "reload_runtime_preview",
+        "start_debug_preview",
+    } <= set(runtime_operations_smoke["required_runtime_operations"]) <= set(
+        runtime_operations_smoke["runtime_operations"]
+    )
     assert runtime_operations.run_runtime_operation("compile_preview", "Book")["ok"] is True
     assert runtime_operations.run_runtime_operation("missing", "Book")["ok"] is False
     runtime_operation_module_files = runtime_operations.runtime_operation_module_file_manifest("Book")
