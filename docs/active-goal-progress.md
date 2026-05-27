@@ -2545,3 +2545,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   registration, trust validation, lockfile snapshots, updates, uninstall, and
   registry cleanup without unpacking nested replay matrices. Verification is
   focused under the low-battery delivery constraint. Commit: `1dcf903`.
+- Current mobile device runtime smoke pass exposes required native device
+  operations plus collected device operations directly from generated mobile
+  device runtime smoke. Generated consumers can now inspect privacy prompts,
+  permission transitions, simulator fixture loading, platform adapter dispatch,
+  component event emission, validation traces, and unsupported-target fallback
+  behavior without unpacking nested replay matrices. Verification is focused
+  under the low-battery delivery constraint. Commit: `f6451b5`.
