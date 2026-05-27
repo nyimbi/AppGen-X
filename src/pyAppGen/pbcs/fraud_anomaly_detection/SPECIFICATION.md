@@ -18,6 +18,16 @@ Owned tables:
 - `anomaly_score`
 - `fraud_rule`
 - `risk_case`
+- `identity_link`
+- `behavior_baseline`
+- `device_fingerprint`
+- `network_indicator`
+- `velocity_window`
+- `decision_explanation`
+- `loss_exposure`
+- `analyst_queue_item`
+- `fraud_parameter`
+- `fraud_configuration`
 
 Allowed datastore backends are PostgreSQL, MySQL, and MariaDB. Runtime
 configuration requires the AppGen-X fraud event topic and never exposes a
@@ -31,7 +41,11 @@ remain platform-owned runtime metadata behind the package-local contract.
 The package-local generated schema contract must enumerate only the owned
 domain tables plus AppGen-X runtime evidence tables:
 
-- Domain tables: `risk_signal`, `anomaly_score`, `fraud_rule`, `risk_case`
+- Domain tables: `risk_signal`, `anomaly_score`, `fraud_rule`,
+  `risk_case`, `identity_link`, `behavior_baseline`,
+  `device_fingerprint`, `network_indicator`, `velocity_window`,
+  `decision_explanation`, `loss_exposure`, `analyst_queue_item`,
+  `fraud_parameter`, and `fraud_configuration`
 - Runtime tables: `fraud_anomaly_detection_appgen_outbox_event`,
   `fraud_anomaly_detection_appgen_inbox_event`,
   `fraud_anomaly_detection_dead_letter_event`
@@ -79,6 +93,11 @@ APIs:
 - `POST /fraud-checks`
 - `GET /risk-cases`
 - `GET /risk-workbench`
+- `POST /fraud-rules`
+- `POST /risk-signals/{id}/score`
+- `POST /risk-cases`
+- `POST /fraud-configuration`
+- `POST /fraud-parameters`
 
 Emitted events:
 
@@ -171,7 +190,7 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `fraud_anomaly_detection`
 - Mesh: `intelligence`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
@@ -179,12 +198,28 @@ This appendix is generated from the package manifest and is release-gated so the
 - `anomaly_score`
 - `fraud_rule`
 - `risk_case`
+- `identity_link`
+- `behavior_baseline`
+- `device_fingerprint`
+- `network_indicator`
+- `velocity_window`
+- `decision_explanation`
+- `loss_exposure`
+- `analyst_queue_item`
+- `fraud_parameter`
+- `fraud_configuration`
 
 ### API Routes
 
 - `POST /risk-events`
 - `POST /fraud-checks`
 - `GET /risk-cases`
+- `GET /risk-workbench`
+- `POST /fraud-rules`
+- `POST /risk-signals/{id}/score`
+- `POST /risk-cases`
+- `POST /fraud-configuration`
+- `POST /fraud-parameters`
 
 ### Emitted Events
 
@@ -199,22 +234,111 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `FraudAnomalyDetectionWorkbench`
+- `RiskSignalMonitor`
+- `AnomalyScoreBoard`
+- `FraudRuleStudio`
+- `RiskCaseConsole`
+- `IdentityLinkAnalysisPanel`
+- `BehaviorBaselinePanel`
+- `DeviceFingerprintPanel`
+- `NetworkIndicatorPanel`
+- `VelocityWindowPanel`
+- `DecisionExplanationConsole`
+- `LossExposurePanel`
+- `AnalystQueueConsole`
+- `FraudParameterConsole`
+- `FraudConfigurationPanel`
+- `RiskEventInbox`
+- `RiskEventOutbox`
+- `RiskDeadLetterQueue`
 
 ### Permissions
 
-- None declared
+- `fraud_anomaly_detection.read`
+- `fraud_anomaly_detection.event.write`
+- `fraud_anomaly_detection.anomaly_score.write`
+- `fraud_anomaly_detection.fraud_rule.write`
+- `fraud_anomaly_detection.risk_case.write`
+- `fraud_anomaly_detection.event.consume`
+- `fraud_anomaly_detection.configure`
+- `fraud_anomaly_detection.audit`
 
 ### Configuration Keys
 
-- None declared
+- `database_backend`
+- `event_topic`
+- `retry_limit`
+- `default_region`
+- `supported_regions`
+- `supported_event_types`
+- `identity_dimensions`
+- `default_timezone`
+- `scoring_mode`
+- `workbench_limit`
 
 ### Standard Features
 
-- None declared
+- `risk_signal_ingestion`
+- `anomaly_scoring`
+- `fraud_rule_management`
+- `risk_case_management`
+- `checkout_projection`
+- `payment_projection`
+- `access_policy_projection`
+- `identity_link_analysis`
+- `velocity_checks`
+- `device_and_network_indicators`
+- `behavior_baselines`
+- `loss_exposure_projection`
+- `decision_explanations`
+- `analyst_queue`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_risk_signal_lifecycle`
+- `owned_fraud_schema_boundary`
+- `multi_tenant_risk_isolation`
+- `schema_evolution_resilient_risk_context`
+- `checkout_and_payment_event_ingestion`
+- `access_policy_change_intelligence`
+- `behavior_baseline_anomaly_scoring`
+- `fraud_rule_compilation_and_execution`
+- `risk_case_management_and_escalation`
+- `graph_identity_link_analysis`
+- `probabilistic_risk_scoring`
+- `counterfactual_rule_simulation`
+- `temporal_attack_forecasting`
+- `autonomous_triage_recommendations`
+- `semantic_signal_interpretation`
+- `explainable_risk_decisions`
+- `predictive_loss_exposure`
+- `self_healing_threshold_tuning`
+- `cryptographic_risk_audit_proof`
+- `immutable_case_audit_trail`
+- `dynamic_policy_screening`
+- `automated_model_control_testing`
+- `cross_system_checkout_payment_identity_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
+- `governed_model_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

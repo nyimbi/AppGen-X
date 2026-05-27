@@ -1,8 +1,17 @@
-"""Owned model metadata for the fraud_anomaly_detection PBC."""
+"""Owned model metadata for the Fraud Anomaly Detection PBC."""
+
+from .schema_contract import SCHEMA_CONTRACT
+
 
 PBC_KEY = 'fraud_anomaly_detection'
-OWNED_SCHEMA = {'schema': 'fraud_anomaly_detection', 'table_prefix': 'fraud_anomaly_detection_', 'tables': ({'logical_table': 'risk_signal', 'owned_table': 'fraud_anomaly_detection_risk_signal', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'logical_table': 'anomaly_score', 'owned_table': 'fraud_anomaly_detection_anomaly_score', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'risk_signal_id', 'type': 'integer', 'required': True, 'references': 'fraud_anomaly_detection_risk_signal.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'risk_signal_id', 'target_table': 'fraud_anomaly_detection_risk_signal', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'fraud_rule', 'owned_table': 'fraud_anomaly_detection_fraud_rule', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'risk_signal_id', 'type': 'integer', 'required': True, 'references': 'fraud_anomaly_detection_risk_signal.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'risk_signal_id', 'target_table': 'fraud_anomaly_detection_risk_signal', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'risk_case', 'owned_table': 'fraud_anomaly_detection_risk_case', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'risk_signal_id', 'type': 'integer', 'required': True, 'references': 'fraud_anomaly_detection_risk_signal.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'risk_signal_id', 'target_table': 'fraud_anomaly_detection_risk_signal', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'relationships': ({'field': 'risk_signal_id', 'target_table': 'fraud_anomaly_detection_risk_signal', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'}, {'field': 'risk_signal_id', 'target_table': 'fraud_anomaly_detection_risk_signal', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'}, {'field': 'risk_signal_id', 'target_table': 'fraud_anomaly_detection_risk_signal', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'}), 'allowed_external_access': 'apis_events_or_projections_only'}
-MODELS = ({'class_name': 'FraudAnomalyDetectionRiskSignal', 'table': 'fraud_anomaly_detection_risk_signal', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'class_name': 'FraudAnomalyDetectionAnomalyScore', 'table': 'fraud_anomaly_detection_anomaly_score', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'risk_signal_id', 'type': 'integer', 'required': True, 'references': 'fraud_anomaly_detection_risk_signal.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'risk_signal_id', 'target_table': 'fraud_anomaly_detection_risk_signal', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'FraudAnomalyDetectionFraudRule', 'table': 'fraud_anomaly_detection_fraud_rule', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'risk_signal_id', 'type': 'integer', 'required': True, 'references': 'fraud_anomaly_detection_risk_signal.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'risk_signal_id', 'target_table': 'fraud_anomaly_detection_risk_signal', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'FraudAnomalyDetectionRiskCase', 'table': 'fraud_anomaly_detection_risk_case', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'risk_signal_id', 'type': 'integer', 'required': True, 'references': 'fraud_anomaly_detection_risk_signal.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'risk_signal_id', 'target_table': 'fraud_anomaly_detection_risk_signal', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)})
+OWNED_SCHEMA = {
+    'schema': 'fraud_anomaly_detection',
+    'table_prefix': 'fraud_anomaly_detection_',
+    'tables': SCHEMA_CONTRACT['tables'],
+    'relationships': SCHEMA_CONTRACT['relationships'],
+    'allowed_external_access': 'apis_events_or_projections_only',
+}
+MODELS = SCHEMA_CONTRACT['models']
 
 
 def model_manifest():
@@ -12,20 +21,16 @@ def model_manifest():
     missing_models = tuple(table for table in schema_tables if table not in model_tables)
     external_models = tuple(table for table in model_tables if not table.startswith(f'{PBC_KEY}_'))
     relationship_targets = tuple(
-        relationship.get('target_table')
-        for table in OWNED_SCHEMA.get('tables', ())
-        for relationship in table.get('relationships', ())
-        if relationship.get('target_table')
+        relationship.get('to', '').split('.')[0]
+        for relationship in OWNED_SCHEMA.get('relationships', ())
+        if relationship.get('to')
     )
     cross_pbc_relationships = tuple(
-        target for target in relationship_targets if not target.startswith(f'{PBC_KEY}_')
+        target for target in relationship_targets
+        if target and target not in SCHEMA_CONTRACT['logical_owned_tables']
     )
     return {
-        'ok': bool(schema_tables)
-        and bool(model_tables)
-        and not missing_models
-        and not external_models
-        and not cross_pbc_relationships,
+        'ok': len(schema_tables) >= 14 and bool(model_tables) and not missing_models and not external_models and not cross_pbc_relationships,
         'pbc': PBC_KEY,
         'schema_tables': schema_tables,
         'model_tables': model_tables,
@@ -60,10 +65,5 @@ def smoke_test():
     """Exercise model alignment and model payload creation."""
     manifest = model_manifest()
     first_table = manifest['model_tables'][0] if manifest['model_tables'] else None
-    instance = instantiate_model(first_table, {'id': 1}) if first_table else {'ok': False}
-    return {
-        'ok': manifest['ok'] and instance.get('ok') is True,
-        'manifest': manifest,
-        'instance': instance,
-        'side_effects': (),
-    }
+    instance = instantiate_model(first_table, {'tenant': 'tenant_alpha'}) if first_table else {'ok': False}
+    return {'ok': manifest['ok'] and instance.get('ok') is True, 'manifest': manifest, 'instance': instance, 'side_effects': ()}

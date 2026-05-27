@@ -12,11 +12,14 @@ def test_generated_schema_service_and_release_evidence():
 
     assert SCHEMA_CONTRACT['pbc'] == 'fraud_anomaly_detection'
     assert SCHEMA_CONTRACT['ok'] is True
-    assert SCHEMA_CONTRACT['owned_tables']
+    assert len(SCHEMA_CONTRACT['owned_tables']) >= 14
+    assert 'fraud_anomaly_detection_identity_link' in SCHEMA_CONTRACT['owned_tables']
+    assert 'fraud_anomaly_detection_loss_exposure' in SCHEMA_CONTRACT['owned_tables']
     schema_smoke = schema_contract.smoke_test()
     model_smoke = models.smoke_test()
     assert schema_smoke['ok'] is True
     assert model_smoke['ok'] is True
+    assert len(model_smoke['manifest']['model_tables']) == len(SCHEMA_CONTRACT['owned_tables'])
     assert not schema_smoke['side_effects']
     assert not model_smoke['side_effects']
     assert SERVICE_CONTRACT['pbc'] == 'fraud_anomaly_detection'
@@ -47,6 +50,8 @@ def test_manifest_and_event_contract():
     assert PBC_MANIFEST['pbc'] == 'fraud_anomaly_detection'
     assert PBC_MANIFEST['standard_features']
     assert PBC_MANIFEST['advanced_capabilities']
+    assert len(PBC_MANIFEST['tables']) >= 14
+    assert 'POST /fraud-configuration' in PBC_MANIFEST['apis']
     assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'
     assert EVENT_CONTRACT['outbox_table'].startswith('fraud_anomaly_detection_')
     assert EVENT_CONTRACT['inbox_table'].startswith('fraud_anomaly_detection_')
@@ -103,7 +108,9 @@ def test_service_and_route_surface_are_executable():
     assert operation_contracts['ok'] is True
     assert route_contracts['ok'] is True
     assert route_validation['ok'] is True
-    assert route_contracts['contracts']
+    assert len(route_contracts['contracts']) >= 9
+    assert 'configure_runtime' in operation_contracts['operations']
+    assert 'open_risk_case' in operation_contracts['operations']
     assert all(item['permission'] for item in route_contracts['contracts'])
     assert all(item['event_contract'] == 'AppGen-X' for item in route_contracts['contracts'])
     assert all(item['stream_engine_picker_visible'] is False for item in route_contracts['contracts'])

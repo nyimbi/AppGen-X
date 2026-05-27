@@ -1,16 +1,30 @@
-"""API route contracts for the fraud_anomaly_detection PBC."""
+"""API route contracts for the Fraud Anomaly Detection PBC."""
 
-from .services import FraudAnomalyDetectionService, service_operation_contracts
+from .services import FraudAnomalyDetectionService
+from .services import service_operation_contracts
 
 
-ROUTES = (
-    {'method': 'POST', 'path': '/api/pbc/fraud_anomaly_detection/risk-events', 'handler': 'command_risk_events', 'permission': 'fraud_anomaly_detection.command.1'},
-    {'method': 'POST', 'path': '/api/pbc/fraud_anomaly_detection/fraud-checks', 'handler': 'command_fraud_checks', 'permission': 'fraud_anomaly_detection.command.2'},
-    {'method': 'GET', 'path': '/api/pbc/fraud_anomaly_detection/risk-cases', 'handler': 'query_risk_cases', 'permission': 'fraud_anomaly_detection.query.3'},
+ROUTES = tuple(
+    {
+        'method': contract['method'],
+        'path': contract['path'],
+        'handler': contract['operation'],
+        'permission': contract['permission'],
+    }
+    for contract in service_operation_contracts()['contracts']
 )
 
-
-API_ROUTE_CONTRACTS = ({'method': 'POST', 'path': '/api/pbc/fraud_anomaly_detection/risk-events', 'handler': 'command_risk_events', 'permission': 'fraud_anomaly_detection.command.1', 'operation': 'command_risk_events', 'operation_kind': 'command', 'owned_tables': ('fraud_anomaly_detection_risk_signal', 'fraud_anomaly_detection_anomaly_score', 'fraud_anomaly_detection_fraud_rule', 'fraud_anomaly_detection_risk_case'), 'read_tables': (), 'emitted_event': 'FraudRiskScored', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'fraud_anomaly_detection:command_risk_events:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/fraud_anomaly_detection/fraud-checks', 'handler': 'command_fraud_checks', 'permission': 'fraud_anomaly_detection.command.2', 'operation': 'command_fraud_checks', 'operation_kind': 'command', 'owned_tables': ('fraud_anomaly_detection_risk_signal', 'fraud_anomaly_detection_anomaly_score', 'fraud_anomaly_detection_fraud_rule', 'fraud_anomaly_detection_risk_case'), 'read_tables': (), 'emitted_event': 'RiskCaseOpened', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'fraud_anomaly_detection:command_fraud_checks:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/fraud_anomaly_detection/risk-cases', 'handler': 'query_risk_cases', 'permission': 'fraud_anomaly_detection.query.3', 'operation': 'query_risk_cases', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('fraud_anomaly_detection_risk_signal', 'fraud_anomaly_detection_anomaly_score', 'fraud_anomaly_detection_fraud_rule', 'fraud_anomaly_detection_risk_case'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False})
+API_ROUTE_CONTRACTS = tuple(
+    {
+        **contract,
+        'handler': contract['operation'],
+        'idempotency_required': contract['operation_kind'] == 'command',
+        'idempotency_key': f"fraud_anomaly_detection:{contract['operation']}:idempotency_key" if contract['operation_kind'] == 'command' else None,
+        'shared_table_access': False,
+        'stream_engine_picker_visible': False,
+    }
+    for contract in service_operation_contracts()['contracts']
+)
 
 
 def register_routes(app=None):
@@ -20,18 +34,20 @@ def register_routes(app=None):
 
 def api_route_contracts():
     """Return executable API route contracts with policy and boundary evidence."""
-    service_contracts = service_operation_contracts()['contracts']
-    operation_index = {item['operation']: item for item in service_contracts}
+    service_index = {
+        (item['operation'], item['method'], item['path']): item
+        for item in service_operation_contracts()['contracts']
+    }
     contracts = tuple(
         {
             **contract,
-            'service_operation': operation_index.get(contract['operation']),
+            'service_operation': service_index.get((contract['operation'], contract['method'], contract['path'])),
             'route_id': f"{contract['method']} {contract['path']}",
         }
         for contract in API_ROUTE_CONTRACTS
     )
     return {
-        'ok': bool(contracts)
+        'ok': len(contracts) >= 9
         and all(item['event_contract'] == 'AppGen-X' for item in contracts)
         and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in contracts)
         and all(item['stream_engine_picker_visible'] is False for item in contracts)
@@ -55,11 +71,7 @@ def validate_api_route_contracts():
         or item['service_operation']['path'] != item['path']
         or item['service_operation']['permission'] != item['permission']
     )
-    missing_idempotency = tuple(
-        item['route_id']
-        for item in contracts
-        if item['idempotency_required'] and not item['idempotency_key']
-    )
+    missing_idempotency = tuple(item['route_id'] for item in contracts if item['idempotency_required'] and not item['idempotency_key'])
     invalid_table_scope = tuple(
         item['route_id']
         for item in contracts
@@ -67,10 +79,7 @@ def validate_api_route_contracts():
         if not table.startswith('fraud_anomaly_detection_')
     )
     return {
-        'ok': manifest['ok']
-        and not service_mismatches
-        and not missing_idempotency
-        and not invalid_table_scope,
+        'ok': manifest['ok'] and not service_mismatches and not missing_idempotency and not invalid_table_scope,
         'pbc': 'fraud_anomaly_detection',
         'contracts': contracts,
         'service_mismatches': service_mismatches,
@@ -82,22 +91,13 @@ def validate_api_route_contracts():
 
 def dispatch_route(method, path, payload=None):
     """Dispatch a route contract to its service command without side effects."""
-    route = next(
-        (item for item in ROUTES if item['method'] == method and item['path'] == path),
-        None,
-    )
+    route = next((item for item in ROUTES if item['method'] == method and item['path'] == path), None)
     if route is None:
         return {'ok': False, 'handled': False, 'reason': 'route_not_found'}
     service = FraudAnomalyDetectionService()
     handler = getattr(service, route['handler'])
     result = handler(payload or {})
-    return {
-        'ok': result.get('ok') is True,
-        'handled': True,
-        'route': route,
-        'result': result,
-        'side_effects': (),
-    }
+    return {'ok': result.get('ok') is True, 'handled': True, 'route': route, 'result': result, 'side_effects': ()}
 
 
 def smoke_test():
@@ -107,9 +107,4 @@ def smoke_test():
         return {'ok': False, 'reason': 'no_routes'}
     first = ROUTES[0]
     dispatched = dispatch_route(first['method'], first['path'], {'smoke': True})
-    return {
-        'ok': validation['ok'] and dispatched['ok'],
-        'validation': validation,
-        'dispatch': dispatched,
-        'side_effects': (),
-    }
+    return {'ok': validation['ok'] and dispatched['ok'], 'validation': validation, 'dispatch': dispatched, 'side_effects': ()}
