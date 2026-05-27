@@ -2694,3 +2694,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   release audit for the changed PBC set, per-PBC generation smoke audits,
   source/spec contracts, and restricted legacy-name scan passed. Commit:
   `96bf80f`.
+- Current checkout-processing ownership pass closes a runtime/package artifact
+  drift gap for `checkout_processing`. Runtime-owned pricing, tax, inventory,
+  payment, risk, address-validation, rule, parameter, configuration, outbox,
+  inbox, and dead-letter tables are now materialized in the package schema,
+  model metadata, migration DDL, package manifest, PBC catalog metadata, event
+  contract, and handler/service dead-letter evidence. Focused verification under
+  the low-battery constraint passed: Python compile for touched checkout/PBC
+  modules, `src/pyAppGen/pbcs/checkout_processing/tests/test_contract.py`,
+  checkout `pbc_implementation_release_audit`, checkout generation smoke audit,
+  checkout specification contract, and restricted legacy-name scan. Commit:
+  `47f3108`.
