@@ -44,6 +44,53 @@ def test_generated_schema_service_and_release_evidence():
     assert not release_smoke['side_effects']
 
 
+def test_runtime_owned_tables_have_schema_models_and_migrations():
+    from pathlib import Path
+
+    from .. import models, schema_contract
+    from ..runtime import checkout_processing_runtime_capabilities
+
+    runtime_owned = tuple(checkout_processing_runtime_capabilities()["owned_tables"])
+    expected_owned = tuple(
+        table if table.startswith("checkout_processing_") else f"checkout_processing_{table}"
+        for table in runtime_owned
+    )
+    schema = schema_contract.build_schema_contract()
+    model_manifest = models.model_manifest()
+    migration_sql = Path(__file__).parents[1].joinpath("migrations/001_initial.sql").read_text()
+
+    assert set(expected_owned) <= set(schema["owned_tables"])
+    assert set(expected_owned) <= set(model_manifest["model_tables"])
+    assert all(f"CREATE TABLE {table}" in migration_sql for table in expected_owned)
+    assert schema["database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert not schema_contract.validate_schema_contract()["missing_models"]
+    assert not model_manifest["cross_pbc_relationships"]
+
+
+def test_checkout_handoff_rule_config_and_event_tables_are_first_class():
+    from .. import events, handlers, schema_contract
+
+    schema = schema_contract.build_schema_contract()
+    required_tables = {
+        "checkout_processing_checkout_pricing_handoff",
+        "checkout_processing_checkout_tax_handoff",
+        "checkout_processing_checkout_inventory_reservation_handoff",
+        "checkout_processing_checkout_payment_intent_handoff",
+        "checkout_processing_checkout_risk_screen",
+        "checkout_processing_checkout_address_validation",
+        "checkout_processing_checkout_rule",
+        "checkout_processing_checkout_parameter",
+        "checkout_processing_checkout_configuration",
+        "checkout_processing_appgen_outbox_event",
+        "checkout_processing_appgen_inbox_event",
+        "checkout_processing_dead_letter_event",
+    }
+
+    assert required_tables <= set(schema["owned_tables"])
+    assert events.EVENT_CONTRACT["dead_letter_table"] == "checkout_processing_dead_letter_event"
+    assert set(handlers.handler_manifest()["dead_letter_tables"]) == {"checkout_processing_dead_letter_event"}
+
+
 def test_manifest_and_event_contract():
     from .. import events
 

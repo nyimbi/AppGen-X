@@ -123,10 +123,13 @@ Cross-PBC access is represented through declared APIs, events, or projections:
 - `POST /checkout/tax` maps to `apply_tax_handoff`.
 - `POST /checkout/reservations` maps to `reserve_inventory_handoff`.
 - `POST /checkout/reservations/confirmations` maps to `confirm_inventory_reservation`.
+- `POST /checkout/inventory-confirmations` maps to `confirm_inventory_reservation`.
 - `POST /checkout/risk` maps to `screen_risk`.
 - `POST /checkout/payment-intents` maps to `create_payment_intent`.
 - `POST /checkout/payment-intents/authorizations` maps to `authorize_payment_intent`.
+- `POST /checkout/payment-authorizations` maps to `authorize_payment_intent`.
 - `POST /checkout/payment-intents/captures` maps to `capture_payment_intent`.
+- `POST /checkout/payment-captures` maps to `capture_payment_intent`.
 - `POST /checkout/completions` maps to `complete_checkout`.
 - `POST /checkout-processing/events/inbox` maps to `receive_event`.
 - `GET /checkout-workbench` maps to `build_workbench_view`.
@@ -273,4 +276,3 @@ The `checkout_processing` package exposes a first-class PBC agent and chatbot in
 Document and instruction intake is explicit release evidence. The chatbot can accept uploaded documents, operational notes, or user instructions, extract candidate facts for owned tables such as `checkout_processing_cart`, `checkout_processing_cart_line`, `checkout_processing_checkout_session`, `checkout_processing_promotion_redemption`, validate those facts against package rules, parameters, configuration, and permissions, and return a side-effect-free mutation preview. The preview is not a write. It is a governed plan that references service operations such as , uses AppGen-X event expectations such as `OrderPriced`, `CheckoutCompleted`, rejects foreign tables, and records whether a read-only query or a confirmed command is required. This keeps AI assistance professional, auditable, and bounded to the PBC datastore.
 
 Self-registration is also part of the specification. `registration_plan()`, `package_metadata_manifest()`, `validate_package_metadata()`, and `package_discovery_plan()` must produce a side-effect-free discovery and registration plan for `checkout_processing`. Registration metadata identifies the source package directory, required artifacts, owned datastore, AppGen-X event contract, UI fragments, RBAC descriptors, configuration schema, seed data, tests, and release evidence without mutating the global catalog during discovery. Composition tooling may then register the PBC, merge the `checkout_processing_skills` contribution into the single composed assistant, and expose the workbench UI while preserving owned-table boundaries and declared API/event/projection dependencies.
-
