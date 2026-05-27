@@ -2197,3 +2197,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   service/route/UI/agent smokes, focused package contract tests, source artifact
   contract, implementation release audit, generation smoke audit, specification
   contract, and restricted legacy-name scan all passed. Commit: `22f39f5`.
+- Current mobile/native device API pass adds permission revocation transaction
+  replay as release-gating evidence. Source and generated mobile contracts now
+  replay runtime revocation detection, adapter disable, denied event emission,
+  fallback visibility, recovery action display, permission re-prompt, and
+  adapter re-enable after grant for every device API before runtime delivery.
+  Verified with Python compile, direct source mobile/audit probe, and direct
+  generated form-designer template probe. The broad suite and slow focused
+  nodes are deferred under the low-battery delivery constraint. Commit:
+  `pending`.
