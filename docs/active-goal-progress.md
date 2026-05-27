@@ -2232,7 +2232,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   staging, target package planning, diagnostic normalization, debug preview
   linkage, and rollback with zero persisted writes before runtime delivery.
   Verification is focused under the low-battery delivery constraint. Commit:
-  pending.
+  `ae027db`.
 - Current `notifications` PBC pass promotes declared orchestration surfaces
   into executable package-local operations: campaign creation, notification
   scheduling, transactional request creation, provider route override,
