@@ -24,7 +24,10 @@ from .runtime import checkout_processing_build_release_evidence
 from .runtime import checkout_processing_build_schema_contract
 from .runtime import checkout_processing_build_service_contract
 from .runtime import checkout_processing_build_workbench_view
+from .runtime import checkout_processing_authorize_payment_intent
+from .runtime import checkout_processing_capture_payment_intent
 from .runtime import checkout_processing_complete_checkout
+from .runtime import checkout_processing_confirm_inventory_reservation
 from .runtime import checkout_processing_configure_runtime
 from .runtime import checkout_processing_create_cart
 from .runtime import checkout_processing_create_payment_intent
@@ -143,4 +146,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

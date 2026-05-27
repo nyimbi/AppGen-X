@@ -8829,9 +8829,12 @@ from .pbcs.checkout_processing import CHECKOUT_PROCESSING_OWNED_TABLES  # noqa: 
 from .pbcs.checkout_processing import CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC  # noqa: E402,F401
 from .pbcs.checkout_processing import checkout_processing_add_cart_line  # noqa: E402,F401
 from .pbcs.checkout_processing import checkout_processing_apply_coupon  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_authorize_payment_intent  # noqa: E402,F401
 from .pbcs.checkout_processing import checkout_processing_build_api_contract  # noqa: E402,F401
 from .pbcs.checkout_processing import checkout_processing_build_workbench_view  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_capture_payment_intent  # noqa: E402,F401
 from .pbcs.checkout_processing import checkout_processing_complete_checkout  # noqa: E402,F401
+from .pbcs.checkout_processing import checkout_processing_confirm_inventory_reservation  # noqa: E402,F401
 from .pbcs.checkout_processing import checkout_processing_configure_runtime  # noqa: E402,F401
 from .pbcs.checkout_processing import checkout_processing_create_cart  # noqa: E402,F401
 from .pbcs.checkout_processing import checkout_processing_empty_state  # noqa: E402,F401

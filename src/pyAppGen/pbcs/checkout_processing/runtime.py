@@ -166,8 +166,11 @@ def checkout_processing_runtime_capabilities() -> dict:
             "apply_pricing_handoff",
             "apply_tax_handoff",
             "reserve_inventory_handoff",
+            "confirm_inventory_reservation",
             "screen_risk",
             "create_payment_intent",
+            "authorize_payment_intent",
+            "capture_payment_intent",
             "complete_checkout",
             "run_control_tests",
             "build_api_contract",
@@ -334,6 +337,7 @@ def checkout_processing_runtime_smoke() -> dict:
         },
     )
     state = reservation["state"]
+    state = checkout_processing_confirm_inventory_reservation(state, "chk_100")["state"]
     risk = checkout_processing_screen_risk(
         state,
         "chk_100",
@@ -346,6 +350,8 @@ def checkout_processing_runtime_smoke() -> dict:
         {"payment_intent_id": "pi_100", "tenant": "tenant_alpha", "method": "card", "gateway": "appgen_pay"},
     )
     state = payment["state"]
+    state = checkout_processing_authorize_payment_intent(state, "chk_100", authorization_id="auth_100")["state"]
+    state = checkout_processing_capture_payment_intent(state, "chk_100", capture_id="cap_100")["state"]
     completed = checkout_processing_complete_checkout(state, "chk_100")
     state = completed["state"]
 
@@ -414,6 +420,7 @@ def checkout_processing_runtime_smoke() -> dict:
         {"id": "probabilistic_conversion_scoring", "ok": conversion["ok"] and conversion["conversion_probability"] > 0.5},
         {"id": "probabilistic_checkout_risk_scoring", "ok": risk["risk_score"] < 0.65 and risk["decision"] == "clear"},
         {"id": "real_time_checkout_analytics", "ok": workbench["cart_count"] == 1 and workbench["completed_checkout_count"] == 1},
+        {"id": "checkout_fulfillment_payment_finalization", "ok": workbench["confirmed_inventory_count"] == 1 and workbench["captured_payment_count"] == 1},
         {"id": "counterfactual_promotion_fulfillment_simulation", "ok": simulation["ok"] and simulation["proposed_shipping_option"] == "express"},
         {"id": "temporal_abandonment_forecasting", "ok": forecast["ok"] and forecast["expected_abandonment"] > 0},
         {"id": "autonomous_checkout_exception_resolution", "ok": resolution["action"] == "request_tax_recalculation"},
@@ -425,7 +432,7 @@ def checkout_processing_runtime_smoke() -> dict:
         {"id": "dynamic_checkout_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_checkout_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
         {"id": "cross_system_checkout_federation", "ok": federation["ok"] and "tax" in federation["systems"] and "payment" in federation["systems"]},
-        {"id": "appgen_x_outbox_inbox_eventing", "ok": workbench["outbox_event_count"] == 12 and workbench["inbox_event_count"] == 4},
+        {"id": "appgen_x_outbox_inbox_eventing", "ok": workbench["outbox_event_count"] == 15 and workbench["inbox_event_count"] == 4},
         {"id": "idempotent_inbox_handlers", "ok": duplicate["duplicate"] is True and workbench["processed_event_count"] == 4},
         {"id": "retry_dead_letter_evidence", "ok": invalid_event["dead_lettered"] is True and workbench["dead_letter_count"] == 1},
         {"id": "chaos_tolerant_checkout_operations", "ok": resilience["ok"] and resilience["dead_letter_topic"] == f"{CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC}.dead_letter"},
@@ -447,7 +454,13 @@ def checkout_processing_runtime_smoke() -> dict:
         },
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
-    return {"format": "appgen.checkout-processing-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "blocking_gaps": blocking_gaps}
+    return {
+        "format": "appgen.checkout-processing-runtime-smoke.v1",
+        "ok": not blocking_gaps,
+        "checks": checks,
+        "blocking_gaps": blocking_gaps,
+        "state": state,
+    }
 
 
 def checkout_processing_empty_state() -> dict:
@@ -839,6 +852,47 @@ def checkout_processing_reserve_inventory_handoff(state: dict, session_id: str, 
     return {"ok": reservation["confidence"] >= 0.8, "state": next_state, "reservation": stored}
 
 
+def checkout_processing_confirm_inventory_reservation(state: dict, session_id: str) -> dict:
+    session = state["checkout_sessions"][session_id]
+    cart = state["carts"][session["cart_id"]]
+    reservation_id = session.get("inventory_reservation_id")
+    if not reservation_id or reservation_id not in state["inventory_reservations"]:
+        raise ValueError(f"Checkout Processing inventory reservation missing for session: {session_id}")
+    reservation = state["inventory_reservations"][reservation_id]
+    if reservation["status"] != "reserved":
+        raise ValueError(f"Checkout Processing inventory reservation is not reservable: {reservation_id}")
+    updated_reservation = {
+        **reservation,
+        "status": "confirmed",
+        "confirmation_id": f"inventory_confirm_{session_id}",
+        "audit_proof": _digest({"session_id": session_id, "reservation_id": reservation_id, "lines": reservation.get("lines", ())}),
+    }
+    handoff_id = session.get("inventory_handoff_id")
+    updated_handoff = {
+        **state["inventory_reservation_handoffs"][handoff_id],
+        "status": "confirmed",
+        "confirmation_id": updated_reservation["confirmation_id"],
+    }
+    next_state = {
+        **state,
+        "inventory_reservations": {**state["inventory_reservations"], reservation_id: updated_reservation},
+        "inventory_reservation_handoffs": {
+            **state["inventory_reservation_handoffs"],
+            handoff_id: updated_handoff,
+        },
+        "checkout_sessions": {
+            **state["checkout_sessions"],
+            session_id: {**session, "inventory_status": "confirmed"},
+        },
+    }
+    next_state = _append_event(
+        next_state,
+        "InventoryReservationConfirmed",
+        {"tenant": cart["tenant"], "session_id": session_id, "reservation_id": reservation_id},
+    )
+    return {"ok": True, "state": next_state, "reservation": updated_reservation}
+
+
 def checkout_processing_screen_risk(state: dict, session_id: str, signals: dict) -> dict:
     session = state["checkout_sessions"][session_id]
     cart = state["carts"][session["cart_id"]]
@@ -898,6 +952,84 @@ def checkout_processing_create_payment_intent(state: dict, session_id: str, paym
     return {"ok": True, "state": next_state, "payment_intent": stored}
 
 
+def checkout_processing_authorize_payment_intent(state: dict, session_id: str, *, authorization_id: str) -> dict:
+    session = state["checkout_sessions"][session_id]
+    cart = state["carts"][session["cart_id"]]
+    payment_intent_id = session.get("payment_intent_id")
+    if not payment_intent_id or payment_intent_id not in state["payment_intents"]:
+        raise ValueError(f"Checkout Processing payment intent missing for session: {session_id}")
+    payment_intent = state["payment_intents"][payment_intent_id]
+    if payment_intent["status"] != "requires_capture":
+        raise ValueError(f"Checkout Processing payment intent is not authorizable: {payment_intent_id}")
+    authorized = {
+        **payment_intent,
+        "status": "authorized",
+        "authorization_id": authorization_id,
+        "audit_proof": _digest({"session_id": session_id, "payment_intent_id": payment_intent_id, "authorization_id": authorization_id}),
+    }
+    handoff_id = session.get("payment_handoff_id")
+    updated_handoff = {
+        **state["payment_intent_handoffs"][handoff_id],
+        "status": "authorized",
+        "authorization_id": authorization_id,
+    }
+    next_state = {
+        **state,
+        "payment_intents": {**state["payment_intents"], payment_intent_id: authorized},
+        "payment_intent_handoffs": {**state["payment_intent_handoffs"], handoff_id: updated_handoff},
+        "checkout_sessions": {
+            **state["checkout_sessions"],
+            session_id: {**session, "payment_status": "authorized"},
+        },
+    }
+    next_state = _append_event(
+        next_state,
+        "PaymentIntentAuthorized",
+        {"tenant": cart["tenant"], "session_id": session_id, "payment_intent_id": payment_intent_id, "authorization_id": authorization_id},
+    )
+    return {"ok": True, "state": next_state, "payment_intent": authorized}
+
+
+def checkout_processing_capture_payment_intent(state: dict, session_id: str, *, capture_id: str) -> dict:
+    session = state["checkout_sessions"][session_id]
+    cart = state["carts"][session["cart_id"]]
+    payment_intent_id = session.get("payment_intent_id")
+    if not payment_intent_id or payment_intent_id not in state["payment_intents"]:
+        raise ValueError(f"Checkout Processing payment intent missing for session: {session_id}")
+    payment_intent = state["payment_intents"][payment_intent_id]
+    if payment_intent["status"] != "authorized":
+        raise ValueError(f"Checkout Processing payment intent must be authorized before capture: {payment_intent_id}")
+    captured = {
+        **payment_intent,
+        "status": "captured",
+        "capture_id": capture_id,
+        "captured_amount": payment_intent["amount"],
+        "audit_proof": _digest({"session_id": session_id, "payment_intent_id": payment_intent_id, "capture_id": capture_id}),
+    }
+    handoff_id = session.get("payment_handoff_id")
+    updated_handoff = {
+        **state["payment_intent_handoffs"][handoff_id],
+        "status": "captured",
+        "capture_id": capture_id,
+        "captured_amount": payment_intent["amount"],
+    }
+    next_state = {
+        **state,
+        "payment_intents": {**state["payment_intents"], payment_intent_id: captured},
+        "payment_intent_handoffs": {**state["payment_intent_handoffs"], handoff_id: updated_handoff},
+        "checkout_sessions": {
+            **state["checkout_sessions"],
+            session_id: {**session, "payment_status": "captured"},
+        },
+    }
+    next_state = _append_event(
+        next_state,
+        "PaymentIntentCaptured",
+        {"tenant": cart["tenant"], "session_id": session_id, "payment_intent_id": payment_intent_id, "capture_id": capture_id},
+    )
+    return {"ok": True, "state": next_state, "payment_intent": captured}
+
+
 def checkout_processing_complete_checkout(state: dict, session_id: str) -> dict:
     session = state["checkout_sessions"][session_id]
     cart = state["carts"][session["cart_id"]]
@@ -910,8 +1042,8 @@ def checkout_processing_complete_checkout(state: dict, session_id: str) -> dict:
         pricing_handoff is not None
         and pricing_handoff["status"] == "ready"
         and validation["status"] == "validated"
-        and reservation["status"] == "reserved"
-        and payment_intent["status"] == "requires_capture"
+        and reservation["status"] == "confirmed"
+        and payment_intent["status"] == "captured"
         and risk["decision"] == "clear"
     )
     total = round(cart["subtotal"] - cart["discount_total"] + cart["tax_total"] + cart["shipping_total"], 2)
@@ -1119,6 +1251,14 @@ def checkout_processing_build_api_contract() -> dict:
                 "idempotency_key": "reservation_id",
             },
             {
+                "route": "POST /checkout/reservations/confirmations",
+                "command": "confirm_inventory_reservation",
+                "owned_tables": ("checkout_inventory_reservation_handoff", "checkout_session"),
+                "declared_api_dependencies": ("POST /inventory-reservations",),
+                "requires_permission": "checkout_processing.inventory",
+                "idempotency_key": "session_id:reservation_confirmation",
+            },
+            {
                 "route": "POST /checkout/risk",
                 "command": "screen_risk",
                 "owned_tables": ("checkout_risk_screen",),
@@ -1132,6 +1272,22 @@ def checkout_processing_build_api_contract() -> dict:
                 "declared_api_dependencies": ("POST /payment-intents",),
                 "requires_permission": "checkout_processing.payment",
                 "idempotency_key": "payment_intent_id",
+            },
+            {
+                "route": "POST /checkout/payment-intents/authorizations",
+                "command": "authorize_payment_intent",
+                "owned_tables": ("checkout_payment_intent_handoff", "checkout_session"),
+                "declared_api_dependencies": ("POST /payment-intents",),
+                "requires_permission": "checkout_processing.payment",
+                "idempotency_key": "session_id:authorization_id",
+            },
+            {
+                "route": "POST /checkout/payment-intents/captures",
+                "command": "capture_payment_intent",
+                "owned_tables": ("checkout_payment_intent_handoff", "checkout_session"),
+                "declared_api_dependencies": ("POST /payment-intents",),
+                "requires_permission": "checkout_processing.payment",
+                "idempotency_key": "session_id:capture_id",
             },
             {
                 "route": "POST /checkout/completions",
@@ -1174,7 +1330,15 @@ def checkout_processing_build_api_contract() -> dict:
                 "requires_permission": "checkout_processing.audit",
             },
         ),
-        "declared_catalog_routes": ("POST /carts", "POST /checkout", "POST /checkout/pricing", "POST /coupons"),
+        "declared_catalog_routes": (
+            "POST /carts",
+            "POST /checkout",
+            "POST /checkout/pricing",
+            "POST /checkout/reservations/confirmations",
+            "POST /checkout/payment-intents/authorizations",
+            "POST /checkout/payment-intents/captures",
+            "POST /coupons",
+        ),
         "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
         "events": {"emits": CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES, "consumes": CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES},
         "emits": CHECKOUT_PROCESSING_EMITTED_EVENT_TYPES,
@@ -1277,8 +1441,11 @@ def checkout_processing_build_service_contract() -> dict:
         "apply_pricing_handoff",
         "apply_tax_handoff",
         "reserve_inventory_handoff",
+        "confirm_inventory_reservation",
         "screen_risk",
         "create_payment_intent",
+        "authorize_payment_intent",
+        "capture_payment_intent",
         "complete_checkout",
         "run_control_tests",
         "register_governed_model",
@@ -1286,6 +1453,7 @@ def checkout_processing_build_service_contract() -> dict:
     return {
         "format": "appgen.checkout-processing-service-contract.v1",
         "ok": len(command_methods) >= 18,
+        "pbc": "checkout_processing",
         "transaction_boundary": "checkout_processing_owned_datastore_plus_appgen_outbox",
         "command_methods": command_methods,
         "query_methods": (
@@ -1318,6 +1486,7 @@ def checkout_processing_build_service_contract() -> dict:
             "api_projections": tuple(item for item in CHECKOUT_PROCESSING_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
             "shared_tables": (),
         },
+        "shared_table_access": False,
     }
 
 
@@ -1334,7 +1503,21 @@ def checkout_processing_build_release_evidence() -> dict:
         {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(CHECKOUT_PROCESSING_OWNED_TABLES)},
         {
             "id": "service_command_depth",
-            "ok": service["ok"] and {"apply_pricing_handoff", "complete_checkout", "receive_event"} <= set(service["command_methods"]),
+            "ok": service["ok"]
+            and {
+                "apply_pricing_handoff",
+                "confirm_inventory_reservation",
+                "authorize_payment_intent",
+                "capture_payment_intent",
+                "complete_checkout",
+                "receive_event",
+            }
+            <= set(service["command_methods"]),
+        },
+        {
+            "id": "checkout_finalization_commands",
+            "ok": {"confirm_inventory_reservation", "authorize_payment_intent", "capture_payment_intent"}
+            <= set(service["command_methods"]),
         },
         {
             "id": "api_event_contract",
@@ -1342,7 +1525,16 @@ def checkout_processing_build_release_evidence() -> dict:
         },
         {
             "id": "permissions_cover_commands",
-            "ok": {"apply_pricing_handoff", "complete_checkout", "receive_event", "build_release_evidence"} <= set(permissions["action_permissions"]),
+            "ok": {
+                "apply_pricing_handoff",
+                "confirm_inventory_reservation",
+                "authorize_payment_intent",
+                "capture_payment_intent",
+                "complete_checkout",
+                "receive_event",
+                "build_release_evidence",
+            }
+            <= set(permissions["action_permissions"]),
         },
         {"id": "backend_allowlist", "ok": schema["datastore_backends"] == CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS},
         {
@@ -1355,6 +1547,7 @@ def checkout_processing_build_release_evidence() -> dict:
     return {
         "format": "appgen.checkout-processing-release-evidence.v1",
         "ok": all(check["ok"] for check in checks),
+        "pbc": "checkout_processing",
         "checks": checks,
         "schema": schema,
         "service": service,
@@ -1390,8 +1583,11 @@ def checkout_processing_permissions_contract() -> dict:
             "apply_pricing_handoff": "checkout_processing.pricing",
             "apply_tax_handoff": "checkout_processing.pricing",
             "reserve_inventory_handoff": "checkout_processing.inventory",
+            "confirm_inventory_reservation": "checkout_processing.inventory",
             "screen_risk": "checkout_processing.risk",
             "create_payment_intent": "checkout_processing.payment",
+            "authorize_payment_intent": "checkout_processing.payment",
+            "capture_payment_intent": "checkout_processing.payment",
             "complete_checkout": "checkout_processing.checkout",
             "receive_event": "checkout_processing.event.consume",
             "register_rule": "checkout_processing.configure",
@@ -1558,7 +1754,9 @@ def checkout_processing_build_workbench_view(state: dict, *, tenant: str) -> dic
         "pricing_handoff_count": len(tuple(item for item in state["pricing_handoffs"].values() if item["tenant"] == tenant)),
         "tax_handoff_count": len(tuple(item for item in state["tax_handoffs"].values() if item["tenant"] == tenant)),
         "inventory_handoff_count": len(tuple(item for item in state["inventory_reservation_handoffs"].values() if item["tenant"] == tenant)),
+        "confirmed_inventory_count": len(tuple(item for item in state["inventory_reservation_handoffs"].values() if item["tenant"] == tenant and item["status"] == "confirmed")),
         "payment_handoff_count": len(tuple(item for item in state["payment_intent_handoffs"].values() if item["tenant"] == tenant)),
+        "captured_payment_count": len(tuple(item for item in state["payment_intent_handoffs"].values() if item["tenant"] == tenant and item["status"] == "captured")),
         "configuration_bound": bool(state["configuration"].get("ok")),
         "rule_count": len(tuple(rule for rule in state["rules"].values() if rule["tenant"] == tenant)),
         "parameter_count": len(state["parameters"]),

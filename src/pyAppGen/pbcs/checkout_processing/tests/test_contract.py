@@ -22,6 +22,9 @@ def test_generated_schema_service_and_release_evidence():
     assert SERVICE_CONTRACT['pbc'] == 'checkout_processing'
     assert SERVICE_CONTRACT['ok'] is True
     assert SERVICE_CONTRACT.get('shared_table_access') is False
+    assert 'confirm_inventory_reservation' in SERVICE_CONTRACT['command_methods']
+    assert 'authorize_payment_intent' in SERVICE_CONTRACT['command_methods']
+    assert 'capture_payment_intent' in SERVICE_CONTRACT['command_methods']
     assert RELEASE_EVIDENCE['pbc'] == 'checkout_processing'
     assert RELEASE_EVIDENCE['ok'] is True
 
@@ -104,6 +107,9 @@ def test_service_and_route_surface_are_executable():
     assert route_contracts['ok'] is True
     assert route_validation['ok'] is True
     assert route_contracts['contracts']
+    assert 'command_inventory_confirmations' in operation_contracts['command_operations']
+    assert 'command_payment_authorizations' in operation_contracts['command_operations']
+    assert 'command_payment_captures' in operation_contracts['command_operations']
     assert all(item['permission'] for item in route_contracts['contracts'])
     assert all(item['event_contract'] == 'AppGen-X' for item in route_contracts['contracts'])
     assert all(item['stream_engine_picker_visible'] is False for item in route_contracts['contracts'])
@@ -121,6 +127,24 @@ def test_service_and_route_surface_are_executable():
     assert not route_contracts['side_effects']
     assert not route_validation['side_effects']
     assert not route_smoke['side_effects']
+
+
+def test_runtime_requires_confirmed_inventory_and_captured_payment():
+    from ..runtime import checkout_processing_build_workbench_view
+    from ..runtime import checkout_processing_runtime_smoke
+
+    smoke = checkout_processing_runtime_smoke()
+    assert smoke['ok'] is True
+    state = smoke['state']
+    session = state['checkout_sessions']['chk_100']
+    reservation = state['inventory_reservations'][session['inventory_reservation_id']]
+    payment = state['payment_intents'][session['payment_intent_id']]
+    workbench = checkout_processing_build_workbench_view(state, tenant='tenant_alpha')
+    assert reservation['status'] == 'confirmed'
+    assert payment['status'] == 'captured'
+    assert session['status'] == 'completed'
+    assert workbench['confirmed_inventory_count'] == 1
+    assert workbench['captured_payment_count'] == 1
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():

@@ -51,8 +51,11 @@ Cross-PBC access is represented through declared APIs, events, or projections:
 - Address and shipping option validation using configured options and tenant rule policy.
 - Checkout session lifecycle from initiated through ready, blocked, and completed states.
 - Pricing, tax, inventory, payment, and risk handoff records under checkout-owned tables.
+- Explicit inventory confirmation before order completion, recorded on the
+  owned inventory reservation handoff.
 - Fraud and checkout-risk scoring with clear, review, and block decisions.
-- Payment intent creation using allowed methods and configured capture policy.
+- Payment intent creation, authorization, and capture using allowed methods and
+  configured capture policy.
 - Checkout completion with total verification, emitted completion event, and order handoff payload.
 - AppGen-X inbox/outbox records with idempotency keys, retry attempts, and dead-letter evidence.
 - Rule, parameter, and configuration engines with compiled hashes and explicit supported fields.
@@ -97,7 +100,12 @@ Cross-PBC access is represented through declared APIs, events, or projections:
 - `validate_shipping_address` owns address and shipping validation evidence.
 - `open_checkout_session` creates checkout sessions and order handoff identifiers.
 - `apply_pricing_handoff`, `apply_tax_handoff`, `reserve_inventory_handoff`, `screen_risk`, and `create_payment_intent` own checkout handoff records without sharing foreign tables.
-- `complete_checkout` emits a completion event after payment and risk readiness.
+- `confirm_inventory_reservation` changes the checkout-owned inventory handoff
+  from reserved to confirmed.
+- `authorize_payment_intent` and `capture_payment_intent` advance the owned
+  payment handoff before completion.
+- `complete_checkout` emits a completion event after pricing, tax, confirmed
+  inventory, captured payment, and risk readiness.
 - `build_api_contract` emits descriptor-level API metadata.
 - `build_schema_contract` emits owned schema, relationships, model, and migration evidence for every owned checkout table, including AppGen-X inbox/outbox/dead-letter tables.
 - `build_service_contract` emits command and query surface evidence for checkout orchestration and advanced analytics helpers.
@@ -114,8 +122,11 @@ Cross-PBC access is represented through declared APIs, events, or projections:
 - `POST /checkout/pricing` maps to `apply_pricing_handoff`.
 - `POST /checkout/tax` maps to `apply_tax_handoff`.
 - `POST /checkout/reservations` maps to `reserve_inventory_handoff`.
+- `POST /checkout/reservations/confirmations` maps to `confirm_inventory_reservation`.
 - `POST /checkout/risk` maps to `screen_risk`.
 - `POST /checkout/payment-intents` maps to `create_payment_intent`.
+- `POST /checkout/payment-intents/authorizations` maps to `authorize_payment_intent`.
+- `POST /checkout/payment-intents/captures` maps to `capture_payment_intent`.
 - `POST /checkout/completions` maps to `complete_checkout`.
 - `POST /checkout-processing/events/inbox` maps to `receive_event`.
 - `GET /checkout-workbench` maps to `build_workbench_view`.

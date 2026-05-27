@@ -1,8 +1,29 @@
 """Generated service evidence for the checkout_processing PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.checkout-processing-service-contract.v1', 'ok': True, 'transaction_boundary': 'checkout_processing_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'create_cart', 'add_cart_line', 'apply_coupon', 'validate_shipping_address', 'open_checkout_session', 'apply_pricing_handoff', 'apply_tax_handoff', 'reserve_inventory_handoff', 'screen_risk', 'create_payment_intent', 'complete_checkout', 'run_control_tests', 'register_governed_model'), 'query_methods': ('build_workbench_view', 'build_api_contract', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'score_conversion_probability', 'simulate_counterfactual_checkout', 'forecast_abandonment', 'predictive_risk_score', 'route_checkout', 'generate_checkout_proof', 'screen_checkout_policy', 'federate_checkout_view', 'run_resilience_drill', 'select_carbon_aware_fulfillment', 'optimize_checkout_path', 'allocate_promotion_value', 'detect_checkout_anomaly', 'model_stochastic_checkout_exposure', 'verify_formal_invariants', 'verify_owned_table_boundary'), 'mutates_only': ('cart', 'cart_line', 'checkout_session', 'promotion_redemption', 'checkout_pricing_handoff', 'checkout_tax_handoff', 'checkout_inventory_reservation_handoff', 'checkout_payment_intent_handoff', 'checkout_risk_screen', 'checkout_address_validation', 'checkout_rule', 'checkout_parameter', 'checkout_configuration', 'checkout_processing_appgen_outbox_event', 'checkout_processing_appgen_inbox_event', 'checkout_processing_dead_letter_event'), 'external_dependencies': {'apis': ('POST /inventory-reservations', 'POST /payment-intents', 'POST /tax-calculations', 'GET /product-catalog', 'GET /pricing', 'GET /fraud-screening'), 'events': ('ProductPublished', 'PriceOptimized', 'TaxCalculated'), 'api_projections': ('product_projection', 'price_projection', 'tax_quote_projection', 'inventory_reservation_projection', 'payment_intent_projection', 'customer_projection'), 'shared_tables': ()}, 'pbc': 'checkout_processing', 'shared_table_access': False}
+from __future__ import annotations
+
+from .runtime import checkout_processing_build_service_contract
+
+
+SERVICE_CONTRACT = checkout_processing_build_service_contract()
 
 
 def build_service_contract():
     """Return generated command, eventing, and handler evidence."""
     return dict(SERVICE_CONTRACT)
+
+
+def validate_service_contract():
+    contract = build_service_contract()
+    finalization_commands = {"confirm_inventory_reservation", "authorize_payment_intent", "capture_payment_intent"}
+    return {
+        "ok": contract["ok"]
+        and contract.get("shared_table_access") is False
+        and finalization_commands <= set(contract["command_methods"]),
+        "contract": contract,
+        "side_effects": (),
+    }
+
+
+def smoke_test():
+    return validate_service_contract()
