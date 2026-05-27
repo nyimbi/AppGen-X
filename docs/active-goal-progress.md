@@ -2518,3 +2518,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   service/route/service-contract/release smokes, source artifact contract,
   implementation release audit, generation smoke audit, specification contract,
   and restricted legacy-name scan all passed. Commit: `8c82a8e`.
+- Current visual depth runtime smoke pass exposes required visual design and
+  runtime operations plus collected operations directly from generated visual
+  depth runtime smoke. Generated consumers can now inspect style authoring,
+  timeline export, effect fallback, scene authoring, hit testing, target
+  artifact publication, lifecycle replay, and runtime pipeline operations
+  without unpacking nested validation matrices. Verification is focused under
+  the low-battery delivery constraint. Commit: `2384372`.
