@@ -16565,6 +16565,116 @@ def cross_target_scene_transform_gizmo_contract() -> dict:
     }
 
 
+def cross_target_scene_transform_transaction_replay_contract() -> dict:
+    """Replay 3D transform gizmo edits through undo, inspector sync, and runtime export."""
+    scene = cross_target_scene_hit_test_contract()
+    transforms = cross_target_scene_transform_gizmo_contract()
+    scene_integrity = cross_target_scene_graph_integrity_contract()
+    scene_validation = cross_target_scene_validation_workflow()
+    hit_by_node = {hit["node"]: hit for hit in scene["hit_tests"]}
+    transactions = tuple(
+        {
+            "node": transform["node"],
+            "kind": transform["kind"],
+            "gizmo": transform["gizmo"],
+            "constraint": "material_probe" if transform["kind"] == "material" else "axis_xyz",
+            "operations": (
+                "raycast",
+                "select_node",
+                "snapshot_transform",
+                "show_gizmo",
+                "choose_axis_constraint",
+                "snap_to_grid",
+                "preview_transform",
+                "validate_scene_graph",
+                "commit_transform",
+                "record_group_undo",
+                "sync_inspector",
+                "emit_runtime_transform_plan",
+            ),
+            "before": {
+                "node": transform["node"],
+                "transform": "identity",
+                "inspector_tab": hit_by_node.get(transform["node"], {}).get("inspector_tab", "Properties"),
+            },
+            "after": {
+                "node": transform["node"],
+                "transform": "translated_scaled_rotated",
+                "runtime_plan": f"{transform['node']}.transform-plan.json",
+            },
+            "undo_restores": {
+                "node": transform["node"],
+                "transform": "identity",
+                "inspector_tab": hit_by_node.get(transform["node"], {}).get("inspector_tab", "Properties"),
+            },
+            "rollback": ("restore_transform_snapshot", "rollback_failed_axis_delta", "clear_transform_preview", "sync_inspector"),
+        }
+        for transform in transforms["transforms"]
+    )
+    checks = (
+        {
+            "id": "transform_targets_editable",
+            "ok": bool(transactions)
+            and all({"raycast", "select_node", "show_gizmo", "preview_transform"} <= set(transaction["operations"]) for transaction in transactions),
+        },
+        {
+            "id": "constraints_and_snapping_declared",
+            "ok": all(transaction["constraint"] and "snap_to_grid" in transaction["operations"] for transaction in transactions),
+        },
+        {
+            "id": "validation_before_commit",
+            "ok": scene_validation["ok"]
+            and scene_integrity["ok"]
+            and all(
+                transaction["operations"].index("validate_scene_graph")
+                < transaction["operations"].index("commit_transform")
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "undo_group_recorded",
+            "ok": all("record_group_undo" in transaction["operations"] and transaction["undo_restores"] == transaction["before"] for transaction in transactions),
+        },
+        {
+            "id": "runtime_transform_plan_after_commit",
+            "ok": all(
+                transaction["operations"].index("commit_transform")
+                < transaction["operations"].index("emit_runtime_transform_plan")
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "rollback_scoped_to_failed_delta",
+            "ok": all({"restore_transform_snapshot", "rollback_failed_axis_delta", "sync_inspector"} <= set(transaction["rollback"]) for transaction in transactions),
+        },
+        {
+            "id": "side_effect_free_transform_transaction",
+            "ok": not scene["side_effects"]
+            and not transforms["side_effects"]
+            and not scene_integrity["side_effects"]
+            and not scene_validation["side_effects"],
+        },
+    )
+    return {
+        "format": "appgen.cross-target-scene-transform-transaction-replay.v1",
+        "ok": all(check["ok"] for check in checks),
+        "transactions": transactions,
+        "checks": checks,
+        "guards": (
+            "raycast_selection_before_transform",
+            "axis_constraint_before_preview",
+            "snap_before_commit",
+            "scene_validation_before_commit",
+            "undo_group_before_runtime_plan",
+            "inspector_sync_after_transform",
+            "runtime_transform_plan_after_commit",
+            "failed_axis_delta_rollback_is_scoped",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def cross_target_visual_runtime_replay_contract() -> dict:
     """Replay visual authoring contracts through deterministic runtime delivery."""
     style_resolution = cross_target_style_resolution_workflow()
@@ -16576,6 +16686,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
     scene = cross_target_scene_hit_test_contract()
     scene_material_editor = cross_target_scene_material_editor_transaction_replay_contract()
     transforms = cross_target_scene_transform_gizmo_contract()
+    transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     state = {
         "style_published": False,
         "timeline_samples": 0,
@@ -16584,6 +16695,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
         "material_transactions": 0,
         "scene_hits": 0,
         "inspector_syncs": 0,
+        "transform_transactions": 0,
         "side_effects": (),
     }
     replay = (
@@ -16633,8 +16745,14 @@ def cross_target_visual_runtime_replay_contract() -> dict:
         },
         {
             "phase": "scene_transform_sync",
-            "pipeline": transforms["guards"],
+            "pipeline": transforms["guards"] + transform_transaction["guards"],
             "ok": transforms["ok"] and all("sync_inspector" in item["pipeline"] for item in transforms["transforms"]),
+        },
+        {
+            "phase": "scene_transform_transaction",
+            "pipeline": tuple(check["id"] for check in transform_transaction["checks"]),
+            "ok": transform_transaction["ok"]
+            and {"scene_validation_before_commit", "runtime_transform_plan_after_commit"} <= set(transform_transaction["guards"]),
         },
     )
     state["style_published"] = replay[1]["ok"]
@@ -16644,6 +16762,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
     state["material_transactions"] = len(scene_material_editor["transactions"])
     state["scene_hits"] = len(scene["hit_tests"])
     state["inspector_syncs"] = sum(1 for item in transforms["transforms"] if "sync_inspector" in item["pipeline"])
+    state["transform_transactions"] = len(transform_transaction["transactions"])
     return {
         "format": "appgen.cross-target-visual-runtime-replay-contract.v1",
         "ok": all(item["ok"] for item in replay)
@@ -16653,6 +16772,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
         and state["material_transactions"] > 0
         and state["scene_hits"] > 0
         and state["inspector_syncs"] > 0
+        and state["transform_transactions"] > 0
         and state["side_effects"] == (),
         "replay": replay,
         "final_state": state,
@@ -16664,6 +16784,7 @@ def cross_target_visual_runtime_replay_contract() -> dict:
             "scene_hit_tests_route_to_inspector",
             "scene_material_transactions_emit_runtime_plan",
             "transforms_sync_inspector",
+            "transform_transactions_emit_runtime_plan",
         ),
         "side_effects": (),
     }
@@ -16691,6 +16812,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
     effect_editor_transaction = cross_target_effect_editor_transaction_replay_contract()
     scene_material_editor_transaction = cross_target_scene_material_editor_transaction_replay_contract()
     scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
+    scene_transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     runtime_replay = cross_target_visual_runtime_replay_contract()
     state = {
         "style_layers": len(contract["style_cascade"]["layers"]),
@@ -16704,6 +16826,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
         "material_transactions": len(scene_material_editor_transaction["transactions"]),
         "scene_hits": len(scene_hit_testing["hit_tests"]),
         "transform_syncs": len(scene_transform_gizmos["transforms"]),
+        "transform_transactions": len(scene_transform_transaction["transactions"]),
         "side_effects": (),
     }
     replay = (
@@ -16771,7 +16894,9 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
             "ok": scene_hit_testing["ok"]
             and all("open_inspector" in item["route"] for item in scene_hit_testing["hit_tests"])
             and scene_transform_gizmos["ok"]
-            and all("sync_inspector" in item["pipeline"] for item in scene_transform_gizmos["transforms"]),
+            and scene_transform_transaction["ok"]
+            and all("sync_inspector" in item["pipeline"] for item in scene_transform_gizmos["transforms"])
+            and all("emit_runtime_transform_plan" in transaction["operations"] for transaction in scene_transform_transaction["transactions"]),
         },
         {
             "phase": "runtime_replay",
@@ -16791,6 +16916,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
         and state["material_transactions"] > 0
         and state["scene_hits"] > 0
         and state["transform_syncs"] > 0
+        and state["transform_transactions"] > 0
         and state["side_effects"] == (),
         "replay": replay,
         "final_state": state,
@@ -16803,6 +16929,7 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
             "scene_material_editor_before_runtime",
             "assets_fingerprinted_before_preview",
             "hit_tests_route_to_inspector",
+            "scene_transform_transactions_before_runtime",
             "runtime_replay_matches_designer_state",
         ),
         "side_effects": (),
@@ -16822,6 +16949,7 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
     material_binding = cross_target_material_binding_contract()
     shader_editor = cross_target_shader_material_editor_contract()
     scene_material_editor = cross_target_scene_material_editor_transaction_replay_contract()
+    scene_transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     asset_import = cross_target_asset_import_workflow()
     preview_diff = cross_target_preview_runtime_diff_workflow()
     hit_testing = cross_target_scene_hit_test_contract()
@@ -16899,11 +17027,23 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
             "phase": "route_hit_tests_and_transforms",
             "ok": hit_testing["ok"]
             and transforms["ok"]
+            and scene_transform_transaction["ok"]
             and all("open_inspector" in item["route"] for item in hit_testing["hit_tests"])
             and all("sync_inspector" in item["pipeline"] for item in transforms["transforms"]),
             "evidence": {
                 "hit_tests": tuple(item["node"] for item in hit_testing["hit_tests"]),
                 "transforms": tuple(item["node"] for item in transforms["transforms"]),
+                "transform_transactions": tuple(transaction["node"] for transaction in scene_transform_transaction["transactions"]),
+            },
+        },
+        {
+            "phase": "validate_scene_transform_transactions",
+            "ok": scene_transform_transaction["ok"]
+            and "runtime_transform_plan_after_commit" in scene_transform_transaction["guards"]
+            and all("emit_runtime_transform_plan" in transaction["operations"] for transaction in scene_transform_transaction["transactions"]),
+            "evidence": {
+                "checks": tuple(check["id"] for check in scene_transform_transaction["checks"] if check["ok"]),
+                "transactions": tuple(transaction["node"] for transaction in scene_transform_transaction["transactions"]),
             },
         },
         {
@@ -16949,6 +17089,12 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
             "evidence": replay,
         },
         {
+            "id": "transform_transactions_before_designer_replay",
+            "ok": tuple(item["phase"] for item in replay).index("validate_scene_transform_transactions")
+            < tuple(item["phase"] for item in replay).index("runtime_and_designer_replay"),
+            "evidence": replay,
+        },
+        {
             "id": "side_effect_guards",
             "ok": not style_tokens["side_effects"]
             and not style_inheritance["side_effects"]
@@ -16965,6 +17111,7 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
             and not preview_diff["side_effects"]
             and not hit_testing["side_effects"]
             and not transforms["side_effects"]
+            and not scene_transform_transaction["side_effects"]
             and not runtime_replay["side_effects"]
             and not designer_replay["side_effects"],
             "evidence": (),
@@ -16984,6 +17131,7 @@ def cross_target_visual_lifecycle_replay_contract() -> dict:
             "scene_assets_before_preview_diff",
             "scene_material_editor_before_runtime",
             "hit_tests_before_designer_replay",
+            "transform_transactions_before_designer_replay",
             "no_side_effects",
         ),
         "side_effects": (),
@@ -17226,16 +17374,36 @@ def cross_target_hit_test_transform_operation() -> dict:
     """Return a callable IDE operation for scene hit testing and transform synchronization."""
     hit_testing = cross_target_scene_hit_test_contract()
     transforms = cross_target_scene_transform_gizmo_contract()
+    transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     return {
         "format": "appgen.cross-target-hit-test-transform-operation.v1",
         "ok": hit_testing["ok"]
         and transforms["ok"]
+        and transform_transaction["ok"]
         and all("open_inspector" in item["route"] for item in hit_testing["hit_tests"])
-        and all("sync_inspector" in item["pipeline"] for item in transforms["transforms"]),
-        "pipeline": ("raycast", "select_node", "open_inspector", "preview_transform", "commit_transform", "sync_inspector"),
+        and all("sync_inspector" in item["pipeline"] for item in transforms["transforms"])
+        and all("emit_runtime_transform_plan" in transaction["operations"] for transaction in transform_transaction["transactions"]),
+        "pipeline": (
+            "raycast",
+            "select_node",
+            "open_inspector",
+            "snapshot_transform",
+            "preview_transform",
+            "validate_scene_graph",
+            "commit_transform",
+            "record_group_undo",
+            "sync_inspector",
+            "emit_runtime_transform_plan",
+        ),
         "hit_tests": hit_testing["hit_tests"],
         "transforms": transforms["transforms"],
-        "guards": ("inspector_route_declared", "selection_round_trips", "inspector_sync_after_transform"),
+        "transform_transaction": transform_transaction,
+        "guards": (
+            "inspector_route_declared",
+            "selection_round_trips",
+            "inspector_sync_after_transform",
+            "runtime_transform_plan_after_commit",
+        ),
         "side_effects": (),
     }
 
@@ -17250,6 +17418,7 @@ def cross_target_visual_component_spec_contract() -> dict:
     material_binding = cross_target_material_binding_contract()
     hit_testing = cross_target_scene_hit_test_contract()
     transforms = cross_target_scene_transform_gizmo_contract()
+    transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     preview = cross_target_visual_preview_runtime_contract()
     specs = (
         {
@@ -17347,6 +17516,7 @@ def cross_target_visual_component_spec_contract() -> dict:
         and material_binding["ok"]
         and hit_testing["ok"]
         and transforms["ok"]
+        and transform_transaction["ok"]
         and all(set(spec["runtime_artifacts"]) <= runtime_artifacts for spec in specs)
         and all({"properties", "design_tools", "validation"} <= set(spec) for spec in specs),
         "specs": specs,
@@ -17354,7 +17524,12 @@ def cross_target_visual_component_spec_contract() -> dict:
         "timeline_track_count": len(timeline["tracks"]),
         "effect_count": len(effect_stack["stack"]),
         "scene_node_count": len(scene["scene_graph"]),
-        "guards": ("visual_specs_cover_style_animation_effects_scene", "runtime_artifacts_declared", "hit_tests_and_transforms_bound"),
+        "guards": (
+            "visual_specs_cover_style_animation_effects_scene",
+            "runtime_artifacts_declared",
+            "hit_tests_and_transforms_bound",
+            "transform_transactions_bound",
+        ),
         "side_effects": (),
     }
 
@@ -17472,6 +17647,7 @@ def cross_target_visual_readiness_contract() -> dict:
     timeline_editor = cross_target_timeline_editor_transaction_replay_contract()
     effect_editor = cross_target_effect_editor_transaction_replay_contract()
     scene_material_editor = cross_target_scene_material_editor_transaction_replay_contract()
+    scene_transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     lifecycle = cross_target_visual_lifecycle_replay_contract()
     runtime_package = cross_target_visual_runtime_package_contract()
     component_specs = cross_target_visual_component_spec_contract()
@@ -17509,10 +17685,13 @@ def cross_target_visual_readiness_contract() -> dict:
         },
         {
             "phase": "bind_hit_tests_and_components",
-            "pipeline": hit_test["pipeline"] + component_validation["pipeline"],
+            "pipeline": hit_test["pipeline"] + component_validation["pipeline"] + tuple(check["id"] for check in scene_transform_transaction["checks"]),
             "ok": hit_test["ok"]
+            and scene_transform_transaction["ok"]
             and component_validation["ok"]
             and "sync_inspector" in hit_test["pipeline"]
+            and "emit_runtime_transform_plan" in hit_test["pipeline"]
+            and "runtime_transform_plan_after_commit" in scene_transform_transaction["guards"]
             and "verify_runtime_artifacts" in component_validation["pipeline"],
         },
         {
@@ -17543,6 +17722,7 @@ def cross_target_visual_readiness_contract() -> dict:
         {"id": "effect_editor_transaction_ready", "ok": phases[2]["ok"], "evidence": effect_editor},
         {"id": "scene_assets_ready", "ok": phases[3]["ok"], "evidence": {"scene": scene, "asset_import": asset_import}},
         {"id": "scene_material_editor_transaction_ready", "ok": phases[3]["ok"], "evidence": scene_material_editor},
+        {"id": "scene_transform_transaction_ready", "ok": phases[4]["ok"], "evidence": scene_transform_transaction},
         {"id": "hit_test_component_ready", "ok": phases[4]["ok"] and component_specs["ok"], "evidence": {"hit_test": hit_test, "component_specs": component_specs}},
         {"id": "runtime_designer_replay_ready", "ok": phases[5]["ok"], "evidence": {"runtime": runtime_replay, "designer": designer_replay, "lifecycle": lifecycle}},
         {"id": "runtime_package_ready", "ok": phases[6]["ok"], "evidence": runtime_package},
@@ -17578,6 +17758,7 @@ def cross_target_visual_readiness_contract() -> dict:
             "timeline_editor_transactions": len(timeline_editor["transactions"]),
             "effect_editor_transactions": len(effect_editor["transactions"]),
             "scene_material_editor_transactions": len(scene_material_editor["transactions"]),
+            "scene_transform_transactions": len(scene_transform_transaction["transactions"]),
         },
         "guards": (
             "style_before_animation",
@@ -17586,6 +17767,7 @@ def cross_target_visual_readiness_contract() -> dict:
             "effect_editor_before_runtime_replay",
             "effects_before_scene_assets",
             "scene_material_editor_before_runtime_replay",
+            "scene_transform_transaction_before_runtime_replay",
             "scene_assets_before_runtime_replay",
             "runtime_replay_before_package",
             "side_effect_free_readiness",
@@ -17619,6 +17801,7 @@ def cross_target_visual_depth_workbench() -> dict:
     effect_editor_transaction = cross_target_effect_editor_transaction_replay_contract()
     scene_material_editor_transaction = cross_target_scene_material_editor_transaction_replay_contract()
     scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
+    scene_transform_transaction = cross_target_scene_transform_transaction_replay_contract()
     runtime_replay = cross_target_visual_runtime_replay_contract()
     designer_transaction_replay = cross_target_visual_designer_transaction_replay_contract()
     lifecycle_replay = cross_target_visual_lifecycle_replay_contract()
@@ -17840,9 +18023,31 @@ def cross_target_visual_depth_workbench() -> dict:
             "evidence": scene_transform_gizmos,
         },
         {
+            "id": "scene_transform_transaction_replay",
+            "ok": scene_transform_transaction["ok"]
+            and {
+                "transform_targets_editable",
+                "constraints_and_snapping_declared",
+                "validation_before_commit",
+                "undo_group_recorded",
+                "runtime_transform_plan_after_commit",
+                "rollback_scoped_to_failed_delta",
+                "side_effect_free_transform_transaction",
+            }
+            <= {check["id"] for check in scene_transform_transaction["checks"] if check["ok"]}
+            and {
+                "scene_validation_before_commit",
+                "runtime_transform_plan_after_commit",
+                "failed_axis_delta_rollback_is_scoped",
+            }
+            <= set(scene_transform_transaction["guards"])
+            and not scene_transform_transaction["side_effects"],
+            "evidence": scene_transform_transaction,
+        },
+        {
             "id": "visual_runtime_replay",
             "ok": runtime_replay["ok"]
-            and {"timeline_samples_match_preview", "transforms_sync_inspector"} <= set(runtime_replay["guards"])
+            and {"timeline_samples_match_preview", "transforms_sync_inspector", "transform_transactions_emit_runtime_plan"} <= set(runtime_replay["guards"])
             and not runtime_replay["side_effects"],
             "evidence": runtime_replay,
         },
@@ -18004,6 +18209,7 @@ def cross_target_visual_depth_workbench() -> dict:
                 "effects_ready",
                 "effect_editor_transaction_ready",
                 "scene_material_editor_transaction_ready",
+                "scene_transform_transaction_ready",
                 "scene_assets_ready",
                 "hit_test_component_ready",
                 "runtime_designer_replay_ready",
@@ -18043,6 +18249,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "effect_editor_transaction": effect_editor_transaction,
         "scene_material_editor_transaction": scene_material_editor_transaction,
         "scene_transform_gizmos": scene_transform_gizmos,
+        "scene_transform_transaction": scene_transform_transaction,
         "runtime_replay": runtime_replay,
         "designer_transaction_replay": designer_transaction_replay,
         "lifecycle_replay": lifecycle_replay,
@@ -18260,6 +18467,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and {
                 "visual_runtime_replay",
                 "scene_material_editor_transaction_replay",
+                "scene_transform_transaction_replay",
                 "visual_lifecycle_replay",
                 "visual_component_modules",
                 "visual_design_modules",
@@ -18746,6 +18954,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "timeline_editor_transaction_ready",
                 "effects_ready",
                 "effect_editor_transaction_ready",
+                "scene_transform_transaction_ready",
                 "scene_assets_ready",
                 "hit_test_component_ready",
                 "runtime_designer_replay_ready",
@@ -18758,6 +18967,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "timeline_editor_transaction_replay",
                 "effect_editor_transaction_replay",
                 "scene_material_editor_transaction_replay",
+                "scene_transform_transaction_replay",
                 "visual_lifecycle_replay",
             } <= {
                 check["id"] for check in visual["checks"] if check["ok"]
@@ -18779,12 +18989,14 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "effects_ready",
                 "effect_editor_transaction_ready",
                 "scene_material_editor_transaction_ready",
+                "scene_transform_transaction_ready",
                 "scene_assets_ready",
                 "runtime_designer_replay_ready",
                 "runtime_package_ready",
                 "timeline_editor_transaction_replay",
                 "effect_editor_transaction_replay",
                 "scene_material_editor_transaction_replay",
+                "scene_transform_transaction_replay",
                 "visual_component_modules",
                 "visual_component_module_tests",
                 "visual_design_modules",
@@ -21244,6 +21456,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "effect_editor_transaction_replay",
         "scene_material_editor_transaction_replay",
         "scene_transform_gizmos",
+        "scene_transform_transaction_replay",
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
         "visual_lifecycle_replay",
@@ -21278,6 +21491,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "effects_ready",
         "effect_editor_transaction_ready",
         "scene_material_editor_transaction_ready",
+        "scene_transform_transaction_ready",
         "scene_assets_ready",
         "hit_test_component_ready",
         "runtime_designer_replay_ready",
