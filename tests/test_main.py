@@ -6456,6 +6456,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_runtime_pipeline_tests_ready",
         "visual_runtime_pipeline_runtime_replay_matrix_ready",
         "runtime_package_ready",
+        "runtime_artifact_transaction_ready",
         "runtime_replay_ready",
     } <= set(visual_depth_smoke["passing_checks"])
     visual_asset_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_visual_runtime_assets")
@@ -19166,8 +19167,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_runtime_pipeline_tests_ready",
         "visual_runtime_pipeline_runtime_replay_matrix_ready",
         "runtime_package_ready",
+        "runtime_artifact_transaction_ready",
         "runtime_replay_ready",
     } <= set(visual_depth_runtime_smoke["checks"])
+    assert visual_depth_runtime_smoke["validation"]["manifest"]["runtime_artifact_transaction"]["ok"] is True
+    assert {
+        "write_artifact_manifest",
+        "verify_bundle_integrity",
+        "record_rollback_snapshot",
+        "publish_target_artifact",
+    } <= set(visual_depth_runtime_smoke["validation"]["replay"]["artifact_operations"])
     visual_module_manifest = visual_depth_runtime.visual_component_module_manifest()
     visual_test_manifest = visual_depth_runtime.visual_component_test_module_manifest()
     visual_design_manifest = visual_depth_runtime.visual_design_ide_module_manifest()

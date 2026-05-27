@@ -31047,6 +31047,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "visual_runtime_pipeline_tests_ready",
         "visual_runtime_pipeline_runtime_replay_matrix_ready",
         "runtime_package_ready",
+        "runtime_artifact_transaction_ready",
         "runtime_replay_ready",
     )
     required_visual_asset_runtime_checks = (
