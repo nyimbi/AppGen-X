@@ -2714,3 +2714,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   checkout `pbc_implementation_release_audit`, checkout generation smoke audit,
   checkout specification contract, and restricted legacy-name scan. Commit:
   `47f3108`.
+- Current AP automation ownership pass closes the AppGen-X event table drift for
+  `ap_automation`. Runtime-owned `ap_automation_outbox`,
+  `ap_automation_inbox`, and `ap_automation_dead_letter` are now materialized in
+  package schema, model metadata, migration DDL, package manifest, PBC catalog
+  metadata, event contract, handler evidence, and service metadata. Focused
+  verification under the low-battery constraint passed: Python compile for
+  touched AP/PBC modules, `src/pyAppGen/pbcs/ap_automation/tests/test_contract.py`,
+  AP schema/model/capability/event/handler smokes, AP implementation release
+  audit, AP generation smoke audit, AP specification contract, direct
+  runtime/schema gap check, and restricted legacy-name scan. Commit: `b4e499e`.
