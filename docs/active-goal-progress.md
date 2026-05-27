@@ -2315,4 +2315,4 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   validation before preview, preview before commit, runtime camera/light plan
   export, undo grouping, and snapshot-scoped rollback before visual runtime,
   designer, lifecycle, and readiness gates can pass. Verification is focused
-  under the low-battery delivery constraint. Commit: pending.
+  under the low-battery delivery constraint. Commit: `381e2d5`.
