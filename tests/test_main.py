@@ -15452,6 +15452,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/form-designer/pascal-runtime.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
+    assert form_designer.rad_parity_workbench()["ok"] is True
     generated_rad = form_designer.rad_parity_workbench(generated_form_designer_paths)
     assert generated_rad["format"] == "appgen.generated-rad-parity-workbench.v1"
     assert generated_rad["ok"] is True
