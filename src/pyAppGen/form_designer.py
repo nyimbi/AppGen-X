@@ -17759,6 +17759,7 @@ def cross_target_scene_hit_test_contract() -> dict:
         "format": "appgen.cross-target-scene-hit-test-contract.v1",
         "ok": bool(hit_tests) and all("open_inspector" in item["route"] for item in hit_tests),
         "hit_tests": hit_tests,
+        "operations": ("hit_test_scene", "raycast", "select_node", "open_inspector", "show_gizmo"),
         "guards": ("stable_node_ids", "selection_round_trips", "inspector_route_declared", "gizmo_matches_node_kind"),
         "side_effects": (),
     }
@@ -19958,6 +19959,97 @@ def cross_target_visual_depth_workbench() -> dict:
     visual_runtime_pipeline_test_artifacts = visual_runtime_pipeline_test_module_file_manifest()
     visual_runtime_pipeline_replay = visual_runtime_pipeline_replay_matrix()
     readiness = cross_target_visual_readiness_contract()
+    required_visual_depth_operations = (
+        "inspect_effective_value",
+        "override_for_state",
+        "add_keyframe",
+        "scrub_preview",
+        "export_runtime_timeline",
+        "validate_budget",
+        "assign_fallback",
+        "add_mesh",
+        "assign_material",
+        "position_camera",
+        "edit_light",
+        "fingerprint_asset",
+        "write_asset_manifest",
+        "generate_fallback_thumbnail",
+        "edit_uniform",
+        "compile_fallback",
+        "hit_test_scene",
+        "translate",
+        "rotate",
+        "scale",
+        "runtime_replay",
+        "runtime_replay_matches_designer_state",
+        "style_before_timeline",
+        "target_artifacts_complete",
+        "runtime_artifact_transaction_replay",
+        "author_style",
+        "author_timeline",
+        "validate_effect_stack",
+        "author_scene",
+        "import_visual_asset",
+        "hit_test_transform",
+        "validate_visual_component",
+        "run_visual_component_scenario",
+    )
+
+    def _collect_strings(value) -> tuple[str, ...]:
+        if isinstance(value, str):
+            return (value,)
+        if isinstance(value, dict):
+            return tuple(text for item in value.values() for text in _collect_strings(item))
+        if isinstance(value, (tuple, list, set)):
+            return tuple(text for item in value for text in _collect_strings(item))
+        return ()
+
+    visual_depth_operations = tuple(
+        dict.fromkeys(
+            tuple(actionable_operations["operations"])
+            + tuple(text for operation in actionable_operations["operations"].values() for text in _collect_strings(operation))
+            + tuple(
+                text
+                for surface in (
+                    contract,
+                    style_resolution,
+                    timeline_playback,
+                    effect_render,
+                    scene_validation,
+                    asset_import,
+                    asset_import_transaction,
+                    preview_diff,
+                    style_tokens,
+                    style_transaction,
+                    timeline_scrub,
+                    effect_budget,
+                    scene_integrity,
+                    material_binding,
+                    timeline_runtime_export,
+                    shader_material_editor,
+                    scene_hit_testing,
+                    style_inheritance_trace,
+                    timeline_interpolation,
+                    timeline_editor_transaction,
+                    effect_fallback_matrix,
+                    effect_editor_transaction,
+                    camera_light_transaction,
+                    scene_material_editor_transaction,
+                    scene_transform_gizmos,
+                    scene_transform_transaction,
+                    runtime_replay,
+                    designer_transaction_replay,
+                    lifecycle_replay,
+                    runtime_package,
+                    runtime_artifact_transaction,
+                    visual_design_replay,
+                    visual_runtime_pipeline_replay,
+                    readiness,
+                )
+                for text in _collect_strings(surface)
+            )
+        )
+    )
     checks = (
         {
             "id": "style_resources",
@@ -20396,6 +20488,12 @@ def cross_target_visual_depth_workbench() -> dict:
             "evidence": actionable_operations,
         },
         {
+            "id": "visual_depth_operations_exposed",
+            "ok": set(required_visual_depth_operations) <= set(visual_depth_operations),
+            "required": required_visual_depth_operations,
+            "passing": tuple(operation for operation in required_visual_depth_operations if operation in visual_depth_operations),
+        },
+        {
             "id": "visual_readiness_contract",
             "ok": readiness["ok"]
             and {
@@ -20468,6 +20566,8 @@ def cross_target_visual_depth_workbench() -> dict:
         "visual_runtime_pipeline_test_artifacts": visual_runtime_pipeline_test_artifacts,
         "visual_runtime_pipeline_replay": visual_runtime_pipeline_replay,
         "actionable_operations": actionable_operations,
+        "required_visual_depth_operations": required_visual_depth_operations,
+        "visual_depth_operations": visual_depth_operations,
         "readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),

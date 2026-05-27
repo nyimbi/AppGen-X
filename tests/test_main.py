@@ -3357,8 +3357,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_runtime_pipeline_module_tests",
         "visual_runtime_pipeline_replay_matrix",
         "actionable_visual_operations",
+        "visual_depth_operations_exposed",
         "visual_readiness_contract",
     } == {check["id"] for check in visual_depth["checks"]}
+    assert {
+        "inspect_effective_value",
+        "add_keyframe",
+        "validate_budget",
+        "assign_material",
+        "write_asset_manifest",
+        "compile_fallback",
+        "hit_test_transform",
+        "runtime_artifact_transaction_replay",
+    } <= set(visual_depth["required_visual_depth_operations"]) <= set(visual_depth["visual_depth_operations"])
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
     assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
     assert {"add_mesh", "assign_material"} <= {item["op"] for item in visual_depth["contract"]["scene_authoring"]["operations"]}
@@ -19047,8 +19058,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_runtime_pipeline_module_tests",
         "visual_runtime_pipeline_replay_matrix",
         "actionable_visual_operations",
+        "visual_depth_operations_exposed",
         "visual_readiness_contract",
     } == {check["id"] for check in generated_visual_depth["checks"]}
+    assert {
+        "inspect_effective_value",
+        "add_keyframe",
+        "validate_budget",
+        "assign_material",
+        "write_asset_manifest",
+        "compile_fallback",
+        "hit_test_transform",
+        "runtime_artifact_transaction_replay",
+    } <= set(generated_visual_depth["required_visual_depth_operations"]) <= set(generated_visual_depth["visual_depth_operations"])
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
     assert generated_visual_depth["style_tokens"]["ok"] is True

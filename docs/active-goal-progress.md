@@ -2655,6 +2655,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   guards, and runtime/designer ordering without unpacking nested workbench
   payloads. Verification is focused under the low-battery delivery constraint.
   Commit: `e372371`.
+- Current visual-depth workbench pass exposes required visual design/runtime
+  operations plus collected operation, pipeline, guard, transaction, component,
+  and package names directly from source and generated workbench contracts.
+  Generated consumers can now inspect style overrides, timeline authoring,
+  effect fallback, scene authoring, material/shader edits, asset import, hit
+  testing, runtime package publishing, visual component scenarios, and
+  runtime/designer ordering without unpacking nested payloads. Verification is
+  focused under the low-battery delivery constraint. Commit: pending.
 - Current PBC specification gate pass makes first-class agent/chatbot skills
   and side-effect-free self-registration explicit specification requirements.
   All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,
