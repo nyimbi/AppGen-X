@@ -1,170 +1,148 @@
 """Command service layer for the payroll_engine PBC."""
 
-EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.payroll_engine.events', 'inbox_topic': 'pbc.payroll_engine.inbox', 'outbox_table': 'payroll_engine_appgen_outbox_event', 'inbox_table': 'payroll_engine_appgen_inbox_event', 'dead_letter_table': 'payroll_engine_appgen_dead_letter_event', 'emitted': ({'event_type': 'PayrollPosted', 'schema': 'payroll_engine.payroll_posted.emitted.v1', 'topic': 'pbc.payroll_engine.events', 'outbox_table': 'payroll_engine_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'PayrollFilingPrepared', 'schema': 'payroll_engine.payroll_filing_prepared.emitted.v1', 'topic': 'pbc.payroll_engine.events', 'outbox_table': 'payroll_engine_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'LaborHoursApproved', 'schema': 'payroll_engine.labor_hours_approved.consumed.v1', 'topic': 'pbc.payroll_engine.inbox', 'inbox_table': 'payroll_engine_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'TaxCalculated', 'schema': 'payroll_engine.tax_calculated.consumed.v1', 'topic': 'pbc.payroll_engine.inbox', 'inbox_table': 'payroll_engine_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'payroll_engine_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'payroll_engine_appgen_inbox_event'}}
+from __future__ import annotations
+
+from .events import EVENT_CONTRACT
+from .runtime import payroll_engine_build_api_contract
+from .runtime import payroll_engine_build_service_contract
+
+PBC_KEY = "payroll_engine"
 
 
-OPERATION_CONTRACTS = ({'operation': 'command_payroll_runs', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payroll-runs', 'permission': 'payroll_engine.command.1', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollPosted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payroll_runs_id_workers', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payroll-runs/{id}/workers', 'permission': 'payroll_engine.command.2', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollFilingPrepared', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payroll_runs_id_payslips', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payroll-runs/{id}/payslips', 'permission': 'payroll_engine.command.3', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollPosted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payslips_id_deductions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payslips/{id}/deductions', 'permission': 'payroll_engine.command.4', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollFilingPrepared', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payslips_id_benefits', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payslips/{id}/benefits', 'permission': 'payroll_engine.command.5', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollPosted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payroll_runs_id_post', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payroll-runs/{id}/post', 'permission': 'payroll_engine.command.6', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollFilingPrepared', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payroll_filings', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payroll-filings', 'permission': 'payroll_engine.command.7', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollPosted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payroll_events_inbox', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payroll/events/inbox', 'permission': 'payroll_engine.command.8', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollFilingPrepared', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payroll_rules', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payroll-rules', 'permission': 'payroll_engine.command.9', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollPosted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payroll_parameters', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payroll-parameters', 'permission': 'payroll_engine.command.10', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollFilingPrepared', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_payroll_configuration', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/payroll_engine/payroll-configuration', 'permission': 'payroll_engine.command.11', 'owned_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'read_tables': (), 'emitted_event': 'PayrollPosted', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_payslips', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/payroll_engine/payslips', 'permission': 'payroll_engine.query.12', 'owned_tables': (), 'read_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_payroll_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/payroll_engine/payroll-workbench', 'permission': 'payroll_engine.query.13', 'owned_tables': (), 'read_tables': ('payroll_engine_payroll_calendar', 'payroll_engine_payroll_period', 'payroll_engine_payroll_pay_group', 'payroll_engine_payroll_legal_entity', 'payroll_engine_payroll_run', 'payroll_engine_payroll_run_worker', 'payroll_engine_payroll_run_approval', 'payroll_engine_payroll_run_lock', 'payroll_engine_worker_projection', 'payroll_engine_worker_pay_profile', 'payroll_engine_worker_bank_instruction', 'payroll_engine_labor_hours', 'payroll_engine_labor_hours_line', 'payroll_engine_earning_code', 'payroll_engine_earning_calculation', 'payroll_engine_overtime_calculation', 'payroll_engine_gross_pay_component', 'payroll_engine_payslip', 'payroll_engine_payslip_line', 'payroll_engine_tax_withholding_projection', 'payroll_engine_deduction', 'payroll_engine_deduction_rule', 'payroll_engine_deduction_arrear', 'payroll_engine_garnishment_order', 'payroll_engine_benefit_allocation', 'payroll_engine_benefit_plan', 'payroll_engine_employer_contribution', 'payroll_engine_net_pay_distribution', 'payroll_engine_payment_instruction', 'payroll_engine_payment_batch_projection', 'payroll_engine_journal_request_projection', 'payroll_engine_tax_wage_base_projection', 'payroll_engine_payroll_filing', 'payroll_engine_payroll_filing_line', 'payroll_engine_payroll_correction', 'payroll_engine_retro_adjustment', 'payroll_engine_off_cycle_payment', 'payroll_engine_payroll_exception', 'payroll_engine_payroll_policy_screening', 'payroll_engine_payroll_audit_trace', 'payroll_engine_payroll_proof', 'payroll_engine_payroll_federation_projection', 'payroll_engine_payroll_carbon_batch_window', 'payroll_engine_payroll_batch_optimization', 'payroll_engine_payroll_cash_allocation', 'payroll_engine_payroll_anomaly_signal', 'payroll_engine_payroll_risk_model', 'payroll_engine_payroll_cash_forecast', 'payroll_engine_payroll_parsed_instruction', 'payroll_engine_payroll_seed_data', 'payroll_engine_payroll_schema_extension', 'payroll_engine_payroll_control_assertion', 'payroll_engine_payroll_governed_model', 'payroll_engine_payroll_rule', 'payroll_engine_payroll_parameter', 'payroll_engine_payroll_configuration', 'payroll_engine_payroll_engine_appgen_outbox_event', 'payroll_engine_payroll_engine_appgen_inbox_event', 'payroll_engine_payroll_engine_dead_letter_event'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
-
-
-def service_operation_contracts():
-    """Return route-bound service operation contracts for this PBC."""
-    operations = tuple(item['operation'] for item in OPERATION_CONTRACTS)
-    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'command')
-    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'query')
+def _route_to_contract(route: dict) -> dict:
+    method, path = route["route"].split(" ", 1)
+    operation = route.get("command") or route.get("query")
+    operation_kind = "command" if route.get("command") else "query"
+    owned_tables = tuple(
+        table if table.startswith(f"{PBC_KEY}_") else f"{PBC_KEY}_{table}"
+        for table in route.get("owned_tables", ())
+    )
+    is_command = operation_kind == "command"
     return {
-        'ok': bool(OPERATION_CONTRACTS)
-        and all(item['event_contract'] == 'AppGen-X' for item in OPERATION_CONTRACTS)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in OPERATION_CONTRACTS)
-        and all(item['emitted_event'] for item in command_contracts)
-        and all(item['owned_tables'] and not item['read_tables'] for item in command_contracts)
-        and all(item['emitted_event'] is None for item in query_contracts)
-        and all(item['read_tables'] and not item['owned_tables'] for item in query_contracts),
-        'pbc': 'payroll_engine',
-        'operations': operations,
-        'command_operations': tuple(item['operation'] for item in command_contracts),
-        'query_operations': tuple(item['operation'] for item in query_contracts),
-        'contracts': OPERATION_CONTRACTS,
-        'side_effects': (),
+        "operation": operation,
+        "operation_kind": operation_kind,
+        "method": method,
+        "path": path,
+        "permission": route["requires_permission"],
+        "owned_tables": owned_tables if is_command else (),
+        "read_tables": () if is_command else owned_tables,
+        "emitted_event": tuple(route.get("emits", ())),
+        "consumed_event": tuple(route.get("consumes", ())),
+        "idempotency_key": route.get("idempotency_key"),
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
     }
 
 
-def operation_plan(operation_name, payload=None):
-    """Plan one service operation without mutating state."""
-    contract = next((item for item in OPERATION_CONTRACTS if item['operation'] == operation_name), None)
-    if contract is None:
-        return {'ok': False, 'reason': 'unknown_operation', 'operation': operation_name, 'side_effects': ()}
-    supplied = dict(payload or {})
-    table_scope = contract['owned_tables'] or contract['read_tables']
+OPERATION_CONTRACTS = tuple(_route_to_contract(route) for route in payroll_engine_build_api_contract()["routes"])
+
+
+def service_operation_contracts() -> dict:
+    """Return route-bound service operation contracts for this PBC."""
+    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "command")
+    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "query")
+    runtime_service = payroll_engine_build_service_contract()
     return {
-        'ok': bool(table_scope) and contract['event_contract'] == 'AppGen-X',
-        'pbc': 'payroll_engine',
-        'operation': operation_name,
-        'operation_kind': contract['operation_kind'],
-        'route': {'method': contract['method'], 'path': contract['path']},
-        'permission': contract['permission'],
-        'owned_tables': contract['owned_tables'],
-        'read_tables': contract['read_tables'],
-        'emitted_event': contract['emitted_event'],
-        'payload_keys': tuple(sorted(supplied)),
-        'transaction_boundary': contract['transaction_boundary'],
-        'event_contract': contract['event_contract'],
-        'side_effects': (),
+        "ok": runtime_service["ok"]
+        and bool(OPERATION_CONTRACTS)
+        and all(item["event_contract"] == "AppGen-X" for item in OPERATION_CONTRACTS)
+        and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in OPERATION_CONTRACTS)
+        and all(item["owned_tables"] or item["consumed_event"] for item in command_contracts)
+        and all(item["read_tables"] for item in query_contracts),
+        "pbc": PBC_KEY,
+        "operations": tuple(item["operation"] for item in OPERATION_CONTRACTS),
+        "command_operations": tuple(item["operation"] for item in command_contracts),
+        "query_operations": tuple(item["operation"] for item in query_contracts),
+        "contracts": OPERATION_CONTRACTS,
+        "runtime_service_contract": runtime_service,
+        "side_effects": (),
+    }
+
+
+def operation_plan(operation_name: str, payload: dict | None = None) -> dict:
+    """Plan one service operation without mutating state."""
+    contract = next((item for item in OPERATION_CONTRACTS if item["operation"] == operation_name), None)
+    if contract is None:
+        return {"ok": False, "reason": "unknown_operation", "operation": operation_name, "side_effects": ()}
+    supplied = dict(payload or {})
+    return {
+        "ok": bool(contract["owned_tables"] or contract["read_tables"] or contract["consumed_event"]),
+        "pbc": PBC_KEY,
+        "operation": operation_name,
+        "operation_kind": contract["operation_kind"],
+        "route": {"method": contract["method"], "path": contract["path"]},
+        "permission": contract["permission"],
+        "owned_tables": contract["owned_tables"],
+        "read_tables": contract["read_tables"],
+        "emitted_event": contract["emitted_event"],
+        "consumed_event": contract["consumed_event"],
+        "idempotency_key": contract["idempotency_key"],
+        "payload_keys": tuple(sorted(supplied)),
+        "transaction_boundary": contract["transaction_boundary"],
+        "event_contract": contract["event_contract"],
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
     }
 
 
 class PayrollEngineService:
     """Side-effect-free generated command facade."""
 
-    def _execute(self, operation_name, payload):
+    def execute_operation(self, operation_name: str, payload: dict | None = None) -> dict:
         plan = operation_plan(operation_name, payload)
-        operation_kind = plan.get('operation_kind')
         result = {
-            'ok': plan['ok'],
-            'pbc': 'payroll_engine',
-            'operation': operation_name,
-            'operation_kind': operation_kind,
-            'payload': dict(payload),
-            'operation_contract': plan,
-            'transaction_boundary': plan.get('transaction_boundary'),
-            'side_effects': (),
+            "ok": plan["ok"],
+            "pbc": PBC_KEY,
+            "operation": operation_name,
+            "operation_kind": plan.get("operation_kind"),
+            "payload": dict(payload or {}),
+            "operation_contract": plan,
+            "transaction_boundary": plan.get("transaction_boundary"),
+            "side_effects": (),
         }
-        if operation_kind == 'command':
-            event_type = plan.get('emitted_event')
-            result.update({
-                'command': operation_name,
-                'read_only': False,
-                'outbox_table': EVENT_CONTRACT['outbox_table'],
-                'emits': (event_type,) if event_type else (),
-            })
-        elif operation_kind == 'query':
-            result.update({
-                'query': operation_name,
-                'read_only': True,
-                'outbox_table': None,
-                'emits': (),
-            })
+        if plan.get("operation_kind") == "command":
+            result.update(
+                {
+                    "command": operation_name,
+                    "read_only": False,
+                    "outbox_table": EVENT_CONTRACT["outbox_table"],
+                    "emits": plan.get("emitted_event", ()),
+                }
+            )
+        elif plan.get("operation_kind") == "query":
+            result.update({"query": operation_name, "read_only": True, "outbox_table": None, "emits": ()})
         return result
 
-    def _command(self, command_name, payload):
-        return self._execute(command_name, payload)
-
-    def _query(self, query_name, payload):
-        return self._execute(query_name, payload)
-
-    def command_payroll_runs(self, payload=None):
-        return self._command('command_payroll_runs', payload or {})
-
-    def command_payroll_runs_id_workers(self, payload=None):
-        return self._command('command_payroll_runs_id_workers', payload or {})
-
-    def command_payroll_runs_id_payslips(self, payload=None):
-        return self._command('command_payroll_runs_id_payslips', payload or {})
-
-    def command_payslips_id_deductions(self, payload=None):
-        return self._command('command_payslips_id_deductions', payload or {})
-
-    def command_payslips_id_benefits(self, payload=None):
-        return self._command('command_payslips_id_benefits', payload or {})
-
-    def command_payroll_runs_id_post(self, payload=None):
-        return self._command('command_payroll_runs_id_post', payload or {})
-
-    def command_payroll_filings(self, payload=None):
-        return self._command('command_payroll_filings', payload or {})
-
-    def command_payroll_events_inbox(self, payload=None):
-        return self._command('command_payroll_events_inbox', payload or {})
-
-    def command_payroll_rules(self, payload=None):
-        return self._command('command_payroll_rules', payload or {})
-
-    def command_payroll_parameters(self, payload=None):
-        return self._command('command_payroll_parameters', payload or {})
-
-    def command_payroll_configuration(self, payload=None):
-        return self._command('command_payroll_configuration', payload or {})
-
-    def query_payslips(self, payload=None):
-        return self._query('query_payslips', payload or {})
-
-    def query_payroll_workbench(self, payload=None):
-        return self._query('query_payroll_workbench', payload or {})
+    def __getattr__(self, operation_name: str):
+        if operation_name in service_operation_contracts()["operations"]:
+            return lambda payload=None: self.execute_operation(operation_name, payload or {})
+        raise AttributeError(operation_name)
 
 
-def service_operation_manifest():
+def service_operation_manifest() -> dict:
     """Return the executable service operation surface."""
-    service = PayrollEngineService()
-    operations = tuple(
-        name
-        for name in dir(service)
-        if (name.startswith('command_') or name.startswith('query_'))
-        and callable(getattr(service, name))
-    )
+    contracts = service_operation_contracts()
     return {
-        'ok': bool(operations) and service_operation_contracts()['ok'],
-        'pbc': 'payroll_engine',
-        'service_class': service.__class__.__name__,
-        'operations': operations,
-        'command_operations': service_operation_contracts()['command_operations'],
-        'query_operations': service_operation_contracts()['query_operations'],
-        'operation_contracts': service_operation_contracts()['contracts'],
-        'transaction_boundary': 'owned_datastore_plus_outbox',
-        'outbox_table': EVENT_CONTRACT['outbox_table'],
-        'side_effects': (),
+        "ok": contracts["ok"],
+        "pbc": PBC_KEY,
+        "service_class": PayrollEngineService.__name__,
+        "operations": contracts["operations"],
+        "command_operations": contracts["command_operations"],
+        "query_operations": contracts["query_operations"],
+        "operation_contracts": contracts["contracts"],
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "outbox_table": EVENT_CONTRACT["outbox_table"],
+        "side_effects": (),
     }
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Execute one side-effect-free service operation through the facade."""
     manifest = service_operation_manifest()
     service = PayrollEngineService()
-    operation = manifest['operations'][0] if manifest['operations'] else None
-    result = getattr(service, operation)({'smoke': True}) if operation else {'ok': False}
-    return {
-        'ok': manifest['ok']
-        and result.get('ok') is True
-        and result.get('operation_contract', {}).get('ok') is True,
-        'manifest': manifest,
-        'result': result,
-        'side_effects': (),
-    }
+    operation = manifest["operations"][0] if manifest["operations"] else None
+    result = service.execute_operation(operation, {"smoke": True}) if operation else {"ok": False}
+    return {"ok": manifest["ok"] and result.get("ok") is True, "manifest": manifest, "result": result, "side_effects": ()}
