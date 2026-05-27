@@ -205,8 +205,14 @@ This contract is exposed through `implementation_contract()` as
 - `POST /sla-policies`
 - `POST /tickets`
 - `POST /assignments`
+- `POST /ticket-interactions`
+- `POST /customer-updates`
+- `POST /field-service-handoffs`
 - `POST /escalations`
 - `POST /resolutions`
+- `POST /csat-responses`
+- `POST /tickets/reopen`
+- `POST /tickets/close`
 - `POST /service-ticketing/events/inbox`
 - `GET /service-ticketing/workbench`
 - `GET /service-ticketing/schema-contract`
@@ -236,9 +242,14 @@ Emitted events:
 - `SupportCaseOpened`
 - `TicketAssigned`
 - `FieldServiceHandoffPrepared`
+- `TicketInteractionRecorded`
+- `CustomerUpdateSent`
 - `SlaBreached`
 - `ResolutionRecorded`
 - `CsatSurveyRequested`
+- `CsatResponseRecorded`
+- `SupportCaseReopened`
+- `SupportCaseClosed`
 - `CustomerUpdated`
 
 Handlers require `event_id`, record inbox evidence, deduplicate already
@@ -361,8 +372,14 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /sla-policies`
 - `POST /tickets`
 - `POST /assignments`
+- `POST /ticket-interactions`
+- `POST /customer-updates`
+- `POST /field-service-handoffs`
 - `POST /escalations`
 - `POST /resolutions`
+- `POST /csat-responses`
+- `POST /tickets/reopen`
+- `POST /tickets/close`
 - `POST /service-ticketing/events/inbox`
 - `GET /service-ticketing/workbench`
 - `GET /service-ticketing/schema-contract`
@@ -374,9 +391,14 @@ This appendix is generated from the package manifest and is release-gated so the
 - `SupportCaseOpened`
 - `TicketAssigned`
 - `FieldServiceHandoffPrepared`
+- `TicketInteractionRecorded`
+- `CustomerUpdateSent`
 - `SlaBreached`
 - `ResolutionRecorded`
 - `CsatSurveyRequested`
+- `CsatResponseRecorded`
+- `SupportCaseReopened`
+- `SupportCaseClosed`
 - `CustomerUpdated`
 
 ### Consumed Events

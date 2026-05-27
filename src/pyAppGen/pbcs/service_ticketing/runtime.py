@@ -159,9 +159,14 @@ SERVICE_TICKETING_EMITTED_EVENT_TYPES = (
     "SupportCaseOpened",
     "TicketAssigned",
     "FieldServiceHandoffPrepared",
+    "TicketInteractionRecorded",
+    "CustomerUpdateSent",
     "SlaBreached",
     "ResolutionRecorded",
     "CsatSurveyRequested",
+    "CsatResponseRecorded",
+    "SupportCaseReopened",
+    "SupportCaseClosed",
     "CustomerUpdated",
 )
 
@@ -419,8 +424,14 @@ def service_ticketing_runtime_capabilities() -> dict:
             "create_sla_policy",
             "open_ticket",
             "assign_ticket",
+            "record_ticket_interaction",
+            "send_customer_update",
+            "prepare_field_service_handoff",
             "record_escalation",
             "resolve_ticket",
+            "record_csat_response",
+            "reopen_ticket",
+            "close_ticket",
             "run_control_tests",
             "build_api_contract",
             "build_schema_contract",
@@ -588,15 +599,58 @@ def service_ticketing_runtime_smoke() -> dict:
             "skills": ("technical", "billing"),
         },
     )["state"]
+    state = service_ticketing_record_ticket_interaction(
+        state,
+        {
+            "ticket_id": "case_alpha",
+            "interaction_type": "agent_response",
+            "actor": "agent_alpha",
+            "summary": "Confirmed impact, collected diagnostics, and shared recovery ETA",
+            "channel": "chat",
+        },
+    )["state"]
+    state = service_ticketing_send_customer_update(
+        state,
+        {
+            "ticket_id": "case_alpha",
+            "update_type": "progress_notice",
+            "message": "Engineering is applying the recovery profile and monitoring checkout health.",
+        },
+    )["state"]
     state = service_ticketing_record_escalation(
         state,
         "case_alpha",
         reason="critical_revenue_impact",
     )["state"]
+    state = service_ticketing_prepare_field_service_handoff(
+        state,
+        {
+            "ticket_id": "case_alpha",
+            "handoff_reason": "executive_success_review",
+            "target_team": "customer_success_engineering",
+        },
+    )["state"]
     state = service_ticketing_resolve_ticket(
         state,
         "case_alpha",
         resolution="Checkout profile repaired",
+    )["state"]
+    pending_survey = next(iter(state["csat_responses"]))
+    state = service_ticketing_record_csat_response(
+        state,
+        {
+            "survey_id": pending_survey,
+            "score": 5,
+            "comment": "Fast recovery and clear communication",
+        },
+    )["state"]
+    state = service_ticketing_reopen_ticket(state, {"ticket_id": "case_alpha", "reason": "customer_requested_follow_up"})["state"]
+    state = service_ticketing_close_ticket(
+        state,
+        {
+            "ticket_id": "case_alpha",
+            "closure_reason": "customer_confirmed_stable",
+        },
     )["state"]
     control = service_ticketing_run_control_tests(state)
     table_stakes = {
@@ -1033,6 +1087,119 @@ def service_ticketing_assign_ticket(state: dict, command: dict) -> dict:
     return {"ok": True, "state": runtime, "assignment": assignment}
 
 
+def service_ticketing_record_ticket_interaction(state: dict, command: dict) -> dict:
+    required = {"ticket_id", "interaction_type", "actor", "summary", "channel"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Service Ticketing interaction fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    ticket = state["support_tickets"].get(command["ticket_id"])
+    if not ticket:
+        raise ValueError(f"Unknown Service Ticketing ticket: {command['ticket_id']}")
+    if command["channel"] not in state["configuration"]["channels"]:
+        raise ValueError(f"Unsupported Service Ticketing channel: {command['channel']}")
+    runtime = _copy_state(state)
+    current_ticket = runtime["support_tickets"][command["ticket_id"]]
+    interaction = _record_interaction(
+        runtime,
+        current_ticket,
+        interaction_type=command["interaction_type"],
+        actor=command["actor"],
+        summary=command["summary"],
+        channel=command["channel"],
+    )
+    _record_automation_insight(
+        runtime,
+        current_ticket,
+        insight_type="interaction_quality",
+        score=round(min(1.0, max(0.1, len(command["summary"]) / 240)), 4),
+        recommended_action="keep_customer_updated",
+        explanation="Interaction capture updates the case timeline and service quality evidence.",
+    )
+    _emit(
+        runtime,
+        "TicketInteractionRecorded",
+        current_ticket["tenant"],
+        {
+            "ticket_id": current_ticket["ticket_id"],
+            "interaction_id": interaction["interaction_id"],
+            "interaction_type": interaction["interaction_type"],
+        },
+    )
+    _record_audit(runtime, "ticket_interaction", interaction["interaction_id"], "record_ticket_interaction", interaction)
+    return {"ok": True, "state": runtime, "interaction": interaction}
+
+
+def service_ticketing_send_customer_update(state: dict, command: dict) -> dict:
+    required = {"ticket_id", "update_type", "message"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Service Ticketing customer update fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    ticket = state["support_tickets"].get(command["ticket_id"])
+    if not ticket:
+        raise ValueError(f"Unknown Service Ticketing ticket: {command['ticket_id']}")
+    runtime = _copy_state(state)
+    current_ticket = runtime["support_tickets"][command["ticket_id"]]
+    update = _record_customer_update(
+        runtime,
+        current_ticket,
+        update_type=command["update_type"],
+        message=command["message"],
+    )
+    interaction = _record_interaction(
+        runtime,
+        current_ticket,
+        interaction_type="customer_update",
+        actor="system",
+        summary=command["message"],
+        channel=update["delivery_channel"],
+    )
+    _emit(runtime, "CustomerUpdateSent", current_ticket["tenant"], update)
+    _emit(
+        runtime,
+        "CustomerUpdated",
+        current_ticket["tenant"],
+        {
+            "customer_id": current_ticket["customer_id"],
+            "ticket_id": current_ticket["ticket_id"],
+            "update_id": update["update_id"],
+            "event": command["update_type"],
+        },
+    )
+    _record_audit(runtime, "customer_update", update["update_id"], "send_customer_update", update)
+    return {"ok": True, "state": runtime, "customer_update": update, "interaction": interaction}
+
+
+def service_ticketing_prepare_field_service_handoff(state: dict, command: dict) -> dict:
+    required = {"ticket_id", "handoff_reason", "target_team"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Service Ticketing field service handoff fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    ticket = state["support_tickets"].get(command["ticket_id"])
+    if not ticket:
+        raise ValueError(f"Unknown Service Ticketing ticket: {command['ticket_id']}")
+    runtime = _copy_state(state)
+    current_ticket = runtime["support_tickets"][command["ticket_id"]]
+    handoff = _record_field_service_handoff(
+        runtime,
+        ticket=current_ticket,
+        assignment_id=current_ticket.get("assignment_id"),
+        handoff_reason=command["handoff_reason"],
+        target_team=command["target_team"],
+    )
+    _record_interaction(
+        runtime,
+        current_ticket,
+        interaction_type="field_service_handoff",
+        actor="system",
+        summary=f"Prepared handoff to {command['target_team']}: {command['handoff_reason']}",
+        channel=current_ticket["channel"],
+    )
+    return {"ok": True, "state": runtime, "handoff": handoff}
+
+
 def service_ticketing_record_escalation(state: dict, ticket_id: str, *, reason: str) -> dict:
     _require_appgen_x_event_contract(state)
     ticket = state["support_tickets"].get(ticket_id)
@@ -1140,6 +1307,171 @@ def service_ticketing_resolve_ticket(state: dict, ticket_id: str, *, resolution:
     return {"ok": True, "state": runtime, "ticket": resolved}
 
 
+def service_ticketing_record_csat_response(state: dict, command: dict) -> dict:
+    required = {"survey_id", "score", "comment"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Service Ticketing CSAT response fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    survey = state["csat_responses"].get(command["survey_id"])
+    if not survey:
+        raise ValueError(f"Unknown Service Ticketing CSAT survey: {command['survey_id']}")
+    score = int(command["score"])
+    if not 1 <= score <= 5:
+        raise ValueError("Service Ticketing CSAT score must be between 1 and 5")
+    ticket = state["support_tickets"].get(survey["ticket_id"])
+    if not ticket:
+        raise ValueError(f"Unknown Service Ticketing ticket: {survey['ticket_id']}")
+    runtime = _copy_state(state)
+    response = {
+        **runtime["csat_responses"][command["survey_id"]],
+        "status": "received",
+        "score": score,
+        "comment": command["comment"],
+        "audit_hash": _digest({"survey_id": command["survey_id"], "score": score, "comment": command["comment"]}),
+    }
+    runtime["csat_responses"][command["survey_id"]] = response
+    current_ticket = runtime["support_tickets"][survey["ticket_id"]]
+    _record_interaction(
+        runtime,
+        current_ticket,
+        interaction_type="csat_response",
+        actor="customer",
+        summary=command["comment"],
+        channel=current_ticket["channel"],
+    )
+    _record_automation_insight(
+        runtime,
+        current_ticket,
+        insight_type="customer_satisfaction",
+        score=round(score / 5, 4),
+        recommended_action="close_case" if score >= 4 else "manager_follow_up",
+        explanation=command["comment"],
+    )
+    _emit(
+        runtime,
+        "CsatResponseRecorded",
+        current_ticket["tenant"],
+        {
+            "ticket_id": current_ticket["ticket_id"],
+            "survey_id": command["survey_id"],
+            "score": score,
+        },
+    )
+    _record_audit(runtime, "csat_response", command["survey_id"], "record_csat_response", response)
+    return {"ok": True, "state": runtime, "csat_response": response}
+
+
+def service_ticketing_reopen_ticket(state: dict, command: dict) -> dict:
+    required = {"ticket_id", "reason"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Service Ticketing reopen fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    ticket = state["support_tickets"].get(command["ticket_id"])
+    if not ticket:
+        raise ValueError(f"Unknown Service Ticketing ticket: {command['ticket_id']}")
+    runtime = _copy_state(state)
+    reopened = {
+        **runtime["support_tickets"][command["ticket_id"]],
+        "status": "reopened",
+        "reopen_reason": command["reason"],
+        "audit_proof": _digest({"ticket_id": command["ticket_id"], "reason": command["reason"]}),
+    }
+    runtime["support_tickets"][command["ticket_id"]] = reopened
+    _update_case_lifecycle(runtime, reopened, stage="reopened", status="reopened")
+    _record_interaction(
+        runtime,
+        reopened,
+        interaction_type="ticket_reopened",
+        actor=command.get("actor", "system"),
+        summary=command["reason"],
+        channel=reopened["channel"],
+    )
+    customer_update = _record_customer_update(
+        runtime,
+        reopened,
+        update_type="reopen_notice",
+        message=f"Ticket {command['ticket_id']} was reopened: {command['reason']}",
+    )
+    _record_automation_insight(
+        runtime,
+        reopened,
+        insight_type="reopen_risk",
+        score=max(0.5, reopened["breach_risk"]),
+        recommended_action="manager_follow_up",
+        explanation=command["reason"],
+    )
+    _emit(runtime, "SupportCaseReopened", reopened["tenant"], {"ticket_id": reopened["ticket_id"], "reason": command["reason"]})
+    _emit(
+        runtime,
+        "CustomerUpdated",
+        reopened["tenant"],
+        {
+            "customer_id": reopened["customer_id"],
+            "ticket_id": reopened["ticket_id"],
+            "update_id": customer_update["update_id"],
+            "event": "support_case_reopened",
+        },
+    )
+    _record_audit(runtime, "support_ticket", reopened["ticket_id"], "reopen_ticket", reopened)
+    return {"ok": True, "state": runtime, "ticket": reopened}
+
+
+def service_ticketing_close_ticket(state: dict, command: dict) -> dict:
+    required = {"ticket_id", "closure_reason"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Service Ticketing close fields: {tuple(sorted(missing))}")
+    _require_appgen_x_event_contract(state)
+    ticket = state["support_tickets"].get(command["ticket_id"])
+    if not ticket:
+        raise ValueError(f"Unknown Service Ticketing ticket: {command['ticket_id']}")
+    runtime = _copy_state(state)
+    closed = {
+        **runtime["support_tickets"][command["ticket_id"]],
+        "status": "closed",
+        "closure_reason": command["closure_reason"],
+        "audit_proof": _digest({"ticket_id": command["ticket_id"], "closure_reason": command["closure_reason"]}),
+    }
+    runtime["support_tickets"][command["ticket_id"]] = closed
+    assignment_id = closed.get("assignment_id")
+    if assignment_id in runtime["case_assignments"]:
+        runtime["case_assignments"][assignment_id]["status"] = "closed"
+    for escalation in runtime["escalation_events"].values():
+        if escalation["ticket_id"] == command["ticket_id"]:
+            escalation["status"] = "closed"
+    _update_case_lifecycle(runtime, closed, stage="closed", status="closed")
+    _record_interaction(
+        runtime,
+        closed,
+        interaction_type="ticket_closed",
+        actor=command.get("actor", "system"),
+        summary=command["closure_reason"],
+        channel=closed["channel"],
+    )
+    customer_update = _record_customer_update(
+        runtime,
+        closed,
+        update_type="closure_notice",
+        message=f"Ticket {command['ticket_id']} was closed: {command['closure_reason']}",
+    )
+    _emit(runtime, "SupportCaseClosed", closed["tenant"], {"ticket_id": closed["ticket_id"], "closure_reason": command["closure_reason"]})
+    _emit(
+        runtime,
+        "CustomerUpdated",
+        closed["tenant"],
+        {
+            "customer_id": closed["customer_id"],
+            "ticket_id": closed["ticket_id"],
+            "update_id": customer_update["update_id"],
+            "event": "support_case_closed",
+        },
+    )
+    _record_audit(runtime, "support_ticket", closed["ticket_id"], "close_ticket", closed)
+    return {"ok": True, "state": runtime, "ticket": closed}
+
+
 def service_ticketing_run_control_tests(state: dict) -> dict:
     hash_chain_valid = all(event["hash"] == _state_event(event["event_type"], event["key"], event["payload"])["hash"] for event in state["events"])
     checks = {
@@ -1198,8 +1530,9 @@ def service_ticketing_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "format": "appgen.service-ticketing-workbench-view.v1",
         "tenant": tenant,
         "ticket_count": len(tickets),
-        "open_ticket_count": len(tuple(item for item in tickets if item["status"] in {"open", "assigned", "escalated"})),
-        "resolved_ticket_count": len(tuple(item for item in tickets if item["status"] == "resolved")),
+        "open_ticket_count": len(tuple(item for item in tickets if item["status"] in {"open", "assigned", "escalated", "reopened"})),
+        "resolved_ticket_count": len(tuple(item for item in tickets if item["status"] in {"resolved", "closed"})),
+        "closed_ticket_count": len(tuple(item for item in tickets if item["status"] == "closed")),
         "queue_count": len(state.get("service_queues", {})),
         "priority_count": len(state.get("service_priorities", {})),
         "sla_policy_count": len(policies),
@@ -1289,6 +1622,30 @@ def service_ticketing_build_api_contract() -> dict:
             "idempotency_key": "assignment_id",
         },
         {
+            "route": "POST /ticket-interactions",
+            "command": "record_ticket_interaction",
+            "owned_tables": ("ticket_interaction", "support_ticket", "automation_insight"),
+            "emits": ("TicketInteractionRecorded",),
+            "requires_permission": "service_ticketing.ticket.write",
+            "idempotency_key": "ticket_id:interaction_type:summary",
+        },
+        {
+            "route": "POST /customer-updates",
+            "command": "send_customer_update",
+            "owned_tables": ("customer_update", "ticket_interaction", "support_ticket"),
+            "emits": ("CustomerUpdateSent", "CustomerUpdated"),
+            "requires_permission": "service_ticketing.customer.update",
+            "idempotency_key": "ticket_id:update_type:message",
+        },
+        {
+            "route": "POST /field-service-handoffs",
+            "command": "prepare_field_service_handoff",
+            "owned_tables": ("field_service_handoff", "support_ticket"),
+            "emits": ("FieldServiceHandoffPrepared",),
+            "requires_permission": "service_ticketing.escalation.write",
+            "idempotency_key": "ticket_id:target_team:handoff_reason",
+        },
+        {
             "route": "POST /escalations",
             "command": "record_escalation",
             "owned_tables": ("escalation_event", "support_ticket", "field_service_handoff", "automation_insight"),
@@ -1303,6 +1660,30 @@ def service_ticketing_build_api_contract() -> dict:
             "emits": ("ResolutionRecorded", "CsatSurveyRequested", "CustomerUpdated"),
             "requires_permission": "service_ticketing.ticket.write",
             "idempotency_key": "ticket_id",
+        },
+        {
+            "route": "POST /csat-responses",
+            "command": "record_csat_response",
+            "owned_tables": ("csat_response", "ticket_interaction", "automation_insight"),
+            "emits": ("CsatResponseRecorded",),
+            "requires_permission": "service_ticketing.customer.update",
+            "idempotency_key": "survey_id",
+        },
+        {
+            "route": "POST /tickets/reopen",
+            "command": "reopen_ticket",
+            "owned_tables": ("support_ticket", "case_lifecycle_state", "ticket_interaction", "customer_update", "automation_insight"),
+            "emits": ("SupportCaseReopened", "CustomerUpdated"),
+            "requires_permission": "service_ticketing.ticket.write",
+            "idempotency_key": "ticket_id:reason",
+        },
+        {
+            "route": "POST /tickets/close",
+            "command": "close_ticket",
+            "owned_tables": ("support_ticket", "case_lifecycle_state", "ticket_interaction", "customer_update"),
+            "emits": ("SupportCaseClosed", "CustomerUpdated"),
+            "requires_permission": "service_ticketing.ticket.write",
+            "idempotency_key": "ticket_id:closure_reason",
         },
         {
             "route": "POST /service-ticketing/events/inbox",
@@ -1450,8 +1831,14 @@ def service_ticketing_build_service_contract() -> dict:
         "create_sla_policy",
         "open_ticket",
         "assign_ticket",
+        "record_ticket_interaction",
+        "send_customer_update",
+        "prepare_field_service_handoff",
         "record_escalation",
         "resolve_ticket",
+        "record_csat_response",
+        "reopen_ticket",
+        "close_ticket",
         "run_control_tests",
         "verify_owned_table_boundary",
     )
@@ -1668,15 +2055,64 @@ def service_ticketing_build_release_evidence() -> dict:
             "skills": ("technical", "field_service"),
         },
     )["state"]
+    state = service_ticketing_record_ticket_interaction(
+        state,
+        {
+            "ticket_id": "case_release",
+            "interaction_type": "agent_response",
+            "actor": "agent_release",
+            "summary": "Validated the outage scope and shared dispatch ETA",
+            "channel": "chat",
+        },
+    )["state"]
+    state = service_ticketing_send_customer_update(
+        state,
+        {
+            "ticket_id": "case_release",
+            "update_type": "progress_notice",
+            "message": "Specialist dispatch is active and the service team is monitoring recovery.",
+        },
+    )["state"]
     state = service_ticketing_record_escalation(
         state,
         "case_release",
         reason="onsite_dispatch_required",
     )["state"]
+    state = service_ticketing_prepare_field_service_handoff(
+        state,
+        {
+            "ticket_id": "case_release",
+            "handoff_reason": "onsite_validation",
+            "target_team": "field_success",
+        },
+    )["state"]
     state = service_ticketing_resolve_ticket(
         state,
         "case_release",
         resolution="Dispatched specialist and restored service",
+    )["state"]
+    pending_survey = next(iter(state["csat_responses"]))
+    state = service_ticketing_record_csat_response(
+        state,
+        {
+            "survey_id": pending_survey,
+            "score": 5,
+            "comment": "Resolution was fast and transparent",
+        },
+    )["state"]
+    state = service_ticketing_reopen_ticket(
+        state,
+        {
+            "ticket_id": "case_release",
+            "reason": "post_resolution_validation",
+        },
+    )["state"]
+    state = service_ticketing_close_ticket(
+        state,
+        {
+            "ticket_id": "case_release",
+            "closure_reason": "customer_confirmed_restored_service",
+        },
     )["state"]
     workbench = service_ticketing_build_workbench_view(state, tenant="tenant_release")
     boundary = service_ticketing_verify_owned_table_boundary(
@@ -1757,6 +2193,7 @@ def service_ticketing_permissions_contract() -> dict:
             "service_ticketing.assignment.write",
             "service_ticketing.escalation.write",
             "service_ticketing.customer.update",
+            "service_ticketing.csat.write",
             "service_ticketing.event.consume",
             "service_ticketing.configure",
             "service_ticketing.audit",
@@ -1769,8 +2206,14 @@ def service_ticketing_permissions_contract() -> dict:
             "create_sla_policy": "service_ticketing.configure",
             "open_ticket": "service_ticketing.ticket.write",
             "assign_ticket": "service_ticketing.assignment.write",
+            "record_ticket_interaction": "service_ticketing.ticket.write",
+            "send_customer_update": "service_ticketing.customer.update",
+            "prepare_field_service_handoff": "service_ticketing.escalation.write",
             "record_escalation": "service_ticketing.escalation.write",
             "resolve_ticket": "service_ticketing.customer.update",
+            "record_csat_response": "service_ticketing.csat.write",
+            "reopen_ticket": "service_ticketing.ticket.write",
+            "close_ticket": "service_ticketing.ticket.write",
             "receive_event": "service_ticketing.event.consume",
             "run_control_tests": "service_ticketing.audit",
             "build_workbench_view": "service_ticketing.audit",

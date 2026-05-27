@@ -179,6 +179,176 @@ def test_event_handlers_are_idempotent_and_retryable():
     assert smoke['unknown_result']['handled'] is False
     assert not smoke['side_effects']
 
+
+def test_service_ticketing_lifecycle_tail_is_executable():
+    from ..runtime import SERVICE_TICKETING_REQUIRED_EVENT_TOPIC
+    from ..runtime import service_ticketing_assign_ticket
+    from ..runtime import service_ticketing_close_ticket
+    from ..runtime import service_ticketing_configure_runtime
+    from ..runtime import service_ticketing_create_sla_policy
+    from ..runtime import service_ticketing_empty_state
+    from ..runtime import service_ticketing_open_ticket
+    from ..runtime import service_ticketing_prepare_field_service_handoff
+    from ..runtime import service_ticketing_record_csat_response
+    from ..runtime import service_ticketing_record_ticket_interaction
+    from ..runtime import service_ticketing_register_rule
+    from ..runtime import service_ticketing_reopen_ticket
+    from ..runtime import service_ticketing_resolve_ticket
+    from ..runtime import service_ticketing_run_control_tests
+    from ..runtime import service_ticketing_send_customer_update
+    from ..runtime import service_ticketing_set_parameter
+
+    state = service_ticketing_empty_state()
+    state = service_ticketing_configure_runtime(
+        state,
+        {
+            'database_backend': 'postgresql',
+            'event_topic': SERVICE_TICKETING_REQUIRED_EVENT_TOPIC,
+            'retry_limit': 3,
+            'default_region': 'US',
+            'supported_regions': ('US',),
+            'channels': ('email', 'chat', 'portal'),
+            'priority_levels': ('low', 'medium', 'high', 'critical'),
+            'default_timezone': 'UTC',
+            'assignment_mode': 'policy',
+            'workbench_limit': 25,
+        },
+    )['state']
+    for name, value in (
+        ('sla_breach_risk_threshold', 0.7),
+        ('auto_escalation_threshold', 0.95),
+        ('sentiment_risk_weight', 0.3),
+        ('priority_weight', 0.3),
+        ('customer_tier_weight', 0.2),
+        ('queue_load_weight', 0.2),
+        ('first_response_minutes', 30),
+        ('resolution_target_hours', 24),
+        ('max_open_cases_per_owner', 25),
+        ('workbench_limit', 25),
+    ):
+        state = service_ticketing_set_parameter(state, name, value)['state']
+    state = service_ticketing_register_rule(
+        state,
+        {
+            'rule_id': 'rule_tail',
+            'tenant': 'tenant_tail',
+            'scope': 'service_ticketing',
+            'status': 'active',
+            'allowed_regions': ('US',),
+            'allowed_channels': ('email', 'chat', 'portal'),
+            'allowed_priorities': ('low', 'medium', 'high', 'critical'),
+            'assignment_policy': {
+                'default_queue': 'tier_2',
+                'default_owner': 'agent_tail',
+                'skills': ('technical',),
+            },
+            'escalation_policy': {
+                'critical_queue': 'priority_response',
+                'breach_owner': 'manager_tail',
+            },
+        },
+    )['state']
+    state = service_ticketing_create_sla_policy(
+        state,
+        {
+            'sla_policy_id': 'sla_tail',
+            'tenant': 'tenant_tail',
+            'name': 'Tail Lifecycle',
+            'priority': 'high',
+            'first_response_minutes': 30,
+            'resolution_target_hours': 12,
+            'status': 'active',
+        },
+    )['state']
+    state = service_ticketing_open_ticket(
+        state,
+        {
+            'ticket_id': 'case_tail',
+            'tenant': 'tenant_tail',
+            'customer_id': 'cust_tail',
+            'subject': 'Service issue',
+            'description': 'Customer needs a full support lifecycle',
+            'channel': 'chat',
+            'priority': 'high',
+            'region': 'US',
+            'sentiment': -0.3,
+            'sla_policy_id': 'sla_tail',
+        },
+    )['state']
+    state = service_ticketing_assign_ticket(
+        state,
+        {
+            'assignment_id': 'assign_tail',
+            'tenant': 'tenant_tail',
+            'ticket_id': 'case_tail',
+            'owner': 'agent_tail',
+            'queue': 'tier_2',
+            'skills': ('technical',),
+        },
+    )['state']
+    interaction = service_ticketing_record_ticket_interaction(
+        state,
+        {
+            'ticket_id': 'case_tail',
+            'interaction_type': 'agent_response',
+            'actor': 'agent_tail',
+            'summary': 'Collected diagnostics and advised next steps',
+            'channel': 'chat',
+        },
+    )
+    state = interaction['state']
+    update = service_ticketing_send_customer_update(
+        state,
+        {
+            'ticket_id': 'case_tail',
+            'update_type': 'progress_notice',
+            'message': 'The service team is actively working the case.',
+        },
+    )
+    state = update['state']
+    handoff = service_ticketing_prepare_field_service_handoff(
+        state,
+        {
+            'ticket_id': 'case_tail',
+            'handoff_reason': 'onsite_check',
+            'target_team': 'field_success',
+        },
+    )
+    state = handoff['state']
+    state = service_ticketing_resolve_ticket(state, 'case_tail', resolution='Issue resolved after field check')['state']
+    survey_id = next(iter(state['csat_responses']))
+    csat = service_ticketing_record_csat_response(
+        state,
+        {
+            'survey_id': survey_id,
+            'score': 5,
+            'comment': 'Professional support and clear updates',
+        },
+    )
+    state = csat['state']
+    state = service_ticketing_reopen_ticket(state, {'ticket_id': 'case_tail', 'reason': 'follow_up_question'})['state']
+    closed = service_ticketing_close_ticket(
+        state,
+        {
+            'ticket_id': 'case_tail',
+            'closure_reason': 'customer_confirmed_complete',
+        },
+    )
+    state = closed['state']
+    control = service_ticketing_run_control_tests(state)
+
+    assert interaction['interaction']['interaction_id'] in state['ticket_interactions']
+    assert update['customer_update']['update_id'] in state['customer_updates']
+    assert handoff['handoff']['handoff_id'] in state['field_service_handoffs']
+    assert csat['csat_response']['status'] == 'received'
+    assert closed['ticket']['status'] == 'closed'
+    assert state['case_lifecycle_states']['case_tail']['stage'] == 'closed'
+    assert {'TicketInteractionRecorded', 'CustomerUpdateSent', 'CsatResponseRecorded', 'SupportCaseReopened', 'SupportCaseClosed'} <= {
+        item['event_type'] for item in state['outbox']
+    }
+    assert control['ok'] is True
+
+
 def test_table_stakes_and_advanced_capability_assurance_is_executable():
     from .. import capability_assurance
 

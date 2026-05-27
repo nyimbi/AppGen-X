@@ -20,19 +20,25 @@ from .runtime import service_ticketing_build_release_evidence
 from .runtime import service_ticketing_build_schema_contract
 from .runtime import service_ticketing_build_service_contract
 from .runtime import service_ticketing_build_workbench_view
+from .runtime import service_ticketing_close_ticket
 from .runtime import service_ticketing_configure_runtime
 from .runtime import service_ticketing_create_sla_policy
 from .runtime import service_ticketing_empty_state
 from .runtime import service_ticketing_open_ticket
+from .runtime import service_ticketing_prepare_field_service_handoff
 from .runtime import service_ticketing_permissions_contract
 from .runtime import service_ticketing_receive_event
+from .runtime import service_ticketing_record_csat_response
 from .runtime import service_ticketing_record_escalation
+from .runtime import service_ticketing_record_ticket_interaction
 from .runtime import service_ticketing_register_rule
 from .runtime import service_ticketing_register_schema_extension
+from .runtime import service_ticketing_reopen_ticket
 from .runtime import service_ticketing_resolve_ticket
 from .runtime import service_ticketing_run_control_tests
 from .runtime import service_ticketing_runtime_capabilities
 from .runtime import service_ticketing_runtime_smoke
+from .runtime import service_ticketing_send_customer_update
 from .runtime import service_ticketing_set_parameter
 from .runtime import service_ticketing_ui_binding_contract
 from .runtime import service_ticketing_verify_owned_table_boundary
@@ -113,4 +119,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-
