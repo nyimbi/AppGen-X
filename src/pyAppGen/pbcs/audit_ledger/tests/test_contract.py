@@ -12,7 +12,12 @@ def test_generated_schema_service_and_release_evidence():
 
     assert SCHEMA_CONTRACT['pbc'] == 'audit_ledger'
     assert SCHEMA_CONTRACT['ok'] is True
-    assert SCHEMA_CONTRACT['owned_tables']
+    assert len(SCHEMA_CONTRACT['owned_tables']) == 21
+    assert len(SCHEMA_CONTRACT['models']) == len(SCHEMA_CONTRACT['owned_tables'])
+    assert len(SCHEMA_CONTRACT['migrations']) == len(SCHEMA_CONTRACT['owned_tables'])
+    assert {'audit_ledger_access_evidence', 'audit_ledger_disclosure_proof', 'audit_ledger_governed_model'} <= set(SCHEMA_CONTRACT['owned_tables'])
+    assert all(table['owned_table'].startswith('audit_ledger_') for table in SCHEMA_CONTRACT['tables'])
+    assert all(len(table['fields']) >= 6 for table in SCHEMA_CONTRACT['tables'])
     schema_smoke = schema_contract.smoke_test()
     model_smoke = models.smoke_test()
     assert schema_smoke['ok'] is True
@@ -45,6 +50,12 @@ def test_manifest_and_event_contract():
     from .. import events
 
     assert PBC_MANIFEST['pbc'] == 'audit_ledger'
+    assert len(PBC_MANIFEST['tables']) == 21
+    assert 'access_evidence' in PBC_MANIFEST['tables']
+    assert 'POST /audit-projections' in PBC_MANIFEST['apis']
+    assert 'AuditProjectionPublished' in PBC_MANIFEST['emits']
+    assert 'CompositionPublished' in PBC_MANIFEST['consumes']
+    assert 'AuditConfigurationPanel' in PBC_MANIFEST['ui_fragments']
     assert PBC_MANIFEST['standard_features']
     assert PBC_MANIFEST['advanced_capabilities']
     assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'
@@ -104,6 +115,9 @@ def test_service_and_route_surface_are_executable():
     assert route_contracts['ok'] is True
     assert route_validation['ok'] is True
     assert route_contracts['contracts']
+    assert len(route_contracts['contracts']) >= 9
+    assert 'record_audit_event' in operation_contracts['command_operations']
+    assert 'build_workbench_view' in operation_contracts['query_operations']
     assert all(item['permission'] for item in route_contracts['contracts'])
     assert all(item['event_contract'] == 'AppGen-X' for item in route_contracts['contracts'])
     assert all(item['stream_engine_picker_visible'] is False for item in route_contracts['contracts'])

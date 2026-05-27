@@ -261,7 +261,7 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `audit_ledger`
 - Mesh: `platform`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
@@ -269,42 +269,165 @@ This appendix is generated from the package manifest and is release-gated so the
 - `signature_chain`
 - `retention_policy`
 - `forensic_export`
+- `access_evidence`
+- `control_assertion`
+- `rule`
+- `parameter`
+- `configuration`
+- `projection_link`
+- `schema_extension`
+- `disclosure_proof`
+- `anomaly_signal`
+- `identity_credential`
+- `resilience_drill`
+- `crypto_key_epoch`
+- `carbon_processing_window`
+- `governed_model`
+- `appgen_outbox_event`
+- `appgen_inbox_event`
+- `dead_letter_event`
 
 ### API Routes
 
 - `POST /audit-events`
-- `GET /signature-chain`
-- `POST /exports`
+- `POST /audit-events/access-evidence`
+- `POST /audit-events/verify-chain`
+- `POST /retention-policies`
+- `POST /forensic-exports`
+- `POST /control-assertions`
+- `POST /audit-projections`
+- `POST /audit-events/inbox`
+- `GET /audit-workbench`
 
 ### Emitted Events
 
 - `AuditEventSealed`
+- `SignatureChainVerified`
+- `RetentionPolicyChanged`
 - `ForensicExportPrepared`
+- `ControlAssertionFailed`
+- `AuditProjectionPublished`
 
 ### Consumed Events
 
 - `AccessPolicyChanged`
 - `WorkflowCompleted`
 - `RoutePublished`
+- `SchemaAccepted`
+- `PbcDeployed`
+- `CompositionPublished`
 
 ### UI Fragments
 
-- None declared
+- `AuditLedgerWorkbench`
+- `AuditEventSearch`
+- `SignatureChainVerifier`
+- `ForensicExportConsole`
+- `AuditRetryEvidenceConsole`
+- `AuditReleaseEvidencePanel`
+- `RetentionPolicyBoard`
+- `AccessEvidenceView`
+- `ControlAssertionBoard`
+- `ProofDisclosureDesigner`
+- `AuditAnomalyDashboard`
+- `AuditRuleStudio`
+- `AuditParameterConsole`
+- `AuditConfigurationPanel`
 
 ### Permissions
 
-- None declared
+- `audit_ledger.read`
+- `audit_ledger.seal`
+- `audit_ledger.verify`
+- `audit_ledger.export`
+- `audit_ledger.publish`
+- `audit_ledger.event`
+- `audit_ledger.configure`
+- `audit_ledger.audit`
 
 ### Configuration Keys
 
-- None declared
+- `AUDIT_LEDGER_DATABASE_URL`
+- `AUDIT_LEDGER_EVENT_TOPIC`
+- `AUDIT_LEDGER_RETRY_LIMIT`
+- `AUDIT_LEDGER_SIGNATURE_ALGORITHM`
+- `AUDIT_LEDGER_DEFAULT_TIMEZONE`
+- `AUDIT_LEDGER_ALLOWED_CLASSIFICATIONS`
 
 ### Standard Features
 
-- None declared
+- `append_only_audit_events`
+- `tenant_sequence`
+- `hash_chain`
+- `signature_metadata`
+- `event_sealing`
+- `chain_verification`
+- `tamper_detection`
+- `source_pbc_indexing`
+- `actor_action_indexing`
+- `access_evidence`
+- `retention_policy`
+- `legal_hold`
+- `forensic_export`
+- `proof_bundle`
+- `control_assertion`
+- `release_blocking_controls`
+- `payload_digest`
+- `disclosure_minimization`
+- `idempotent_handlers`
+- `retry_dead_letter`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `schema_contract`
+- `service_contract`
+- `release_evidence_contract`
+- `projection_handoffs`
+- `disclosure_proof_registry`
+- `anomaly_signal_registry`
+- `identity_credential_registry`
+- `crypto_epoch_registry`
+- `carbon_window_registry`
+- `governed_model_registry`
+- `seed_data`
+- `workbench`
+- `release_gate`
+- `appgen_event_contract`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_audit_lifecycle`
+- `graph_relational_evidence_topology`
+- `multi_tenant_audit_isolation`
+- `schema_on_read_evidence_envelope`
+- `probabilistic_tamper_control_risk_scoring`
+- `real_time_audit_analytics`
+- `counterfactual_retention_disclosure_simulation`
+- `temporal_evidence_health_forecasting`
+- `autonomous_control_remediation`
+- `semantic_audit_query_parsing`
+- `predictive_audit_risk_scoring`
+- `self_healing_audit_ingestion_route_selection`
+- `zero_knowledge_event_disclosure_proof`
+- `immutable_regulatory_trail`
+- `dynamic_audit_policy_screening`
+- `automated_audit_control_testing`
+- `universal_api_async_audit_surface`
+- `cross_system_audit_federation`
+- `identity_gateway_schema_workflow_composition_integration`
+- `decentralized_actor_identity`
+- `chaos_engineered_audit_tolerance`
+- `quantum_resistant_audit_signing`
+- `carbon_aware_audit_processing`
+- `algebraic_evidence_minimization`
+- `mechanism_design_export_reviewer_allocation`
+- `information_theoretic_audit_anomaly_detection`
+- `temporal_evidence_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_audit_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `audit_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
