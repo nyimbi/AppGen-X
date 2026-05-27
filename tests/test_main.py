@@ -6555,6 +6555,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "device_component_scenarios_ready",
         "device_component_runtime_replay_matrix_ready",
     } <= set(mobile_device_smoke["passing_checks"])
+    assert {
+        "load_privacy_prompt",
+        "transition_permission",
+        "load_simulator_fixture",
+        "dispatch_component_events",
+        "request_permission",
+        "invoke_platform_adapter",
+        "emit_component_event",
+        "verify_event_trace",
+        "disable_component_with_explanation",
+    } <= set(mobile_device_smoke["smoke"]["required_device_operations"]) <= set(
+        mobile_device_smoke["smoke"]["device_operations"]
+    )
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
     assert coverage["package_count"] == len(component_package_file_manifest())
@@ -18731,6 +18744,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "device_component_scenarios_ready",
         "device_component_runtime_replay_matrix_ready",
     } <= set(mobile_runtime_smoke["checks"])
+    assert {
+        "load_privacy_prompt",
+        "transition_permission",
+        "load_simulator_fixture",
+        "dispatch_component_events",
+        "request_permission",
+        "invoke_platform_adapter",
+        "emit_component_event",
+        "verify_event_trace",
+        "disable_component_with_explanation",
+    } <= set(mobile_runtime_smoke["required_device_operations"]) <= set(mobile_runtime_smoke["device_operations"])
     device_module_manifest = mobile_runtime.device_api_component_module_manifest()
     device_test_manifest = mobile_runtime.device_api_component_test_module_manifest()
     generated_runtime_scenarios = mobile_runtime.device_api_component_scenario_matrix()
