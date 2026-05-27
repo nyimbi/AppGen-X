@@ -12703,9 +12703,134 @@ def data_tooling_runtime_replay_contract() -> dict:
     }
 
 
+def data_tooling_connection_designer_transaction_replay_contract() -> dict:
+    """Replay connection profile design from secret binding to rollback proof."""
+    catalog = rad_data_connection_catalog()
+    connection = data_connection_test_contract()
+    driver_matrix = data_driver_capability_matrix()
+    pooling = data_connection_pool_contract()
+    failover = data_connection_failover_contract()
+    schema_browser = data_schema_browser_contract()
+    transaction_rehearsal = data_transaction_rehearsal_contract()
+    profiles = {profile["name"]: profile for profile in catalog}
+    primary = profiles.get(connection["connection"], {})
+    transactions = (
+        {
+            "phase": "select_connection_profile",
+            "operations": ("open_profile_editor", "select_driver", "load_capability_matrix"),
+            "ok": bool(primary)
+            and driver_matrix["ok"]
+            and primary.get("driver") == "relational"
+            and "schema_introspection" in primary.get("capabilities", ()),
+        },
+        {
+            "phase": "bind_secret_reference",
+            "operations": ("choose_secret_provider", "bind_secret_reference", "redact_secret_value"),
+            "ok": bool(primary)
+            and primary.get("secret_policy") in {"externalized", "local_keychain"}
+            and all(row["secrets_externalized"] for row in driver_matrix["rows"]),
+        },
+        {
+            "phase": "validate_pool_and_failover",
+            "operations": pooling["guards"] + failover["guards"],
+            "ok": pooling["ok"]
+            and failover["ok"]
+            and {"session_reset_before_reuse", "leak_detection_enabled"} <= set(pooling["guards"])
+            and {"read_only_fallback_visible", "no_retry_after_partial_commit"} <= set(failover["guards"]),
+        },
+        {
+            "phase": "run_sandbox_connection_test",
+            "operations": connection["steps"],
+            "ok": connection["ok"]
+            and {"open_test_transaction", "read_schema_version", "rollback_test_transaction"} <= set(connection["steps"]),
+        },
+        {
+            "phase": "publish_schema_visibility",
+            "operations": schema_browser["operations"],
+            "ok": {"browse_tables", "inspect_fields", "trace_relations"} <= set(schema_browser["operations"])
+            and {"table", "index", "relation"} <= {item["kind"] for item in schema_browser["objects"]}
+            and not schema_browser["side_effects"],
+        },
+        {
+            "phase": "rollback_connection_probe",
+            "operations": transaction_rehearsal["steps"],
+            "ok": {"rollback_transaction", "assert_no_persisted_changes"} <= set(transaction_rehearsal["steps"])
+            and not transaction_rehearsal["side_effects"],
+        },
+    )
+    phase_names = tuple(transaction["phase"] for transaction in transactions)
+    checks = (
+        {
+            "id": "connection_profile_selected_before_secret_binding",
+            "ok": phase_names.index("select_connection_profile") < phase_names.index("bind_secret_reference") and transactions[0]["ok"],
+            "evidence": phase_names,
+        },
+        {
+            "id": "secrets_bound_before_pool_validation",
+            "ok": phase_names.index("bind_secret_reference") < phase_names.index("validate_pool_and_failover") and transactions[1]["ok"],
+            "evidence": phase_names,
+        },
+        {
+            "id": "pool_and_failover_before_connection_test",
+            "ok": phase_names.index("validate_pool_and_failover") < phase_names.index("run_sandbox_connection_test") and transactions[2]["ok"],
+            "evidence": phase_names,
+        },
+        {
+            "id": "connection_test_rolls_back_before_schema_publish",
+            "ok": phase_names.index("run_sandbox_connection_test") < phase_names.index("publish_schema_visibility")
+            and transactions[3]["ok"]
+            and "rollback_test_transaction" in connection["steps"],
+            "evidence": connection,
+        },
+        {
+            "id": "schema_visibility_published_before_downstream_design",
+            "ok": phase_names.index("publish_schema_visibility") < phase_names.index("rollback_connection_probe") and transactions[4]["ok"],
+            "evidence": schema_browser,
+        },
+        {
+            "id": "connection_designer_transactions_side_effect_free",
+            "ok": not connection["side_effects"]
+            and not driver_matrix["side_effects"]
+            and not pooling["side_effects"]
+            and not failover["side_effects"]
+            and not schema_browser["side_effects"]
+            and not transaction_rehearsal["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = bool(catalog) and all(transaction["ok"] for transaction in transactions) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.data-tooling-connection-designer-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "transactions": transactions,
+        "checks": checks,
+        "final_state": {
+            "connection": connection["connection"],
+            "profiles": len(catalog),
+            "driver_rows": len(driver_matrix["rows"]),
+            "pool_routes": len(pooling["pools"]),
+            "failover_routes": len(failover["routes"]),
+            "schema_objects": len(schema_browser["objects"]),
+            "persisted_writes": 0,
+        },
+        "guards": (
+            "connection_profile_before_secret_binding",
+            "secret_reference_before_pool_validation",
+            "pool_and_failover_before_connection_test",
+            "connection_test_rolls_back_before_schema_publish",
+            "schema_visibility_before_dataset_query_service_design",
+            "connection_designer_transactions_are_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def data_tooling_design_runtime_session_replay_contract() -> dict:
     """Replay data tooling design, service, offline, and runtime operations as one session."""
     connection = data_connection_test_contract()
+    connection_designer = data_tooling_connection_designer_transaction_replay_contract()
     schema_browser = data_schema_browser_contract()
     schema_diff = data_schema_adapter_diff_contract()
     migration = data_migration_rehearsal_contract()
@@ -12736,7 +12861,10 @@ def data_tooling_design_runtime_session_replay_contract() -> dict:
         {
             "phase": "connection_profile",
             "pipeline": connection["steps"],
-            "ok": connection["ok"] and connection["steps"][-1] == "rollback_test_transaction",
+            "ok": connection["ok"]
+            and connection_designer["ok"]
+            and connection["steps"][-1] == "rollback_test_transaction"
+            and "schema_visibility_before_dataset_query_service_design" in connection_designer["guards"],
         },
         {
             "phase": "schema_introspection",
@@ -12794,6 +12922,7 @@ def data_tooling_design_runtime_session_replay_contract() -> dict:
         },
     )
     state["connections_verified"] = 1 if connection["ok"] else 0
+    state["connection_transactions"] = len(connection_designer["transactions"])
     state["schema_objects_seen"] = len(schema_browser["objects"])
     state["dataset_ops"] = len(dataset_designer["operations"])
     state["lookup_editors"] = len(lookup_editor["editors"])
@@ -12817,6 +12946,7 @@ def data_tooling_design_runtime_session_replay_contract() -> dict:
         "final_state": state,
         "guards": (
             "connection_probe_before_schema_introspection",
+            "connection_designer_transaction_before_schema_introspection",
             "schema_rehearsal_before_dataset_publish",
             "lookup_editors_generated_for_relationships",
             "offline_integrity_before_runtime_replay",
@@ -12829,6 +12959,7 @@ def data_tooling_design_runtime_session_replay_contract() -> dict:
 def data_tooling_publish_transaction_replay_contract() -> dict:
     """Replay one ordered data tooling publish transaction from connection design to runtime smoke."""
     connection = data_connection_test_contract()
+    connection_designer = data_tooling_connection_designer_transaction_replay_contract()
     driver_matrix = data_driver_capability_matrix()
     pooling = data_connection_pool_contract()
     failover = data_connection_failover_contract()
@@ -12861,6 +12992,7 @@ def data_tooling_publish_transaction_replay_contract() -> dict:
     replication = data_replication_monitor_contract()
     state = {
         "connections": len(driver_matrix["rows"]),
+        "connection_transactions": len(connection_designer["transactions"]),
         "schema_objects": len(schema_browser["objects"]),
         "query_plan_nodes": len(query_plan["plan_nodes"]),
         "dataset_operations": len(dataset_designer["operations"]),
@@ -12879,6 +13011,7 @@ def data_tooling_publish_transaction_replay_contract() -> dict:
             "phase": "profile_connections",
             "pipeline": connection["steps"] + pooling["guards"] + failover["guards"],
             "ok": connection["ok"]
+            and connection_designer["ok"]
             and connection["steps"][-1] == "rollback_test_transaction"
             and driver_matrix["ok"]
             and pooling["ok"]
@@ -12962,6 +13095,7 @@ def data_tooling_publish_transaction_replay_contract() -> dict:
         "final_state": state,
         "guards": (
             "connection_profile_before_schema_introspection",
+            "connection_designer_transaction_before_schema_introspection",
             "parameterized_queries_before_preview",
             "schema_rehearsal_before_dataset_publish",
             "service_contract_tests_before_resource_publish",
@@ -13362,6 +13496,7 @@ def data_tooling_failover_transaction_replay_contract() -> dict:
 def data_tooling_run_ide_scenario_operation() -> dict:
     """Run one complete native data tooling IDE scenario from connection design through release replay."""
     connection = data_tooling_test_connection()
+    connection_designer = data_tooling_connection_designer_transaction_replay_contract()
     schema_browser = data_tooling_browse_schema_operation()
     schema_diff = data_tooling_preview_schema_diff()
     dataset = data_tooling_design_dataset_operation()
@@ -13380,8 +13515,12 @@ def data_tooling_run_ide_scenario_operation() -> dict:
     pipeline = (
         {
             "step": "open_connection_profile",
-            "ok": connection["ok"] and connection["pipeline"][-1] == "rollback_test_transaction",
-            "evidence": connection,
+            "ok": connection["ok"]
+            and connection_designer["ok"]
+            and connection["pipeline"][-1] == "rollback_test_transaction"
+            and {"connection_test_rolls_back_before_schema_publish", "connection_designer_transactions_side_effect_free"}
+            <= {check["id"] for check in connection_designer["checks"] if check["ok"]},
+            "evidence": {"operation": connection, "designer": connection_designer},
         },
         {
             "step": "introspect_schema",
@@ -13464,6 +13603,7 @@ def data_tooling_run_ide_scenario_operation() -> dict:
     )
     final_state = {
         "connection": "verified",
+        "connection_transactions": len(connection_designer["transactions"]),
         "schema_pipeline_steps": len(schema_browser["pipeline"]),
         "dataset_transitions": len(dataset["transitions"]),
         "query_designer_transactions": len(query_designer_replay["transactions"]),
@@ -13521,6 +13661,7 @@ def data_tooling_run_ide_scenario_operation() -> dict:
         "final_state": final_state,
         "guards": (
             "connection_profile_before_schema_introspection",
+            "connection_designer_transaction_before_schema_introspection",
             "schema_introspection_before_dataset_design",
             "dataset_design_before_query_design",
             "query_design_before_service_method_publish",
@@ -13539,6 +13680,7 @@ def data_tooling_run_ide_scenario_operation() -> dict:
 def data_tooling_readiness_contract() -> dict:
     """Prove the native data tooling path as one ordered readiness contract."""
     connection = data_tooling_test_connection()
+    connection_designer = data_tooling_connection_designer_transaction_replay_contract()
     dataset = data_tooling_design_dataset_operation()
     publish_resource = data_tooling_publish_resource()
     offline_replay = data_tooling_rehearse_offline_replay_operation()
@@ -13559,6 +13701,14 @@ def data_tooling_readiness_contract() -> dict:
             "phase": "probe_connection",
             "pipeline": connection["pipeline"],
             "ok": connection["ok"] and connection["pipeline"][-1] == "rollback_test_transaction",
+        },
+        {
+            "phase": "design_connection_profile",
+            "pipeline": tuple(transaction["phase"] for transaction in connection_designer["transactions"]),
+            "ok": connection_designer["ok"]
+            and {"connection_test_rolls_back_before_schema_publish", "connection_designer_transactions_side_effect_free"}
+            <= {check["id"] for check in connection_designer["checks"] if check["ok"]}
+            and connection_designer["final_state"]["persisted_writes"] == 0,
         },
         {
             "phase": "design_dataset",
@@ -13628,33 +13778,34 @@ def data_tooling_readiness_contract() -> dict:
     )
     checks = (
         {"id": "connection_ready", "ok": phases[0]["ok"], "evidence": connection},
-        {"id": "dataset_ready", "ok": phases[1]["ok"], "evidence": dataset},
+        {"id": "connection_designer_ready", "ok": phases[1]["ok"], "evidence": connection_designer},
+        {"id": "dataset_ready", "ok": phases[2]["ok"], "evidence": dataset},
         {
             "id": "query_designer_ready",
-            "ok": phases[2]["ok"],
+            "ok": phases[3]["ok"],
             "evidence": query_designer_replay,
         },
         {
             "id": "service_method_ready",
-            "ok": phases[3]["ok"]
+            "ok": phases[4]["ok"]
             and service_method_replay["final_state"]["persisted_writes"] == 0
             and not service_method_replay["side_effects"],
             "evidence": service_method_replay,
         },
         {
             "id": "relationship_lookup_ready",
-            "ok": phases[4]["ok"],
+            "ok": phases[5]["ok"],
             "evidence": {"operation": lookup_editors, "lifecycle": relationship_lifecycle},
         },
-        {"id": "publish_ready", "ok": phases[5]["ok"], "evidence": {"operation": publish_resource, "replay": publish_replay}},
-        {"id": "offline_replay_ready", "ok": phases[6]["ok"], "evidence": offline_replay},
-        {"id": "replication_failover_ready", "ok": phases[7]["ok"], "evidence": {"replication": replication, "failover": failover_replay}},
+        {"id": "publish_ready", "ok": phases[6]["ok"], "evidence": {"operation": publish_resource, "replay": publish_replay}},
+        {"id": "offline_replay_ready", "ok": phases[7]["ok"], "evidence": offline_replay},
+        {"id": "replication_failover_ready", "ok": phases[8]["ok"], "evidence": {"replication": replication, "failover": failover_replay}},
         {
             "id": "design_runtime_session_ready",
-            "ok": phases[8]["ok"],
+            "ok": phases[9]["ok"],
             "evidence": design_runtime,
         },
-        {"id": "diagnostics_ready", "ok": phases[9]["ok"], "evidence": {"module_smoke": module_smoke, "runtime_replay": runtime_replay}},
+        {"id": "diagnostics_ready", "ok": phases[10]["ok"], "evidence": {"module_smoke": module_smoke, "runtime_replay": runtime_replay}},
         {"id": "operation_surface_ready", "ok": actionable_operations["ok"] and not actionable_operations["side_effects"], "evidence": actionable_operations},
         {
             "id": "ide_scenario_ready",
@@ -13670,6 +13821,7 @@ def data_tooling_readiness_contract() -> dict:
             "ok": tuple(item["phase"] for item in phases)
             == (
                 "probe_connection",
+                "design_connection_profile",
                 "design_dataset",
                 "design_query",
                 "publish_service_methods",
@@ -13690,6 +13842,7 @@ def data_tooling_readiness_contract() -> dict:
         "checks": checks,
         "final_state": {
             "connection": "verified",
+            "connection_transactions": len(connection_designer["transactions"]),
             "dataset_transitions": len(dataset["transitions"]),
             "published_resources": len(publish_resource["pipeline"]),
             "query_designer_transactions": len(query_designer_replay["transactions"]),
@@ -13704,6 +13857,7 @@ def data_tooling_readiness_contract() -> dict:
         },
         "guards": (
             "connection_probe_before_dataset_design",
+            "connection_designer_before_dataset_design",
             "dataset_design_before_service_publish",
             "service_method_publish_before_relationship_lookup",
             "relationship_lookup_lifecycle_before_service_publish",
@@ -13766,6 +13920,7 @@ def rad_data_tooling_workbench() -> dict:
     enterprise_data_ide_module_test_artifacts = enterprise_data_ide_module_test_file_manifest()
     module_replay_matrix = data_tooling_module_replay_matrix()
     runtime_replay = data_tooling_runtime_replay_contract()
+    connection_designer_transaction_replay = data_tooling_connection_designer_transaction_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
     query_designer_transaction_replay = data_tooling_query_designer_transaction_replay_contract()
@@ -14144,9 +14299,28 @@ def rad_data_tooling_workbench() -> dict:
             "evidence": runtime_replay,
         },
         {
+            "id": "data_tooling_connection_designer_transaction_replay",
+            "ok": connection_designer_transaction_replay["ok"]
+            and {
+                "connection_profile_selected_before_secret_binding",
+                "secrets_bound_before_pool_validation",
+                "pool_and_failover_before_connection_test",
+                "connection_test_rolls_back_before_schema_publish",
+                "schema_visibility_published_before_downstream_design",
+                "connection_designer_transactions_side_effect_free",
+            } <= {check["id"] for check in connection_designer_transaction_replay["checks"] if check["ok"]}
+            and connection_designer_transaction_replay["final_state"]["persisted_writes"] == 0
+            and not connection_designer_transaction_replay["side_effects"],
+            "evidence": connection_designer_transaction_replay,
+        },
+        {
             "id": "data_tooling_design_runtime_session_replay",
             "ok": design_runtime_replay["ok"]
-            and {"schema_rehearsal_before_dataset_publish", "runtime_operations_are_monitored"} <= set(design_runtime_replay["guards"])
+            and {
+                "connection_designer_transaction_before_schema_introspection",
+                "schema_rehearsal_before_dataset_publish",
+                "runtime_operations_are_monitored",
+            } <= set(design_runtime_replay["guards"])
             and not design_runtime_replay["side_effects"],
             "evidence": design_runtime_replay,
         },
@@ -14203,6 +14377,7 @@ def rad_data_tooling_workbench() -> dict:
             "ok": readiness["ok"]
             and {
                 "connection_ready",
+                "connection_designer_ready",
                 "dataset_ready",
                 "relationship_lookup_ready",
                 "publish_ready",
@@ -14279,6 +14454,7 @@ def rad_data_tooling_workbench() -> dict:
         "enterprise_data_ide_module_test_artifacts": enterprise_data_ide_module_test_artifacts,
         "module_replay_matrix": module_replay_matrix,
         "runtime_replay": runtime_replay,
+        "connection_designer_transaction_replay": connection_designer_transaction_replay,
         "design_runtime_replay": design_runtime_replay,
             "publish_transaction_replay": publish_transaction_replay,
             "query_designer_transaction_replay": query_designer_transaction_replay,
@@ -19109,6 +19285,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             "ok": data_tooling["ok"]
             and data_readiness["ok"]
             and "phase_order_ready" in {check["id"] for check in data_readiness["checks"] if check["ok"]}
+            and data_tooling["connection_designer_transaction_replay"]["ok"]
             and data_tooling["publish_transaction_replay"]["ok"]
             and data_tooling["query_designer_transaction_replay"]["ok"]
             and data_tooling["service_method_transaction_replay"]["ok"]
@@ -19116,6 +19293,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and {
                 "relationship_lookup_lifecycle_replay",
                 "data_tooling_design_runtime_session_replay",
+                "data_tooling_connection_designer_transaction_replay",
                 "data_tooling_publish_transaction_replay",
                 "data_tooling_query_designer_transaction_replay",
                 "data_tooling_service_method_transaction_replay",
@@ -19129,6 +19307,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             "evidence": {
                 "checks": tuple(check["id"] for check in data_tooling["checks"]),
                 "passing_checks": tuple(sorted(data_tooling_passing_checks)),
+                "connection_designer_state": data_tooling["connection_designer_transaction_replay"]["final_state"],
                 "publish_state": data_tooling["publish_transaction_replay"]["final_state"],
                 "query_designer_state": data_tooling["query_designer_transaction_replay"]["final_state"],
                 "service_method_state": data_tooling["service_method_transaction_replay"]["final_state"],
@@ -19545,6 +19724,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             and data_readiness["ok"]
             and {
                 "connection_ready",
+                "connection_designer_ready",
                 "dataset_ready",
                 "query_designer_ready",
                 "service_method_ready",
@@ -19557,12 +19737,14 @@ def platform_parity_requirement_audit_contract() -> dict:
             }
             <= {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["runtime_replay"]["ok"]
+            and data_tooling["connection_designer_transaction_replay"]["ok"]
             and data_tooling["publish_transaction_replay"]["ok"]
             and data_tooling["query_designer_transaction_replay"]["ok"]
             and data_tooling["service_method_transaction_replay"]["ok"]
             and data_tooling["ide_scenario"]["ok"]
             and {
                 "relationship_lookup_lifecycle_replay",
+                "data_tooling_connection_designer_transaction_replay",
                 "data_tooling_query_designer_transaction_replay",
                 "data_tooling_service_method_transaction_replay",
                 "data_tooling_ide_scenario",
@@ -19576,6 +19758,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             } <= {check["id"] for check in data_tooling["checks"] if check["ok"]},
             "deep_checks": (
                 "relationship_lookup_lifecycle_replay",
+                "data_tooling_connection_designer_transaction_replay",
                 "data_tooling_modules",
                 "data_tooling_module_tests",
                 "deep_data_tooling_modules",
