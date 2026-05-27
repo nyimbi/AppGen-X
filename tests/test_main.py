@@ -90,6 +90,7 @@ from pyAppGen.form_designer import component_package_compatibility_smoke_suite
 from pyAppGen.form_designer import component_package_dependency_graph
 from pyAppGen.form_designer import component_package_dependency_order_contract
 from pyAppGen.form_designer import component_package_install_session_replay
+from pyAppGen.form_designer import component_package_hot_reload_transaction_replay
 from pyAppGen.form_designer import component_package_lifecycle_execution_contract
 from pyAppGen.form_designer import component_package_lifecycle_transaction_replay
 from pyAppGen.form_designer import component_package_lockfile_integrity_contract
@@ -3527,9 +3528,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "install_session_replay" in {check["id"] for check in package_workbench["checks"]}
     assert "actionable_package_operations" in {check["id"] for check in package_workbench["checks"]}
     assert "marketplace_publication" in {check["id"] for check in package_workbench["checks"]}
+    assert "hot_reload_transaction_replay" in {check["id"] for check in package_workbench["checks"]}
     assert package_workbench["install_replay"]["ok"] is True
     assert package_workbench["behavior_workbench"]["ok"] is True
     assert package_workbench["actionable_operations"]["ok"] is True
+    assert package_workbench["hot_reload"]["ok"] is True
     marketplace = component_package_marketplace_publication_contract(("devexpress-native",))
     assert marketplace["format"] == "appgen.component-package-marketplace-publication-contract.v1"
     assert marketplace["ok"] is True
@@ -3558,7 +3561,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "uninstall_plan",
         "palette_refresh",
         "failure_isolation",
+        "hot_reload_transaction_replay",
     } == {check["id"] for check in behavior_workbench["checks"]}
+    hot_reload = component_package_hot_reload_transaction_replay(("devexpress-native",))
+    assert hot_reload["format"] == "appgen.component-package-hot-reload-transaction-replay.v1"
+    assert hot_reload["ok"] is True
+    assert {"snapshot_active_profile", "disable_package_adapters", "reload_adapter_preview", "refresh_design_surfaces"} <= {
+        phase["phase"] for phase in hot_reload["transactions"][0]["phases"]
+    }
+    assert "designer_restart_required" in hot_reload["transactions"][0]["final_state"]
+    assert hot_reload["transactions"][0]["final_state"]["designer_restart_required"] is False
     assert behavior_workbench["version_conflicts"]["ok"] is True
     assert all("run_adapter_smoke" in update["phases"] for update in behavior_workbench["update_plan"]["updates"])
     assert all("disable_adapters" in item["phases"] for item in behavior_workbench["uninstall_plan"]["uninstalls"])
@@ -3585,6 +3597,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "uninstall_plan",
         "palette_refresh",
         "failure_isolation",
+        "hot_reload_transaction_replay",
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
@@ -3630,12 +3643,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("find_palette_references" in item["phases"] for item in package_manager["uninstall_plan"]["uninstalls"])
     assert "invalidate_cache" in package_manager["palette_refresh"]["palette_actions"]
     assert all("record_diagnostic" in scenario["containment"] for scenario in package_manager["failure_isolation"]["scenarios"])
+    assert package_manager["hot_reload"]["ok"] is True
     assert package_manager["actionable_operations"]["ok"] is True
     assert {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= set(
         package_manager["actionable_operations"]["operation_names"]
     )
     assert package_manager["installation_scenario"]["ok"] is True
     assert "verify_registry_clean" in package_manager["installation_scenario"]["pipeline"]
+    assert "hot_reload_design_surfaces" in package_manager["installation_scenario"]["pipeline"]
     lifecycle_replay = component_package_lifecycle_transaction_replay()
     assert lifecycle_replay["format"] == "appgen.component-package-lifecycle-transaction-replay.v1"
     assert lifecycle_replay["ok"] is True
@@ -3643,8 +3658,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "install_before_preview",
         "adapter_smoke_before_update_enable",
         "failure_restores_palette",
+        "hot_reload_before_rollback_probe",
         "rollback_before_uninstall_cleanup",
     } <= {check["id"] for check in lifecycle_replay["checks"] if check["ok"]}
+    assert all(
+        "hot_reload_design_surfaces" in {phase["phase"] for phase in item["phases"]}
+        for item in lifecycle_replay["replay"]
+    )
     assert all(item["final_state"]["registry_clean"] for item in lifecycle_replay["replay"])
     assert all(not item["final_state"]["global_install"] for item in lifecycle_replay["replay"])
     lifecycle_execution = component_package_lifecycle_execution_contract(("devexpress-native",))
@@ -3653,9 +3673,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "trust_before_install",
         "install_update_uninstall_executed",
+        "hot_reload_executed_without_restart",
         "registry_clean_after_uninstall",
         "no_global_install",
     } == {check["id"] for check in lifecycle_execution["checks"]}
+    assert "hot_reload" in {phase["phase"] for phase in lifecycle_execution["transactions"][0]["phases"]}
     assert lifecycle_execution["transactions"][0]["final_state"]["signature_verified"] is True
     package_readiness = component_package_readiness_contract(("devexpress-native",))
     assert package_readiness["format"] == "appgen.component-package-readiness-contract.v1"
@@ -3665,6 +3687,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "sandbox_preview",
         "registry_commit",
         "versioned_update",
+        "hot_reload_design_surfaces",
         "failure_and_rollback",
         "uninstall_cleanup",
     )
@@ -3672,6 +3695,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "trust_before_preview",
         "preview_before_registry_commit",
         "registry_before_update",
+        "hot_reload_before_failure_rollback",
         "rollback_before_cleanup",
         "marketplace_publication_ready",
         "installation_scenario_ready",
@@ -5362,7 +5386,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "trust_before_preview",
         "registry_before_update",
+        "hot_reload_before_failure_rollback",
         "rollback_before_cleanup",
+        "hot_reload_transaction_replay",
         "package_manager_modules",
         "package_manager_module_tests",
         "package_manager_module_replay_matrix",
@@ -5511,6 +5537,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
             "manager",
             {
                 "lifecycle_transaction_replay",
+                "hot_reload_transaction_replay",
                 "package_manager_modules",
                 "package_manager_module_tests",
                 "package_manager_module_replay_matrix",
@@ -15478,6 +15505,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert {
         "trust_before_preview",
+        "hot_reload_before_failure_rollback",
+        "hot_reload_transaction_replay",
         "package_manager_modules",
         "package_manager_module_tests",
         "package_manager_module_replay_matrix",
@@ -15676,9 +15705,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "install_session_replay" in {check["id"] for check in generated_package_workbench["checks"]}
     assert "actionable_package_operations" in {check["id"] for check in generated_package_workbench["checks"]}
     assert "marketplace_publication" in {check["id"] for check in generated_package_workbench["checks"]}
+    assert "hot_reload_transaction_replay" in {check["id"] for check in generated_package_workbench["checks"]}
     assert generated_package_workbench["install_replay"]["ok"] is True
     assert generated_package_workbench["actionable_operations"]["ok"] is True
     assert generated_package_workbench["marketplace_publication"]["ok"] is True
+    assert generated_package_workbench["hot_reload"]["ok"] is True
     assert generated_package_workbench["contracts"][0]["self_registration"]["entrypoint"].endswith(":register")
     assert all(
         {"operation_steps", "validation_steps"} <= set(item["exports"])
@@ -15712,6 +15743,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "uninstall_plan",
         "palette_refresh",
         "failure_isolation",
+        "hot_reload_transaction_replay",
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
@@ -15729,6 +15761,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("disable_adapters" in item["phases"] for item in generated_package_manager["uninstall_plan"]["uninstalls"])
     assert "rebuild_toolbox" in generated_package_manager["palette_refresh"]["palette_actions"]
     assert all("disable_package" in scenario["containment"] for scenario in generated_package_manager["failure_isolation"]["scenarios"])
+    assert generated_package_manager["hot_reload"]["ok"] is True
     assert generated_package_manager["actionable_operations"]["operations"][0]["preview_load"]["ok"] is True
     assert generated_package_manager["lifecycle_replay"]["ok"] is True
     assert generated_package_manager["lifecycle_replay"]["format"] == "appgen.generated-component-package-lifecycle-transaction-replay.v1"
@@ -15740,13 +15773,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "installation_scenario_ready" in {
         check["id"] for check in generated_package_manager["package_readiness"]["checks"]
     }
+    assert "hot_reload_before_failure_rollback" in {
+        check["id"] for check in generated_package_manager["package_readiness"]["checks"]
+    }
     assert generated_package_manager["installation_scenario"]["ok"] is True
+    assert "hot_reload_design_surfaces" in generated_package_manager["installation_scenario"]["pipeline"]
     assert {
         "package_readiness_contract",
         "lifecycle_execution",
         "actionable_package_operations",
         "installation_scenario_operation",
         "marketplace_publication",
+        "hot_reload_transaction_replay",
         "package_manager_modules",
         "package_manager_module_tests",
         "package_manager_module_replay_matrix",
@@ -15775,11 +15813,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "sandbox_preview",
         "registry_commit",
         "versioned_update",
+        "hot_reload_design_surfaces",
         "failure_and_rollback",
         "uninstall_cleanup",
     )
     assert all(
-        {"install_and_register", "preview_load", "versioned_update", "failure_containment", "rollback_probe", "uninstall_cleanup"}
+        {"install_and_register", "preview_load", "versioned_update", "failure_containment", "hot_reload_design_surfaces", "rollback_probe", "uninstall_cleanup"}
         <= {phase["phase"] for phase in item["phases"]}
         for item in generated_package_manager["lifecycle_replay"]["replay"]
     )

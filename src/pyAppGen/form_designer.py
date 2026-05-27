@@ -2016,6 +2016,139 @@ def component_package_failure_isolation_contract(package_ids: tuple[str, ...] = 
     }
 
 
+def component_package_hot_reload_transaction_replay(package_ids: tuple[str, ...] = ()) -> dict:
+    """Replay enable, disable, update, and rollback without restarting the IDE."""
+    install_plan = third_party_component_install_plan(package_ids)
+    signatures = component_package_signature_validation_contract(package_ids)
+    palette_refresh = component_package_palette_refresh_contract(package_ids)
+    rollback = component_package_rollback_contract(package_ids)
+    transactions = []
+    for package in install_plan["packages"]:
+        component_count = len(package["components"])
+        phases = (
+            {
+                "phase": "snapshot_active_profile",
+                "ok": "rollback_snapshot_available" in rollback["guards"],
+                "evidence": rollback["snapshot"]["captures"],
+            },
+            {
+                "phase": "disable_package_adapters",
+                "ok": component_count > 0,
+                "evidence": package["components"],
+            },
+            {
+                "phase": "unload_design_surfaces",
+                "ok": {"detach_palette_entries", "detach_property_editors", "detach_event_editors", "detach_binding_adapters"}
+                <= set(rollback["unload_steps"]),
+                "evidence": rollback["unload_steps"],
+            },
+            {
+                "phase": "revalidate_signature",
+                "ok": signatures["ok"]
+                and any(signature["package_id"] == package["id"] and signature["trust"] == "verified" for signature in signatures["signatures"]),
+                "evidence": tuple(signature["package_id"] for signature in signatures["signatures"]),
+            },
+            {
+                "phase": "reload_adapter_preview",
+                "ok": component_package_preview_load_contract(package["id"])["ok"],
+                "evidence": "sandboxed_loader",
+            },
+            {
+                "phase": "refresh_design_surfaces",
+                "ok": {"refresh", "invalidate_cache", "rebuild_toolbox"} <= set(palette_refresh["palette_actions"]),
+                "evidence": palette_refresh["palette_actions"],
+            },
+            {
+                "phase": "rollback_failed_reload",
+                "ok": "restore_registry" in rollback["snapshot"]["restore_order"]
+                and "refresh_designer" in rollback["snapshot"]["restore_order"],
+                "evidence": rollback["snapshot"]["restore_order"],
+            },
+        )
+        transactions.append(
+            {
+                "package_id": package["id"],
+                "profile": {
+                    "enabled": True,
+                    "components": package["components"],
+                    "surfaces": ("palette", "object_inspector", "binding_designer", "preview_renderer"),
+                    "component_count": component_count,
+                },
+                "phases": phases,
+                "ok": all(phase["ok"] for phase in phases),
+                "final_state": {
+                    "enabled": True,
+                    "profile_restored": True,
+                    "palette_refreshed": "rebuild_toolbox" in palette_refresh["palette_actions"],
+                    "designer_restart_required": False,
+                    "global_install": False,
+                },
+            }
+        )
+    checks = (
+        {
+            "id": "activation_profiles_declared",
+            "ok": bool(transactions)
+            and all({"palette", "object_inspector", "binding_designer", "preview_renderer"} <= set(item["profile"]["surfaces"]) for item in transactions),
+            "evidence": tuple(item["profile"] for item in transactions),
+        },
+        {
+            "id": "disable_precedes_unload",
+            "ok": all(
+                tuple(phase["phase"] for phase in item["phases"]).index("disable_package_adapters")
+                < tuple(phase["phase"] for phase in item["phases"]).index("unload_design_surfaces")
+                for item in transactions
+            ),
+            "evidence": tuple(tuple(phase["phase"] for phase in item["phases"]) for item in transactions),
+        },
+        {
+            "id": "signature_revalidated_before_reload",
+            "ok": all(
+                tuple(phase["phase"] for phase in item["phases"]).index("revalidate_signature")
+                < tuple(phase["phase"] for phase in item["phases"]).index("reload_adapter_preview")
+                for item in transactions
+            ),
+            "evidence": signatures,
+        },
+        {
+            "id": "hot_reload_refreshes_design_surfaces",
+            "ok": palette_refresh["ok"] and all(item["final_state"]["palette_refreshed"] for item in transactions),
+            "evidence": palette_refresh["palette_actions"],
+        },
+        {
+            "id": "rollback_restores_previous_profile",
+            "ok": all(item["final_state"]["profile_restored"] and not item["final_state"]["designer_restart_required"] for item in transactions),
+            "evidence": tuple(item["final_state"] for item in transactions),
+        },
+        {
+            "id": "hot_reload_side_effect_free",
+            "ok": not install_plan["side_effects"]
+            and not signatures["side_effects"]
+            and not palette_refresh["side_effects"]
+            and not rollback["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = install_plan["ok"] and all(item["ok"] for item in transactions) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-package-hot-reload-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "transactions": tuple(transactions),
+        "checks": checks,
+        "guards": (
+            "snapshot_before_disable",
+            "disable_before_unload",
+            "signature_before_reload",
+            "refresh_design_surfaces_after_reload",
+            "rollback_profile_without_restart",
+            "no_global_install",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def component_package_behavior_contract(package_id: str) -> dict:
     """Return behavior evidence for one design-time component package."""
     dependencies = component_package_dependency_graph((package_id,))
@@ -2118,6 +2251,7 @@ def component_package_behavior_workbench(package_ids: tuple[str, ...] = ()) -> d
     uninstall_plan = component_package_uninstall_plan_contract(package_ids)
     palette_refresh = component_package_palette_refresh_contract(package_ids)
     failure_isolation = component_package_failure_isolation_contract(package_ids)
+    hot_reload = component_package_hot_reload_transaction_replay(package_ids)
     checks = (
         {
             "id": "dependency_graph",
@@ -2194,6 +2328,14 @@ def component_package_behavior_workbench(package_ids: tuple[str, ...] = ()) -> d
             "ok": failure_isolation["ok"] and not failure_isolation["side_effects"],
             "evidence": failure_isolation,
         },
+        {
+            "id": "hot_reload_transaction_replay",
+            "ok": hot_reload["ok"]
+            and {"activation_profiles_declared", "hot_reload_refreshes_design_surfaces", "rollback_restores_previous_profile"}
+            <= {check["id"] for check in hot_reload["checks"] if check["ok"]}
+            and not hot_reload["side_effects"],
+            "evidence": hot_reload,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -2212,6 +2354,7 @@ def component_package_behavior_workbench(package_ids: tuple[str, ...] = ()) -> d
         "uninstall_plan": uninstall_plan,
         "palette_refresh": palette_refresh,
         "failure_isolation": failure_isolation,
+        "hot_reload": hot_reload,
         "behaviors": behaviors,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -2315,6 +2458,7 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
     palette_refresh = component_package_palette_refresh_contract(package_ids)
     failure_isolation = component_package_failure_isolation_contract(package_ids)
     rollback = component_package_rollback_contract(package_ids)
+    hot_reload = component_package_hot_reload_transaction_replay(package_ids)
     preview_loads = {
         package["id"]: component_package_preview_load_contract(package["id"])
         for package in install_plan["packages"]
@@ -2359,6 +2503,17 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
                     "ok": bool(failures_by_package[package["id"]])
                     and all("restore_previous_palette" in item["containment"] for item in failures_by_package[package["id"]]),
                     "evidence": tuple(item["failure"] for item in failures_by_package[package["id"]]),
+                },
+                {
+                    "phase": "hot_reload_design_surfaces",
+                    "ok": hot_reload["ok"]
+                    and any(transaction["package_id"] == package["id"] for transaction in hot_reload["transactions"]),
+                    "evidence": tuple(
+                        phase["phase"]
+                        for transaction in hot_reload["transactions"]
+                        if transaction["package_id"] == package["id"]
+                        for phase in transaction["phases"]
+                    ),
                 },
                 {
                     "phase": "rollback_probe",
@@ -2406,6 +2561,16 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
             "evidence": failure_isolation,
         },
         {
+            "id": "hot_reload_before_rollback_probe",
+            "ok": hot_reload["ok"]
+            and all(
+                tuple(phase["phase"] for phase in item["phases"]).index("hot_reload_design_surfaces")
+                < tuple(phase["phase"] for phase in item["phases"]).index("rollback_probe")
+                for item in replay
+            ),
+            "evidence": hot_reload,
+        },
+        {
             "id": "rollback_before_uninstall_cleanup",
             "ok": all(
                 tuple(phase["phase"] for phase in item["phases"]).index("rollback_probe")
@@ -2423,6 +2588,7 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
             and not palette_refresh["side_effects"]
             and not failure_isolation["side_effects"]
             and not rollback["side_effects"]
+            and not hot_reload["side_effects"]
             and all(not preview["side_effects"] for preview in preview_loads.values()),
             "evidence": {
                 "install_replay": install_replay["side_effects"],
@@ -2432,6 +2598,7 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
                 "palette_refresh": palette_refresh["side_effects"],
                 "failure_isolation": failure_isolation["side_effects"],
                 "rollback": rollback["side_effects"],
+                "hot_reload": hot_reload["side_effects"],
             },
         },
     )
@@ -2447,6 +2614,7 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
             "install_before_preview",
             "adapter_smoke_before_update_enable",
             "failure_restores_palette",
+            "hot_reload_before_rollback_probe",
             "rollback_before_uninstall_cleanup",
             "no_global_install",
         ),
@@ -2461,6 +2629,7 @@ def component_package_lifecycle_execution_contract(package_ids: tuple[str, ...] 
     signatures = component_package_signature_validation_contract(package_ids)
     operations = component_package_actionable_operations(package_ids)
     operation_by_package = {operation["package_id"]: operation for operation in operations["operations"]}
+    hot_reload = component_package_hot_reload_transaction_replay(package_ids)
     transactions = []
     for package in install_plan["packages"]:
         package_id = package["id"]
@@ -2482,6 +2651,11 @@ def component_package_lifecycle_execution_contract(package_ids: tuple[str, ...] 
                 "phase": "update",
                 "ok": operation["update_package"]["ok"]
                 and "run_adapter_smoke" in operation["update_package"]["pipeline"],
+            },
+            {
+                "phase": "hot_reload",
+                "ok": hot_reload["ok"]
+                and any(item["package_id"] == package_id and item["final_state"]["enabled"] for item in hot_reload["transactions"]),
             },
             {
                 "phase": "uninstall",
@@ -2516,8 +2690,14 @@ def component_package_lifecycle_execution_contract(package_ids: tuple[str, ...] 
         },
         {
             "id": "install_update_uninstall_executed",
-            "ok": all({"install", "update", "uninstall"} <= {phase["phase"] for phase in transaction["phases"]} for transaction in transactions),
+            "ok": all({"install", "update", "hot_reload", "uninstall"} <= {phase["phase"] for phase in transaction["phases"]} for transaction in transactions),
             "evidence": tuple(transaction["package_id"] for transaction in transactions),
+        },
+        {
+            "id": "hot_reload_executed_without_restart",
+            "ok": hot_reload["ok"]
+            and all(not item["final_state"]["designer_restart_required"] for item in hot_reload["transactions"]),
+            "evidence": hot_reload,
         },
         {
             "id": "registry_clean_after_uninstall",
@@ -2537,10 +2717,12 @@ def component_package_lifecycle_execution_contract(package_ids: tuple[str, ...] 
         "transactions": tuple(transactions),
         "checks": checks,
         "signatures": signatures,
+        "hot_reload": hot_reload,
         "operation_names": operations["operation_names"],
         "guards": (
             "trust_validation_before_install",
             "adapter_smoke_before_update",
+            "hot_reload_without_restart",
             "registry_cleanup_after_uninstall",
             "no_global_install",
         ),
@@ -2558,6 +2740,7 @@ def component_package_run_installation_scenario_operation(package_id: str = "dev
     registry_commit = component_package_registry_commit_operation(package_id)
     marketplace = component_package_marketplace_publication_contract((package_id,))
     update_package = component_package_update_operation(package_id)
+    hot_reload = component_package_hot_reload_transaction_replay((package_id,))
     failure_isolation = component_package_failure_isolation_contract((package_id,))
     rollback = component_package_rollback_contract((package_id,))
     uninstall_package = component_package_uninstall_operation(package_id)
@@ -2571,6 +2754,7 @@ def component_package_run_installation_scenario_operation(package_id: str = "dev
         "refresh_palette",
         "publish_marketplace_entry",
         "run_update_smoke",
+        "hot_reload_design_surfaces",
         "simulate_failure",
         "rollback_registry",
         "uninstall_cleanup",
@@ -2582,6 +2766,7 @@ def component_package_run_installation_scenario_operation(package_id: str = "dev
         "commit_registry",
         "publish_marketplace_entry",
         "run_update_smoke",
+        "hot_reload_design_surfaces",
         "rollback_registry",
         "uninstall_cleanup",
         "verify_registry_clean",
@@ -2596,6 +2781,7 @@ def component_package_run_installation_scenario_operation(package_id: str = "dev
         and registry_commit["ok"]
         and marketplace["ok"]
         and update_package["ok"]
+        and hot_reload["ok"]
         and failure_isolation["ok"]
         and "restore_registry" in rollback["snapshot"]["restore_order"]
         and uninstall_package["ok"]
@@ -2609,6 +2795,7 @@ def component_package_run_installation_scenario_operation(package_id: str = "dev
         and not registry_commit["side_effects"]
         and not marketplace["side_effects"]
         and not update_package["side_effects"]
+        and not hot_reload["side_effects"]
         and not failure_isolation["side_effects"]
         and not rollback["side_effects"]
         and not uninstall_package["side_effects"]
@@ -2621,6 +2808,7 @@ def component_package_run_installation_scenario_operation(package_id: str = "dev
         "registry_commit": registry_commit,
         "marketplace_publication": marketplace,
         "update_package": update_package,
+        "hot_reload": hot_reload,
         "failure_isolation": failure_isolation,
         "rollback": rollback,
         "uninstall_package": uninstall_package,
@@ -2631,6 +2819,7 @@ def component_package_run_installation_scenario_operation(package_id: str = "dev
             "registry_clean": all(transaction["final_state"]["registry_clean"] for transaction in lifecycle_execution["transactions"]),
             "rollback_ready": True,
             "palette_refreshed": True,
+            "designer_restart_required": False,
             "global_install": False,
             "marketplace_entry_registered": marketplace["ok"],
         },
@@ -2639,6 +2828,7 @@ def component_package_run_installation_scenario_operation(package_id: str = "dev
             "sandbox_preview_before_registry_commit",
             "marketplace_entry_after_registry_commit",
             "adapter_smoke_before_update",
+            "hot_reload_without_restart",
             "rollback_before_uninstall_cleanup",
             "registry_clean_after_uninstall",
         ),
@@ -2662,6 +2852,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
     rollback = component_package_rollback_contract(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
+    hot_reload = component_package_hot_reload_transaction_replay(package_ids)
     marketplace = component_package_marketplace_publication_contract(package_ids)
     installation_scenarios = tuple(
         component_package_run_installation_scenario_operation(package["id"])
@@ -2702,6 +2893,12 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             and update_plan["ok"]
             and all(operation["update_package"]["ok"] for operation in actionable_operations["operations"]),
             "evidence": tuple(update["phases"] for update in update_plan["updates"]),
+        },
+        {
+            "phase": "hot_reload_design_surfaces",
+            "ok": hot_reload["ok"]
+            and all(not transaction["final_state"]["designer_restart_required"] for transaction in hot_reload["transactions"]),
+            "evidence": tuple((transaction["package_id"], transaction["final_state"]) for transaction in hot_reload["transactions"]),
         },
         {
             "phase": "failure_and_rollback",
@@ -2745,7 +2942,13 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
         },
         {
             "id": "rollback_before_cleanup",
-            "ok": phase_names.index("failure_and_rollback") < phase_names.index("uninstall_cleanup") and phases[4]["ok"],
+            "ok": phase_names.index("failure_and_rollback") < phase_names.index("uninstall_cleanup") and phases[5]["ok"],
+            "evidence": phase_names,
+        },
+        {
+            "id": "hot_reload_before_failure_rollback",
+            "ok": phase_names.index("hot_reload_design_surfaces") < phase_names.index("failure_and_rollback")
+            and phases[4]["ok"],
             "evidence": phase_names,
         },
         {
@@ -2784,6 +2987,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
                 "sandbox_preview",
                 "registry_commit",
                 "versioned_update",
+                "hot_reload_design_surfaces",
                 "failure_and_rollback",
                 "uninstall_cleanup",
             )
@@ -2806,6 +3010,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             and not rollback["side_effects"]
             and not lifecycle_replay["side_effects"]
             and not lifecycle_execution["side_effects"]
+            and not hot_reload["side_effects"]
             and all(not scenario["side_effects"] for scenario in installation_scenarios)
             and not marketplace["side_effects"],
             "evidence": (),
@@ -2819,6 +3024,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
         "phases": phases,
         "checks": checks,
         "installation_scenarios": installation_scenarios,
+        "hot_reload": hot_reload,
         "marketplace_publication": marketplace,
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -2845,6 +3051,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     uninstall_plan = component_package_uninstall_plan_contract(package_ids)
     palette_refresh = component_package_palette_refresh_contract(package_ids)
     failure_isolation = component_package_failure_isolation_contract(package_ids)
+    hot_reload = component_package_hot_reload_transaction_replay(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     actionable_operations = component_package_actionable_operations(package_ids)
     installation_scenario = component_package_run_installation_scenario_operation(next(iter(session["packages"]), "devexpress-native"))
@@ -2946,6 +3153,14 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": failure_isolation,
         },
         {
+            "id": "hot_reload_transaction_replay",
+            "ok": hot_reload["ok"]
+            and {"signature_revalidated_before_reload", "hot_reload_refreshes_design_surfaces", "rollback_restores_previous_profile"}
+            <= {check["id"] for check in hot_reload["checks"] if check["ok"]}
+            and not hot_reload["side_effects"],
+            "evidence": hot_reload,
+        },
+        {
             "id": "lifecycle_transaction_replay",
             "ok": lifecycle_replay["ok"] and not lifecycle_replay["side_effects"],
             "evidence": lifecycle_replay,
@@ -3008,6 +3223,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "installation_scenario_ready",
                 "operation_surface_ready",
                 "phase_order_ready",
+                "hot_reload_before_failure_rollback",
                 "side_effect_guard_ready",
             }
             <= {check["id"] for check in readiness["checks"] if check["ok"]}
@@ -3065,6 +3281,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             and not uninstall_plan["side_effects"]
             and not palette_refresh["side_effects"]
             and not failure_isolation["side_effects"]
+            and not hot_reload["side_effects"]
             and not lifecycle_replay["side_effects"]
             and not signature_validation["side_effects"]
             and not lifecycle_execution["side_effects"]
@@ -3086,6 +3303,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "uninstall_plan": uninstall_plan["side_effects"],
                 "palette_refresh": palette_refresh["side_effects"],
                 "failure_isolation": failure_isolation["side_effects"],
+                "hot_reload": hot_reload["side_effects"],
                 "lifecycle_replay": lifecycle_replay["side_effects"],
                 "signature_validation": signature_validation["side_effects"],
                 "lifecycle_execution": lifecycle_execution["side_effects"],
@@ -3118,6 +3336,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "uninstall_plan": uninstall_plan,
         "palette_refresh": palette_refresh,
         "failure_isolation": failure_isolation,
+        "hot_reload": hot_reload,
         "lifecycle_replay": lifecycle_replay,
         "actionable_operations": actionable_operations,
         "installation_scenario": installation_scenario,
@@ -3140,6 +3359,7 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
     behavior_workbench = component_package_behavior_workbench()
     actionable_operations = component_package_actionable_operations()
     marketplace = component_package_marketplace_publication_contract()
+    hot_reload = component_package_hot_reload_transaction_replay()
     package_files = component_package_file_manifest()
     existing = set(existing_paths or ())
     checks = (
@@ -3194,6 +3414,13 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
             "evidence": marketplace,
         },
         {
+            "id": "hot_reload_transaction_replay",
+            "ok": hot_reload["ok"]
+            and all(not item["final_state"]["designer_restart_required"] for item in hot_reload["transactions"])
+            and not hot_reload["side_effects"],
+            "evidence": hot_reload,
+        },
+        {
             "id": "package_file_exports",
             "ok": all(
                 {
@@ -3236,6 +3463,7 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
         "behavior_workbench": behavior_workbench,
         "actionable_operations": actionable_operations,
         "marketplace_publication": marketplace,
+        "hot_reload": hot_reload,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -18095,6 +18323,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "trust_before_preview",
                 "preview_before_registry_commit",
                 "registry_before_update",
+                "hot_reload_before_failure_rollback",
                 "rollback_before_cleanup",
                 "marketplace_publication_ready",
                 "operation_surface_ready",
@@ -18103,6 +18332,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             <= {check["id"] for check in package_readiness["checks"] if check["ok"]}
             and {
                 "lifecycle_transaction_replay",
+                "hot_reload_transaction_replay",
                 "marketplace_publication",
                 "package_manager_modules",
                 "package_manager_module_tests",
@@ -18112,8 +18342,10 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "trust_before_preview",
                 "preview_before_registry_commit",
                 "registry_before_update",
+                "hot_reload_before_failure_rollback",
                 "rollback_before_cleanup",
                 "marketplace_publication_ready",
+                "hot_reload_transaction_replay",
                 "package_manager_modules",
                 "package_manager_module_tests",
                 "package_manager_module_replay_matrix",
@@ -20961,6 +21193,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "preview_load",
         "versioned_update",
         "failure_containment",
+        "hot_reload_design_surfaces",
         "rollback_probe",
         "uninstall_cleanup",
     )
@@ -20988,6 +21221,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "uninstall_plan",
         "palette_refresh",
         "failure_isolation",
+        "hot_reload_transaction_replay",
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
@@ -21288,6 +21522,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "sandbox_preview",
         "registry_commit",
         "versioned_update",
+        "hot_reload_design_surfaces",
         "failure_and_rollback",
         "uninstall_cleanup",
     )
@@ -21298,6 +21533,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "trust_before_preview",
         "preview_before_registry_commit",
         "registry_before_update",
+        "hot_reload_before_failure_rollback",
         "rollback_before_cleanup",
         "marketplace_publication_ready",
         "operation_surface_ready",
@@ -21574,6 +21810,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "package_behavior_workbench",
         "actionable_package_operations",
         "marketplace_publication",
+        "hot_reload_transaction_replay",
         "package_file_exports",
         "generated_package_files",
     )
