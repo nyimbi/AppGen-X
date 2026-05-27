@@ -1,1 +1,80 @@
-PBC_MANIFEST = {'pbc': 'api_gateway_mesh', 'label': 'Dynamic API Gateway and Service Mesh', 'mesh': 'platform', 'description': 'Ingress routing, rate limiting, service discovery, mTLS policy, and telemetry.', 'datastore_backend': 'postgresql', 'tables': ('service_route', 'rate_limit_policy', 'mtls_identity', 'traffic_sample'), 'apis': ('POST /routes', 'POST /rate-limits', 'GET /service-map'), 'emits': ('RoutePublished', 'ServiceHealthChanged'), 'consumes': ('PbcDeployed', 'AccessPolicyChanged'), 'template': None, 'ui_fragments': ('ApiGatewayMeshWorkbench', 'ApiGatewayMeshDetail'), 'permissions': ('api_gateway_mesh.read', 'api_gateway_mesh.create', 'api_gateway_mesh.update', 'api_gateway_mesh.approve', 'api_gateway_mesh.admin'), 'configuration': ('API_GATEWAY_MESH_DATABASE_URL', 'API_GATEWAY_MESH_EVENT_TOPIC', 'API_GATEWAY_MESH_RETRY_LIMIT'), 'capabilities': ('api_gateway_mesh.service_route', 'api_gateway_mesh.rate_limit_policy', 'api_gateway_mesh.mtls_identity', 'api_gateway_mesh.traffic_sample'), 'standard_features': ('service_registry', 'endpoint_catalog', 'route_definition', 'route_versioning', 'route_publication', 'host_path_method_matching', 'canary_policy', 'upstream_selection', 'rate_limit_policy', 'quota_policy', 'burst_control', 'mtls_identity', 'certificate_rotation', 'traffic_policy', 'retry_budget', 'circuit_breaker', 'fallback_route', 'traffic_sampling', 'service_health', 'service_map', 'route_telemetry', 'idempotent_handlers', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'schema_contract', 'service_contract', 'release_gate', 'api_contract', 'audit_evidence', 'appgen_x_outbox', 'appgen_x_inbox', 'retry_dead_letter_evidence', 'workbench_binding_evidence', 'release_evidence_contract', 'seed_data', 'workbench'), 'workflows': ('command_routes', 'command_rate_limits', 'query_service_map'), 'analytics': ('policy_latency', 'contract_break_rate', 'deployment_safety', 'audit_completeness', 'route_published_throughput', 'service_health_changed_throughput'), 'advanced_capabilities': ('event_sourced_gateway_lifecycle', 'graph_relational_service_topology', 'multi_tenant_gateway_isolation', 'schema_evolution_resilient_route_schema', 'probabilistic_latency_saturation_failure_scoring', 'real_time_mesh_analytics', 'counterfactual_traffic_policy_simulation', 'temporal_route_health_forecasting', 'autonomous_gateway_exception_resolution', 'semantic_route_request_parsing', 'predictive_route_risk_scoring', 'self_healing_mesh_route_selection', 'zero_knowledge_route_publication_proof', 'immutable_gateway_audit_trail', 'dynamic_gateway_policy_screening', 'automated_gateway_control_testing', 'universal_api_async_streaming', 'cross_system_gateway_federation', 'identity_schema_audit_composition_integration', 'decentralized_service_identity', 'chaos_engineered_gateway_tolerance', 'quantum_resistant_route_authorization', 'carbon_aware_gateway_routing', 'algebraic_route_optimization', 'mechanism_design_traffic_allocation', 'information_theoretic_traffic_anomaly_detection', 'temporal_traffic_exposure_stochastic_modeling', 'distributed_systems_engineering', 'probabilistic_ml_route_risk', 'cryptographic_engineering', 'mathematical_optimization', 'gateway_mlops_governance'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+"""Package manifest for the api_gateway_mesh PBC."""
+
+from .runtime import API_GATEWAY_MESH_CONSUMED_EVENT_TYPES
+from .runtime import API_GATEWAY_MESH_EMITTED_EVENT_TYPES
+from .runtime import API_GATEWAY_MESH_OWNED_TABLES
+from .runtime import API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS
+from .runtime import API_GATEWAY_MESH_STANDARD_FEATURE_KEYS
+from .runtime import api_gateway_mesh_build_api_contract
+
+
+PBC_MANIFEST = {
+    "pbc": 'api_gateway_mesh',
+    "label": "Dynamic API Gateway and Service Mesh",
+    "mesh": "platform",
+    "description": "Service registration, endpoint catalog, route publication, traffic policy, rate limiting, mTLS identity, health, telemetry, resilience, proofs, optimization, and AppGen-X gateway event orchestration.",
+    "datastore_backend": "postgresql",
+    "tables": API_GATEWAY_MESH_OWNED_TABLES,
+    "apis": tuple(route["route"] for route in api_gateway_mesh_build_api_contract()["routes"]),
+    "emits": API_GATEWAY_MESH_EMITTED_EVENT_TYPES,
+    "consumes": API_GATEWAY_MESH_CONSUMED_EVENT_TYPES,
+    "template": None,
+    "ui_fragments": (
+        "ApiGatewayMeshWorkbench",
+        "ServiceRegistryConsole",
+        "RoutePublicationConsole",
+        "TrafficPolicyPanel",
+        "RateLimitPolicyConsole",
+        "MeshIdentityPanel",
+        "ServiceHealthBoard",
+        "GatewayAnomalyBoard",
+        "GatewayConfigurationPanel",
+    ),
+    "permissions": (
+        "api_gateway_mesh.read",
+        "api_gateway_mesh.service",
+        "api_gateway_mesh.route",
+        "api_gateway_mesh.policy",
+        "api_gateway_mesh.identity",
+        "api_gateway_mesh.event",
+        "api_gateway_mesh.configure",
+        "api_gateway_mesh.audit",
+    ),
+    "configuration": (
+        "API_GATEWAY_MESH_DATABASE_URL",
+        "API_GATEWAY_MESH_EVENT_TOPIC",
+        "API_GATEWAY_MESH_RETRY_LIMIT",
+        "API_GATEWAY_MESH_DEFAULT_TIMEZONE",
+        "API_GATEWAY_MESH_ALLOWED_METHODS",
+        "API_GATEWAY_MESH_ALLOWED_PROTOCOLS",
+        "API_GATEWAY_MESH_ALLOWED_REGIONS",
+    ),
+    "capabilities": tuple(f"api_gateway_mesh.{table}" for table in API_GATEWAY_MESH_OWNED_TABLES),
+    "standard_features": API_GATEWAY_MESH_STANDARD_FEATURE_KEYS,
+    "workflows": (
+        "command_services",
+        "command_routes",
+        "command_rate_limits",
+        "command_mtls_identities",
+        "command_service_health",
+        "command_traffic_samples",
+        "command_event_inbox",
+        "query_service_map",
+        "query_api_gateway_mesh_workbench",
+    ),
+    "analytics": (
+        "route_publish_rate",
+        "p95_latency",
+        "error_rate",
+        "saturation",
+        "route_risk",
+        "traffic_anomaly_count",
+        "service_health_changed_throughput",
+        "route_published_throughput",
+    ),
+    "advanced_capabilities": API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS,
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": ("tests/test_contract.py",),
+    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+}

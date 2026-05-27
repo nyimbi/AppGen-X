@@ -246,49 +246,191 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - PBC key: `api_gateway_mesh`
 - Mesh: `platform`
-- Datastore backend: `None`
+- Datastore backend: `postgresql`
 
 ### Owned Tables
 
+- `service_registration`
+- `endpoint_catalog`
 - `service_route`
+- `route_version`
 - `rate_limit_policy`
 - `mtls_identity`
+- `traffic_policy`
+- `retry_budget`
+- `circuit_breaker`
+- `fallback_route`
+- `service_health`
 - `traffic_sample`
+- `gateway_rule`
+- `gateway_parameter`
+- `gateway_configuration`
+- `gateway_service_map_projection`
+- `gateway_route_contract_projection`
+- `gateway_policy_screening`
+- `gateway_route_publication_proof`
+- `gateway_federation_projection`
+- `gateway_resilience_drill`
+- `gateway_crypto_epoch`
+- `gateway_carbon_routing_window`
+- `gateway_route_optimization`
+- `gateway_traffic_allocation`
+- `gateway_anomaly_signal`
+- `gateway_stochastic_exposure`
+- `gateway_parsed_request`
+- `gateway_control_assertion`
+- `gateway_governed_model`
+- `gateway_retry_evidence`
+- `gateway_health_forecast`
+- `gateway_exception_resolution`
+- `gateway_route_risk_score`
+- `gateway_route_selection`
+- `api_gateway_mesh_appgen_outbox_event`
+- `api_gateway_mesh_appgen_inbox_event`
+- `api_gateway_mesh_dead_letter_event`
 
 ### API Routes
 
+- `POST /services`
 - `POST /routes`
 - `POST /rate-limits`
+- `POST /mtls-identities`
+- `POST /service-health`
+- `POST /traffic-samples`
+- `POST /gateway/events/inbox`
+- `POST /gateway-rules`
+- `POST /gateway-parameters`
+- `POST /gateway-configuration`
 - `GET /service-map`
+- `GET /gateway/contracts/schema`
+- `GET /gateway/contracts/service`
+- `GET /gateway/release-evidence`
+- `GET /gateway-workbench`
 
 ### Emitted Events
 
+- `ServiceRegistered`
 - `RoutePublished`
+- `RateLimitApplied`
 - `ServiceHealthChanged`
+- `MeshPolicyChanged`
+- `TrafficSampleRecorded`
 
 ### Consumed Events
 
 - `PbcDeployed`
 - `AccessPolicyChanged`
+- `SchemaAccepted`
+- `AuditEventSealed`
+- `TenantProvisioned`
 
 ### UI Fragments
 
-- None declared
+- `ApiGatewayMeshWorkbench`
+- `ServiceRegistryConsole`
+- `RoutePublicationConsole`
+- `TrafficPolicyPanel`
+- `RateLimitPolicyConsole`
+- `MeshIdentityPanel`
+- `ServiceHealthBoard`
+- `GatewayAnomalyBoard`
+- `GatewayConfigurationPanel`
 
 ### Permissions
 
-- None declared
+- `api_gateway_mesh.read`
+- `api_gateway_mesh.service`
+- `api_gateway_mesh.route`
+- `api_gateway_mesh.policy`
+- `api_gateway_mesh.identity`
+- `api_gateway_mesh.event`
+- `api_gateway_mesh.configure`
+- `api_gateway_mesh.audit`
 
 ### Configuration Keys
 
-- None declared
+- `API_GATEWAY_MESH_DATABASE_URL`
+- `API_GATEWAY_MESH_EVENT_TOPIC`
+- `API_GATEWAY_MESH_RETRY_LIMIT`
+- `API_GATEWAY_MESH_DEFAULT_TIMEZONE`
+- `API_GATEWAY_MESH_ALLOWED_METHODS`
+- `API_GATEWAY_MESH_ALLOWED_PROTOCOLS`
+- `API_GATEWAY_MESH_ALLOWED_REGIONS`
 
 ### Standard Features
 
-- None declared
+- `service_registry`
+- `endpoint_catalog`
+- `route_definition`
+- `route_versioning`
+- `route_publication`
+- `host_path_method_matching`
+- `canary_policy`
+- `upstream_selection`
+- `rate_limit_policy`
+- `quota_policy`
+- `burst_control`
+- `mtls_identity`
+- `certificate_rotation`
+- `traffic_policy`
+- `retry_budget`
+- `circuit_breaker`
+- `fallback_route`
+- `traffic_sampling`
+- `service_health`
+- `service_map`
+- `route_telemetry`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `schema_contract`
+- `service_contract`
+- `release_gate`
+- `api_contract`
+- `audit_evidence`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `retry_dead_letter_evidence`
+- `workbench_binding_evidence`
+- `release_evidence_contract`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_gateway_lifecycle`
+- `graph_relational_service_topology`
+- `multi_tenant_gateway_isolation`
+- `schema_evolution_resilient_route_schema`
+- `probabilistic_latency_saturation_failure_scoring`
+- `real_time_mesh_analytics`
+- `counterfactual_traffic_policy_simulation`
+- `temporal_route_health_forecasting`
+- `autonomous_gateway_exception_resolution`
+- `semantic_route_request_parsing`
+- `predictive_route_risk_scoring`
+- `self_healing_mesh_route_selection`
+- `zero_knowledge_route_publication_proof`
+- `immutable_gateway_audit_trail`
+- `dynamic_gateway_policy_screening`
+- `automated_gateway_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_gateway_federation`
+- `identity_schema_audit_composition_integration`
+- `decentralized_service_identity`
+- `chaos_engineered_gateway_tolerance`
+- `quantum_resistant_route_authorization`
+- `carbon_aware_gateway_routing`
+- `algebraic_route_optimization`
+- `mechanism_design_traffic_allocation`
+- `information_theoretic_traffic_anomaly_detection`
+- `temporal_traffic_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_route_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `gateway_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->

@@ -1,76 +1,40 @@
 CREATE SCHEMA IF NOT EXISTS api_gateway_mesh;
 
-CREATE TABLE api_gateway_mesh_service_route (
-  id INTEGER PRIMARY KEY NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE api_gateway_mesh_rate_limit_policy (
-  id INTEGER PRIMARY KEY NOT NULL,
-  service_route_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (service_route_id) REFERENCES api_gateway_mesh_service_route(id)
-);
-
-CREATE TABLE api_gateway_mesh_mtls_identity (
-  id INTEGER PRIMARY KEY NOT NULL,
-  service_route_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (service_route_id) REFERENCES api_gateway_mesh_service_route(id)
-);
-
-CREATE TABLE api_gateway_mesh_traffic_sample (
-  id INTEGER PRIMARY KEY NOT NULL,
-  service_route_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (service_route_id) REFERENCES api_gateway_mesh_service_route(id)
-);
-
-CREATE TABLE api_gateway_mesh_appgen_outbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE api_gateway_mesh_appgen_inbox_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
-
-CREATE TABLE api_gateway_mesh_appgen_dead_letter_event (
-  id INTEGER PRIMARY KEY,
-  event_id VARCHAR(255) NOT NULL,
-  event_type VARCHAR(255) NOT NULL,
-  payload TEXT NOT NULL,
-  attempts INTEGER NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP
-);
+CREATE TABLE api_gateway_mesh_service_registration (tenant VARCHAR(120) NOT NULL, service_id VARCHAR(160) NOT NULL, pbc VARCHAR(160) NOT NULL, name VARCHAR(200) NOT NULL, version INTEGER NOT NULL, region VARCHAR(120) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_endpoint_catalog (tenant VARCHAR(120) NOT NULL, endpoint_id VARCHAR(160) NOT NULL, service_id VARCHAR(160) NOT NULL, upstream_url VARCHAR(255) NOT NULL, protocol VARCHAR(80) NOT NULL, method VARCHAR(40) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_service_route (tenant VARCHAR(120) NOT NULL, route_id VARCHAR(160) NOT NULL, service_id VARCHAR(160) NOT NULL, host VARCHAR(200) NOT NULL, path VARCHAR(255) NOT NULL, method VARCHAR(40) NOT NULL, protocol VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_route_version (tenant VARCHAR(120) NOT NULL, route_version_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, version INTEGER NOT NULL, route_hash VARCHAR(200) NOT NULL, canary_percent DECIMAL(18,4) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_rate_limit_policy (tenant VARCHAR(120) NOT NULL, policy_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, limit_per_minute INTEGER NOT NULL, burst INTEGER NOT NULL, scope VARCHAR(120) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_mtls_identity (tenant VARCHAR(120) NOT NULL, identity_id VARCHAR(160) NOT NULL, service_id VARCHAR(160) NOT NULL, spiffe_id VARCHAR(240) NOT NULL, issuer VARCHAR(200) NOT NULL, verified BOOLEAN NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_traffic_policy (tenant VARCHAR(120) NOT NULL, policy_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, canary_percent DECIMAL(18,4) NOT NULL, fallback_route_id VARCHAR(160) NOT NULL, backpressure_mode VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_retry_budget (tenant VARCHAR(120) NOT NULL, budget_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, retry_budget INTEGER NOT NULL, retry_window_seconds INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_circuit_breaker (tenant VARCHAR(120) NOT NULL, circuit_breaker_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, error_threshold DECIMAL(18,4) NOT NULL, open_state BOOLEAN NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_fallback_route (tenant VARCHAR(120) NOT NULL, fallback_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, fallback_service_id VARCHAR(160) NOT NULL, strategy VARCHAR(120) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_service_health (tenant VARCHAR(120) NOT NULL, health_id VARCHAR(160) NOT NULL, service_id VARCHAR(160) NOT NULL, latency_ms INTEGER NOT NULL, error_rate DECIMAL(18,4) NOT NULL, status VARCHAR(80) NOT NULL, recorded_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_traffic_sample (tenant VARCHAR(120) NOT NULL, sample_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, requests INTEGER NOT NULL, p95_ms DECIMAL(18,4) NOT NULL, error_rate DECIMAL(18,4) NOT NULL, saturation DECIMAL(18,4) NOT NULL, risk_score DECIMAL(18,4) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_rule (tenant VARCHAR(120) NOT NULL, rule_id VARCHAR(160) NOT NULL, rule_type VARCHAR(120) NOT NULL, scope VARCHAR(120) NOT NULL, compiled_hash VARCHAR(200) NOT NULL, enabled BOOLEAN NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_parameter (tenant VARCHAR(120) NOT NULL, parameter_id VARCHAR(160) NOT NULL, name VARCHAR(160) NOT NULL, value VARCHAR(255) NOT NULL, effective_at TIMESTAMP NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_configuration (tenant VARCHAR(120) NOT NULL, configuration_id VARCHAR(160) NOT NULL, database_backend VARCHAR(80) NOT NULL, event_topic VARCHAR(200) NOT NULL, retry_limit INTEGER NOT NULL, event_contract VARCHAR(80) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_service_map_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, service_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, edge_hash VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_route_contract_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, api_route VARCHAR(255) NOT NULL, event_contract VARCHAR(80) NOT NULL, version INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_policy_screening (tenant VARCHAR(120) NOT NULL, screening_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, decision VARCHAR(80) NOT NULL, restricted_path_hash VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_route_publication_proof (tenant VARCHAR(120) NOT NULL, proof_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, proof_hash VARCHAR(200) NOT NULL, public_claims_hash VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_federation_projection (tenant VARCHAR(120) NOT NULL, projection_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, system_set TEXT NOT NULL, projection_hash VARCHAR(200) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_resilience_drill (tenant VARCHAR(120) NOT NULL, drill_id VARCHAR(160) NOT NULL, scenario VARCHAR(160) NOT NULL, decision VARCHAR(80) NOT NULL, retry_limit INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_crypto_epoch (tenant VARCHAR(120) NOT NULL, key_epoch VARCHAR(160) NOT NULL, algorithm VARCHAR(120) NOT NULL, key_id VARCHAR(160) NOT NULL, rotated_at TIMESTAMP NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_carbon_routing_window (tenant VARCHAR(120) NOT NULL, window_id VARCHAR(160) NOT NULL, window VARCHAR(120) NOT NULL, carbon_intensity DECIMAL(18,4) NOT NULL, selected BOOLEAN NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_route_optimization (tenant VARCHAR(120) NOT NULL, optimization_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, objective_score DECIMAL(18,4) NOT NULL, selected_route VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_traffic_allocation (tenant VARCHAR(120) NOT NULL, allocation_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, upstream VARCHAR(160) NOT NULL, requests INTEGER NOT NULL, clearing_priority DECIMAL(18,4) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_anomaly_signal (tenant VARCHAR(120) NOT NULL, signal_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, entropy DECIMAL(18,4) NOT NULL, outlier_count INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_stochastic_exposure (tenant VARCHAR(120) NOT NULL, exposure_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, expected_exposure DECIMAL(18,4) NOT NULL, tail_risk DECIMAL(18,4) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_parsed_request (tenant VARCHAR(120) NOT NULL, request_id VARCHAR(160) NOT NULL, service_id VARCHAR(160) NOT NULL, method VARCHAR(40) NOT NULL, path VARCHAR(255) NOT NULL, action VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_control_assertion (tenant VARCHAR(120) NOT NULL, control_id VARCHAR(160) NOT NULL, assertion VARCHAR(240) NOT NULL, status VARCHAR(80) NOT NULL, tested_at TIMESTAMP NOT NULL, evidence_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_governed_model (tenant VARCHAR(120) NOT NULL, model_id VARCHAR(160) NOT NULL, model_name VARCHAR(160) NOT NULL, feature_lineage TEXT NOT NULL, drift_score DECIMAL(18,4) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_retry_evidence (tenant VARCHAR(120) NOT NULL, retry_id VARCHAR(160) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, idempotency_key VARCHAR(240) NOT NULL, attempts INTEGER NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_health_forecast (tenant VARCHAR(120) NOT NULL, forecast_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, forecast_health DECIMAL(18,4) NOT NULL, horizon_minutes INTEGER NOT NULL, trend VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_exception_resolution (tenant VARCHAR(120) NOT NULL, resolution_id VARCHAR(160) NOT NULL, exception_type VARCHAR(160) NOT NULL, action VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_route_risk_score (tenant VARCHAR(120) NOT NULL, risk_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, risk_score DECIMAL(18,4) NOT NULL, decision VARCHAR(80) NOT NULL, model_name VARCHAR(160) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_gateway_route_selection (tenant VARCHAR(120) NOT NULL, selection_id VARCHAR(160) NOT NULL, route_id VARCHAR(160) NOT NULL, selected_route VARCHAR(160) NOT NULL, failover_used BOOLEAN NOT NULL, idempotency_key VARCHAR(240) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_appgen_outbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, topic VARCHAR(200) NOT NULL, idempotency_key VARCHAR(240) NOT NULL, published_at TIMESTAMP NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_appgen_inbox_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, idempotency_key VARCHAR(240) NOT NULL, attempts INTEGER NOT NULL, status VARCHAR(80) NOT NULL, received_at TIMESTAMP NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+CREATE TABLE api_gateway_mesh_dead_letter_event (tenant VARCHAR(120) NOT NULL, event_id VARCHAR(160) NOT NULL, event_type VARCHAR(160) NOT NULL, idempotency_key VARCHAR(240) NOT NULL, attempts INTEGER NOT NULL, reason VARCHAR(240) NOT NULL, status VARCHAR(80) NOT NULL, audit_hash VARCHAR(200) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);

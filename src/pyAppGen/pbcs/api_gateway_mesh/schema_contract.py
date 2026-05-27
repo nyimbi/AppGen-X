@@ -1,54 +1,89 @@
 """Generated owned schema evidence for the api_gateway_mesh PBC."""
 
-SCHEMA_CONTRACT = {'format': 'appgen.api-gateway-mesh-owned-schema-contract.v1', 'ok': True, 'tables': ({'logical_table': 'service_route', 'owned_table': 'api_gateway_mesh_service_route', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'logical_table': 'rate_limit_policy', 'owned_table': 'api_gateway_mesh_rate_limit_policy', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'service_route_id', 'type': 'integer', 'required': True, 'references': 'api_gateway_mesh_service_route.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'service_route_id', 'target_table': 'api_gateway_mesh_service_route', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'mtls_identity', 'owned_table': 'api_gateway_mesh_mtls_identity', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'service_route_id', 'type': 'integer', 'required': True, 'references': 'api_gateway_mesh_service_route.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'service_route_id', 'target_table': 'api_gateway_mesh_service_route', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'logical_table': 'traffic_sample', 'owned_table': 'api_gateway_mesh_traffic_sample', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'service_route_id', 'type': 'integer', 'required': True, 'references': 'api_gateway_mesh_service_route.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'service_route_id', 'target_table': 'api_gateway_mesh_service_route', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'relationships': ({'from_table': 'endpoint_catalog', 'from_field': 'service_id', 'to_table': 'service_registration', 'to_field': 'service_id'}, {'from_table': 'service_route', 'from_field': 'service_id', 'to_table': 'service_registration', 'to_field': 'service_id'}, {'from_table': 'route_version', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'rate_limit_policy', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'mtls_identity', 'from_field': 'service_id', 'to_table': 'service_registration', 'to_field': 'service_id'}, {'from_table': 'traffic_policy', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'retry_budget', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'circuit_breaker', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'fallback_route', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'service_health', 'from_field': 'service_id', 'to_table': 'service_registration', 'to_field': 'service_id'}, {'from_table': 'traffic_sample', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_service_map_projection', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_route_contract_projection', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_route_publication_proof', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_federation_projection', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_route_optimization', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_traffic_allocation', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_anomaly_signal', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_stochastic_exposure', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_health_forecast', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_route_risk_score', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}, {'from_table': 'gateway_route_selection', 'from_field': 'route_id', 'to_table': 'service_route', 'to_field': 'route_id'}), 'migrations': ('migrations/001_initial.sql',), 'models': ({'class_name': 'ApiGatewayMeshServiceRoute', 'table': 'api_gateway_mesh_service_route', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ()}, {'class_name': 'ApiGatewayMeshRateLimitPolicy', 'table': 'api_gateway_mesh_rate_limit_policy', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'service_route_id', 'type': 'integer', 'required': True, 'references': 'api_gateway_mesh_service_route.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'service_route_id', 'target_table': 'api_gateway_mesh_service_route', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'ApiGatewayMeshMtlsIdentity', 'table': 'api_gateway_mesh_mtls_identity', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'service_route_id', 'type': 'integer', 'required': True, 'references': 'api_gateway_mesh_service_route.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'service_route_id', 'target_table': 'api_gateway_mesh_service_route', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}, {'class_name': 'ApiGatewayMeshTrafficSample', 'table': 'api_gateway_mesh_traffic_sample', 'fields': ({'name': 'id', 'type': 'integer', 'primary_key': True, 'nullable': False}, {'name': 'service_route_id', 'type': 'integer', 'required': True, 'references': 'api_gateway_mesh_service_route.id'}, {'name': 'code', 'type': 'string', 'required': True, 'searchable': True}, {'name': 'status', 'type': 'string', 'required': True, 'default': 'draft'}, {'name': 'version', 'type': 'integer', 'required': True, 'default': 1}, {'name': 'created_at', 'type': 'datetime', 'required': True}, {'name': 'updated_at', 'type': 'datetime', 'required': True}), 'relationships': ({'field': 'service_route_id', 'target_table': 'api_gateway_mesh_service_route', 'target_column': 'id', 'cardinality': 'many-to-one', 'ownership': 'same_pbc'},)}), 'datastore_backends': ('postgresql', 'mysql', 'mariadb'), 'shared_table_access': False, 'pbc': 'api_gateway_mesh', 'owned_tables': ('api_gateway_mesh_service_route', 'api_gateway_mesh_rate_limit_policy', 'api_gateway_mesh_mtls_identity', 'api_gateway_mesh_traffic_sample'), 'database_backends': ('postgresql',)}
+from .domain_schema import LOGICAL_TABLES
+from .domain_schema import class_name_for
+from .domain_schema import fields_for
+from .domain_schema import migration_path_for
+from .domain_schema import owned_table
+from .domain_schema import relationships_for
+from .domain_schema import supported_backends
+from .runtime import API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
+
+
+def _table_contract(table: str) -> dict:
+    return {
+        "logical_table": table,
+        "owned_table": owned_table(table),
+        "fields": fields_for(table),
+        "relationships": relationships_for(table),
+    }
+
+
+SCHEMA_CONTRACT = {
+    "format": "appgen.api-gateway-mesh-owned-schema-contract.v1",
+    "ok": True,
+    "pbc": "api_gateway_mesh",
+    "owned_tables": tuple(owned_table(table) for table in LOGICAL_TABLES),
+    "logical_owned_tables": LOGICAL_TABLES,
+    "tables": tuple(_table_contract(table) for table in LOGICAL_TABLES),
+    "runtime_tables": tuple(_table_contract(table) for table in LOGICAL_TABLES if table.startswith("api_gateway_mesh_") and table.endswith("_event")),
+    "relationships": tuple(relationship for table in LOGICAL_TABLES for relationship in relationships_for(table)),
+    "migrations": (migration_path_for("service_registration"),),
+    "migration_plan": tuple(
+        {"path": migration_path_for(table), "operation": "create_owned_table", "table": owned_table(table)}
+        for table in LOGICAL_TABLES
+    ),
+    "models": tuple(
+        {"class_name": class_name_for(table), "table": owned_table(table), "fields": fields_for(table), "relationships": relationships_for(table)}
+        for table in LOGICAL_TABLES
+    ),
+    "datastore_backends": supported_backends(),
+    "database_backends": supported_backends(),
+    "required_event_topic": API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC,
+    "event_contract": "AppGen-X",
+    "shared_table_access": False,
+    "declared_dependencies": {
+        "apis": ("GET /identity/policies", "GET /schemas/routes", "POST /audit/route-events", "POST /composition/services"),
+        "events": ("PbcDeployed", "AccessPolicyChanged", "SchemaAccepted", "AuditEventSealed", "TenantProvisioned"),
+        "shared_tables": (),
+    },
+}
 
 
 def build_schema_contract():
-    """Return generated owned schema, migration, and model evidence."""
     return dict(SCHEMA_CONTRACT)
 
 
 def validate_schema_contract():
-    """Validate owned table, migration, model, and datastore evidence."""
     contract = build_schema_contract()
-    pbc = contract['pbc']
-    owned_tables = tuple(contract.get('owned_tables', ()))
-    raw_model_tables = tuple(
-        model.get('table')
-        for model in contract.get('models', ())
-        if isinstance(model, dict) and model.get('table')
-    )
-    model_tables = tuple(
-        table if table.startswith(f'{pbc}_') else f'{pbc}_{table}'
-        for table in raw_model_tables
-    )
-    migration_paths = tuple(contract.get('migrations', ()))
-    allowed_backends = {'postgresql', 'mysql', 'mariadb'}
-    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f'{pbc}_'))
-    missing_models = tuple(table for table in owned_tables if model_tables and table not in model_tables)
-    invalid_backends = tuple(
-        backend for backend in contract.get('database_backends', ()) if backend not in allowed_backends
-    )
+    pbc = contract["pbc"]
+    owned_tables = tuple(contract.get("owned_tables", ()))
+    model_tables = tuple(model.get("table") for model in contract.get("models", ()) if isinstance(model, dict) and model.get("table"))
+    migration_paths = tuple(contract.get("migrations", ()))
+    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f"{pbc}_"))
+    missing_models = tuple(table for table in owned_tables if table not in model_tables)
+    invalid_backends = tuple(backend for backend in contract.get("database_backends", ()) if backend not in {"postgresql", "mysql", "mariadb"})
+    thin_tables = tuple(table["owned_table"] for table in contract["tables"] if len(table["fields"]) < 6)
     return {
-        'ok': contract.get('ok') is True
-        and bool(owned_tables)
+        "ok": contract.get("ok") is True
+        and len(owned_tables) >= 35
         and bool(migration_paths)
         and not invalid_tables
         and not missing_models
         and not invalid_backends
-        and contract.get('shared_table_access') is False,
-        'pbc': pbc,
-        'owned_tables': owned_tables,
-        'raw_model_tables': raw_model_tables,
-        'model_tables': model_tables,
-        'migration_paths': migration_paths,
-        'invalid_tables': invalid_tables,
-        'missing_models': missing_models,
-        'invalid_backends': invalid_backends,
-        'side_effects': (),
+        and not thin_tables
+        and contract.get("shared_table_access") is False,
+        "pbc": pbc,
+        "owned_tables": owned_tables,
+        "model_tables": model_tables,
+        "migration_paths": migration_paths,
+        "invalid_tables": invalid_tables,
+        "missing_models": missing_models,
+        "invalid_backends": invalid_backends,
+        "thin_tables": thin_tables,
+        "side_effects": (),
     }
 
 
 def smoke_test():
-    """Exercise schema validation side-effect-free."""
     return validate_schema_contract()
