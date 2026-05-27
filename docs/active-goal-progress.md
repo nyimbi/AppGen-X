@@ -1980,6 +1980,23 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   scan is clean; implementation smoke, returns generation smoke, all
   implemented generation smoke, and `pbc_release_audit()` all return true.
   Commit: `99ce1f9`.
+- Current Schema Registry PBC hardening pass makes `schema_registry` source
+  artifacts match its platform-fabric runtime boundary instead of a four-table
+  placeholder descriptor. The central catalog, package manifest, specification
+  traceability, source schema contract, model metadata, migration, and tests
+  now cover subject aliases, namespaces, schema versions, fields,
+  fingerprints, semantic tags, diffs, evolution plans, compatibility rules and
+  matrices, producer/consumer bindings, validation runs, payload errors,
+  contract violations/remediation/projections, platform projections, policy
+  screening, federation, resilience, crypto epochs, carbon windows,
+  optimization/allocation/anomaly/forecast evidence, identity attestations,
+  governed models, rules, parameters, configuration, and AppGen-X runtime
+  event tables. Py compile passed for `src/pyAppGen/pbc.py`, the touched schema
+  package, and runtime tests; focused schema-registry tests pass (`13 passed`);
+  source package and traceability tests pass (`22 passed`); banned legacy name
+  scan is clean; implementation smoke, schema-registry generation smoke, all
+  implemented generation smoke, and `pbc_release_audit()` all return true.
+  Commit: `de59cee`.
 
 ## Open Completion Areas
 
