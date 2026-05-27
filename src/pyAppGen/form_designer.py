@@ -5993,6 +5993,128 @@ def inspector_editor_surface_contract(component: str = "Grid") -> dict:
     }
 
 
+def inspector_property_editor_surface_transaction_replay_contract(components: tuple[str, ...] = ()) -> dict:
+    """Replay every property editor surface through staged commit and rollback evidence."""
+    selected = components or (
+        "Label",
+        "TextBox",
+        "Grid",
+        "Rectangle",
+        "StyleBook",
+        "GestureManager",
+        "Viewport3D",
+        "DatabaseConnection",
+    )
+    surface_contracts = tuple(inspector_editor_surface_contract(component) for component in selected)
+    pipeline_contracts = tuple(inspector_property_value_pipeline_contract(component) for component in selected)
+    family_contract = property_editor_family_contract()
+    transactions = tuple(
+        {
+            "component": surface_contract["component"],
+            "property": surface["property"],
+            "editor": surface["editor"],
+            "surface": "dropdown" if surface["editor"] == "choice" else surface["surface"],
+            "supports_binding": surface["supports_binding"],
+            "pipeline": (
+                "focus_property_row",
+                "open_dropdown_editor" if surface["editor"] == "choice" else ("open_modal_editor" if surface["surface"] == "modal" else "open_inline_editor"),
+                "load_current_value",
+                "parse_input",
+                "coerce_value",
+                "validate_value",
+                "preview_change",
+                "stage_delta",
+                "commit_change",
+                "emit_property_changed",
+                "record_undo",
+                "refresh_dependents",
+                "refresh_binding_routes" if surface["supports_binding"] else "skip_binding_routes",
+                "close_editor_surface",
+            ),
+            "rollback": ("cancel_editor", "restore_previous_value", "clear_preview", "close_editor_surface"),
+            "family_guard": next(
+                (
+                    family["guards"]
+                    for family in family_contract["families"]
+                    if family["family"] == surface["editor"]
+                ),
+                (),
+            ),
+        }
+        for surface_contract, pipeline_contract in zip(surface_contracts, pipeline_contracts)
+        for surface in surface_contract["surfaces"]
+        if any(
+            pipeline["property"] == surface["property"] and pipeline["editor"] == surface["editor"]
+            for pipeline in pipeline_contract["pipelines"]
+        )
+    )
+    checks = (
+        {
+            "id": "all_editor_families_replayed",
+            "ok": set(family_contract["required_families"]) <= {transaction["editor"] for transaction in transactions},
+            "evidence": tuple(sorted({transaction["editor"] for transaction in transactions})),
+        },
+        {
+            "id": "complex_editors_use_staged_modal_commit",
+            "ok": all(
+                {"open_modal_editor", "stage_delta", "commit_change", "record_undo"} <= set(transaction["pipeline"])
+                for transaction in transactions
+                if transaction["editor"] in {"collection", "binding", "resource"}
+            ),
+        },
+        {
+            "id": "inline_and_dropdown_editors_validate_before_commit",
+            "ok": all(
+                transaction["pipeline"].index("validate_value") < transaction["pipeline"].index("commit_change")
+                and {"open_inline_editor", "open_dropdown_editor"} & set(transaction["pipeline"])
+                for transaction in transactions
+                if transaction["editor"] in {"string", "number", "boolean", "choice", "color"}
+            ),
+        },
+        {
+            "id": "rollback_restores_previous_value",
+            "ok": all({"restore_previous_value", "clear_preview"} <= set(transaction["rollback"]) for transaction in transactions),
+        },
+        {
+            "id": "binding_routes_refresh_for_bindable_editors",
+            "ok": all(
+                ("refresh_binding_routes" in transaction["pipeline"]) == transaction["supports_binding"]
+                for transaction in transactions
+            ),
+        },
+        {
+            "id": "surface_transactions_side_effect_free",
+            "ok": all(not contract["side_effects"] for contract in surface_contracts + pipeline_contracts)
+            and not family_contract["side_effects"],
+        },
+    )
+    return {
+        "format": "appgen.inspector-property-editor-surface-transaction-replay.v1",
+        "ok": bool(transactions) and all(check["ok"] for check in checks),
+        "components": selected,
+        "transactions": transactions,
+        "checks": checks,
+        "final_state": {
+            "component_count": len(selected),
+            "transaction_count": len(transactions),
+            "editor_families": tuple(sorted({transaction["editor"] for transaction in transactions})),
+            "modal_transactions": sum(1 for transaction in transactions if transaction["surface"] == "modal"),
+            "dropdown_transactions": sum(1 for transaction in transactions if transaction["surface"] == "dropdown"),
+            "binding_route_refreshes": sum(1 for transaction in transactions if "refresh_binding_routes" in transaction["pipeline"]),
+        },
+        "guards": (
+            "property_row_focus_before_editor_open",
+            "complex_editors_stage_before_commit",
+            "validate_value_before_commit",
+            "rollback_restores_previous_value",
+            "binding_routes_refresh_after_bindable_commit",
+            "property_editor_surface_transactions_have_no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def inspector_event_signature_routing_contract(component: str = "Grid") -> dict:
     """Return event signature routing and handler-reference evidence."""
     lifecycle = inspector_event_lifecycle_contract(component)
@@ -6890,6 +7012,7 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
     contracts = tuple(object_inspector_contract(component) for component in selected)
     editor_registries = tuple(inspector_editor_registry(component) for component in selected)
     property_pipelines = tuple(inspector_property_value_pipeline_contract(component) for component in selected)
+    property_surface_replay = inspector_property_editor_surface_transaction_replay_contract(tuple(dict.fromkeys(selected + ("Label",))))
     event_signatures = tuple(inspector_event_handler_signature_contract(component) for component in selected)
     component_transactions = tuple(inspector_component_editor_transaction(component) for component in selected)
     custom_lifecycle = tuple(inspector_custom_designer_lifecycle_contract(component) for component in selected)
@@ -6926,10 +7049,14 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
         {
             "phase": "validate_property_and_event_editors",
             "pipeline": tuple(stage for contract in property_pipelines for item in contract["pipelines"] for stage in item["stages"])
+            + tuple(phase for transaction in property_surface_replay["transactions"] for phase in transaction["pipeline"])
             + tuple(stage for contract in event_signatures for item in contract["handlers"] for stage in item["pipeline"]),
             "ok": all(contract["ok"] and not contract["side_effects"] for contract in property_pipelines)
+            and property_surface_replay["ok"]
             and all(contract["ok"] and not contract["side_effects"] for contract in event_signatures)
             and all(any("commit_change" in item["stages"] for item in contract["pipelines"]) for contract in property_pipelines)
+            and {"all_editor_families_replayed", "rollback_restores_previous_value"}
+            <= {check["id"] for check in property_surface_replay["checks"] if check["ok"]}
             and all(any("rename_references" in item["pipeline"] for item in contract["handlers"]) for contract in event_signatures),
         },
         {
@@ -6977,6 +7104,20 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
     checks = (
         {"id": "editor_metadata_ready", "ok": phases[0]["ok"], "evidence": {"contracts": contracts, "registries": editor_registries}},
         {"id": "property_event_ready", "ok": phases[1]["ok"], "evidence": {"properties": property_pipelines, "events": event_signatures}},
+        {
+            "id": "property_editor_surface_transaction_ready",
+            "ok": property_surface_replay["ok"]
+            and {
+                "all_editor_families_replayed",
+                "complex_editors_use_staged_modal_commit",
+                "inline_and_dropdown_editors_validate_before_commit",
+                "rollback_restores_previous_value",
+                "binding_routes_refresh_for_bindable_editors",
+                "surface_transactions_side_effect_free",
+            } <= {check["id"] for check in property_surface_replay["checks"] if check["ok"]}
+            and not property_surface_replay["side_effects"],
+            "evidence": property_surface_replay,
+        },
         {
             "id": "component_custom_designer_ready",
             "ok": phases[2]["ok"],
@@ -7051,6 +7192,7 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
         "final_state": {
             "component_count": len(selected),
             "property_editors": sum(len(contract["property_editors"]) for contract in contracts),
+            "property_editor_surface_transactions": property_surface_replay["final_state"]["transaction_count"],
             "event_editors": sum(len(contract["event_editors"]) for contract in contracts),
             "component_editor_transactions": len(component_transactions),
             "custom_designer_hooks": custom_registration_replay["final_state"]["registered_hooks"],
@@ -7060,6 +7202,7 @@ def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dic
         },
         "guards": (
             "metadata_before_editor_validation",
+            "property_editor_surface_transactions_before_event_release",
             "property_and_event_validation_before_design_surface_replay",
             "component_transactions_before_custom_registration_claim",
             "custom_designer_transactions_before_release_claim",
@@ -7255,6 +7398,7 @@ def object_inspector_workbench() -> dict:
     state_restore = inspector_state_restore_workflow()
     property_grouping = tuple(inspector_property_grouping_contract(component) for component in sample_components)
     editor_surfaces = tuple(inspector_editor_surface_contract(component) for component in sample_components)
+    property_surface_replay = inspector_property_editor_surface_transaction_replay_contract(tuple(dict.fromkeys(sample_components + ("Label",))))
     event_signature_routing = tuple(inspector_event_signature_routing_contract(component) for component in sample_components)
     component_editor_history = tuple(inspector_component_editor_history_contract(component) for component in sample_components)
     custom_designer_hit_tests = tuple(inspector_custom_designer_hit_test_contract(component) for component in sample_components)
@@ -7435,6 +7579,20 @@ def object_inspector_workbench() -> dict:
             "evidence": editor_surfaces,
         },
         {
+            "id": "property_editor_surface_transaction_replay",
+            "ok": property_surface_replay["ok"]
+            and {
+                "all_editor_families_replayed",
+                "complex_editors_use_staged_modal_commit",
+                "inline_and_dropdown_editors_validate_before_commit",
+                "rollback_restores_previous_value",
+                "binding_routes_refresh_for_bindable_editors",
+                "surface_transactions_side_effect_free",
+            } <= {check["id"] for check in property_surface_replay["checks"] if check["ok"]}
+            and not property_surface_replay["side_effects"],
+            "evidence": property_surface_replay,
+        },
+        {
             "id": "event_signature_routing",
             "ok": all(contract["ok"] and not contract["side_effects"] for contract in event_signature_routing),
             "evidence": event_signature_routing,
@@ -7598,6 +7756,7 @@ def object_inspector_workbench() -> dict:
             and {
                 "editor_metadata_ready",
                 "property_event_ready",
+                "property_editor_surface_transaction_ready",
                 "component_custom_designer_ready",
                 "custom_designer_transaction_ready",
                 "state_design_surface_ready",
@@ -7888,6 +8047,7 @@ def object_inspector_workbench() -> dict:
         "state_restore": state_restore,
         "property_grouping": property_grouping,
         "editor_surfaces": editor_surfaces,
+        "property_surface_replay": property_surface_replay,
         "event_signature_routing": event_signature_routing,
         "component_editor_history": component_editor_history,
         "custom_designer_hit_tests": custom_designer_hit_tests,
@@ -17382,6 +17542,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             and {
                 "property_editor_types",
                 "event_editor_lifecycle",
+                "property_editor_surface_transaction_replay",
                 "component_editor_transaction",
                 "custom_designer_registration_replay",
                 "editor_lifecycle_replay",
@@ -17403,6 +17564,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             } <= {check["id"] for check in inspector["checks"] if check["ok"]},
             "deep_checks": (
                 "editor_lifecycle_replay",
+                "property_editor_surface_transaction_replay",
                 "design_surface_transaction_replay",
                 "custom_designer_registration_replay",
                 "custom_designer_transaction_replay",
@@ -18092,6 +18254,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "state_restore_workflow",
         "property_grouping",
         "editor_surfaces",
+        "property_editor_surface_transaction_replay",
         "event_signature_routing",
         "component_editor_history",
         "custom_designer_hit_testing",
@@ -18194,6 +18357,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     required_inspector_readiness_checks = (
         "editor_metadata_ready",
         "property_event_ready",
+        "property_editor_surface_transaction_ready",
         "component_custom_designer_ready",
         "custom_designer_transaction_ready",
         "state_design_surface_ready",

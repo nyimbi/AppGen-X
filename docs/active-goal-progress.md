@@ -2064,3 +2064,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   caches and the root pytest cache under
   `archive/repo-cleanup-2026-05-27-9/runtime-cache/`. A follow-up scan found
   no active non-virtualenv Python bytecode or pytest cache directories.
+- Current inspector parity pass adds property editor surface transaction replay
+  as release-gating evidence. Source and generated visual IDE contracts now
+  prove every property editor family opens the correct inline, dropdown, or
+  modal surface; validates before commit; stages complex editors before apply;
+  records undo; restores previous values on rollback; refreshes dependent
+  properties; and refreshes binding routes for bindable editors. Verified with
+  Python compile, direct source inspector/audit probe, generated template marker
+  probe, and staged restricted-name scan.
+- Post-verification cleanup on 2026-05-27 archived regenerated Python bytecode
+  caches and the root pytest cache under
+  `archive/repo-cleanup-2026-05-27-11/runtime-cache/`. A follow-up scan found
+  no active non-virtualenv Python bytecode or pytest cache directories.

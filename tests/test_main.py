@@ -223,6 +223,7 @@ from pyAppGen.form_designer import inspector_editor_lifecycle_replay_contract
 from pyAppGen.form_designer import inspector_execute_component_editor
 from pyAppGen.form_designer import inspector_invoke_component_handler
 from pyAppGen.form_designer import inspector_binding_designer_bridge_contract
+from pyAppGen.form_designer import inspector_property_editor_surface_transaction_replay_contract
 from pyAppGen.form_designer import inspector_register_custom_designer
 from pyAppGen.form_designer import inspector_rename_event_handler
 from pyAppGen.form_designer import inspector_run_editor_scenario_operation
@@ -1808,6 +1809,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "state_restore_workflow",
         "property_grouping",
         "editor_surfaces",
+        "property_editor_surface_transaction_replay",
         "event_signature_routing",
         "component_editor_history",
         "custom_designer_hit_testing",
@@ -1860,6 +1862,22 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("favorites" in grouping["filters"] for grouping in inspector_workbench["property_grouping"])
     assert all("property_name" in surface["search"]["indexes"] for surface in inspector_workbench["property_grouping"])
     assert all(surface["surfaces"] for surface in inspector_workbench["editor_surfaces"])
+    property_surface_replay = inspector_property_editor_surface_transaction_replay_contract()
+    assert property_surface_replay["format"] == "appgen.inspector-property-editor-surface-transaction-replay.v1"
+    assert property_surface_replay["ok"] is True
+    assert {
+        "all_editor_families_replayed",
+        "complex_editors_use_staged_modal_commit",
+        "inline_and_dropdown_editors_validate_before_commit",
+        "rollback_restores_previous_value",
+        "binding_routes_refresh_for_bindable_editors",
+        "surface_transactions_side_effect_free",
+    } <= {check["id"] for check in property_surface_replay["checks"] if check["ok"]}
+    assert property_surface_replay["final_state"]["dropdown_transactions"] > 0
+    assert inspector_workbench["property_surface_replay"]["ok"] is True
+    assert inspector_workbench["property_surface_replay"]["final_state"]["transaction_count"] >= len(
+        inspector_workbench["contracts"]
+    )
     assert all(route["routes"] for routing in inspector_workbench["event_signature_routing"] for route in routing["routes"])
     assert all("enable_redo" in item["history"] for history in inspector_workbench["component_editor_history"] for item in history["history"])
     assert all(
@@ -2081,6 +2099,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "editor_metadata_ready",
         "property_event_ready",
+        "property_editor_surface_transaction_ready",
         "component_custom_designer_ready",
         "custom_designer_transaction_ready",
         "state_design_surface_ready",
@@ -2090,11 +2109,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "phase_order_ready",
     } == {check["id"] for check in inspector_readiness["checks"]}
     assert inspector_readiness["final_state"]["component_count"] == len(inspector_workbench["contracts"])
+    assert inspector_readiness["final_state"]["property_editor_surface_transactions"] == (
+        inspector_workbench["property_surface_replay"]["final_state"]["transaction_count"]
+    )
     assert inspector_readiness["final_state"]["round_trips"] == len(inspector_workbench["contracts"])
     assert inspector_readiness["final_state"]["custom_designer_hook_transactions"] == (
         inspector_workbench["custom_designer_transaction_replay"]["final_state"]["hook_transactions"]
     )
-    assert inspector_readiness["checks"][3]["evidence"]["final_state"]["metadata_round_trips"] == len(
+    assert inspector_readiness["checks"][4]["evidence"]["final_state"]["metadata_round_trips"] == len(
         inspector_workbench["contracts"]
     )
     assert inspector_workbench["readiness"]["ok"] is True
@@ -18343,6 +18365,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "state_restore_workflow",
         "property_grouping",
         "editor_surfaces",
+        "property_editor_surface_transaction_replay",
         "event_signature_routing",
         "component_editor_history",
         "custom_designer_hit_testing",
@@ -18442,6 +18465,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("favorites" in grouping["filters"] for grouping in generated_inspector["property_grouping"])
     assert all("property_name" in surface["search"]["indexes"] for surface in generated_inspector["property_grouping"])
     assert all(surface["surfaces"] for surface in generated_inspector["editor_surfaces"])
+    generated_property_surface_replay = form_designer.inspector_property_editor_surface_transaction_replay_contract()
+    assert generated_property_surface_replay["format"] == "appgen.generated-inspector-property-editor-surface-transaction-replay.v1"
+    assert generated_property_surface_replay["ok"] is True
+    assert {
+        "all_editor_families_replayed",
+        "complex_editors_use_staged_modal_commit",
+        "inline_and_dropdown_editors_validate_before_commit",
+        "rollback_restores_previous_value",
+        "binding_routes_refresh_for_bindable_editors",
+        "surface_transactions_side_effect_free",
+    } <= {check["id"] for check in generated_property_surface_replay["checks"] if check["ok"]}
+    assert generated_property_surface_replay["final_state"]["dropdown_transactions"] > 0
+    assert generated_inspector["property_surface_replay"]["ok"] is True
+    assert generated_inspector["property_surface_replay"]["final_state"]["transaction_count"] >= len(
+        generated_inspector["contracts"]
+    )
     assert all(route["routes"] for routing in generated_inspector["event_signature_routing"] for route in routing["routes"])
     assert all("enable_redo" in item["history"] for history in generated_inspector["component_editor_history"] for item in history["history"])
     assert all(
@@ -18626,6 +18665,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "editor_metadata_ready",
         "property_event_ready",
+        "property_editor_surface_transaction_ready",
         "component_custom_designer_ready",
         "custom_designer_transaction_ready",
         "state_design_surface_ready",
@@ -18635,11 +18675,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "phase_order_ready",
     } == {check["id"] for check in generated_inspector_readiness["checks"]}
     assert generated_inspector_readiness["final_state"]["component_count"] == len(generated_inspector["contracts"])
+    assert generated_inspector_readiness["final_state"]["property_editor_surface_transactions"] == (
+        generated_inspector["property_surface_replay"]["final_state"]["transaction_count"]
+    )
     assert generated_inspector_readiness["final_state"]["round_trips"] == len(generated_inspector["contracts"])
     assert generated_inspector_readiness["final_state"]["custom_designer_hook_transactions"] == (
         generated_inspector["custom_designer_transaction_replay"]["final_state"]["hook_transactions"]
     )
-    assert generated_inspector_readiness["checks"][3]["evidence"]["final_state"]["metadata_round_trips"] == len(
+    assert generated_inspector_readiness["checks"][4]["evidence"]["final_state"]["metadata_round_trips"] == len(
         generated_inspector["contracts"]
     )
     assert generated_inspector["readiness"]["ok"] is True
