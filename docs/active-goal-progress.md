@@ -2138,3 +2138,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   caches and the root pytest cache under
   `archive/repo-cleanup-2026-05-27-11/runtime-cache/`. A follow-up scan found
   no active non-virtualenv Python bytecode or pytest cache directories.
+- Current generated form-designer parity pass makes fresh generated apps
+  self-prove their form-designer workbench and release gate without test-harness
+  path injection. The generated workbench and release gate now default to local
+  generated artifact discovery plus the required app/template paths, while
+  partial explicit path sets still fail coverage. Verified with Python compile
+  and a direct fresh generated-app self-discovery probe. Commit: `pending`.

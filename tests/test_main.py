@@ -15412,6 +15412,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert workbench["format"] == "appgen.form-designer-workbench.v1"
     assert workbench["ok"] is True
     assert workbench["decision"] == "approved"
+    default_workbench = form_designer.form_designer_workbench()
+    assert default_workbench["ok"] is True
+    assert not next(
+        check["evidence"]["missing"]
+        for check in default_workbench["checks"]
+        if check["id"] == "artifact_coverage"
+    )
+    assert next(
+        check["evidence"]["ok"]
+        for check in default_workbench["checks"]
+        if check["id"] == "rad_parity_workbench"
+    ) is True
     assert {
         "artifact_coverage",
         "palette_categories",
@@ -19708,6 +19720,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert form_gate["format"] == "appgen.form-designer-release-gate.v1"
     assert form_gate["ok"] is True
     assert form_gate["decision"] == "approved"
+    default_form_gate = form_designer.form_designer_release_gate()
+    assert default_form_gate["ok"] is True
+    assert not next(
+        check["evidence"]["missing"]
+        for check in default_form_gate["checks"]
+        if check["id"] == "artifact_coverage"
+    )
     assert {
         "artifact_coverage",
         "palette_breadth",
