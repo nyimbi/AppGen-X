@@ -235,8 +235,16 @@ def returns_reverse_logistics_runtime_capabilities() -> dict:
             "receive_event",
             "authorize_return",
             "create_return_label",
+            "record_return_receipt",
             "record_inspection_grade",
+            "resolve_disposition",
             "issue_credit_adjustment",
+            "register_exchange_resolution",
+            "create_restocking_order",
+            "create_repair_refurbishment_order",
+            "open_carrier_claim",
+            "update_customer_return_status",
+            "open_exception_case",
             "build_workbench_view",
             "build_api_contract",
             "build_schema_contract",
@@ -419,6 +427,18 @@ def returns_reverse_logistics_runtime_smoke() -> dict:
         },
     )
     state = label["state"]
+    receipt = returns_reverse_logistics_record_return_receipt(
+        state,
+        {
+            "receipt_id": "rcpt_001",
+            "return_id": "ret_001",
+            "tenant": "tenant_alpha",
+            "received_at": "2026-05-28T09:00:00Z",
+            "receiving_site": "NYC-returns",
+            "package_condition": "intact",
+        },
+    )
+    state = receipt["state"]
     inspection = returns_reverse_logistics_record_inspection_grade(
         state,
         {
@@ -432,6 +452,12 @@ def returns_reverse_logistics_runtime_smoke() -> dict:
         },
     )
     state = inspection["state"]
+    disposition = returns_reverse_logistics_resolve_disposition(
+        state,
+        "ret_001",
+        destination_site="NYC-restock",
+    )
+    state = disposition["state"]
     adjustment = returns_reverse_logistics_issue_credit_adjustment(
         state,
         {
@@ -441,6 +467,20 @@ def returns_reverse_logistics_runtime_smoke() -> dict:
         },
     )
     state = adjustment["state"]
+    resolution = returns_reverse_logistics_register_exchange_resolution(
+        state,
+        "ret_001",
+        resolution_mode="refund",
+    )
+    state = resolution["state"]
+    exception_case = returns_reverse_logistics_open_exception_case(
+        state,
+        "ret_001",
+        exception_type="carrier_timeout",
+        severity="medium",
+        owner="reverse_ops",
+    )
+    state = exception_case["state"]
     simulation = returns_reverse_logistics_simulate_disposition(state, "ret_001")
     forecast = returns_reverse_logistics_forecast_return_recovery(
         ((12, 0.88), (10, 0.81), (14, 0.84)),
@@ -499,7 +539,7 @@ def returns_reverse_logistics_runtime_smoke() -> dict:
         {"id": "cryptographic_return_proof", "ok": bool(proof["proof_hash"])},
         {"id": "immutable_return_audit_trail", "ok": all(event["hash"] for event in state["events"])},
         {"id": "dynamic_return_policy_screening", "ok": screening["decision"] == "allow"},
-        {"id": "automated_control_testing", "ok": controls["ok"] is True},
+        {"id": "automated_control_testing", "ok": controls["ok"] is True and receipt["receipt"]["received_status"] == "received"},
         {"id": "cross_system_order_payment_inventory_ledger_federation", "ok": len(federation["systems"]) == 4},
         {"id": "universal_api_async_streaming", "ok": api["async_topic"] == RETURNS_REVERSE_LOGISTICS_REQUIRED_EVENT_TOPIC},
         {"id": "distributed_systems_evidence", "ok": resilience["ok"] is True},
@@ -513,7 +553,7 @@ def returns_reverse_logistics_runtime_smoke() -> dict:
         {"id": "carbon_aware_return_routing", "ok": carbon["selected_carrier"] == "parcel_green"},
         {"id": "mathematical_recovery_optimization", "ok": optimization["best_option"]["disposition"] in _DEFAULT_DISPOSITIONS},
         {"id": "disposition_allocation_mechanism_design", "ok": sum(item["units"] for item in mechanism["allocation"]) == 3},
-        {"id": "return_anomaly_detection", "ok": anomaly["anomaly_detected"] is True},
+        {"id": "return_anomaly_detection", "ok": anomaly["anomaly_detected"] is True and exception_case["exception_case"]["status"] == "open"},
         {"id": "stochastic_return_exposure_modeling", "ok": stochastic["expected_loss"] >= 0.0},
         {"id": "governed_ml_model_evidence", "ok": model["ok"] is True},
         {
@@ -556,6 +596,7 @@ def returns_reverse_logistics_empty_state() -> dict:
         "carrier_claims": {},
         "customer_statuses": {},
         "exception_cases": {},
+        "exception_tasks": {},
         "fraud_signals": {},
         "refund_ledger_handoffs": {},
         "order_shipments": {},
@@ -992,6 +1033,45 @@ def returns_reverse_logistics_create_return_label(state: dict, payload: dict) ->
     return {"ok": True, "state": new_state, "return_label": label, "event": event}
 
 
+def returns_reverse_logistics_record_return_receipt(state: dict, payload: dict) -> dict:
+    _require_runtime_ready(state)
+    _require_keys(
+        payload,
+        ("receipt_id", "return_id", "tenant", "received_at", "receiving_site", "package_condition"),
+        "Returns Reverse Logistics return receipt",
+    )
+    authorization = state["return_authorizations"].get(payload["return_id"])
+    if not authorization or authorization["tenant"] != payload["tenant"]:
+        raise ValueError("Return receipt requires an authorized return for the same tenant.")
+    new_state = _clone_state(state)
+    receipt = {
+        "receipt_id": payload["receipt_id"],
+        "return_id": payload["return_id"],
+        "tenant": payload["tenant"],
+        "received_at": payload["received_at"],
+        "receiving_site": payload["receiving_site"],
+        "package_condition": payload["package_condition"],
+        "received_status": "received",
+        "chain_of_custody_hash": _hash_payload(payload),
+    }
+    new_state["return_receipts"][payload["return_id"]] = receipt
+    new_state["return_authorizations"][payload["return_id"]]["status"] = "received"
+    new_state = returns_reverse_logistics_update_customer_return_status(
+        new_state,
+        payload["return_id"],
+        status="received",
+        customer_visible_status="Return received",
+    )["state"]
+    new_state, event = _append_domain_event(
+        new_state,
+        event_type="ReturnReceived",
+        tenant=payload["tenant"],
+        payload={"return_id": payload["return_id"], "receipt_id": receipt["receipt_id"]},
+        publish=False,
+    )
+    return {"ok": True, "state": new_state, "receipt": receipt, "event": event}
+
+
 def returns_reverse_logistics_record_inspection_grade(state: dict, payload: dict) -> dict:
     _require_runtime_ready(state)
     _require_keys(
@@ -1153,6 +1233,251 @@ def returns_reverse_logistics_issue_credit_adjustment(state: dict, payload: dict
         publish=True,
     )
     return {"ok": True, "state": new_state, "credit_adjustment": adjustment, "event": event}
+
+
+def returns_reverse_logistics_resolve_disposition(
+    state: dict,
+    return_id: str,
+    *,
+    disposition: str | None = None,
+    destination_site: str = "default_recovery_site",
+) -> dict:
+    _require_runtime_ready(state)
+    authorization = state["return_authorizations"].get(return_id)
+    if not authorization:
+        raise ValueError(f"Unknown return authorization: {return_id}")
+    inspection = _inspection_for_return(state, return_id)
+    if inspection is None:
+        raise ValueError("Disposition resolution requires an inspection grade.")
+    selected = disposition or inspection["recommended_disposition"]
+    if selected not in _DEFAULT_DISPOSITIONS:
+        raise ValueError(f"Unsupported disposition: {selected}")
+    new_state = _clone_state(state)
+    decision = {
+        "return_id": return_id,
+        "tenant": authorization["tenant"],
+        "disposition": selected,
+        "destination_site": destination_site,
+        "expected_recovery_rate": inspection["expected_recovery_rate"],
+        "status": "resolved",
+        "decision_hash": _hash_payload({"return_id": return_id, "disposition": selected, "destination_site": destination_site}),
+    }
+    new_state["disposition_decisions"][return_id] = decision
+    if selected == "restock":
+        order = returns_reverse_logistics_create_restocking_order(
+            new_state,
+            return_id,
+            destination_site=destination_site,
+        )
+        new_state = order["state"]
+    elif selected == "refurbish":
+        order = returns_reverse_logistics_create_repair_refurbishment_order(
+            new_state,
+            return_id,
+            provider_ref="default_refurbishment_provider",
+        )
+        new_state = order["state"]
+    else:
+        claim = returns_reverse_logistics_open_carrier_claim(
+            new_state,
+            return_id,
+            claim_reason="scrap_recovery_shortfall",
+        )
+        new_state = claim["state"]
+    new_state["return_authorizations"][return_id]["status"] = "disposition_resolved"
+    new_state = returns_reverse_logistics_update_customer_return_status(
+        new_state,
+        return_id,
+        status="disposition_resolved",
+        customer_visible_status=f"Return disposition: {selected}",
+    )["state"]
+    new_state, event = _append_domain_event(
+        new_state,
+        event_type="ReturnDispositionResolved",
+        tenant=authorization["tenant"],
+        payload={"return_id": return_id, "disposition": selected},
+        publish=False,
+    )
+    return {"ok": True, "state": new_state, "disposition": decision, "event": event}
+
+
+def returns_reverse_logistics_register_exchange_resolution(
+    state: dict,
+    return_id: str,
+    *,
+    resolution_mode: str,
+    replacement_order_id: str | None = None,
+) -> dict:
+    _require_runtime_ready(state)
+    authorization = state["return_authorizations"].get(return_id)
+    if not authorization:
+        raise ValueError(f"Unknown return authorization: {return_id}")
+    if resolution_mode not in {"refund", "exchange", "store_credit"}:
+        raise ValueError("Resolution mode must be refund, exchange, or store_credit.")
+    adjustment = _credit_adjustment_for_return(state, return_id)
+    new_state = _clone_state(state)
+    resolution = {
+        "return_id": return_id,
+        "tenant": authorization["tenant"],
+        "resolution_mode": resolution_mode,
+        "replacement_order_id": replacement_order_id,
+        "adjustment_id": adjustment["adjustment_id"] if adjustment else None,
+        "status": "queued",
+        "resolution_hash": _hash_payload({"return_id": return_id, "mode": resolution_mode, "replacement_order_id": replacement_order_id}),
+    }
+    new_state["refund_exchange_resolutions"][return_id] = resolution
+    new_state = returns_reverse_logistics_update_customer_return_status(
+        new_state,
+        return_id,
+        status="resolution_queued",
+        customer_visible_status=f"{resolution_mode.replace('_', ' ').title()} queued",
+    )["state"]
+    new_state, event = _append_domain_event(
+        new_state,
+        event_type="RefundExchangeResolutionQueued",
+        tenant=authorization["tenant"],
+        payload={"return_id": return_id, "resolution_mode": resolution_mode},
+        publish=False,
+    )
+    return {"ok": True, "state": new_state, "resolution": resolution, "event": event}
+
+
+def returns_reverse_logistics_create_restocking_order(
+    state: dict,
+    return_id: str,
+    *,
+    destination_site: str,
+) -> dict:
+    _require_runtime_ready(state)
+    authorization = state["return_authorizations"].get(return_id)
+    if not authorization:
+        raise ValueError(f"Unknown return authorization: {return_id}")
+    new_state = _clone_state(state)
+    order = {
+        "restocking_order_id": f"restock_{return_id}",
+        "return_id": return_id,
+        "tenant": authorization["tenant"],
+        "inventory_action": "restock",
+        "destination_site": destination_site,
+        "status": "queued",
+        "projection": "inventory_recovery_projection",
+    }
+    new_state["restocking_orders"][return_id] = order
+    return {"ok": True, "state": new_state, "restocking_order": order}
+
+
+def returns_reverse_logistics_create_repair_refurbishment_order(
+    state: dict,
+    return_id: str,
+    *,
+    provider_ref: str,
+) -> dict:
+    _require_runtime_ready(state)
+    authorization = state["return_authorizations"].get(return_id)
+    if not authorization:
+        raise ValueError(f"Unknown return authorization: {return_id}")
+    new_state = _clone_state(state)
+    order = {
+        "repair_order_id": f"repair_{return_id}",
+        "return_id": return_id,
+        "tenant": authorization["tenant"],
+        "repair_path": "refurbish",
+        "provider_ref": provider_ref,
+        "status": "queued",
+        "projection": "repair_vendor_projection",
+    }
+    new_state["repair_refurbishment_orders"][return_id] = order
+    return {"ok": True, "state": new_state, "repair_refurbishment_order": order}
+
+
+def returns_reverse_logistics_open_carrier_claim(
+    state: dict,
+    return_id: str,
+    *,
+    claim_reason: str,
+) -> dict:
+    _require_runtime_ready(state)
+    authorization = state["return_authorizations"].get(return_id)
+    if not authorization:
+        raise ValueError(f"Unknown return authorization: {return_id}")
+    label = next((item for item in state["return_labels"].values() if item["return_id"] == return_id), {})
+    new_state = _clone_state(state)
+    claim = {
+        "carrier_claim_id": f"claim_{return_id}_{len(new_state['carrier_claims']) + 1}",
+        "return_id": return_id,
+        "tenant": authorization["tenant"],
+        "claim_reason": claim_reason,
+        "carrier_id": label.get("carrier_id"),
+        "status": "open",
+        "projection": "carrier_claim_projection",
+        "claim_hash": _hash_payload({"return_id": return_id, "claim_reason": claim_reason, "carrier_id": label.get("carrier_id")}),
+    }
+    new_state["carrier_claims"][return_id] = claim
+    return {"ok": True, "state": new_state, "carrier_claim": claim}
+
+
+def returns_reverse_logistics_update_customer_return_status(
+    state: dict,
+    return_id: str,
+    *,
+    status: str,
+    customer_visible_status: str,
+) -> dict:
+    authorization = state["return_authorizations"].get(return_id)
+    if not authorization:
+        raise ValueError(f"Unknown return authorization: {return_id}")
+    new_state = _clone_state(state)
+    status_record = {
+        "return_id": return_id,
+        "tenant": authorization["tenant"],
+        "status": status,
+        "customer_visible_status": customer_visible_status,
+        "notification_projection": "customer_notification_projection",
+        "status_hash": _hash_payload({"return_id": return_id, "status": status, "customer_visible_status": customer_visible_status}),
+    }
+    new_state["customer_statuses"][return_id] = status_record
+    return {"ok": True, "state": new_state, "customer_status": status_record}
+
+
+def returns_reverse_logistics_open_exception_case(
+    state: dict,
+    return_id: str,
+    *,
+    exception_type: str,
+    severity: str,
+    owner: str,
+) -> dict:
+    _require_runtime_ready(state)
+    authorization = state["return_authorizations"].get(return_id)
+    if not authorization:
+        raise ValueError(f"Unknown return authorization: {return_id}")
+    new_state = _clone_state(state)
+    case = {
+        "exception_case_id": f"rex_{return_id}_{len(new_state['exception_cases']) + 1}",
+        "return_id": return_id,
+        "tenant": authorization["tenant"],
+        "exception_type": exception_type,
+        "severity": severity,
+        "status": "open",
+        "resolution": returns_reverse_logistics_resolve_exception(exception_type)["resolution"],
+    }
+    task = {
+        "exception_task_id": f"task_{case['exception_case_id']}",
+        "exception_case_id": case["exception_case_id"],
+        "tenant": authorization["tenant"],
+        "owner": owner,
+        "due_at": "next_business_day",
+        "status": "open",
+    }
+    new_state["exception_cases"][case["exception_case_id"]] = case
+    new_state.setdefault("exception_tasks", {})[task["exception_task_id"]] = task
+    new_state = returns_reverse_logistics_update_customer_return_status(
+        new_state,
+        return_id,
+        status="exception_open",
+        customer_visible_status="Return needs review",
+    )["state"]
+    return {"ok": True, "state": new_state, "exception_case": case, "exception_task": task}
 
 
 def returns_reverse_logistics_evaluate_eligibility(state: dict, payload: dict) -> dict:

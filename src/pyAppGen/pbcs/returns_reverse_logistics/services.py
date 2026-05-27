@@ -5,6 +5,17 @@ EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibili
 
 OPERATION_CONTRACTS = ({'operation': 'command_returns', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/returns', 'permission': 'returns_reverse_logistics.command.1', 'owned_tables': ('returns_reverse_logistics_return_authorization', 'returns_reverse_logistics_return_label', 'returns_reverse_logistics_inspection_grade', 'returns_reverse_logistics_credit_adjustment'), 'read_tables': (), 'emitted_event': 'ReturnAuthorized', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_labels', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/labels', 'permission': 'returns_reverse_logistics.command.2', 'owned_tables': ('returns_reverse_logistics_return_authorization', 'returns_reverse_logistics_return_label', 'returns_reverse_logistics_inspection_grade', 'returns_reverse_logistics_credit_adjustment'), 'read_tables': (), 'emitted_event': 'CreditAdjustmentIssued', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_inspection_grades', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/inspection-grades', 'permission': 'returns_reverse_logistics.command.3', 'owned_tables': ('returns_reverse_logistics_return_authorization', 'returns_reverse_logistics_return_label', 'returns_reverse_logistics_inspection_grade', 'returns_reverse_logistics_credit_adjustment'), 'read_tables': (), 'emitted_event': 'ReturnAuthorized', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_returns_reverse_logistics_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/returns_reverse_logistics/returns-reverse-logistics-workbench', 'permission': 'returns_reverse_logistics.query.4', 'owned_tables': (), 'read_tables': ('returns_reverse_logistics_return_authorization', 'returns_reverse_logistics_return_label', 'returns_reverse_logistics_inspection_grade', 'returns_reverse_logistics_credit_adjustment'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
 
+OPERATION_CONTRACTS = OPERATION_CONTRACTS + (
+    {'operation': 'command_receipts', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/receipts', 'permission': 'returns_reverse_logistics.inspect', 'owned_tables': ('returns_reverse_logistics_return_receipt', 'returns_reverse_logistics_return_customer_status'), 'read_tables': (), 'emitted_event': 'ReturnAuthorized', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_dispositions', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/dispositions', 'permission': 'returns_reverse_logistics.adjust', 'owned_tables': ('returns_reverse_logistics_disposition_decision', 'returns_reverse_logistics_restocking_order', 'returns_reverse_logistics_repair_refurbishment_order', 'returns_reverse_logistics_carrier_claim'), 'read_tables': (), 'emitted_event': 'CreditAdjustmentIssued', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_refund_exchange', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/refund-exchange', 'permission': 'returns_reverse_logistics.adjust', 'owned_tables': ('returns_reverse_logistics_refund_exchange_resolution', 'returns_reverse_logistics_return_customer_status'), 'read_tables': (), 'emitted_event': 'CreditAdjustmentIssued', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_restocking', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/restocking-orders', 'permission': 'returns_reverse_logistics.adjust', 'owned_tables': ('returns_reverse_logistics_restocking_order',), 'read_tables': (), 'emitted_event': 'CreditAdjustmentIssued', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_repair_refurbishment', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/repair-refurbishment-orders', 'permission': 'returns_reverse_logistics.adjust', 'owned_tables': ('returns_reverse_logistics_repair_refurbishment_order',), 'read_tables': (), 'emitted_event': 'CreditAdjustmentIssued', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_carrier_claims', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/carrier-claims', 'permission': 'returns_reverse_logistics.claim', 'owned_tables': ('returns_reverse_logistics_carrier_claim', 'returns_reverse_logistics_carrier_claim_projection'), 'read_tables': (), 'emitted_event': 'CreditAdjustmentIssued', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_customer_status', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/customer-status', 'permission': 'returns_reverse_logistics.audit', 'owned_tables': ('returns_reverse_logistics_return_customer_status',), 'read_tables': (), 'emitted_event': 'ReturnAuthorized', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_exception_cases', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/returns_reverse_logistics/exception-cases', 'permission': 'returns_reverse_logistics.exception', 'owned_tables': ('returns_reverse_logistics_return_exception_case', 'returns_reverse_logistics_return_exception_task'), 'read_tables': (), 'emitted_event': 'ReturnAuthorized', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+)
+
 
 def service_operation_contracts():
     """Return route-bound service operation contracts for this PBC."""
@@ -99,6 +110,31 @@ class ReturnsReverseLogisticsService:
 
     def command_inspection_grades(self, payload=None):
         return self._command('command_inspection_grades', payload or {})
+
+    def command_receipts(self, payload=None):
+        return self._command('command_receipts', payload or {})
+
+    def command_dispositions(self, payload=None):
+        return self._command('command_dispositions', payload or {})
+
+    def command_refund_exchange(self, payload=None):
+        return self._command('command_refund_exchange', payload or {})
+
+    def command_restocking(self, payload=None):
+        return self._command('command_restocking', payload or {})
+
+    def command_repair_refurbishment(self, payload=None):
+        return self._command('command_repair_refurbishment', payload or {})
+
+    def command_carrier_claims(self, payload=None):
+        return self._command('command_carrier_claims', payload or {})
+
+    def command_customer_status(self, payload=None):
+        return self._command('command_customer_status', payload or {})
+
+    def command_exception_cases(self, payload=None):
+        return self._command('command_exception_cases', payload or {})
+
     def query_returns_reverse_logistics_workbench(self, payload=None):
         return self._query('query_returns_reverse_logistics_workbench', payload or {})
 

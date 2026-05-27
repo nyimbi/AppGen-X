@@ -54,13 +54,16 @@ The package completeness contract covers:
 3. Label generation and carrier handoff tracking.
 4. Return receiving and receipt evidence.
 5. Inspection grading and finding capture.
-6. Disposition decisioning for restock, refurbish, or scrap.
-7. Refund and exchange resolution metadata.
+6. Disposition decisioning for restock, refurbish, or scrap, including
+   executable restock, repair/refurbishment, and carrier-claim branches.
+7. Refund and exchange resolution metadata with explicit queued resolution
+   state.
 8. Restocking, repair, and refurbishment recovery records.
 9. Carrier claims and downstream claim projections.
 10. Fraud and abuse screening with customer-visible status updates.
 11. Refund and ledger handoff evidence.
-12. Customer status and exception workflow tracking.
+12. Customer status and exception workflow tracking with owned exception cases
+   and tasks.
 13. Rule, parameter, and configuration support.
 14. AppGen-X outbox, inbox, retry, and dead-letter evidence.
 15. Package-local API, schema, service, permission, and release contracts.
@@ -163,6 +166,25 @@ idempotent inbox handler, retry/dead-letter evidence, command methods for core
 reverse-logistics flows, and query methods for forecasting, proof, anomaly,
 policy, and release evidence.
 
+Executable lifecycle commands include:
+
+- `authorize_return`
+- `create_return_label`
+- `record_return_receipt`
+- `record_inspection_grade`
+- `resolve_disposition`
+- `register_exchange_resolution`
+- `create_restocking_order`
+- `create_repair_refurbishment_order`
+- `open_carrier_claim`
+- `issue_credit_adjustment`
+- `update_customer_return_status`
+- `open_exception_case`
+
+These commands are package-local state transitions. They mutate only the owned
+returns tables and emit AppGen-X outbox records only for published return
+domain events.
+
 `returns_reverse_logistics_build_release_evidence()` is the package-local
 release gate. It combines schema depth, migration coverage, service depth,
 AppGen-X event contract, permission coverage, duplicate/retry/dead-letter
@@ -221,7 +243,7 @@ surfaces for schema, service, and release evidence.
 Focused validation for this package must include:
 
 - `py_compile` over the package and focused runtime test file
-- focused `pytest` for `tests/test_pbc_returns_reverse_logistics_runtime.py`
+- focused `pytest` for the package-local contract tests
 - release evidence with no blocking gaps
 - idempotent duplicate/retry/dead-letter evidence
 - package-local checks that no stream-engine picker or user eventing selector

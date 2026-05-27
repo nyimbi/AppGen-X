@@ -2,6 +2,22 @@
 
 EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.returns_reverse_logistics.events', 'inbox_topic': 'pbc.returns_reverse_logistics.inbox', 'outbox_table': 'returns_reverse_logistics_appgen_outbox_event', 'inbox_table': 'returns_reverse_logistics_appgen_inbox_event', 'dead_letter_table': 'returns_reverse_logistics_appgen_dead_letter_event', 'emitted': ({'event_type': 'ReturnAuthorized', 'schema': 'returns_reverse_logistics.return_authorized.emitted.v1', 'topic': 'pbc.returns_reverse_logistics.events', 'outbox_table': 'returns_reverse_logistics_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'CreditAdjustmentIssued', 'schema': 'returns_reverse_logistics.credit_adjustment_issued.emitted.v1', 'topic': 'pbc.returns_reverse_logistics.events', 'outbox_table': 'returns_reverse_logistics_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'OrderShipped', 'schema': 'returns_reverse_logistics.order_shipped.consumed.v1', 'topic': 'pbc.returns_reverse_logistics.inbox', 'inbox_table': 'returns_reverse_logistics_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'PaymentCaptured', 'schema': 'returns_reverse_logistics.payment_captured.consumed.v1', 'topic': 'pbc.returns_reverse_logistics.inbox', 'inbox_table': 'returns_reverse_logistics_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'returns_reverse_logistics_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'returns_reverse_logistics_appgen_inbox_event'}}
 EMITTED_EVENTS = EVENT_CONTRACT['emitted']
+EMITTED_EVENTS = EMITTED_EVENTS + tuple(
+    {
+        'event_type': event_type,
+        'schema': f"returns_reverse_logistics.{event_type[0].lower()}{''.join('_' + c.lower() if c.isupper() else c for c in event_type[1:])}.emitted.v1",
+        'topic': EVENT_CONTRACT['topic'],
+        'outbox_table': EVENT_CONTRACT['outbox_table'],
+        'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data'),
+    }
+    for event_type in (
+        'ReturnReceived',
+        'InspectionGraded',
+        'ReturnDispositionResolved',
+        'RefundExchangeResolutionQueued',
+        'ReturnLabelCreated',
+    )
+)
 CONSUMED_EVENTS = EVENT_CONTRACT['consumed']
 
 

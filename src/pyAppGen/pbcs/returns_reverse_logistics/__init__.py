@@ -22,16 +22,24 @@ from .runtime import returns_reverse_logistics_build_service_contract
 from .runtime import returns_reverse_logistics_build_workbench_view
 from .runtime import returns_reverse_logistics_configure_runtime
 from .runtime import returns_reverse_logistics_create_return_label
+from .runtime import returns_reverse_logistics_create_repair_refurbishment_order
+from .runtime import returns_reverse_logistics_create_restocking_order
 from .runtime import returns_reverse_logistics_empty_state
 from .runtime import returns_reverse_logistics_issue_credit_adjustment
+from .runtime import returns_reverse_logistics_open_carrier_claim
+from .runtime import returns_reverse_logistics_open_exception_case
 from .runtime import returns_reverse_logistics_permissions_contract
 from .runtime import returns_reverse_logistics_receive_event
 from .runtime import returns_reverse_logistics_record_inspection_grade
+from .runtime import returns_reverse_logistics_record_return_receipt
 from .runtime import returns_reverse_logistics_register_rule
 from .runtime import returns_reverse_logistics_register_schema_extension
+from .runtime import returns_reverse_logistics_register_exchange_resolution
+from .runtime import returns_reverse_logistics_resolve_disposition
 from .runtime import returns_reverse_logistics_runtime_capabilities
 from .runtime import returns_reverse_logistics_runtime_smoke
 from .runtime import returns_reverse_logistics_set_parameter
+from .runtime import returns_reverse_logistics_update_customer_return_status
 from .runtime import returns_reverse_logistics_verify_owned_table_boundary
 from .ui import RETURNS_REVERSE_LOGISTICS_UI_FRAGMENT_KEYS
 from .ui import returns_reverse_logistics_render_workbench
@@ -114,4 +122,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-
