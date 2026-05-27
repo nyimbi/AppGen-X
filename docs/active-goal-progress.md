@@ -1894,6 +1894,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and `tests/test_pbc_generated_package_evidence.py`; focused generated/source
   agent and package tests pass (`11 passed`); representative generation smoke
   and `pbc_release_audit()` return true. Commit: `ac37b39`.
+- Current multi-sided market PBC pass adds `multi_sided_market` as a
+  first-class commerce PBC in its own source package directory. The PBC owns
+  participant, listing, service offer, availability, booking, rental, loan,
+  barter, trade, sale, exchange, escrow, settlement, dispute, reputation,
+  rule, parameter, schema-extension, governed-model, outbox, inbox, and
+  dead-letter tables; implements service/API/event/handler/UI/agent contracts;
+  supports governed rules, parameters, configuration, package registration,
+  owned-boundary validation, and advanced market matching, trust, escrow,
+  dispute, and risk capabilities. Focused runtime/source/agent tests pass
+  (`12 passed`), generation smoke passes for the new PBC and all implemented
+  PBCs, and `pbc_release_audit()` returns true. Commit: `655d86c`.
 
 ## Open Completion Areas
 
