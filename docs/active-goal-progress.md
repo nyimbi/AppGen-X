@@ -2284,3 +2284,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   service/route/UI/agent smokes, focused package contract tests, source artifact
   contract, implementation release audit, generation smoke audit, specification
   contract, and restricted legacy-name scan all passed. Commit: `d8f9595`.
+- Current `production_control` PBC pass promotes execution records and
+  completion evidence into executable package-local operations: material
+  consumption, WIP inventory, labor time, machine time, quality gate results,
+  scrap/rework capture, OEE snapshots, exception cases, capacity allocations,
+  completion proofs, and audit entries. Runtime, catalog metadata, package
+  exports, API/service/permission contracts, UI bindings, specification
+  traceability, and focused tests now cover those standard shop-floor table
+  stakes without exposing stream-engine choices or shared-table access.
+  Verification is focused under the low-battery delivery constraint. Commit:
+  pending.

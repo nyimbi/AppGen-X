@@ -1,8 +1,14 @@
-"""Generated service evidence for the production_control PBC."""
+"""Runtime-backed service evidence for the production_control PBC."""
 
-SERVICE_CONTRACT = {'ok': True, 'format': 'appgen.production-control-service-contract.v1', 'transaction_boundary': 'production_control_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'register_work_center', 'create_production_order', 'define_routing_step', 'schedule_order', 'start_operation', 'record_downtime', 'confirm_operation', 'complete_production_order', 'route_execution', 'generate_completion_proof', 'screen_policy', 'federate_execution_view', 'verify_work_center_identity', 'run_resilience_drill', 'rotate_crypto_epoch', 'schedule_carbon_aware_shift', 'optimize_schedule', 'allocate_capacity', 'run_control_tests', 'register_governed_model', 'verify_owned_table_boundary'), 'query_methods': ('build_workbench_view', 'simulate_dispatch_policy', 'forecast_throughput', 'parse_shop_floor_instruction', 'score_production_risk', 'recommend_exception_resolution', 'detect_downtime_anomaly', 'model_stochastic_production_exposure', 'build_api_contract', 'build_schema_contract', 'build_release_evidence'), 'mutates_only': ('work_center', 'production_order', 'routing_step', 'downtime_event', 'production_rule', 'production_parameter', 'production_configuration'), 'external_dependencies': {'apis': ('GET /planned-orders', 'GET /material-readiness', 'GET /quality-gates', 'GET /maintenance-completions', 'POST /inventory-receipts', 'POST /quality-completions', 'POST /asset-commissioning'), 'events': ('PlannedOrderReleased', 'MaintenanceCompleted'), 'api_projections': ('mrp_planned_order_projection', 'inventory_material_readiness_projection', 'quality_gate_projection', 'maintenance_completion_projection', 'asset_commissioning_projection', 'audit_ledger_projection'), 'shared_tables': ()}, 'idempotent_handlers': ('receive_event',), 'rules_parameters_configuration': ('register_rule', 'set_parameter', 'configure_runtime'), 'pbc': 'production_control', 'shared_table_access': False}
+from __future__ import annotations
+
+from .runtime import production_control_build_service_contract
 
 
-def build_service_contract():
+def build_service_contract() -> dict:
     """Return generated command, eventing, and handler evidence."""
-    return dict(SERVICE_CONTRACT)
+    contract = production_control_build_service_contract()
+    return {**contract, "pbc": "production_control", "shared_table_access": False}
+
+
+SERVICE_CONTRACT = build_service_contract()

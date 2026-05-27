@@ -201,3 +201,49 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['boundary_rejection']['ok'] is False
     assert validation['boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_production_control_full_execution_records_are_owned_and_executable():
+    from ..runtime import PRODUCTION_CONTROL_OWNED_TABLES
+    from ..runtime import production_control_build_service_contract
+    from ..runtime import production_control_permissions_contract
+    from ..runtime import production_control_runtime_smoke
+
+    required_tables = {
+        "production_schedule",
+        "dispatch_list",
+        "operation_confirmation",
+        "material_consumption",
+        "wip_inventory",
+        "labor_time_booking",
+        "machine_time_booking",
+        "quality_gate_result",
+        "production_completion_record",
+        "scrap_rework_event",
+        "oee_snapshot",
+        "production_exception_case",
+        "capacity_allocation",
+        "completion_proof",
+        "production_audit_entry",
+        "governed_model_evidence",
+    }
+    required_commands = {
+        "record_material_consumption",
+        "book_labor_time",
+        "book_machine_time",
+        "record_quality_gate_result",
+        "record_scrap_rework",
+        "capture_oee_snapshot",
+        "open_exception_case",
+        "allocate_capacity_plan",
+        "record_completion_proof",
+        "append_audit_entry",
+    }
+    smoke = production_control_runtime_smoke()
+    service = production_control_build_service_contract()
+    permissions = production_control_permissions_contract()
+
+    assert smoke["ok"] is True
+    assert required_tables <= set(PRODUCTION_CONTROL_OWNED_TABLES)
+    assert required_commands <= set(service["command_methods"])
+    assert set(permissions["action_permissions"]) >= required_commands

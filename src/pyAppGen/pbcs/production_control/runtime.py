@@ -14,7 +14,25 @@ PRODUCTION_CONTROL_OWNED_TABLES = (
     "work_center",
     "production_order",
     "routing_step",
+    "production_schedule",
+    "dispatch_list",
+    "operation_confirmation",
     "downtime_event",
+    "material_consumption",
+    "wip_inventory",
+    "labor_time_booking",
+    "machine_time_booking",
+    "quality_gate_result",
+    "production_completion_record",
+    "scrap_rework_event",
+    "oee_snapshot",
+    "throughput_forecast",
+    "production_exception_case",
+    "production_policy_screening",
+    "capacity_allocation",
+    "completion_proof",
+    "production_audit_entry",
+    "governed_model_evidence",
     "production_rule",
     "production_parameter",
     "production_configuration",
@@ -23,6 +41,11 @@ PRODUCTION_CONTROL_EMITTED_EVENT_TYPES = (
     "ProductionCompleted",
     "AssetPlacedInService",
     "DowntimeCaptured",
+    "MaterialConsumptionRecorded",
+    "LaborTimeBooked",
+    "MachineTimeBooked",
+    "QualityGateRecorded",
+    "ScrapReworkCaptured",
 )
 PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES = (
     "PlannedOrderReleased",
@@ -92,6 +115,7 @@ PRODUCTION_CONTROL_RUNTIME_CAPABILITY_KEYS = (
     "cryptographic_engineering",
     "mathematical_optimization",
     "production_mlops_governance",
+    "standard_table_stakes_execution_records",
 )
 PRODUCTION_CONTROL_STANDARD_FEATURE_KEYS = (
     "work_center_master",
@@ -187,8 +211,18 @@ def production_control_runtime_capabilities() -> dict:
             "schedule_order",
             "start_operation",
             "record_downtime",
+            "record_material_consumption",
+            "book_labor_time",
+            "book_machine_time",
+            "record_quality_gate_result",
+            "record_scrap_rework",
             "confirm_operation",
             "complete_production_order",
+            "capture_oee_snapshot",
+            "open_exception_case",
+            "allocate_capacity_plan",
+            "record_completion_proof",
+            "append_audit_entry",
             "build_api_contract",
             "build_schema_contract",
             "build_service_contract",
@@ -285,10 +319,18 @@ def production_control_runtime_smoke() -> dict:
     schedule = production_control_schedule_order(state, "order_100", scheduled_by="scheduler_1")
     state = schedule["state"]
     state = production_control_start_operation(state, "step_100", started_by="operator_1")["state"]
+    state = production_control_record_material_consumption(state, {"consumption_id": "mat_100", "tenant": "tenant_alpha", "order_id": "order_100", "material_id": "steel_kit", "quantity": 10, "uom": "EA", "source": "inventory_readiness_projection"})["state"]
+    state = production_control_book_labor_time(state, {"booking_id": "lab_100", "tenant": "tenant_alpha", "order_id": "order_100", "step_id": "step_100", "operator_id": "operator_1", "hours": 2.0})["state"]
+    state = production_control_book_machine_time(state, {"booking_id": "mach_100", "tenant": "tenant_alpha", "order_id": "order_100", "step_id": "step_100", "work_center_id": "wc_100", "hours": 2.3})["state"]
     downtime = production_control_record_downtime(state, {"downtime_id": "dt_100", "tenant": "tenant_alpha", "work_center_id": "wc_100", "order_id": "order_100", "reason": "maintenance", "minutes": 20})
     state = downtime["state"]
+    state = production_control_record_quality_gate_result(state, {"gate_id": "qg_100", "tenant": "tenant_alpha", "order_id": "order_100", "step_id": "step_100", "quality_gate": "final_test", "result": "passed", "inspector": "qa_1"})["state"]
+    state = production_control_record_scrap_rework(state, {"scrap_rework_id": "sr_100", "tenant": "tenant_alpha", "order_id": "order_100", "step_id": "step_100", "scrap_qty": 1, "rework_qty": 0, "reason": "setup_loss"})["state"]
     confirmation = production_control_confirm_operation(state, "step_100", good_qty=9, scrap_qty=1, labor_hours=2, machine_hours=2.3, confirmed_by="operator_1")
     state = confirmation["state"]
+    state = production_control_capture_oee_snapshot(state, {"snapshot_id": "oee_100", "tenant": "tenant_alpha", "work_center_id": "wc_100", "order_id": "order_100"})["state"]
+    state = production_control_open_exception_case(state, {"case_id": "case_100", "tenant": "tenant_alpha", "order_id": "order_100", "case_type": "downtime", "severity": "minor", "status": "resolved"})["state"]
+    state = production_control_allocate_capacity_plan(state, {"allocation_id": "cap_100", "tenant": "tenant_alpha", "order_id": "order_100", "work_center_id": "wc_100", "allocated_hours": 7.0, "priority": "standard"})["state"]
     completed = production_control_complete_production_order(state, "order_100", completed_by="supervisor_1")
     state = completed["state"]
     simulation = production_control_simulate_dispatch_policy(state, "order_100", proposed_capacity_hours=7)
@@ -298,7 +340,9 @@ def production_control_runtime_smoke() -> dict:
     recommendation = production_control_recommend_exception_resolution("downtime")
     route = production_control_route_execution({"event_id": "prod_route"}, rails=({"route": "mes_api", "available": False, "latency": 2}, {"route": "outbox", "available": True, "latency": 4}))
     proof = production_control_generate_completion_proof(state, "order_100", disclosure=("order_id", "item", "completed_qty"))
+    state = production_control_record_completion_proof(state, {"proof_id": "proof_100", "tenant": "tenant_alpha", "order_id": "order_100", "proof_hash": proof["hash"], "proof_type": "completion"})["state"]
     screening = production_control_screen_policy(state, "order_100", restricted_sites=("restricted_site",))
+    state = production_control_append_audit_entry(state, "policy_screening", screening)["state"]
     controls = production_control_run_control_tests(state)
     api = production_control_build_api_contract()
     schema = production_control_build_schema_contract()
@@ -348,6 +392,7 @@ def production_control_runtime_smoke() -> dict:
         {"id": "cryptographic_engineering", "ok": proof["hash"] and crypto["epoch"] == 2},
         {"id": "mathematical_optimization", "ok": optimization["objective_score"] > 0 and allocation["clearing_priority"] > 0},
         {"id": "production_mlops_governance", "ok": model["governance"]["regulated"] and model["governance"]["explainability_required"]},
+        {"id": "standard_table_stakes_execution_records", "ok": all(state[name] for name in ("production_schedules", "dispatch_lists", "operation_confirmations", "material_consumptions", "wip_inventory", "labor_time_bookings", "machine_time_bookings", "quality_gate_results", "production_completion_records", "scrap_rework_events", "oee_snapshots", "production_exception_cases", "capacity_allocations", "completion_proofs", "production_audit_entries"))},
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
     return {"format": "appgen.production-control-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "blocking_gaps": blocking_gaps}
@@ -368,7 +413,25 @@ def production_control_empty_state() -> dict:
         "work_centers": {},
         "orders": {},
         "routing_steps": {},
+        "production_schedules": {},
+        "dispatch_lists": {},
+        "operation_confirmations": {},
         "downtime_events": {},
+        "material_consumptions": {},
+        "wip_inventory": {},
+        "labor_time_bookings": {},
+        "machine_time_bookings": {},
+        "quality_gate_results": {},
+        "production_completion_records": {},
+        "scrap_rework_events": {},
+        "oee_snapshots": {},
+        "throughput_forecasts": {},
+        "production_exception_cases": {},
+        "production_policy_screenings": {},
+        "capacity_allocations": {},
+        "completion_proofs": {},
+        "production_audit_entries": {},
+        "governed_model_evidence": {},
         "rules": {},
         "parameters": {},
         "configuration": {},
@@ -547,9 +610,16 @@ def production_control_schedule_order(state: dict, order_id: str, *, scheduled_b
     load = round(required_hours / max(capacity, 0.01), 4)
     ok = load <= float(state["parameters"].get("capacity_threshold", 0.85))
     updated = {**order, "status": "scheduled" if ok else "capacity_review", "capacity_load": load, "scheduled_by": scheduled_by}
-    next_state = {**state, "orders": {**state["orders"], order_id: updated}}
+    schedule = {"schedule_id": f"sch_{order_id}", "tenant": order["tenant"], "order_id": order_id, "capacity_load": load, "step_count": len(steps), "scheduled_by": scheduled_by, "status": updated["status"]}
+    dispatch = {"dispatch_id": f"disp_{order_id}", "tenant": order["tenant"], "order_id": order_id, "priority": order["priority"], "work_center_ids": tuple(step["work_center_id"] for step in steps), "status": "ready" if ok else "capacity_review"}
+    next_state = {
+        **state,
+        "orders": {**state["orders"], order_id: updated},
+        "production_schedules": {**state["production_schedules"], schedule["schedule_id"]: schedule},
+        "dispatch_lists": {**state["dispatch_lists"], dispatch["dispatch_id"]: dispatch},
+    }
     next_state = _append_event(next_state, "ProductionOrderScheduled", {"tenant": order["tenant"], "order_id": order_id, "capacity_load": load})
-    return {"ok": ok, "state": next_state, "schedule": {"order_id": order_id, "capacity_load": load, "step_count": len(steps)}}
+    return {"ok": ok, "state": next_state, "schedule": schedule}
 
 
 def production_control_start_operation(state: dict, step_id: str, *, started_by: str) -> dict:
@@ -569,6 +639,68 @@ def production_control_record_downtime(state: dict, downtime: dict) -> dict:
     return {"ok": ok, "state": next_state, "downtime": enriched}
 
 
+def production_control_record_material_consumption(state: dict, consumption: dict) -> dict:
+    required = {"consumption_id", "tenant", "order_id", "material_id", "quantity", "uom", "source"}
+    missing = required - set(consumption)
+    if missing:
+        raise ValueError(f"Missing Production Control material consumption fields: {tuple(sorted(missing))}")
+    order = state["orders"][consumption["order_id"]]
+    record = {**consumption, "status": "posted", "audit_hash": _digest(consumption)}
+    wip_id = f"wip_{consumption['order_id']}_{consumption['material_id']}"
+    wip = {"wip_id": wip_id, "tenant": consumption["tenant"], "order_id": consumption["order_id"], "item": order["item"], "material_id": consumption["material_id"], "quantity_in_process": consumption["quantity"], "status": "in_process"}
+    next_state = {
+        **state,
+        "material_consumptions": {**state["material_consumptions"], record["consumption_id"]: record},
+        "wip_inventory": {**state["wip_inventory"], wip_id: wip},
+    }
+    next_state = _append_event(next_state, "MaterialConsumptionRecorded", {"tenant": consumption["tenant"], "order_id": consumption["order_id"], "material_id": consumption["material_id"], "quantity": consumption["quantity"]})
+    return {"ok": True, "state": next_state, "consumption": record, "wip": wip}
+
+
+def production_control_book_labor_time(state: dict, booking: dict) -> dict:
+    required = {"booking_id", "tenant", "order_id", "step_id", "operator_id", "hours"}
+    missing = required - set(booking)
+    if missing:
+        raise ValueError(f"Missing Production Control labor booking fields: {tuple(sorted(missing))}")
+    record = {**booking, "status": "posted", "audit_hash": _digest(booking)}
+    next_state = {**state, "labor_time_bookings": {**state["labor_time_bookings"], record["booking_id"]: record}}
+    next_state = _append_event(next_state, "LaborTimeBooked", {"tenant": booking["tenant"], "order_id": booking["order_id"], "step_id": booking["step_id"], "hours": booking["hours"]})
+    return {"ok": True, "state": next_state, "booking": record}
+
+
+def production_control_book_machine_time(state: dict, booking: dict) -> dict:
+    required = {"booking_id", "tenant", "order_id", "step_id", "work_center_id", "hours"}
+    missing = required - set(booking)
+    if missing:
+        raise ValueError(f"Missing Production Control machine booking fields: {tuple(sorted(missing))}")
+    record = {**booking, "status": "posted", "audit_hash": _digest(booking)}
+    next_state = {**state, "machine_time_bookings": {**state["machine_time_bookings"], record["booking_id"]: record}}
+    next_state = _append_event(next_state, "MachineTimeBooked", {"tenant": booking["tenant"], "order_id": booking["order_id"], "work_center_id": booking["work_center_id"], "hours": booking["hours"]})
+    return {"ok": True, "state": next_state, "booking": record}
+
+
+def production_control_record_quality_gate_result(state: dict, result: dict) -> dict:
+    required = {"gate_id", "tenant", "order_id", "step_id", "quality_gate", "result", "inspector"}
+    missing = required - set(result)
+    if missing:
+        raise ValueError(f"Missing Production Control quality gate fields: {tuple(sorted(missing))}")
+    record = {**result, "status": "accepted" if result["result"] == "passed" else "hold", "audit_hash": _digest(result)}
+    next_state = {**state, "quality_gate_results": {**state["quality_gate_results"], record["gate_id"]: record}}
+    next_state = _append_event(next_state, "QualityGateRecorded", {"tenant": result["tenant"], "order_id": result["order_id"], "quality_gate": result["quality_gate"], "result": result["result"]})
+    return {"ok": record["status"] == "accepted", "state": next_state, "quality_gate": record}
+
+
+def production_control_record_scrap_rework(state: dict, event: dict) -> dict:
+    required = {"scrap_rework_id", "tenant", "order_id", "step_id", "scrap_qty", "rework_qty", "reason"}
+    missing = required - set(event)
+    if missing:
+        raise ValueError(f"Missing Production Control scrap/rework fields: {tuple(sorted(missing))}")
+    record = {**event, "status": "captured", "audit_hash": _digest(event)}
+    next_state = {**state, "scrap_rework_events": {**state["scrap_rework_events"], record["scrap_rework_id"]: record}}
+    next_state = _append_event(next_state, "ScrapReworkCaptured", {"tenant": event["tenant"], "order_id": event["order_id"], "scrap_qty": event["scrap_qty"], "rework_qty": event["rework_qty"]})
+    return {"ok": True, "state": next_state, "scrap_rework": record}
+
+
 def production_control_confirm_operation(state: dict, step_id: str, *, good_qty: float, scrap_qty: float, labor_hours: float, machine_hours: float, confirmed_by: str) -> dict:
     step = state["routing_steps"][step_id]
     scrap_rate = scrap_qty / max(1, good_qty + scrap_qty)
@@ -576,19 +708,79 @@ def production_control_confirm_operation(state: dict, step_id: str, *, good_qty:
     updated_step = {**step, "status": "confirmed", "good_qty": good_qty, "scrap_qty": scrap_qty, "labor_hours": labor_hours, "machine_hours": machine_hours, "confirmed_by": confirmed_by}
     order = state["orders"][step["order_id"]]
     updated_order = {**order, "completed_qty": round(order["completed_qty"] + good_qty, 2), "scrap_qty": round(order["scrap_qty"] + scrap_qty, 2)}
-    next_state = {**state, "routing_steps": {**state["routing_steps"], step_id: updated_step}, "orders": {**state["orders"], step["order_id"]: updated_order}}
+    confirmation = {"confirmation_id": f"conf_{step_id}", "tenant": step["tenant"], "order_id": step["order_id"], "step_id": step_id, "good_qty": good_qty, "scrap_qty": scrap_qty, "labor_hours": labor_hours, "machine_hours": machine_hours, "confirmed_by": confirmed_by, "risk_score": risk_score, "status": "confirmed"}
+    next_state = {
+        **state,
+        "routing_steps": {**state["routing_steps"], step_id: updated_step},
+        "orders": {**state["orders"], step["order_id"]: updated_order},
+        "operation_confirmations": {**state["operation_confirmations"], confirmation["confirmation_id"]: confirmation},
+    }
     next_state = _append_event(next_state, "OperationConfirmed", {"tenant": step["tenant"], "step_id": step_id, "order_id": step["order_id"], "good_qty": good_qty, "scrap_qty": scrap_qty})
-    return {"ok": True, "state": next_state, "routing_step": updated_step, "risk_score": risk_score}
+    return {"ok": True, "state": next_state, "routing_step": updated_step, "confirmation": confirmation, "risk_score": risk_score}
 
 
 def production_control_complete_production_order(state: dict, order_id: str, *, completed_by: str) -> dict:
     order = state["orders"][order_id]
     completed = {**order, "status": "completed", "completed_by": completed_by}
     handoffs = ("inventory_receipt_projection", "quality_completion_projection", "asset_commissioning_projection")
-    next_state = {**state, "orders": {**state["orders"], order_id: completed}}
+    completion_record = {"completion_id": f"comp_{order_id}", "tenant": order["tenant"], "order_id": order_id, "completed_qty": completed["completed_qty"], "scrap_qty": completed["scrap_qty"], "completed_by": completed_by, "status": "completed", "handoffs": handoffs}
+    next_state = {
+        **state,
+        "orders": {**state["orders"], order_id: completed},
+        "production_completion_records": {**state["production_completion_records"], completion_record["completion_id"]: completion_record},
+    }
     next_state = _append_event(next_state, "AssetPlacedInService", {"tenant": order["tenant"], "order_id": order_id, "item": order["item"]})
     next_state = _append_event(next_state, "ProductionCompleted", {"tenant": order["tenant"], "order_id": order_id, "item": order["item"], "completed_qty": completed["completed_qty"], "handoffs": handoffs})
     return {"ok": True, "state": next_state, "production_order": completed, "handoffs": handoffs}
+
+
+def production_control_capture_oee_snapshot(state: dict, snapshot: dict) -> dict:
+    required = {"snapshot_id", "tenant", "work_center_id", "order_id"}
+    missing = required - set(snapshot)
+    if missing:
+        raise ValueError(f"Missing Production Control OEE snapshot fields: {tuple(sorted(missing))}")
+    view = production_control_build_workbench_view(state, tenant=snapshot["tenant"])
+    record = {**snapshot, "oee": view["oee"], "downtime_minutes": view["downtime_minutes"], "completed_qty": view["completed_qty"], "scrap_qty": view["scrap_qty"], "status": "captured", "audit_hash": _digest(snapshot)}
+    next_state = {**state, "oee_snapshots": {**state["oee_snapshots"], record["snapshot_id"]: record}}
+    return {"ok": True, "state": next_state, "snapshot": record}
+
+
+def production_control_open_exception_case(state: dict, case: dict) -> dict:
+    required = {"case_id", "tenant", "order_id", "case_type", "severity", "status"}
+    missing = required - set(case)
+    if missing:
+        raise ValueError(f"Missing Production Control exception case fields: {tuple(sorted(missing))}")
+    recommendation = production_control_recommend_exception_resolution(case["case_type"])
+    record = {**case, "recommended_action": recommendation["action"], "audit_hash": _digest(case)}
+    next_state = {**state, "production_exception_cases": {**state["production_exception_cases"], record["case_id"]: record}}
+    return {"ok": True, "state": next_state, "case": record}
+
+
+def production_control_allocate_capacity_plan(state: dict, allocation: dict) -> dict:
+    required = {"allocation_id", "tenant", "order_id", "work_center_id", "allocated_hours", "priority"}
+    missing = required - set(allocation)
+    if missing:
+        raise ValueError(f"Missing Production Control capacity allocation fields: {tuple(sorted(missing))}")
+    record = {**allocation, "status": "allocated", "audit_hash": _digest(allocation)}
+    next_state = {**state, "capacity_allocations": {**state["capacity_allocations"], record["allocation_id"]: record}}
+    return {"ok": True, "state": next_state, "allocation": record}
+
+
+def production_control_record_completion_proof(state: dict, proof: dict) -> dict:
+    required = {"proof_id", "tenant", "order_id", "proof_hash", "proof_type"}
+    missing = required - set(proof)
+    if missing:
+        raise ValueError(f"Missing Production Control completion proof fields: {tuple(sorted(missing))}")
+    record = {**proof, "status": "sealed", "audit_hash": _digest(proof)}
+    next_state = {**state, "completion_proofs": {**state["completion_proofs"], record["proof_id"]: record}}
+    return {"ok": True, "state": next_state, "proof": record}
+
+
+def production_control_append_audit_entry(state: dict, action: str, payload: dict) -> dict:
+    entry_id = f"audit_{len(state['production_audit_entries']) + 1:06d}"
+    entry = {"audit_entry_id": entry_id, "tenant": payload.get("tenant") or payload.get("order_id", "tenant_alpha"), "action": action, "payload_hash": _digest(payload), "status": "sealed"}
+    next_state = {**state, "production_audit_entries": {**state["production_audit_entries"], entry_id: entry}}
+    return {"ok": True, "state": next_state, "audit_entry": entry}
 
 
 def production_control_simulate_dispatch_policy(state: dict, order_id: str, *, proposed_capacity_hours: float) -> dict:
@@ -662,7 +854,25 @@ def production_control_build_schema_contract() -> dict:
             "work_center": ("tenant", "work_center_id", "site", "name", "work_center_type", "capacity_hours", "efficiency", "status", "audit_hash"),
             "production_order": ("tenant", "order_id", "site", "item", "quantity", "route", "priority", "planned_order_id", "status", "completed_qty", "scrap_qty", "audit_hash"),
             "routing_step": ("tenant", "step_id", "order_id", "sequence", "work_center_id", "standard_minutes", "setup_minutes", "quality_gate", "status", "audit_hash"),
+            "production_schedule": ("tenant", "schedule_id", "order_id", "capacity_load", "step_count", "scheduled_by", "status", "audit_hash"),
+            "dispatch_list": ("tenant", "dispatch_id", "order_id", "priority", "work_center_ids", "status", "audit_hash"),
+            "operation_confirmation": ("tenant", "confirmation_id", "order_id", "step_id", "good_qty", "scrap_qty", "labor_hours", "machine_hours", "confirmed_by", "risk_score", "status", "audit_hash"),
             "downtime_event": ("tenant", "downtime_id", "order_id", "work_center_id", "reason", "minutes", "severity", "status", "audit_hash"),
+            "material_consumption": ("tenant", "consumption_id", "order_id", "material_id", "quantity", "uom", "source", "status", "audit_hash"),
+            "wip_inventory": ("tenant", "wip_id", "order_id", "item", "material_id", "quantity_in_process", "status", "audit_hash"),
+            "labor_time_booking": ("tenant", "booking_id", "order_id", "step_id", "operator_id", "hours", "status", "audit_hash"),
+            "machine_time_booking": ("tenant", "booking_id", "order_id", "step_id", "work_center_id", "hours", "status", "audit_hash"),
+            "quality_gate_result": ("tenant", "gate_id", "order_id", "step_id", "quality_gate", "result", "inspector", "status", "audit_hash"),
+            "production_completion_record": ("tenant", "completion_id", "order_id", "completed_qty", "scrap_qty", "completed_by", "handoffs", "status", "audit_hash"),
+            "scrap_rework_event": ("tenant", "scrap_rework_id", "order_id", "step_id", "scrap_qty", "rework_qty", "reason", "status", "audit_hash"),
+            "oee_snapshot": ("tenant", "snapshot_id", "work_center_id", "order_id", "oee", "downtime_minutes", "completed_qty", "scrap_qty", "status", "audit_hash"),
+            "throughput_forecast": ("tenant", "forecast_id", "order_id", "forecast_throughput", "horizon_days", "confidence", "status", "audit_hash"),
+            "production_exception_case": ("tenant", "case_id", "order_id", "case_type", "severity", "recommended_action", "status", "audit_hash"),
+            "production_policy_screening": ("tenant", "screening_id", "order_id", "decision", "restricted_sites", "status", "audit_hash"),
+            "capacity_allocation": ("tenant", "allocation_id", "order_id", "work_center_id", "allocated_hours", "priority", "status", "audit_hash"),
+            "completion_proof": ("tenant", "proof_id", "order_id", "proof_hash", "proof_type", "status", "audit_hash"),
+            "production_audit_entry": ("tenant", "audit_entry_id", "action", "payload_hash", "status", "audit_hash"),
+            "governed_model_evidence": ("tenant", "model_id", "name", "features", "auc", "drift_score", "status", "audit_hash"),
             "production_rule": ("tenant", "rule_id", "rule_type", "scope", "compiled_hash", "enabled", "status", "audit_hash"),
             "production_parameter": ("tenant", "parameter_name", "parameter_value", "effective_at", "changed_by", "audit_hash"),
             "production_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "event_contract", "default_timezone", "workbench_limit", "audit_hash"),
@@ -676,12 +886,25 @@ def production_control_build_schema_contract() -> dict:
     relationships = (
         {"from_table": "routing_step", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
         {"from_table": "routing_step", "from_field": "work_center_id", "to_table": "work_center", "to_field": "work_center_id"},
+        {"from_table": "production_schedule", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
+        {"from_table": "dispatch_list", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
+        {"from_table": "operation_confirmation", "from_field": "step_id", "to_table": "routing_step", "to_field": "step_id"},
         {"from_table": "downtime_event", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
         {"from_table": "downtime_event", "from_field": "work_center_id", "to_table": "work_center", "to_field": "work_center_id"},
+        {"from_table": "material_consumption", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
+        {"from_table": "wip_inventory", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
+        {"from_table": "labor_time_booking", "from_field": "step_id", "to_table": "routing_step", "to_field": "step_id"},
+        {"from_table": "machine_time_booking", "from_field": "work_center_id", "to_table": "work_center", "to_field": "work_center_id"},
+        {"from_table": "quality_gate_result", "from_field": "step_id", "to_table": "routing_step", "to_field": "step_id"},
+        {"from_table": "production_completion_record", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
+        {"from_table": "scrap_rework_event", "from_field": "step_id", "to_table": "routing_step", "to_field": "step_id"},
+        {"from_table": "oee_snapshot", "from_field": "work_center_id", "to_table": "work_center", "to_field": "work_center_id"},
+        {"from_table": "capacity_allocation", "from_field": "work_center_id", "to_table": "work_center", "to_field": "work_center_id"},
+        {"from_table": "completion_proof", "from_field": "order_id", "to_table": "production_order", "to_field": "order_id"},
         {"from_table": "production_parameter", "from_field": "tenant", "to_table": "production_configuration", "to_field": "tenant"},
         {"from_table": "production_rule", "from_field": "tenant", "to_table": "production_configuration", "to_field": "tenant"},
     )
-    allowed_prefixes = ("work_", "production_", "routing_", "downtime_")
+    allowed_prefixes = ("work_", "production_", "routing_", "dispatch_", "operation_", "downtime_", "material_", "wip_", "labor_", "machine_", "quality_", "scrap_", "oee_", "throughput_", "capacity_", "completion_", "governed_")
     tables = tuple(
         {
             "table": table,
@@ -737,8 +960,18 @@ def production_control_build_service_contract() -> dict:
         "schedule_order",
         "start_operation",
         "record_downtime",
+        "record_material_consumption",
+        "book_labor_time",
+        "book_machine_time",
+        "record_quality_gate_result",
+        "record_scrap_rework",
         "confirm_operation",
         "complete_production_order",
+        "capture_oee_snapshot",
+        "open_exception_case",
+        "allocate_capacity_plan",
+        "record_completion_proof",
+        "append_audit_entry",
         "route_execution",
         "generate_completion_proof",
         "screen_policy",
@@ -772,7 +1005,7 @@ def production_control_build_service_contract() -> dict:
         "transaction_boundary": "production_control_owned_datastore_plus_appgen_outbox",
         "command_methods": command_methods,
         "query_methods": query_methods,
-        "mutates_only": PRODUCTION_CONTROL_OWNED_TABLES,
+        "mutates_only": (*PRODUCTION_CONTROL_OWNED_TABLES, *_PRODUCTION_CONTROL_RUNTIME_TABLES),
         "external_dependencies": {
             "apis": tuple(item for item in _PRODUCTION_CONTROL_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
             "events": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES,
@@ -793,6 +1026,7 @@ def production_control_build_release_evidence() -> dict:
         {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) == len(PRODUCTION_CONTROL_OWNED_TABLES) and len(schema["relationships"]) >= 4},
         {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(PRODUCTION_CONTROL_OWNED_TABLES)},
         {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 25},
+        {"id": "execution_record_depth", "ok": {"material_consumption", "operation_confirmation", "quality_gate_result", "production_completion_record", "completion_proof"} <= {table["table"] for table in schema["tables"]}},
         {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X" and api["stream_engine_picker_visible"] is False},
         {"id": "permissions_cover_commands", "ok": {"register_work_center", "complete_production_order", "receive_event"} <= set(permissions["action_permissions"])},
         {"id": "backend_allowlist", "ok": schema["datastore_backends"] == PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS},
@@ -822,9 +1056,19 @@ def production_control_build_api_contract() -> dict:
             {"route": "POST /production/routing-steps", "command": "define_routing_step", "owned_tables": ("routing_step",), "emits": (), "requires_permission": "production_control.schedule", "idempotency_key": "step_id"},
             {"route": "POST /production/orders/{id}/schedule", "command": "schedule_order", "owned_tables": ("production_order",), "emits": (), "requires_permission": "production_control.schedule", "idempotency_key": "order_id:scheduled_by"},
             {"route": "POST /production/operations/{id}/start", "command": "start_operation", "owned_tables": ("routing_step",), "emits": (), "requires_permission": "production_control.operate", "idempotency_key": "step_id:started_by"},
+            {"route": "POST /production/material-consumptions", "command": "record_material_consumption", "owned_tables": ("material_consumption", "wip_inventory"), "emits": ("MaterialConsumptionRecorded",), "requires_permission": "production_control.operate", "idempotency_key": "consumption_id"},
+            {"route": "POST /production/labor-time", "command": "book_labor_time", "owned_tables": ("labor_time_booking",), "emits": ("LaborTimeBooked",), "requires_permission": "production_control.operate", "idempotency_key": "booking_id"},
+            {"route": "POST /production/machine-time", "command": "book_machine_time", "owned_tables": ("machine_time_booking",), "emits": ("MachineTimeBooked",), "requires_permission": "production_control.operate", "idempotency_key": "booking_id"},
             {"route": "POST /production/downtime", "command": "record_downtime", "owned_tables": ("downtime_event",), "emits": ("DowntimeCaptured",), "requires_permission": "production_control.operate", "idempotency_key": "downtime_id"},
+            {"route": "POST /production/quality-gates", "command": "record_quality_gate_result", "owned_tables": ("quality_gate_result",), "emits": ("QualityGateRecorded",), "requires_permission": "production_control.operate", "idempotency_key": "gate_id"},
+            {"route": "POST /production/scrap-rework", "command": "record_scrap_rework", "owned_tables": ("scrap_rework_event",), "emits": ("ScrapReworkCaptured",), "requires_permission": "production_control.operate", "idempotency_key": "scrap_rework_id"},
             {"route": "POST /production/operations/{id}/confirm", "command": "confirm_operation", "owned_tables": ("routing_step", "production_order"), "emits": (), "requires_permission": "production_control.operate", "idempotency_key": "step_id:confirmed_by"},
             {"route": "POST /production/orders/{id}/complete", "command": "complete_production_order", "owned_tables": ("production_order",), "emits": ("AssetPlacedInService", "ProductionCompleted"), "requires_permission": "production_control.complete", "idempotency_key": "order_id:completed_by"},
+            {"route": "POST /production/oee-snapshots", "command": "capture_oee_snapshot", "owned_tables": ("oee_snapshot",), "emits": (), "requires_permission": "production_control.audit", "idempotency_key": "snapshot_id"},
+            {"route": "POST /production/exception-cases", "command": "open_exception_case", "owned_tables": ("production_exception_case",), "emits": (), "requires_permission": "production_control.operate", "idempotency_key": "case_id"},
+            {"route": "POST /production/capacity-allocations", "command": "allocate_capacity_plan", "owned_tables": ("capacity_allocation",), "emits": (), "requires_permission": "production_control.schedule", "idempotency_key": "allocation_id"},
+            {"route": "POST /production/completion-proofs", "command": "record_completion_proof", "owned_tables": ("completion_proof",), "emits": (), "requires_permission": "production_control.audit", "idempotency_key": "proof_id"},
+            {"route": "POST /production/audit-entries", "command": "append_audit_entry", "owned_tables": ("production_audit_entry",), "emits": (), "requires_permission": "production_control.audit", "idempotency_key": "audit_entry_id"},
             {"route": "POST /production/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": PRODUCTION_CONTROL_CONSUMED_EVENT_TYPES, "requires_permission": "production_control.event", "idempotency_key": "event_id"},
             {"route": "POST /production/rules", "command": "register_rule", "owned_tables": ("production_rule",), "requires_permission": "production_control.configure", "idempotency_key": "rule_id"},
             {"route": "POST /production/parameters", "command": "set_parameter", "owned_tables": ("production_parameter",), "requires_permission": "production_control.configure", "idempotency_key": "parameter_name"},
@@ -869,8 +1113,18 @@ def production_control_permissions_contract() -> dict:
             "schedule_order": "production_control.schedule",
             "start_operation": "production_control.operate",
             "record_downtime": "production_control.operate",
+            "record_material_consumption": "production_control.operate",
+            "book_labor_time": "production_control.operate",
+            "book_machine_time": "production_control.operate",
+            "record_quality_gate_result": "production_control.operate",
+            "record_scrap_rework": "production_control.operate",
             "confirm_operation": "production_control.operate",
             "complete_production_order": "production_control.complete",
+            "capture_oee_snapshot": "production_control.audit",
+            "open_exception_case": "production_control.operate",
+            "allocate_capacity_plan": "production_control.schedule",
+            "record_completion_proof": "production_control.audit",
+            "append_audit_entry": "production_control.audit",
             "receive_event": "production_control.event",
             "register_rule": "production_control.configure",
             "register_schema_extension": "production_control.configure",

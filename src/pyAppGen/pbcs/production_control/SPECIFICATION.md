@@ -9,8 +9,18 @@
 - PBC key: `production_control`
 - Mesh: `opsmfg`
 - Owned datastore backends: PostgreSQL, MySQL, or MariaDB
-- Owned tables: `work_center`, `production_order`, `routing_step`, `downtime_event`
-- Owned event tables: `production_control_outbox`, `production_control_inbox`, `production_control_dead_letter`
+- Owned tables: `work_center`, `production_order`, `routing_step`,
+  `production_schedule`, `dispatch_list`, `operation_confirmation`,
+  `downtime_event`, `material_consumption`, `wip_inventory`,
+  `labor_time_booking`, `machine_time_booking`, `quality_gate_result`,
+  `production_completion_record`, `scrap_rework_event`, `oee_snapshot`,
+  `throughput_forecast`, `production_exception_case`,
+  `production_policy_screening`, `capacity_allocation`, `completion_proof`,
+  `production_audit_entry`, `governed_model_evidence`, `production_rule`,
+  `production_parameter`, and `production_configuration`
+- Owned event tables: `production_control_appgen_outbox_event`,
+  `production_control_appgen_inbox_event`, and
+  `production_control_dead_letter_event`
 - Consumed events: `PlannedOrderReleased`, `MaintenanceCompleted`
 - Emitted events: `ProductionCompleted`, `AssetPlacedInService`, `DowntimeCaptured`
 - External access rule: no shared MRP, inventory, maintenance, quality, or asset tables; use projections, APIs, and events only.
@@ -20,17 +30,22 @@
 1. Work center master capture with site, calendar, shift, capacity, efficiency, and status.
 2. Routing step definition with sequence, work center, standard time, setup time, and quality gate.
 3. Production order creation from planned-order projections.
-4. Finite-capacity scheduling by site, work center, date, shift, and priority.
-5. Dispatch list generation and operation sequencing.
+4. Finite-capacity scheduling by site, work center, date, shift, and priority,
+   persisted as owned `production_schedule` records.
+5. Dispatch list generation and operation sequencing, persisted as owned
+   `dispatch_list` records.
 6. Production start, pause, resume, split, merge, and completion lifecycle.
-7. Operation confirmation with good quantity, scrap quantity, labor hours, and machine hours.
+7. Operation confirmation with good quantity, scrap quantity, labor hours, and
+   machine hours, persisted as owned `operation_confirmation`,
+   `labor_time_booking`, and `machine_time_booking` records.
 8. Downtime event capture, classification, duration, asset projection, and OEE impact.
 9. OEE, throughput, schedule adherence, yield, and cycle-time analytics.
-10. Material readiness and quality gate projection handling.
+10. Material readiness, consumption, WIP, and quality gate projection handling.
 11. Maintenance completion projection handling.
 12. Asset placed-in-service handoff where production creates commissioned equipment.
 13. Production completion event generation for inventory and quality consumers.
-14. Exception messages for capacity overload, missing material, quality hold, downtime, and late orders.
+14. Exception cases for capacity overload, missing material, quality hold,
+    downtime, and late orders.
 15. Multi-tenant, multi-site, and work-center isolation.
 16. AppGen-X outbox/inbox idempotency.
 17. Retry and dead-letter evidence.
@@ -85,7 +100,12 @@ The runtime must prove that:
 - Configuration rejects unsupported backends, rejects unsupported configuration fields, requires the fixed `appgen.production.events` AppGen-X topic, and exposes only the AppGen-X event contract without any user-facing stream-engine picker or event-contract choice.
 - Parameter support is bounded to the package-local production-control parameter set and rejects unknown parameters.
 - Rules require production-control binding fields, compile into deterministic hashes, and retain deterministic compilation evidence for workbench and release audits.
-- Schema extensions may target only owned Production Control tables. The PBC can evolve `work_center`, `production_order`, `routing_step`, `downtime_event`, `production_rule`, `production_parameter`, and `production_configuration`; it must reject inventory, planning, maintenance, quality, asset, audit, identity, or shared platform tables.
+- Schema extensions may target only owned Production Control tables. The PBC
+  can evolve all production master, schedule, dispatch, confirmation,
+  material/WIP, time-booking, quality-gate, completion, scrap/rework, OEE,
+  exception, proof, audit, governed-model, rule, parameter, and configuration
+  tables; it must reject inventory, planning, maintenance, quality, asset,
+  audit, identity, or shared platform tables.
 - `receive_event` is the only consumed-event entry point. It accepts `PlannedOrderReleased` and `MaintenanceCompleted`, writes immutable inbox evidence, derives package-local projections, handles duplicates by idempotency key, records retry attempts, and moves unsupported or failed events to a package-local dead-letter evidence surface after the configured retry limit.
 - Package-local workbench and UI surfaces expose evidence for configuration, rule, and parameter bindings without crossing the `production_control` package boundary.
 - `build_api_contract` returns descriptor routes with owned-table, command/query, permission, event, and idempotency metadata. The descriptor must say `shared_table_access: false`, list only PostgreSQL/MySQL/MariaDB backends, and keep stream-engine selection hidden.
@@ -115,8 +135,11 @@ handler evidence without mutating state.
 
 API descriptors are executable package metadata, not catalog prose. They cover
 work-center registration, order creation, routing, scheduling, operation start,
-downtime capture, operation confirmation, completion, event inbox handling, and
-workbench reads. Each descriptor identifies the owned table or consumed event
+material consumption, labor and machine time booking, downtime capture, quality
+gate result capture, scrap/rework capture, operation confirmation, completion,
+OEE snapshots, exception cases, capacity allocation, completion proofs, audit
+entries, event inbox handling, and workbench reads. Each descriptor identifies
+the owned table or consumed event
 surface it touches and the permission required to invoke it. Production
 Control grants no shared-table capability; cross-PBC interaction is through
 declared AppGen-X events, declared APIs, and projections only.
@@ -137,13 +160,16 @@ types, declared integration APIs, declared projection names, and
 `production_control_` runtime names. References such as external inventory,
 quality, planning, maintenance, identity, or finance tables are rejected.
 
-Generated schema evidence is part of the package contract. `build_schema_contract`
-emits owned schema descriptors, generated migration descriptors, generated model
-descriptors, and owned relationship evidence for work centers, routings,
-production orders, finite schedules, operation events, downtime, OEE, rules,
-parameters, configuration, projections, and AppGen-X runtime tables. Those
-migration and model descriptors are validated before release evidence is
-accepted.
+Generated schema evidence is part of the package contract.
+`build_schema_contract` emits owned schema descriptors, generated migration
+descriptors, generated model descriptors, and owned relationship evidence for
+work centers, routings, production orders, finite schedules, dispatch lists,
+operation confirmations, material consumption, WIP, labor and machine time,
+quality gates, completion records, scrap/rework, OEE, forecasts, exceptions,
+policy screenings, capacity allocation, proofs, audit entries, governed model
+evidence, rules, parameters, configuration, projections, and AppGen-X runtime
+tables. Those migration and model descriptors are validated before release
+evidence is accepted.
 
 ## UI Contract
 
@@ -155,6 +181,8 @@ accepted.
 - Production order board.
 - Finite schedule board.
 - Downtime console.
+- Execution ledger for material consumption, labor time, machine time, and WIP.
+- Quality and completion console for quality gates, scrap/rework, completion proofs, and audit entries.
 - OEE dashboard.
 - Rule studio.
 - Parameter console.
@@ -191,12 +219,40 @@ This appendix is generated from the package manifest and is release-gated so the
 - `work_center`
 - `production_order`
 - `routing_step`
+- `production_schedule`
+- `dispatch_list`
+- `operation_confirmation`
 - `downtime_event`
+- `material_consumption`
+- `wip_inventory`
+- `labor_time_booking`
+- `machine_time_booking`
+- `quality_gate_result`
+- `production_completion_record`
+- `scrap_rework_event`
+- `oee_snapshot`
+- `throughput_forecast`
+- `production_exception_case`
+- `production_policy_screening`
+- `capacity_allocation`
+- `completion_proof`
+- `production_audit_entry`
+- `governed_model_evidence`
+- `production_rule`
+- `production_parameter`
+- `production_configuration`
 
 ### API Routes
 
 - `POST /production-orders`
 - `POST /downtime`
+- `POST /material-consumptions`
+- `POST /labor-time`
+- `POST /machine-time`
+- `POST /quality-gates`
+- `POST /scrap-rework`
+- `POST /capacity-allocations`
+- `POST /completion-proofs`
 - `GET /schedule`
 
 ### Emitted Events
@@ -204,6 +260,11 @@ This appendix is generated from the package manifest and is release-gated so the
 - `ProductionCompleted`
 - `AssetPlacedInService`
 - `DowntimeCaptured`
+- `MaterialConsumptionRecorded`
+- `LaborTimeBooked`
+- `MachineTimeBooked`
+- `QualityGateRecorded`
+- `ScrapReworkCaptured`
 
 ### Consumed Events
 

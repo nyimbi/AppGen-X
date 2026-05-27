@@ -4,14 +4,24 @@ from pyAppGen.pbc import PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
+from pyAppGen.pbc import production_control_allocate_capacity_plan
+from pyAppGen.pbc import production_control_append_audit_entry
+from pyAppGen.pbc import production_control_book_labor_time
+from pyAppGen.pbc import production_control_book_machine_time
 from pyAppGen.pbc import production_control_build_workbench_view
+from pyAppGen.pbc import production_control_capture_oee_snapshot
 from pyAppGen.pbc import production_control_complete_production_order
 from pyAppGen.pbc import production_control_configure_runtime
 from pyAppGen.pbc import production_control_confirm_operation
 from pyAppGen.pbc import production_control_create_production_order
 from pyAppGen.pbc import production_control_define_routing_step
 from pyAppGen.pbc import production_control_empty_state
+from pyAppGen.pbc import production_control_open_exception_case
+from pyAppGen.pbc import production_control_record_completion_proof
 from pyAppGen.pbc import production_control_record_downtime
+from pyAppGen.pbc import production_control_record_material_consumption
+from pyAppGen.pbc import production_control_record_quality_gate_result
+from pyAppGen.pbc import production_control_record_scrap_rework
 from pyAppGen.pbc import production_control_register_rule
 from pyAppGen.pbc import production_control_register_work_center
 from pyAppGen.pbc import production_control_render_workbench
@@ -95,15 +105,34 @@ def test_production_control_package_schema_service_and_release_evidence_contract
     )
     assert schema["datastore_backends"] == PRODUCTION_CONTROL_ALLOWED_DATABASE_BACKENDS
     assert schema["shared_table_access"] is False
+    assert {
+        "material_consumption",
+        "wip_inventory",
+        "labor_time_booking",
+        "machine_time_booking",
+        "quality_gate_result",
+        "production_completion_record",
+        "completion_proof",
+        "production_audit_entry",
+    } <= {table["table"] for table in schema["tables"]}
+    assert {
+        ("material_consumption", "production_order"),
+        ("quality_gate_result", "routing_step"),
+        ("completion_proof", "production_order"),
+    } <= {(relationship["from_table"], relationship["to_table"]) for relationship in schema["relationships"]}
 
     assert service["format"] == "appgen.production-control-service-contract.v1"
     assert service["ok"] is True
     assert service["transaction_boundary"] == "production_control_owned_datastore_plus_appgen_outbox"
     assert "receive_event" in service["idempotent_handlers"]
+    assert {"record_material_consumption", "book_labor_time", "record_quality_gate_result", "record_completion_proof"} <= set(service["command_methods"])
     assert "build_release_evidence" in service["query_methods"]
     assert service["external_dependencies"]["shared_tables"] == ()
 
     assert any(route["command"] == "register_rule" for route in api["routes"])
+    assert any(route["command"] == "record_material_consumption" for route in api["routes"])
+    assert any(route["command"] == "record_quality_gate_result" for route in api["routes"])
+    assert any(route["command"] == "record_completion_proof" for route in api["routes"])
     assert any(route["command"] == "set_parameter" for route in api["routes"])
     assert any(route["command"] == "configure_runtime" for route in api["routes"])
     assert any(route.get("query") == "build_schema_contract" for route in api["routes"])
@@ -113,6 +142,7 @@ def test_production_control_package_schema_service_and_release_evidence_contract
     assert release["format"] == "appgen.production-control-release-evidence.v1"
     assert release["ok"] is True
     assert not release["blocking_gaps"]
+    assert "execution_record_depth" in {check["id"] for check in release["checks"] if check["ok"]}
     assert release["schema"]["format"] == schema["format"]
     assert release["service"]["format"] == service["format"]
     assert release["api"]["required_event_topic"] == PRODUCTION_CONTROL_REQUIRED_EVENT_TOPIC
@@ -215,12 +245,78 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
     assert schedule["schedule"]["step_count"] == 1
 
     state = production_control_start_operation(state, "step_ops", started_by="operator_ops")["state"]
+    material = production_control_record_material_consumption(
+        state,
+        {
+            "consumption_id": "mat_ops",
+            "tenant": "tenant_ops",
+            "order_id": "order_ops",
+            "material_id": "steel_kit",
+            "quantity": 10,
+            "uom": "EA",
+            "source": "inventory_material_readiness_projection",
+        },
+    )
+    state = material["state"]
+    assert material["wip"]["quantity_in_process"] == 10
+    labor = production_control_book_labor_time(
+        state,
+        {
+            "booking_id": "lab_ops",
+            "tenant": "tenant_ops",
+            "order_id": "order_ops",
+            "step_id": "step_ops",
+            "operator_id": "operator_ops",
+            "hours": 2,
+        },
+    )
+    state = labor["state"]
+    machine = production_control_book_machine_time(
+        state,
+        {
+            "booking_id": "mach_ops",
+            "tenant": "tenant_ops",
+            "order_id": "order_ops",
+            "step_id": "step_ops",
+            "work_center_id": "wc_ops",
+            "hours": 2.3,
+        },
+    )
+    state = machine["state"]
     downtime = production_control_record_downtime(
         state,
         {"downtime_id": "dt_ops", "tenant": "tenant_ops", "work_center_id": "wc_ops", "order_id": "order_ops", "reason": "maintenance", "minutes": 20},
     )
     state = downtime["state"]
     assert downtime["downtime"]["status"] == "captured"
+    quality = production_control_record_quality_gate_result(
+        state,
+        {
+            "gate_id": "qg_ops",
+            "tenant": "tenant_ops",
+            "order_id": "order_ops",
+            "step_id": "step_ops",
+            "quality_gate": "final_test",
+            "result": "passed",
+            "inspector": "qa_ops",
+        },
+    )
+    state = quality["state"]
+    assert quality["quality_gate"]["status"] == "accepted"
+    scrap = production_control_record_scrap_rework(
+        state,
+        {
+            "scrap_rework_id": "sr_ops",
+            "tenant": "tenant_ops",
+            "order_id": "order_ops",
+            "step_id": "step_ops",
+            "scrap_qty": 1,
+            "rework_qty": 0,
+            "reason": "setup_loss",
+        },
+    )
+    state = scrap["state"]
+    assert scrap["scrap_rework"]["status"] == "captured"
 
     confirmation = production_control_confirm_operation(
         state,
@@ -234,11 +330,38 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
     state = confirmation["state"]
     assert confirmation["routing_step"]["status"] == "confirmed"
 
+    oee_snapshot = production_control_capture_oee_snapshot(
+        state,
+        {"snapshot_id": "oee_ops", "tenant": "tenant_ops", "work_center_id": "wc_ops", "order_id": "order_ops"},
+    )
+    state = oee_snapshot["state"]
+    assert oee_snapshot["snapshot"]["status"] == "captured"
+    exception = production_control_open_exception_case(
+        state,
+        {"case_id": "case_ops", "tenant": "tenant_ops", "order_id": "order_ops", "case_type": "downtime", "severity": "minor", "status": "resolved"},
+    )
+    state = exception["state"]
+    assert exception["case"]["recommended_action"] == "route_maintenance_review"
+    capacity = production_control_allocate_capacity_plan(
+        state,
+        {"allocation_id": "cap_ops", "tenant": "tenant_ops", "order_id": "order_ops", "work_center_id": "wc_ops", "allocated_hours": 7, "priority": "standard"},
+    )
+    state = capacity["state"]
+    assert capacity["allocation"]["status"] == "allocated"
     completed = production_control_complete_production_order(state, "order_ops", completed_by="supervisor_ops")
     state = completed["state"]
     assert completed["production_order"]["status"] == "completed"
     assert completed["handoffs"] == ("inventory_receipt_projection", "quality_completion_projection", "asset_commissioning_projection")
-    assert state["outbox"][-1]["idempotency_key"] == "production_control:ProductionCompleted:production_evt_000009"
+    assert state["outbox"][-1]["idempotency_key"] == "production_control:ProductionCompleted:production_evt_000014"
+    proof = production_control_record_completion_proof(
+        state,
+        {"proof_id": "proof_ops", "tenant": "tenant_ops", "order_id": "order_ops", "proof_hash": "hash_ops", "proof_type": "completion"},
+    )
+    state = proof["state"]
+    audit = production_control_append_audit_entry(state, "completion_proof", proof["proof"])
+    state = audit["state"]
+    assert proof["proof"]["status"] == "sealed"
+    assert audit["audit_entry"]["status"] == "sealed"
 
     workbench = production_control_build_workbench_view(state, tenant="tenant_ops")
     assert workbench["work_center_count"] == 1
@@ -326,7 +449,7 @@ def test_production_control_runtime_applies_rules_parameters_configuration_and_u
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
-    assert rendered["event_outbox_count"] == 9
+    assert rendered["event_outbox_count"] == 14
     assert rendered["inbox_count"] == 0
     assert rendered["dead_letter_count"] == 0
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])

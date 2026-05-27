@@ -835,6 +835,7 @@ PRODUCTION_CONTROL_ADVANCED_CAPABILITY_KEYS = (
     "cryptographic_engineering",
     "mathematical_optimization",
     "production_mlops_governance",
+    "standard_table_stakes_execution_records",
 )
 QUALITY_ASSURANCE_ADVANCED_CAPABILITY_KEYS = (
     "event_sourced_quality_lifecycle",
@@ -3099,10 +3100,56 @@ PBC_CATALOG: dict[str, dict] = {
     "production_control": {
         "label": "Production Scheduling and Floor Control",
         "mesh": "opsmfg",
-        "description": "Routings, work centers, capacity, assembly sequencing, OEE, and downtime events.",
-        "tables": ("work_center", "production_order", "routing_step", "downtime_event"),
-        "apis": ("POST /production-orders", "POST /downtime", "GET /schedule"),
-        "emits": ("ProductionCompleted", "AssetPlacedInService", "DowntimeCaptured"),
+        "description": "Routings, work centers, capacity, assembly sequencing, OEE, downtime, execution records, and completion evidence.",
+        "tables": (
+            "work_center",
+            "production_order",
+            "routing_step",
+            "production_schedule",
+            "dispatch_list",
+            "operation_confirmation",
+            "downtime_event",
+            "material_consumption",
+            "wip_inventory",
+            "labor_time_booking",
+            "machine_time_booking",
+            "quality_gate_result",
+            "production_completion_record",
+            "scrap_rework_event",
+            "oee_snapshot",
+            "throughput_forecast",
+            "production_exception_case",
+            "production_policy_screening",
+            "capacity_allocation",
+            "completion_proof",
+            "production_audit_entry",
+            "governed_model_evidence",
+            "production_rule",
+            "production_parameter",
+            "production_configuration",
+        ),
+        "apis": (
+            "POST /production-orders",
+            "POST /downtime",
+            "POST /material-consumptions",
+            "POST /labor-time",
+            "POST /machine-time",
+            "POST /quality-gates",
+            "POST /scrap-rework",
+            "POST /capacity-allocations",
+            "POST /completion-proofs",
+            "GET /schedule",
+        ),
+        "emits": (
+            "ProductionCompleted",
+            "AssetPlacedInService",
+            "DowntimeCaptured",
+            "MaterialConsumptionRecorded",
+            "LaborTimeBooked",
+            "MachineTimeBooked",
+            "QualityGateRecorded",
+            "ScrapReworkCaptured",
+        ),
         "consumes": ("PlannedOrderReleased", "MaintenanceCompleted"),
         "template": "manufacturing",
     },
@@ -8730,6 +8777,11 @@ from .pbcs.production_control import PRODUCTION_CONTROL_RUNTIME_CAPABILITY_KEYS 
 from .pbcs.production_control import PRODUCTION_CONTROL_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.production_control import PRODUCTION_CONTROL_UI_FRAGMENT_KEYS  # noqa: E402,F401
 from .pbcs.production_control import production_control_build_api_contract  # noqa: E402,F401
+from .pbcs.production_control import production_control_allocate_capacity_plan  # noqa: E402,F401
+from .pbcs.production_control import production_control_append_audit_entry  # noqa: E402,F401
+from .pbcs.production_control import production_control_book_labor_time  # noqa: E402,F401
+from .pbcs.production_control import production_control_book_machine_time  # noqa: E402,F401
+from .pbcs.production_control import production_control_capture_oee_snapshot  # noqa: E402,F401
 from .pbcs.production_control import production_control_build_workbench_view  # noqa: E402,F401
 from .pbcs.production_control import production_control_complete_production_order  # noqa: E402,F401
 from .pbcs.production_control import production_control_configure_runtime  # noqa: E402,F401
@@ -8737,8 +8789,13 @@ from .pbcs.production_control import production_control_confirm_operation  # noq
 from .pbcs.production_control import production_control_create_production_order  # noqa: E402,F401
 from .pbcs.production_control import production_control_define_routing_step  # noqa: E402,F401
 from .pbcs.production_control import production_control_empty_state  # noqa: E402,F401
+from .pbcs.production_control import production_control_open_exception_case  # noqa: E402,F401
 from .pbcs.production_control import production_control_permissions_contract  # noqa: E402,F401
+from .pbcs.production_control import production_control_record_completion_proof  # noqa: E402,F401
 from .pbcs.production_control import production_control_record_downtime  # noqa: E402,F401
+from .pbcs.production_control import production_control_record_material_consumption  # noqa: E402,F401
+from .pbcs.production_control import production_control_record_quality_gate_result  # noqa: E402,F401
+from .pbcs.production_control import production_control_record_scrap_rework  # noqa: E402,F401
 from .pbcs.production_control import production_control_receive_event  # noqa: E402,F401
 from .pbcs.production_control import production_control_register_rule  # noqa: E402,F401
 from .pbcs.production_control import production_control_register_schema_extension  # noqa: E402,F401

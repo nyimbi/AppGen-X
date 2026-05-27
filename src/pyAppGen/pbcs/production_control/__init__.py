@@ -18,14 +18,24 @@ from .runtime import production_control_build_release_evidence
 from .runtime import production_control_build_schema_contract
 from .runtime import production_control_build_service_contract
 from .runtime import production_control_build_workbench_view
+from .runtime import production_control_allocate_capacity_plan
+from .runtime import production_control_append_audit_entry
+from .runtime import production_control_book_labor_time
+from .runtime import production_control_book_machine_time
+from .runtime import production_control_capture_oee_snapshot
 from .runtime import production_control_complete_production_order
 from .runtime import production_control_configure_runtime
 from .runtime import production_control_confirm_operation
 from .runtime import production_control_create_production_order
 from .runtime import production_control_define_routing_step
 from .runtime import production_control_empty_state
+from .runtime import production_control_open_exception_case
 from .runtime import production_control_permissions_contract
 from .runtime import production_control_record_downtime
+from .runtime import production_control_record_completion_proof
+from .runtime import production_control_record_material_consumption
+from .runtime import production_control_record_quality_gate_result
+from .runtime import production_control_record_scrap_rework
 from .runtime import production_control_receive_event
 from .runtime import production_control_register_rule
 from .runtime import production_control_register_schema_extension
@@ -113,4 +123,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-
