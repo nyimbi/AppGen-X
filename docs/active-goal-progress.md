@@ -1905,6 +1905,19 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   dispute, and risk capabilities. Focused runtime/source/agent tests pass
   (`12 passed`), generation smoke passes for the new PBC and all implemented
   PBCs, and `pbc_release_audit()` returns true. Commit: `655d86c`.
+- Current Enterprise Asset Management PBC pass aligns `eam` catalog,
+  manifest, specification traceability, migration, schema/model evidence,
+  service facade, route surface, and event contracts with its richer runtime
+  domain. EAM now exposes the full owned maintenance boundary for equipment,
+  plans, work orders, spares, condition and meter readings, failure events,
+  schedules, vendor service, safety permits, rules, parameters,
+  configuration, outbox, inbox, and dead-letter tables; generated/package
+  artifacts now cover the expanded APIs, ten emitted events, five consumed
+  events, RBAC, UI fragments, and advanced maintenance capabilities. Py
+  compile passed for `src/pyAppGen/pbc.py` and EAM package modules; focused
+  EAM/source/specification tests pass (`17 passed`), EAM implementation and
+  generation smoke pass, all implemented generation smoke passes, and
+  `pbc_release_audit()` returns true. Commit: `4fb237e`.
 
 ## Open Completion Areas
 
