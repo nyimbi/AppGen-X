@@ -2151,4 +2151,4 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   routing, sandboxed watch evaluation, event stepping, redacted exception trace
   capture, and runtime preview reload after debug. Verified with Python compile,
   direct source parity audit probe, and direct fresh generated-app audit probe.
-  Commit: `pending`.
+  Commit: `bc7c5cb`.
