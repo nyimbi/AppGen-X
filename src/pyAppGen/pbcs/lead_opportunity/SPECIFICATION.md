@@ -73,8 +73,8 @@ from a production relationship package:
   customer projection key, region validation, status, and audit proof.
 - Lead capture with source, contact, region, currency, engagement, estimated
   value, duplicate detection by tenant/email, assignment owner, and score.
-- Lead enrichment, dedupe review, owner assignment, and qualification-decision
-  evidence carried as owned metadata descriptors.
+- Executable lead enrichment snapshots, dedupe case resolution, score
+  snapshots, owner assignment records, and qualification-decision evidence.
 - Runtime configuration for database backend, event topic, retry limit,
   default currency, supported currencies, supported regions, pipeline stages,
   timezone, assignment mode, and workbench limit.
@@ -93,7 +93,8 @@ from a production relationship package:
 - Opportunity creation from qualified leads with stage validation, open
   opportunity limits, win probability, forecast amount, and slippage risk.
 - Opportunity stage history, forecast snapshots, quote/proposal handoff
-  descriptors, win/loss evidence, audit events, and coaching insight metadata.
+  execution, win/loss outcome evidence, audit events, and coaching insight
+  generation.
 - Sales activity timeline with sentiment, owner, timestamp, next-best action,
   and activity proof.
 - Opportunity stage advancement and won-opportunity capture.
@@ -154,11 +155,14 @@ The service layer exposes these package-local commands:
 - `receive_event(event, simulate_failure=False)`.
 - `create_account_hierarchy(command)`.
 - `create_lead(command)`.
+- `enrich_lead(lead_id, enrichment)`.
 - `qualify_lead(lead_id)`.
 - `create_opportunity(command)`.
 - `record_sales_activity(command)`.
 - `advance_opportunity(opportunity_id, stage)`.
+- `create_quote_proposal_handoff(command)`.
 - `win_opportunity(opportunity_id)`.
+- `lose_opportunity(command)`.
 - `build_api_contract()`.
 - `build_schema_contract()`.
 - `build_service_contract()`.
@@ -192,9 +196,16 @@ The package-local API contract exposes route descriptors:
 - `POST /opportunity-stage` runs `advance_opportunity`, updates
   `opportunity`, requires `lead_opportunity.opportunity.write`, and is
   idempotent by `opportunity_id:stage`.
+- `POST /quote-proposal-handoffs` runs `create_quote_proposal_handoff`, writes
+  `quote_proposal_handoff`, emits `QuoteProposalRequested`, requires
+  `lead_opportunity.opportunity.write`, and is idempotent by `handoff_id`.
 - `POST /opportunity-wins` runs `win_opportunity`, updates `opportunity`,
   requires `lead_opportunity.opportunity.write`, emits `OpportunityWon` and
   `CustomerUpdated`, and is idempotent by `opportunity_id`.
+- `POST /opportunity-losses` runs `lose_opportunity`, writes
+  `opportunity_outcome` and `pipeline_forecast_snapshot`, emits
+  `OpportunityLost`, requires `lead_opportunity.opportunity.write`, and is
+  idempotent by `opportunity_id:reason`.
 - `POST /lead-opportunity/events/inbox` runs `receive_event`, consumes
   declared AppGen-X events, requires `lead_opportunity.event.consume`, and is
   idempotent by `event_id`.
@@ -223,7 +234,9 @@ Emitted events:
 
 - `LeadQualified`.
 - `OpportunityWon`.
+- `OpportunityLost`.
 - `CustomerUpdated`.
+- `QuoteProposalRequested`.
 
 Handlers require event IDs, deduplicate already handled events, record inbox
 evidence, store customer-segment projections in package-local state, and send
@@ -235,11 +248,17 @@ stream engine.
 The UI contract exposes:
 
 - Lead inbox.
+- Lead enrichment board.
+- Dedupe resolution queue.
+- Qualification decision ledger.
 - Account hierarchy map.
 - Qualification board.
 - Opportunity pipeline.
 - Sales activity timeline.
 - Forecast rollup.
+- Quote proposal handoff panel.
+- Win/loss outcome board.
+- Sales coaching panel.
 - Next-best-action panel.
 - Customer segment projection panel.
 - Revenue rule studio.

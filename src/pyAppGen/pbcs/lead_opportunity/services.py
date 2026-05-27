@@ -4,6 +4,11 @@ EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibili
 
 
 OPERATION_CONTRACTS = ({'operation': 'command_leads', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/lead_opportunity/leads', 'permission': 'lead_opportunity.command.1', 'owned_tables': ('lead_opportunity_lead', 'lead_opportunity_opportunity', 'lead_opportunity_account_hierarchy', 'lead_opportunity_sales_activity'), 'read_tables': (), 'emitted_event': 'OpportunityWon', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_opportunities', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/lead_opportunity/opportunities', 'permission': 'lead_opportunity.command.2', 'owned_tables': ('lead_opportunity_lead', 'lead_opportunity_opportunity', 'lead_opportunity_account_hierarchy', 'lead_opportunity_sales_activity'), 'read_tables': (), 'emitted_event': 'CustomerUpdated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_pipeline', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/lead_opportunity/pipeline', 'permission': 'lead_opportunity.query.3', 'owned_tables': (), 'read_tables': ('lead_opportunity_lead', 'lead_opportunity_opportunity', 'lead_opportunity_account_hierarchy', 'lead_opportunity_sales_activity'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
+OPERATION_CONTRACTS = OPERATION_CONTRACTS + (
+    {'operation': 'command_quote_proposal_handoffs', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/lead_opportunity/quote-proposal-handoffs', 'permission': 'lead_opportunity.opportunity.write', 'owned_tables': ('lead_opportunity_quote_proposal_handoff', 'lead_opportunity_lead_opportunity_audit_event'), 'read_tables': (), 'emitted_event': 'QuoteProposalRequested', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_opportunity_losses', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/lead_opportunity/opportunity-losses', 'permission': 'lead_opportunity.opportunity.write', 'owned_tables': ('lead_opportunity_opportunity', 'lead_opportunity_opportunity_outcome', 'lead_opportunity_pipeline_forecast_snapshot'), 'read_tables': (), 'emitted_event': 'OpportunityLost', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+    {'operation': 'command_lead_enrichment', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/lead_opportunity/lead-enrichment', 'permission': 'lead_opportunity.lead.write', 'owned_tables': ('lead_opportunity_lead_enrichment_snapshot', 'lead_opportunity_lead_opportunity_governed_model', 'lead_opportunity_lead_opportunity_audit_event'), 'read_tables': (), 'emitted_event': 'LeadQualified', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'},
+)
 
 
 def service_operation_contracts():
@@ -96,6 +101,15 @@ class LeadOpportunityService:
 
     def command_opportunities(self, payload=None):
         return self._command('command_opportunities', payload or {})
+
+    def command_quote_proposal_handoffs(self, payload=None):
+        return self._command('command_quote_proposal_handoffs', payload or {})
+
+    def command_opportunity_losses(self, payload=None):
+        return self._command('command_opportunity_losses', payload or {})
+
+    def command_lead_enrichment(self, payload=None):
+        return self._command('command_lead_enrichment', payload or {})
 
     def query_pipeline(self, payload=None):
         return self._query('query_pipeline', payload or {})

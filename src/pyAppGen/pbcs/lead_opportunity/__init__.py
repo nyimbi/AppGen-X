@@ -24,7 +24,10 @@ from .runtime import lead_opportunity_configure_runtime
 from .runtime import lead_opportunity_create_account_hierarchy
 from .runtime import lead_opportunity_create_lead
 from .runtime import lead_opportunity_create_opportunity
+from .runtime import lead_opportunity_create_quote_proposal_handoff
+from .runtime import lead_opportunity_enrich_lead
 from .runtime import lead_opportunity_empty_state
+from .runtime import lead_opportunity_lose_opportunity
 from .runtime import lead_opportunity_permissions_contract
 from .runtime import lead_opportunity_qualify_lead
 from .runtime import lead_opportunity_receive_event
@@ -112,4 +115,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

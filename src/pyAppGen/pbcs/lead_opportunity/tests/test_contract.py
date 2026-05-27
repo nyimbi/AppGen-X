@@ -116,11 +116,70 @@ def test_service_and_route_surface_are_executable():
     assert service_smoke['result']['operation_contract']['event_contract'] == 'AppGen-X'
     assert service_smoke['result']['operation_contract']['owned_tables'] or service_smoke['result']['operation_contract']['read_tables']
     assert route_smoke['ok'] is True
+    assert 'command_quote_proposal_handoffs' in operation_contracts['command_operations']
+    assert 'command_opportunity_losses' in operation_contracts['command_operations']
+    assert 'command_lead_enrichment' in operation_contracts['command_operations']
     assert not service_smoke['side_effects']
     assert not operation_contracts['side_effects']
     assert not route_contracts['side_effects']
     assert not route_validation['side_effects']
     assert not route_smoke['side_effects']
+
+
+def test_revenue_lifecycle_tables_are_executable():
+    from ..runtime import lead_opportunity_build_workbench_view
+    from ..runtime import lead_opportunity_create_quote_proposal_handoff
+    from ..runtime import lead_opportunity_lose_opportunity
+    from ..runtime import lead_opportunity_runtime_smoke
+
+    smoke = lead_opportunity_runtime_smoke()
+    assert smoke['ok'] is True
+    state = smoke['state']
+    assert state['lead_enrichment_snapshots']
+    assert state['lead_dedup_cases']
+    assert state['lead_score_snapshots']
+    assert state['lead_assignments']
+    assert state['qualification_decisions']
+    assert state['opportunity_stage_histories']
+    assert state['pipeline_forecast_snapshots']
+    assert state['quote_proposal_handoffs']
+    assert state['opportunity_outcomes']
+    assert state['sales_coaching_insights']
+    assert state['lead_opportunity_audit_events']
+    assert state['lead_opportunity_governed_models']
+    assert any(item['event_type'] == 'QuoteProposalRequested' for item in state['outbox'])
+    assert any(item['event_type'] == 'OpportunityLost' for item in state['outbox'])
+
+    handoff = lead_opportunity_create_quote_proposal_handoff(
+        state,
+        {
+            'handoff_id': 'handoff_beta',
+            'tenant': 'tenant_alpha',
+            'opportunity_id': 'opp_alpha',
+            'proposal_reference': 'proposal_beta',
+            'handoff_owner': 'seller_alpha',
+        },
+    )
+    loss = lead_opportunity_lose_opportunity(
+        handoff['state'],
+        {
+            'opportunity_id': 'opp_beta_loss',
+            'tenant': 'tenant_alpha',
+            'lead_id': 'lead_alpha',
+            'account_id': 'acct_alpha',
+            'name': 'Beta Deferred Project',
+            'amount': 22000.0,
+            'currency': 'USD',
+            'stage': 'qualified',
+            'close_date': '2026-06-20',
+            'reason': 'timing',
+            'competitor_context': 'none',
+        },
+    )
+    workbench = lead_opportunity_build_workbench_view(loss['state'], tenant='tenant_alpha')
+    assert workbench['quote_handoff_count'] >= 2
+    assert workbench['opportunity_outcome_count'] >= 3
+    assert workbench['governed_model_count'] >= 1
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():

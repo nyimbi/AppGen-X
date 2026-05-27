@@ -11,11 +11,17 @@ from .runtime import LEAD_OPPORTUNITY_RUNTIME_TABLES
 LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS = (
     "LeadOpportunityWorkbench",
     "LeadInbox",
+    "LeadEnrichmentBoard",
+    "DedupResolutionQueue",
+    "QualificationDecisionLedger",
     "AccountHierarchyMap",
     "LeadQualificationBoard",
     "OpportunityPipeline",
     "SalesActivityTimeline",
     "ForecastRollupPanel",
+    "QuoteProposalHandoffPanel",
+    "WinLossOutcomeBoard",
+    "SalesCoachingPanel",
     "NextBestActionPanel",
     "CustomerSegmentProjectionPanel",
     "RevenueRuleStudio",
@@ -43,18 +49,21 @@ def lead_opportunity_ui_contract() -> dict:
             "/workbench/pbcs/lead_opportunity/configuration",
         ),
         "panels": (
-            {"key": "leads", "fragment": "LeadInbox", "binds_to": ("lead",), "commands": ("create_lead", "qualify_lead")},
+            {"key": "leads", "fragment": "LeadInbox", "binds_to": ("lead", "lead_enrichment_snapshot", "lead_dedup_case", "lead_score_snapshot", "lead_assignment", "qualification_decision"), "commands": ("create_lead", "enrich_lead", "qualify_lead")},
             {"key": "accounts", "fragment": "AccountHierarchyMap", "binds_to": ("account_hierarchy",), "commands": ("create_account_hierarchy",)},
-            {"key": "pipeline", "fragment": "OpportunityPipeline", "binds_to": ("opportunity", "sales_activity"), "commands": ("create_opportunity", "advance_opportunity", "win_opportunity")},
+            {"key": "pipeline", "fragment": "OpportunityPipeline", "binds_to": ("opportunity", "opportunity_stage_history", "pipeline_forecast_snapshot", "quote_proposal_handoff", "opportunity_outcome", "sales_activity", "sales_coaching_insight"), "commands": ("create_opportunity", "advance_opportunity", "create_quote_proposal_handoff", "win_opportunity", "lose_opportunity", "record_sales_activity")},
             {"key": "governance", "fragment": "RevenueRuleStudio", "binds_to": ("rule", "parameter", "configuration"), "commands": ("register_rule", "set_parameter", "configure_runtime")},
         ),
         "action_permissions": {
             "create_account_hierarchy": "lead_opportunity.lead.write",
             "create_lead": "lead_opportunity.lead.write",
+            "enrich_lead": "lead_opportunity.lead.write",
             "qualify_lead": "lead_opportunity.lead.write",
             "create_opportunity": "lead_opportunity.opportunity.write",
             "advance_opportunity": "lead_opportunity.opportunity.write",
+            "create_quote_proposal_handoff": "lead_opportunity.opportunity.write",
             "win_opportunity": "lead_opportunity.opportunity.write",
+            "lose_opportunity": "lead_opportunity.opportunity.write",
             "record_sales_activity": "lead_opportunity.activity.write",
             "receive_event": "lead_opportunity.event.consume",
             "register_rule": "lead_opportunity.configure",
@@ -89,7 +98,7 @@ def lead_opportunity_ui_contract() -> dict:
             "required_fields": ("rule_id", "tenant", "scope", "status", "allowed_regions", "allowed_currencies", "allowed_segments", "qualification_policy", "assignment_policy"),
         },
         "event_surfaces": {
-            "emits": ("OpportunityWon", "CustomerUpdated", "LeadQualified"),
+            "emits": ("LeadQualified", "OpportunityWon", "OpportunityLost", "CustomerUpdated", "QuoteProposalRequested"),
             "consumes": ("CustomerSegmentUpdated",),
             "outbox_status": "visible",
             "dead_letter_status": "visible",
@@ -106,8 +115,14 @@ def lead_opportunity_render_workbench(state: dict, *, tenant: str, principal_per
     cards = (
         {"key": "leads", "value": view["lead_count"], "fragment": "LeadInbox"},
         {"key": "qualified", "value": view["qualified_lead_count"], "fragment": "LeadQualificationBoard"},
+        {"key": "enrichment", "value": view["lead_enrichment_count"], "fragment": "LeadEnrichmentBoard"},
+        {"key": "dedup", "value": view["lead_dedup_case_count"], "fragment": "DedupResolutionQueue"},
+        {"key": "qualification_decisions", "value": view["qualification_decision_count"], "fragment": "QualificationDecisionLedger"},
         {"key": "opportunities", "value": view["opportunity_count"], "fragment": "OpportunityPipeline"},
         {"key": "won", "value": view["won_opportunity_count"], "fragment": "ForecastRollupPanel"},
+        {"key": "handoffs", "value": view["quote_handoff_count"], "fragment": "QuoteProposalHandoffPanel"},
+        {"key": "outcomes", "value": view["opportunity_outcome_count"], "fragment": "WinLossOutcomeBoard"},
+        {"key": "coaching", "value": view["sales_coaching_insight_count"], "fragment": "SalesCoachingPanel"},
         {"key": "activities", "value": view["activity_count"], "fragment": "SalesActivityTimeline"},
         {"key": "outbox", "value": view["outbox_count"], "fragment": "RevenueEventOutbox"},
         {"key": "dead_letter", "value": view["dead_letter_count"], "fragment": "RevenueDeadLetterQueue"},
@@ -134,11 +149,23 @@ def _view_counts(state: dict, tenant: str) -> dict:
     leads = tuple(item for item in state.get("leads", {}).values() if item["tenant"] == tenant)
     opportunities = tuple(item for item in state.get("opportunities", {}).values() if item["tenant"] == tenant)
     activities = tuple(item for item in state.get("sales_activities", {}).values() if item["tenant"] == tenant)
+    enrichment = tuple(item for item in state.get("lead_enrichment_snapshots", {}).values() if item["tenant"] == tenant)
+    dedup_cases = tuple(item for item in state.get("lead_dedup_cases", {}).values() if item["tenant"] == tenant)
+    qualification_decisions = tuple(item for item in state.get("qualification_decisions", {}).values() if item["tenant"] == tenant)
+    handoffs = tuple(item for item in state.get("quote_proposal_handoffs", {}).values() if item["tenant"] == tenant)
+    outcomes = tuple(item for item in state.get("opportunity_outcomes", {}).values() if item["tenant"] == tenant)
+    coaching = tuple(item for item in state.get("sales_coaching_insights", {}).values() if item["tenant"] == tenant)
     return {
         "lead_count": len(leads),
         "qualified_lead_count": len(tuple(item for item in leads if item["status"] == "qualified")),
+        "lead_enrichment_count": len(enrichment),
+        "lead_dedup_case_count": len(dedup_cases),
+        "qualification_decision_count": len(qualification_decisions),
         "opportunity_count": len(opportunities),
         "won_opportunity_count": len(tuple(item for item in opportunities if item["status"] == "won")),
+        "quote_handoff_count": len(handoffs),
+        "opportunity_outcome_count": len(outcomes),
+        "sales_coaching_insight_count": len(coaching),
         "activity_count": len(activities),
         "outbox_count": len(state.get("outbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),

@@ -45,10 +45,16 @@ LEAD_OPPORTUNITY_RUNTIME_CAPABILITY_KEYS = (
     "multi_tenant_revenue_isolation",
     "schema_evolution_resilient_lead_context",
     "lead_capture_and_deduplication",
+    "lead_enrichment_snapshot_execution",
+    "lead_dedup_case_resolution",
+    "qualification_decision_execution",
     "account_hierarchy_management",
     "lead_scoring_and_qualification",
     "opportunity_stage_management",
+    "quote_proposal_handoff_execution",
+    "win_loss_outcome_management",
     "sales_activity_timeline",
+    "sales_coaching_insight_generation",
     "pipeline_forecast_rollup",
     "customer_segment_projection_handling",
     "probabilistic_win_likelihood_scoring",
@@ -82,9 +88,11 @@ LEAD_OPPORTUNITY_STANDARD_FEATURE_KEYS = (
     "lead_capture",
     "lead_enrichment",
     "lead_deduplication",
+    "lead_dedup_case_resolution",
     "lead_assignment",
     "lead_scoring",
     "lead_qualification",
+    "qualification_decisions",
     "opportunity_creation",
     "pipeline_stage_management",
     "opportunity_stage_history",
@@ -95,6 +103,7 @@ LEAD_OPPORTUNITY_STANDARD_FEATURE_KEYS = (
     "forecast_snapshots",
     "quote_proposal_handoff",
     "win_loss_management",
+    "opportunity_outcomes",
     "audit_evidence",
     "coaching_insights",
     "next_best_action",
@@ -156,7 +165,13 @@ LEAD_OPPORTUNITY_REQUIRED_RULE_FIELDS = (
 )
 
 LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES = ("CustomerSegmentUpdated",)
-LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES = ("OpportunityWon", "CustomerUpdated", "LeadQualified")
+LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES = (
+    "LeadQualified",
+    "OpportunityWon",
+    "OpportunityLost",
+    "CustomerUpdated",
+    "QuoteProposalRequested",
+)
 _LEAD_OPPORTUNITY_ALLOWED_DEPENDENCIES = (
     "customer_segment_projection",
     "customer_projection",
@@ -204,11 +219,14 @@ def lead_opportunity_runtime_capabilities() -> dict:
             "receive_event",
             "create_account_hierarchy",
             "create_lead",
+            "enrich_lead",
             "qualify_lead",
             "create_opportunity",
             "record_sales_activity",
             "advance_opportunity",
+            "create_quote_proposal_handoff",
             "win_opportunity",
+            "lose_opportunity",
             "build_api_contract",
             "build_schema_contract",
             "build_service_contract",
@@ -302,6 +320,31 @@ def lead_opportunity_runtime_smoke() -> dict:
             "estimated_value": 120000.0,
         },
     )["state"]
+    state = lead_opportunity_enrich_lead(
+        state,
+        "lead_alpha",
+        {
+            "segment_fit_score": 0.91,
+            "firmographic_fit": "enterprise_growth",
+            "intent_summary": "active buying committee",
+        },
+    )["state"]
+    state = lead_opportunity_create_lead(
+        state,
+        {
+            "lead_id": "lead_alpha_duplicate",
+            "tenant": "tenant_alpha",
+            "account_id": "acct_alpha",
+            "customer_id": "cust_alpha",
+            "email": "buyer@example.com",
+            "company": "Alpha Holdings",
+            "source": "event",
+            "region": "US",
+            "currency": "USD",
+            "engagement_score": 0.7,
+            "estimated_value": 30000.0,
+        },
+    )["state"]
     state = lead_opportunity_qualify_lead(state, "lead_alpha")["state"]
     opportunity = lead_opportunity_create_opportunity(
         state,
@@ -332,6 +375,32 @@ def lead_opportunity_runtime_smoke() -> dict:
         },
     )["state"]
     state = lead_opportunity_advance_opportunity(state, "opp_alpha", "proposal")["state"]
+    state = lead_opportunity_create_quote_proposal_handoff(
+        state,
+        {
+            "handoff_id": "handoff_alpha",
+            "tenant": "tenant_alpha",
+            "opportunity_id": "opp_alpha",
+            "proposal_reference": "proposal_alpha",
+            "handoff_owner": "seller_alpha",
+        },
+    )["state"]
+    state = lead_opportunity_lose_opportunity(
+        state,
+        {
+            "opportunity_id": "opp_loss_alpha",
+            "tenant": "tenant_alpha",
+            "lead_id": "lead_alpha",
+            "account_id": "acct_alpha",
+            "name": "Alpha Legacy Replacement",
+            "amount": 35000.0,
+            "currency": "USD",
+            "stage": "qualified",
+            "close_date": "2026-06-15",
+            "reason": "budget_deferred",
+            "competitor_context": "internal_project",
+        },
+    )["state"]
     state = lead_opportunity_win_opportunity(state, "opp_alpha")["state"]
     checks = tuple(
         {"id": key, "ok": True, "evidence": _capability_evidence(state, key)}
@@ -342,6 +411,18 @@ def lead_opportunity_runtime_smoke() -> dict:
         "ok": bool(state["leads"])
         and bool(state["opportunities"])
         and bool(state["sales_activities"])
+        and bool(state["lead_enrichment_snapshots"])
+        and bool(state["lead_dedup_cases"])
+        and bool(state["lead_score_snapshots"])
+        and bool(state["lead_assignments"])
+        and bool(state["qualification_decisions"])
+        and bool(state["opportunity_stage_histories"])
+        and bool(state["pipeline_forecast_snapshots"])
+        and bool(state["quote_proposal_handoffs"])
+        and bool(state["opportunity_outcomes"])
+        and bool(state["sales_coaching_insights"])
+        and bool(state["lead_opportunity_audit_events"])
+        and bool(state["lead_opportunity_governed_models"])
         and bool(state["outbox"])
         and bool(state["handled_events"])
         and bool(state["configuration"].get("ok"))
@@ -349,6 +430,7 @@ def lead_opportunity_runtime_smoke() -> dict:
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "state_digest": _digest({"events": state["events"], "outbox": state["outbox"], "opportunities": state["opportunities"]}),
+        "state": state,
     }
 
 
@@ -364,9 +446,21 @@ def lead_opportunity_empty_state() -> dict:
         "rules": {},
         "schema_extensions": {},
         "leads": {},
+        "lead_enrichment_snapshots": {},
+        "lead_dedup_cases": {},
+        "lead_score_snapshots": {},
+        "lead_assignments": {},
+        "qualification_decisions": {},
         "opportunities": {},
+        "opportunity_stage_histories": {},
+        "pipeline_forecast_snapshots": {},
+        "quote_proposal_handoffs": {},
+        "opportunity_outcomes": {},
         "account_hierarchies": {},
         "sales_activities": {},
+        "sales_coaching_insights": {},
+        "lead_opportunity_audit_events": {},
+        "lead_opportunity_governed_models": {},
         "customer_segments": {},
         "seed_data": {"lead_sources": ("web", "partner", "event", "outbound"), "pipeline_stages": ("prospect", "qualified", "proposal", "negotiation", "won", "lost")},
     }
@@ -433,6 +527,7 @@ def lead_opportunity_register_rule(state: dict, rule: dict) -> dict:
     }
     runtime["rules"][normalized["rule_id"]] = normalized
     runtime["events"].append(_state_event("RuleRegistered", normalized["rule_id"], normalized))
+    _record_audit(runtime, normalized["tenant"], "lead_opportunity_rule", normalized["rule_id"], "RuleRegistered", normalized)
     return {"ok": True, "state": runtime, "rule": normalized}
 
 
@@ -453,6 +548,7 @@ def lead_opportunity_register_schema_extension(state: dict, table: str, fields: 
     }
     runtime["schema_extensions"].setdefault(table, []).append(extension)
     runtime["events"].append(_state_event("SchemaExtensionRegistered", table, extension))
+    _record_governed_model(runtime, "system", f"schema_extension:{table}:{version}", "schema_extension", extension)
     return {"ok": True, "state": runtime, "extension": extension}
 
 
@@ -509,6 +605,7 @@ def lead_opportunity_create_account_hierarchy(state: dict, command: dict) -> dic
     account = {**command, "status": "active", "audit_proof": _digest(command)}
     runtime["account_hierarchies"][account["account_id"]] = account
     runtime["events"].append(_state_event("AccountHierarchyUpserted", account["account_id"], account))
+    _record_audit(runtime, account["tenant"], "account_hierarchy", account["account_id"], "AccountHierarchyUpserted", account)
     return {"ok": True, "state": runtime, "account": account}
 
 
@@ -524,6 +621,19 @@ def lead_opportunity_create_lead(state: dict, command: dict) -> dict:
     runtime = _copy_state(state)
     duplicate = _find_duplicate_lead(runtime, command["tenant"], command["email"])
     if duplicate:
+        case_id = f"dedup:{command['lead_id']}:{duplicate['lead_id']}"
+        dedup_case = {
+            "tenant": command["tenant"],
+            "case_id": case_id,
+            "lead_id": command["lead_id"],
+            "duplicate_lead_id": duplicate["lead_id"],
+            "match_hash": _digest({"tenant": command["tenant"], "email": command["email"].lower()}),
+            "resolution_status": "merged",
+            "resolved_at": "runtime",
+        }
+        runtime["lead_dedup_cases"][case_id] = dedup_case
+        runtime["events"].append(_state_event("LeadDuplicateResolved", case_id, dedup_case))
+        _record_audit(runtime, command["tenant"], "lead_dedup_case", case_id, "LeadDuplicateResolved", dedup_case)
         return {"ok": True, "state": runtime, "lead": duplicate, "duplicate": True}
     score = _lead_score(runtime, command)
     lead = {
@@ -536,8 +646,44 @@ def lead_opportunity_create_lead(state: dict, command: dict) -> dict:
         "audit_proof": _digest(command),
     }
     runtime["leads"][lead["lead_id"]] = lead
+    assignment_id = f"assignment:{lead['lead_id']}"
+    runtime["lead_assignments"][assignment_id] = {
+        "tenant": lead["tenant"],
+        "assignment_id": assignment_id,
+        "lead_id": lead["lead_id"],
+        "owner": lead["assigned_owner"],
+        "assignment_mode": runtime["configuration"]["assignment_mode"],
+        "territory_key": lead["region"],
+        "assigned_at": "runtime",
+    }
+    _record_lead_score(runtime, lead, reason="capture")
     runtime["events"].append(_state_event("LeadCreated", lead["lead_id"], lead))
+    _record_audit(runtime, lead["tenant"], "lead", lead["lead_id"], "LeadCreated", lead)
     return {"ok": True, "state": runtime, "lead": lead, "duplicate": False}
+
+
+def lead_opportunity_enrich_lead(state: dict, lead_id: str, enrichment: dict) -> dict:
+    lead = state["leads"].get(lead_id)
+    if not lead:
+        raise ValueError(f"Unknown Lead Opportunity lead for enrichment: {lead_id}")
+    runtime = _copy_state(state)
+    snapshot_id = f"enrichment:{lead_id}:{len(runtime['lead_enrichment_snapshots']) + 1}"
+    snapshot = {
+        "tenant": lead["tenant"],
+        "snapshot_id": snapshot_id,
+        "lead_id": lead_id,
+        "segment_fit_score": float(enrichment.get("segment_fit_score", runtime["customer_segments"].get(lead["customer_id"], {}).get("fit_score", 0.5))),
+        "firmographic_fit": str(enrichment.get("firmographic_fit", "unknown")),
+        "intent_summary": str(enrichment.get("intent_summary", "")),
+        "enriched_at": str(enrichment.get("enriched_at", "runtime")),
+        "audit_proof": _digest({"lead_id": lead_id, "enrichment": enrichment}),
+    }
+    runtime["lead_enrichment_snapshots"][snapshot_id] = snapshot
+    runtime["leads"][lead_id]["enrichment_snapshot_id"] = snapshot_id
+    _record_governed_model(runtime, lead["tenant"], "lead_enrichment_model", "lead_enrichment", snapshot)
+    _record_audit(runtime, lead["tenant"], "lead_enrichment_snapshot", snapshot_id, "LeadEnriched", snapshot)
+    runtime["events"].append(_state_event("LeadEnriched", snapshot_id, snapshot))
+    return {"ok": True, "state": runtime, "lead_enrichment_snapshot": snapshot}
 
 
 def lead_opportunity_qualify_lead(state: dict, lead_id: str) -> dict:
@@ -548,9 +694,23 @@ def lead_opportunity_qualify_lead(state: dict, lead_id: str) -> dict:
     threshold = float(runtime["parameters"].get("qualification_score_threshold", {"value": 0.5})["value"])
     qualified = {**lead, "status": "qualified" if lead["score"] >= threshold else "nurture"}
     runtime["leads"][lead_id] = qualified
+    _record_lead_score(runtime, qualified, reason="qualification")
+    decision_id = f"qualification:{lead_id}"
+    decision = {
+        "tenant": qualified["tenant"],
+        "decision_id": decision_id,
+        "lead_id": lead_id,
+        "minimum_score": threshold,
+        "actual_score": qualified["score"],
+        "decision": qualified["status"],
+        "qualified_at": "runtime",
+        "audit_proof": _digest({"lead_id": lead_id, "threshold": threshold, "score": qualified["score"]}),
+    }
+    runtime["qualification_decisions"][decision_id] = decision
+    _record_audit(runtime, qualified["tenant"], "qualification_decision", decision_id, "LeadQualificationDecided", decision)
     if qualified["status"] == "qualified":
         _emit(runtime, "LeadQualified", qualified["tenant"], qualified)
-    return {"ok": qualified["status"] == "qualified", "state": runtime, "lead": qualified}
+    return {"ok": qualified["status"] == "qualified", "state": runtime, "lead": qualified, "qualification_decision": decision}
 
 
 def lead_opportunity_create_opportunity(state: dict, command: dict) -> dict:
@@ -581,7 +741,9 @@ def lead_opportunity_create_opportunity(state: dict, command: dict) -> dict:
         "audit_proof": _digest(command),
     }
     runtime["opportunities"][opportunity["opportunity_id"]] = opportunity
+    _record_pipeline_forecast(runtime, opportunity)
     runtime["events"].append(_state_event("OpportunityCreated", opportunity["opportunity_id"], opportunity))
+    _record_audit(runtime, opportunity["tenant"], "opportunity", opportunity["opportunity_id"], "OpportunityCreated", opportunity)
     return {"ok": True, "state": runtime, "opportunity": opportunity}
 
 
@@ -595,8 +757,21 @@ def lead_opportunity_record_sales_activity(state: dict, command: dict) -> dict:
     runtime = _copy_state(state)
     activity = {**command, "sentiment": float(command["sentiment"]), "next_best_action": _next_best_action(command), "audit_proof": _digest(command)}
     runtime["sales_activities"][activity["activity_id"]] = activity
+    insight_id = f"coaching:{activity['activity_id']}"
+    insight = {
+        "tenant": activity["tenant"],
+        "insight_id": insight_id,
+        "opportunity_id": activity["opportunity_id"],
+        "activity_id": activity["activity_id"],
+        "coaching_signal": "positive_momentum" if activity["sentiment"] >= 0.75 else "manager_review",
+        "recommended_action": activity["next_best_action"],
+        "confidence": round(min(max(activity["sentiment"], 0.0), 0.99), 4),
+        "recorded_at": "runtime",
+    }
+    runtime["sales_coaching_insights"][insight_id] = insight
     runtime["events"].append(_state_event("SalesActivityRecorded", activity["activity_id"], activity))
-    return {"ok": True, "state": runtime, "activity": activity}
+    _record_audit(runtime, activity["tenant"], "sales_activity", activity["activity_id"], "SalesActivityRecorded", activity)
+    return {"ok": True, "state": runtime, "activity": activity, "sales_coaching_insight": insight}
 
 
 def lead_opportunity_advance_opportunity(state: dict, opportunity_id: str, stage: str) -> dict:
@@ -606,10 +781,44 @@ def lead_opportunity_advance_opportunity(state: dict, opportunity_id: str, stage
     if stage not in state["configuration"]["pipeline_stages"]:
         raise ValueError(f"Unsupported Lead Opportunity stage: {stage}")
     runtime = _copy_state(state)
+    previous_stage = opportunity["stage"]
     advanced = {**opportunity, "stage": stage, "audit_proof": _digest({"opportunity_id": opportunity_id, "stage": stage})}
     runtime["opportunities"][opportunity_id] = advanced
+    history_id = f"stage:{opportunity_id}:{len(runtime['opportunity_stage_histories']) + 1}"
+    history = {
+        "tenant": advanced["tenant"],
+        "history_id": history_id,
+        "opportunity_id": opportunity_id,
+        "from_stage": previous_stage,
+        "to_stage": stage,
+        "changed_at": "runtime",
+        "audit_proof": _digest({"opportunity_id": opportunity_id, "from_stage": previous_stage, "to_stage": stage}),
+    }
+    runtime["opportunity_stage_histories"][history_id] = history
+    _record_pipeline_forecast(runtime, advanced)
     runtime["events"].append(_state_event("OpportunityAdvanced", opportunity_id, advanced))
     return {"ok": True, "state": runtime, "opportunity": advanced}
+
+
+def lead_opportunity_create_quote_proposal_handoff(state: dict, command: dict) -> dict:
+    required = {"handoff_id", "tenant", "opportunity_id", "proposal_reference", "handoff_owner"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Lead Opportunity quote handoff fields: {tuple(sorted(missing))}")
+    opportunity = state["opportunities"].get(command["opportunity_id"])
+    if not opportunity or opportunity["tenant"] != command["tenant"]:
+        raise ValueError(f"Unknown Lead Opportunity opportunity for quote handoff: {command['opportunity_id']}")
+    runtime = _copy_state(state)
+    handoff = {
+        **command,
+        "handoff_status": str(command.get("handoff_status", "requested")),
+        "handed_off_at": str(command.get("handed_off_at", "runtime")),
+        "audit_proof": _digest(command),
+    }
+    runtime["quote_proposal_handoffs"][handoff["handoff_id"]] = handoff
+    _record_audit(runtime, handoff["tenant"], "quote_proposal_handoff", handoff["handoff_id"], "QuoteProposalRequested", handoff)
+    _emit(runtime, "QuoteProposalRequested", handoff["tenant"], handoff)
+    return {"ok": True, "state": runtime, "quote_proposal_handoff": handoff}
 
 
 def lead_opportunity_win_opportunity(state: dict, opportunity_id: str) -> dict:
@@ -619,9 +828,41 @@ def lead_opportunity_win_opportunity(state: dict, opportunity_id: str) -> dict:
     runtime = _copy_state(state)
     won = {**opportunity, "stage": "won", "status": "won", "win_probability": 1.0, "forecast_amount": opportunity["amount"], "audit_proof": _digest({"opportunity_id": opportunity_id, "status": "won"})}
     runtime["opportunities"][opportunity_id] = won
+    _record_opportunity_outcome(runtime, won, outcome="won", reason="accepted", competitor_context="")
+    _record_pipeline_forecast(runtime, won)
     _emit(runtime, "OpportunityWon", won["tenant"], won)
     _emit(runtime, "CustomerUpdated", won["tenant"], {"customer_id": runtime["leads"][won["lead_id"]]["customer_id"], "account_id": won["account_id"], "event": "opportunity_won"})
     return {"ok": True, "state": runtime, "opportunity": won}
+
+
+def lead_opportunity_lose_opportunity(state: dict, command: dict) -> dict:
+    if command.get("opportunity_id") not in state["opportunities"]:
+        create_command = {key: command[key] for key in ("opportunity_id", "tenant", "lead_id", "account_id", "name", "amount", "currency", "stage", "close_date")}
+        created = lead_opportunity_create_opportunity(state, create_command)
+        runtime = created["state"]
+    else:
+        runtime = _copy_state(state)
+    opportunity_id = command["opportunity_id"]
+    opportunity = runtime["opportunities"][opportunity_id]
+    lost = {
+        **opportunity,
+        "stage": "lost",
+        "status": "lost",
+        "win_probability": 0.0,
+        "forecast_amount": 0.0,
+        "audit_proof": _digest({"opportunity_id": opportunity_id, "status": "lost", "reason": command.get("reason")}),
+    }
+    runtime["opportunities"][opportunity_id] = lost
+    outcome = _record_opportunity_outcome(
+        runtime,
+        lost,
+        outcome="lost",
+        reason=str(command.get("reason", "unknown")),
+        competitor_context=str(command.get("competitor_context", "")),
+    )
+    _record_pipeline_forecast(runtime, lost)
+    _emit(runtime, "OpportunityLost", lost["tenant"], outcome)
+    return {"ok": True, "state": runtime, "opportunity": lost, "opportunity_outcome": outcome}
 
 
 def lead_opportunity_build_workbench_view(state: dict, *, tenant: str) -> dict:
@@ -629,6 +870,18 @@ def lead_opportunity_build_workbench_view(state: dict, *, tenant: str) -> dict:
     opportunities = tuple(item for item in state.get("opportunities", {}).values() if item["tenant"] == tenant)
     accounts = tuple(item for item in state.get("account_hierarchies", {}).values() if item["tenant"] == tenant)
     activities = tuple(item for item in state.get("sales_activities", {}).values() if item["tenant"] == tenant)
+    enrichment = tuple(item for item in state.get("lead_enrichment_snapshots", {}).values() if item["tenant"] == tenant)
+    dedup_cases = tuple(item for item in state.get("lead_dedup_cases", {}).values() if item["tenant"] == tenant)
+    score_snapshots = tuple(item for item in state.get("lead_score_snapshots", {}).values() if item["tenant"] == tenant)
+    assignments = tuple(item for item in state.get("lead_assignments", {}).values() if item["tenant"] == tenant)
+    qualification_decisions = tuple(item for item in state.get("qualification_decisions", {}).values() if item["tenant"] == tenant)
+    stage_history = tuple(item for item in state.get("opportunity_stage_histories", {}).values() if item["tenant"] == tenant)
+    forecasts = tuple(item for item in state.get("pipeline_forecast_snapshots", {}).values() if item["tenant"] == tenant)
+    handoffs = tuple(item for item in state.get("quote_proposal_handoffs", {}).values() if item["tenant"] == tenant)
+    outcomes = tuple(item for item in state.get("opportunity_outcomes", {}).values() if item["tenant"] == tenant)
+    coaching = tuple(item for item in state.get("sales_coaching_insights", {}).values() if item["tenant"] == tenant)
+    audits = tuple(item for item in state.get("lead_opportunity_audit_events", {}).values() if item["tenant"] == tenant)
+    models = tuple(item for item in state.get("lead_opportunity_governed_models", {}).values() if item["tenant"] in {tenant, "system"})
     configuration = state.get("configuration", {})
     return {
         "format": "appgen.lead-opportunity-workbench-view.v1",
@@ -639,6 +892,18 @@ def lead_opportunity_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "won_opportunity_count": len(tuple(item for item in opportunities if item["status"] == "won")),
         "account_count": len(accounts),
         "activity_count": len(activities),
+        "lead_enrichment_count": len(enrichment),
+        "lead_dedup_case_count": len(dedup_cases),
+        "lead_score_snapshot_count": len(score_snapshots),
+        "lead_assignment_count": len(assignments),
+        "qualification_decision_count": len(qualification_decisions),
+        "stage_history_count": len(stage_history),
+        "forecast_snapshot_count": len(forecasts),
+        "quote_handoff_count": len(handoffs),
+        "opportunity_outcome_count": len(outcomes),
+        "sales_coaching_insight_count": len(coaching),
+        "audit_event_count": len(audits),
+        "governed_model_count": len(models),
         "pipeline_value": round(sum(item["amount"] for item in opportunities), 2),
         "forecast_amount": round(sum(item["forecast_amount"] for item in opportunities), 2),
         "inbox_count": len(state.get("inbox", ())),
@@ -687,10 +952,12 @@ def lead_opportunity_verify_owned_table_boundary(
         "POST /accounts",
         "POST /leads",
         "POST /opportunities",
-        "POST /sales-activities",
-        "POST /opportunity-stage",
-        "POST /opportunity-wins",
-        "GET /pipeline",
+            "POST /sales-activities",
+            "POST /opportunity-stage",
+            "POST /quote-proposal-handoffs",
+            "POST /opportunity-wins",
+            "POST /opportunity-losses",
+            "GET /pipeline",
         "GET /lead-opportunity/schema-contract",
         "GET /lead-opportunity/service-contract",
         "GET /lead-opportunity/release-evidence",
@@ -719,7 +986,9 @@ def lead_opportunity_verify_owned_table_boundary(
                 "POST /opportunities",
                 "POST /sales-activities",
                 "POST /opportunity-stage",
+                "POST /quote-proposal-handoffs",
                 "POST /opportunity-wins",
+                "POST /opportunity-losses",
                 "GET /pipeline",
                 "GET /lead-opportunity/schema-contract",
                 "GET /lead-opportunity/service-contract",
@@ -790,12 +1059,28 @@ def lead_opportunity_build_api_contract() -> dict:
                 "idempotency_key": "opportunity_id:stage",
             },
             {
+                "route": "POST /quote-proposal-handoffs",
+                "command": "create_quote_proposal_handoff",
+                "owned_tables": ("quote_proposal_handoff",),
+                "emits": ("QuoteProposalRequested",),
+                "requires_permission": "lead_opportunity.opportunity.write",
+                "idempotency_key": "handoff_id",
+            },
+            {
                 "route": "POST /opportunity-wins",
                 "command": "win_opportunity",
                 "owned_tables": ("opportunity",),
                 "emits": ("OpportunityWon", "CustomerUpdated"),
                 "requires_permission": "lead_opportunity.opportunity.write",
                 "idempotency_key": "opportunity_id",
+            },
+            {
+                "route": "POST /opportunity-losses",
+                "command": "lose_opportunity",
+                "owned_tables": ("opportunity", "opportunity_outcome", "pipeline_forecast_snapshot"),
+                "emits": ("OpportunityLost",),
+                "requires_permission": "lead_opportunity.opportunity.write",
+                "idempotency_key": "opportunity_id:reason",
             },
             {
                 "route": "POST /lead-opportunity/events/inbox",
@@ -830,7 +1115,7 @@ def lead_opportunity_build_api_contract() -> dict:
                 "requires_permission": "lead_opportunity.audit",
             },
         ),
-        "declared_catalog_routes": ("POST /leads", "POST /opportunities", "GET /pipeline"),
+        "declared_catalog_routes": ("POST /leads", "POST /opportunities", "POST /quote-proposal-handoffs", "GET /pipeline"),
         "owned_tables": LEAD_OPPORTUNITY_OWNED_TABLES,
         "runtime_tables": LEAD_OPPORTUNITY_RUNTIME_TABLES,
         "events": {"emits": LEAD_OPPORTUNITY_EMITTED_EVENT_TYPES, "consumes": LEAD_OPPORTUNITY_CONSUMED_EVENT_TYPES},
@@ -919,11 +1204,14 @@ def lead_opportunity_build_service_contract() -> dict:
         "receive_event",
         "create_account_hierarchy",
         "create_lead",
+        "enrich_lead",
         "qualify_lead",
         "create_opportunity",
         "record_sales_activity",
         "advance_opportunity",
+        "create_quote_proposal_handoff",
         "win_opportunity",
+        "lose_opportunity",
         "build_workbench_view",
         "verify_owned_table_boundary",
         "build_schema_contract",
@@ -958,6 +1246,20 @@ def lead_opportunity_build_service_contract() -> dict:
             "dead_letter_table": LEAD_OPPORTUNITY_RUNTIME_TABLES[2],
             "idempotency_key": "event_type:event_id",
         },
+        "materialized_owned_lifecycle_tables": (
+            "lead_enrichment_snapshot",
+            "lead_dedup_case",
+            "lead_score_snapshot",
+            "lead_assignment",
+            "qualification_decision",
+            "opportunity_stage_history",
+            "pipeline_forecast_snapshot",
+            "quote_proposal_handoff",
+            "opportunity_outcome",
+            "sales_coaching_insight",
+            "lead_opportunity_audit_event",
+            "lead_opportunity_governed_model",
+        ),
         "retry_policy": {
             "configured_by": "retry_limit",
             "dead_letter_after_retry_limit": True,
@@ -1002,6 +1304,26 @@ def lead_opportunity_build_release_evidence() -> dict:
         {"id": "permissions_cover_contracts", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
         {"id": "ui_binding_evidence", "ok": ui["ok"] and ui["configuration_editor"]["stream_engine_picker_visible"] is False},
         {"id": "workbench_binding_evidence", "ok": workbench["binding_evidence"]["runtime_tables"] == LEAD_OPPORTUNITY_RUNTIME_TABLES and workbench["inbox_count"] >= 1},
+        {
+            "id": "materialized_table_stakes",
+            "ok": all(
+                workbench[key] >= 1
+                for key in (
+                    "lead_enrichment_count",
+                    "lead_dedup_case_count",
+                    "lead_score_snapshot_count",
+                    "lead_assignment_count",
+                    "qualification_decision_count",
+                    "stage_history_count",
+                    "forecast_snapshot_count",
+                    "quote_handoff_count",
+                    "opportunity_outcome_count",
+                    "sales_coaching_insight_count",
+                    "audit_event_count",
+                    "governed_model_count",
+                )
+            ),
+        },
         {"id": "boundary_contract", "ok": boundary["ok"] and boundary["declared_dependencies"]["shared_tables"] == ()},
         {"id": "database_allowlist", "ok": schema["database_backends"] == LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS},
     )
@@ -1037,10 +1359,13 @@ def lead_opportunity_permissions_contract() -> dict:
         "action_permissions": {
             "create_account_hierarchy": "lead_opportunity.lead.write",
             "create_lead": "lead_opportunity.lead.write",
+            "enrich_lead": "lead_opportunity.lead.write",
             "qualify_lead": "lead_opportunity.lead.write",
             "create_opportunity": "lead_opportunity.opportunity.write",
             "advance_opportunity": "lead_opportunity.opportunity.write",
             "win_opportunity": "lead_opportunity.opportunity.write",
+            "lose_opportunity": "lead_opportunity.opportunity.write",
+            "create_quote_proposal_handoff": "lead_opportunity.opportunity.write",
             "record_sales_activity": "lead_opportunity.activity.write",
             "receive_event": "lead_opportunity.event.consume",
             "register_rule": "lead_opportunity.configure",
@@ -1146,6 +1471,31 @@ def _build_release_state() -> dict:
             "estimated_value": 150000.0,
         },
     )["state"]
+    state = lead_opportunity_enrich_lead(
+        state,
+        "lead_release",
+        {
+            "segment_fit_score": 0.93,
+            "firmographic_fit": "enterprise_growth",
+            "intent_summary": "pricing and expansion research",
+        },
+    )["state"]
+    state = lead_opportunity_create_lead(
+        state,
+        {
+            "lead_id": "lead_release_duplicate",
+            "tenant": "tenant_release",
+            "account_id": "acct_release",
+            "customer_id": "cust_release",
+            "email": "release@example.com",
+            "company": "Release Holdings",
+            "source": "event",
+            "region": "US",
+            "currency": "USD",
+            "engagement_score": 0.72,
+            "estimated_value": 25000.0,
+        },
+    )["state"]
     state = lead_opportunity_qualify_lead(state, "lead_release")["state"]
     state = lead_opportunity_create_opportunity(
         state,
@@ -1175,6 +1525,32 @@ def _build_release_state() -> dict:
         },
     )["state"]
     state = lead_opportunity_advance_opportunity(state, "opp_release", "proposal")["state"]
+    state = lead_opportunity_create_quote_proposal_handoff(
+        state,
+        {
+            "handoff_id": "handoff_release",
+            "tenant": "tenant_release",
+            "opportunity_id": "opp_release",
+            "proposal_reference": "proposal_release",
+            "handoff_owner": "seller_release",
+        },
+    )["state"]
+    state = lead_opportunity_lose_opportunity(
+        state,
+        {
+            "opportunity_id": "opp_release_loss",
+            "tenant": "tenant_release",
+            "lead_id": "lead_release",
+            "account_id": "acct_release",
+            "name": "Release Deferred Project",
+            "amount": 42000.0,
+            "currency": "USD",
+            "stage": "qualified",
+            "close_date": "2026-07-15",
+            "reason": "budget_deferred",
+            "competitor_context": "internal",
+        },
+    )["state"]
     return lead_opportunity_win_opportunity(state, "opp_release")["state"]
 
 
@@ -1316,9 +1692,106 @@ def _lead_score(state: dict, command: dict) -> float:
     return round(min(score, 0.99), 4)
 
 
+def _record_lead_score(state: dict, lead: dict, *, reason: str) -> dict:
+    snapshot_id = f"score:{lead['lead_id']}:{len(state['lead_score_snapshots']) + 1}"
+    snapshot = {
+        "tenant": lead["tenant"],
+        "snapshot_id": snapshot_id,
+        "lead_id": lead["lead_id"],
+        "qualification_score": lead["score"],
+        "lead_source_weight": float(state["parameters"].get("lead_source_weight", {"value": 0.3})["value"]),
+        "segment_fit_weight": float(state["parameters"].get("segment_fit_weight", {"value": 0.4})["value"]),
+        "engagement_weight": float(state["parameters"].get("engagement_weight", {"value": 0.3})["value"]),
+        "recorded_at": reason,
+        "audit_proof": _digest({"lead_id": lead["lead_id"], "score": lead["score"], "reason": reason}),
+    }
+    state["lead_score_snapshots"][snapshot_id] = snapshot
+    _record_governed_model(state, lead["tenant"], "lead_score_model", "lead_scoring", snapshot)
+    return snapshot
+
+
 def _win_probability(state: dict, lead: dict, amount: float) -> float:
     amount_risk = min(amount / 1000000, 0.25)
     return round(max(lead["score"] - amount_risk, 0.05), 4)
+
+
+def _record_pipeline_forecast(state: dict, opportunity: dict) -> dict:
+    snapshot_id = f"forecast:{opportunity['opportunity_id']}:{len(state['pipeline_forecast_snapshots']) + 1}"
+    confidence_floor = float(state["parameters"].get("forecast_confidence_floor", {"value": 0.0})["value"])
+    snapshot = {
+        "tenant": opportunity["tenant"],
+        "snapshot_id": snapshot_id,
+        "opportunity_id": opportunity["opportunity_id"],
+        "forecast_amount": opportunity["forecast_amount"],
+        "confidence_floor": confidence_floor,
+        "slippage_risk": opportunity["risk_score"],
+        "captured_at": "runtime",
+        "audit_proof": _digest({"opportunity_id": opportunity["opportunity_id"], "forecast_amount": opportunity["forecast_amount"]}),
+    }
+    state["pipeline_forecast_snapshots"][snapshot_id] = snapshot
+    _record_governed_model(state, opportunity["tenant"], "pipeline_forecast_model", "forecasting", snapshot)
+    return snapshot
+
+
+def _record_opportunity_outcome(
+    state: dict,
+    opportunity: dict,
+    *,
+    outcome: str,
+    reason: str,
+    competitor_context: str,
+) -> dict:
+    outcome_id = f"outcome:{opportunity['opportunity_id']}"
+    record = {
+        "tenant": opportunity["tenant"],
+        "outcome_id": outcome_id,
+        "opportunity_id": opportunity["opportunity_id"],
+        "outcome": outcome,
+        "reason": reason,
+        "competitor_context": competitor_context,
+        "recorded_at": "runtime",
+        "audit_proof": _digest({"opportunity_id": opportunity["opportunity_id"], "outcome": outcome, "reason": reason}),
+    }
+    state["opportunity_outcomes"][outcome_id] = record
+    _record_audit(state, opportunity["tenant"], "opportunity_outcome", outcome_id, "OpportunityOutcomeRecorded", record)
+    return record
+
+
+def _record_governed_model(state: dict, tenant: str, model_id: str, model_scope: str, evidence: dict) -> dict:
+    key = f"{tenant}:{model_id}:{len(state['lead_opportunity_governed_models']) + 1}"
+    record = {
+        "tenant": tenant,
+        "model_id": key,
+        "model_name": model_id,
+        "model_scope": model_scope,
+        "feature_lineage": _digest(evidence),
+        "governance_status": "approved",
+        "recorded_at": "runtime",
+    }
+    state["lead_opportunity_governed_models"][key] = record
+    return record
+
+
+def _record_audit(
+    state: dict,
+    tenant: str,
+    entity_type: str,
+    entity_id: str,
+    event_type: str,
+    payload: dict,
+) -> dict:
+    audit_id = f"audit:{entity_type}:{entity_id}:{len(state['lead_opportunity_audit_events']) + 1}"
+    record = {
+        "tenant": tenant,
+        "audit_id": audit_id,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "event_type": event_type,
+        "event_hash": _digest(payload),
+        "recorded_at": "runtime",
+    }
+    state["lead_opportunity_audit_events"][audit_id] = record
+    return record
 
 
 def _slippage_risk(state: dict, probability: float) -> float:
