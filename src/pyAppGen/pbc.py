@@ -3989,11 +3989,64 @@ PBC_CATALOG.update(
         "notifications": {
             "label": "Omni-Channel Communication and Notifications",
             "mesh": "relationship",
-            "description": "SMS, email, chat, push, preferences, templates, and delivery abstractions.",
-            "tables": ("notification_template", "delivery_channel", "message_delivery", "preference_snapshot"),
-            "apis": ("POST /messages", "POST /templates", "GET /delivery-status"),
-            "emits": ("MessageDelivered", "MessageFailed"),
-            "consumes": ("PreferenceChanged", "SlaBreached", "WorkflowCompleted"),
+            "description": "Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.",
+            "tables": (
+                "notification_template",
+                "template_locale_variant",
+                "delivery_channel",
+                "notification_recipient",
+                "preference_snapshot",
+                "consent_ledger",
+                "delivery_schedule",
+                "throttle_window",
+                "provider_route",
+                "message_delivery",
+                "delivery_attempt",
+                "retry_evidence",
+                "delivery_receipt",
+                "bounce_event",
+                "notification_campaign",
+                "campaign_dispatch",
+                "transactional_notification",
+                "notification_audit_log",
+                "deliverability_analytics",
+                "notification_rule",
+                "notification_parameter",
+                "notification_configuration",
+            ),
+            "apis": (
+                "POST /templates",
+                "POST /delivery-channels",
+                "POST /notifications/rules",
+                "POST /notifications/parameters",
+                "POST /notifications/configuration",
+                "POST /messages",
+                "POST /delivery-attempts",
+                "POST /notifications/events/inbox",
+                "GET /notifications/contracts/schema",
+                "GET /notifications/contracts/service",
+                "GET /notifications/release-evidence",
+                "GET /notifications-workbench",
+            ),
+            "emits": (
+                "MessageQueued",
+                "MessageDelivered",
+                "MessageFailed",
+                "DeliveryReceiptRecorded",
+                "BounceRecorded",
+                "CampaignDispatched",
+                "TransactionalNotificationDispatched",
+            ),
+            "consumes": (
+                "PreferenceChanged",
+                "ConsentUpdated",
+                "CampaignScheduled",
+                "DeliveryReceiptImported",
+                "BounceRegistered",
+                "SlaBreached",
+                "WorkflowCompleted",
+                "TransactionalNotificationRequested",
+            ),
             "template": None,
         },
         "cdp_segmentation": {
@@ -9099,6 +9152,39 @@ from .pbcs.notifications import notifications_send_message  # noqa: E402,F401
 from .pbcs.notifications import notifications_set_parameter  # noqa: E402,F401
 from .pbcs.notifications import notifications_ui_contract  # noqa: E402,F401
 from .pbcs.notifications import notifications_verify_owned_table_boundary  # noqa: E402,F401
+PBC_CATALOG["notifications"].update(
+    {
+        "apis": tuple(route["route"] for route in notifications_build_api_contract()["routes"]),
+        "ui_fragments": NOTIFICATIONS_UI_FRAGMENT_KEYS,
+        "permissions": tuple(sorted(notifications_build_api_contract()["permissions"])),
+        "configuration": (
+            "NOTIFICATIONS_DATABASE_URL",
+            "NOTIFICATIONS_EVENT_TOPIC",
+            "NOTIFICATIONS_RETRY_LIMIT",
+            "NOTIFICATIONS_DEFAULT_LOCALE",
+            "NOTIFICATIONS_DEFAULT_TIMEZONE",
+            "NOTIFICATIONS_DELIVERY_MODE",
+        ),
+        "capabilities": tuple(
+            f"notifications.{table}"
+            for table in notifications_build_schema_contract()["owned_tables"]
+        ),
+        "standard_features": NOTIFICATIONS_STANDARD_FEATURE_KEYS,
+        "advanced_capabilities": NOTIFICATIONS_RUNTIME_CAPABILITY_KEYS,
+        "workflows": notifications_runtime_capabilities()["operations"],
+        "analytics": (
+            "delivery_success_rate",
+            "bounce_rate",
+            "fatigue_risk",
+            "provider_route_score",
+            "channel_health",
+            "campaign_dispatch_rate",
+            "transactional_dispatch_rate",
+            "message_delivered_throughput",
+            "message_failed_throughput",
+        ),
+    }
+)
 from .pbcs.cdp_segmentation import CDP_SEGMENTATION_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.cdp_segmentation import CDP_SEGMENTATION_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.cdp_segmentation import CDP_SEGMENTATION_UI_FRAGMENT_KEYS  # noqa: E402,F401

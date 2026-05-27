@@ -1,1 +1,53 @@
-PBC_MANIFEST = {'pbc': 'notifications', 'label': 'Omni-Channel Communication and Notifications', 'mesh': 'relationship', 'description': 'SMS, email, chat, push, preferences, templates, and delivery abstractions.', 'datastore_backend': 'postgresql', 'tables': ('notification_template', 'delivery_channel', 'message_delivery', 'preference_snapshot'), 'apis': ('POST /messages', 'POST /templates', 'GET /delivery-status'), 'emits': ('MessageDelivered', 'MessageFailed'), 'consumes': ('PreferenceChanged', 'SlaBreached', 'WorkflowCompleted'), 'template': None, 'ui_fragments': ('NotificationsWorkbench', 'NotificationsDetail'), 'permissions': ('notifications.read', 'notifications.create', 'notifications.update', 'notifications.approve', 'notifications.admin'), 'configuration': ('NOTIFICATIONS_DATABASE_URL', 'NOTIFICATIONS_EVENT_TOPIC', 'NOTIFICATIONS_RETRY_LIMIT'), 'capabilities': ('notifications.notification_template', 'notifications.delivery_channel', 'notifications.message_delivery', 'notifications.preference_snapshot'), 'standard_features': ('notification_template', 'template_locale_variant', 'delivery_channel', 'notification_recipient', 'preference_snapshot', 'consent_ledger', 'delivery_schedule', 'throttle_window', 'provider_route', 'message_delivery', 'delivery_attempt', 'retry_evidence', 'delivery_receipt', 'bounce_event', 'notification_campaign', 'campaign_dispatch', 'transactional_notification', 'notification_audit_log', 'deliverability_analytics', 'omnichannel_routing', 'template_rendering', 'consent_and_preference_enforcement', 'scheduling', 'throttling', 'localization', 'campaign_orchestration', 'transactional_notifications', 'delivery_status_api', 'tenant_isolation', 'appgen_x_outbox', 'appgen_x_inbox', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench', 'schema_contract', 'service_contract', 'release_evidence'), 'workflows': ('command_messages', 'command_templates', 'query_delivery_status'), 'analytics': ('response_time', 'engagement_quality', 'segment_lift', 'retention_signal', 'message_delivered_throughput', 'message_failed_throughput'), 'advanced_capabilities': ('event_sourced_message_lifecycle', 'owned_notification_schema_boundary', 'multi_tenant_delivery_isolation', 'schema_evolution_resilient_template_context', 'omnichannel_template_management', 'recipient_profile_projection_handling', 'preference_snapshot_projection_handling', 'consent_ledger_evidence', 'delivery_schedule_and_quiet_hour_forecasting', 'throttling_and_fatigue_controls', 'provider_routing_and_failover', 'template_rendering_and_personalization', 'delivery_attempt_tracking', 'delivery_receipt_and_bounce_evidence', 'campaign_and_transactional_notification_orchestration', 'localization_variant_management', 'probabilistic_delivery_risk_scoring', 'counterfactual_channel_selection_simulation', 'autonomous_delivery_exception_resolution', 'semantic_message_instruction_understanding', 'predictive_recipient_fatigue_risk', 'self_healing_channel_route_selection', 'cryptographic_delivery_proof', 'immutable_delivery_audit_trail', 'dynamic_consent_policy_screening', 'automated_communication_control_testing', 'cross_system_preference_workflow_service_federation', 'deliverability_analytics_rollup', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions_governance_evidence', 'configuration_schema', 'parameter_engine', 'rule_engine', 'seed_data', 'workbench_ui', 'governed_model_evidence'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+from .runtime import NOTIFICATIONS_CONSUMED_EVENT_TYPES
+from .runtime import NOTIFICATIONS_EMITTED_EVENT_TYPES
+from .runtime import NOTIFICATIONS_OWNED_TABLES
+from .runtime import NOTIFICATIONS_RUNTIME_CAPABILITY_KEYS
+from .runtime import NOTIFICATIONS_STANDARD_FEATURE_KEYS
+from .runtime import notifications_build_api_contract
+from .runtime import notifications_runtime_capabilities
+from .ui import NOTIFICATIONS_UI_FRAGMENT_KEYS
+
+
+PBC_KEY = 'notifications'
+
+PBC_MANIFEST = {
+    "pbc": "notifications",
+    "label": "Omni-Channel Communication and Notifications",
+    "mesh": "relationship",
+    "description": "Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.",
+    "datastore_backend": "postgresql",
+    "tables": NOTIFICATIONS_OWNED_TABLES,
+    "apis": tuple(route["route"] for route in notifications_build_api_contract()["routes"]),
+    "emits": NOTIFICATIONS_EMITTED_EVENT_TYPES,
+    "consumes": NOTIFICATIONS_CONSUMED_EVENT_TYPES,
+    "template": None,
+    "ui_fragments": NOTIFICATIONS_UI_FRAGMENT_KEYS,
+    "permissions": tuple(sorted(notifications_build_api_contract()["permissions"])),
+    "configuration": (
+        "NOTIFICATIONS_DATABASE_URL",
+        "NOTIFICATIONS_EVENT_TOPIC",
+        "NOTIFICATIONS_RETRY_LIMIT",
+        "NOTIFICATIONS_DEFAULT_LOCALE",
+        "NOTIFICATIONS_DEFAULT_TIMEZONE",
+        "NOTIFICATIONS_DELIVERY_MODE",
+    ),
+    "capabilities": tuple(f"notifications.{table}" for table in NOTIFICATIONS_OWNED_TABLES),
+    "standard_features": NOTIFICATIONS_STANDARD_FEATURE_KEYS,
+    "workflows": notifications_runtime_capabilities()["operations"],
+    "analytics": (
+        "delivery_success_rate",
+        "bounce_rate",
+        "fatigue_risk",
+        "provider_route_score",
+        "channel_health",
+        "campaign_dispatch_rate",
+        "transactional_dispatch_rate",
+        "message_delivered_throughput",
+        "message_failed_throughput",
+    ),
+    "advanced_capabilities": NOTIFICATIONS_RUNTIME_CAPABILITY_KEYS,
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": ("tests/test_contract.py",),
+    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+}
