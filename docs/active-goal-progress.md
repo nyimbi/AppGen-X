@@ -2475,3 +2475,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   bridge operations without unpacking the nested validation manifest.
   Verification is focused under the low-battery delivery constraint. Commit:
   pending.
+- Current `time_labor` PBC pass attaches full runtime release sections to the
+  generated time and labor package surface. Release evidence now includes
+  runtime schema, service, API, and permission contracts alongside the existing
+  path-aware routes, AppGen-X eventing, owned-table boundaries, idempotency, and
+  workbench evidence. Verification is focused under the low-battery delivery
+  constraint: package Python compile, runtime smoke, focused package contract
+  tests, package service/route/service-contract/release smokes, source artifact
+  contract, implementation release audit, generation smoke audit, specification
+  contract, and restricted legacy-name scan all passed. Commit: `fc08942`.
