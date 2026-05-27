@@ -1,6 +1,14 @@
 """Generated service evidence for the time_labor PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.time-labor-service-contract.v1', 'ok': True, 'transaction_boundary': 'time_labor_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'upsert_employee_projection', 'create_shift', 'record_clock_event', 'calculate_time_entry', 'record_absence', 'approve_labor_summary', 'route_clock_source', 'generate_hours_proof', 'screen_policy', 'federate_labor_view', 'verify_employee_identity', 'run_resilience_drill', 'rotate_crypto_epoch', 'schedule_carbon_aware_shift', 'optimize_schedule', 'allocate_shifts', 'run_control_tests', 'register_governed_model', 'recommend_exception_resolution', 'verify_owned_table_boundary'), 'query_methods': ('build_workbench_view', 'simulate_schedule_policy', 'forecast_overtime', 'parse_clock_event', 'score_labor_risk', 'detect_time_anomaly', 'model_stochastic_labor_exposure', 'build_api_contract', 'build_schema_contract', 'build_release_evidence'), 'mutates_only': ('shift', 'shift_pattern', 'shift_assignment', 'shift_swap_request', 'schedule_bid', 'labor_demand_forecast', 'clock_event', 'clock_device', 'clock_source_route', 'clock_exception', 'time_entry', 'time_entry_line', 'break_deduction', 'overtime_bucket', 'premium_calculation', 'holiday_calendar', 'absence', 'absence_balance', 'absence_entitlement', 'absence_approval', 'labor_summary', 'labor_summary_line', 'labor_cost_allocation', 'labor_distribution', 'approval_workflow', 'approval_task', 'employee_projection', 'role_projection', 'payroll_labor_projection', 'warehouse_site_projection', 'manufacturing_shift_projection', 'project_cost_projection', 'time_policy_screening', 'time_audit_trace', 'time_hours_proof', 'time_federation_projection', 'time_carbon_schedule_window', 'time_schedule_optimization', 'time_shift_allocation', 'time_anomaly_signal', 'time_labor_risk_model', 'time_labor_risk_forecast', 'time_parsed_event', 'time_seed_data', 'time_schema_extension', 'time_control_assertion', 'time_governed_model', 'time_rule', 'time_parameter', 'time_configuration', 'time_labor_appgen_outbox_event', 'time_labor_appgen_inbox_event', 'time_labor_dead_letter_event'), 'external_dependencies': {'apis': ('GET /employees', 'GET /roles', 'POST /payroll-labor-hours', 'POST /labor-cost-projections'), 'events': ('EmployeeCreated', 'RoleChanged'), 'api_projections': ('personnel_identity_projection', 'payroll_labor_projection', 'warehouse_site_projection', 'manufacturing_shift_projection', 'project_cost_projection', 'audit_ledger_projection'), 'shared_tables': ()}, 'pbc': 'time_labor', 'shared_table_access': False}
+from __future__ import annotations
+
+from .runtime import time_labor_build_service_contract
+
+SERVICE_CONTRACT = {
+    **time_labor_build_service_contract(),
+    "pbc": "time_labor",
+    "shared_table_access": False,
+}
 
 
 def build_service_contract():

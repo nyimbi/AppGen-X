@@ -1,170 +1,148 @@
 """Command service layer for the time_labor PBC."""
 
-EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.time_labor.events', 'inbox_topic': 'pbc.time_labor.inbox', 'outbox_table': 'time_labor_appgen_outbox_event', 'inbox_table': 'time_labor_appgen_inbox_event', 'dead_letter_table': 'time_labor_appgen_dead_letter_event', 'emitted': ({'event_type': 'ShiftCreated', 'schema': 'time_labor.shift_created.emitted.v1', 'topic': 'pbc.time_labor.events', 'outbox_table': 'time_labor_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'ClockEventRecorded', 'schema': 'time_labor.clock_event_recorded.emitted.v1', 'topic': 'pbc.time_labor.events', 'outbox_table': 'time_labor_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'TimeEntryCalculated', 'schema': 'time_labor.time_entry_calculated.emitted.v1', 'topic': 'pbc.time_labor.events', 'outbox_table': 'time_labor_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'LaborHoursApproved', 'schema': 'time_labor.labor_hours_approved.emitted.v1', 'topic': 'pbc.time_labor.events', 'outbox_table': 'time_labor_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'AbsenceRecorded', 'schema': 'time_labor.absence_recorded.emitted.v1', 'topic': 'pbc.time_labor.events', 'outbox_table': 'time_labor_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'EmployeeCreated', 'schema': 'time_labor.employee_created.consumed.v1', 'topic': 'pbc.time_labor.inbox', 'inbox_table': 'time_labor_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'RoleChanged', 'schema': 'time_labor.role_changed.consumed.v1', 'topic': 'pbc.time_labor.inbox', 'inbox_table': 'time_labor_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'time_labor_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'time_labor_appgen_inbox_event'}}
+from __future__ import annotations
+
+from .events import EVENT_CONTRACT
+from .runtime import time_labor_build_api_contract
+from .runtime import time_labor_build_service_contract
+
+PBC_KEY = "time_labor"
 
 
-OPERATION_CONTRACTS = ({'operation': 'command_shifts', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/shifts', 'permission': 'time_labor.command.1', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'ShiftCreated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_shift_patterns', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/shift-patterns', 'permission': 'time_labor.command.2', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'ClockEventRecorded', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_shift_swaps', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/shift-swaps', 'permission': 'time_labor.command.3', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'TimeEntryCalculated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_clock_events', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/clock-events', 'permission': 'time_labor.command.4', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'LaborHoursApproved', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_time_entries_calculate', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/time-entries/calculate', 'permission': 'time_labor.command.5', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'AbsenceRecorded', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_absences', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/absences', 'permission': 'time_labor.command.6', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'ShiftCreated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_labor_summaries_id_approve', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/labor-summaries/{id}/approve', 'permission': 'time_labor.command.7', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'ClockEventRecorded', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_time_events_inbox', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/time/events/inbox', 'permission': 'time_labor.command.8', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'TimeEntryCalculated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_time_rules', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/time/rules', 'permission': 'time_labor.command.9', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'LaborHoursApproved', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_time_parameters', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/time/parameters', 'permission': 'time_labor.command.10', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'AbsenceRecorded', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'command_time_configuration', 'operation_kind': 'command', 'method': 'POST', 'path': '/api/pbc/time_labor/time/configuration', 'permission': 'time_labor.command.11', 'owned_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'read_tables': (), 'emitted_event': 'ShiftCreated', 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_labor_summaries', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/time_labor/labor-summaries', 'permission': 'time_labor.query.12', 'owned_tables': (), 'read_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}, {'operation': 'query_time_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/api/pbc/time_labor/time-workbench', 'permission': 'time_labor.query.13', 'owned_tables': (), 'read_tables': ('time_labor_shift', 'time_labor_shift_pattern', 'time_labor_shift_assignment', 'time_labor_shift_swap_request', 'time_labor_schedule_bid', 'time_labor_labor_demand_forecast', 'time_labor_clock_event', 'time_labor_clock_device', 'time_labor_clock_source_route', 'time_labor_clock_exception', 'time_labor_time_entry', 'time_labor_time_entry_line', 'time_labor_break_deduction', 'time_labor_overtime_bucket', 'time_labor_premium_calculation', 'time_labor_holiday_calendar', 'time_labor_absence', 'time_labor_absence_balance', 'time_labor_absence_entitlement', 'time_labor_absence_approval', 'time_labor_labor_summary', 'time_labor_labor_summary_line', 'time_labor_labor_cost_allocation', 'time_labor_labor_distribution', 'time_labor_approval_workflow', 'time_labor_approval_task', 'time_labor_employee_projection', 'time_labor_role_projection', 'time_labor_payroll_labor_projection', 'time_labor_warehouse_site_projection', 'time_labor_manufacturing_shift_projection', 'time_labor_project_cost_projection', 'time_labor_time_policy_screening', 'time_labor_time_audit_trace', 'time_labor_time_hours_proof', 'time_labor_time_federation_projection', 'time_labor_time_carbon_schedule_window', 'time_labor_time_schedule_optimization', 'time_labor_time_shift_allocation', 'time_labor_time_anomaly_signal', 'time_labor_time_labor_risk_model', 'time_labor_time_labor_risk_forecast', 'time_labor_time_parsed_event', 'time_labor_time_seed_data', 'time_labor_time_schema_extension', 'time_labor_time_control_assertion', 'time_labor_time_governed_model', 'time_labor_time_rule', 'time_labor_time_parameter', 'time_labor_time_configuration', 'time_labor_time_labor_appgen_outbox_event', 'time_labor_time_labor_appgen_inbox_event', 'time_labor_time_labor_dead_letter_event'), 'emitted_event': None, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'})
-
-
-def service_operation_contracts():
-    """Return route-bound service operation contracts for this PBC."""
-    operations = tuple(item['operation'] for item in OPERATION_CONTRACTS)
-    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'command')
-    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item['operation_kind'] == 'query')
+def _route_to_contract(route: dict) -> dict:
+    method, path = route["route"].split(" ", 1)
+    operation = route.get("command") or route.get("query")
+    operation_kind = "command" if route.get("command") else "query"
+    owned_tables = tuple(
+        table if table.startswith(f"{PBC_KEY}_") else f"{PBC_KEY}_{table}"
+        for table in route.get("owned_tables", ())
+    )
+    is_command = operation_kind == "command"
     return {
-        'ok': bool(OPERATION_CONTRACTS)
-        and all(item['event_contract'] == 'AppGen-X' for item in OPERATION_CONTRACTS)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in OPERATION_CONTRACTS)
-        and all(item['emitted_event'] for item in command_contracts)
-        and all(item['owned_tables'] and not item['read_tables'] for item in command_contracts)
-        and all(item['emitted_event'] is None for item in query_contracts)
-        and all(item['read_tables'] and not item['owned_tables'] for item in query_contracts),
-        'pbc': 'time_labor',
-        'operations': operations,
-        'command_operations': tuple(item['operation'] for item in command_contracts),
-        'query_operations': tuple(item['operation'] for item in query_contracts),
-        'contracts': OPERATION_CONTRACTS,
-        'side_effects': (),
+        "operation": operation,
+        "operation_kind": operation_kind,
+        "method": method,
+        "path": path,
+        "permission": route["requires_permission"],
+        "owned_tables": owned_tables if is_command else (),
+        "read_tables": () if is_command else owned_tables,
+        "emitted_event": tuple(route.get("emits", ())),
+        "consumed_event": tuple(route.get("consumes", ())),
+        "idempotency_key": route.get("idempotency_key"),
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
     }
 
 
-def operation_plan(operation_name, payload=None):
-    """Plan one service operation without mutating state."""
-    contract = next((item for item in OPERATION_CONTRACTS if item['operation'] == operation_name), None)
-    if contract is None:
-        return {'ok': False, 'reason': 'unknown_operation', 'operation': operation_name, 'side_effects': ()}
-    supplied = dict(payload or {})
-    table_scope = contract['owned_tables'] or contract['read_tables']
+OPERATION_CONTRACTS = tuple(_route_to_contract(route) for route in time_labor_build_api_contract()["routes"])
+
+
+def service_operation_contracts() -> dict:
+    """Return route-bound service operation contracts for this PBC."""
+    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "command")
+    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "query")
+    runtime_service = time_labor_build_service_contract()
     return {
-        'ok': bool(table_scope) and contract['event_contract'] == 'AppGen-X',
-        'pbc': 'time_labor',
-        'operation': operation_name,
-        'operation_kind': contract['operation_kind'],
-        'route': {'method': contract['method'], 'path': contract['path']},
-        'permission': contract['permission'],
-        'owned_tables': contract['owned_tables'],
-        'read_tables': contract['read_tables'],
-        'emitted_event': contract['emitted_event'],
-        'payload_keys': tuple(sorted(supplied)),
-        'transaction_boundary': contract['transaction_boundary'],
-        'event_contract': contract['event_contract'],
-        'side_effects': (),
+        "ok": runtime_service["ok"]
+        and bool(OPERATION_CONTRACTS)
+        and all(item["event_contract"] == "AppGen-X" for item in OPERATION_CONTRACTS)
+        and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in OPERATION_CONTRACTS)
+        and all(item["owned_tables"] or item["consumed_event"] for item in command_contracts)
+        and all(item["read_tables"] for item in query_contracts),
+        "pbc": PBC_KEY,
+        "operations": tuple(item["operation"] for item in OPERATION_CONTRACTS),
+        "command_operations": tuple(item["operation"] for item in command_contracts),
+        "query_operations": tuple(item["operation"] for item in query_contracts),
+        "contracts": OPERATION_CONTRACTS,
+        "runtime_service_contract": runtime_service,
+        "side_effects": (),
+    }
+
+
+def operation_plan(operation_name: str, payload: dict | None = None) -> dict:
+    """Plan one service operation without mutating state."""
+    contract = next((item for item in OPERATION_CONTRACTS if item["operation"] == operation_name), None)
+    if contract is None:
+        return {"ok": False, "reason": "unknown_operation", "operation": operation_name, "side_effects": ()}
+    supplied = dict(payload or {})
+    return {
+        "ok": bool(contract["owned_tables"] or contract["read_tables"] or contract["consumed_event"]),
+        "pbc": PBC_KEY,
+        "operation": operation_name,
+        "operation_kind": contract["operation_kind"],
+        "route": {"method": contract["method"], "path": contract["path"]},
+        "permission": contract["permission"],
+        "owned_tables": contract["owned_tables"],
+        "read_tables": contract["read_tables"],
+        "emitted_event": contract["emitted_event"],
+        "consumed_event": contract["consumed_event"],
+        "idempotency_key": contract["idempotency_key"],
+        "payload_keys": tuple(sorted(supplied)),
+        "transaction_boundary": contract["transaction_boundary"],
+        "event_contract": contract["event_contract"],
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
     }
 
 
 class TimeLaborService:
     """Side-effect-free generated command facade."""
 
-    def _execute(self, operation_name, payload):
+    def execute_operation(self, operation_name: str, payload: dict | None = None) -> dict:
         plan = operation_plan(operation_name, payload)
-        operation_kind = plan.get('operation_kind')
         result = {
-            'ok': plan['ok'],
-            'pbc': 'time_labor',
-            'operation': operation_name,
-            'operation_kind': operation_kind,
-            'payload': dict(payload),
-            'operation_contract': plan,
-            'transaction_boundary': plan.get('transaction_boundary'),
-            'side_effects': (),
+            "ok": plan["ok"],
+            "pbc": PBC_KEY,
+            "operation": operation_name,
+            "operation_kind": plan.get("operation_kind"),
+            "payload": dict(payload or {}),
+            "operation_contract": plan,
+            "transaction_boundary": plan.get("transaction_boundary"),
+            "side_effects": (),
         }
-        if operation_kind == 'command':
-            event_type = plan.get('emitted_event')
-            result.update({
-                'command': operation_name,
-                'read_only': False,
-                'outbox_table': EVENT_CONTRACT['outbox_table'],
-                'emits': (event_type,) if event_type else (),
-            })
-        elif operation_kind == 'query':
-            result.update({
-                'query': operation_name,
-                'read_only': True,
-                'outbox_table': None,
-                'emits': (),
-            })
+        if plan.get("operation_kind") == "command":
+            result.update(
+                {
+                    "command": operation_name,
+                    "read_only": False,
+                    "outbox_table": EVENT_CONTRACT["outbox_table"],
+                    "emits": plan.get("emitted_event", ()),
+                }
+            )
+        elif plan.get("operation_kind") == "query":
+            result.update({"query": operation_name, "read_only": True, "outbox_table": None, "emits": ()})
         return result
 
-    def _command(self, command_name, payload):
-        return self._execute(command_name, payload)
-
-    def _query(self, query_name, payload):
-        return self._execute(query_name, payload)
-
-    def command_shifts(self, payload=None):
-        return self._command('command_shifts', payload or {})
-
-    def command_shift_patterns(self, payload=None):
-        return self._command('command_shift_patterns', payload or {})
-
-    def command_shift_swaps(self, payload=None):
-        return self._command('command_shift_swaps', payload or {})
-
-    def command_clock_events(self, payload=None):
-        return self._command('command_clock_events', payload or {})
-
-    def command_time_entries_calculate(self, payload=None):
-        return self._command('command_time_entries_calculate', payload or {})
-
-    def command_absences(self, payload=None):
-        return self._command('command_absences', payload or {})
-
-    def command_labor_summaries_id_approve(self, payload=None):
-        return self._command('command_labor_summaries_id_approve', payload or {})
-
-    def command_time_events_inbox(self, payload=None):
-        return self._command('command_time_events_inbox', payload or {})
-
-    def command_time_rules(self, payload=None):
-        return self._command('command_time_rules', payload or {})
-
-    def command_time_parameters(self, payload=None):
-        return self._command('command_time_parameters', payload or {})
-
-    def command_time_configuration(self, payload=None):
-        return self._command('command_time_configuration', payload or {})
-
-    def query_labor_summaries(self, payload=None):
-        return self._query('query_labor_summaries', payload or {})
-
-    def query_time_workbench(self, payload=None):
-        return self._query('query_time_workbench', payload or {})
+    def __getattr__(self, operation_name: str):
+        if operation_name in service_operation_contracts()["operations"]:
+            return lambda payload=None: self.execute_operation(operation_name, payload or {})
+        raise AttributeError(operation_name)
 
 
-def service_operation_manifest():
+def service_operation_manifest() -> dict:
     """Return the executable service operation surface."""
-    service = TimeLaborService()
-    operations = tuple(
-        name
-        for name in dir(service)
-        if (name.startswith('command_') or name.startswith('query_'))
-        and callable(getattr(service, name))
-    )
+    contracts = service_operation_contracts()
     return {
-        'ok': bool(operations) and service_operation_contracts()['ok'],
-        'pbc': 'time_labor',
-        'service_class': service.__class__.__name__,
-        'operations': operations,
-        'command_operations': service_operation_contracts()['command_operations'],
-        'query_operations': service_operation_contracts()['query_operations'],
-        'operation_contracts': service_operation_contracts()['contracts'],
-        'transaction_boundary': 'owned_datastore_plus_outbox',
-        'outbox_table': EVENT_CONTRACT['outbox_table'],
-        'side_effects': (),
+        "ok": contracts["ok"],
+        "pbc": PBC_KEY,
+        "service_class": TimeLaborService.__name__,
+        "operations": contracts["operations"],
+        "command_operations": contracts["command_operations"],
+        "query_operations": contracts["query_operations"],
+        "operation_contracts": contracts["contracts"],
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "outbox_table": EVENT_CONTRACT["outbox_table"],
+        "side_effects": (),
     }
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Execute one side-effect-free service operation through the facade."""
     manifest = service_operation_manifest()
     service = TimeLaborService()
-    operation = manifest['operations'][0] if manifest['operations'] else None
-    result = getattr(service, operation)({'smoke': True}) if operation else {'ok': False}
-    return {
-        'ok': manifest['ok']
-        and result.get('ok') is True
-        and result.get('operation_contract', {}).get('ok') is True,
-        'manifest': manifest,
-        'result': result,
-        'side_effects': (),
-    }
+    operation = manifest["operations"][0] if manifest["operations"] else None
+    result = service.execute_operation(operation, {"smoke": True}) if operation else {"ok": False}
+    return {"ok": manifest["ok"] and result.get("ok") is True, "manifest": manifest, "result": result, "side_effects": ()}
