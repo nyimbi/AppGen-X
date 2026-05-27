@@ -22,16 +22,27 @@ from .runtime import predictive_demand_build_service_contract
 from .runtime import predictive_demand_build_workbench_view
 from .runtime import predictive_demand_configure_runtime
 from .runtime import predictive_demand_create_forecast_run
+from .runtime import predictive_demand_create_scenario_version
 from .runtime import predictive_demand_empty_state
+from .runtime import predictive_demand_assess_shortage_risk
 from .runtime import predictive_demand_ingest_demand_signal
+from .runtime import predictive_demand_open_forecast_exception
 from .runtime import predictive_demand_permissions_contract
+from .runtime import predictive_demand_prepare_replenishment_recommendation
 from .runtime import predictive_demand_publish_forecast_result
 from .runtime import predictive_demand_receive_event
 from .runtime import predictive_demand_register_forecast_model
+from .runtime import predictive_demand_register_forecast_driver
+from .runtime import predictive_demand_register_governed_model_evidence
+from .runtime import predictive_demand_register_planning_horizon
 from .runtime import predictive_demand_register_rule
 from .runtime import predictive_demand_register_schema_extension
+from .runtime import predictive_demand_record_consensus_adjustment
+from .runtime import predictive_demand_record_model_drift_signal
+from .runtime import predictive_demand_resolve_forecast_exception
 from .runtime import predictive_demand_runtime_capabilities
 from .runtime import predictive_demand_runtime_smoke
+from .runtime import predictive_demand_seal_forecast_audit_proof
 from .runtime import predictive_demand_set_parameter
 from .runtime import predictive_demand_verify_owned_table_boundary
 from .ui import PREDICTIVE_DEMAND_UI_FRAGMENT_KEYS
@@ -116,4 +127,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

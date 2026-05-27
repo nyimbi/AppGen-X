@@ -223,6 +223,17 @@ def predictive_demand_runtime_capabilities() -> dict:
             "ingest_demand_signal",
             "create_forecast_run",
             "publish_forecast_result",
+            "register_planning_horizon",
+            "register_forecast_driver",
+            "record_consensus_adjustment",
+            "create_scenario_version",
+            "assess_shortage_risk",
+            "prepare_replenishment_recommendation",
+            "open_forecast_exception",
+            "resolve_forecast_exception",
+            "record_model_drift_signal",
+            "register_governed_model_evidence",
+            "seal_forecast_audit_proof",
             "build_api_contract",
             "build_schema_contract",
             "build_service_contract",
@@ -397,6 +408,128 @@ def predictive_demand_runtime_smoke() -> dict:
             "status": "published",
         },
     )["state"]
+    state = predictive_demand_register_planning_horizon(
+        state,
+        {
+            "horizon_id": "horizon_alpha",
+            "tenant": "tenant_alpha",
+            "sku": "SKU-ALPHA",
+            "location": "DC-1",
+            "start_date": "2026-05-27",
+            "end_date": "2026-06-10",
+            "bucket": "daily",
+            "status": "active",
+        },
+    )["state"]
+    state = predictive_demand_register_forecast_driver(
+        state,
+        {
+            "driver_id": "driver_promo",
+            "tenant": "tenant_alpha",
+            "sku": "SKU-ALPHA",
+            "driver_type": "promotion",
+            "weight": 0.35,
+            "source": "campaign_plan",
+            "status": "active",
+        },
+    )["state"]
+    state = predictive_demand_record_consensus_adjustment(
+        state,
+        {
+            "adjustment_id": "consensus_alpha",
+            "tenant": "tenant_alpha",
+            "result_id": "result_alpha",
+            "adjusted_quantity": 82,
+            "reason": "commercial_commit",
+            "approved_by": "planner_alpha",
+            "status": "approved",
+        },
+    )["state"]
+    state = predictive_demand_create_scenario_version(
+        state,
+        {
+            "scenario_id": "scenario_alpha",
+            "tenant": "tenant_alpha",
+            "base_result_id": "result_alpha",
+            "scenario_name": "promotion_plus_supply",
+            "uplift_percent": 12.0,
+            "status": "published",
+        },
+    )["state"]
+    state = predictive_demand_assess_shortage_risk(
+        state,
+        {
+            "risk_id": "risk_alpha",
+            "tenant": "tenant_alpha",
+            "result_id": "result_alpha",
+            "available_inventory": 45,
+            "forecast_quantity": 86,
+            "service_level_target": 0.95,
+        },
+    )["state"]
+    state = predictive_demand_prepare_replenishment_recommendation(
+        state,
+        {
+            "recommendation_id": "replenish_alpha",
+            "tenant": "tenant_alpha",
+            "risk_id": "risk_alpha",
+            "sku": "SKU-ALPHA",
+            "location": "DC-1",
+            "recommended_quantity": 41,
+            "priority": "high",
+            "status": "prepared",
+        },
+    )["state"]
+    state = predictive_demand_open_forecast_exception(
+        state,
+        {
+            "exception_id": "exception_alpha",
+            "tenant": "tenant_alpha",
+            "result_id": "result_alpha",
+            "exception_type": "bias_threshold",
+            "severity": "medium",
+            "status": "open",
+        },
+    )["state"]
+    state = predictive_demand_resolve_forecast_exception(
+        state,
+        {
+            "exception_id": "exception_alpha",
+            "resolution": "accepted_consensus_adjustment",
+            "resolved_by": "planner_alpha",
+        },
+    )["state"]
+    state = predictive_demand_record_model_drift_signal(
+        state,
+        {
+            "drift_id": "drift_alpha",
+            "tenant": "tenant_alpha",
+            "model_id": "model_alpha",
+            "drift_score": 0.04,
+            "threshold": 0.12,
+            "status": "within_tolerance",
+        },
+    )["state"]
+    state = predictive_demand_register_governed_model_evidence(
+        state,
+        {
+            "evidence_id": "governance_alpha",
+            "tenant": "tenant_alpha",
+            "model_id": "model_alpha",
+            "metric": "wmape",
+            "metric_value": 0.11,
+            "governance_status": "approved",
+        },
+    )["state"]
+    state = predictive_demand_seal_forecast_audit_proof(
+        state,
+        {
+            "proof_id": "proof_alpha",
+            "tenant": "tenant_alpha",
+            "result_id": "result_alpha",
+            "proof_type": "forecast_result_integrity",
+        },
+    )["state"]
     checks = tuple(
         {
             "id": key,
@@ -411,6 +544,21 @@ def predictive_demand_runtime_smoke() -> dict:
         and bool(state["forecast_runs"])
         and bool(state["demand_signals"])
         and bool(state["forecast_results"])
+        and all(
+            state[name]
+            for name in (
+                "planning_horizons",
+                "forecast_drivers",
+                "consensus_adjustments",
+                "scenario_versions",
+                "shortage_risks",
+                "replenishment_recommendations",
+                "forecast_exceptions",
+                "model_drift_signals",
+                "governed_model_evidence",
+                "forecast_audit_proofs",
+            )
+        )
         and bool(state["outbox"])
         and bool(state["handled_events"])
         and bool(state["configuration"].get("ok"))
@@ -443,6 +591,16 @@ def predictive_demand_empty_state() -> dict:
         "forecast_runs": {},
         "demand_signals": {},
         "forecast_results": {},
+        "planning_horizons": {},
+        "forecast_drivers": {},
+        "consensus_adjustments": {},
+        "scenario_versions": {},
+        "shortage_risks": {},
+        "replenishment_recommendations": {},
+        "forecast_exceptions": {},
+        "model_drift_signals": {},
+        "governed_model_evidence": {},
+        "forecast_audit_proofs": {},
         "inventory_positions": {},
         "seed_data": {
             "algorithms": _SUPPORTED_ALGORITHMS,
@@ -803,6 +961,164 @@ def predictive_demand_publish_forecast_result(state: dict, command: dict) -> dic
     return {"ok": True, "state": runtime, "forecast_result": result}
 
 
+def predictive_demand_register_planning_horizon(state: dict, command: dict) -> dict:
+    required = {"horizon_id", "tenant", "sku", "location", "start_date", "end_date", "bucket", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand planning horizon fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    horizon = {**command, "audit_proof": _digest(command)}
+    runtime["planning_horizons"][horizon["horizon_id"]] = horizon
+    runtime["events"].append(_state_event("PlanningHorizonRegistered", horizon["horizon_id"], horizon))
+    return {"ok": True, "state": runtime, "planning_horizon": horizon}
+
+
+def predictive_demand_register_forecast_driver(state: dict, command: dict) -> dict:
+    required = {"driver_id", "tenant", "sku", "driver_type", "weight", "source", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand forecast driver fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    driver = {**command, "weight": round(float(command["weight"]), 4), "audit_proof": _digest(command)}
+    runtime["forecast_drivers"][driver["driver_id"]] = driver
+    runtime["events"].append(_state_event("ForecastDriverRegistered", driver["driver_id"], driver))
+    return {"ok": True, "state": runtime, "forecast_driver": driver}
+
+
+def predictive_demand_record_consensus_adjustment(state: dict, command: dict) -> dict:
+    required = {"adjustment_id", "tenant", "result_id", "adjusted_quantity", "reason", "approved_by", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand consensus adjustment fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    result = runtime["forecast_results"].get(command["result_id"], {})
+    baseline = float(result.get("forecast_quantity", command["adjusted_quantity"]))
+    adjusted = float(command["adjusted_quantity"])
+    adjustment = {
+        **command,
+        "adjusted_quantity": round(adjusted, 4),
+        "baseline_quantity": round(baseline, 4),
+        "adjustment_delta": round(adjusted - baseline, 4),
+        "audit_proof": _digest(command),
+    }
+    runtime["consensus_adjustments"][adjustment["adjustment_id"]] = adjustment
+    runtime["events"].append(_state_event("ConsensusAdjustmentRecorded", adjustment["adjustment_id"], adjustment))
+    return {"ok": True, "state": runtime, "consensus_adjustment": adjustment}
+
+
+def predictive_demand_create_scenario_version(state: dict, command: dict) -> dict:
+    required = {"scenario_id", "tenant", "base_result_id", "scenario_name", "uplift_percent", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand scenario version fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    result = runtime["forecast_results"].get(command["base_result_id"], {})
+    base_quantity = float(result.get("forecast_quantity", 0.0))
+    uplift = float(command["uplift_percent"])
+    scenario = {
+        **command,
+        "uplift_percent": round(uplift, 4),
+        "scenario_quantity": round(base_quantity * (1 + uplift / 100), 4),
+        "audit_proof": _digest(command),
+    }
+    runtime["scenario_versions"][scenario["scenario_id"]] = scenario
+    runtime["events"].append(_state_event("ScenarioVersionCreated", scenario["scenario_id"], scenario))
+    return {"ok": True, "state": runtime, "scenario_version": scenario}
+
+
+def predictive_demand_assess_shortage_risk(state: dict, command: dict) -> dict:
+    required = {"risk_id", "tenant", "result_id", "available_inventory", "forecast_quantity", "service_level_target"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand shortage risk fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    available = float(command["available_inventory"])
+    forecast = float(command["forecast_quantity"])
+    service_level = float(command["service_level_target"])
+    shortage = max(forecast - available, 0.0)
+    risk_score = min(1.0, shortage / max(forecast, 1.0) * service_level)
+    risk = {**command, "shortage_quantity": round(shortage, 4), "risk_score": round(risk_score, 4), "risk_band": "high" if risk_score >= 0.3 else "watch", "audit_proof": _digest(command)}
+    runtime["shortage_risks"][risk["risk_id"]] = risk
+    runtime["events"].append(_state_event("ShortageRiskAssessed", risk["risk_id"], risk))
+    return {"ok": True, "state": runtime, "shortage_risk": risk}
+
+
+def predictive_demand_prepare_replenishment_recommendation(state: dict, command: dict) -> dict:
+    required = {"recommendation_id", "tenant", "risk_id", "sku", "location", "recommended_quantity", "priority", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand replenishment recommendation fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    recommendation = {**command, "recommended_quantity": round(float(command["recommended_quantity"]), 4), "audit_proof": _digest(command)}
+    runtime["replenishment_recommendations"][recommendation["recommendation_id"]] = recommendation
+    runtime["events"].append(_state_event("ReplenishmentRecommendationPrepared", recommendation["recommendation_id"], recommendation))
+    return {"ok": True, "state": runtime, "replenishment_recommendation": recommendation}
+
+
+def predictive_demand_open_forecast_exception(state: dict, command: dict) -> dict:
+    required = {"exception_id", "tenant", "result_id", "exception_type", "severity", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand forecast exception fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    exception = {**command, "audit_proof": _digest(command)}
+    runtime["forecast_exceptions"][exception["exception_id"]] = exception
+    runtime["events"].append(_state_event("ForecastExceptionOpened", exception["exception_id"], exception))
+    return {"ok": True, "state": runtime, "forecast_exception": exception}
+
+
+def predictive_demand_resolve_forecast_exception(state: dict, command: dict) -> dict:
+    required = {"exception_id", "resolution", "resolved_by"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand exception resolution fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    exception = dict(runtime["forecast_exceptions"][command["exception_id"]])
+    exception.update({"resolution": command["resolution"], "resolved_by": command["resolved_by"], "status": "resolved", "resolution_proof": _digest(command)})
+    runtime["forecast_exceptions"][command["exception_id"]] = exception
+    runtime["events"].append(_state_event("ForecastExceptionResolved", exception["exception_id"], exception))
+    return {"ok": True, "state": runtime, "forecast_exception": exception}
+
+
+def predictive_demand_record_model_drift_signal(state: dict, command: dict) -> dict:
+    required = {"drift_id", "tenant", "model_id", "drift_score", "threshold", "status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand model drift signal fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    drift_score = float(command["drift_score"])
+    threshold = float(command["threshold"])
+    drift = {**command, "drift_score": round(drift_score, 4), "threshold": round(threshold, 4), "retrain_required": drift_score > threshold, "audit_proof": _digest(command)}
+    runtime["model_drift_signals"][drift["drift_id"]] = drift
+    runtime["events"].append(_state_event("ModelDriftSignalRecorded", drift["drift_id"], drift))
+    return {"ok": True, "state": runtime, "model_drift_signal": drift}
+
+
+def predictive_demand_register_governed_model_evidence(state: dict, command: dict) -> dict:
+    required = {"evidence_id", "tenant", "model_id", "metric", "metric_value", "governance_status"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand governed model evidence fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    evidence = {**command, "metric_value": round(float(command["metric_value"]), 4), "audit_proof": _digest(command)}
+    runtime["governed_model_evidence"][evidence["evidence_id"]] = evidence
+    runtime["events"].append(_state_event("GovernedModelEvidenceRegistered", evidence["evidence_id"], evidence))
+    return {"ok": True, "state": runtime, "governed_model_evidence": evidence}
+
+
+def predictive_demand_seal_forecast_audit_proof(state: dict, command: dict) -> dict:
+    required = {"proof_id", "tenant", "result_id", "proof_type"}
+    missing = required - set(command)
+    if missing:
+        raise ValueError(f"Missing Predictive Demand forecast audit proof fields: {tuple(sorted(missing))}")
+    runtime = _copy_state(state)
+    result = runtime["forecast_results"].get(command["result_id"], {})
+    proof = {**command, "proof_hash": _digest({"command": command, "result": result}), "status": "sealed"}
+    runtime["forecast_audit_proofs"][proof["proof_id"]] = proof
+    runtime["events"].append(_state_event("ForecastAuditProofSealed", proof["proof_id"], proof))
+    return {"ok": True, "state": runtime, "forecast_audit_proof": proof}
+
+
 def predictive_demand_build_workbench_view(state: dict, *, tenant: str) -> dict:
     models = tuple(
         item for item in state.get("forecast_models", {}).values() if item["tenant"] == tenant
@@ -944,6 +1260,17 @@ def predictive_demand_build_api_contract() -> dict:
                 "requires_permission": "predictive_demand.result.write",
                 "idempotency_key": "result_id",
             },
+            {"route": "POST /planning-horizons", "command": "register_planning_horizon", "owned_tables": ("planning_horizon",), "emits": (), "requires_permission": "predictive_demand.configure", "idempotency_key": "horizon_id"},
+            {"route": "POST /forecast-drivers", "command": "register_forecast_driver", "owned_tables": ("forecast_driver",), "emits": (), "requires_permission": "predictive_demand.configure", "idempotency_key": "driver_id"},
+            {"route": "POST /consensus-adjustments", "command": "record_consensus_adjustment", "owned_tables": ("consensus_adjustment",), "emits": (), "requires_permission": "predictive_demand.result.write", "idempotency_key": "adjustment_id"},
+            {"route": "POST /scenario-versions", "command": "create_scenario_version", "owned_tables": ("scenario_version",), "emits": (), "requires_permission": "predictive_demand.run.write", "idempotency_key": "scenario_id"},
+            {"route": "POST /shortage-risks", "command": "assess_shortage_risk", "owned_tables": ("shortage_risk",), "emits": (), "requires_permission": "predictive_demand.result.write", "idempotency_key": "risk_id"},
+            {"route": "POST /replenishment-recommendations", "command": "prepare_replenishment_recommendation", "owned_tables": ("replenishment_recommendation",), "emits": (), "requires_permission": "predictive_demand.result.write", "idempotency_key": "recommendation_id"},
+            {"route": "POST /forecast-exceptions", "command": "open_forecast_exception", "owned_tables": ("forecast_exception",), "emits": (), "requires_permission": "predictive_demand.result.write", "idempotency_key": "exception_id"},
+            {"route": "POST /forecast-exceptions/resolve", "command": "resolve_forecast_exception", "owned_tables": ("forecast_exception",), "emits": (), "requires_permission": "predictive_demand.result.write", "idempotency_key": "exception_id"},
+            {"route": "POST /model-drift-signals", "command": "record_model_drift_signal", "owned_tables": ("model_drift_signal",), "emits": (), "requires_permission": "predictive_demand.model.write", "idempotency_key": "drift_id"},
+            {"route": "POST /governed-model-evidence", "command": "register_governed_model_evidence", "owned_tables": ("governed_model_evidence",), "emits": (), "requires_permission": "predictive_demand.model.write", "idempotency_key": "evidence_id"},
+            {"route": "POST /forecast-audit-proofs", "command": "seal_forecast_audit_proof", "owned_tables": ("forecast_audit_proof",), "emits": (), "requires_permission": "predictive_demand.audit", "idempotency_key": "proof_id"},
             {
                 "route": "POST /predictive-demand/events/inbox",
                 "command": "receive_event",
@@ -981,7 +1308,23 @@ def predictive_demand_build_api_contract() -> dict:
             "POST /forecast-models",
             "POST /forecast-runs",
             "POST /demand-signals",
+            "POST /forecast-results",
+            "POST /planning-horizons",
+            "POST /forecast-drivers",
+            "POST /consensus-adjustments",
+            "POST /scenario-versions",
+            "POST /shortage-risks",
+            "POST /replenishment-recommendations",
+            "POST /forecast-exceptions",
+            "POST /forecast-exceptions/resolve",
+            "POST /model-drift-signals",
+            "POST /governed-model-evidence",
+            "POST /forecast-audit-proofs",
+            "POST /predictive-demand/events/inbox",
             "GET /forecast-results",
+            "GET /predictive-demand/schema-contract",
+            "GET /predictive-demand/service-contract",
+            "GET /predictive-demand/release-evidence",
         ),
         "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
         "runtime_tables": PREDICTIVE_DEMAND_RUNTIME_TABLES,
@@ -1314,6 +1657,17 @@ def predictive_demand_build_service_contract() -> dict:
         "ingest_demand_signal",
         "create_forecast_run",
         "publish_forecast_result",
+        "register_planning_horizon",
+        "register_forecast_driver",
+        "record_consensus_adjustment",
+        "create_scenario_version",
+        "assess_shortage_risk",
+        "prepare_replenishment_recommendation",
+        "open_forecast_exception",
+        "resolve_forecast_exception",
+        "record_model_drift_signal",
+        "register_governed_model_evidence",
+        "seal_forecast_audit_proof",
     )
     query_methods = (
         "build_workbench_view",
@@ -1589,6 +1943,17 @@ def predictive_demand_permissions_contract() -> dict:
             "ingest_demand_signal": "predictive_demand.signal.write",
             "create_forecast_run": "predictive_demand.run.write",
             "publish_forecast_result": "predictive_demand.result.write",
+            "register_planning_horizon": "predictive_demand.configure",
+            "register_forecast_driver": "predictive_demand.configure",
+            "record_consensus_adjustment": "predictive_demand.result.write",
+            "create_scenario_version": "predictive_demand.run.write",
+            "assess_shortage_risk": "predictive_demand.result.write",
+            "prepare_replenishment_recommendation": "predictive_demand.result.write",
+            "open_forecast_exception": "predictive_demand.result.write",
+            "resolve_forecast_exception": "predictive_demand.result.write",
+            "record_model_drift_signal": "predictive_demand.model.write",
+            "register_governed_model_evidence": "predictive_demand.model.write",
+            "seal_forecast_audit_proof": "predictive_demand.audit",
             "receive_event": "predictive_demand.event.consume",
             "register_schema_extension": "predictive_demand.configure",
             "register_rule": "predictive_demand.configure",

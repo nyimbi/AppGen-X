@@ -4350,7 +4350,28 @@ PBC_CATALOG.update(
                 "governed_model_evidence",
                 "forecast_audit_proof",
             ),
-            "apis": ("POST /forecast-runs", "GET /forecast-results", "POST /signals"),
+            "apis": (
+                "POST /forecast-models",
+                "POST /forecast-runs",
+                "POST /demand-signals",
+                "POST /forecast-results",
+                "POST /planning-horizons",
+                "POST /forecast-drivers",
+                "POST /consensus-adjustments",
+                "POST /scenario-versions",
+                "POST /shortage-risks",
+                "POST /replenishment-recommendations",
+                "POST /forecast-exceptions",
+                "POST /forecast-exceptions/resolve",
+                "POST /model-drift-signals",
+                "POST /governed-model-evidence",
+                "POST /forecast-audit-proofs",
+                "POST /predictive-demand/events/inbox",
+                "GET /forecast-results",
+                "GET /predictive-demand/schema-contract",
+                "GET /predictive-demand/service-contract",
+                "GET /predictive-demand/release-evidence",
+            ),
             "emits": ("ForecastUpdated", "MaterialShortageDetected"),
             "consumes": ("OperationalKpiChanged", "OrderShipped", "InventoryPoolChanged"),
             "template": None,
@@ -9752,19 +9773,30 @@ from .pbcs.predictive_demand import predictive_demand_build_release_evidence  # 
 from .pbcs.predictive_demand import predictive_demand_build_schema_contract  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_build_service_contract  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_build_workbench_view  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_assess_shortage_risk  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_configure_runtime  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_create_forecast_run  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_create_scenario_version  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_empty_state  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_ingest_demand_signal  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_open_forecast_exception  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_permissions_contract  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_prepare_replenishment_recommendation  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_publish_forecast_result  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_receive_event  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_record_consensus_adjustment  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_record_model_drift_signal  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_register_forecast_model  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_register_forecast_driver  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_register_governed_model_evidence  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_register_planning_horizon  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_register_rule  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_register_schema_extension  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_render_workbench  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_resolve_forecast_exception  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_runtime_capabilities  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_runtime_smoke  # noqa: E402,F401
+from .pbcs.predictive_demand import predictive_demand_seal_forecast_audit_proof  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_set_parameter  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_ui_contract  # noqa: E402,F401
 from .pbcs.predictive_demand import predictive_demand_verify_owned_table_boundary  # noqa: E402,F401

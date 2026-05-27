@@ -1,16 +1,56 @@
 """API route contracts for the predictive_demand PBC."""
 
-from .services import PredictiveDemandService, service_operation_contracts
+from __future__ import annotations
+
+from .runtime import predictive_demand_build_api_contract
+from .services import PredictiveDemandService
+from .services import service_operation_contracts
+
+PBC_KEY = "predictive_demand"
 
 
-ROUTES = (
-    {'method': 'POST', 'path': '/api/pbc/predictive_demand/forecast-runs', 'handler': 'command_forecast_runs', 'permission': 'predictive_demand.command.1'},
-    {'method': 'GET', 'path': '/api/pbc/predictive_demand/forecast-results', 'handler': 'query_forecast_results', 'permission': 'predictive_demand.query.2'},
-    {'method': 'POST', 'path': '/api/pbc/predictive_demand/signals', 'handler': 'command_signals', 'permission': 'predictive_demand.command.3'},
+def _route_to_route(route: dict) -> dict:
+    method, path = route["route"].split(" ", 1)
+    return {
+        "method": method,
+        "path": f"/api/pbc/{PBC_KEY}{path}",
+        "handler": route.get("command") or route.get("query"),
+        "permission": route["requires_permission"],
+    }
+
+
+def _route_to_contract(route: dict) -> dict:
+    method, path = route["route"].split(" ", 1)
+    operation = route.get("command") or route.get("query")
+    operation_kind = "command" if route.get("command") else "query"
+    owned_tables = tuple(
+        table if table.startswith(f"{PBC_KEY}_") else f"{PBC_KEY}_{table}"
+        for table in route.get("owned_tables", ())
+    )
+    return {
+        "method": method,
+        "path": f"/api/pbc/{PBC_KEY}{path}",
+        "handler": operation,
+        "permission": route["requires_permission"],
+        "operation": operation,
+        "operation_kind": operation_kind,
+        "owned_tables": owned_tables if operation_kind == "command" else (),
+        "read_tables": () if operation_kind == "command" else owned_tables,
+        "emitted_event": tuple(route.get("emits", ())),
+        "consumed_event": tuple(route.get("consumes", ())),
+        "event_contract": "AppGen-X",
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "idempotency_required": operation_kind == "command",
+        "idempotency_key": route.get("idempotency_key"),
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
+    }
+
+
+ROUTES = tuple(_route_to_route(route) for route in predictive_demand_build_api_contract()["routes"])
+API_ROUTE_CONTRACTS = tuple(
+    _route_to_contract(route) for route in predictive_demand_build_api_contract()["routes"]
 )
-
-
-API_ROUTE_CONTRACTS = ({'method': 'POST', 'path': '/api/pbc/predictive_demand/forecast-runs', 'handler': 'command_forecast_runs', 'permission': 'predictive_demand.command.1', 'operation': 'command_forecast_runs', 'operation_kind': 'command', 'owned_tables': ('predictive_demand_forecast_model', 'predictive_demand_forecast_run', 'predictive_demand_demand_signal', 'predictive_demand_forecast_result'), 'read_tables': (), 'emitted_event': 'ForecastUpdated', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'predictive_demand:command_forecast_runs:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/predictive_demand/forecast-results', 'handler': 'query_forecast_results', 'permission': 'predictive_demand.query.2', 'operation': 'query_forecast_results', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('predictive_demand_forecast_model', 'predictive_demand_forecast_run', 'predictive_demand_demand_signal', 'predictive_demand_forecast_result'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/predictive_demand/signals', 'handler': 'command_signals', 'permission': 'predictive_demand.command.3', 'operation': 'command_signals', 'operation_kind': 'command', 'owned_tables': ('predictive_demand_forecast_model', 'predictive_demand_forecast_run', 'predictive_demand_demand_signal', 'predictive_demand_forecast_result'), 'read_tables': (), 'emitted_event': 'ForecastUpdated', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'predictive_demand:command_signals:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False})
 
 
 def register_routes(app=None):
@@ -18,98 +58,100 @@ def register_routes(app=None):
     return ROUTES
 
 
-def api_route_contracts():
+def api_route_contracts() -> dict:
     """Return executable API route contracts with policy and boundary evidence."""
-    service_contracts = service_operation_contracts()['contracts']
-    operation_index = {item['operation']: item for item in service_contracts}
+    service_contracts = service_operation_contracts()["contracts"]
+    operation_index = {item["operation"]: item for item in service_contracts}
     contracts = tuple(
         {
             **contract,
-            'service_operation': operation_index.get(contract['operation']),
-            'route_id': f"{contract['method']} {contract['path']}",
+            "service_operation": operation_index.get(contract["operation"]),
+            "route_id": f"{contract['method']} {contract['path']}",
         }
         for contract in API_ROUTE_CONTRACTS
     )
     return {
-        'ok': bool(contracts)
-        and all(item['event_contract'] == 'AppGen-X' for item in contracts)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in contracts)
-        and all(item['stream_engine_picker_visible'] is False for item in contracts)
-        and all(item['shared_table_access'] is False for item in contracts),
-        'pbc': 'predictive_demand',
-        'contracts': contracts,
-        'routes': tuple(item['route_id'] for item in contracts),
-        'side_effects': (),
+        "ok": bool(contracts)
+        and all(item["event_contract"] == "AppGen-X" for item in contracts)
+        and all(
+            item["transaction_boundary"] == "owned_datastore_plus_outbox"
+            for item in contracts
+        )
+        and all(item["stream_engine_picker_visible"] is False for item in contracts)
+        and all(item["shared_table_access"] is False for item in contracts),
+        "pbc": PBC_KEY,
+        "contracts": contracts,
+        "routes": tuple(item["route_id"] for item in contracts),
+        "side_effects": (),
     }
 
 
-def validate_api_route_contracts():
+def validate_api_route_contracts() -> dict:
     """Validate routes against service operations, permissions, idempotency, and table boundaries."""
     manifest = api_route_contracts()
-    contracts = manifest['contracts']
+    contracts = manifest["contracts"]
     service_mismatches = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        if not item['service_operation']
-        or item['service_operation']['method'] != item['method']
-        or item['service_operation']['path'] != item['path']
-        or item['service_operation']['permission'] != item['permission']
+        if not item["service_operation"]
+        or item["service_operation"]["method"] != item["method"]
+        or f"/api/pbc/{PBC_KEY}{item['service_operation']['path']}" != item["path"]
+        or item["service_operation"]["permission"] != item["permission"]
     )
     missing_idempotency = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        if item['idempotency_required'] and not item['idempotency_key']
+        if item["idempotency_required"] and not item["idempotency_key"]
     )
     invalid_table_scope = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        for table in item['owned_tables'] + item['read_tables']
-        if not table.startswith('predictive_demand_')
+        for table in item["owned_tables"] + item["read_tables"]
+        if not table.startswith(f"{PBC_KEY}_")
     )
     return {
-        'ok': manifest['ok']
+        "ok": manifest["ok"]
         and not service_mismatches
         and not missing_idempotency
         and not invalid_table_scope,
-        'pbc': 'predictive_demand',
-        'contracts': contracts,
-        'service_mismatches': service_mismatches,
-        'missing_idempotency': missing_idempotency,
-        'invalid_table_scope': invalid_table_scope,
-        'side_effects': (),
+        "pbc": PBC_KEY,
+        "contracts": contracts,
+        "service_mismatches": service_mismatches,
+        "missing_idempotency": missing_idempotency,
+        "invalid_table_scope": invalid_table_scope,
+        "side_effects": (),
     }
 
 
-def dispatch_route(method, path, payload=None):
+def dispatch_route(method: str, path: str, payload: dict | None = None) -> dict:
     """Dispatch a route contract to its service command without side effects."""
     route = next(
-        (item for item in ROUTES if item['method'] == method and item['path'] == path),
+        (item for item in ROUTES if item["method"] == method and item["path"] == path),
         None,
     )
     if route is None:
-        return {'ok': False, 'handled': False, 'reason': 'route_not_found'}
+        return {"ok": False, "handled": False, "reason": "route_not_found"}
     service = PredictiveDemandService()
-    handler = getattr(service, route['handler'])
-    result = handler(payload or {})
+    result = service.execute_operation(route["handler"], payload or {})
     return {
-        'ok': result.get('ok') is True,
-        'handled': True,
-        'route': route,
-        'result': result,
-        'side_effects': (),
+        "ok": result.get("ok") is True,
+        "handled": True,
+        "route": route,
+        "result": result,
+        "side_effects": (),
     }
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Execute the first route and validate the API contract surface."""
     validation = validate_api_route_contracts()
     if not ROUTES:
-        return {'ok': False, 'reason': 'no_routes'}
+        return {"ok": False, "reason": "no_routes"}
     first = ROUTES[0]
-    dispatched = dispatch_route(first['method'], first['path'], {'smoke': True})
+    dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
     return {
-        'ok': validation['ok'] and dispatched['ok'],
-        'validation': validation,
-        'dispatch': dispatched,
-        'side_effects': (),
+        "ok": validation["ok"] and dispatched["ok"],
+        "validation": validation,
+        "dispatch": dispatched,
+        "side_effects": (),
     }

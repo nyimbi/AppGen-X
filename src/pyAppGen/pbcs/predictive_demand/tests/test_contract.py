@@ -215,3 +215,48 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['owned_boundary_rejection']['ok'] is False
     assert validation['owned_boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_predictive_demand_declared_planning_records_are_executable():
+    from ..runtime import PREDICTIVE_DEMAND_OWNED_TABLES
+    from ..runtime import predictive_demand_build_api_contract
+    from ..runtime import predictive_demand_build_service_contract
+    from ..runtime import predictive_demand_permissions_contract
+    from ..runtime import predictive_demand_runtime_smoke
+
+    required_tables = {
+        "planning_horizon",
+        "forecast_driver",
+        "consensus_adjustment",
+        "scenario_version",
+        "shortage_risk",
+        "replenishment_recommendation",
+        "forecast_exception",
+        "model_drift_signal",
+        "governed_model_evidence",
+        "forecast_audit_proof",
+    }
+    required_commands = {
+        "register_planning_horizon",
+        "register_forecast_driver",
+        "record_consensus_adjustment",
+        "create_scenario_version",
+        "assess_shortage_risk",
+        "prepare_replenishment_recommendation",
+        "open_forecast_exception",
+        "resolve_forecast_exception",
+        "record_model_drift_signal",
+        "register_governed_model_evidence",
+        "seal_forecast_audit_proof",
+    }
+
+    smoke = predictive_demand_runtime_smoke()
+    service = predictive_demand_build_service_contract()
+    api = predictive_demand_build_api_contract()
+    permissions = predictive_demand_permissions_contract()
+
+    assert smoke["ok"] is True
+    assert required_tables <= set(PREDICTIVE_DEMAND_OWNED_TABLES)
+    assert required_commands <= set(service["command_methods"])
+    assert required_commands <= set(permissions["action_permissions"])
+    assert {route["command"] for route in api["routes"] if route.get("command")} >= required_commands

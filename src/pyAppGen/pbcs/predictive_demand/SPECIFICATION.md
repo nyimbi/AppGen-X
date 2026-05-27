@@ -112,6 +112,10 @@ from a production planning package:
   coverage, shortage quantity, and confidence.
 - Forecast result publication with probabilistic confidence bands,
   recommended supply, planning action, and outbox events.
+- Planning horizon, causal driver, consensus adjustment, scenario version,
+  shortage risk, replenishment recommendation, forecast exception, model drift,
+  governed model evidence, and audit proof records are executable command
+  surfaces, not only schema declarations.
 - Material-shortage detection and emission of `MaterialShortageDetected`.
 - Forecast update emission through `ForecastUpdated`.
 - Retry/dead-letter evidence for failed consumed-event handling.
@@ -159,6 +163,9 @@ intelligence-grade planning PBC:
 - Permissions governance evidence.
 - Configuration, rule, parameter, seed-data, and workbench evidence.
 - Governed model evidence.
+- First-class planning table-stakes evidence for every declared planning table:
+  horizons, drivers, consensus, scenarios, shortage risk, replenishment,
+  exceptions, drift signals, governed model evidence, and sealed audit proofs.
 
 ## Service Layer
 
@@ -174,6 +181,17 @@ service descriptor. The service layer exposes these package-local commands:
 - `ingest_demand_signal(command)`.
 - `create_forecast_run(command)`.
 - `publish_forecast_result(command)`.
+- `register_planning_horizon(command)`.
+- `register_forecast_driver(command)`.
+- `record_consensus_adjustment(command)`.
+- `create_scenario_version(command)`.
+- `assess_shortage_risk(command)`.
+- `prepare_replenishment_recommendation(command)`.
+- `open_forecast_exception(command)`.
+- `resolve_forecast_exception(command)`.
+- `record_model_drift_signal(command)`.
+- `register_governed_model_evidence(command)`.
+- `seal_forecast_audit_proof(command)`.
 - `build_api_contract()`.
 - `build_schema_contract()`.
 - `build_service_contract()`.
@@ -209,15 +227,23 @@ The package-local API contract exposes route descriptors, not just route names:
 - `POST /forecast-results` runs `publish_forecast_result`, writes
   `forecast_result`, requires `predictive_demand.result.write`, and emits
   `ForecastUpdated` and `MaterialShortageDetected`.
+- `POST /planning-horizons`, `POST /forecast-drivers`,
+  `POST /consensus-adjustments`, `POST /scenario-versions`,
+  `POST /shortage-risks`, `POST /replenishment-recommendations`,
+  `POST /forecast-exceptions`, `POST /forecast-exceptions/resolve`,
+  `POST /model-drift-signals`, `POST /governed-model-evidence`, and
+  `POST /forecast-audit-proofs` persist the declared planning, exception,
+  drift, governance, and audit-proof records.
 - `POST /predictive-demand/events/inbox` runs `receive_event`, consumes the
   declared AppGen-X events, requires `predictive_demand.event.consume`, and is
   idempotent by `event_id`.
 - `GET /forecast-results` queries `build_workbench_view`, reads only owned
   Predictive Demand state, and requires `predictive_demand.audit`.
 
-The catalog-facing routes remain `POST /forecast-models`,
-`POST /forecast-runs`, `POST /demand-signals`, and `GET /forecast-results`.
-Release-facing audit routes are package-local only:
+The catalog-facing routes include `POST /forecast-models`,
+`POST /forecast-runs`, `POST /demand-signals`, `POST /forecast-results`,
+all planning table-stakes command routes, `POST /predictive-demand/events/inbox`,
+and `GET /forecast-results`. Release-facing audit routes are package-local:
 
 - `GET /predictive-demand/schema-contract`.
 - `GET /predictive-demand/service-contract`.
@@ -319,9 +345,26 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### API Routes
 
+- `POST /forecast-models`
 - `POST /forecast-runs`
+- `POST /demand-signals`
+- `POST /forecast-results`
+- `POST /planning-horizons`
+- `POST /forecast-drivers`
+- `POST /consensus-adjustments`
+- `POST /scenario-versions`
+- `POST /shortage-risks`
+- `POST /replenishment-recommendations`
+- `POST /forecast-exceptions`
+- `POST /forecast-exceptions/resolve`
+- `POST /model-drift-signals`
+- `POST /governed-model-evidence`
+- `POST /forecast-audit-proofs`
+- `POST /predictive-demand/events/inbox`
 - `GET /forecast-results`
-- `POST /signals`
+- `GET /predictive-demand/schema-contract`
+- `GET /predictive-demand/service-contract`
+- `GET /predictive-demand/release-evidence`
 
 ### Emitted Events
 
