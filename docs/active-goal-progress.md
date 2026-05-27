@@ -2456,3 +2456,22 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   artifact contract, implementation release audit, generation smoke audit,
   specification contract, and restricted legacy-name scan all passed. Commit:
   `5834a73`.
+- Current `multi_sided_market` PBC pass makes the generated market package
+  surface executable from route metadata through release evidence. Generated
+  routes now expose registered method/path contracts, command-only idempotency,
+  service-operation alignment, backward-compatible operation dispatch, and
+  owned-table validation across trading, bartering, selling, booking, renting,
+  loaning, escrow, settlement, reputation, dispute, and clearing operations.
+  Release evidence now includes runtime schema, service, API, and permission
+  sections. Verification is focused under the low-battery delivery constraint:
+  package Python compile, runtime smoke, focused package contract tests, package
+  service/route/service-contract/release smokes, source artifact contract,
+  implementation release audit, generation smoke audit, specification contract,
+  and restricted legacy-name scan all passed. Commit: `f1c38c3`.
+- Current inspector runtime smoke pass exposes required editor operations and
+  collected editor operations directly from generated inspector runtime smoke.
+  Generated consumers can now inspect property edits, event handler lifecycle,
+  component editors, custom designer hooks, handler invocation, and binding
+  bridge operations without unpacking the nested validation manifest.
+  Verification is focused under the low-battery delivery constraint. Commit:
+  pending.
