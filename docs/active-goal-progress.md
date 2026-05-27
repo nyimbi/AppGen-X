@@ -2570,6 +2570,23 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   enterprise relationship lookup operations without unpacking nested replay
   matrices. Verification is focused under the low-battery delivery constraint.
   Commit: `425fbed`.
+- Current component parity runtime smoke pass exposes required component
+  operations plus collected component operations directly from generated
+  component parity runtime smoke. Generated consumers can now inspect renderer
+  checks, property validation, event dispatch, target adapters, design-surface
+  actions, IDE release, family replay, and side-effect guards without unpacking
+  nested replay matrices. Verification is focused under the low-battery
+  delivery constraint. Commit: `3ae07f5`.
+- Current `api_gateway_mesh` PBC pass locks platform-fabric gateway capability
+  assurance into focused package tests. The package test suite now proves
+  standard and advanced gateway coverage, required runtime operation groups,
+  owned-boundary rejection, AppGen-X eventing, hidden stream-picker behavior,
+  and side-effect-free assurance smoke output. Verification is focused to the
+  PBC slice: package Python compile, runtime smoke, focused package contract
+  tests, package capability/service/route/service-contract/release smokes,
+  source artifact contract, implementation release audit, generation smoke
+  audit, specification contract, and restricted legacy-name scan all passed.
+  Commit: `e812ef1`.
 - Current `workflow_orchestration` PBC pass locks platform-fabric workflow
   capability assurance into focused package tests. The package test suite now
   proves standard and advanced workflow coverage, required runtime operation
