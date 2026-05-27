@@ -2622,3 +2622,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   refresh, runtime reload, and debug preview without unpacking nested operation
   results. Verification is focused under the low-battery delivery constraint.
   Commit: `1b0bbca`.
+- Current `composition_engine` PBC pass locks platform-fabric composition
+  capability assurance into focused package tests. The package test suite now
+  proves standard and advanced composition coverage, required runtime operation
+  groups, owned-boundary rejection, AppGen-X eventing, hidden stream-picker
+  behavior, and side-effect-free assurance smoke output. Verification is
+  focused to the PBC slice: package Python compile, runtime smoke, focused
+  package contract tests, package capability/service/route/service-contract/
+  release smokes, source artifact contract, implementation release audit,
+  generation smoke audit, specification contract, and restricted legacy-name
+  scan all passed. Commit: `c636d67`.
