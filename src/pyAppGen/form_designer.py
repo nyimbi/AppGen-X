@@ -14476,6 +14476,66 @@ def mobile_app_lifecycle_delivery_contract() -> dict:
     }
 
 
+def mobile_offline_device_event_queue_contract() -> dict:
+    """Return offline capture, durable queueing, and idempotent replay for device events."""
+    event_traces = mobile_device_event_trace_contract()
+    queued_events = tuple(
+        {
+            "api": trace["api"],
+            "component": trace["component"],
+            "event": event["event"],
+            "envelope": ("api", "component", "event", "payload", "timestamp", "target", "idempotency_key"),
+            "pipeline": (
+                "capture_event",
+                "normalize_payload",
+                "persist_encrypted_envelope",
+                "assign_idempotency_key",
+                "wait_for_connectivity_or_resume",
+                "drain_in_order",
+                "dispatch_component_event",
+                "mark_delivered",
+            ),
+            "storage": "app_private_queue",
+        }
+        for trace in event_traces["traces"]
+        for event in trace["events"]
+    )
+    checks = (
+        {
+            "id": "events_captured_before_queue",
+            "ok": bool(queued_events) and all("capture_event" == item["pipeline"][0] for item in queued_events),
+        },
+        {
+            "id": "offline_envelopes_are_durable",
+            "ok": all({"persist_encrypted_envelope", "assign_idempotency_key"} <= set(item["pipeline"]) for item in queued_events),
+        },
+        {
+            "id": "offline_queue_drains_in_order",
+            "ok": all(item["pipeline"].index("drain_in_order") < item["pipeline"].index("dispatch_component_event") for item in queued_events),
+        },
+        {
+            "id": "offline_replay_is_idempotent",
+            "ok": all("idempotency_key" in item["envelope"] and "mark_delivered" in item["pipeline"] for item in queued_events),
+        },
+    )
+    return {
+        "format": "appgen.mobile-offline-device-event-queue-contract.v1",
+        "ok": event_traces["ok"] and all(check["ok"] for check in checks),
+        "queued_events": queued_events,
+        "checks": checks,
+        "guards": (
+            "capture_before_persist",
+            "encrypted_envelope_required",
+            "idempotency_key_required",
+            "resume_or_connectivity_before_drain",
+            "drain_before_dispatch",
+            "delivered_events_marked_once",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def mobile_simulator_fixture_integrity_contract() -> dict:
     """Return deterministic simulator fixture identity and replay order evidence."""
     simulator = mobile_device_simulator_contract()
@@ -14509,6 +14569,7 @@ def mobile_native_api_runtime_replay_contract() -> dict:
     media_pipeline = mobile_media_file_pipeline_contract()
     bridge_errors = mobile_native_bridge_error_contract()
     lifecycle = mobile_app_lifecycle_delivery_contract()
+    offline_queue = mobile_offline_device_event_queue_contract()
     fixtures = mobile_simulator_fixture_integrity_contract()
     traces_by_api = {trace["api"]: trace for trace in event_traces["traces"]}
     states_by_api = {item["api"]: item for item in permission_states["transitions"]}
@@ -14537,8 +14598,10 @@ def mobile_native_api_runtime_replay_contract() -> dict:
         if api in background_apis:
             phases.extend(("persist_payload", "checkpoint_delivery", "replay_on_resume"))
             state["checkpoints"] += 1
+        phases.extend(("enqueue_offline_event", "persist_offline_envelope", "drain_offline_queue", "mark_offline_event_delivered"))
         state["permission"] = "granted"
         state["events"] += sum(len(event["trace"]) for event in trace["events"])
+        state["offline_replays"] = state.get("offline_replays", 0) + 1
         replay.append(
             {
                 "api": api,
@@ -14551,7 +14614,7 @@ def mobile_native_api_runtime_replay_contract() -> dict:
                 "ok": bool(row["privacy_prompt"])
                 and "granted->revoked" in permission["transitions"]
                 and "assert_events" in fixture["replay_order"]
-                and {"normalize_payload", "dispatch_component_events"} <= set(phases),
+                and {"normalize_payload", "dispatch_component_events", "persist_offline_envelope", "drain_offline_queue"} <= set(phases),
             }
         )
     bridge_recovery = tuple(
@@ -14579,12 +14642,14 @@ def mobile_native_api_runtime_replay_contract() -> dict:
         and all(item["ok"] for item in replay)
         and all(item["ok"] for item in bridge_recovery)
         and all(item["ok"] for item in lifecycle_replay)
+        and offline_queue["ok"]
         and state["side_effects"] == (),
         "replay": tuple(replay),
         "bridge_recovery": bridge_recovery,
         "lifecycle_replay": lifecycle_replay,
+        "offline_queue": offline_queue,
         "final_state": state,
-        "guards": ("permission_replayed_before_bridge", "fixture_replayed_before_events", "payloads_normalized_before_dispatch", "background_delivery_checkpointed", "bridge_errors_recoverable", "lifecycle_resume_replays_pending_events"),
+        "guards": ("permission_replayed_before_bridge", "fixture_replayed_before_events", "payloads_normalized_before_dispatch", "background_delivery_checkpointed", "offline_events_persisted_before_drain", "offline_replay_idempotent", "bridge_errors_recoverable", "lifecycle_resume_replays_pending_events"),
         "side_effects": (),
     }
 
@@ -14613,6 +14678,7 @@ def mobile_device_designer_transaction_replay_contract() -> dict:
     permission_state_machine = mobile_permission_state_machine_contract()
     deep_link_routing = mobile_deep_link_routing_contract()
     app_lifecycle_delivery = mobile_app_lifecycle_delivery_contract()
+    offline_queue = mobile_offline_device_event_queue_contract()
     simulator_fixture_integrity = mobile_simulator_fixture_integrity_contract()
     runtime_replay = mobile_native_api_runtime_replay_contract()
     state = {
@@ -14914,6 +14980,7 @@ def mobile_native_api_readiness_contract() -> dict:
     target_scenario_matrix = mobile_device_target_scenario_matrix_contract()
     designer_replay = mobile_device_designer_transaction_replay_contract()
     lifecycle = mobile_device_capability_lifecycle_replay_contract()
+    offline_queue = mobile_offline_device_event_queue_contract()
     actionable = mobile_native_api_actionable_operations()
     phases = (
         {
@@ -14960,6 +15027,14 @@ def mobile_native_api_readiness_contract() -> dict:
             and scenario_matrix["unsupported_fallback"]["decision"] == "blocked_unsupported_target",
         },
         {
+            "phase": "replay_offline_device_queue",
+            "pipeline": tuple(check["id"] for check in offline_queue["checks"]) + tuple(offline_queue["guards"]),
+            "ok": offline_queue["ok"]
+            and {"offline_envelopes_are_durable", "offline_replay_is_idempotent"}
+            <= {check["id"] for check in offline_queue["checks"] if check["ok"]}
+            and "offline_events_persisted_before_drain" in runtime_replay["guards"],
+        },
+        {
             "phase": "replay_target_scenario_matrix",
             "pipeline": tuple((row["api"], row["target"]) for row in target_scenario_matrix["rows"]),
             "ok": target_scenario_matrix["ok"]
@@ -14984,8 +15059,9 @@ def mobile_native_api_readiness_contract() -> dict:
         {"id": "fallback_lifecycle_ready", "ok": phases[3]["ok"], "evidence": {"fallback": fallback, "background": background}},
         {"id": "runtime_delivery_ready", "ok": phases[4]["ok"], "evidence": runtime_replay},
         {"id": "device_scenarios_ready", "ok": phases[5]["ok"], "evidence": scenario_matrix},
-        {"id": "target_scenario_matrix_ready", "ok": phases[6]["ok"], "evidence": target_scenario_matrix},
-        {"id": "designer_capability_ready", "ok": phases[7]["ok"], "evidence": {"designer": designer_replay, "lifecycle": lifecycle}},
+        {"id": "offline_queue_ready", "ok": phases[6]["ok"], "evidence": offline_queue},
+        {"id": "target_scenario_matrix_ready", "ok": phases[7]["ok"], "evidence": target_scenario_matrix},
+        {"id": "designer_capability_ready", "ok": phases[8]["ok"], "evidence": {"designer": designer_replay, "lifecycle": lifecycle}},
         {"id": "operation_surface_ready", "ok": actionable["ok"] and not actionable["side_effects"], "evidence": actionable},
         {
             "id": "phase_order_ready",
@@ -14997,6 +15073,7 @@ def mobile_native_api_readiness_contract() -> dict:
                 "review_fallbacks_and_lifecycle",
                 "replay_runtime_delivery",
                 "replay_device_scenarios",
+                "replay_offline_device_queue",
                 "replay_target_scenario_matrix",
                 "replay_designer_and_capabilities",
             ),
@@ -15018,6 +15095,8 @@ def mobile_native_api_readiness_contract() -> dict:
             "bridge_recoveries": len(runtime_replay["bridge_recovery"]),
             "lifecycle_replays": len(runtime_replay["lifecycle_replay"]),
             "background_checkpoints": runtime_replay["final_state"]["checkpoints"],
+            "offline_queued_events": len(offline_queue["queued_events"]),
+            "offline_replays": runtime_replay["final_state"].get("offline_replays", 0),
         },
         "guards": (
             "privacy_before_permission",
@@ -15025,6 +15104,7 @@ def mobile_native_api_readiness_contract() -> dict:
             "simulator_before_bridge",
             "fallbacks_before_runtime",
             "runtime_before_device_scenarios",
+            "offline_queue_before_target_matrix",
             "target_matrix_before_designer_claim",
             "unsupported_targets_blocked_before_release",
             "runtime_before_designer_claim",
@@ -15061,6 +15141,7 @@ def mobile_native_api_workbench() -> dict:
     permission_state_machine = mobile_permission_state_machine_contract()
     deep_link_routing = mobile_deep_link_routing_contract()
     app_lifecycle_delivery = mobile_app_lifecycle_delivery_contract()
+    offline_queue = mobile_offline_device_event_queue_contract()
     simulator_fixture_integrity = mobile_simulator_fixture_integrity_contract()
     runtime_replay = mobile_native_api_runtime_replay_contract()
     scenario_matrix = mobile_device_scenario_matrix_contract()
@@ -15262,6 +15343,14 @@ def mobile_native_api_workbench() -> dict:
             "evidence": app_lifecycle_delivery,
         },
         {
+            "id": "offline_device_event_queue",
+            "ok": offline_queue["ok"]
+            and {"offline_envelopes_are_durable", "offline_queue_drains_in_order", "offline_replay_is_idempotent"}
+            <= {check["id"] for check in offline_queue["checks"] if check["ok"]}
+            and not offline_queue["side_effects"],
+            "evidence": offline_queue,
+        },
+        {
             "id": "simulator_fixture_integrity",
             "ok": simulator_fixture_integrity["ok"] and "fixture_checksums_recorded" in simulator_fixture_integrity["guards"]
             and not simulator_fixture_integrity["side_effects"],
@@ -15318,6 +15407,7 @@ def mobile_native_api_workbench() -> dict:
                 "device_scenarios_ready",
                 "target_scenario_matrix_ready",
                 "designer_capability_ready",
+                "offline_queue_ready",
                 "operation_surface_ready",
                 "phase_order_ready",
             }
@@ -15372,6 +15462,7 @@ def mobile_native_api_workbench() -> dict:
         "permission_state_machine": permission_state_machine,
         "deep_link_routing": deep_link_routing,
         "app_lifecycle_delivery": app_lifecycle_delivery,
+        "offline_queue": offline_queue,
         "simulator_fixture_integrity": simulator_fixture_integrity,
         "runtime_replay": runtime_replay,
         "scenario_matrix": scenario_matrix,
@@ -20541,6 +20632,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
         "replay_device_scenarios",
+        "replay_offline_device_queue",
         "replay_target_scenario_matrix",
         "replay_designer_and_capabilities",
     )
@@ -20575,6 +20667,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "fallback_lifecycle_ready",
         "runtime_delivery_ready",
         "device_scenarios_ready",
+        "offline_queue_ready",
         "target_scenario_matrix_ready",
         "designer_capability_ready",
         "operation_surface_ready",
@@ -20592,6 +20685,10 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "normalize_payload",
         "dispatch_component_events",
         "record_diagnostic",
+        "enqueue_offline_event",
+        "persist_offline_envelope",
+        "drain_offline_queue",
+        "mark_offline_event_delivered",
         "validate_mime",
         "copy_to_app_storage",
         "cleanup_temporary_files",
@@ -20758,6 +20855,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "permission_state_machine",
         "deep_link_routing",
         "app_lifecycle_delivery",
+        "offline_device_event_queue",
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
         "designer_transaction_replay",

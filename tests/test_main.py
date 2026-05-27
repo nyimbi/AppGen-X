@@ -206,6 +206,7 @@ from pyAppGen.form_designer import mobile_device_component_spec_contract
 from pyAppGen.form_designer import mobile_device_scenario_matrix_contract
 from pyAppGen.form_designer import mobile_dispatch_adapter_operation
 from pyAppGen.form_designer import mobile_native_api_actionable_operations
+from pyAppGen.form_designer import mobile_offline_device_event_queue_contract
 from pyAppGen.form_designer import mobile_native_api_readiness_contract
 from pyAppGen.form_designer import mobile_native_api_workbench
 from pyAppGen.form_designer import mobile_replay_simulator_operation
@@ -2923,6 +2924,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "permission_state_machine",
         "deep_link_routing",
         "app_lifecycle_delivery",
+        "offline_device_event_queue",
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
         "device_scenario_matrix",
@@ -3003,10 +3005,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("granted->revoked" in item["transitions"] for item in mobile_workbench["permission_state_machine"]["transitions"])
     assert "authorize_route" in mobile_workbench["deep_link_routing"]["pipeline"]
     assert any("replay_pending_events" in item["pipeline"] for item in mobile_workbench["app_lifecycle_delivery"]["deliveries"])
+    offline_queue = mobile_offline_device_event_queue_contract()
+    assert offline_queue["format"] == "appgen.mobile-offline-device-event-queue-contract.v1"
+    assert offline_queue["ok"] is True
+    assert {"offline_envelopes_are_durable", "offline_queue_drains_in_order", "offline_replay_is_idempotent"} <= {
+        check["id"] for check in offline_queue["checks"] if check["ok"]
+    }
+    assert all("idempotency_key" in item["envelope"] for item in mobile_workbench["offline_queue"]["queued_events"])
     assert all(item["checksum"].startswith("sha256:") for item in mobile_workbench["simulator_fixture_integrity"]["fixtures"])
     assert mobile_workbench["runtime_replay"]["ok"] is True
     assert mobile_apis == {item["api"] for item in mobile_workbench["runtime_replay"]["replay"]}
     assert all("dispatch_component_events" in item["phases"] for item in mobile_workbench["runtime_replay"]["replay"])
+    assert all("drain_offline_queue" in item["phases"] for item in mobile_workbench["runtime_replay"]["replay"])
+    assert mobile_workbench["runtime_replay"]["offline_queue"]["ok"] is True
     assert mobile_workbench["runtime_replay"]["final_state"]["checkpoints"] >= 1
     assert mobile_workbench["scenario_matrix"]["ok"] is True
     assert mobile_workbench["scenario_matrix"]["scenario_count"] == len(mobile_apis)
@@ -3061,6 +3072,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
         "replay_device_scenarios",
+        "replay_offline_device_queue",
         "replay_target_scenario_matrix",
         "replay_designer_and_capabilities",
     } == {item["phase"] for item in mobile_readiness["phases"]}
@@ -3071,6 +3083,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "fallback_lifecycle_ready",
         "runtime_delivery_ready",
         "device_scenarios_ready",
+        "offline_queue_ready",
         "target_scenario_matrix_ready",
         "designer_capability_ready",
         "operation_surface_ready",
@@ -3081,6 +3094,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mobile_readiness["final_state"]["device_scenarios"] == len(mobile_apis)
     assert mobile_readiness["final_state"]["target_scenarios"] == mobile_workbench["target_scenario_matrix"]["row_count"]
     assert mobile_readiness["final_state"]["unsupported_target_fallbacks"] == mobile_workbench["target_scenario_matrix"]["unsupported_count"]
+    assert mobile_readiness["final_state"]["offline_queued_events"] == len(mobile_workbench["offline_queue"]["queued_events"])
+    assert mobile_readiness["final_state"]["offline_replays"] == len(mobile_apis)
     assert mobile_workbench["readiness"]["ok"] is True
     assert mobile_workbench["readiness"]["final_state"]["background_checkpoints"] >= 1
     assert len(mobile_workbench["device_component_module_artifacts"]) == len(mobile_apis)
@@ -5294,6 +5309,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
         "replay_device_scenarios",
+        "replay_offline_device_queue",
         "replay_target_scenario_matrix",
         "replay_designer_and_capabilities",
     )
@@ -17679,6 +17695,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "permission_state_machine",
         "deep_link_routing",
         "app_lifecycle_delivery",
+        "offline_device_event_queue",
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
         "device_scenario_matrix",
@@ -17765,10 +17782,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "revocation_is_runtime_visible" in generated_mobile["permission_state_machine"]["guards"]
     assert "fallback_if_blocked" in generated_mobile["deep_link_routing"]["pipeline"]
     assert "pending_events_replayed_on_resume" in generated_mobile["app_lifecycle_delivery"]["guards"]
+    generated_offline_queue = form_designer.mobile_offline_device_event_queue_contract()
+    assert generated_offline_queue["format"] == "appgen.generated-mobile-offline-device-event-queue-contract.v1"
+    assert generated_offline_queue["ok"] is True
+    assert {"offline_envelopes_are_durable", "offline_queue_drains_in_order", "offline_replay_is_idempotent"} <= {
+        check["id"] for check in generated_offline_queue["checks"] if check["ok"]
+    }
+    assert all("idempotency_key" in item["envelope"] for item in generated_mobile["offline_queue"]["queued_events"])
     assert all("assert_events" in item["replay_order"] for item in generated_mobile["simulator_fixture_integrity"]["fixtures"])
     assert generated_mobile["runtime_replay"]["ok"] is True
     assert generated_mobile_apis == {item["api"] for item in generated_mobile["runtime_replay"]["replay"]}
     assert all("invoke_target_bridge" in item["phases"] for item in generated_mobile["runtime_replay"]["replay"])
+    assert all("drain_offline_queue" in item["phases"] for item in generated_mobile["runtime_replay"]["replay"])
+    assert generated_mobile["runtime_replay"]["offline_queue"]["ok"] is True
     assert all(item["ok"] for item in generated_mobile["runtime_replay"]["bridge_recovery"])
     assert generated_mobile["scenario_matrix"]["ok"] is True
     assert generated_mobile["scenario_matrix"]["scenario_count"] == len(generated_mobile_apis)
@@ -17826,6 +17852,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "fallback_lifecycle_ready",
         "runtime_delivery_ready",
         "device_scenarios_ready",
+        "offline_queue_ready",
         "target_scenario_matrix_ready",
         "designer_capability_ready",
         "operation_surface_ready",
@@ -17836,6 +17863,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile_readiness["final_state"]["device_scenarios"] == len(generated_mobile_apis)
     assert generated_mobile_readiness["final_state"]["target_scenarios"] == generated_mobile["target_scenario_matrix"]["row_count"]
     assert generated_mobile_readiness["final_state"]["unsupported_target_fallbacks"] == generated_mobile["target_scenario_matrix"]["unsupported_count"]
+    assert generated_mobile_readiness["final_state"]["offline_queued_events"] == len(generated_mobile["offline_queue"]["queued_events"])
+    assert generated_mobile_readiness["final_state"]["offline_replays"] == len(generated_mobile_apis)
     assert generated_mobile["readiness"]["ok"] is True
     assert generated_mobile["readiness"]["final_state"]["background_checkpoints"] >= 1
     assert len(generated_mobile["device_component_module_artifacts"]) == len(generated_mobile_apis)
