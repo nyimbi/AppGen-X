@@ -2226,3 +2226,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   service/route/UI/agent smokes, focused package contract tests, source artifact
   contract, implementation release audit, generation smoke audit, specification
   contract, and restricted legacy-name scan all passed. Commit: `20bf64a`.
+- Current `notifications` PBC pass promotes declared orchestration surfaces
+  into executable package-local operations: campaign creation, notification
+  scheduling, transactional request creation, provider route override,
+  delivery receipt capture, bounce capture, audit publication, deliverability
+  analytics publication, delivery-window forecasting, channel-routing
+  simulation, localized variant recommendation, recipient fatigue analysis,
+  campaign readiness review, and transactional history review. Runtime,
+  package exports, route/service descriptors, UI bindings, specification, and
+  focused tests now prove those flows without stream-engine choices or
+  shared-table access. Verification: package Python compile, runtime smoke,
+  package service/route/UI/agent smokes, focused package contract tests, source
+  artifact contract, implementation release audit, generation smoke audit,
+  specification contract, and restricted legacy-name scan all passed. Commit:
+  `10d4316`.
