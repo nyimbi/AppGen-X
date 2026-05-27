@@ -54,8 +54,23 @@ def register_routes(app=None):
 def api_route_contracts() -> dict:
     """Return executable API route contracts with policy and boundary evidence."""
     service_contracts = service_operation_contracts()["contracts"]
-    operation_index = {item["operation"]: item for item in service_contracts}
-    contracts = tuple({**contract, "service_operation": operation_index.get(contract["operation"]), "route_id": f"{contract['method']} {contract['path']}"} for contract in API_ROUTE_CONTRACTS)
+    contracts = tuple(
+        {
+            **contract,
+            "service_operation": next(
+                (
+                    item
+                    for item in service_contracts
+                    if item["operation"] == contract["operation"]
+                    and item["method"] == contract["method"]
+                    and f"/api/pbc/{PBC_KEY}{item['path']}" == contract["path"]
+                ),
+                None,
+            ),
+            "route_id": f"{contract['method']} {contract['path']}",
+        }
+        for contract in API_ROUTE_CONTRACTS
+    )
     return {
         "ok": bool(contracts)
         and all(item["event_contract"] == "AppGen-X" for item in contracts)

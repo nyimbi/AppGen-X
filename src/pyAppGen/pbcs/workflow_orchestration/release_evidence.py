@@ -2,23 +2,28 @@
 
 from __future__ import annotations
 
+from .runtime import workflow_orchestration_build_api_contract
 from .runtime import workflow_orchestration_build_release_evidence
-from .schema_contract import build_schema_contract
-from .service_contract import build_service_contract
+from .runtime import workflow_orchestration_build_schema_contract
+from .runtime import workflow_orchestration_build_service_contract
+from .runtime import workflow_orchestration_permissions_contract
 
+PBC_KEY = "workflow_orchestration"
 
 RELEASE_EVIDENCE = {
     **workflow_orchestration_build_release_evidence(),
-    "pbc": "workflow_orchestration",
+    "pbc": PBC_KEY,
+    "schema": workflow_orchestration_build_schema_contract(),
+    "service": workflow_orchestration_build_service_contract(),
+    "api": workflow_orchestration_build_api_contract(),
+    "permissions": workflow_orchestration_permissions_contract(),
 }
 
 
 def build_release_evidence() -> dict:
     """Return generated release audit evidence for this PBC."""
     evidence = dict(RELEASE_EVIDENCE)
-    evidence.setdefault("schema", build_schema_contract())
-    evidence.setdefault("service", build_service_contract())
-    evidence.setdefault("pbc", "workflow_orchestration")
+    evidence.setdefault("pbc", PBC_KEY)
     return evidence
 
 
@@ -29,7 +34,7 @@ def release_readiness_manifest() -> dict:
     checks = tuple(evidence.get("checks", ()))
     return {
         "ok": evidence.get("ok") is True and bool(checks),
-        "pbc": "workflow_orchestration",
+        "pbc": PBC_KEY,
         "format": evidence.get("format"),
         "sections": sections,
         "checks": checks,
@@ -63,7 +68,7 @@ def validate_release_evidence() -> dict:
         and not missing_sections
         and not failed_checks
         and not boundary_gaps,
-        "pbc": "workflow_orchestration",
+        "pbc": PBC_KEY,
         "manifest": manifest,
         "missing_sections": missing_sections,
         "failed_checks": failed_checks,
