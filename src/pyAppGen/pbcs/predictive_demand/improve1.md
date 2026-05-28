@@ -1,315 +1,315 @@
-# Predictive Demand Forecasting PBC Improvement Backlog
+# Predictive Demand PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `predictive_demand`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `predictive_demand`. Each improvement is specific to demand forecasting, demand sensing, consensus planning, shortage prediction, replenishment guidance, and governed forecasting operations so the PBC can move toward complete specialist-grade domain coverage.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Time-series prediction for demand, depletion, cash flow, and resource constraints.
-- Representative owned tables: `predictive_demand_forecast_model`, `predictive_demand_forecast_run`, `predictive_demand_demand_signal`, `predictive_demand_forecast_result`, `predictive_demand_planning_horizon`, `predictive_demand_forecast_driver`, `predictive_demand_consensus_adjustment`, `predictive_demand_scenario_version`, `predictive_demand_shortage_risk`, `predictive_demand_replenishment_recommendation`, `predictive_demand_forecast_exception`, `predictive_demand_model_drift_signal`, ...
-- Representative operations/APIs: `command_forecast_models`, `command_forecast_runs`, `command_demand_signals`, `command_forecast_results`, `command_planning_horizons`, `command_forecast_drivers`, `command_consensus_adjustments`, `command_scenario_versions`, `command_shortage_risks`, `command_replenishment_recommendations`, `command_forecast_exceptions`, `command_model_drift_signals`, ...
-- Representative events: `ForecastUpdated`, `MaterialShortageDetected`.
-- Representative advanced capabilities: `event_sourced_demand_signal_lifecycle`, `owned_planning_schema_boundary`, `multi_tenant_planning_isolation`, `schema_evolution_resilient_demand_context`, `forecast_model_registry`, `demand_signal_ingestion`, `event_driven_signal_projection`, `forecast_run_orchestration`, `forecast_result_publication`, `inventory_shortage_detection`, ...
+- Domain scope: demand planning, forecast modeling, inventory coverage analysis, shortage detection, consensus planning, governed demand-intelligence workbenches, and AppGen-X event-driven signal projection.
+- Owned planning surface: `forecast_model`, `forecast_run`, `demand_signal`, `forecast_result`, `planning_horizon`, `forecast_driver`, `consensus_adjustment`, `scenario_version`, `shortage_risk`, `replenishment_recommendation`, `forecast_exception`, `model_drift_signal`, `planning_rule`, `planning_parameter`, `governed_model_evidence`, and `forecast_audit_proof`.
+- Declared operations: model registration, signal ingestion, forecast-run orchestration, result publication, planning horizons, causal drivers, consensus adjustments, scenarios, shortage risks, replenishment recommendations, exceptions, model drift, governed model evidence, audit proofs, workbench views, and owned-table boundary verification.
+- Declared integrations: consumed `OrderShipped`, `OperationalKpiChanged`, and `InventoryPoolChanged` events plus shipment, inventory-pool, and operational-KPI projections through AppGen-X contracts only.
+- Declared advanced posture: event-sourced demand signals, multi-tenant planning isolation, schema-evolution-safe demand context, probabilistic confidence bands, causal-driver modeling, temporal replenishment forecasting, consensus controls, service-level safety stock, shortage alerts, governed model evidence, cryptographic forecast proofs, retry/dead-letter evidence, permissions, rules, parameters, UI fragments, and release audits.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `predictive_demand_forecast_model`
+### 1. Canonical demand signal identity and deduplication
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** Predictive demand quality depends on trustworthy signal identity; shipments, inventory movements, operational KPIs, manual overrides, promotion data, and customer demand indicators can otherwise be double-counted, stale, or incorrectly merged.
 
-**Improvement:** Extend `predictive_demand_forecast_model` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `forecast_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a canonical signal identity service to `demand_signal` that records source-system identity, business identity, event-time, received-time, sequence number, confidence, replacement policy, deduplication hash, and supersession links. The workbench should expose duplicate clusters, late-arrival decisions, replay impact, and agent-assisted merge recommendations before signals enter forecast runs.
 
-### 2. Deep specialist lifecycle semantics for `predictive_demand_forecast_run`
+### 2. Demand signal quality scoring
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** A forecast can only be as reliable as its inputs, yet the current package does not score each demand signal for completeness, freshness, credibility, sparsity, outlier risk, and business relevance.
 
-**Improvement:** Extend `predictive_demand_forecast_run` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `forecast_runs`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Introduce signal-quality dimensions with configurable thresholds per signal type, SKU family, location, and planning horizon. Every ingested signal should carry a quality score, failed checks, remediation tasks, and release evidence proving that low-quality signals are quarantined, down-weighted, or escalated rather than silently influencing forecasts.
 
-### 3. Deep specialist lifecycle semantics for `predictive_demand_demand_signal`
+### 3. Demand stream lineage graph
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** Planners need to explain exactly which source events, projections, manual inputs, and transformations contributed to a published forecast result.
 
-**Improvement:** Extend `predictive_demand_demand_signal` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `demand_signals`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a lineage graph that links `forecast_result` back to `forecast_run`, `forecast_model`, `demand_signal`, `forecast_driver`, `consensus_adjustment`, and relevant AppGen-X inbox events. UI fragments should provide trace navigation, evidence export, and natural-language explanations of how each signal affected the final forecast.
 
-### 4. Deep specialist lifecycle semantics for `predictive_demand_forecast_result`
+### 4. Multi-granularity hierarchy reconciliation
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** Real demand planning operates simultaneously across SKU, product family, channel, customer segment, region, warehouse, and time hierarchies; forecasts must reconcile without contradictions across levels.
 
-**Improvement:** Extend `predictive_demand_forecast_result` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `forecast_results`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add hierarchy definitions, bottom-up/top-down/middle-out reconciliation methods, proportional allocation rules, residual handling, and variance evidence to `planning_horizon` and `forecast_result`. The workbench should show reconciliation waterfalls and flag impossible aggregates where child forecasts exceed parent constraints.
 
-### 5. Deep specialist lifecycle semantics for `predictive_demand_planning_horizon`
+### 5. Horizon-specific model selection
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** Short-term demand sensing, medium-term replenishment planning, and long-term capacity planning require different algorithms, signal weights, and confidence semantics.
 
-**Improvement:** Extend `predictive_demand_planning_horizon` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `planning_horizons`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `forecast_model` and `planning_horizon` so model selection is horizon-aware, with separate model families for intraday, daily, weekly, monthly, seasonal, and strategic horizons. Forecast runs should record why a model was selected, what alternatives were rejected, and whether the horizon demands sensing, statistical forecasting, causal forecasting, or simulation.
 
-### 6. Deep specialist lifecycle semantics for `predictive_demand_forecast_driver`
+### 6. Probabilistic forecast distribution storage
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** Point forecasts are inadequate for shortage, service-level, and replenishment decisions because planners need distributions, quantiles, skew, and tail exposure.
 
-**Improvement:** Extend `predictive_demand_forecast_driver` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `forecast_drivers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Replace simple confidence bands with full probabilistic distributions on `forecast_result`, including P10/P25/P50/P75/P90/P95 values, interval calibration evidence, distribution family, and tail-risk annotations. APIs and UI should allow downstream PBCs to request service-level-specific demand quantities without reading internal tables.
 
-### 7. Deep specialist lifecycle semantics for `predictive_demand_consensus_adjustment`
+### 7. Confidence calibration backtesting
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** A confidence interval is only useful if it is empirically calibrated; otherwise planners may trust uncertainty numbers that systematically understate risk.
 
-**Improvement:** Extend `predictive_demand_consensus_adjustment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `consensus_adjustments`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add rolling backtests that compare realized demand to forecast intervals by SKU, location, horizon, model version, and signal set. Store calibration curves, coverage failures, bias by quantile, and remediation recommendations in governed model evidence, and surface failing intervals in the forecast workbench.
 
-### 8. Deep specialist lifecycle semantics for `predictive_demand_scenario_version`
+### 8. Forecast value added measurement
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** Demand teams need to know whether model output, planner overrides, consensus adjustments, and external signals improve accuracy or merely add noise.
 
-**Improvement:** Extend `predictive_demand_scenario_version` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `scenario_versions`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add forecast value added metrics for every planning step: naive baseline, statistical model, causal model, demand sensing adjustment, planner override, consensus version, and published forecast. The PBC should quantify incremental accuracy, bias, latency, and cost so low-value interventions can be removed or redesigned.
 
-### 9. Deep specialist lifecycle semantics for `predictive_demand_shortage_risk`
+### 9. Bias decomposition and root-cause classification
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** Forecast error often hides structural bias caused by promotions, stockouts, new products, regional effects, calendar shifts, or planner incentives.
 
-**Improvement:** Extend `predictive_demand_shortage_risk` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `shortage_risks`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add bias decomposition by product, location, customer segment, channel, forecast horizon, signal type, planner, and model version. Each persistent bias should open a `forecast_exception` with root-cause hypotheses, required evidence, owner assignment, and prevention controls.
 
-### 10. Deep specialist lifecycle semantics for `predictive_demand_replenishment_recommendation`
+### 10. Stockout-corrected unconstrained demand estimation
 
-**Justification:** This owned table is part of the Predictive Demand Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Time-series prediction for demand, depletion, cash flow, and resource constraints.
+**Justification:** Sales or shipment history underestimates true demand when inventory was unavailable, producing forecasts that perpetuate shortages.
 
-**Improvement:** Extend `predictive_demand_replenishment_recommendation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `replenishment_recommendations`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build stockout correction using declared inventory-pool projections and shortage events to estimate lost sales, censored demand, and unconstrained demand. Forecast runs should separately store observed demand, constrained demand, imputed lost demand, and unconstrained forecast quantities with confidence and evidence.
 
-### 11. Make `command_forecast_models` a complete command lifecycle
+### 11. Promotion and price elasticity modeling
 
-**Justification:** High-value users need `command_forecast_models` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Promotions, discounts, price changes, bundles, and markdowns can dominate demand patterns and must be modeled as causal drivers rather than treated as unexplained noise.
 
-**Improvement:** Implement `command_forecast_models` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add driver definitions for promotion mechanics, depth, duration, media intensity, price index, competitor response, and halo effects. Forecast drivers should calculate elasticity estimates, lift curves, post-promotion dips, and uncertainty, while preserving boundaries through declared price and promotion projections.
 
-### 12. Make `command_forecast_runs` a complete command lifecycle
+### 12. Cannibalization and halo effect graph
 
-**Justification:** High-value users need `command_forecast_runs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Demand for one item can reduce or increase demand for substitutes, bundles, accessories, and adjacent categories; isolated SKU forecasts misstate total demand.
 
-**Improvement:** Implement `command_forecast_runs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaterialShortageDetected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Introduce a cannibalization/halo graph with relationship type, strength, direction, horizon, evidence source, and confidence. Scenario versions should simulate portfolio-level demand changes, identify net-new versus transferred demand, and explain expected effects to planners.
 
-### 13. Make `command_demand_signals` a complete command lifecycle
+### 13. Substitution-aware demand planning
 
-**Justification:** High-value users need `command_demand_signals` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** When a product is unavailable, customers may switch to substitutes, defer purchase, or abandon demand, and each behavior changes replenishment decisions.
 
-**Improvement:** Implement `command_demand_signals` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add substitution behavior models that use inventory availability, product relationships, customer segment, channel, and historical substitution evidence. Forecast results should expose expected primary demand, substitute demand, lost demand, and replenishment recommendations for each alternative.
 
-### 14. Make `command_forecast_results` a complete command lifecycle
+### 14. New product introduction forecasting
 
-**Justification:** High-value users need `command_forecast_results` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** New products lack demand history but still require launch forecasts, allocation planning, replenishment policies, and early course correction.
 
-**Improvement:** Implement `command_forecast_results` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaterialShortageDetected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add NPI forecast templates with analog item selection, launch curve libraries, attribute similarity, channel launch calendars, sell-in versus sell-through separation, early signal gates, and launch-confidence decay. The UI should support planner review of analogs, assumptions, and post-launch recalibration.
 
-### 15. Make `command_planning_horizons` a complete command lifecycle
+### 15. End-of-life and lifecycle curve forecasting
 
-**Justification:** High-value users need `command_planning_horizons` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Mature, declining, seasonal, replacement, and discontinued items need different demand behavior and inventory risk treatment than active-growth products.
 
-**Improvement:** Implement `command_planning_horizons` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add lifecycle states, phase-specific curves, successor/predecessor links, runout targets, residual demand estimates, obsolescence exposure, and final-buy recommendations. Forecast results should distinguish demand to satisfy, demand to discourage, and demand that should trigger substitution or clearance actions.
 
-### 16. Make `command_forecast_drivers` a complete command lifecycle
+### 16. Intermittent and sparse demand methods
 
-**Justification:** High-value users need `command_forecast_drivers` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Spare parts, specialty items, project demand, and long-tail SKUs have irregular demand patterns that conventional smoothing methods handle poorly.
 
-**Improvement:** Implement `command_forecast_drivers` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaterialShortageDetected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add intermittent-demand model families, zero-inflation detection, demand-size and demand-interval separation, lumpy-demand classification, and service-part policies. Forecast result distributions should show probability of any demand, expected demand size, and recommended stocking logic.
 
-### 17. Make `command_consensus_adjustments` a complete command lifecycle
+### 17. Event-driven demand sensing
 
-**Justification:** High-value users need `command_consensus_adjustments` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Short-horizon demand often changes faster than batch planning cycles; the PBC already consumes AppGen-X events but needs a demand-sensing layer that reacts to new signals.
 
-**Improvement:** Implement `command_consensus_adjustments` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add low-latency demand sensing runs triggered by high-confidence signal changes, late orders, inventory pool movements, operational KPI shifts, promotion changes, and anomaly events. Sensing updates should create versioned deltas, planner alerts, and safe downstream publication controls.
 
-### 18. Make `command_scenario_versions` a complete command lifecycle
+### 18. Late-arriving signal replay
 
-**Justification:** High-value users need `command_scenario_versions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Real event streams contain delayed, corrected, and out-of-order signals; ignoring them creates silent forecast drift and untraceable planning decisions.
 
-**Improvement:** Implement `command_scenario_versions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaterialShortageDetected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add replay windows, watermark policies, retroactive run reconstruction, superseded forecast versions, and downstream notification rules for late signals. The workbench should show whether a late signal changes published recommendations, only audit evidence, or future baselines.
 
-### 19. Make `command_shortage_risks` a complete command lifecycle
+### 19. Forecast version governance
 
-**Justification:** High-value users need `command_shortage_risks` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Demand organizations need separate baseline, statistical, consensus, executive, scenario, and published versions with explicit ownership and approval.
 
-**Improvement:** Implement `command_shortage_risks` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add version families, version lineage, freeze windows, approval state, effective planning cycle, and immutable publication evidence. UI should show side-by-side versions, diffs, approval history, and policy violations for attempted edits after freeze.
 
-### 20. Make `command_replenishment_recommendations` a complete command lifecycle
+### 20. Consensus planning workflow depth
 
-**Justification:** High-value users need `command_replenishment_recommendations` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Consensus planning is more than a single adjustment; it involves sales, operations, finance, supply, marketing, and executive negotiation under policy controls.
 
-**Improvement:** Implement `command_replenishment_recommendations` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaterialShortageDetected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `consensus_adjustment` into structured proposals with rationale categories, stakeholder role, affected hierarchy level, quantified impact, confidence, dependency, approval path, and dispute state. The PBC agent should facilitate consensus by summarizing conflicts, evidence, and unresolved risks.
 
-### 21. Operationalize `event_sourced_demand_signal_lifecycle` as a governed decision system
+### 21. Planner override guardrails
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves prediction quality without hiding assumptions.
+**Justification:** Overrides can improve forecasts but can also inject bias, gaming, or untraceable decisions when not constrained and measured.
 
-**Improvement:** Promote `event_sourced_demand_signal_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `prediction_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add override thresholds, required rationale, historical planner impact, peer review triggers, freeze-window controls, and automatic backtesting of accepted overrides. The UI should show override risk, expected effect on service level and inventory, and whether the agent recommends accept, revise, or escalate.
 
-### 22. Operationalize `owned_planning_schema_boundary` as a governed decision system
+### 22. Scenario simulation workbench
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves drift score without hiding assumptions.
+**Justification:** Planners need to test demand shocks, promotions, capacity constraints, supply disruptions, market-entry changes, and macro assumptions before committing changes.
 
-**Improvement:** Promote `owned_planning_schema_boundary` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `drift_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `scenario_version` into a full simulation surface with scenario assumptions, changed drivers, affected hierarchy scope, baseline comparison, probabilistic outcomes, shortage exposure, replenishment impact, and approval evidence. Simulations should be side-effect-free until explicitly promoted.
 
-### 23. Operationalize `multi_tenant_planning_isolation` as a governed decision system
+### 23. Causal driver registry
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves decision latency without hiding assumptions.
+**Justification:** Forecast drivers must be governed business objects with meaning, validity, strength, and applicability rather than arbitrary numeric weights.
 
-**Improvement:** Promote `multi_tenant_planning_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `decision_latency`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add driver taxonomy, applicability rules, effect direction, lag structure, saturation behavior, interaction terms, source projection, and model-evidence links to `forecast_driver`. The workbench should show causal assumptions, observed support, and competing explanations.
 
-### 24. Operationalize `schema_evolution_resilient_demand_context` as a governed decision system
+### 24. Weather, event, and calendar effects
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves risk precision without hiding assumptions.
+**Justification:** Local weather, holidays, school calendars, paydays, public events, and trading-day effects often explain major short-term demand swings.
 
-**Improvement:** Promote `schema_evolution_resilient_demand_context` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `risk_precision`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add event/calendar driver surfaces with geospatial relevance, lead/lag windows, intensity, recurrence, and confidence. Forecast runs should show how much demand was attributed to each calendar or external event and support planner overrides when local knowledge contradicts the model.
 
-### 25. Operationalize `forecast_model_registry` as a governed decision system
+### 25. Customer segment demand projection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves forecast updated throughput without hiding assumptions.
+**Justification:** Aggregate demand can hide materially different behavior across customer cohorts, contract types, loyalty tiers, geographies, or business segments.
 
-**Improvement:** Promote `forecast_model_registry` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `forecast_updated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add segment-aware forecast slices through declared customer and order projections, with privacy-safe aggregation thresholds and no shared customer-table reads. Forecast outputs should expose segment contribution, segment-specific uncertainty, and risks from segment mix shifts.
 
-### 26. Operationalize `demand_signal_ingestion` as a governed decision system
+### 26. Channel and fulfillment-mode separation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves material shortage detected throughput without hiding assumptions.
+**Justification:** Store, online, marketplace, wholesale, subscription, rental, pickup, delivery, and drop-ship demand follow different patterns and require different actions.
 
-**Improvement:** Promote `demand_signal_ingestion` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `material_shortage_detected_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add channel and fulfillment-mode dimensions to demand signals, models, and results, with reconciliation to product/location hierarchies. The UI should show channel transfer effects, cross-channel cannibalization, and channel-specific service-level recommendations.
 
-### 27. Operationalize `event_driven_signal_projection` as a governed decision system
+### 27. Demand shaping recommendations
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves prediction quality without hiding assumptions.
+**Justification:** Advanced planning should not only predict demand; it should recommend actions to shape demand toward supply, margin, service, and sustainability goals.
 
-**Improvement:** Promote `event_driven_signal_projection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `prediction_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add recommendations for promotion timing, allocation throttles, substitution nudges, channel steering, pre-order campaigns, backorder messaging, and demand deferral. Each recommendation should include expected demand movement, customer impact, policy constraints, confidence, and handoff events for commerce or pricing PBCs.
 
-### 28. Operationalize `forecast_run_orchestration` as a governed decision system
+### 28. Replenishment-policy coupling
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves drift score without hiding assumptions.
+**Justification:** Demand forecasts become operationally valuable only when translated into reorder points, safety stock, order quantities, and replenishment timing.
 
-**Improvement:** Promote `forecast_run_orchestration` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `drift_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `replenishment_recommendation` with policy type, lead-time assumptions, service level, lot-size constraints, review cadence, supplier/calendar constraints, minimum order quantities, inventory coverage, and sensitivity to forecast uncertainty. Recommendations must remain projections and API outputs, not direct writes into inventory or procurement tables.
 
-### 29. Operationalize `forecast_result_publication` as a governed decision system
+### 29. Shortage-risk early warning system
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves decision latency without hiding assumptions.
+**Justification:** Shortage detection after demand outstrips coverage is too late; the PBC should predict risk windows before customer promises or production schedules fail.
 
-**Improvement:** Promote `forecast_result_publication` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `decision_latency`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `shortage_risk` with lead-time horizon, affected demand segment, risk probability, expected lost demand, confidence, mitigation options, escalation owner, and event publication rules. The workbench should show shortage-risk heatmaps and recommended actions by urgency and value at risk.
 
-### 30. Operationalize `inventory_shortage_detection` as a governed decision system
+### 30. Demand anomaly triage
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Predictive Demand Forecasting and measurably improves risk precision without hiding assumptions.
+**Justification:** Demand spikes, drops, repeated zeroes, abnormal returns, bot demand, and one-off projects require different treatment than ordinary forecast errors.
 
-**Improvement:** Promote `inventory_shortage_detection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `risk_precision`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add anomaly categories, triage workflows, quarantine decisions, forecast treatment, and root-cause outcomes. The agent should explain whether an anomaly should be included, excluded, down-weighted, converted into an event driver, or escalated to fraud, commerce, inventory, or operations PBCs through declared contracts.
 
-### 31. Create simulation-grade governance for `PREDICTIVE_DEMAND_DATABASE_URL` and `PREDICTIVE_DEMAND_DATABASE_URL`
+### 31. Model drift surveillance
 
-**Justification:** Complete Predictive Demand Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Demand models degrade as markets, products, seasons, channels, and customer behavior change; drift needs active governance.
 
-**Improvement:** Add a policy cockpit where `PREDICTIVE_DEMAND_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PREDICTIVE_DEMAND_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Extend `model_drift_signal` with feature drift, target drift, residual drift, concept drift, calibration drift, data-quality drift, severity, and retraining recommendations. Release evidence should prove drift monitoring exists for every active model and horizon.
 
-### 32. Create simulation-grade governance for `PREDICTIVE_DEMAND_EVENT_TOPIC` and `PREDICTIVE_DEMAND_EVENT_TOPIC`
+### 32. Forecast model champion/challenger governance
 
-**Justification:** Complete Predictive Demand Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Organizations need controlled model evolution without risking planning stability when new algorithms are introduced.
 
-**Improvement:** Add a policy cockpit where `PREDICTIVE_DEMAND_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PREDICTIVE_DEMAND_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add champion/challenger model comparisons, shadow forecasts, rollout gates, statistical significance checks, operational impact estimates, and rollback plans. The UI should compare accuracy, bias, calibration, runtime cost, interpretability, and downstream shortage/replenishment outcomes.
 
-### 33. Create simulation-grade governance for `PREDICTIVE_DEMAND_RETRY_LIMIT` and `PREDICTIVE_DEMAND_RETRY_LIMIT`
+### 33. Explainable forecast decomposition
 
-**Justification:** Complete Predictive Demand Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Planners and executives need to understand why a forecast changed, not just see the new number.
 
-**Improvement:** Add a policy cockpit where `PREDICTIVE_DEMAND_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PREDICTIVE_DEMAND_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add decomposition output showing baseline, trend, seasonality, lifecycle, promotion, price, weather, event, stockout correction, override, consensus adjustment, and residual components. Every published forecast should include human-readable and machine-readable explanations.
 
-### 34. Create simulation-grade governance for `PREDICTIVE_DEMAND_DATABASE_URL` and `PREDICTIVE_DEMAND_DATABASE_URL`
+### 34. Forecast exception case management
 
-**Justification:** Complete Predictive Demand Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Forecast exceptions need ownership, deadlines, escalation, evidence, and closure criteria rather than a generic flag.
 
-**Improvement:** Add a policy cockpit where `PREDICTIVE_DEMAND_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PREDICTIVE_DEMAND_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Expand `forecast_exception` into a full case lifecycle with severity, reason code, impacted value, assigned role, due date, linked signals, linked forecasts, remediation actions, root cause, recurrence marker, and closure proof. The UI should support exception queues, SLA timers, and agent-drafted remediation plans.
 
-### 35. Create simulation-grade governance for `PREDICTIVE_DEMAND_EVENT_TOPIC` and `PREDICTIVE_DEMAND_EVENT_TOPIC`
+### 35. Planning calendar and freeze governance
 
-**Justification:** Complete Predictive Demand Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Forecast cycles depend on cutoffs, freeze periods, collaboration windows, publication deadlines, and downstream consumption schedules.
 
-**Improvement:** Add a policy cockpit where `PREDICTIVE_DEMAND_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PREDICTIVE_DEMAND_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add planning-calendar records with cycle names, freeze windows, allowed roles, allowed changes, release dates, and downstream dependency events. Commands should reject or escalate changes that violate frozen periods and record policy explanations.
 
-### 36. Upgrade `PredictiveDemandWorkbench` into a full specialist command center
+### 36. Demand plan publication contracts
 
-**Justification:** The PBC UI must expose the complete Predictive Demand Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Downstream PBCs require stable, typed, versioned forecast outputs rather than ad hoc result reads.
 
-**Improvement:** Expand `PredictiveDemandWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Define explicit AppGen-X API and event payloads for published forecast versions, shortage alerts, replenishment recommendations, demand-shaping recommendations, and forecast exception updates. Include compatibility tests, schema-version evidence, and consumer-facing documentation generated from the PBC.
 
-### 37. Upgrade `PredictiveDemandDetail` into a full specialist command center
+### 37. Cross-PBC boundary proof harness
 
-**Justification:** The PBC UI must expose the complete Predictive Demand Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Predictive demand must use APIs/events/projections for orders, inventory, pricing, promotions, customer, operations, and procurement context without leaking into shared tables.
 
-**Improvement:** Expand `PredictiveDemandDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add release-audit tests that scan generated models, services, routes, workbench descriptors, agent skills, and DSL output for unauthorized table references. Boundary evidence should list every external dependency, its contract type, and the exact forecast function that consumes it.
 
-### 38. Upgrade `PredictiveDemandWorkbench` into a full specialist command center
+### 38. Semantic demand-document ingestion
 
-**Justification:** The PBC UI must expose the complete Predictive Demand Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Demand inputs often arrive as spreadsheets, account plans, marketing briefs, customer forecasts, allocation files, and executive instructions.
 
-**Improvement:** Expand `PredictiveDemandWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add document intake skills that parse demand documents into proposed signals, drivers, scenarios, overrides, or planning parameters with provenance and confidence. The agent must show a preview, validation issues, affected forecasts, and reversible mutations before creating records.
 
-### 39. Upgrade `PredictiveDemandDetail` into a full specialist command center
+### 39. Forecast-agent command skills
 
-**Justification:** The PBC UI must expose the complete Predictive Demand Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** The PBC agent should be able to help planners accomplish domain work, not merely answer help questions.
 
-**Improvement:** Expand `PredictiveDemandDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Define first-class agent skills for ingesting signals, explaining forecast changes, creating scenarios, comparing versions, opening exceptions, recommending replenishment, detecting shortage risk, and drafting consensus summaries. Skills should use typed command previews, RBAC checks, human confirmation, and audit trails.
 
-### 40. Upgrade `PredictiveDemandWorkbench` into a full specialist command center
+### 40. Forecast workbench role specialization
 
-**Justification:** The PBC UI must expose the complete Predictive Demand Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Demand planners, sales leaders, supply planners, finance users, executives, and model governors need different views over the same forecast evidence.
 
-**Improvement:** Expand `PredictiveDemandWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand UI fragments into role-specific workbenches: demand-planner queue, consensus studio, model-governance lab, shortage command center, replenishment board, scenario studio, and executive forecast review. Each view should expose the full relevant capability surface without requiring users to inspect raw runtime artifacts.
 
-### 41. Prove cross-PBC federation for `POST /forecast-models` and `OperationalKpiChanged`
+### 41. Accuracy metric library
 
-**Justification:** Predictive Demand Forecasting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** No single accuracy metric fits all demand patterns, horizons, and business costs.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /forecast-models` and consumed event `OperationalKpiChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add metric definitions for WAPE, MAPE, sMAPE, MASE, bias, service-level miss rate, stockout-adjusted error, interval coverage, pinball loss, and value-weighted error. Planning rules should choose appropriate metrics by demand class and prevent misleading scorecards.
 
-### 42. Prove cross-PBC federation for `POST /forecast-runs` and `OrderShipped`
+### 42. Demand classification engine
 
-**Justification:** Predictive Demand Forecasting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Forecasting methods and policies should change based on demand profile: stable, seasonal, trending, lumpy, intermittent, new, declining, promotional, or event-driven.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /forecast-runs` and consumed event `OrderShipped` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add demand classification to forecast runs and models, with classification evidence, confidence, transition history, and recommended model families. The workbench should flag when a product/location has changed class and needs different planning treatment.
 
-### 43. Prove cross-PBC federation for `POST /demand-signals` and `InventoryPoolChanged`
+### 43. Demand data privacy and aggregation controls
 
-**Justification:** Predictive Demand Forecasting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Demand signals can reveal sensitive customer, region, contract, or strategic information, especially when segmented or event-driven.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /demand-signals` and consumed event `InventoryPoolChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add aggregation thresholds, sensitive segment flags, tenant isolation proofs, masking rules, and privacy-aware explanation output. APIs should suppress or coarsen forecast slices that violate configured privacy and confidentiality policies.
 
-### 44. Prove cross-PBC federation for `POST /forecast-results` and `OperationalKpiChanged`
+### 44. Carbon-aware demand planning
 
-**Justification:** Predictive Demand Forecasting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Forecast decisions influence production, fulfillment, replenishment, and transport emissions, so demand planning should expose sustainability tradeoffs.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /forecast-results` and consumed event `OperationalKpiChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add carbon impact estimates to scenario versions, replenishment recommendations, and demand-shaping proposals using declared projections. Planners should compare service level, margin, shortage exposure, and emissions impact before publishing a demand plan.
 
-### 45. Temporal reconstruction and bitemporal audit for Predictive Demand Forecasting
+### 45. Forecast compute cost governance
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Advanced forecasting can become expensive and slow across many SKUs, locations, horizons, and scenarios.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add runtime cost estimates, model execution budgets, run prioritization, cache reuse, incremental recomputation, and SLA monitoring. The workbench should show which forecast runs are expensive, stale, blocked, or safe to defer.
 
-### 46. Bulk operations and migration-grade controls for Predictive Demand Forecasting
+### 46. Planning rule and parameter impact simulator
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Rule or parameter changes can alter thousands of forecasts, shortages, and recommendations, so planners need impact evidence before activating them.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add side-effect-free impact simulations for `planning_rule` and `planning_parameter` changes, including affected forecast count, accuracy expectation, bias risk, shortage exposure, service-level impact, and workbench diffs. The agent should explain the blast radius before requesting approval.
 
-### 47. Specialist edge-case playbooks for Predictive Demand Forecasting
+### 47. Cryptographic forecast evidence packets
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Forecast outputs influence financial, operational, and customer commitments; auditors need tamper-evident proof of inputs, model version, parameters, and decisions.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Expand `forecast_audit_proof` into sealed evidence packets containing signal hashes, model hashes, rule/parameter versions, forecast outputs, approval events, and publication signatures. Provide verification APIs that prove integrity without exposing sensitive demand detail.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Predictive Demand Forecasting
+### 48. Dead-letter and replay operations for forecasting events
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Failed event handling can leave demand baselines stale or silently incomplete, especially when consumed signals are core forecast inputs.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Build a dead-letter operations console with failure taxonomy, retry readiness, replay simulation, duplicate detection, downstream impact analysis, and safe replay commands. Every replay should produce inbox/outbox evidence and forecast-version impact notes.
 
-### 49. Continuous control testing and operational assurance for Predictive Demand Forecasting
+### 49. End-to-end release evidence for every planning capability
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** The PBC claims many advanced capabilities; release audits must prove each one has schema, service, route, event, UI, agent, rule, parameter, and test evidence.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add a capability evidence matrix that maps every declared Predictive Demand capability to owned tables, commands, route descriptors, event contracts, workbench panels, agent skills, tests, smoke audits, and boundary checks. Release audits should fail when any capability lacks executable evidence.
 
-### 50. Human-in-the-loop domain agent execution for Predictive Demand Forecasting
+### 50. Full predictive-demand operating cockpit
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class PBC must surface the entire demand-planning operating model, not scatter critical actions across disconnected fragments.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Build an integrated cockpit that combines signal health, active forecast cycles, version status, consensus conflicts, exceptions, model drift, shortage risk, replenishment recommendations, scenario comparisons, publication readiness, event health, and audit evidence. The cockpit should let users drill into every capability and let the PBC agent execute approved, reversible domain actions from the same surface.
