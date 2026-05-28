@@ -1,10 +1,16 @@
-PBC_KEY = 'construction_contracts_commercials'
+from __future__ import annotations
+
+from .core import seed_plan as _seed_plan
+from .core import validate_seed_data as _validate_seed_data
+
 
 def seed_plan():
-    return {'ok': True, 'pbc': PBC_KEY, 'records': ({'table': CONSTRUCTION_CONTRACTS_COMMERCIALS_BUSINESS_TABLES[0] if False else 'construction_contracts_commercials_construction_contract', 'code': 'SEED'},), 'side_effects': ()}
+    return _seed_plan()
+
 
 def validate_seed_data():
-    return {'ok': True, 'pbc': PBC_KEY, 'side_effects': ()}
+    return _validate_seed_data()
+
 
 def smoke_test():
-    return {'ok': seed_plan()['ok'] and validate_seed_data()['ok'], 'side_effects': ()}
+    return {"ok": seed_plan()["ok"] and validate_seed_data()["ok"], "side_effects": ()}

@@ -1,15 +1,26 @@
-PBC_KEY = 'construction_contracts_commercials'
-PERMISSIONS = ('construction_contracts_commercials.read',
- 'construction_contracts_commercials.create',
- 'construction_contracts_commercials.update',
- 'construction_contracts_commercials.approve',
- 'construction_contracts_commercials.admin')
+from __future__ import annotations
+
+from .core import PERMISSIONS, PBC_KEY, construction_contracts_commercials_authorize, construction_contracts_commercials_permissions_contract
+
 
 def permission_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': PERMISSIONS, 'roles': ('operator','approver','auditor'), 'side_effects': ()}
+    contract = construction_contracts_commercials_permissions_contract()
+    return {
+        "ok": contract["ok"],
+        "pbc": PBC_KEY,
+        "permissions": PERMISSIONS,
+        "roles": tuple(role["role"] for role in contract["roles"]),
+        "role_contracts": contract["roles"],
+        "side_effects": (),
+    }
+
 
 def authorize(permission, actor=None):
-    return {'ok': permission in PERMISSIONS or permission == f'{PBC_KEY}.operate', 'permission': permission, 'actor': dict(actor or {}), 'side_effects': ()}
+    return construction_contracts_commercials_authorize(permission, actor=actor)
+
 
 def smoke_test():
-    return {'ok': permission_manifest()['ok'] and authorize(PERMISSIONS[0])['ok'], 'side_effects': ()}
+    return {
+        "ok": permission_manifest()["ok"] and authorize("construction_contracts_commercials.read", {"roles": ("auditor",)})["ok"],
+        "side_effects": (),
+    }
