@@ -58,3 +58,31 @@ def test_new_enterprise_pbc_specs_are_not_generic_stubs():
         assert 'AI Agent and Skills' in text, key
         assert 'Release Evidence and Tests' in text, key
         assert text.count('- `') >= 45, key
+
+
+def test_new_enterprise_pbc_ui_surfaces_every_domain_capability():
+    for key in NEW_ENTERPRISE_PBC_KEYS:
+        domain_module = importlib.import_module(f'pyAppGen.pbcs.{key}.domain_depth')
+        ui_module = importlib.import_module(f'pyAppGen.pbcs.{key}.ui')
+        domain = domain_module.domain_capability_surface_contract()
+        ui = getattr(ui_module, f'{key}_ui_contract')()
+        workbench = getattr(ui_module, f'{key}_render_workbench')()
+        full = ui['full_capability_surface']
+
+        assert domain['ok'] is True, key
+        assert ui['ok'] is True, key
+        assert workbench['ok'] is True, key
+        assert set(full['operation_actions']) == set(domain_module.DOMAIN_OPERATIONS), key
+        assert set(full['rule_editors']) == set(domain_module.DOMAIN_RULES), key
+        assert set(full['parameter_editors']) == set(domain_module.DOMAIN_PARAMETERS), key
+        assert set(full['advanced_panels']) == set(domain_module.DOMAIN_ADVANCED_CAPABILITIES), key
+        assert set(full['table_browsers']) == set(domain_module.DOMAIN_OWNED_TABLES), key
+        assert set(workbench['operation_actions']) == set(domain_module.DOMAIN_OPERATIONS), key
+        assert set(workbench['table_browsers']) == set(domain_module.DOMAIN_OWNED_TABLES), key
+        assert len(full['edge_case_queues']) >= len(domain_module.DOMAIN_OPERATIONS), key
+        assert len(full['agent_tools']) == len(domain_module.DOMAIN_OPERATIONS), key
+        assert 'edge_case_triage' in full['navigation_sections'], key
+        assert 'advanced_intelligence' in full['navigation_sections'], key
+        assert full['coverage']['event_contract'] == 'AppGen-X', key
+        assert full['coverage']['stream_engine_picker_visible'] is False, key
+        assert full['coverage']['shared_table_access'] is False, key
