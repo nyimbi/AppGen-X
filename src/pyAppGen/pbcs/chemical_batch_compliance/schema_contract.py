@@ -1,0 +1,1 @@
+from .runtime import chemical_batch_compliance_build_schema_contract as build_schema_contract

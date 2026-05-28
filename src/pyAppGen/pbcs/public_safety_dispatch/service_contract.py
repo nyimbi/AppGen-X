@@ -1,0 +1,1 @@
+from .runtime import public_safety_dispatch_build_service_contract as build_service_contract

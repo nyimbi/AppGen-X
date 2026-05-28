@@ -10,7 +10,24 @@ SUSTAINABILITY_ESG_REPORTING_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql',
 SUSTAINABILITY_ESG_REPORTING_REQUIRED_EVENT_TOPIC = 'pbc.sustainability_esg_reporting.events'
 SUSTAINABILITY_ESG_REPORTING_EMITTED_EVENT_TYPES = ('CarbonLedgerPosted', 'EsgMetricPublished', 'SustainabilityReportFiled', 'SupplierDisclosureReceived')
 SUSTAINABILITY_ESG_REPORTING_CONSUMED_EVENT_TYPES = ('SupplierQualified', 'TravelBooked', 'AssetPlacedInService')
-SUSTAINABILITY_ESG_REPORTING_STANDARD_FEATURE_KEYS = ('emissions_factor_management', 'sustainability_esg_reporting_workflow', 'sustainability_esg_reporting_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+SUSTAINABILITY_ESG_REPORTING_STANDARD_FEATURE_KEYS = ('emissions_factor_management',
+ 'sustainability_esg_reporting_workflow',
+ 'sustainability_esg_reporting_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 SUSTAINABILITY_ESG_REPORTING_RUNTIME_CAPABILITY_KEYS = ('sustainability_esg_reporting_event_sourced_operational_history', 'sustainability_esg_reporting_multi_tenant_policy_isolation', 'sustainability_esg_reporting_schema_evolution_resilience', 'sustainability_esg_reporting_autonomous_anomaly_detection', 'sustainability_esg_reporting_semantic_document_instruction_understanding', 'sustainability_esg_reporting_predictive_risk_scoring', 'sustainability_esg_reporting_counterfactual_scenario_simulation', 'sustainability_esg_reporting_cryptographic_audit_proofs', 'sustainability_esg_reporting_continuous_control_testing', 'sustainability_esg_reporting_carbon_and_sustainability_awareness', 'sustainability_esg_reporting_cross_pbc_event_federation', 'sustainability_esg_reporting_governed_ai_agent_execution')
 SUSTAINABILITY_ESG_REPORTING_UI_FRAGMENT_KEYS = ('SustainabilityEsgReportingWorkbench', 'SustainabilityEsgReportingDetail', 'SustainabilityEsgReportingAssistantPanel')
 SUSTAINABILITY_ESG_REPORTING_BUSINESS_TABLES = ('sustainability_esg_reporting_emissions_factor', 'sustainability_esg_reporting_activity_data', 'sustainability_esg_reporting_carbon_ledger_entry', 'sustainability_esg_reporting_esg_metric', 'sustainability_esg_reporting_supplier_disclosure', 'sustainability_esg_reporting_assurance_evidence', 'sustainability_esg_reporting_sustainability_report', 'sustainability_esg_reporting_regulatory_submission')

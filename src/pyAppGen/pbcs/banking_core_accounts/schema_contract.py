@@ -1,0 +1,1 @@
+from .runtime import banking_core_accounts_build_schema_contract as build_schema_contract

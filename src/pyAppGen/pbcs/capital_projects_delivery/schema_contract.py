@@ -1,0 +1,1 @@
+from .runtime import capital_projects_delivery_build_schema_contract as build_schema_contract

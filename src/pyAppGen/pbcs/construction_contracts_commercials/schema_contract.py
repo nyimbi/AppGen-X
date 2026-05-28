@@ -1,0 +1,1 @@
+from .runtime import construction_contracts_commercials_build_schema_contract as build_schema_contract

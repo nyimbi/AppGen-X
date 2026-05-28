@@ -1,0 +1,1 @@
+from .runtime import laboratory_information_management_build_service_contract as build_service_contract

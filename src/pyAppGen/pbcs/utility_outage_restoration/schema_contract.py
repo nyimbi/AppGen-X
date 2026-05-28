@@ -1,0 +1,1 @@
+from .runtime import utility_outage_restoration_build_schema_contract as build_schema_contract

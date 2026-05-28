@@ -10,7 +10,24 @@ DATA_PRODUCT_CATALOG_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariad
 DATA_PRODUCT_CATALOG_REQUIRED_EVENT_TOPIC = 'pbc.data_product_catalog.events'
 DATA_PRODUCT_CATALOG_EMITTED_EVENT_TYPES = ('DataProductPublished', 'DataContractChanged', 'DataAccessApproved', 'QualitySlaBreached')
 DATA_PRODUCT_CATALOG_CONSUMED_EVENT_TYPES = ('SchemaPublished', 'PolicyChanged', 'SearchIndexRefreshed')
-DATA_PRODUCT_CATALOG_STANDARD_FEATURE_KEYS = ('data_product_management', 'data_product_catalog_workflow', 'data_product_catalog_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+DATA_PRODUCT_CATALOG_STANDARD_FEATURE_KEYS = ('data_product_management',
+ 'data_product_catalog_workflow',
+ 'data_product_catalog_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 DATA_PRODUCT_CATALOG_RUNTIME_CAPABILITY_KEYS = ('data_product_catalog_event_sourced_operational_history', 'data_product_catalog_multi_tenant_policy_isolation', 'data_product_catalog_schema_evolution_resilience', 'data_product_catalog_autonomous_anomaly_detection', 'data_product_catalog_semantic_document_instruction_understanding', 'data_product_catalog_predictive_risk_scoring', 'data_product_catalog_counterfactual_scenario_simulation', 'data_product_catalog_cryptographic_audit_proofs', 'data_product_catalog_continuous_control_testing', 'data_product_catalog_carbon_and_sustainability_awareness', 'data_product_catalog_cross_pbc_event_federation', 'data_product_catalog_governed_ai_agent_execution')
 DATA_PRODUCT_CATALOG_UI_FRAGMENT_KEYS = ('DataProductCatalogWorkbench', 'DataProductCatalogDetail', 'DataProductCatalogAssistantPanel')
 DATA_PRODUCT_CATALOG_BUSINESS_TABLES = ('data_product_catalog_data_product', 'data_product_catalog_data_product_owner', 'data_product_catalog_data_contract', 'data_product_catalog_data_quality_sla', 'data_product_catalog_lineage_edge', 'data_product_catalog_data_access_request', 'data_product_catalog_data_governance_rule', 'data_product_catalog_data_publication_workflow')

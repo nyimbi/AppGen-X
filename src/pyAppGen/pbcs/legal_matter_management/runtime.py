@@ -10,7 +10,24 @@ LEGAL_MATTER_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mar
 LEGAL_MATTER_MANAGEMENT_REQUIRED_EVENT_TOPIC = 'pbc.legal_matter_management.events'
 LEGAL_MATTER_MANAGEMENT_EMITTED_EVENT_TYPES = ('LegalMatterOpened', 'LegalHoldIssued', 'MatterBudgetApproved', 'CounselInvoiceReviewed')
 LEGAL_MATTER_MANAGEMENT_CONSUMED_EVENT_TYPES = ('ContractApproved', 'InvoiceApproved', 'RiskAssessed')
-LEGAL_MATTER_MANAGEMENT_STANDARD_FEATURE_KEYS = ('legal_matter_management', 'legal_matter_management_workflow', 'legal_matter_management_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+LEGAL_MATTER_MANAGEMENT_STANDARD_FEATURE_KEYS = ('legal_matter_management',
+ 'legal_matter_management_workflow',
+ 'legal_matter_management_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 LEGAL_MATTER_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = ('legal_matter_management_event_sourced_operational_history', 'legal_matter_management_multi_tenant_policy_isolation', 'legal_matter_management_schema_evolution_resilience', 'legal_matter_management_autonomous_anomaly_detection', 'legal_matter_management_semantic_document_instruction_understanding', 'legal_matter_management_predictive_risk_scoring', 'legal_matter_management_counterfactual_scenario_simulation', 'legal_matter_management_cryptographic_audit_proofs', 'legal_matter_management_continuous_control_testing', 'legal_matter_management_carbon_and_sustainability_awareness', 'legal_matter_management_cross_pbc_event_federation', 'legal_matter_management_governed_ai_agent_execution')
 LEGAL_MATTER_MANAGEMENT_UI_FRAGMENT_KEYS = ('LegalMatterManagementWorkbench', 'LegalMatterManagementDetail', 'LegalMatterManagementAssistantPanel')
 LEGAL_MATTER_MANAGEMENT_BUSINESS_TABLES = ('legal_matter_management_legal_matter', 'legal_matter_management_outside_counsel', 'legal_matter_management_matter_budget', 'legal_matter_management_matter_document', 'legal_matter_management_legal_deadline', 'legal_matter_management_legal_hold', 'legal_matter_management_counsel_invoice', 'legal_matter_management_matter_outcome')

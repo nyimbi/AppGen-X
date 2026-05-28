@@ -10,7 +10,24 @@ CUSTOMER_SUCCESS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 
 CUSTOMER_SUCCESS_MANAGEMENT_REQUIRED_EVENT_TOPIC = 'pbc.customer_success_management.events'
 CUSTOMER_SUCCESS_MANAGEMENT_EMITTED_EVENT_TYPES = ('CustomerHealthChanged', 'RenewalPlanCreated', 'ExpansionSignalDetected', 'ChurnRiskRaised')
 CUSTOMER_SUCCESS_MANAGEMENT_CONSUMED_EVENT_TYPES = ('CustomerUpdated', 'SubscriptionRenewed', 'ServiceTicketResolved')
-CUSTOMER_SUCCESS_MANAGEMENT_STANDARD_FEATURE_KEYS = ('customer_success_account_management', 'customer_success_management_workflow', 'customer_success_management_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+CUSTOMER_SUCCESS_MANAGEMENT_STANDARD_FEATURE_KEYS = ('customer_success_account_management',
+ 'customer_success_management_workflow',
+ 'customer_success_management_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = ('customer_success_management_event_sourced_operational_history', 'customer_success_management_multi_tenant_policy_isolation', 'customer_success_management_schema_evolution_resilience', 'customer_success_management_autonomous_anomaly_detection', 'customer_success_management_semantic_document_instruction_understanding', 'customer_success_management_predictive_risk_scoring', 'customer_success_management_counterfactual_scenario_simulation', 'customer_success_management_cryptographic_audit_proofs', 'customer_success_management_continuous_control_testing', 'customer_success_management_carbon_and_sustainability_awareness', 'customer_success_management_cross_pbc_event_federation', 'customer_success_management_governed_ai_agent_execution')
 CUSTOMER_SUCCESS_MANAGEMENT_UI_FRAGMENT_KEYS = ('CustomerSuccessManagementWorkbench', 'CustomerSuccessManagementDetail', 'CustomerSuccessManagementAssistantPanel')
 CUSTOMER_SUCCESS_MANAGEMENT_BUSINESS_TABLES = ('customer_success_management_customer_success_account', 'customer_success_management_customer_health_score', 'customer_success_management_onboarding_plan', 'customer_success_management_adoption_signal', 'customer_success_management_renewal_plan', 'customer_success_management_expansion_signal', 'customer_success_management_success_playbook', 'customer_success_management_churn_risk_case')

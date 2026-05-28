@@ -10,7 +10,24 @@ PROFESSIONAL_SERVICES_AUTOMATION_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mys
 PROFESSIONAL_SERVICES_AUTOMATION_REQUIRED_EVENT_TOPIC = 'pbc.professional_services_automation.events'
 PROFESSIONAL_SERVICES_AUTOMATION_EMITTED_EVENT_TYPES = ('EngagementOpened', 'BillingMilestoneReady', 'UtilizationMeasured', 'EngagementMarginUpdated')
 PROFESSIONAL_SERVICES_AUTOMATION_CONSUMED_EVENT_TYPES = ('ContractApproved', 'TimeSubmitted', 'InvoiceIssued')
-PROFESSIONAL_SERVICES_AUTOMATION_STANDARD_FEATURE_KEYS = ('client_engagement_management', 'professional_services_automation_workflow', 'professional_services_automation_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+PROFESSIONAL_SERVICES_AUTOMATION_STANDARD_FEATURE_KEYS = ('client_engagement_management',
+ 'professional_services_automation_workflow',
+ 'professional_services_automation_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 PROFESSIONAL_SERVICES_AUTOMATION_RUNTIME_CAPABILITY_KEYS = ('professional_services_automation_event_sourced_operational_history', 'professional_services_automation_multi_tenant_policy_isolation', 'professional_services_automation_schema_evolution_resilience', 'professional_services_automation_autonomous_anomaly_detection', 'professional_services_automation_semantic_document_instruction_understanding', 'professional_services_automation_predictive_risk_scoring', 'professional_services_automation_counterfactual_scenario_simulation', 'professional_services_automation_cryptographic_audit_proofs', 'professional_services_automation_continuous_control_testing', 'professional_services_automation_carbon_and_sustainability_awareness', 'professional_services_automation_cross_pbc_event_federation', 'professional_services_automation_governed_ai_agent_execution')
 PROFESSIONAL_SERVICES_AUTOMATION_UI_FRAGMENT_KEYS = ('ProfessionalServicesAutomationWorkbench', 'ProfessionalServicesAutomationDetail', 'ProfessionalServicesAutomationAssistantPanel')
 PROFESSIONAL_SERVICES_AUTOMATION_BUSINESS_TABLES = ('professional_services_automation_client_engagement', 'professional_services_automation_statement_of_work', 'professional_services_automation_engagement_staffing', 'professional_services_automation_delivery_milestone', 'professional_services_automation_billable_time_entry', 'professional_services_automation_billing_milestone', 'professional_services_automation_utilization_snapshot', 'professional_services_automation_engagement_margin')

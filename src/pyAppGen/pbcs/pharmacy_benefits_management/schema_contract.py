@@ -1,0 +1,1 @@
+from .runtime import pharmacy_benefits_management_build_schema_contract as build_schema_contract

@@ -10,7 +10,24 @@ ENTERPRISE_RISK_CONTROLS_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'ma
 ENTERPRISE_RISK_CONTROLS_REQUIRED_EVENT_TOPIC = 'pbc.enterprise_risk_controls.events'
 ENTERPRISE_RISK_CONTROLS_EMITTED_EVENT_TYPES = ('RiskAssessed', 'ControlTested', 'RemediationOpened', 'ControlAttested')
 ENTERPRISE_RISK_CONTROLS_CONSUMED_EVENT_TYPES = ('PolicyChanged', 'AuditProofGenerated', 'AccessPolicyChanged')
-ENTERPRISE_RISK_CONTROLS_STANDARD_FEATURE_KEYS = ('risk_register_management', 'enterprise_risk_controls_workflow', 'enterprise_risk_controls_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+ENTERPRISE_RISK_CONTROLS_STANDARD_FEATURE_KEYS = ('risk_register_management',
+ 'enterprise_risk_controls_workflow',
+ 'enterprise_risk_controls_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 ENTERPRISE_RISK_CONTROLS_RUNTIME_CAPABILITY_KEYS = ('enterprise_risk_controls_event_sourced_operational_history', 'enterprise_risk_controls_multi_tenant_policy_isolation', 'enterprise_risk_controls_schema_evolution_resilience', 'enterprise_risk_controls_autonomous_anomaly_detection', 'enterprise_risk_controls_semantic_document_instruction_understanding', 'enterprise_risk_controls_predictive_risk_scoring', 'enterprise_risk_controls_counterfactual_scenario_simulation', 'enterprise_risk_controls_cryptographic_audit_proofs', 'enterprise_risk_controls_continuous_control_testing', 'enterprise_risk_controls_carbon_and_sustainability_awareness', 'enterprise_risk_controls_cross_pbc_event_federation', 'enterprise_risk_controls_governed_ai_agent_execution')
 ENTERPRISE_RISK_CONTROLS_UI_FRAGMENT_KEYS = ('EnterpriseRiskControlsWorkbench', 'EnterpriseRiskControlsDetail', 'EnterpriseRiskControlsAssistantPanel')
 ENTERPRISE_RISK_CONTROLS_BUSINESS_TABLES = ('enterprise_risk_controls_risk_register', 'enterprise_risk_controls_risk_assessment', 'enterprise_risk_controls_control_library', 'enterprise_risk_controls_control_test', 'enterprise_risk_controls_control_attestation', 'enterprise_risk_controls_remediation_issue', 'enterprise_risk_controls_policy_control_mapping', 'enterprise_risk_controls_audit_evidence_packet')

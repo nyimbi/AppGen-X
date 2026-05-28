@@ -1,0 +1,1 @@
+from .runtime import electronic_health_records_core_build_schema_contract as build_schema_contract

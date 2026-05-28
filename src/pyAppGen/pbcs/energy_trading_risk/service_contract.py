@@ -1,0 +1,1 @@
+from .runtime import energy_trading_risk_build_service_contract as build_service_contract

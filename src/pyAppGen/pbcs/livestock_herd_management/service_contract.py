@@ -1,0 +1,1 @@
+from .runtime import livestock_herd_management_build_service_contract as build_service_contract

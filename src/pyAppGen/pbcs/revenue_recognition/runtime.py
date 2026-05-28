@@ -10,7 +10,24 @@ REVENUE_RECOGNITION_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb
 REVENUE_RECOGNITION_REQUIRED_EVENT_TOPIC = 'pbc.revenue_recognition.events'
 REVENUE_RECOGNITION_EMITTED_EVENT_TYPES = ('RevenueRecognized', 'RevenueScheduleCreated', 'RecognitionPolicyChanged', 'ContractModificationAssessed')
 REVENUE_RECOGNITION_CONSUMED_EVENT_TYPES = ('ContractApproved', 'InvoiceIssued', 'PaymentCaptured')
-REVENUE_RECOGNITION_STANDARD_FEATURE_KEYS = ('revenue_contract_management', 'revenue_recognition_workflow', 'revenue_recognition_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+REVENUE_RECOGNITION_STANDARD_FEATURE_KEYS = ('revenue_contract_management',
+ 'revenue_recognition_workflow',
+ 'revenue_recognition_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 REVENUE_RECOGNITION_RUNTIME_CAPABILITY_KEYS = ('revenue_recognition_event_sourced_operational_history', 'revenue_recognition_multi_tenant_policy_isolation', 'revenue_recognition_schema_evolution_resilience', 'revenue_recognition_autonomous_anomaly_detection', 'revenue_recognition_semantic_document_instruction_understanding', 'revenue_recognition_predictive_risk_scoring', 'revenue_recognition_counterfactual_scenario_simulation', 'revenue_recognition_cryptographic_audit_proofs', 'revenue_recognition_continuous_control_testing', 'revenue_recognition_carbon_and_sustainability_awareness', 'revenue_recognition_cross_pbc_event_federation', 'revenue_recognition_governed_ai_agent_execution')
 REVENUE_RECOGNITION_UI_FRAGMENT_KEYS = ('RevenueRecognitionWorkbench', 'RevenueRecognitionDetail', 'RevenueRecognitionAssistantPanel')
 REVENUE_RECOGNITION_BUSINESS_TABLES = ('revenue_recognition_revenue_contract', 'revenue_recognition_performance_obligation', 'revenue_recognition_transaction_price_allocation', 'revenue_recognition_contract_modification', 'revenue_recognition_revenue_schedule', 'revenue_recognition_revenue_event', 'revenue_recognition_compliance_evidence', 'revenue_recognition_recognition_policy')

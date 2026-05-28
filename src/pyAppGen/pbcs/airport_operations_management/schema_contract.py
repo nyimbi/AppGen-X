@@ -1,0 +1,1 @@
+from .runtime import airport_operations_management_build_schema_contract as build_schema_contract

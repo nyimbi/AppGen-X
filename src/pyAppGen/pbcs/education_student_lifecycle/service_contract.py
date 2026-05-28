@@ -1,0 +1,1 @@
+from .runtime import education_student_lifecycle_build_service_contract as build_service_contract

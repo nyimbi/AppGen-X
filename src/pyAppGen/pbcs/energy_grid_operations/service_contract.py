@@ -1,0 +1,1 @@
+from .runtime import energy_grid_operations_build_service_contract as build_service_contract

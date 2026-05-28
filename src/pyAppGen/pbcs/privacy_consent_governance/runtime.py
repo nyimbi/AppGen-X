@@ -10,7 +10,24 @@ PRIVACY_CONSENT_GOVERNANCE_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', '
 PRIVACY_CONSENT_GOVERNANCE_REQUIRED_EVENT_TOPIC = 'pbc.privacy_consent_governance.events'
 PRIVACY_CONSENT_GOVERNANCE_EMITTED_EVENT_TYPES = ('ConsentRecorded', 'PrivacyRequestOpened', 'RetentionPolicyChanged', 'PrivacyAssessmentCompleted')
 PRIVACY_CONSENT_GOVERNANCE_CONSUMED_EVENT_TYPES = ('CustomerUpdated', 'AccessPolicyChanged', 'AuditProofGenerated')
-PRIVACY_CONSENT_GOVERNANCE_STANDARD_FEATURE_KEYS = ('data_subject_profile_management', 'privacy_consent_governance_workflow', 'privacy_consent_governance_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+PRIVACY_CONSENT_GOVERNANCE_STANDARD_FEATURE_KEYS = ('data_subject_profile_management',
+ 'privacy_consent_governance_workflow',
+ 'privacy_consent_governance_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 PRIVACY_CONSENT_GOVERNANCE_RUNTIME_CAPABILITY_KEYS = ('privacy_consent_governance_event_sourced_operational_history', 'privacy_consent_governance_multi_tenant_policy_isolation', 'privacy_consent_governance_schema_evolution_resilience', 'privacy_consent_governance_autonomous_anomaly_detection', 'privacy_consent_governance_semantic_document_instruction_understanding', 'privacy_consent_governance_predictive_risk_scoring', 'privacy_consent_governance_counterfactual_scenario_simulation', 'privacy_consent_governance_cryptographic_audit_proofs', 'privacy_consent_governance_continuous_control_testing', 'privacy_consent_governance_carbon_and_sustainability_awareness', 'privacy_consent_governance_cross_pbc_event_federation', 'privacy_consent_governance_governed_ai_agent_execution')
 PRIVACY_CONSENT_GOVERNANCE_UI_FRAGMENT_KEYS = ('PrivacyConsentGovernanceWorkbench', 'PrivacyConsentGovernanceDetail', 'PrivacyConsentGovernanceAssistantPanel')
 PRIVACY_CONSENT_GOVERNANCE_BUSINESS_TABLES = ('privacy_consent_governance_data_subject_profile', 'privacy_consent_governance_consent_record', 'privacy_consent_governance_processing_purpose', 'privacy_consent_governance_retention_policy', 'privacy_consent_governance_privacy_request', 'privacy_consent_governance_disclosure_log', 'privacy_consent_governance_privacy_impact_assessment', 'privacy_consent_governance_privacy_compliance_evidence')

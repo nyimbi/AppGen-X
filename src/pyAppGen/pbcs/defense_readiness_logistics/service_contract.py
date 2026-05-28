@@ -1,0 +1,1 @@
+from .runtime import defense_readiness_logistics_build_service_contract as build_service_contract

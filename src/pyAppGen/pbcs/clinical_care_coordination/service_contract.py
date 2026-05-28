@@ -1,0 +1,1 @@
+from .runtime import clinical_care_coordination_build_service_contract as build_service_contract

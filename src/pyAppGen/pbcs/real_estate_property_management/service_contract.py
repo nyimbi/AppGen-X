@@ -1,0 +1,1 @@
+from .runtime import real_estate_property_management_build_service_contract as build_service_contract

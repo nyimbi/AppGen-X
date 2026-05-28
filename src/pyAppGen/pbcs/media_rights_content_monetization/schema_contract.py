@@ -1,0 +1,1 @@
+from .runtime import media_rights_content_monetization_build_schema_contract as build_schema_contract

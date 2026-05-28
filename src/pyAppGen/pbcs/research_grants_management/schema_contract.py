@@ -1,0 +1,1 @@
+from .runtime import research_grants_management_build_schema_contract as build_schema_contract

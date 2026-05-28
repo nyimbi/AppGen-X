@@ -1,0 +1,1 @@
+from .runtime import land_real_estate_development_build_schema_contract as build_schema_contract

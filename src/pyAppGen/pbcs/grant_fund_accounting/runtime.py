@@ -10,7 +10,24 @@ GRANT_FUND_ACCOUNTING_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'maria
 GRANT_FUND_ACCOUNTING_REQUIRED_EVENT_TOPIC = 'pbc.grant_fund_accounting.events'
 GRANT_FUND_ACCOUNTING_EMITTED_EVENT_TYPES = ('GrantAwarded', 'ReimbursementClaimPrepared', 'FundRestrictionApplied', 'GrantComplianceReported')
 GRANT_FUND_ACCOUNTING_CONSUMED_EVENT_TYPES = ('JournalPosted', 'ExpenseApproved', 'PaymentCaptured')
-GRANT_FUND_ACCOUNTING_STANDARD_FEATURE_KEYS = ('grant_award_management', 'grant_fund_accounting_workflow', 'grant_fund_accounting_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+GRANT_FUND_ACCOUNTING_STANDARD_FEATURE_KEYS = ('grant_award_management',
+ 'grant_fund_accounting_workflow',
+ 'grant_fund_accounting_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 GRANT_FUND_ACCOUNTING_RUNTIME_CAPABILITY_KEYS = ('grant_fund_accounting_event_sourced_operational_history', 'grant_fund_accounting_multi_tenant_policy_isolation', 'grant_fund_accounting_schema_evolution_resilience', 'grant_fund_accounting_autonomous_anomaly_detection', 'grant_fund_accounting_semantic_document_instruction_understanding', 'grant_fund_accounting_predictive_risk_scoring', 'grant_fund_accounting_counterfactual_scenario_simulation', 'grant_fund_accounting_cryptographic_audit_proofs', 'grant_fund_accounting_continuous_control_testing', 'grant_fund_accounting_carbon_and_sustainability_awareness', 'grant_fund_accounting_cross_pbc_event_federation', 'grant_fund_accounting_governed_ai_agent_execution')
 GRANT_FUND_ACCOUNTING_UI_FRAGMENT_KEYS = ('GrantFundAccountingWorkbench', 'GrantFundAccountingDetail', 'GrantFundAccountingAssistantPanel')
 GRANT_FUND_ACCOUNTING_BUSINESS_TABLES = ('grant_fund_accounting_grant_award', 'grant_fund_accounting_fund_restriction', 'grant_fund_accounting_grant_budget', 'grant_fund_accounting_donor_rule', 'grant_fund_accounting_allowable_cost', 'grant_fund_accounting_reimbursement_claim', 'grant_fund_accounting_grant_compliance_report', 'grant_fund_accounting_fund_audit_trail')

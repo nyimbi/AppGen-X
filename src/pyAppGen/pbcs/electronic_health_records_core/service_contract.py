@@ -1,0 +1,1 @@
+from .runtime import electronic_health_records_core_build_service_contract as build_service_contract

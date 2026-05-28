@@ -1,0 +1,1 @@
+from .runtime import education_student_lifecycle_build_schema_contract as build_schema_contract

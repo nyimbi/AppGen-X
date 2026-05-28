@@ -1,0 +1,1 @@
+from .runtime import aviation_maintenance_repair_build_schema_contract as build_schema_contract

@@ -1,0 +1,1 @@
+from .runtime import tax_administration_public_sector_build_schema_contract as build_schema_contract

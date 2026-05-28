@@ -1,0 +1,1 @@
+from .runtime import lease_lending_equipment_finance_build_schema_contract as build_schema_contract

@@ -1,0 +1,1 @@
+from .runtime import medical_device_lifecycle_build_schema_contract as build_schema_contract

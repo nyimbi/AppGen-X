@@ -1,0 +1,1 @@
+from .runtime import cybersecurity_operations_center_build_schema_contract as build_schema_contract

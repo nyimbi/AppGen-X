@@ -1,0 +1,1 @@
+from .runtime import media_rights_content_monetization_build_service_contract as build_service_contract

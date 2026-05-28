@@ -1,0 +1,1 @@
+from .runtime import building_information_modeling_ops_build_schema_contract as build_schema_contract

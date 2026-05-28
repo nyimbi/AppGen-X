@@ -1,0 +1,1 @@
+from .runtime import banking_core_accounts_build_service_contract as build_service_contract

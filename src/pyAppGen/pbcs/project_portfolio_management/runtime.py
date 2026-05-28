@@ -10,7 +10,24 @@ PROJECT_PORTFOLIO_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql',
 PROJECT_PORTFOLIO_MANAGEMENT_REQUIRED_EVENT_TOPIC = 'pbc.project_portfolio_management.events'
 PROJECT_PORTFOLIO_MANAGEMENT_EMITTED_EVENT_TYPES = ('ProjectApproved', 'MilestoneCompleted', 'ProjectRiskRaised', 'BenefitRealized')
 PROJECT_PORTFOLIO_MANAGEMENT_CONSUMED_EVENT_TYPES = ('BudgetApproved', 'EmployeeProvisioned', 'ProcurementApproved')
-PROJECT_PORTFOLIO_MANAGEMENT_STANDARD_FEATURE_KEYS = ('portfolio_management', 'project_portfolio_management_workflow', 'project_portfolio_management_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+PROJECT_PORTFOLIO_MANAGEMENT_STANDARD_FEATURE_KEYS = ('portfolio_management',
+ 'project_portfolio_management_workflow',
+ 'project_portfolio_management_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 PROJECT_PORTFOLIO_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = ('project_portfolio_management_event_sourced_operational_history', 'project_portfolio_management_multi_tenant_policy_isolation', 'project_portfolio_management_schema_evolution_resilience', 'project_portfolio_management_autonomous_anomaly_detection', 'project_portfolio_management_semantic_document_instruction_understanding', 'project_portfolio_management_predictive_risk_scoring', 'project_portfolio_management_counterfactual_scenario_simulation', 'project_portfolio_management_cryptographic_audit_proofs', 'project_portfolio_management_continuous_control_testing', 'project_portfolio_management_carbon_and_sustainability_awareness', 'project_portfolio_management_cross_pbc_event_federation', 'project_portfolio_management_governed_ai_agent_execution')
 PROJECT_PORTFOLIO_MANAGEMENT_UI_FRAGMENT_KEYS = ('ProjectPortfolioManagementWorkbench', 'ProjectPortfolioManagementDetail', 'ProjectPortfolioManagementAssistantPanel')
 PROJECT_PORTFOLIO_MANAGEMENT_BUSINESS_TABLES = ('project_portfolio_management_portfolio', 'project_portfolio_management_program', 'project_portfolio_management_project', 'project_portfolio_management_project_milestone', 'project_portfolio_management_project_budget', 'project_portfolio_management_resource_assignment', 'project_portfolio_management_project_risk', 'project_portfolio_management_benefit_realization')

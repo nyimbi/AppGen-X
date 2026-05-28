@@ -10,7 +10,24 @@ VENDOR_SUPPLIER_360_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb
 VENDOR_SUPPLIER_360_REQUIRED_EVENT_TOPIC = 'pbc.vendor_supplier_360.events'
 VENDOR_SUPPLIER_360_EMITTED_EVENT_TYPES = ('SupplierQualified', 'SupplierRiskChanged', 'SupplierBankValidated', 'SupplierOnboarded')
 VENDOR_SUPPLIER_360_CONSUMED_EVENT_TYPES = ('PurchaseOrderCreated', 'PaymentRejected', 'CompliancePolicyChanged')
-VENDOR_SUPPLIER_360_STANDARD_FEATURE_KEYS = ('supplier_profile_management', 'vendor_supplier_360_workflow', 'vendor_supplier_360_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+VENDOR_SUPPLIER_360_STANDARD_FEATURE_KEYS = ('supplier_profile_management',
+ 'vendor_supplier_360_workflow',
+ 'vendor_supplier_360_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 VENDOR_SUPPLIER_360_RUNTIME_CAPABILITY_KEYS = ('vendor_supplier_360_event_sourced_operational_history', 'vendor_supplier_360_multi_tenant_policy_isolation', 'vendor_supplier_360_schema_evolution_resilience', 'vendor_supplier_360_autonomous_anomaly_detection', 'vendor_supplier_360_semantic_document_instruction_understanding', 'vendor_supplier_360_predictive_risk_scoring', 'vendor_supplier_360_counterfactual_scenario_simulation', 'vendor_supplier_360_cryptographic_audit_proofs', 'vendor_supplier_360_continuous_control_testing', 'vendor_supplier_360_carbon_and_sustainability_awareness', 'vendor_supplier_360_cross_pbc_event_federation', 'vendor_supplier_360_governed_ai_agent_execution')
 VENDOR_SUPPLIER_360_UI_FRAGMENT_KEYS = ('VendorSupplier360Workbench', 'VendorSupplier360Detail', 'VendorSupplier360AssistantPanel')
 VENDOR_SUPPLIER_360_BUSINESS_TABLES = ('vendor_supplier_360_supplier_profile', 'vendor_supplier_360_supplier_site', 'vendor_supplier_360_supplier_certification', 'vendor_supplier_360_supplier_bank_validation', 'vendor_supplier_360_supplier_risk_signal', 'vendor_supplier_360_supplier_esg_disclosure', 'vendor_supplier_360_supplier_scorecard', 'vendor_supplier_360_supplier_onboarding_case')

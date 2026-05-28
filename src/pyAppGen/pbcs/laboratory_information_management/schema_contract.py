@@ -1,0 +1,1 @@
+from .runtime import laboratory_information_management_build_schema_contract as build_schema_contract

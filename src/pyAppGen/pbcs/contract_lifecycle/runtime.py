@@ -10,7 +10,24 @@ CONTRACT_LIFECYCLE_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb'
 CONTRACT_LIFECYCLE_REQUIRED_EVENT_TOPIC = 'pbc.contract_lifecycle.events'
 CONTRACT_LIFECYCLE_EMITTED_EVENT_TYPES = ('ContractAuthored', 'ObligationActivated', 'ContractApproved', 'RenewalScheduled')
 CONTRACT_LIFECYCLE_CONSUMED_EVENT_TYPES = ('CustomerUpdated', 'SupplierQualified', 'PolicyChanged')
-CONTRACT_LIFECYCLE_STANDARD_FEATURE_KEYS = ('contract_record_management', 'contract_lifecycle_workflow', 'contract_lifecycle_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+CONTRACT_LIFECYCLE_STANDARD_FEATURE_KEYS = ('contract_record_management',
+ 'contract_lifecycle_workflow',
+ 'contract_lifecycle_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 CONTRACT_LIFECYCLE_RUNTIME_CAPABILITY_KEYS = ('contract_lifecycle_event_sourced_operational_history', 'contract_lifecycle_multi_tenant_policy_isolation', 'contract_lifecycle_schema_evolution_resilience', 'contract_lifecycle_autonomous_anomaly_detection', 'contract_lifecycle_semantic_document_instruction_understanding', 'contract_lifecycle_predictive_risk_scoring', 'contract_lifecycle_counterfactual_scenario_simulation', 'contract_lifecycle_cryptographic_audit_proofs', 'contract_lifecycle_continuous_control_testing', 'contract_lifecycle_carbon_and_sustainability_awareness', 'contract_lifecycle_cross_pbc_event_federation', 'contract_lifecycle_governed_ai_agent_execution')
 CONTRACT_LIFECYCLE_UI_FRAGMENT_KEYS = ('ContractLifecycleWorkbench', 'ContractLifecycleDetail', 'ContractLifecycleAssistantPanel')
 CONTRACT_LIFECYCLE_BUSINESS_TABLES = ('contract_lifecycle_contract_record', 'contract_lifecycle_contract_party', 'contract_lifecycle_clause_library', 'contract_lifecycle_contract_obligation', 'contract_lifecycle_approval_workflow', 'contract_lifecycle_renewal_event', 'contract_lifecycle_contract_risk_assessment', 'contract_lifecycle_contract_document_packet')

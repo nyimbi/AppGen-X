@@ -1,0 +1,1 @@
+from .runtime import mortgage_servicing_build_schema_contract as build_schema_contract

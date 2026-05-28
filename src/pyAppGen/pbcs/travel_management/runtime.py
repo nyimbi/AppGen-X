@@ -10,7 +10,24 @@ TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb')
 TRAVEL_MANAGEMENT_REQUIRED_EVENT_TOPIC = 'pbc.travel_management.events'
 TRAVEL_MANAGEMENT_EMITTED_EVENT_TYPES = ('TravelApproved', 'TravelBooked', 'DutyOfCareAlerted', 'TravelExpenseHandedOff')
 TRAVEL_MANAGEMENT_CONSUMED_EVENT_TYPES = ('EmployeeProvisioned', 'ExpenseApproved', 'SupplierQualified')
-TRAVEL_MANAGEMENT_STANDARD_FEATURE_KEYS = ('travel_request_management', 'travel_management_workflow', 'travel_management_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+TRAVEL_MANAGEMENT_STANDARD_FEATURE_KEYS = ('travel_request_management',
+ 'travel_management_workflow',
+ 'travel_management_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 TRAVEL_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = ('travel_management_event_sourced_operational_history', 'travel_management_multi_tenant_policy_isolation', 'travel_management_schema_evolution_resilience', 'travel_management_autonomous_anomaly_detection', 'travel_management_semantic_document_instruction_understanding', 'travel_management_predictive_risk_scoring', 'travel_management_counterfactual_scenario_simulation', 'travel_management_cryptographic_audit_proofs', 'travel_management_continuous_control_testing', 'travel_management_carbon_and_sustainability_awareness', 'travel_management_cross_pbc_event_federation', 'travel_management_governed_ai_agent_execution')
 TRAVEL_MANAGEMENT_UI_FRAGMENT_KEYS = ('TravelManagementWorkbench', 'TravelManagementDetail', 'TravelManagementAssistantPanel')
 TRAVEL_MANAGEMENT_BUSINESS_TABLES = ('travel_management_travel_request', 'travel_management_travel_booking', 'travel_management_travel_itinerary', 'travel_management_travel_policy_check', 'travel_management_duty_of_care_alert', 'travel_management_supplier_travel_feed', 'travel_management_travel_expense_handoff', 'travel_management_travel_carbon_record')

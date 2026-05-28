@@ -10,7 +10,24 @@ EXPENSE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb'
 EXPENSE_MANAGEMENT_REQUIRED_EVENT_TOPIC = 'pbc.expense_management.events'
 EXPENSE_MANAGEMENT_EMITTED_EVENT_TYPES = ('ExpenseApproved', 'ExpenseRejected', 'ReimbursementPrepared', 'ExpenseFraudFlagged')
 EXPENSE_MANAGEMENT_CONSUMED_EVENT_TYPES = ('EmployeeProvisioned', 'PaymentCaptured', 'AccessPolicyChanged')
-EXPENSE_MANAGEMENT_STANDARD_FEATURE_KEYS = ('expense_report_management', 'expense_management_workflow', 'expense_management_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+EXPENSE_MANAGEMENT_STANDARD_FEATURE_KEYS = ('expense_report_management',
+ 'expense_management_workflow',
+ 'expense_management_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 EXPENSE_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = ('expense_management_event_sourced_operational_history', 'expense_management_multi_tenant_policy_isolation', 'expense_management_schema_evolution_resilience', 'expense_management_autonomous_anomaly_detection', 'expense_management_semantic_document_instruction_understanding', 'expense_management_predictive_risk_scoring', 'expense_management_counterfactual_scenario_simulation', 'expense_management_cryptographic_audit_proofs', 'expense_management_continuous_control_testing', 'expense_management_carbon_and_sustainability_awareness', 'expense_management_cross_pbc_event_federation', 'expense_management_governed_ai_agent_execution')
 EXPENSE_MANAGEMENT_UI_FRAGMENT_KEYS = ('ExpenseManagementWorkbench', 'ExpenseManagementDetail', 'ExpenseManagementAssistantPanel')
 EXPENSE_MANAGEMENT_BUSINESS_TABLES = ('expense_management_expense_report', 'expense_management_expense_line', 'expense_management_receipt_document', 'expense_management_corporate_card_feed', 'expense_management_expense_policy', 'expense_management_expense_approval', 'expense_management_reimbursement_batch', 'expense_management_expense_fraud_signal')

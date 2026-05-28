@@ -1,0 +1,1 @@
+from .runtime import agri_supply_chain_traceability_build_service_contract as build_service_contract

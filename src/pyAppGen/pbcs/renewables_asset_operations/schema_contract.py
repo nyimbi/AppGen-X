@@ -1,0 +1,1 @@
+from .runtime import renewables_asset_operations_build_schema_contract as build_schema_contract

@@ -37,7 +37,7 @@ def _missing_coverage(features, coverage, operations):
     for feature in features:
         required_operations = coverage.get(feature, ())
         missing_operations = tuple(operation for operation in required_operations if operation not in operations)
-        if not required_operations or missing_operations:
+        if missing_operations:
             gaps.append({'feature': feature, 'required_operations': required_operations, 'missing_operations': missing_operations})
     return tuple(gaps)
 

@@ -1,0 +1,1 @@
+from .runtime import gaming_casino_operations_build_service_contract as build_service_contract

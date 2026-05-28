@@ -11,7 +11,25 @@ def event_contract_manifest():
 
 def validate_event_contract():
     manifest = event_contract_manifest()
-    return {'ok': manifest['contract'] == 'AppGen-X' and manifest['stream_engine_picker_visible'] is False and bool(manifest['dead_letter_table']), 'manifest': manifest, 'side_effects': ()}
+    invalid_tables = tuple(
+        table for table in (manifest['outbox_table'], manifest['inbox_table'], manifest['dead_letter_table'])
+        if not table.startswith(f'{PBC_KEY}_')
+    )
+    invalid_emitted = tuple(event for event in EMITTED if not event)
+    invalid_consumed = tuple(event for event in CONSUMED if not event)
+    return {
+        'ok': manifest['contract'] == 'AppGen-X'
+        and manifest['stream_engine_picker_visible'] is False
+        and bool(manifest['dead_letter_table'])
+        and not invalid_tables
+        and not invalid_emitted
+        and not invalid_consumed,
+        'manifest': manifest,
+        'invalid_tables': invalid_tables,
+        'invalid_emitted': invalid_emitted,
+        'invalid_consumed': invalid_consumed,
+        'side_effects': (),
+    }
 
 
 def build_event_envelope(event_type, payload=None):
@@ -24,4 +42,22 @@ def event_dispatch_plan(event_type, payload=None):
 
 
 def smoke_test():
-    return {'ok': validate_event_contract()['ok'] and event_dispatch_plan(EMITTED[0])['ok'], 'side_effects': ()}
+    validation = validate_event_contract()
+    emitted = {
+        'event_type': EMITTED[0],
+        'table': EVENT_TABLES['outbox_table'],
+        'retry_policy': {'max_attempts': 5, 'backoff': 'exponential'},
+        'dead_letter_table': EVENT_TABLES['dead_letter_table'],
+    }
+    consumed = {
+        'event_type': CONSUMED[0],
+        'table': EVENT_TABLES['inbox_table'],
+        'retry_policy': {'max_attempts': 5, 'backoff': 'exponential'},
+        'dead_letter_table': EVENT_TABLES['dead_letter_table'],
+    }
+    return {
+        'ok': validation['ok'] and event_dispatch_plan(EMITTED[0])['ok'],
+        'emitted': emitted,
+        'consumed': consumed,
+        'side_effects': (),
+    }

@@ -1,0 +1,1 @@
+from .runtime import mining_safety_permits_build_service_contract as build_service_contract

@@ -1,0 +1,1 @@
+from .runtime import court_case_management_build_service_contract as build_service_contract

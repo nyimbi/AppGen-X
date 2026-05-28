@@ -1,0 +1,1 @@
+from .runtime import donor_grant_fundraising_build_schema_contract as build_schema_contract

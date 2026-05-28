@@ -1,0 +1,1 @@
+from .runtime import utility_outage_restoration_build_service_contract as build_service_contract

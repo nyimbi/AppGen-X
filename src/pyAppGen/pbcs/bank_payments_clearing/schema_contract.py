@@ -1,0 +1,1 @@
+from .runtime import bank_payments_clearing_build_schema_contract as build_schema_contract

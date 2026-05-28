@@ -1,0 +1,1 @@
+from .runtime import music_royalties_rights_build_service_contract as build_service_contract

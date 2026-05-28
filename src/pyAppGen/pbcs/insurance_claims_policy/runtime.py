@@ -10,7 +10,24 @@ INSURANCE_CLAIMS_POLICY_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mar
 INSURANCE_CLAIMS_POLICY_REQUIRED_EVENT_TOPIC = 'pbc.insurance_claims_policy.events'
 INSURANCE_CLAIMS_POLICY_EMITTED_EVENT_TYPES = ('ClaimOpened', 'CoverageValidated', 'ClaimReserveSet', 'ClaimSettled')
 INSURANCE_CLAIMS_POLICY_CONSUMED_EVENT_TYPES = ('CustomerUpdated', 'PaymentCaptured', 'FraudRiskScored')
-INSURANCE_CLAIMS_POLICY_STANDARD_FEATURE_KEYS = ('insurance_policy_management', 'insurance_claims_policy_workflow', 'insurance_claims_policy_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+INSURANCE_CLAIMS_POLICY_STANDARD_FEATURE_KEYS = ('insurance_policy_management',
+ 'insurance_claims_policy_workflow',
+ 'insurance_claims_policy_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 INSURANCE_CLAIMS_POLICY_RUNTIME_CAPABILITY_KEYS = ('insurance_claims_policy_event_sourced_operational_history', 'insurance_claims_policy_multi_tenant_policy_isolation', 'insurance_claims_policy_schema_evolution_resilience', 'insurance_claims_policy_autonomous_anomaly_detection', 'insurance_claims_policy_semantic_document_instruction_understanding', 'insurance_claims_policy_predictive_risk_scoring', 'insurance_claims_policy_counterfactual_scenario_simulation', 'insurance_claims_policy_cryptographic_audit_proofs', 'insurance_claims_policy_continuous_control_testing', 'insurance_claims_policy_carbon_and_sustainability_awareness', 'insurance_claims_policy_cross_pbc_event_federation', 'insurance_claims_policy_governed_ai_agent_execution')
 INSURANCE_CLAIMS_POLICY_UI_FRAGMENT_KEYS = ('InsuranceClaimsPolicyWorkbench', 'InsuranceClaimsPolicyDetail', 'InsuranceClaimsPolicyAssistantPanel')
 INSURANCE_CLAIMS_POLICY_BUSINESS_TABLES = ('insurance_claims_policy_insurance_policy', 'insurance_claims_policy_claim_intake', 'insurance_claims_policy_coverage_validation', 'insurance_claims_policy_claim_reserve', 'insurance_claims_policy_adjuster_assignment', 'insurance_claims_policy_claim_fraud_signal', 'insurance_claims_policy_claim_settlement', 'insurance_claims_policy_claim_audit_evidence')

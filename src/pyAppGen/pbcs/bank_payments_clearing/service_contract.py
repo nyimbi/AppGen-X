@@ -1,0 +1,1 @@
+from .runtime import bank_payments_clearing_build_service_contract as build_service_contract

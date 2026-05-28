@@ -1,0 +1,1 @@
+from .runtime import nonprofit_program_impact_build_schema_contract as build_schema_contract

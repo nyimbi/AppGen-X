@@ -10,7 +10,24 @@ MASTER_DATA_GOVERNANCE_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mari
 MASTER_DATA_GOVERNANCE_REQUIRED_EVENT_TOPIC = 'pbc.master_data_governance.events'
 MASTER_DATA_GOVERNANCE_EMITTED_EVENT_TYPES = ('GoldenRecordPublished', 'MergeDecisionApproved', 'StewardshipTaskOpened', 'MasterDataSynced')
 MASTER_DATA_GOVERNANCE_CONSUMED_EVENT_TYPES = ('CustomerUpdated', 'SupplierQualified', 'ProductPublished')
-MASTER_DATA_GOVERNANCE_STANDARD_FEATURE_KEYS = ('master_record_management', 'master_data_governance_workflow', 'master_data_governance_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+MASTER_DATA_GOVERNANCE_STANDARD_FEATURE_KEYS = ('master_record_management',
+ 'master_data_governance_workflow',
+ 'master_data_governance_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 MASTER_DATA_GOVERNANCE_RUNTIME_CAPABILITY_KEYS = ('master_data_governance_event_sourced_operational_history', 'master_data_governance_multi_tenant_policy_isolation', 'master_data_governance_schema_evolution_resilience', 'master_data_governance_autonomous_anomaly_detection', 'master_data_governance_semantic_document_instruction_understanding', 'master_data_governance_predictive_risk_scoring', 'master_data_governance_counterfactual_scenario_simulation', 'master_data_governance_cryptographic_audit_proofs', 'master_data_governance_continuous_control_testing', 'master_data_governance_carbon_and_sustainability_awareness', 'master_data_governance_cross_pbc_event_federation', 'master_data_governance_governed_ai_agent_execution')
 MASTER_DATA_GOVERNANCE_UI_FRAGMENT_KEYS = ('MasterDataGovernanceWorkbench', 'MasterDataGovernanceDetail', 'MasterDataGovernanceAssistantPanel')
 MASTER_DATA_GOVERNANCE_BUSINESS_TABLES = ('master_data_governance_master_record', 'master_data_governance_golden_record', 'master_data_governance_match_candidate', 'master_data_governance_merge_decision', 'master_data_governance_survivorship_rule', 'master_data_governance_data_quality_rule', 'master_data_governance_stewardship_task', 'master_data_governance_downstream_sync_event')

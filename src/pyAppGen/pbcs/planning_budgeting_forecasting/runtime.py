@@ -10,7 +10,24 @@ PLANNING_BUDGETING_FORECASTING_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql
 PLANNING_BUDGETING_FORECASTING_REQUIRED_EVENT_TOPIC = 'pbc.planning_budgeting_forecasting.events'
 PLANNING_BUDGETING_FORECASTING_EMITTED_EVENT_TYPES = ('BudgetApproved', 'ForecastPublished', 'ScenarioModeled', 'VarianceFlagged')
 PLANNING_BUDGETING_FORECASTING_CONSUMED_EVENT_TYPES = ('TrialBalanceCalculated', 'RevenueRecognized', 'DemandForecastPublished')
-PLANNING_BUDGETING_FORECASTING_STANDARD_FEATURE_KEYS = ('planning_model_management', 'planning_budgeting_forecasting_workflow', 'planning_budgeting_forecasting_analytics', 'configuration_schema', 'rule_engine', 'parameter_engine', 'owned_schema_migrations_models', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'seed_data', 'workbench', 'agentic_document_instruction_intake', 'governed_datastore_crud')
+PLANNING_BUDGETING_FORECASTING_STANDARD_FEATURE_KEYS = ('planning_model_management',
+ 'planning_budgeting_forecasting_workflow',
+ 'planning_budgeting_forecasting_analytics',
+ 'configuration_schema',
+ 'rule_engine',
+ 'parameter_engine',
+ 'owned_schema_migrations_models',
+ 'appgen_x_outbox_inbox_eventing',
+ 'idempotent_handlers',
+ 'retry_dead_letter_evidence',
+ 'permissions',
+ 'seed_data',
+ 'workbench',
+ 'agentic_document_instruction_intake',
+ 'governed_datastore_crud',
+ 'ai_agent_task_assistance',
+ 'configuration_workbench',
+ 'continuous_release_assurance')
 PLANNING_BUDGETING_FORECASTING_RUNTIME_CAPABILITY_KEYS = ('planning_budgeting_forecasting_event_sourced_operational_history', 'planning_budgeting_forecasting_multi_tenant_policy_isolation', 'planning_budgeting_forecasting_schema_evolution_resilience', 'planning_budgeting_forecasting_autonomous_anomaly_detection', 'planning_budgeting_forecasting_semantic_document_instruction_understanding', 'planning_budgeting_forecasting_predictive_risk_scoring', 'planning_budgeting_forecasting_counterfactual_scenario_simulation', 'planning_budgeting_forecasting_cryptographic_audit_proofs', 'planning_budgeting_forecasting_continuous_control_testing', 'planning_budgeting_forecasting_carbon_and_sustainability_awareness', 'planning_budgeting_forecasting_cross_pbc_event_federation', 'planning_budgeting_forecasting_governed_ai_agent_execution')
 PLANNING_BUDGETING_FORECASTING_UI_FRAGMENT_KEYS = ('PlanningBudgetingForecastingWorkbench', 'PlanningBudgetingForecastingDetail', 'PlanningBudgetingForecastingAssistantPanel')
 PLANNING_BUDGETING_FORECASTING_BUSINESS_TABLES = ('planning_budgeting_forecasting_planning_model', 'planning_budgeting_forecasting_budget_version', 'planning_budgeting_forecasting_forecast_cycle', 'planning_budgeting_forecasting_planning_scenario', 'planning_budgeting_forecasting_driver_assumption', 'planning_budgeting_forecasting_allocation_rule', 'planning_budgeting_forecasting_variance_analysis', 'planning_budgeting_forecasting_planning_approval')

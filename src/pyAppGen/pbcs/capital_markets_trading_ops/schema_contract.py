@@ -1,0 +1,1 @@
+from .runtime import capital_markets_trading_ops_build_schema_contract as build_schema_contract

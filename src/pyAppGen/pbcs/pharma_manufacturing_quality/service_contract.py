@@ -1,0 +1,1 @@
+from .runtime import pharma_manufacturing_quality_build_service_contract as build_service_contract

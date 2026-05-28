@@ -1,0 +1,1 @@
+from .runtime import claims_adjudication_healthcare_build_service_contract as build_service_contract

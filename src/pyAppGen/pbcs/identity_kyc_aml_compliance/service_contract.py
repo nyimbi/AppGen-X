@@ -1,0 +1,1 @@
+from .runtime import identity_kyc_aml_compliance_build_service_contract as build_service_contract

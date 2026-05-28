@@ -1,0 +1,1 @@
+from .runtime import food_safety_quality_compliance_build_service_contract as build_service_contract

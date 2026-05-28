@@ -1,0 +1,1 @@
+from .runtime import smart_city_mobility_operations_build_schema_contract as build_schema_contract
