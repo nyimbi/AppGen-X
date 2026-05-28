@@ -609,6 +609,15 @@ appgen package app.appgen --target mobile --out dist
 Runs package validation, signing posture checks, release evidence generation,
 and target-specific smoke checks.
 
+When `--out` is provided, the command writes `appgen-release-evidence.json`
+plus one `appgen-package-<target>.json` manifest per selected target. These
+target manifests use `appgen.package-manifest.v1` and provide deterministic
+handoff evidence for downstream web builders, mobile signing/offline launch
+pipelines, desktop installer/startup packaging, PBC publication, and deployment
+verification. Generated installers and app-store bundles remain downstream
+builders' responsibility, but the package command now materializes the stable
+contract those builders consume.
+
 ### `appgen pbc`
 
 ```console

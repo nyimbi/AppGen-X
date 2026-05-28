@@ -3322,6 +3322,7 @@ def release_verifier_report_dsl(
         evidence_bundle=evidence_bundle,
         selected_reports=selected_reports,
         checks=checks,
+        source_name=source_name,
     )
     return {
         "format": "appgen.release-verifier-report.v1",
@@ -3344,6 +3345,7 @@ def _write_release_evidence_bundle(
     evidence_bundle: dict,
     selected_reports: dict,
     checks: tuple[dict, ...],
+    source_name: str | None = None,
 ) -> tuple[dict, ...]:
     if not output_dir:
         return ()
@@ -3357,7 +3359,70 @@ def _write_release_evidence_bundle(
         "reports": selected_reports,
     }
     evidence_path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=list), encoding="utf-8")
-    return ({"path": str(evidence_path), "kind": "release_evidence", "bytes": evidence_path.stat().st_size},)
+    written = [{"path": str(evidence_path), "kind": "release_evidence", "bytes": evidence_path.stat().st_size}]
+    for target, report in selected_reports.items():
+        manifest = _target_package_manifest(target, report, evidence_path=evidence_path, source_name=source_name)
+        manifest_path = output_path / f"appgen-package-{target}.json"
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True, default=list), encoding="utf-8")
+        written.append({"path": str(manifest_path), "kind": f"{target}_package_manifest", "bytes": manifest_path.stat().st_size})
+    return tuple(written)
+
+
+def _target_package_manifest(
+    target: str,
+    report: dict,
+    *,
+    evidence_path: Path,
+    source_name: str | None = None,
+) -> dict:
+    checks = tuple(report.get("checks", ()))
+    check_map = {check.get("check"): check.get("ok", False) for check in checks}
+    common = {
+        "format": "appgen.package-manifest.v1",
+        "target": target,
+        "source": source_name,
+        "ok": report.get("ok", False),
+        "verifier": report.get("format"),
+        "release_evidence": str(evidence_path.name),
+        "checks": checks,
+        "blocking_gaps": report.get("blocking_gaps", ()),
+    }
+    target_details = {
+        "web": {
+            "artifact_class": "web_application",
+            "handoff_artifacts": ("routes", "forms", "handlers", "smoke_tests"),
+            "build_required": True,
+            "smoke_entrypoint": "web.smoke",
+        },
+        "mobile": {
+            "artifact_class": "mobile_application",
+            "handoff_artifacts": ("mobile_metadata", "signing_posture", "offline_policy", "permissions", "smoke_launch"),
+            "signing_posture_declared": check_map.get("signing_posture_declared", False),
+            "offline_policy_declared": check_map.get("offline_policy_declared", False),
+            "smoke_entrypoint": "mobile.launch",
+        },
+        "desktop": {
+            "artifact_class": "desktop_application",
+            "handoff_artifacts": ("desktop_metadata", "installer_profile", "startup_assets", "menus", "smoke_launch"),
+            "installer_posture_declared": check_map.get("installer_or_update_posture_declared", False),
+            "startup_assets_declared": check_map.get("splash_or_startup_assets_declared_when_used", False),
+            "smoke_entrypoint": "desktop.launch",
+        },
+        "pbc": {
+            "artifact_class": "packaged_business_capability",
+            "handoff_artifacts": ("manifest", "contracts", "owned_schema", "registration", "release_evidence"),
+            "side_effect_free_registration": check_map.get("self_registration_side_effect_free", False),
+            "smoke_entrypoint": "pbc.verify",
+        },
+        "deployment": {
+            "artifact_class": "deployment_plan",
+            "handoff_artifacts": ("units", "health_checks", "environment", "resource_hints", "topology_graph"),
+            "topology_declared": check_map.get("units_declared", False),
+            "smoke_entrypoint": "deployment.verify",
+        },
+    }
+    common.update(target_details.get(target, {"artifact_class": target, "handoff_artifacts": (), "smoke_entrypoint": f"{target}.verify"}))
+    return common
 
 
 def web_verifier_report_dsl(

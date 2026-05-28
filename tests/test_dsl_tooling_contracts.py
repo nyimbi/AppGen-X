@@ -1163,15 +1163,35 @@ def test_package_report_writes_release_evidence_bundle_when_output_dir_is_given(
         output_dir=str(output_dir),
     )
     evidence_path = output_dir / "appgen-release-evidence.json"
+    mobile_manifest_path = output_dir / "appgen-package-mobile.json"
+    desktop_manifest_path = output_dir / "appgen-package-desktop.json"
     payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+    mobile_manifest = json.loads(mobile_manifest_path.read_text(encoding="utf-8"))
+    desktop_manifest = json.loads(desktop_manifest_path.read_text(encoding="utf-8"))
 
     assert report["format"] == "appgen.release-verifier-report.v1"
     assert report["ok"] is True
     assert evidence_path.exists()
+    assert mobile_manifest_path.exists()
+    assert desktop_manifest_path.exists()
     assert report["written_artifacts"][0]["path"] == str(evidence_path)
+    assert {artifact["kind"] for artifact in report["written_artifacts"]} == {
+        "release_evidence",
+        "mobile_package_manifest",
+        "desktop_package_manifest",
+    }
     assert payload["format"] == "appgen.release-evidence-file.v1"
     assert payload["evidence_bundle"]["format"] == "appgen.release-evidence-bundle.v1"
     assert set(payload["reports"]) == {"mobile", "desktop"}
+    assert mobile_manifest["format"] == "appgen.package-manifest.v1"
+    assert mobile_manifest["target"] == "mobile"
+    assert mobile_manifest["artifact_class"] == "mobile_application"
+    assert mobile_manifest["signing_posture_declared"] is True
+    assert mobile_manifest["offline_policy_declared"] is True
+    assert desktop_manifest["target"] == "desktop"
+    assert desktop_manifest["artifact_class"] == "desktop_application"
+    assert desktop_manifest["installer_posture_declared"] is True
+    assert desktop_manifest["startup_assets_declared"] is True
 
 
 def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path) -> None:
@@ -1201,10 +1221,13 @@ def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path)
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     evidence_path = output_dir / "appgen-release-evidence.json"
+    mobile_manifest_path = output_dir / "appgen-package-mobile.json"
     assert payload["format"] == "appgen.release-verifier-report.v1"
     assert payload["targets"] == ["mobile"]
     assert evidence_path.exists()
+    assert mobile_manifest_path.exists()
     assert json.loads(evidence_path.read_text(encoding="utf-8"))["reports"]["mobile"]["format"] == "appgen.mobile-verifier.v1"
+    assert json.loads(mobile_manifest_path.read_text(encoding="utf-8"))["smoke_entrypoint"] == "mobile.launch"
 
 
 def test_release_verifier_reports_blocking_gaps_for_missing_mobile_package_metadata() -> None:
