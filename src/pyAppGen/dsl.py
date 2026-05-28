@@ -2135,6 +2135,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
         designer_sync_cli = _tooling_audit_designer_sync_cli(Path(tmp), source)
         graph_cli = _tooling_audit_graph_cli_formats(Path(tmp), source)
+        explain_cli = _tooling_audit_explain_cli_formats(Path(tmp), source)
         migration_cli = _tooling_audit_migration_cli(Path(tmp))
         generation = generate_report_dsl(
             source,
@@ -2254,12 +2255,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and set(REQUIRED_GRAPH_KINDS) <= set(graphs["graph_reports"])
             and set(GRAPH_TEXT_FORMATS) <= set(next(iter(graphs["renderings"].values())).keys())
             and graph_cli["ok"]
+            and explain_cli["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", symbol="table.Invoice")["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", diagnostic="AGX0303")["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", handler="Save")["ok"],
             "Graph suite and appgen graph CLI emit JSON/Mermaid/DOT, and explain covers symbols, diagnostics, and handlers.",
             "docs/tooling.md#graph-tooling",
-            {"format": graphs.get("format"), "graphs": graphs.get("required_kinds"), "cli": graph_cli},
+            {"format": graphs.get("format"), "graphs": graphs.get("required_kinds"), "cli": graph_cli, "explain_cli": explain_cli},
         ),
         _tooling_audit_check(
             "language_server_core_features",
@@ -2918,6 +2920,51 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         )
     return {
         "format": "appgen.graph-cli-format-audit.v1",
+        "ok": all(result["ok"] for result in results),
+        "cases": tuple(results),
+    }
+
+
+def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
+    source_path = tmp / "explain-cli.appgen"
+    source_path.write_text(source, encoding="utf-8")
+    cases = (
+        ("symbol_text", ("explain", str(source_path), "--symbol", "table.Invoice")),
+        ("diagnostic_json", ("explain", str(source_path), "--diagnostic", "AGX0303", "--json")),
+        ("handler_text", ("explain", str(source_path), "--handler", "Save")),
+    )
+    results = []
+    for case_id, argv in cases:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        stdout = output.getvalue().strip()
+        json_ok = False
+        text_ok = False
+        if case_id == "diagnostic_json":
+            try:
+                payload = json.loads(stdout)
+            except json.JSONDecodeError:
+                payload = {}
+            json_ok = (
+                payload.get("format") == "appgen.explain-report.v1"
+                and payload.get("kind") == "diagnostic"
+                and payload.get("query") == "AGX0303"
+            )
+        elif case_id == "symbol_text":
+            text_ok = stdout.startswith("explain symbol ok: table.Invoice") and "table.Invoice: table Invoice" in stdout
+        elif case_id == "handler_text":
+            text_ok = stdout.startswith("explain handler ok: Save") and "matches:" in stdout and "->" in stdout
+        results.append(
+            {
+                "case": case_id,
+                "ok": exit_code == 0 and (json_ok or text_ok),
+                "exit_code": exit_code,
+                "stdout_prefix": stdout[:120],
+            }
+        )
+    return {
+        "format": "appgen.explain-cli-audit.v1",
         "ok": all(result["ok"] for result in results),
         "cases": tuple(results),
     }

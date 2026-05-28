@@ -3229,6 +3229,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entrypoints, focused package/audit tests, `tests/test_dsl_tooling_contracts.py
   -q`, tooling-audit JSON proof, scoped diff whitespace check, and
   restricted-name scan. Commit: `731f35ae`.
+- Current explain CLI audit pass closes the remaining gap between direct
+  `explain_report_dsl` proof and the documented `appgen explain` command
+  boundary. `appgen.tooling-audit.v1` now embeds
+  `appgen.explain-cli-audit.v1`, which runs symbol text output, diagnostic JSON
+  output, and handler text output through the CLI and proves the human-readable
+  default and machine-readable report contract used by CI, IDEs, and agents.
+  Verification passed: Python compile for touched tooling entrypoints and full
+  `appgen tooling-audit --json` with `16/16` checks and no blocking gaps.
+  Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
