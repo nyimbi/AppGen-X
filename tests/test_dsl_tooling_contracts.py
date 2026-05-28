@@ -2382,6 +2382,22 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "verify_all_targets",
         "package_writes_target_manifests",
     } <= {case["case"] for case in package_check["detail"]["cli"]["cases"]}
+    graph_check = next(check for check in report["checks"] if check["id"] == "graph_and_explain_tooling")
+    assert graph_check["detail"]["suite_cli"]["format"] == "appgen.graph-suite-cli-audit.v1"
+    assert graph_check["detail"]["suite_cli"]["ok"] is True
+    assert set(graph_check["detail"]["suite_cli"]["required_kinds"]) >= {
+        "er",
+        "lookup",
+        "workflow",
+        "handler",
+        "pbc",
+        "security",
+        "agent",
+        "deployment",
+        "package",
+    }
+    assert tuple(graph_check["detail"]["suite_cli"]["formats"]) == ("json", "mermaid", "dot")
+    assert graph_check["detail"]["suite_cli"]["rendering_kind_count"] == 9
     assert all(check["section"].startswith("docs/tooling.md#") for check in report["checks"])
     assert cli_json.returncode == 0, cli_json.stderr
     assert json.loads(cli_json.stdout)["format"] == "appgen.tooling-audit.v1"

@@ -2137,6 +2137,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         validate_generate_cli = _tooling_audit_validate_generate_cli(Path(tmp), source)
         designer_sync_cli = _tooling_audit_designer_sync_cli(Path(tmp), source)
         graph_cli = _tooling_audit_graph_cli_formats(Path(tmp), source)
+        graph_suite_cli = _tooling_audit_graph_suite_cli(Path(tmp), source)
         explain_cli = _tooling_audit_explain_cli_formats(Path(tmp), source)
         migration_cli = _tooling_audit_migration_cli(Path(tmp))
         test_strategy_cli = _tooling_audit_test_strategy_cli(Path(tmp), source)
@@ -2263,13 +2264,20 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and set(REQUIRED_GRAPH_KINDS) <= set(graphs["graph_reports"])
             and set(GRAPH_TEXT_FORMATS) <= set(next(iter(graphs["renderings"].values())).keys())
             and graph_cli["ok"]
+            and graph_suite_cli["ok"]
             and explain_cli["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", symbol="table.Invoice")["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", diagnostic="AGX0303")["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", handler="Save")["ok"],
-            "Graph suite and appgen graph CLI emit JSON/Mermaid/DOT, and explain covers symbols, diagnostics, and handlers.",
+            "Graph suite and appgen graph/graph-suite CLI emit JSON/Mermaid/DOT, and explain covers symbols, diagnostics, and handlers.",
             "docs/tooling.md#graph-tooling",
-            {"format": graphs.get("format"), "graphs": graphs.get("required_kinds"), "cli": graph_cli, "explain_cli": explain_cli},
+            {
+                "format": graphs.get("format"),
+                "graphs": graphs.get("required_kinds"),
+                "cli": graph_cli,
+                "suite_cli": graph_suite_cli,
+                "explain_cli": explain_cli,
+            },
         ),
         _tooling_audit_check(
             "language_server_core_features",
@@ -3165,6 +3173,45 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         "format": "appgen.graph-cli-format-audit.v1",
         "ok": all(result["ok"] for result in results),
         "cases": tuple(results),
+    }
+
+
+def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
+    source_path = tmp / "graph-suite-cli.appgen"
+    source_path.write_text(source, encoding="utf-8")
+
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        json_exit_code = dsl_tooling_cli(("graph-suite", str(source_path), "--json"))
+    try:
+        json_payload = json.loads(output.getvalue())
+    except json.JSONDecodeError:
+        json_payload = {}
+
+    text_output = io.StringIO()
+    with contextlib.redirect_stdout(text_output):
+        text_exit_code = dsl_tooling_cli(("graph-suite", str(source_path)))
+    text_stdout = text_output.getvalue().strip()
+    renderings = json_payload.get("renderings", {})
+    required_kinds = tuple(json_payload.get("required_kinds", ()))
+    output_formats = tuple(json_payload.get("formats", ()))
+    return {
+        "format": "appgen.graph-suite-cli-audit.v1",
+        "ok": json_exit_code == 0
+        and json_payload.get("format") == "appgen.graph-suite-report.v1"
+        and json_payload.get("ok") is True
+        and set(REQUIRED_GRAPH_KINDS) <= set(required_kinds)
+        and set(GRAPH_TEXT_FORMATS) <= set(output_formats)
+        and all(set(outputs) == set(GRAPH_TEXT_FORMATS) for outputs in renderings.values())
+        and text_exit_code == 0
+        and text_stdout.startswith("graph-suite ok:"),
+        "json_exit_code": json_exit_code,
+        "text_exit_code": text_exit_code,
+        "payload_format": json_payload.get("format"),
+        "required_kinds": required_kinds,
+        "formats": output_formats,
+        "rendering_kind_count": len(renderings),
+        "text_prefix": text_stdout[:80],
     }
 
 

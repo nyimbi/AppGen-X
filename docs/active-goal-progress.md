@@ -3277,6 +3277,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entrypoints, direct directory-lint CLI audit helper probe, focused directory
   lint tests (`2 passed`), scoped diff whitespace check, and restricted-name
   scan outside archive, Git internals, and active PBC paths. Commit: `4c262bdc`.
+- Current graph-suite CLI audit pass closes the gap between helper-level graph
+  suite evidence and the documented `appgen graph-suite app.appgen --json`
+  command contract. `appgen.tooling-audit.v1` now embeds
+  `appgen.graph-suite-cli-audit.v1`, which runs JSON and text CLI modes and
+  proves all required graph kinds, JSON/Mermaid/DOT renderings, and the text
+  summary used by CI and IDE checks. Verification passed: Python compile for
+  touched tooling entrypoints, direct graph-suite CLI audit helper probe,
+  focused graph-suite report/CLI tests (`2 passed`), scoped diff whitespace
+  check, and restricted-name scan outside archive, Git internals, and active
+  PBC paths. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
