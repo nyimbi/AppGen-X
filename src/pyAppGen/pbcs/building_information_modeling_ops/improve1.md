@@ -1,315 +1,418 @@
-# Building Information Modeling Operations PBC Improvement Backlog
+# Building Information Modeling Operations PBC Better-Than-World-Class Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `building_information_modeling_ops`. Each item is specific to bim models, versions, clashes, assets, handover data, model governance, and digital twin operations and is intended to move the package toward complete domain coverage.
+This file identifies, justifies, and describes 50 high-impact improvements for `building_information_modeling_ops`. The backlog is specific to bim models, versions, clashes, assets, handover data, model governance, and digital twin operations and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
 
 ## Current Domain Evidence Used
 
+- Stable PBC key: `building_information_modeling_ops`.
 - Domain purpose: BIM models, versions, clashes, assets, handover data, model governance, and digital twin operations.
-- Representative owned tables: `building_information_modeling_ops_bim_model`, `building_information_modeling_ops_model_version`, `building_information_modeling_ops_clash_issue`, `building_information_modeling_ops_asset_object`, `building_information_modeling_ops_handover_package`, `building_information_modeling_ops_model_review`, `building_information_modeling_ops_digital_twin_link`, `building_information_modeling_ops_building_information_modeling_ops_policy_rule`, `building_information_modeling_ops_building_information_modeling_ops_runtime_parameter`, `building_information_modeling_ops_building_information_modeling_ops_schema_extension`, `building_information_modeling_ops_building_information_modeling_ops_control_assertion`, `building_information_modeling_ops_building_information_modeling_ops_governed_model`.
-- Representative operations/APIs: `create_bim_model`, `record_model_version`, `review_clash_issue`, `approve_asset_object`, `simulate_handover_package`, `create_model_review`, `record_digital_twin_link`, `review_building_information_modeling_ops_policy_rule`, `approve_building_information_modeling_ops_runtime_parameter`, `simulate_building_information_modeling_ops_schema_extension`, `create_building_information_modeling_ops_control_assertion`, `record_building_information_modeling_ops_governed_model`.
-- Representative events: `BuildingInformationModelingOpsCreated`, `BuildingInformationModelingOpsUpdated`, `BuildingInformationModelingOpsApproved`, `BuildingInformationModelingOpsExceptionOpened`.
-- Representative advanced capabilities: `building_information_modeling_ops_event_sourced_operational_history`, `building_information_modeling_ops_multi_tenant_policy_isolation`, `building_information_modeling_ops_schema_evolution_resilience`, `building_information_modeling_ops_autonomous_anomaly_detection`, `building_information_modeling_ops_semantic_document_instruction_understanding`, `building_information_modeling_ops_predictive_risk_scoring`, `building_information_modeling_ops_counterfactual_scenario_simulation`, `building_information_modeling_ops_cryptographic_audit_proofs`.
+- Owned domain tables: `bim_model`, `model_version`, `clash_issue`, `asset_object`, `handover_package`, `model_review`, `digital_twin_link`, `building_information_modeling_ops_policy_rule`, `building_information_modeling_ops_runtime_parameter`, `building_information_modeling_ops_schema_extension`, `building_information_modeling_ops_control_assertion`, `building_information_modeling_ops_governed_model`.
+- Public APIs: `POST /bim-models`, `POST /model-versions`, `POST /clash-issues`, `POST /asset-objects`, `POST /handover-packages`, `GET /building-information-modeling-ops-workbench`.
+- Emitted AppGen-X events: `BuildingInformationModelingOpsCreated`, `BuildingInformationModelingOpsUpdated`, `BuildingInformationModelingOpsApproved`, `BuildingInformationModelingOpsExceptionOpened`.
+- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Current standard surfaces include: `bim_model_management`, `building_information_modeling_ops_workflow`, `building_information_modeling_ops_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
+- Current advanced surfaces include: `building_information_modeling_ops_event_sourced_operational_history`, `building_information_modeling_ops_multi_tenant_policy_isolation`, `building_information_modeling_ops_schema_evolution_resilience`, `building_information_modeling_ops_autonomous_anomaly_detection`, `building_information_modeling_ops_semantic_document_instruction_understanding`, `building_information_modeling_ops_predictive_risk_scoring`, `building_information_modeling_ops_counterfactual_scenario_simulation`, `building_information_modeling_ops_cryptographic_audit_proofs`.
 
-## 50 Better-Than-World-Class Improvements
+## 50 High-Impact Improvements
 
-### 1. Bim Model depth for Building Information Modeling Operations
+### 1. Canonical lifecycle state model for Bim Model
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade bim model coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** This closes shallow CRUD gaps by making every building information modeling operations transition explainable and testable instead of implicit in free-form status values.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific bim model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Define a complete state machine for `bim_model` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 2. Model Version depth for Building Information Modeling Operations
+**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for BuildingInformationModelingOpsCreated, BuildingInformationModelingOpsUpdated, BuildingInformationModelingOpsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade model version coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 2. Domain intake and normalization for Model Version
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific model version schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of bim models, versions, clashes, assets, handover data, model governance, and digital twin operations, not only already-clean records.
 
-### 3. Clash Issue depth for Building Information Modeling Operations
+**Improvement:** Build a typed intake pipeline for `model_version` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade clash issue coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific clash issue schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 3. Specialist validation rules for Clash Issue
 
-### 4. Asset Object depth for Building Information Modeling Operations
+**Justification:** World-class Building Information Modeling Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade asset object coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add a domain rule compiler for `clash_issue` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific asset object schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `BUILDING_INFORMATION_MODELING_OPS_DATABASE_URL, BUILDING_INFORMATION_MODELING_OPS_EVENT_TOPIC, BUILDING_INFORMATION_MODELING_OPS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 5. Handover Package depth for Building Information Modeling Operations
+### 4. Parameter governance and tuning for Asset Object
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade handover package coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Parameters are where operations teams tune building information modeling operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific handover package schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Expose bounded runtime parameters for `asset_object` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 6. Model Review depth for Building Information Modeling Operations
+**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade model review coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 5. Deep owned schema expansion for Handover Package
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific model review schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A single payload column cannot express the full surface of bim models, versions, clashes, assets, handover data, model governance, and digital twin operations or prove cross-PBC boundaries are respected.
 
-### 7. Digital Twin Link depth for Building Information Modeling Operations
+**Improvement:** Extend the owned schema around `handover_package` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade digital twin link coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `building_information_modeling_ops_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific digital twin link schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 6. Event-sourced operational history for Model Review
 
-### 8. Building Information Modeling Ops Policy Rule depth for Building Information Modeling Operations
+**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in building information modeling operations.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops policy rule coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Capture every material mutation of `model_review` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops policy rule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 9. Building Information Modeling Ops Runtime Parameter depth for Building Information Modeling Operations
+### 7. Projection and read-model strategy for Digital Twin Link
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops runtime parameter coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops runtime parameter schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Create purpose-built projections for `digital_twin_link`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 10. Building Information Modeling Ops Schema Extension depth for Building Information Modeling Operations
+**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops schema extension coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 8. Exception taxonomy and remediation for Building Information Modeling Ops Policy Rule
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops schema extension schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
 
-### 11. Building Information Modeling Ops Control Assertion depth for Building Information Modeling Operations
+**Improvement:** Model the full exception taxonomy for `building_information_modeling_ops_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops control assertion coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for schedule slippage. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops control assertion schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 9. Predictive risk scoring for Building Information Modeling Ops Runtime Parameter
 
-### 12. Building Information Modeling Ops Governed Model depth for Building Information Modeling Operations
+**Justification:** The package should warn users before building information modeling operations work fails, breaches policy, or creates downstream cost.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops governed model coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add predictive risk scoring for `building_information_modeling_ops_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops governed model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 13. Policy Governance depth for Building Information Modeling Operations
+### 10. Counterfactual simulation for Building Information Modeling Ops Schema Extension
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade policy governance coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Advanced users need to ask “what would happen if” before committing changes to live bim models, versions, clashes, assets, handover data, model governance, and digital twin operations operations.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific policy governance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Provide scenario simulation for `building_information_modeling_ops_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 14. Workflow Depth depth for Building Information Modeling Operations
+**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade workflow depth coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 11. Autonomous anomaly triage for Building Information Modeling Ops Control Assertion
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific workflow depth schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
 
-### 15. Data Quality depth for Building Information Modeling Operations
+**Improvement:** Implement anomaly detection for `building_information_modeling_ops_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade data quality coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific data quality schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 12. Semantic document understanding for Building Information Modeling Ops Governed Model
 
-### 16. Exception Management depth for Building Information Modeling Operations
+**Justification:** Document-heavy work in Building Information Modeling Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade exception management coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Train the package assistant to parse domain documents and instructions for `building_information_modeling_ops_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific exception management schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 17. Forecasting depth for Building Information Modeling Operations
+### 13. Agent-safe CRUD execution for Bim Model
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade forecasting coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific forecasting schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Add a professional chatbot skill for `bim_model` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 18. Simulation depth for Building Information Modeling Operations
+**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade simulation coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 14. Workbench persona coverage for Model Version
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific simulation schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
 
-### 19. Agent Assistance depth for Building Information Modeling Operations
+**Improvement:** Design dedicated workbench panels for `model_version`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade agent assistance coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific agent assistance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 15. Cross-PBC dependency contracts for Clash Issue
 
-### 20. Audit Evidence depth for Building Information Modeling Operations
+**Justification:** Composable packages fail when hidden table coupling enters the domain model.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade audit evidence coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Represent dependencies for `clash_issue` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific audit evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 21. Ui Workbench depth for Building Information Modeling Operations
+### 16. API completeness and versioning for Asset Object
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade ui workbench coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific ui workbench schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Expand APIs beyond POST /bim-models, POST /model-versions, POST /clash-issues to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 22. Release Evidence depth for Building Information Modeling Operations
+**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade release evidence coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 17. Typed emitted-event expansion for Handover Package
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific release evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Consumers should understand what happened in Building Information Modeling Operations without parsing opaque payloads.
 
-### 23. Bim Model depth for Building Information Modeling Operations
+**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `handover_package` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade bim model coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific bim model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 18. Consumed-event handlers for Model Review
 
-### 24. Model Version depth for Building Information Modeling Operations
+**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade model version coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific model version schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 25. Clash Issue depth for Building Information Modeling Operations
+### 19. Retry and dead-letter operations for Digital Twin Link
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade clash issue coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Dead letters are not just plumbing; they are domain work queues that can block bim models, versions, clashes, assets, handover data, model governance, and digital twin operations.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific clash issue schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `digital_twin_link` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 26. Asset Object depth for Building Information Modeling Operations
+**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade asset object coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 20. RBAC and attribute policy for Building Information Modeling Ops Policy Rule
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific asset object schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
 
-### 27. Handover Package depth for Building Information Modeling Operations
+**Improvement:** Extend permissions for `building_information_modeling_ops_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade handover package coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific handover package schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 21. Continuous control testing for Building Information Modeling Ops Runtime Parameter
 
-### 28. Model Review depth for Building Information Modeling Operations
+**Justification:** Controls should run during operations, not only during release audit or manual review.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade model review coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Embed control assertions for `building_information_modeling_ops_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific model review schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `building_information_modeling_ops_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 29. Digital Twin Link depth for Building Information Modeling Operations
+### 22. Cryptographic audit proofing for Building Information Modeling Ops Schema Extension
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade digital twin link coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific digital twin link schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Hash-chain material `building_information_modeling_ops_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 30. Building Information Modeling Ops Policy Rule depth for Building Information Modeling Operations
+**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops policy rule coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 23. Privacy, consent, and secrecy controls for Building Information Modeling Ops Control Assertion
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops policy rule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
 
-### 31. Building Information Modeling Ops Runtime Parameter depth for Building Information Modeling Operations
+**Improvement:** Add field-level privacy classifications for `building_information_modeling_ops_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops runtime parameter coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops runtime parameter schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 24. Multi-tenant operating model for Building Information Modeling Ops Governed Model
 
-### 32. Building Information Modeling Ops Schema Extension depth for Building Information Modeling Operations
+**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops schema extension coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Support tenant-specific `building_information_modeling_ops_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops schema extension schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 33. Building Information Modeling Ops Control Assertion depth for Building Information Modeling Operations
+### 25. Schema evolution and extension registry for Bim Model
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops control assertion coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops control assertion schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Make schema extensions for `bim_model` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 34. Building Information Modeling Ops Governed Model depth for Building Information Modeling Operations
+**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade building information modeling ops governed model coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 26. Master data quality gates for Model Version
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific building information modeling ops governed model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Many building information modeling operations errors begin as bad reference data; the PBC should catch them before workflow execution.
 
-### 35. Policy Governance depth for Building Information Modeling Operations
+**Improvement:** Define reference-data contracts for `model_version`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade policy governance coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific policy governance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 27. Bulk operations and correction workflows for Clash Issue
 
-### 36. Workflow Depth depth for Building Information Modeling Operations
+**Justification:** Enterprise-scale Building Information Modeling Operations users cannot operate one record at a time.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade workflow depth coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `clash_issue` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific workflow depth schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 37. Data Quality depth for Building Information Modeling Operations
+### 28. Lifecycle collaboration and tasking for Asset Object
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade data quality coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific data quality schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `asset_object` without leaking into external shared task tables. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 38. Exception Management depth for Building Information Modeling Operations
+**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade exception management coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 29. SLA and service-level governance for Handover Package
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific exception management schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Users need to know when bim models, versions, clashes, assets, handover data, model governance, and digital twin operations is late, blocked, or at risk before customer or regulator impact.
 
-### 39. Forecasting depth for Building Information Modeling Operations
+**Improvement:** Define SLAs for `handover_package` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade forecasting coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific forecasting schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 30. Operational analytics cockpit for Model Review
 
-### 40. Simulation depth for Building Information Modeling Operations
+**Justification:** World-class operations require leading indicators, not only record counts.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade simulation coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Build analytics for `model_review`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific simulation schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 41. Agent Assistance depth for Building Information Modeling Operations
+### 31. Decision intelligence and recommendations for Digital Twin Link
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade agent assistance coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific agent assistance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Generate ranked recommendations for `digital_twin_link` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 42. Audit Evidence depth for Building Information Modeling Operations
+**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade audit evidence coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 32. Quality and completeness scoring for Building Information Modeling Ops Policy Rule
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific audit evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Operators should see whether a record is truly ready, not just technically saved.
 
-### 43. Ui Workbench depth for Building Information Modeling Operations
+**Improvement:** Score each `building_information_modeling_ops_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade ui workbench coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific ui workbench schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 33. End-to-end scenario library for Building Information Modeling Ops Runtime Parameter
 
-### 44. Release Evidence depth for Building Information Modeling Operations
+**Justification:** Release evidence is stronger when every important building information modeling operations behavior has executable examples.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade release evidence coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Create seeded scenarios for `building_information_modeling_ops_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific release evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 45. Bim Model depth for Building Information Modeling Operations
+### 34. Domain ontology and terminology model for Building Information Modeling Ops Schema Extension
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade bim model coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific bim model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Add an ontology for `building_information_modeling_ops_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 46. Model Version depth for Building Information Modeling Operations
+**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade model version coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 35. Advanced search and investigation for Building Information Modeling Ops Control Assertion
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific model version schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
 
-### 47. Clash Issue depth for Building Information Modeling Operations
+**Improvement:** Provide search across `building_information_modeling_ops_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade clash issue coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific clash issue schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 36. Reconciliation and closure controls for Building Information Modeling Ops Governed Model
 
-### 48. Asset Object depth for Building Information Modeling Operations
+**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade asset object coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add reconciliation workflows that compare `building_information_modeling_ops_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific asset object schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 49. Handover Package depth for Building Information Modeling Operations
+### 37. Regulatory and policy reporting for Bim Model
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade handover package coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific handover package schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Generate domain reporting packs for `bim_model` covering statutory, contractual, operational, board, customer, or regulator evidence depending on contractual obligations, site progress evidence, physical asset state, commercial controls, safety constraints, change events, and long-horizon lifecycle accountability. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 50. Model Review depth for Building Information Modeling Operations
+**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `building_information_modeling_ops` PBC needs specialist-grade model review coverage because bim models, versions, clashes, assets, handover data, model governance, and digital twin operations cannot be operated safely with generic records or shallow workflow evidence.
+### 38. Carbon and resource awareness for Model Version
 
-**Improvement:** Extend `building_information_modeling_ops` with domain-specific model review schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+
+**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `model_version` decisions and batch operations. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 39. Resilience and offline behavior for Clash Issue
+
+**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+
+**Improvement:** Define resilience modes for `clash_issue`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 40. Human-in-the-loop automation for Asset Object
+
+**Justification:** Automation should accelerate bim models, versions, clashes, assets, handover data, model governance, and digital twin operations while preserving accountability for high-risk decisions.
+
+**Improvement:** Set explicit automation boundaries for `asset_object`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 41. Package discovery and fit scoring for Handover Package
+
+**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+
+**Improvement:** Improve package metadata so composition can explain when `building_information_modeling_ops` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 42. Configuration deployment pipeline for Model Review
+
+**Justification:** Configuration changes can materially alter building information modeling operations; they need the same discipline as code releases.
+
+**Improvement:** Add configuration promotion for `model_review` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 43. Workbench command completeness for Digital Twin Link
+
+**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+
+**Improvement:** Expose every high-value operation for `digital_twin_link` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 44. Document packet and evidence vault for Building Information Modeling Ops Policy Rule
+
+**Justification:** Documents often carry the legal or operational truth behind bim models, versions, clashes, assets, handover data, model governance, and digital twin operations.
+
+**Improvement:** Create a governed evidence vault for `building_information_modeling_ops_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 45. Data correction and amendment history for Building Information Modeling Ops Runtime Parameter
+
+**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+
+**Improvement:** Support formal amendments for `building_information_modeling_ops_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 46. External participant collaboration for Building Information Modeling Ops Schema Extension
+
+**Justification:** Many building information modeling operations workflows require outside parties, but they must not gain direct access to internal tables.
+
+**Improvement:** Add controlled collaboration portals or API views for external participants related to `building_information_modeling_ops_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 47. Advanced dependency freshness scoring for Building Information Modeling Ops Control Assertion
+
+**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+
+**Improvement:** Score freshness and reliability of dependencies used by `building_information_modeling_ops_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 48. Model governance and explainability for Building Information Modeling Ops Governed Model
+
+**Justification:** Governed AI is mandatory for professional-grade automation in Building Information Modeling Operations.
+
+**Improvement:** For every predictive or agentic feature around `building_information_modeling_ops_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 49. High-scale partitioning and archival for Bim Model
+
+**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+
+**Improvement:** Plan scale behavior for `bim_model`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `building_information_modeling_ops_create_bim_model_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 50. Release gate expansion for Model Version
+
+**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+
+**Improvement:** Expand release gates for `building_information_modeling_ops` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `building_information_modeling_ops_record_model_version_workflow` where applicable, and make it visible in `BuildingInformationModelingOpsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/building_information_modeling_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.

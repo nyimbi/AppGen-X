@@ -1,315 +1,418 @@
-# Sports Venue Event Operations PBC Improvement Backlog
+# Sports Venue Event Operations PBC Better-Than-World-Class Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `sports_venue_event_operations`. Each item is specific to venue events, seating, concessions, security, staffing, fan experience, and event operations and is intended to move the package toward complete domain coverage.
+This file identifies, justifies, and describes 50 high-impact improvements for `sports_venue_event_operations`. The backlog is specific to venue events, seating, concessions, security, staffing, fan experience, and event operations and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
 
 ## Current Domain Evidence Used
 
+- Stable PBC key: `sports_venue_event_operations`.
 - Domain purpose: Venue events, seating, concessions, security, staffing, fan experience, and event operations.
-- Representative owned tables: `sports_venue_event_operations_venue_event`, `sports_venue_event_operations_seating_manifest`, `sports_venue_event_operations_concession_plan`, `sports_venue_event_operations_security_post`, `sports_venue_event_operations_event_staff`, `sports_venue_event_operations_fan_issue`, `sports_venue_event_operations_event_settlement`, `sports_venue_event_operations_sports_venue_event_operations_policy_rule`, `sports_venue_event_operations_sports_venue_event_operations_runtime_parameter`, `sports_venue_event_operations_sports_venue_event_operations_schema_extension`, `sports_venue_event_operations_sports_venue_event_operations_control_assertion`, `sports_venue_event_operations_sports_venue_event_operations_governed_model`.
-- Representative operations/APIs: `create_venue_event`, `record_seating_manifest`, `review_concession_plan`, `approve_security_post`, `simulate_event_staff`, `create_fan_issue`, `record_event_settlement`, `review_sports_venue_event_operations_policy_rule`, `approve_sports_venue_event_operations_runtime_parameter`, `simulate_sports_venue_event_operations_schema_extension`, `create_sports_venue_event_operations_control_assertion`, `record_sports_venue_event_operations_governed_model`.
-- Representative events: `SportsVenueEventOperationsCreated`, `SportsVenueEventOperationsUpdated`, `SportsVenueEventOperationsApproved`, `SportsVenueEventOperationsExceptionOpened`.
-- Representative advanced capabilities: `sports_venue_event_operations_event_sourced_operational_history`, `sports_venue_event_operations_multi_tenant_policy_isolation`, `sports_venue_event_operations_schema_evolution_resilience`, `sports_venue_event_operations_autonomous_anomaly_detection`, `sports_venue_event_operations_semantic_document_instruction_understanding`, `sports_venue_event_operations_predictive_risk_scoring`, `sports_venue_event_operations_counterfactual_scenario_simulation`, `sports_venue_event_operations_cryptographic_audit_proofs`.
+- Owned domain tables: `venue_event`, `seating_manifest`, `concession_plan`, `security_post`, `event_staff`, `fan_issue`, `event_settlement`, `sports_venue_event_operations_policy_rule`, `sports_venue_event_operations_runtime_parameter`, `sports_venue_event_operations_schema_extension`, `sports_venue_event_operations_control_assertion`, `sports_venue_event_operations_governed_model`.
+- Public APIs: `POST /venue-events`, `POST /seating-manifests`, `POST /concession-plans`, `POST /security-posts`, `POST /event-staffs`, `GET /sports-venue-event-operations-workbench`.
+- Emitted AppGen-X events: `SportsVenueEventOperationsCreated`, `SportsVenueEventOperationsUpdated`, `SportsVenueEventOperationsApproved`, `SportsVenueEventOperationsExceptionOpened`.
+- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Current standard surfaces include: `venue_event_management`, `sports_venue_event_operations_workflow`, `sports_venue_event_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
+- Current advanced surfaces include: `sports_venue_event_operations_event_sourced_operational_history`, `sports_venue_event_operations_multi_tenant_policy_isolation`, `sports_venue_event_operations_schema_evolution_resilience`, `sports_venue_event_operations_autonomous_anomaly_detection`, `sports_venue_event_operations_semantic_document_instruction_understanding`, `sports_venue_event_operations_predictive_risk_scoring`, `sports_venue_event_operations_counterfactual_scenario_simulation`, `sports_venue_event_operations_cryptographic_audit_proofs`.
 
-## 50 Better-Than-World-Class Improvements
+## 50 High-Impact Improvements
 
-### 1. Venue Event depth for Sports Venue Event Operations
+### 1. Canonical lifecycle state model for Venue Event
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade venue event coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** This closes shallow CRUD gaps by making every sports venue event operations transition explainable and testable instead of implicit in free-form status values.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific venue event schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Define a complete state machine for `venue_event` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 2. Seating Manifest depth for Sports Venue Event Operations
+**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for SportsVenueEventOperationsCreated, SportsVenueEventOperationsUpdated, SportsVenueEventOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade seating manifest coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 2. Domain intake and normalization for Seating Manifest
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific seating manifest schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of venue events, seating, concessions, security, staffing, fan experience, and event operations, not only already-clean records.
 
-### 3. Concession Plan depth for Sports Venue Event Operations
+**Improvement:** Build a typed intake pipeline for `seating_manifest` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade concession plan coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific concession plan schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 3. Specialist validation rules for Concession Plan
 
-### 4. Security Post depth for Sports Venue Event Operations
+**Justification:** World-class Sports Venue Event Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade security post coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add a domain rule compiler for `concession_plan` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific security post schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `SPORTS_VENUE_EVENT_OPERATIONS_DATABASE_URL, SPORTS_VENUE_EVENT_OPERATIONS_EVENT_TOPIC, SPORTS_VENUE_EVENT_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 5. Event Staff depth for Sports Venue Event Operations
+### 4. Parameter governance and tuning for Security Post
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade event staff coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Parameters are where operations teams tune sports venue event operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific event staff schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Expose bounded runtime parameters for `security_post` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 6. Fan Issue depth for Sports Venue Event Operations
+**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade fan issue coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 5. Deep owned schema expansion for Event Staff
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific fan issue schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A single payload column cannot express the full surface of venue events, seating, concessions, security, staffing, fan experience, and event operations or prove cross-PBC boundaries are respected.
 
-### 7. Event Settlement depth for Sports Venue Event Operations
+**Improvement:** Extend the owned schema around `event_staff` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade event settlement coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `sports_venue_event_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific event settlement schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 6. Event-sourced operational history for Fan Issue
 
-### 8. Sports Venue Event Operations Policy Rule depth for Sports Venue Event Operations
+**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in sports venue event operations.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations policy rule coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Capture every material mutation of `fan_issue` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations policy rule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 9. Sports Venue Event Operations Runtime Parameter depth for Sports Venue Event Operations
+### 7. Projection and read-model strategy for Event Settlement
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations runtime parameter coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations runtime parameter schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Create purpose-built projections for `event_settlement`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 10. Sports Venue Event Operations Schema Extension depth for Sports Venue Event Operations
+**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations schema extension coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 8. Exception taxonomy and remediation for Sports Venue Event Operations Policy Rule
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations schema extension schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
 
-### 11. Sports Venue Event Operations Control Assertion depth for Sports Venue Event Operations
+**Improvement:** Model the full exception taxonomy for `sports_venue_event_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations control assertion coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations control assertion schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 9. Predictive risk scoring for Sports Venue Event Operations Runtime Parameter
 
-### 12. Sports Venue Event Operations Governed Model depth for Sports Venue Event Operations
+**Justification:** The package should warn users before sports venue event operations work fails, breaches policy, or creates downstream cost.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations governed model coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add predictive risk scoring for `sports_venue_event_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations governed model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 13. Policy Governance depth for Sports Venue Event Operations
+### 10. Counterfactual simulation for Sports Venue Event Operations Schema Extension
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade policy governance coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Advanced users need to ask “what would happen if” before committing changes to live venue events, seating, concessions, security, staffing, fan experience, and event operations operations.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific policy governance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Provide scenario simulation for `sports_venue_event_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 14. Workflow Depth depth for Sports Venue Event Operations
+**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade workflow depth coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 11. Autonomous anomaly triage for Sports Venue Event Operations Control Assertion
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific workflow depth schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
 
-### 15. Data Quality depth for Sports Venue Event Operations
+**Improvement:** Implement anomaly detection for `sports_venue_event_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade data quality coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific data quality schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 12. Semantic document understanding for Sports Venue Event Operations Governed Model
 
-### 16. Exception Management depth for Sports Venue Event Operations
+**Justification:** Document-heavy work in Sports Venue Event Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade exception management coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Train the package assistant to parse domain documents and instructions for `sports_venue_event_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific exception management schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 17. Forecasting depth for Sports Venue Event Operations
+### 13. Agent-safe CRUD execution for Venue Event
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade forecasting coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific forecasting schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Add a professional chatbot skill for `venue_event` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 18. Simulation depth for Sports Venue Event Operations
+**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade simulation coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 14. Workbench persona coverage for Seating Manifest
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific simulation schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
 
-### 19. Agent Assistance depth for Sports Venue Event Operations
+**Improvement:** Design dedicated workbench panels for `seating_manifest`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade agent assistance coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific agent assistance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 15. Cross-PBC dependency contracts for Concession Plan
 
-### 20. Audit Evidence depth for Sports Venue Event Operations
+**Justification:** Composable packages fail when hidden table coupling enters the domain model.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade audit evidence coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Represent dependencies for `concession_plan` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific audit evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 21. Ui Workbench depth for Sports Venue Event Operations
+### 16. API completeness and versioning for Security Post
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade ui workbench coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific ui workbench schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Expand APIs beyond POST /venue-events, POST /seating-manifests, POST /concession-plans to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 22. Release Evidence depth for Sports Venue Event Operations
+**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade release evidence coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 17. Typed emitted-event expansion for Event Staff
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific release evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Consumers should understand what happened in Sports Venue Event Operations without parsing opaque payloads.
 
-### 23. Venue Event depth for Sports Venue Event Operations
+**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `event_staff` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade venue event coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific venue event schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 18. Consumed-event handlers for Fan Issue
 
-### 24. Seating Manifest depth for Sports Venue Event Operations
+**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade seating manifest coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific seating manifest schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 25. Concession Plan depth for Sports Venue Event Operations
+### 19. Retry and dead-letter operations for Event Settlement
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade concession plan coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Dead letters are not just plumbing; they are domain work queues that can block venue events, seating, concessions, security, staffing, fan experience, and event operations.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific concession plan schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `event_settlement` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 26. Security Post depth for Sports Venue Event Operations
+**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade security post coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 20. RBAC and attribute policy for Sports Venue Event Operations Policy Rule
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific security post schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
 
-### 27. Event Staff depth for Sports Venue Event Operations
+**Improvement:** Extend permissions for `sports_venue_event_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade event staff coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific event staff schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 21. Continuous control testing for Sports Venue Event Operations Runtime Parameter
 
-### 28. Fan Issue depth for Sports Venue Event Operations
+**Justification:** Controls should run during operations, not only during release audit or manual review.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade fan issue coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Embed control assertions for `sports_venue_event_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific fan issue schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `sports_venue_event_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 29. Event Settlement depth for Sports Venue Event Operations
+### 22. Cryptographic audit proofing for Sports Venue Event Operations Schema Extension
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade event settlement coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific event settlement schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Hash-chain material `sports_venue_event_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 30. Sports Venue Event Operations Policy Rule depth for Sports Venue Event Operations
+**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations policy rule coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 23. Privacy, consent, and secrecy controls for Sports Venue Event Operations Control Assertion
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations policy rule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
 
-### 31. Sports Venue Event Operations Runtime Parameter depth for Sports Venue Event Operations
+**Improvement:** Add field-level privacy classifications for `sports_venue_event_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations runtime parameter coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations runtime parameter schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 24. Multi-tenant operating model for Sports Venue Event Operations Governed Model
 
-### 32. Sports Venue Event Operations Schema Extension depth for Sports Venue Event Operations
+**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations schema extension coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Support tenant-specific `sports_venue_event_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations schema extension schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 33. Sports Venue Event Operations Control Assertion depth for Sports Venue Event Operations
+### 25. Schema evolution and extension registry for Venue Event
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations control assertion coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations control assertion schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Make schema extensions for `venue_event` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 34. Sports Venue Event Operations Governed Model depth for Sports Venue Event Operations
+**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade sports venue event operations governed model coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 26. Master data quality gates for Seating Manifest
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific sports venue event operations governed model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Many sports venue event operations errors begin as bad reference data; the PBC should catch them before workflow execution.
 
-### 35. Policy Governance depth for Sports Venue Event Operations
+**Improvement:** Define reference-data contracts for `seating_manifest`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade policy governance coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific policy governance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 27. Bulk operations and correction workflows for Concession Plan
 
-### 36. Workflow Depth depth for Sports Venue Event Operations
+**Justification:** Enterprise-scale Sports Venue Event Operations users cannot operate one record at a time.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade workflow depth coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `concession_plan` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific workflow depth schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 37. Data Quality depth for Sports Venue Event Operations
+### 28. Lifecycle collaboration and tasking for Security Post
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade data quality coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific data quality schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `security_post` without leaking into external shared task tables. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 38. Exception Management depth for Sports Venue Event Operations
+**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade exception management coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 29. SLA and service-level governance for Event Staff
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific exception management schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Users need to know when venue events, seating, concessions, security, staffing, fan experience, and event operations is late, blocked, or at risk before customer or regulator impact.
 
-### 39. Forecasting depth for Sports Venue Event Operations
+**Improvement:** Define SLAs for `event_staff` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade forecasting coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific forecasting schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 30. Operational analytics cockpit for Fan Issue
 
-### 40. Simulation depth for Sports Venue Event Operations
+**Justification:** World-class operations require leading indicators, not only record counts.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade simulation coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Build analytics for `fan_issue`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific simulation schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 41. Agent Assistance depth for Sports Venue Event Operations
+### 31. Decision intelligence and recommendations for Event Settlement
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade agent assistance coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific agent assistance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Generate ranked recommendations for `event_settlement` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 42. Audit Evidence depth for Sports Venue Event Operations
+**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade audit evidence coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 32. Quality and completeness scoring for Sports Venue Event Operations Policy Rule
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific audit evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Operators should see whether a record is truly ready, not just technically saved.
 
-### 43. Ui Workbench depth for Sports Venue Event Operations
+**Improvement:** Score each `sports_venue_event_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade ui workbench coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific ui workbench schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 33. End-to-end scenario library for Sports Venue Event Operations Runtime Parameter
 
-### 44. Release Evidence depth for Sports Venue Event Operations
+**Justification:** Release evidence is stronger when every important sports venue event operations behavior has executable examples.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade release evidence coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Create seeded scenarios for `sports_venue_event_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific release evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 45. Venue Event depth for Sports Venue Event Operations
+### 34. Domain ontology and terminology model for Sports Venue Event Operations Schema Extension
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade venue event coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific venue event schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Add an ontology for `sports_venue_event_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 46. Seating Manifest depth for Sports Venue Event Operations
+**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade seating manifest coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 35. Advanced search and investigation for Sports Venue Event Operations Control Assertion
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific seating manifest schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
 
-### 47. Concession Plan depth for Sports Venue Event Operations
+**Improvement:** Provide search across `sports_venue_event_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade concession plan coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific concession plan schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 36. Reconciliation and closure controls for Sports Venue Event Operations Governed Model
 
-### 48. Security Post depth for Sports Venue Event Operations
+**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade security post coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add reconciliation workflows that compare `sports_venue_event_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific security post schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 49. Event Staff depth for Sports Venue Event Operations
+### 37. Regulatory and policy reporting for Venue Event
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade event staff coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific event staff schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Generate domain reporting packs for `venue_event` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 50. Fan Issue depth for Sports Venue Event Operations
+**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `sports_venue_event_operations` PBC needs specialist-grade fan issue coverage because venue events, seating, concessions, security, staffing, fan experience, and event operations cannot be operated safely with generic records or shallow workflow evidence.
+### 38. Carbon and resource awareness for Seating Manifest
 
-**Improvement:** Extend `sports_venue_event_operations` with domain-specific fan issue schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+
+**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `seating_manifest` decisions and batch operations. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 39. Resilience and offline behavior for Concession Plan
+
+**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+
+**Improvement:** Define resilience modes for `concession_plan`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 40. Human-in-the-loop automation for Security Post
+
+**Justification:** Automation should accelerate venue events, seating, concessions, security, staffing, fan experience, and event operations while preserving accountability for high-risk decisions.
+
+**Improvement:** Set explicit automation boundaries for `security_post`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 41. Package discovery and fit scoring for Event Staff
+
+**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+
+**Improvement:** Improve package metadata so composition can explain when `sports_venue_event_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 42. Configuration deployment pipeline for Fan Issue
+
+**Justification:** Configuration changes can materially alter sports venue event operations; they need the same discipline as code releases.
+
+**Improvement:** Add configuration promotion for `fan_issue` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 43. Workbench command completeness for Event Settlement
+
+**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+
+**Improvement:** Expose every high-value operation for `event_settlement` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 44. Document packet and evidence vault for Sports Venue Event Operations Policy Rule
+
+**Justification:** Documents often carry the legal or operational truth behind venue events, seating, concessions, security, staffing, fan experience, and event operations.
+
+**Improvement:** Create a governed evidence vault for `sports_venue_event_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 45. Data correction and amendment history for Sports Venue Event Operations Runtime Parameter
+
+**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+
+**Improvement:** Support formal amendments for `sports_venue_event_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 46. External participant collaboration for Sports Venue Event Operations Schema Extension
+
+**Justification:** Many sports venue event operations workflows require outside parties, but they must not gain direct access to internal tables.
+
+**Improvement:** Add controlled collaboration portals or API views for external participants related to `sports_venue_event_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 47. Advanced dependency freshness scoring for Sports Venue Event Operations Control Assertion
+
+**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+
+**Improvement:** Score freshness and reliability of dependencies used by `sports_venue_event_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 48. Model governance and explainability for Sports Venue Event Operations Governed Model
+
+**Justification:** Governed AI is mandatory for professional-grade automation in Sports Venue Event Operations.
+
+**Improvement:** For every predictive or agentic feature around `sports_venue_event_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 49. High-scale partitioning and archival for Venue Event
+
+**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+
+**Improvement:** Plan scale behavior for `venue_event`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `sports_venue_event_operations_create_venue_event_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 50. Release gate expansion for Seating Manifest
+
+**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+
+**Improvement:** Expand release gates for `sports_venue_event_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `sports_venue_event_operations_record_seating_manifest_workflow` where applicable, and make it visible in `SportsVenueEventOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/sports_venue_event_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.

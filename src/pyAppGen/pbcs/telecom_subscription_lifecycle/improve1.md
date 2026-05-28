@@ -1,315 +1,418 @@
-# Telecom Subscription Lifecycle PBC Improvement Backlog
+# Telecom Subscription Lifecycle PBC Better-Than-World-Class Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `telecom_subscription_lifecycle`. Each item is specific to plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements and is intended to move the package toward complete domain coverage.
+This file identifies, justifies, and describes 50 high-impact improvements for `telecom_subscription_lifecycle`. The backlog is specific to plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
 
 ## Current Domain Evidence Used
 
+- Stable PBC key: `telecom_subscription_lifecycle`.
 - Domain purpose: Plans, activations, SIM and eSIM lifecycle, usage, roaming, plan changes, churn controls, and service entitlements.
-- Representative owned tables: `telecom_subscription_lifecycle_subscriber_account`, `telecom_subscription_lifecycle_service_plan`, `telecom_subscription_lifecycle_sim_profile`, `telecom_subscription_lifecycle_activation_request`, `telecom_subscription_lifecycle_usage_session`, `telecom_subscription_lifecycle_roaming_event`, `telecom_subscription_lifecycle_churn_risk`, `telecom_subscription_lifecycle_telecom_subscription_lifecycle_policy_rule`, `telecom_subscription_lifecycle_telecom_subscription_lifecycle_runtime_parameter`, `telecom_subscription_lifecycle_telecom_subscription_lifecycle_schema_extension`, `telecom_subscription_lifecycle_telecom_subscription_lifecycle_control_assertion`, `telecom_subscription_lifecycle_telecom_subscription_lifecycle_governed_model`.
-- Representative operations/APIs: `create_subscriber_account`, `record_service_plan`, `review_sim_profile`, `approve_activation_request`, `simulate_usage_session`, `create_roaming_event`, `record_churn_risk`, `review_telecom_subscription_lifecycle_policy_rule`, `approve_telecom_subscription_lifecycle_runtime_parameter`, `simulate_telecom_subscription_lifecycle_schema_extension`, `create_telecom_subscription_lifecycle_control_assertion`, `record_telecom_subscription_lifecycle_governed_model`.
-- Representative events: `TelecomSubscriptionLifecycleCreated`, `TelecomSubscriptionLifecycleUpdated`, `TelecomSubscriptionLifecycleApproved`, `TelecomSubscriptionLifecycleExceptionOpened`.
-- Representative advanced capabilities: `telecom_subscription_lifecycle_event_sourced_operational_history`, `telecom_subscription_lifecycle_multi_tenant_policy_isolation`, `telecom_subscription_lifecycle_schema_evolution_resilience`, `telecom_subscription_lifecycle_autonomous_anomaly_detection`, `telecom_subscription_lifecycle_semantic_document_instruction_understanding`, `telecom_subscription_lifecycle_predictive_risk_scoring`, `telecom_subscription_lifecycle_counterfactual_scenario_simulation`, `telecom_subscription_lifecycle_cryptographic_audit_proofs`.
+- Owned domain tables: `subscriber_account`, `service_plan`, `sim_profile`, `activation_request`, `usage_session`, `roaming_event`, `churn_risk`, `telecom_subscription_lifecycle_policy_rule`, `telecom_subscription_lifecycle_runtime_parameter`, `telecom_subscription_lifecycle_schema_extension`, `telecom_subscription_lifecycle_control_assertion`, `telecom_subscription_lifecycle_governed_model`.
+- Public APIs: `POST /subscriber-accounts`, `POST /service-plans`, `POST /sim-profiles`, `POST /activation-requests`, `POST /usage-sessions`, `GET /telecom-subscription-lifecycle-workbench`.
+- Emitted AppGen-X events: `TelecomSubscriptionLifecycleCreated`, `TelecomSubscriptionLifecycleUpdated`, `TelecomSubscriptionLifecycleApproved`, `TelecomSubscriptionLifecycleExceptionOpened`.
+- Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
+- Current standard surfaces include: `subscriber_account_management`, `telecom_subscription_lifecycle_workflow`, `telecom_subscription_lifecycle_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
+- Current advanced surfaces include: `telecom_subscription_lifecycle_event_sourced_operational_history`, `telecom_subscription_lifecycle_multi_tenant_policy_isolation`, `telecom_subscription_lifecycle_schema_evolution_resilience`, `telecom_subscription_lifecycle_autonomous_anomaly_detection`, `telecom_subscription_lifecycle_semantic_document_instruction_understanding`, `telecom_subscription_lifecycle_predictive_risk_scoring`, `telecom_subscription_lifecycle_counterfactual_scenario_simulation`, `telecom_subscription_lifecycle_cryptographic_audit_proofs`.
 
-## 50 Better-Than-World-Class Improvements
+## 50 High-Impact Improvements
 
-### 1. Subscriber Account depth for Telecom Subscription Lifecycle
+### 1. Canonical lifecycle state model for Subscriber Account
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade subscriber account coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** This closes shallow CRUD gaps by making every telecom subscription lifecycle transition explainable and testable instead of implicit in free-form status values.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific subscriber account schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Define a complete state machine for `subscriber_account` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 2. Service Plan depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for TelecomSubscriptionLifecycleCreated, TelecomSubscriptionLifecycleUpdated, TelecomSubscriptionLifecycleApproved. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade service plan coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 2. Domain intake and normalization for Service Plan
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific service plan schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements, not only already-clean records.
 
-### 3. Sim Profile depth for Telecom Subscription Lifecycle
+**Improvement:** Build a typed intake pipeline for `service_plan` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade sim profile coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific sim profile schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 3. Specialist validation rules for Sim Profile
 
-### 4. Activation Request depth for Telecom Subscription Lifecycle
+**Justification:** World-class Telecom Subscription Lifecycle requires rules that domain experts can reason about, version, test, and roll back without code edits.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade activation request coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add a domain rule compiler for `sim_profile` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific activation request schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `TELECOM_SUBSCRIPTION_LIFECYCLE_DATABASE_URL, TELECOM_SUBSCRIPTION_LIFECYCLE_EVENT_TOPIC, TELECOM_SUBSCRIPTION_LIFECYCLE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 5. Usage Session depth for Telecom Subscription Lifecycle
+### 4. Parameter governance and tuning for Activation Request
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade usage session coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Parameters are where operations teams tune telecom subscription lifecycle; unbounded constants would make the PBC brittle and unsafe in real deployments.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific usage session schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Expose bounded runtime parameters for `activation_request` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 6. Roaming Event depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade roaming event coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 5. Deep owned schema expansion for Usage Session
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific roaming event schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A single payload column cannot express the full surface of plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements or prove cross-PBC boundaries are respected.
 
-### 7. Churn Risk depth for Telecom Subscription Lifecycle
+**Improvement:** Extend the owned schema around `usage_session` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade churn risk coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `telecom_subscription_lifecycle_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific churn risk schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 6. Event-sourced operational history for Roaming Event
 
-### 8. Telecom Subscription Lifecycle Policy Rule depth for Telecom Subscription Lifecycle
+**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in telecom subscription lifecycle.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle policy rule coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Capture every material mutation of `roaming_event` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle policy rule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 9. Telecom Subscription Lifecycle Runtime Parameter depth for Telecom Subscription Lifecycle
+### 7. Projection and read-model strategy for Churn Risk
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle runtime parameter coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle runtime parameter schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Create purpose-built projections for `churn_risk`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 10. Telecom Subscription Lifecycle Schema Extension depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle schema extension coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 8. Exception taxonomy and remediation for Telecom Subscription Lifecycle Policy Rule
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle schema extension schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
 
-### 11. Telecom Subscription Lifecycle Control Assertion depth for Telecom Subscription Lifecycle
+**Improvement:** Model the full exception taxonomy for `telecom_subscription_lifecycle_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle control assertion coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for missing approvals. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle control assertion schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 9. Predictive risk scoring for Telecom Subscription Lifecycle Runtime Parameter
 
-### 12. Telecom Subscription Lifecycle Governed Model depth for Telecom Subscription Lifecycle
+**Justification:** The package should warn users before telecom subscription lifecycle work fails, breaches policy, or creates downstream cost.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle governed model coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add predictive risk scoring for `telecom_subscription_lifecycle_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle governed model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 13. Policy Governance depth for Telecom Subscription Lifecycle
+### 10. Counterfactual simulation for Telecom Subscription Lifecycle Schema Extension
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade policy governance coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Advanced users need to ask “what would happen if” before committing changes to live plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements operations.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific policy governance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Provide scenario simulation for `telecom_subscription_lifecycle_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 14. Workflow Depth depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade workflow depth coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 11. Autonomous anomaly triage for Telecom Subscription Lifecycle Control Assertion
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific workflow depth schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
 
-### 15. Data Quality depth for Telecom Subscription Lifecycle
+**Improvement:** Implement anomaly detection for `telecom_subscription_lifecycle_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade data quality coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific data quality schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 12. Semantic document understanding for Telecom Subscription Lifecycle Governed Model
 
-### 16. Exception Management depth for Telecom Subscription Lifecycle
+**Justification:** Document-heavy work in Telecom Subscription Lifecycle cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade exception management coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Train the package assistant to parse domain documents and instructions for `telecom_subscription_lifecycle_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific exception management schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 17. Forecasting depth for Telecom Subscription Lifecycle
+### 13. Agent-safe CRUD execution for Subscriber Account
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade forecasting coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific forecasting schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Add a professional chatbot skill for `subscriber_account` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 18. Simulation depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade simulation coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 14. Workbench persona coverage for Service Plan
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific simulation schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
 
-### 19. Agent Assistance depth for Telecom Subscription Lifecycle
+**Improvement:** Design dedicated workbench panels for `service_plan`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade agent assistance coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific agent assistance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 15. Cross-PBC dependency contracts for Sim Profile
 
-### 20. Audit Evidence depth for Telecom Subscription Lifecycle
+**Justification:** Composable packages fail when hidden table coupling enters the domain model.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade audit evidence coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Represent dependencies for `sim_profile` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific audit evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 21. Ui Workbench depth for Telecom Subscription Lifecycle
+### 16. API completeness and versioning for Activation Request
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade ui workbench coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific ui workbench schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Expand APIs beyond POST /subscriber-accounts, POST /service-plans, POST /sim-profiles to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 22. Release Evidence depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade release evidence coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 17. Typed emitted-event expansion for Usage Session
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific release evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Consumers should understand what happened in Telecom Subscription Lifecycle without parsing opaque payloads.
 
-### 23. Subscriber Account depth for Telecom Subscription Lifecycle
+**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `usage_session` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade subscriber account coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific subscriber account schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 18. Consumed-event handlers for Roaming Event
 
-### 24. Service Plan depth for Telecom Subscription Lifecycle
+**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade service plan coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific service plan schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 25. Sim Profile depth for Telecom Subscription Lifecycle
+### 19. Retry and dead-letter operations for Churn Risk
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade sim profile coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Dead letters are not just plumbing; they are domain work queues that can block plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific sim profile schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `churn_risk` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 26. Activation Request depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade activation request coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 20. RBAC and attribute policy for Telecom Subscription Lifecycle Policy Rule
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific activation request schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
 
-### 27. Usage Session depth for Telecom Subscription Lifecycle
+**Improvement:** Extend permissions for `telecom_subscription_lifecycle_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade usage session coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific usage session schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 21. Continuous control testing for Telecom Subscription Lifecycle Runtime Parameter
 
-### 28. Roaming Event depth for Telecom Subscription Lifecycle
+**Justification:** Controls should run during operations, not only during release audit or manual review.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade roaming event coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Embed control assertions for `telecom_subscription_lifecycle_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific roaming event schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `telecom_subscription_lifecycle_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 29. Churn Risk depth for Telecom Subscription Lifecycle
+### 22. Cryptographic audit proofing for Telecom Subscription Lifecycle Schema Extension
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade churn risk coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific churn risk schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Hash-chain material `telecom_subscription_lifecycle_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 30. Telecom Subscription Lifecycle Policy Rule depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle policy rule coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 23. Privacy, consent, and secrecy controls for Telecom Subscription Lifecycle Control Assertion
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle policy rule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
 
-### 31. Telecom Subscription Lifecycle Runtime Parameter depth for Telecom Subscription Lifecycle
+**Improvement:** Add field-level privacy classifications for `telecom_subscription_lifecycle_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle runtime parameter coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle runtime parameter schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 24. Multi-tenant operating model for Telecom Subscription Lifecycle Governed Model
 
-### 32. Telecom Subscription Lifecycle Schema Extension depth for Telecom Subscription Lifecycle
+**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle schema extension coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Support tenant-specific `telecom_subscription_lifecycle_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle schema extension schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 33. Telecom Subscription Lifecycle Control Assertion depth for Telecom Subscription Lifecycle
+### 25. Schema evolution and extension registry for Subscriber Account
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle control assertion coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle control assertion schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Make schema extensions for `subscriber_account` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 34. Telecom Subscription Lifecycle Governed Model depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade telecom subscription lifecycle governed model coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 26. Master data quality gates for Service Plan
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific telecom subscription lifecycle governed model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Many telecom subscription lifecycle errors begin as bad reference data; the PBC should catch them before workflow execution.
 
-### 35. Policy Governance depth for Telecom Subscription Lifecycle
+**Improvement:** Define reference-data contracts for `service_plan`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade policy governance coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific policy governance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 27. Bulk operations and correction workflows for Sim Profile
 
-### 36. Workflow Depth depth for Telecom Subscription Lifecycle
+**Justification:** Enterprise-scale Telecom Subscription Lifecycle users cannot operate one record at a time.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade workflow depth coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `sim_profile` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific workflow depth schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 37. Data Quality depth for Telecom Subscription Lifecycle
+### 28. Lifecycle collaboration and tasking for Activation Request
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade data quality coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific data quality schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `activation_request` without leaking into external shared task tables. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 38. Exception Management depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade exception management coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 29. SLA and service-level governance for Usage Session
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific exception management schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Users need to know when plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements is late, blocked, or at risk before customer or regulator impact.
 
-### 39. Forecasting depth for Telecom Subscription Lifecycle
+**Improvement:** Define SLAs for `usage_session` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade forecasting coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific forecasting schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 30. Operational analytics cockpit for Roaming Event
 
-### 40. Simulation depth for Telecom Subscription Lifecycle
+**Justification:** World-class operations require leading indicators, not only record counts.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade simulation coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Build analytics for `roaming_event`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific simulation schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 41. Agent Assistance depth for Telecom Subscription Lifecycle
+### 31. Decision intelligence and recommendations for Churn Risk
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade agent assistance coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific agent assistance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Generate ranked recommendations for `churn_risk` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 42. Audit Evidence depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade audit evidence coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 32. Quality and completeness scoring for Telecom Subscription Lifecycle Policy Rule
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific audit evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Operators should see whether a record is truly ready, not just technically saved.
 
-### 43. Ui Workbench depth for Telecom Subscription Lifecycle
+**Improvement:** Score each `telecom_subscription_lifecycle_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade ui workbench coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific ui workbench schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 33. End-to-end scenario library for Telecom Subscription Lifecycle Runtime Parameter
 
-### 44. Release Evidence depth for Telecom Subscription Lifecycle
+**Justification:** Release evidence is stronger when every important telecom subscription lifecycle behavior has executable examples.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade release evidence coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Create seeded scenarios for `telecom_subscription_lifecycle_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific release evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 45. Subscriber Account depth for Telecom Subscription Lifecycle
+### 34. Domain ontology and terminology model for Telecom Subscription Lifecycle Schema Extension
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade subscriber account coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific subscriber account schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Add an ontology for `telecom_subscription_lifecycle_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 46. Service Plan depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade service plan coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 35. Advanced search and investigation for Telecom Subscription Lifecycle Control Assertion
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific service plan schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
 
-### 47. Sim Profile depth for Telecom Subscription Lifecycle
+**Improvement:** Provide search across `telecom_subscription_lifecycle_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade sim profile coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific sim profile schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 36. Reconciliation and closure controls for Telecom Subscription Lifecycle Governed Model
 
-### 48. Activation Request depth for Telecom Subscription Lifecycle
+**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade activation request coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add reconciliation workflows that compare `telecom_subscription_lifecycle_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific activation request schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 49. Usage Session depth for Telecom Subscription Lifecycle
+### 37. Regulatory and policy reporting for Subscriber Account
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade usage session coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific usage session schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Generate domain reporting packs for `subscriber_account` covering statutory, contractual, operational, board, customer, or regulator evidence depending on domain lifecycle completeness, operational evidence, exception handling, governed automation, composable integration, and release-grade auditability. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 50. Roaming Event depth for Telecom Subscription Lifecycle
+**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `telecom_subscription_lifecycle` PBC needs specialist-grade roaming event coverage because plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements cannot be operated safely with generic records or shallow workflow evidence.
+### 38. Carbon and resource awareness for Service Plan
 
-**Improvement:** Extend `telecom_subscription_lifecycle` with domain-specific roaming event schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+
+**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `service_plan` decisions and batch operations. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 39. Resilience and offline behavior for Sim Profile
+
+**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+
+**Improvement:** Define resilience modes for `sim_profile`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 40. Human-in-the-loop automation for Activation Request
+
+**Justification:** Automation should accelerate plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements while preserving accountability for high-risk decisions.
+
+**Improvement:** Set explicit automation boundaries for `activation_request`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 41. Package discovery and fit scoring for Usage Session
+
+**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+
+**Improvement:** Improve package metadata so composition can explain when `telecom_subscription_lifecycle` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 42. Configuration deployment pipeline for Roaming Event
+
+**Justification:** Configuration changes can materially alter telecom subscription lifecycle; they need the same discipline as code releases.
+
+**Improvement:** Add configuration promotion for `roaming_event` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 43. Workbench command completeness for Churn Risk
+
+**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+
+**Improvement:** Expose every high-value operation for `churn_risk` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 44. Document packet and evidence vault for Telecom Subscription Lifecycle Policy Rule
+
+**Justification:** Documents often carry the legal or operational truth behind plans, activations, sim and esim lifecycle, usage, roaming, plan changes, churn controls, and service entitlements.
+
+**Improvement:** Create a governed evidence vault for `telecom_subscription_lifecycle_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 45. Data correction and amendment history for Telecom Subscription Lifecycle Runtime Parameter
+
+**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+
+**Improvement:** Support formal amendments for `telecom_subscription_lifecycle_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 46. External participant collaboration for Telecom Subscription Lifecycle Schema Extension
+
+**Justification:** Many telecom subscription lifecycle workflows require outside parties, but they must not gain direct access to internal tables.
+
+**Improvement:** Add controlled collaboration portals or API views for external participants related to `telecom_subscription_lifecycle_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 47. Advanced dependency freshness scoring for Telecom Subscription Lifecycle Control Assertion
+
+**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+
+**Improvement:** Score freshness and reliability of dependencies used by `telecom_subscription_lifecycle_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 48. Model governance and explainability for Telecom Subscription Lifecycle Governed Model
+
+**Justification:** Governed AI is mandatory for professional-grade automation in Telecom Subscription Lifecycle.
+
+**Improvement:** For every predictive or agentic feature around `telecom_subscription_lifecycle_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 49. High-scale partitioning and archival for Subscriber Account
+
+**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+
+**Improvement:** Plan scale behavior for `subscriber_account`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `telecom_subscription_lifecycle_create_subscriber_account_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 50. Release gate expansion for Service Plan
+
+**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+
+**Improvement:** Expand release gates for `telecom_subscription_lifecycle` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `telecom_subscription_lifecycle_record_service_plan_workflow` where applicable, and make it visible in `TelecomSubscriptionLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_subscription_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.

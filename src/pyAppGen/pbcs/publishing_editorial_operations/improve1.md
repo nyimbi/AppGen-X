@@ -1,315 +1,418 @@
-# Publishing Editorial Operations PBC Improvement Backlog
+# Publishing Editorial Operations PBC Better-Than-World-Class Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `publishing_editorial_operations`. Each item is specific to manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics and is intended to move the package toward complete domain coverage.
+This file identifies, justifies, and describes 50 high-impact improvements for `publishing_editorial_operations`. The backlog is specific to manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
 
 ## Current Domain Evidence Used
 
+- Stable PBC key: `publishing_editorial_operations`.
 - Domain purpose: Manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics.
-- Representative owned tables: `publishing_editorial_operations_manuscript`, `publishing_editorial_operations_editorial_task`, `publishing_editorial_operations_author_contract`, `publishing_editorial_operations_edition`, `publishing_editorial_operations_production_schedule`, `publishing_editorial_operations_rights_grant`, `publishing_editorial_operations_distribution_plan`, `publishing_editorial_operations_publishing_editorial_operations_policy_rule`, `publishing_editorial_operations_publishing_editorial_operations_runtime_parameter`, `publishing_editorial_operations_publishing_editorial_operations_schema_extension`, `publishing_editorial_operations_publishing_editorial_operations_control_assertion`, `publishing_editorial_operations_publishing_editorial_operations_governed_model`.
-- Representative operations/APIs: `create_manuscript`, `record_editorial_task`, `review_author_contract`, `approve_edition`, `simulate_production_schedule`, `create_rights_grant`, `record_distribution_plan`, `review_publishing_editorial_operations_policy_rule`, `approve_publishing_editorial_operations_runtime_parameter`, `simulate_publishing_editorial_operations_schema_extension`, `create_publishing_editorial_operations_control_assertion`, `record_publishing_editorial_operations_governed_model`.
-- Representative events: `PublishingEditorialOperationsCreated`, `PublishingEditorialOperationsUpdated`, `PublishingEditorialOperationsApproved`, `PublishingEditorialOperationsExceptionOpened`.
-- Representative advanced capabilities: `publishing_editorial_operations_event_sourced_operational_history`, `publishing_editorial_operations_multi_tenant_policy_isolation`, `publishing_editorial_operations_schema_evolution_resilience`, `publishing_editorial_operations_autonomous_anomaly_detection`, `publishing_editorial_operations_semantic_document_instruction_understanding`, `publishing_editorial_operations_predictive_risk_scoring`, `publishing_editorial_operations_counterfactual_scenario_simulation`, `publishing_editorial_operations_cryptographic_audit_proofs`.
+- Owned domain tables: `manuscript`, `editorial_task`, `author_contract`, `edition`, `production_schedule`, `rights_grant`, `distribution_plan`, `publishing_editorial_operations_policy_rule`, `publishing_editorial_operations_runtime_parameter`, `publishing_editorial_operations_schema_extension`, `publishing_editorial_operations_control_assertion`, `publishing_editorial_operations_governed_model`.
+- Public APIs: `POST /manuscripts`, `POST /editorial-tasks`, `POST /author-contracts`, `POST /editions`, `POST /production-schedules`, `GET /publishing-editorial-operations-workbench`.
+- Emitted AppGen-X events: `PublishingEditorialOperationsCreated`, `PublishingEditorialOperationsUpdated`, `PublishingEditorialOperationsApproved`, `PublishingEditorialOperationsExceptionOpened`.
+- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Current standard surfaces include: `manuscript_management`, `publishing_editorial_operations_workflow`, `publishing_editorial_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
+- Current advanced surfaces include: `publishing_editorial_operations_event_sourced_operational_history`, `publishing_editorial_operations_multi_tenant_policy_isolation`, `publishing_editorial_operations_schema_evolution_resilience`, `publishing_editorial_operations_autonomous_anomaly_detection`, `publishing_editorial_operations_semantic_document_instruction_understanding`, `publishing_editorial_operations_predictive_risk_scoring`, `publishing_editorial_operations_counterfactual_scenario_simulation`, `publishing_editorial_operations_cryptographic_audit_proofs`.
 
-## 50 Better-Than-World-Class Improvements
+## 50 High-Impact Improvements
 
-### 1. Manuscript depth for Publishing Editorial Operations
+### 1. Canonical lifecycle state model for Manuscript
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade manuscript coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** This closes shallow CRUD gaps by making every publishing editorial operations transition explainable and testable instead of implicit in free-form status values.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific manuscript schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Define a complete state machine for `manuscript` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 2. Editorial Task depth for Publishing Editorial Operations
+**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for PublishingEditorialOperationsCreated, PublishingEditorialOperationsUpdated, PublishingEditorialOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade editorial task coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 2. Domain intake and normalization for Editorial Task
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific editorial task schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics, not only already-clean records.
 
-### 3. Author Contract depth for Publishing Editorial Operations
+**Improvement:** Build a typed intake pipeline for `editorial_task` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade author contract coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific author contract schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 3. Specialist validation rules for Author Contract
 
-### 4. Edition depth for Publishing Editorial Operations
+**Justification:** World-class Publishing Editorial Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade edition coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add a domain rule compiler for `author_contract` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific edition schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `PUBLISHING_EDITORIAL_OPERATIONS_DATABASE_URL, PUBLISHING_EDITORIAL_OPERATIONS_EVENT_TOPIC, PUBLISHING_EDITORIAL_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 5. Production Schedule depth for Publishing Editorial Operations
+### 4. Parameter governance and tuning for Edition
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade production schedule coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Parameters are where operations teams tune publishing editorial operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific production schedule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Expose bounded runtime parameters for `edition` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 6. Rights Grant depth for Publishing Editorial Operations
+**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade rights grant coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 5. Deep owned schema expansion for Production Schedule
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific rights grant schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A single payload column cannot express the full surface of manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics or prove cross-PBC boundaries are respected.
 
-### 7. Distribution Plan depth for Publishing Editorial Operations
+**Improvement:** Extend the owned schema around `production_schedule` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade distribution plan coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `publishing_editorial_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific distribution plan schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 6. Event-sourced operational history for Rights Grant
 
-### 8. Publishing Editorial Operations Policy Rule depth for Publishing Editorial Operations
+**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in publishing editorial operations.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations policy rule coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Capture every material mutation of `rights_grant` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations policy rule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 9. Publishing Editorial Operations Runtime Parameter depth for Publishing Editorial Operations
+### 7. Projection and read-model strategy for Distribution Plan
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations runtime parameter coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations runtime parameter schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Create purpose-built projections for `distribution_plan`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 10. Publishing Editorial Operations Schema Extension depth for Publishing Editorial Operations
+**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations schema extension coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 8. Exception taxonomy and remediation for Publishing Editorial Operations Policy Rule
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations schema extension schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
 
-### 11. Publishing Editorial Operations Control Assertion depth for Publishing Editorial Operations
+**Improvement:** Model the full exception taxonomy for `publishing_editorial_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations control assertion coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for invalid creative approvals. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations control assertion schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 9. Predictive risk scoring for Publishing Editorial Operations Runtime Parameter
 
-### 12. Publishing Editorial Operations Governed Model depth for Publishing Editorial Operations
+**Justification:** The package should warn users before publishing editorial operations work fails, breaches policy, or creates downstream cost.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations governed model coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add predictive risk scoring for `publishing_editorial_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations governed model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 13. Policy Governance depth for Publishing Editorial Operations
+### 10. Counterfactual simulation for Publishing Editorial Operations Schema Extension
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade policy governance coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Advanced users need to ask “what would happen if” before committing changes to live manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics operations.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific policy governance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Provide scenario simulation for `publishing_editorial_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 14. Workflow Depth depth for Publishing Editorial Operations
+**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade workflow depth coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 11. Autonomous anomaly triage for Publishing Editorial Operations Control Assertion
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific workflow depth schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
 
-### 15. Data Quality depth for Publishing Editorial Operations
+**Improvement:** Implement anomaly detection for `publishing_editorial_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade data quality coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific data quality schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 12. Semantic document understanding for Publishing Editorial Operations Governed Model
 
-### 16. Exception Management depth for Publishing Editorial Operations
+**Justification:** Document-heavy work in Publishing Editorial Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade exception management coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Train the package assistant to parse domain documents and instructions for `publishing_editorial_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific exception management schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 17. Forecasting depth for Publishing Editorial Operations
+### 13. Agent-safe CRUD execution for Manuscript
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade forecasting coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific forecasting schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Add a professional chatbot skill for `manuscript` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 18. Simulation depth for Publishing Editorial Operations
+**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade simulation coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 14. Workbench persona coverage for Editorial Task
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific simulation schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
 
-### 19. Agent Assistance depth for Publishing Editorial Operations
+**Improvement:** Design dedicated workbench panels for `editorial_task`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade agent assistance coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific agent assistance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 15. Cross-PBC dependency contracts for Author Contract
 
-### 20. Audit Evidence depth for Publishing Editorial Operations
+**Justification:** Composable packages fail when hidden table coupling enters the domain model.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade audit evidence coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Represent dependencies for `author_contract` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific audit evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 21. Ui Workbench depth for Publishing Editorial Operations
+### 16. API completeness and versioning for Edition
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade ui workbench coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific ui workbench schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Expand APIs beyond POST /manuscripts, POST /editorial-tasks, POST /author-contracts to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 22. Release Evidence depth for Publishing Editorial Operations
+**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade release evidence coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 17. Typed emitted-event expansion for Production Schedule
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific release evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Consumers should understand what happened in Publishing Editorial Operations without parsing opaque payloads.
 
-### 23. Manuscript depth for Publishing Editorial Operations
+**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `production_schedule` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade manuscript coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific manuscript schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 18. Consumed-event handlers for Rights Grant
 
-### 24. Editorial Task depth for Publishing Editorial Operations
+**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade editorial task coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific editorial task schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 25. Author Contract depth for Publishing Editorial Operations
+### 19. Retry and dead-letter operations for Distribution Plan
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade author contract coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Dead letters are not just plumbing; they are domain work queues that can block manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific author contract schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `distribution_plan` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 26. Edition depth for Publishing Editorial Operations
+**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade edition coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 20. RBAC and attribute policy for Publishing Editorial Operations Policy Rule
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific edition schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
 
-### 27. Production Schedule depth for Publishing Editorial Operations
+**Improvement:** Extend permissions for `publishing_editorial_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade production schedule coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific production schedule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 21. Continuous control testing for Publishing Editorial Operations Runtime Parameter
 
-### 28. Rights Grant depth for Publishing Editorial Operations
+**Justification:** Controls should run during operations, not only during release audit or manual review.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade rights grant coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Embed control assertions for `publishing_editorial_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific rights grant schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `publishing_editorial_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 29. Distribution Plan depth for Publishing Editorial Operations
+### 22. Cryptographic audit proofing for Publishing Editorial Operations Schema Extension
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade distribution plan coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific distribution plan schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Hash-chain material `publishing_editorial_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 30. Publishing Editorial Operations Policy Rule depth for Publishing Editorial Operations
+**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations policy rule coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 23. Privacy, consent, and secrecy controls for Publishing Editorial Operations Control Assertion
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations policy rule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
 
-### 31. Publishing Editorial Operations Runtime Parameter depth for Publishing Editorial Operations
+**Improvement:** Add field-level privacy classifications for `publishing_editorial_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations runtime parameter coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations runtime parameter schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 24. Multi-tenant operating model for Publishing Editorial Operations Governed Model
 
-### 32. Publishing Editorial Operations Schema Extension depth for Publishing Editorial Operations
+**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations schema extension coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Support tenant-specific `publishing_editorial_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations schema extension schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 33. Publishing Editorial Operations Control Assertion depth for Publishing Editorial Operations
+### 25. Schema evolution and extension registry for Manuscript
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations control assertion coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations control assertion schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Make schema extensions for `manuscript` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 34. Publishing Editorial Operations Governed Model depth for Publishing Editorial Operations
+**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade publishing editorial operations governed model coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 26. Master data quality gates for Editorial Task
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific publishing editorial operations governed model schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Many publishing editorial operations errors begin as bad reference data; the PBC should catch them before workflow execution.
 
-### 35. Policy Governance depth for Publishing Editorial Operations
+**Improvement:** Define reference-data contracts for `editorial_task`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade policy governance coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific policy governance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 27. Bulk operations and correction workflows for Author Contract
 
-### 36. Workflow Depth depth for Publishing Editorial Operations
+**Justification:** Enterprise-scale Publishing Editorial Operations users cannot operate one record at a time.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade workflow depth coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `author_contract` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific workflow depth schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 37. Data Quality depth for Publishing Editorial Operations
+### 28. Lifecycle collaboration and tasking for Edition
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade data quality coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific data quality schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `edition` without leaking into external shared task tables. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 38. Exception Management depth for Publishing Editorial Operations
+**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade exception management coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 29. SLA and service-level governance for Production Schedule
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific exception management schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Users need to know when manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics is late, blocked, or at risk before customer or regulator impact.
 
-### 39. Forecasting depth for Publishing Editorial Operations
+**Improvement:** Define SLAs for `production_schedule` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade forecasting coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific forecasting schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 30. Operational analytics cockpit for Rights Grant
 
-### 40. Simulation depth for Publishing Editorial Operations
+**Justification:** World-class operations require leading indicators, not only record counts.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade simulation coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Build analytics for `rights_grant`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific simulation schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 41. Agent Assistance depth for Publishing Editorial Operations
+### 31. Decision intelligence and recommendations for Distribution Plan
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade agent assistance coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific agent assistance schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Generate ranked recommendations for `distribution_plan` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 42. Audit Evidence depth for Publishing Editorial Operations
+**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade audit evidence coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 32. Quality and completeness scoring for Publishing Editorial Operations Policy Rule
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific audit evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Operators should see whether a record is truly ready, not just technically saved.
 
-### 43. Ui Workbench depth for Publishing Editorial Operations
+**Improvement:** Score each `publishing_editorial_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade ui workbench coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific ui workbench schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 33. End-to-end scenario library for Publishing Editorial Operations Runtime Parameter
 
-### 44. Release Evidence depth for Publishing Editorial Operations
+**Justification:** Release evidence is stronger when every important publishing editorial operations behavior has executable examples.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade release evidence coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Create seeded scenarios for `publishing_editorial_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific release evidence schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 45. Manuscript depth for Publishing Editorial Operations
+### 34. Domain ontology and terminology model for Publishing Editorial Operations Schema Extension
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade manuscript coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific manuscript schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Add an ontology for `publishing_editorial_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 46. Editorial Task depth for Publishing Editorial Operations
+**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade editorial task coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 35. Advanced search and investigation for Publishing Editorial Operations Control Assertion
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific editorial task schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
 
-### 47. Author Contract depth for Publishing Editorial Operations
+**Improvement:** Provide search across `publishing_editorial_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade author contract coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific author contract schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+### 36. Reconciliation and closure controls for Publishing Editorial Operations Governed Model
 
-### 48. Edition depth for Publishing Editorial Operations
+**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade edition coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Improvement:** Add reconciliation workflows that compare `publishing_editorial_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific edition schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-### 49. Production Schedule depth for Publishing Editorial Operations
+### 37. Regulatory and policy reporting for Manuscript
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade production schedule coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific production schedule schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Improvement:** Generate domain reporting packs for `manuscript` covering statutory, contractual, operational, board, customer, or regulator evidence depending on rights ownership, monetization accuracy, campaign performance, creative workflow evidence, distribution controls, royalty lineage, and channel-specific analytics. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
 
-### 50. Rights Grant depth for Publishing Editorial Operations
+**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
 
-**Justification:** The `publishing_editorial_operations` PBC needs specialist-grade rights grant coverage because manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics cannot be operated safely with generic records or shallow workflow evidence.
+### 38. Carbon and resource awareness for Editorial Task
 
-**Improvement:** Extend `publishing_editorial_operations` with domain-specific rights grant schema fields, lifecycle states, validations, edge-case handling, AppGen-X event evidence, role-aware workbench panels, agent-safe CRUD previews, release tests, and audit proof so this capability is explicit, governable, and composable inside the PBC boundary.
+**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+
+**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `editorial_task` decisions and batch operations. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 39. Resilience and offline behavior for Author Contract
+
+**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+
+**Improvement:** Define resilience modes for `author_contract`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 40. Human-in-the-loop automation for Edition
+
+**Justification:** Automation should accelerate manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics while preserving accountability for high-risk decisions.
+
+**Improvement:** Set explicit automation boundaries for `edition`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 41. Package discovery and fit scoring for Production Schedule
+
+**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+
+**Improvement:** Improve package metadata so composition can explain when `publishing_editorial_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 42. Configuration deployment pipeline for Rights Grant
+
+**Justification:** Configuration changes can materially alter publishing editorial operations; they need the same discipline as code releases.
+
+**Improvement:** Add configuration promotion for `rights_grant` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 43. Workbench command completeness for Distribution Plan
+
+**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+
+**Improvement:** Expose every high-value operation for `distribution_plan` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 44. Document packet and evidence vault for Publishing Editorial Operations Policy Rule
+
+**Justification:** Documents often carry the legal or operational truth behind manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics.
+
+**Improvement:** Create a governed evidence vault for `publishing_editorial_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 45. Data correction and amendment history for Publishing Editorial Operations Runtime Parameter
+
+**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+
+**Improvement:** Support formal amendments for `publishing_editorial_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 46. External participant collaboration for Publishing Editorial Operations Schema Extension
+
+**Justification:** Many publishing editorial operations workflows require outside parties, but they must not gain direct access to internal tables.
+
+**Improvement:** Add controlled collaboration portals or API views for external participants related to `publishing_editorial_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 47. Advanced dependency freshness scoring for Publishing Editorial Operations Control Assertion
+
+**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+
+**Improvement:** Score freshness and reliability of dependencies used by `publishing_editorial_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 48. Model governance and explainability for Publishing Editorial Operations Governed Model
+
+**Justification:** Governed AI is mandatory for professional-grade automation in Publishing Editorial Operations.
+
+**Improvement:** For every predictive or agentic feature around `publishing_editorial_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 49. High-scale partitioning and archival for Manuscript
+
+**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+
+**Improvement:** Plan scale behavior for `manuscript`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+
+### 50. Release gate expansion for Editorial Task
+
+**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+
+**Improvement:** Expand release gates for `publishing_editorial_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+
+**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
