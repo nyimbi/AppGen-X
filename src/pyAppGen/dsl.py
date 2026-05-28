@@ -1166,6 +1166,21 @@ def _run_parser_golden_fixture(fixture: dict) -> dict:
 
 
 def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
+    """Run docs/tooling.md subcommands with stable CLI error boundaries."""
+    cli_args = tuple(argv or ())
+    try:
+        return _dsl_tooling_cli_impl(cli_args)
+    except SystemExit:
+        raise
+    except Exception as exc:  # pragma: no cover - exercised through subprocess boundaries
+        _emit_tooling_payload(
+            _internal_tooling_error_report(exc),
+            as_json="--json" in cli_args,
+        )
+        return 3
+
+
+def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     """Run docs/tooling.md subcommands without disturbing legacy flags."""
     parser = argparse.ArgumentParser(prog="appgen")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1486,6 +1501,9 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         for gap in payload.get("blocking_gaps", ()):
             print(f"gap {gap}")
         return
+    if payload.get("format") == "appgen.internal-error.v1":
+        print(f"internal-error {payload.get('error_type')}: {payload.get('message')}")
+        return
     if payload.get("format") == "appgen.graph-suite-report.v1":
         status = "ok" if payload.get("ok") else "failed"
         kind_count = len(payload.get("required_kinds", ()))
@@ -1528,6 +1546,30 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
     print(json.dumps(payload, indent=2, sort_keys=True, default=list))
+
+
+def _internal_tooling_error_report(exc: Exception) -> dict:
+    message = str(exc) or exc.__class__.__name__
+    return {
+        "format": "appgen.internal-error.v1",
+        "ok": False,
+        "code": "AGX9000",
+        "severity": "error",
+        "error_type": exc.__class__.__name__,
+        "message": message,
+        "diagnostics": (
+            {
+                "code": "AGX9000",
+                "severity": "error",
+                "title": "Internal tooling error",
+                "message": message,
+                "range": None,
+                "related_locations": (),
+                "fixes": (),
+                "docs_url": "docs/tooling.md#cli-contracts",
+            },
+        ),
+    }
 
 
 def _emit_explain_text(payload: dict) -> None:
@@ -1933,6 +1975,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     )
     with tempfile.TemporaryDirectory(prefix="appgen-tooling-audit-") as tmp:
         format_write = _tooling_audit_format_write(Path(tmp))
+        internal_error_exit = _tooling_audit_internal_error_exit(Path(tmp))
         generation = generate_report_dsl(
             source,
             source_name="tooling-audit.appgen",
@@ -2010,6 +2053,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "cli_validation_and_generation_contracts",
             validation["ok"]
             and format_write["ok"]
+            and internal_error_exit["ok"]
             and generation["ok"]
             and generation["generated"]
             and not warning_generation_blocked["ok"]
@@ -2020,6 +2064,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             {
                 "validate": validation.get("format"),
                 "format_write": format_write,
+                "internal_error_exit": internal_error_exit,
                 "generate": generation.get("format"),
                 "warning_block": warning_generation_blocked.get("blocking_gaps"),
                 "allow_warnings": warning_generation_allowed.get("allow_warnings"),
@@ -2475,6 +2520,35 @@ def _tooling_audit_format_write(tmp: Path) -> dict:
         "payload_format": payload.get("format"),
         "written": payload.get("written"),
         "write_path": payload.get("write_path"),
+    }
+
+
+def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
+    source_path = tmp / "internal-error.appgen"
+    missing_catalog = tmp / "missing-components.json"
+    source_path.write_text("app InternalError { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        exit_code = dsl_tooling_cli(
+            (
+                "lint",
+                str(source_path),
+                "--catalog",
+                str(missing_catalog),
+                "--json",
+            )
+        )
+    payload = json.loads(output.getvalue())
+    return {
+        "format": "appgen.internal-error-exit-audit.v1",
+        "ok": exit_code == 3
+        and payload.get("format") == "appgen.internal-error.v1"
+        and payload.get("code") == "AGX9000"
+        and payload.get("ok") is False,
+        "exit_code": exit_code,
+        "payload_format": payload.get("format"),
+        "code": payload.get("code"),
+        "error_type": payload.get("error_type"),
     }
 
 

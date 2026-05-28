@@ -521,6 +521,10 @@ Exit codes:
 - `2`: CLI usage/configuration error;
 - `3`: internal tool error.
 
+Internal tool errors emit `appgen.internal-error.v1` with `AGX9000`
+diagnostics instead of a Python traceback. Argparse usage/configuration
+failures remain exit code `2`.
+
 The executable CLI contract tests cover JSON schemas, default text summaries,
 success and failure exit codes, and argparse usage failures for invalid choices
 or missing required options.

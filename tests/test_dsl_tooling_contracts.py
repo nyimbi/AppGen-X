@@ -2212,3 +2212,52 @@ def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: 
     assert payload["write_path"] == str(source_path)
     assert source_path.read_text(encoding="utf-8") == payload["text"]
     assert source_path.read_text(encoding="utf-8") != "app FormatWrite { targets: web }\ntable Invoice { total: decimal; id: int pk }\n"
+
+
+def test_appgen_tooling_cli_returns_code_3_for_internal_errors(tmp_path: Path) -> None:
+    source_path = tmp_path / "internal.appgen"
+    missing_catalog = tmp_path / "missing-components.json"
+    source_path.write_text("app Internal { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
+    root = Path(__file__).resolve().parents[1]
+
+    json_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "lint",
+            str(source_path),
+            "--catalog",
+            str(missing_catalog),
+            "--json",
+        ],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    text_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "lint",
+            str(source_path),
+            "--catalog",
+            str(missing_catalog),
+        ],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+
+    assert json_result.returncode == 3
+    payload = json.loads(json_result.stdout)
+    assert payload["format"] == "appgen.internal-error.v1"
+    assert payload["code"] == "AGX9000"
+    assert payload["ok"] is False
+    assert "Traceback" not in json_result.stderr
+    assert text_result.returncode == 3
+    assert text_result.stdout.startswith("internal-error")
+    assert "Traceback" not in text_result.stderr
