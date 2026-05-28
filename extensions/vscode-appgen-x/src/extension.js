@@ -28,9 +28,12 @@ function activate(context) {
   registerCommand(context, "appgen.lint", () => runForActiveFile(["lint", activeFile(), "--json"], "AppGen-X Lint"));
   registerCommand(context, "appgen.format", () => runForActiveFile(["format", activeFile(), "--write", "--json"], "AppGen-X Format"));
   registerCommand(context, "appgen.graph", () => runForActiveFile(["graph-suite", activeFile(), "--json"], "AppGen-X Graphs"));
+  registerCommand(context, "appgen.previewGraph", previewGraph);
   registerCommand(context, "appgen.explain", explainActiveSymbol);
   registerCommand(context, "appgen.generate", generateActiveFile);
+  registerCommand(context, "appgen.previewArtifacts", previewGeneratedArtifacts);
   registerCommand(context, "appgen.package", packageActiveFile);
+  registerCommand(context, "appgen.pbcCatalog", browsePbcCatalog);
   registerCommand(context, "appgen.restartLanguageServer", () => client.restart());
 }
 
@@ -377,6 +380,122 @@ function runAppGen(args, title) {
   });
 }
 
+function runAppGenJson(args, title) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const errors = [];
+    const child = cp.spawn(appgenCommand(), args, { cwd: workspaceRoot() });
+    child.stdout.on("data", (chunk) => chunks.push(chunk));
+    child.stderr.on("data", (chunk) => errors.push(chunk));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      const stdout = Buffer.concat(chunks).toString("utf8");
+      const stderr = Buffer.concat(errors).toString("utf8");
+      if (code !== 0 && !stdout.trim()) {
+        reject(new Error(`${title} failed with exit ${code}: ${stderr}`));
+        return;
+      }
+      try {
+        resolve({ code, payload: JSON.parse(stdout), stderr });
+      } catch (error) {
+        reject(new Error(`${title} did not return JSON: ${error.message}`));
+      }
+    });
+  });
+}
+
+function showJsonPreview(title, payload, renderer) {
+  const panel = vscode.window.createWebviewPanel(
+    "appgenPreview",
+    title,
+    vscode.ViewColumn.Beside,
+    { enableScripts: false }
+  );
+  panel.webview.html = renderer ? renderer(payload) : renderJsonDocument(title, payload);
+}
+
+function renderJsonDocument(title, payload) {
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: var(--vscode-font-family); padding: 16px; }
+    pre { white-space: pre-wrap; background: var(--vscode-textCodeBlock-background); padding: 12px; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+</body>
+</html>`;
+}
+
+function renderGraphPreview(payload) {
+  const reports = payload.reports || {};
+  const sections = Object.entries(reports).map(([kind, report]) => {
+    const graph = report.graph || {};
+    const nodes = graph.nodes || [];
+    const edges = graph.edges || [];
+    return `<section>
+      <h2>${escapeHtml(kind)}</h2>
+      <p>${nodes.length} nodes, ${edges.length} edges</p>
+      <h3>Nodes</h3>
+      <ul>${nodes.map((node) => `<li>${escapeHtml(node.id || node.name || JSON.stringify(node))}</li>`).join("")}</ul>
+      <h3>Edges</h3>
+      <ul>${edges.map((edge) => `<li>${escapeHtml(edge.from || "")} -> ${escapeHtml(edge.to || "")} ${escapeHtml(edge.label || "")}</li>`).join("")}</ul>
+    </section>`;
+  }).join("");
+  return previewShell("AppGen-X Graph Preview", sections || `<pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`);
+}
+
+function renderArtifactPreview(payload) {
+  const artifacts = payload.artifacts || payload.written_artifacts || [];
+  const gaps = payload.blocking_gaps || [];
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <h2>Artifacts</h2>
+    <ul>${artifacts.map((artifact) => `<li>${escapeHtml(artifact.path || artifact.name || JSON.stringify(artifact))}</li>`).join("")}</ul>
+    <h2>Blocking Gaps</h2>
+    <ul>${gaps.map((gap) => `<li>${escapeHtml(String(gap))}</li>`).join("")}</ul>
+    <details><summary>Raw report</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Generated Artifact Preview", body);
+}
+
+function renderPbcCatalog(payload) {
+  const pbcs = payload.pbcs || payload.catalog || payload.items || [];
+  const items = Array.isArray(pbcs) ? pbcs : Object.entries(pbcs).map(([key, value]) => ({ key, ...value }));
+  const body = `<p>${items.length} catalog entries</p>
+    <ul>${items.map((item) => `<li><strong>${escapeHtml(item.key || item.name || item.id || "pbc")}</strong> ${escapeHtml(item.title || item.description || "")}</li>`).join("")}</ul>
+    <details><summary>Raw report</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X PBC Catalog", body);
+}
+
+function previewShell(title, body) {
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: var(--vscode-font-family); padding: 16px; }
+    section { border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 16px; padding-bottom: 16px; }
+    pre { white-space: pre-wrap; background: var(--vscode-textCodeBlock-background); padding: 12px; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  ${body}
+</body>
+</html>`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function lintDocument(document) {
   if (!isAppGen(document)) {
     return;
@@ -398,10 +517,31 @@ function generateActiveFile() {
   return runForActiveFile(["generate", file, "--out", out, "--json"], "AppGen-X Generate");
 }
 
+function previewGraph() {
+  const file = activeFile();
+  return runAppGenJson(["graph-suite", file, "--json"], "AppGen-X Graph Preview").then((result) => {
+    showJsonPreview("AppGen-X Graph Preview", result.payload, renderGraphPreview);
+  });
+}
+
+function previewGeneratedArtifacts() {
+  const file = activeFile();
+  const out = path.join(path.dirname(file), ".appgen-preview");
+  return runAppGenJson(["generate", file, "--out", out, "--allow-warnings", "--json"], "AppGen-X Artifact Preview").then((result) => {
+    showJsonPreview("AppGen-X Generated Artifacts", result.payload, renderArtifactPreview);
+  });
+}
+
 function packageActiveFile() {
   const file = activeFile();
   const out = path.join(path.dirname(file), "dist");
   return runForActiveFile(["package", file, "--out", out, "--json"], "AppGen-X Package");
+}
+
+function browsePbcCatalog() {
+  return runAppGenJson(["pbc", "list", "--json"], "AppGen-X PBC Catalog").then((result) => {
+    showJsonPreview("AppGen-X PBC Catalog", result.payload, renderPbcCatalog);
+  });
 }
 
 module.exports = {

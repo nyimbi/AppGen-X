@@ -16,9 +16,12 @@
     "onCommand:appgen.lint",
     "onCommand:appgen.format",
     "onCommand:appgen.graph",
+    "onCommand:appgen.previewGraph",
     "onCommand:appgen.explain",
     "onCommand:appgen.generate",
+    "onCommand:appgen.previewArtifacts",
     "onCommand:appgen.package",
+    "onCommand:appgen.pbcCatalog",
     "onCommand:appgen.restartLanguageServer"
   ],
   "main": "./src/extension.js",
@@ -69,6 +72,10 @@
         "title": "AppGen-X: Show Graph JSON"
       },
       {
+        "command": "appgen.previewGraph",
+        "title": "AppGen-X: Preview Graphs"
+      },
+      {
         "command": "appgen.explain",
         "title": "AppGen-X: Explain Symbol"
       },
@@ -77,8 +84,16 @@
         "title": "AppGen-X: Generate Application"
       },
       {
+        "command": "appgen.previewArtifacts",
+        "title": "AppGen-X: Preview Generated Artifacts"
+      },
+      {
         "command": "appgen.package",
         "title": "AppGen-X: Package Application"
+      },
+      {
+        "command": "appgen.pbcCatalog",
+        "title": "AppGen-X: Browse PBC Catalog"
       },
       {
         "command": "appgen.restartLanguageServer",
@@ -97,13 +112,22 @@
           "command": "appgen.graph"
         },
         {
+          "command": "appgen.previewGraph"
+        },
+        {
           "command": "appgen.explain"
         },
         {
           "command": "appgen.generate"
         },
         {
+          "command": "appgen.previewArtifacts"
+        },
+        {
           "command": "appgen.package"
+        },
+        {
+          "command": "appgen.pbcCatalog"
         },
         {
           "command": "appgen.restartLanguageServer"

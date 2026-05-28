@@ -737,7 +737,9 @@ dependency-free JSON-RPC client that launches `appgen lsp --stdio`. The client
 registers VS Code providers for diagnostics, completion, hover, definition,
 references, document symbols, workspace symbols, rename, code actions, and
 formatting, while command palette actions call the same CLI contracts for lint,
-format, graph, explain, generate, and package.
+format, graph, explain, generate, and package. Graph previews, generated
+artifact previews, and the PBC catalog browser render CLI JSON reports in
+webview panels rather than relying on editor-specific state.
 
 ### AppGen-X Studio / Monaco
 

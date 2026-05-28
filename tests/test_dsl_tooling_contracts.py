@@ -1043,9 +1043,12 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
         "appgen.lint",
         "appgen.format",
         "appgen.graph",
+        "appgen.previewGraph",
         "appgen.explain",
         "appgen.generate",
+        "appgen.previewArtifacts",
         "appgen.package",
+        "appgen.pbcCatalog",
         "appgen.restartLanguageServer",
     } <= commands
     assert language_config["comments"]["lineComment"] == "//"
@@ -1060,6 +1063,11 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert "registerRenameProvider" in source
     assert "registerCodeActionsProvider" in source
     assert "registerDocumentFormattingEditProvider" in source
+    assert '["pbc", "list", "--json"]' in source
+    assert "renderPbcCatalog" in source
+    assert "renderGraphPreview" in source
+    assert "renderArtifactPreview" in source
+    assert "createWebviewPanel" in source
 
 
 def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:
