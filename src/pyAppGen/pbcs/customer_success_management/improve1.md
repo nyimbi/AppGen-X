@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `customer_success_management`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `customer_success_management`. The items are specific to customer success operations: success accounts, success plans, onboarding milestones, adoption signals, health scores and components, playbooks, playbook tasks, customer escalations, renewal motions, expansion opportunities, executive business reviews, customer objectives, value realization, churn risk signals, exception cases, policy rules, runtime parameters, governed models, AppGen-X event reliability, UI workbenches, and agent-assisted customer-success execution.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
-- Representative owned tables: `customer_success_management_customer_success_account`, `customer_success_management_success_plan`, `customer_success_management_onboarding_milestone`, `customer_success_management_adoption_signal`, `customer_success_management_health_score`, `customer_success_management_health_score_component`, `customer_success_management_success_playbook`, `customer_success_management_playbook_task`, `customer_success_management_customer_escalation`, `customer_success_management_renewal_motion`, `customer_success_management_expansion_opportunity`, `customer_success_management_executive_business_review`, ...
-- Representative operations/APIs: `create_success_account`, `create_success_plan`, `track_onboarding_milestone`, `ingest_adoption_signal`, `calculate_health_score`, `explain_health_component`, `launch_playbook`, `complete_playbook_task`, `open_customer_escalation`, `start_renewal_motion`, `identify_expansion_opportunity`, `prepare_executive_review`, ...
-- Representative events: `SuccessAccountCreated`, `HealthScoreChanged`, `PlaybookLaunched`, `CustomerEscalationOpened`, `RenewalMotionStarted`, `ChurnRiskChanged`.
-- Representative advanced capabilities: `causal health scoring`, `AI playbook recommendation`, `renewal outcome simulation`, `semantic account plan extraction`, `value realization forecasting`, `customer journey graph intelligence`.
+- Domain purpose: `customer_success_management` owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, churn-risk intelligence, and value realization.
+- Owned boundary: success accounts, success plans, onboarding milestones, adoption signals, health scores, health components, playbooks, tasks, escalations, renewal motions, expansion opportunities, executive reviews, objectives, value realization, churn signals, exception cases, policy rules, runtime parameters, schema extensions, controls, governed models, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: success account creation, success plans, onboarding milestones, adoption intake, health scoring, component explanations, playbooks and tasks, escalations, renewal motions, expansion identification, executive reviews, objectives, value measurement, churn scoring, exception resolution, rule compilation, renewal simulation, workbench, release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `SuccessAccountCreated`, `HealthScoreChanged`, `PlaybookLaunched`, `CustomerEscalationOpened`, `RenewalMotionStarted`, and `ChurnRiskChanged`; consumes `CustomerUpdated`, `SubscriptionActivated`, `TicketClosed`, and `PaymentFailed`; integrates with customer, subscription, support, billing, renewal, product usage, and finance only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `customer_success_management_customer_success_account`
+### 1. Success account readiness gate
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** Customer success execution depends on clean customer identity, subscription, segment, owner, region, lifecycle, and policy context.
 
-**Improvement:** Extend `customer_success_management_customer_success_account` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `customer_success_account_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for tenant, customer projection, account identity, lifecycle stage, segment, region, owner, subscription state, active products, renewal date, health policy, and duplicate account risk before `SuccessAccountCreated`.
 
-### 2. Deep specialist lifecycle semantics for `customer_success_management_success_plan`
+### 2. Success account lifecycle state machine
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** Success accounts move through onboarding, active, monitored, growth, at-risk, renewal, suspended, churned, and archived states.
 
-**Improvement:** Extend `customer_success_management_success_plan` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `customer_success_management_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement state transitions with actor, timestamp, reason, health score effect, playbook effect, renewal effect, customer-facing impact, idempotency key, and invalid-transition explanations.
 
-### 3. Deep specialist lifecycle semantics for `customer_success_management_onboarding_milestone`
+### 3. Success plan governance
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** Success plans translate customer objectives into measurable outcomes and execution tasks.
 
-**Improvement:** Extend `customer_success_management_onboarding_milestone` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `customer_success_management_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model success plan states, objectives, stakeholders, value hypotheses, milestones, playbooks, owner, executive sponsor, target dates, evidence, and approval workflow.
 
-### 4. Deep specialist lifecycle semantics for `customer_success_management_adoption_signal`
+### 4. Onboarding milestone lifecycle
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** Onboarding quality determines adoption, time to value, renewal likelihood, and escalation risk.
 
-**Improvement:** Extend `customer_success_management_adoption_signal` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add milestone states, due dates, dependencies, responsible role, required evidence, blocked reason, customer acknowledgement, SLA breach, and time-to-value impact.
 
-### 5. Deep specialist lifecycle semantics for `customer_success_management_health_score`
+### 5. Adoption signal normalization
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** Adoption signals arrive from product usage, support, training, service, billing, and manual notes with different semantics.
 
-**Improvement:** Extend `customer_success_management_health_score` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Normalize signal source, metric, product area, timestamp, customer/account, frequency, trend, confidence, anomaly flag, and health-score component linkage.
 
-### 6. Deep specialist lifecycle semantics for `customer_success_management_health_score_component`
+### 6. Health score framework
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** Health scores must be explainable, configurable, and tied to actionable components.
 
-**Improvement:** Extend `customer_success_management_health_score_component` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build health scores from weighted components for adoption, onboarding, support, billing, engagement, value realization, executive sponsorship, renewal timing, and churn signals with versioned formulas.
 
-### 7. Deep specialist lifecycle semantics for `customer_success_management_success_playbook`
+### 7. Health component explainability
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** CSMs need to know why health changed and what to do next.
 
-**Improvement:** Extend `customer_success_management_success_playbook` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store component value, source signals, trend, confidence, threshold, weight, delta reason, freshness, recommended actions, and customer-facing explanation.
 
-### 8. Deep specialist lifecycle semantics for `customer_success_management_playbook_task`
+### 8. Causal health scoring
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** Correlation-only health scores can prioritize the wrong interventions.
 
-**Improvement:** Extend `customer_success_management_playbook_task` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add causal factor evidence linking onboarding delays, support escalations, payment failures, low adoption, missing objectives, and executive engagement to health movement with confidence.
 
-### 9. Deep specialist lifecycle semantics for `customer_success_management_customer_escalation`
+### 9. Churn risk signal model
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** Churn risk requires structured evidence across product, billing, support, engagement, renewal, and value outcomes.
 
-**Improvement:** Extend `customer_success_management_customer_escalation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Capture risk type, severity, source, leading indicator, account impact, renewal proximity, confidence, recommended playbook, mitigation owner, and `ChurnRiskChanged` event evidence.
 
-### 10. Deep specialist lifecycle semantics for `customer_success_management_renewal_motion`
+### 10. Churn risk forecasting
 
-**Justification:** This owned table is part of the Customer Success Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.
+**Justification:** Customer success teams need early warning before risk becomes renewal loss.
 
-**Improvement:** Extend `customer_success_management_renewal_motion` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Forecast churn probability by account, segment, product, renewal window, support history, payment failures, health trend, adoption trend, and executive engagement with confidence intervals.
 
-### 11. Make `create_success_account` a complete command lifecycle
+### 11. Playbook trigger policy
 
-**Justification:** High-value users need `create_success_account` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Playbooks should launch based on meaningful events and policies rather than manual memory.
 
-**Improvement:** Implement `create_success_account` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SuccessAccountCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Compile trigger policies for onboarding, low adoption, payment failure, ticket closure, health drop, renewal window, expansion signal, and executive review with explainable launch criteria.
 
-### 12. Make `create_success_plan` a complete command lifecycle
+### 12. Success playbook lifecycle
 
-**Justification:** High-value users need `create_success_plan` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Playbooks need controlled states, versions, target scenarios, tasks, and success criteria.
 
-**Improvement:** Implement `create_success_plan` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `HealthScoreChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model playbook draft, active, paused, retired, and superseded states with target segment, trigger, task template, expected outcome, owner, version, and audit evidence.
 
-### 13. Make `track_onboarding_milestone` a complete command lifecycle
+### 13. Playbook task orchestration
 
-**Justification:** High-value users need `track_onboarding_milestone` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Tasks drive actual customer-success execution and need deadlines, dependencies, and outcomes.
 
-**Improvement:** Implement `track_onboarding_milestone` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PlaybookLaunched`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add task states, assignee, due date, dependency, customer touchpoint, required evidence, SLA, escalation, completion proof, and impact on health/value/renewal.
 
-### 14. Make `ingest_adoption_signal` a complete command lifecycle
+### 14. Customer escalation workflow
 
-**Justification:** High-value users need `ingest_adoption_signal` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Escalations must coordinate product, support, billing, executive, and success owners.
 
-**Improvement:** Implement `ingest_adoption_signal` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerEscalationOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model escalation states, severity, source, customer impact, owner, executive sponsor, task list, SLA, communication plan, resolution evidence, and `CustomerEscalationOpened` event.
 
-### 15. Make `calculate_health_score` a complete command lifecycle
+### 15. Escalation root-cause analysis
 
-**Justification:** High-value users need `calculate_health_score` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Repeated escalations indicate systemic issues that should feed playbooks and health scoring.
 
-**Improvement:** Implement `calculate_health_score` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RenewalMotionStarted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Capture root cause, product area, support linkage, billing linkage, commitment breach, corrective action, recurrence risk, and preventive playbook update.
 
-### 16. Make `explain_health_component` a complete command lifecycle
+### 16. Renewal motion lifecycle
 
-**Justification:** High-value users need `explain_health_component` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Renewals require proactive orchestration across health, value, contracts, stakeholders, and risk.
 
-**Improvement:** Implement `explain_health_component` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ChurnRiskChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add renewal states, renewal date, notice window, owner, stakeholder map, health gate, value evidence, risk mitigation, commercial handoff, and `RenewalMotionStarted` event.
 
-### 17. Make `launch_playbook` a complete command lifecycle
+### 17. Renewal outcome simulation
 
-**Justification:** High-value users need `launch_playbook` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** CSM leaders need to test intervention strategies before renewal deadlines.
 
-**Improvement:** Implement `launch_playbook` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SuccessAccountCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Simulate renewal outcomes under health improvements, adoption uplift, discount/price changes, executive engagement, support resolution, and delayed action with probability and revenue impact.
 
-### 18. Make `complete_playbook_task` a complete command lifecycle
+### 18. Expansion opportunity detection
 
-**Justification:** High-value users need `complete_playbook_task` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customer success should surface expansion when value, usage, and fit justify outreach.
 
-**Improvement:** Implement `complete_playbook_task` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `HealthScoreChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Identify expansion opportunities from adoption growth, product gaps, customer objectives, account segment, stakeholder engagement, usage ceilings, and success-plan progress with confidence.
 
-### 19. Make `open_customer_escalation` a complete command lifecycle
+### 19. Expansion governance
 
-**Justification:** High-value users need `open_customer_escalation` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Expansion motions need coordination with sales without corrupting ownership boundaries.
 
-**Improvement:** Implement `open_customer_escalation` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PlaybookLaunched`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track expansion state, hypothesis, value driver, account fit, commercial handoff, customer objective linkage, risk, priority, and declared event/API handoff evidence.
 
-### 20. Make `start_renewal_motion` a complete command lifecycle
+### 20. Executive business review builder
 
-**Justification:** High-value users need `start_renewal_motion` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** EBRs need accurate value, adoption, objectives, risks, renewals, and next steps.
 
-**Improvement:** Implement `start_renewal_motion` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerEscalationOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build review packets with objective progress, value realization, adoption trend, support/escalation summary, renewal posture, expansion signals, executive narrative, and evidence links.
 
-### 21. Operationalize `causal health scoring` as a governed decision system
+### 21. Customer objective lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management risk score without hiding assumptions.
+**Justification:** Customer success outcomes must be grounded in customer-defined objectives.
 
-**Improvement:** Promote `causal health scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model objectives with owner, business outcome, metric, baseline, target, due date, stakeholder, priority, status, evidence, and success-plan linkage.
 
-### 22. Operationalize `AI playbook recommendation` as a governed decision system
+### 22. Value realization measurement
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management workbench metric without hiding assumptions.
+**Justification:** Renewals and expansions depend on proving realized value, not just activity completion.
 
-**Improvement:** Promote `AI playbook recommendation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track value hypotheses, baseline, realized metric, calculation method, attribution, confidence, proof, time period, and executive-review inclusion.
 
-### 23. Operationalize `renewal outcome simulation` as a governed decision system
+### 23. Value realization forecasting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management risk score without hiding assumptions.
+**Justification:** Teams need to know whether customers are on track to realize promised value.
 
-**Improvement:** Promote `renewal outcome simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Forecast value attainment by objective, adoption trend, milestone progress, health components, support blockers, and customer engagement with risk-adjusted confidence.
 
-### 24. Operationalize `semantic account plan extraction` as a governed decision system
+### 24. Customer journey graph intelligence
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management workbench metric without hiding assumptions.
+**Justification:** Customer success spans onboarding, adoption, support, billing, renewal, expansion, and advocacy touchpoints.
 
-**Improvement:** Promote `semantic account plan extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build a journey graph linking accounts, objectives, milestones, adoption signals, activities, playbooks, escalations, renewals, expansions, and value outcomes with temporal traversal.
 
-### 25. Operationalize `value realization forecasting` as a governed decision system
+### 25. Payment failure response
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management risk score without hiding assumptions.
+**Justification:** Payment failures are strong renewal and churn-risk signals that require coordinated action.
 
-**Improvement:** Promote `value realization forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Consume `PaymentFailed` into risk signals, escalation/playbook triggers, renewal motion updates, customer communication tasks, and health-score component changes.
 
-### 26. Operationalize `customer journey graph intelligence` as a governed decision system
+### 26. Ticket closure feedback loop
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management workbench metric without hiding assumptions.
+**Justification:** Resolved support tickets can improve or worsen customer health depending on sentiment, recurrence, and time to resolution.
 
-**Improvement:** Promote `customer journey graph intelligence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Consume `TicketClosed` with severity, resolution time, sentiment, recurrence, product area, customer impact, and playbook/health score effects.
 
-### 27. Operationalize `causal health scoring` as a governed decision system
+### 27. Subscription activation onboarding
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management risk score without hiding assumptions.
+**Justification:** New subscriptions should trigger onboarding plans, milestones, owner assignment, and health baseline.
 
-**Improvement:** Promote `causal health scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Consume `SubscriptionActivated` into success account setup, onboarding milestone generation, success plan template selection, owner assignment, and baseline health event.
 
-### 28. Operationalize `AI playbook recommendation` as a governed decision system
+### 28. Customer update projection controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management workbench metric without hiding assumptions.
+**Justification:** Customer identity and lifecycle changes affect success ownership and risk.
 
-**Improvement:** Promote `AI playbook recommendation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Consume `CustomerUpdated` with projection freshness, changed fields, segment/lifecycle effect, owner reassignment, privacy flags, and idempotent handler evidence.
 
-### 29. Operationalize `renewal outcome simulation` as a governed decision system
+### 29. Success policy rule compiler
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management risk score without hiding assumptions.
+**Justification:** Health, playbook, renewal, escalation, value, and expansion policies must be deterministic and explainable.
 
-**Improvement:** Promote `renewal outcome simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Compile rules with tenant, scope, status, triggers, thresholds, allowed actions, required approvals, effective dates, and stable compiled hash.
 
-### 30. Operationalize `semantic account plan extraction` as a governed decision system
+### 30. Runtime parameter governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Success Management and measurably improves customer success management workbench metric without hiding assumptions.
+**Justification:** Churn thresholds, onboarding SLAs, health warnings, renewal notice windows, and playbook SLAs materially affect customer treatment.
 
-**Improvement:** Promote `semantic account plan extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_success_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, tenant/segment overrides, rollback, and release evidence before activation.
 
-### 31. Create simulation-grade governance for `health_score_policy` and `churn_risk_threshold`
+### 31. Schema extension governance
 
-**Justification:** Complete Customer Success Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Customer success teams need custom fields while preserving owned boundaries.
 
-**Improvement:** Add a policy cockpit where `health_score_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `churn_risk_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Allow extensions only on owned success tables with field validation, sensitivity classification, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 32. Create simulation-grade governance for `playbook_trigger_policy` and `onboarding_sla_days`
+### 32. AppGen-X inbox reliability
 
-**Justification:** Complete Customer Success Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Customer, subscription, ticket, and payment events drive health, playbooks, escalations, and renewals.
 
-**Improvement:** Add a policy cockpit where `playbook_trigger_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `onboarding_sla_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox schema validation, idempotency, duplicate suppression, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, and workbench replay/quarantine controls.
 
-### 33. Create simulation-grade governance for `renewal_risk_policy` and `health_warning_score`
+### 33. AppGen-X outbox delivery assurance
 
-**Justification:** Complete Customer Success Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Success events drive customer, renewal, support, analytics, and executive workflows.
 
-**Improvement:** Add a policy cockpit where `renewal_risk_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `health_warning_score` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add outbox state, ordering group, payload hash, retry attempts, next retry, delivery proof, dead-letter linkage, and replay controls for emitted success events.
 
-### 34. Create simulation-grade governance for `escalation_policy` and `renewal_notice_days`
+### 34. Cross-PBC boundary proof
 
-**Justification:** Complete Customer Success Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Customer Success must not directly read customer, subscription, support, billing, product usage, renewal, or finance tables.
 
-**Improvement:** Add a policy cockpit where `escalation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `renewal_notice_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, workbench bindings, and agent plans for foreign table access, proving dependencies are APIs, events, or projections only.
 
-### 35. Create simulation-grade governance for `value_realization_policy` and `playbook_task_sla_hours`
+### 35. Success audit trail
 
-**Justification:** Complete Customer Success Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Customer commitments and renewal decisions require reconstructable evidence.
 
-**Improvement:** Add a policy cockpit where `value_realization_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `playbook_task_sla_hours` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Hash-chain account changes, success plans, objectives, value measurements, health scores, playbooks, tasks, escalations, renewal motions, expansion signals, and event deliveries.
 
-### 36. Upgrade `customer success workbench` into a full specialist command center
+### 36. Cryptographic customer-success proof
 
-**Justification:** The PBC UI must expose the complete Customer Success Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Executives and customers may need proof of health, value, renewal readiness, or escalation resolution without sensitive detail.
 
-**Improvement:** Expand `customer success workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate selective-disclosure proofs for health score, value realization, onboarding completion, escalation closure, renewal readiness, and executive review evidence.
 
-### 37. Upgrade `health cockpit` into a full specialist command center
+### 37. Governed success model evidence
 
-**Justification:** The PBC UI must expose the complete Customer Success Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Health, churn, expansion, and playbook recommendation models influence customer treatment.
 
-**Improvement:** Expand `health cockpit` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track model purpose, training window, feature lineage, validation metrics, drift, segment impact, false-risk/false-clear impact, approval status, rollback, and explainability evidence.
 
-### 38. Upgrade `onboarding tracker` into a full specialist command center
+### 38. Success anomaly detection
 
-**Justification:** The PBC UI must expose the complete Customer Success Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Abnormal patterns can reveal poor data, silent churn risk, CSM overload, or product adoption issues.
 
-**Improvement:** Expand `onboarding tracker` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies in health drops, adoption collapse, task SLA misses, escalation spikes, renewal delays, expansion overpromising, value shortfalls, and event dead letters.
 
-### 39. Upgrade `playbook board` into a full specialist command center
+### 39. Stochastic customer exposure model
 
-**Justification:** The PBC UI must expose the complete Customer Success Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Success exposure spans churn, downgrade, expansion miss, escalation cost, SLA breach, and value shortfall.
 
-**Improvement:** Expand `playbook board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Model exposure distributions by account, segment, product, renewal date, health trend, value progress, escalation history, and payment/support signals with mitigation.
 
-### 40. Upgrade `renewal room` into a full specialist command center
+### 40. Semantic account plan extraction
 
-**Justification:** The PBC UI must expose the complete Customer Success Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Customer objectives, risks, milestones, and stakeholder commitments are often buried in documents and notes.
 
-**Improvement:** Expand `renewal room` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Parse account plans, meeting notes, emails, and review decks into candidate objectives, milestones, risks, stakeholders, playbook tasks, and value metrics with confidence and previews.
 
-### 41. Prove cross-PBC federation for `POST /success-accounts` and `CustomerUpdated`
+### 41. Agent-safe success plans
 
-**Justification:** Customer Success Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The success chatbot must not silently change account status, launch playbooks, escalate customers, or start renewals.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /success-accounts` and consumed event `CustomerUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require side-effect-free plans naming command, permission, owned tables, idempotency key, expected event, customer impact, revenue impact, rollback limits, and human confirmation.
 
-### 42. Prove cross-PBC federation for `POST /health-scores` and `SubscriptionActivated`
+### 42. Success workbench coverage
 
-**Justification:** Customer Success Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** CSMs need a complete command center rather than scattered health and task tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /health-scores` and consumed event `SubscriptionActivated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand workbench surfaces for accounts, plans, milestones, adoption, health, health components, playbooks, tasks, escalations, renewals, expansions, EBRs, objectives, value, churn, exceptions, events, rules, parameters, configuration, and release evidence.
 
-### 43. Prove cross-PBC federation for `POST /onboarding-plans` and `TicketClosed`
+### 43. Health cockpit
 
-**Justification:** Customer Success Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Teams need a focused health view with component explanations and action paths.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /onboarding-plans` and consumed event `TicketClosed` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add cockpit views for health trend, components, source signals, churn risks, playbook recommendations, stale data, customer impact, and remediation actions.
 
-### 44. Prove cross-PBC federation for `POST /renewal-plans` and `PaymentFailed`
+### 44. Renewal room
 
-**Justification:** Customer Success Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Renewal execution needs health, value, risk, stakeholder, commercial, and task context in one place.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /renewal-plans` and consumed event `PaymentFailed` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add renewal views with renewal date, notice windows, value evidence, risk signals, stakeholder map, open tasks, escalations, expansion options, and simulation output.
 
-### 45. Temporal reconstruction and bitemporal audit for Customer Success Management
+### 45. Executive review builder
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** EBRs need a polished operational artifact derived from governed data.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add review builder with objectives, value metrics, adoption trends, milestone progress, roadmap asks, risks, action plan, executive summary, and export/audit proof.
 
-### 46. Bulk operations and migration-grade controls for Customer Success Management
+### 46. Continuous success control testing
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Success controls must run continuously across health, playbooks, renewals, escalations, events, and agent plans.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add assertions for renewal without success plan, health score without components, playbook task overdue, escalation without owner, stale customer projection, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 47. Specialist edge-case playbooks for Customer Success Management
+### 47. Success resilience drills
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Customer-success operations must degrade safely when events, projections, workbench, or model scoring fails.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add drills for duplicate customer update, payment failure replay, ticket closure delay, subscription activation failure, health scoring timeout, outbox dead letter, and workbench degraded mode.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Customer Success Management
+### 48. Expansion and renewal ethics guardrails
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Customer-success actions can become harmful if expansion pressure ignores customer value or unresolved risk.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add guardrails that block expansion recommendations when value is unproven, escalations are open, health is low, or renewal risk is unresolved without executive approval.
 
-### 49. Continuous control testing and operational assurance for Customer Success Management
+### 49. Customer Success readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `customer_success_management` is ready for live customer-success operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from accounts, success plans, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, EBRs, objectives, value, churn, event reliability, UI coverage, model governance, controls, boundary proof, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Customer Success Management
+### 50. End-to-end customer success proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Customer Success Management PBC must prove it can execute the full lifecycle from customer activation to renewal or churn-risk mitigation.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering customer/subscription event intake, success account creation, success plan, onboarding milestones, adoption signals, health score, playbook, escalation branch, renewal motion, expansion signal, executive review, value realization, churn risk event, UI evidence, boundary proof, controls, and agent explanation.
