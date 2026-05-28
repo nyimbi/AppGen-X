@@ -1,418 +1,262 @@
-# Banking Core Accounts PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `banking_core_accounts`. The backlog is specific to deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Banking Core Accounts Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `banking_core_accounts`.
-- Domain purpose: Deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls.
-- Owned domain tables: `deposit_account`, `account_balance`, `account_hold`, `interest_accrual`, `fee_assessment`, `statement_cycle`, `account_service_case`, `banking_core_accounts_policy_rule`, `banking_core_accounts_runtime_parameter`, `banking_core_accounts_schema_extension`, `banking_core_accounts_control_assertion`, `banking_core_accounts_governed_model`.
-- Public APIs: `POST /deposit-accounts`, `POST /account-balances`, `POST /account-holds`, `POST /interest-accruals`, `POST /fee-assessments`, `GET /banking-core-accounts-workbench`.
-- Emitted AppGen-X events: `BankingCoreAccountsCreated`, `BankingCoreAccountsUpdated`, `BankingCoreAccountsApproved`, `BankingCoreAccountsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `deposit_account_management`, `banking_core_accounts_workflow`, `banking_core_accounts_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `banking_core_accounts_event_sourced_operational_history`, `banking_core_accounts_multi_tenant_policy_isolation`, `banking_core_accounts_schema_evolution_resilience`, `banking_core_accounts_autonomous_anomaly_detection`, `banking_core_accounts_semantic_document_instruction_understanding`, `banking_core_accounts_predictive_risk_scoring`, `banking_core_accounts_counterfactual_scenario_simulation`, `banking_core_accounts_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Deposit Account
-
-**Justification:** This closes shallow CRUD gaps by making every banking core accounts transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `deposit_account` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for BankingCoreAccountsCreated, BankingCoreAccountsUpdated, BankingCoreAccountsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Account Balance
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `account_balance` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Account Hold
-
-**Justification:** World-class Banking Core Accounts requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `account_hold` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `BANKING_CORE_ACCOUNTS_DATABASE_URL, BANKING_CORE_ACCOUNTS_EVENT_TOPIC, BANKING_CORE_ACCOUNTS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Interest Accrual
-
-**Justification:** Parameters are where operations teams tune banking core accounts; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `interest_accrual` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Fee Assessment
-
-**Justification:** A single payload column cannot express the full surface of deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `fee_assessment` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `banking_core_accounts_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Statement Cycle
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in banking core accounts.
-
-**Improvement:** Capture every material mutation of `statement_cycle` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Account Service Case
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `account_service_case`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Banking Core Accounts Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `banking_core_accounts_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Banking Core Accounts Runtime Parameter
-
-**Justification:** The package should warn users before banking core accounts work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `banking_core_accounts_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Banking Core Accounts Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls operations.
-
-**Improvement:** Provide scenario simulation for `banking_core_accounts_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Banking Core Accounts Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `banking_core_accounts_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Banking Core Accounts Governed Model
-
-**Justification:** Document-heavy work in Banking Core Accounts cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `banking_core_accounts_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Deposit Account
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `deposit_account` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Account Balance
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `account_balance`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Account Hold
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `account_hold` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Interest Accrual
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /deposit-accounts, POST /account-balances, POST /account-holds to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Fee Assessment
-
-**Justification:** Consumers should understand what happened in Banking Core Accounts without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `fee_assessment` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Statement Cycle
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Account Service Case
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `account_service_case` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Banking Core Accounts Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `banking_core_accounts_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Banking Core Accounts Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `banking_core_accounts_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `banking_core_accounts_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Banking Core Accounts Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `banking_core_accounts_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Banking Core Accounts Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `banking_core_accounts_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Banking Core Accounts Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `banking_core_accounts_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Deposit Account
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `deposit_account` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Account Balance
-
-**Justification:** Many banking core accounts errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `account_balance`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Account Hold
-
-**Justification:** Enterprise-scale Banking Core Accounts users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `account_hold` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Interest Accrual
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `interest_accrual` without leaking into external shared task tables. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Fee Assessment
-
-**Justification:** Users need to know when deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `fee_assessment` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Statement Cycle
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `statement_cycle`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Account Service Case
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `account_service_case` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Banking Core Accounts Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `banking_core_accounts_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Banking Core Accounts Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important banking core accounts behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `banking_core_accounts_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Banking Core Accounts Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `banking_core_accounts_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Banking Core Accounts Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `banking_core_accounts_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Banking Core Accounts Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `banking_core_accounts_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Deposit Account
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `deposit_account` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Account Balance
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `account_balance` decisions and batch operations. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Account Hold
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `account_hold`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Interest Accrual
-
-**Justification:** Automation should accelerate deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `interest_accrual`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Fee Assessment
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `banking_core_accounts` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Statement Cycle
-
-**Justification:** Configuration changes can materially alter banking core accounts; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `statement_cycle` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Account Service Case
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `account_service_case` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Banking Core Accounts Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls.
-
-**Improvement:** Create a governed evidence vault for `banking_core_accounts_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Banking Core Accounts Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `banking_core_accounts_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Banking Core Accounts Schema Extension
-
-**Justification:** Many banking core accounts workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `banking_core_accounts_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Banking Core Accounts Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `banking_core_accounts_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Banking Core Accounts Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Banking Core Accounts.
-
-**Improvement:** For every predictive or agentic feature around `banking_core_accounts_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Deposit Account
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `deposit_account`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `banking_core_accounts_create_deposit_account_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Account Balance
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `banking_core_accounts` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `banking_core_accounts_record_account_balance_workflow` where applicable, and make it visible in `BankingCoreAccountsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/banking_core_accounts` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Exact PBC key in the manifest: `banking_core_accounts`.
+- Manifest description: deposit accounts, balances, holds, interest, fees, statements, customer account servicing, and account controls.
+- Owned tables: `deposit_account`, `account_balance`, `account_hold`, `interest_accrual`, `fee_assessment`, `statement_cycle`, `account_service_case`, `banking_core_accounts_policy_rule`, `banking_core_accounts_runtime_parameter`, `banking_core_accounts_schema_extension`, `banking_core_accounts_control_assertion`, `banking_core_accounts_governed_model`.
+- Published APIs today: `POST /deposit-accounts`, `POST /account-balances`, `POST /account-holds`, `POST /interest-accruals`, `POST /fee-assessments`, `GET /banking-core-accounts-workbench`.
+- Emitted events today: `BankingCoreAccountsCreated`, `BankingCoreAccountsUpdated`, `BankingCoreAccountsApproved`, `BankingCoreAccountsExceptionOpened`.
+- Consumed events today: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- UI fragments already declared: `BankingCoreAccountsWorkbench`, `BankingCoreAccountsDetail`, `BankingCoreAccountsAssistantPanel`.
+- Docs already declared: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
+
+### 1. Canonical deposit account lifecycle
+**Justification:** Deposit accounts need a regulator-defensible lifecycle, not an open-ended status field. Opening, activation, suspension, dormancy, closure, and reopening each carry different controls for balances, fees, statements, and customer servicing.
+**Improvement:** Define a state machine on `deposit_account` with effective-dated transitions for pending, approved, active, restricted, dormant, closed, and reopened. Require maker-checker approval where policy demands it, and surface current state plus next allowed actions in `BankingCoreAccountsDetail`.
+**Acceptance evidence:** Transition rules are documented in `SPECIFICATION.md`, invalid transitions are rejected by tests, and `RELEASE_EVIDENCE.md` shows lifecycle screenshots plus event traces for create, approve, suspend, close, and reopen flows.
+
+### 2. Customer-to-account servicing projection
+**Justification:** Account operators need a fast view of all deposit accounts, holds, restrictions, service cases, and statement status for a customer relationship without copying customer master data into this PBC. Today the manifest exposes workbench surfaces but no explicit customer/account projection.
+**Improvement:** Build a read model that projects customer identifiers, linked `deposit_account` records, current `account_balance` positions, active `account_hold` records, latest `statement_cycle` status, and open `account_service_case` items. Keep it projection-only so ownership of customer golden data remains outside `banking_core_accounts`.
+**Acceptance evidence:** The workbench can open a customer/account summary from `GET /banking-core-accounts-workbench`, projection freshness is measured, and release evidence includes examples for single-account, joint-account, and restricted-account customers.
+
+### 3. Product parameter inheritance for deposit accounts
+**Justification:** Savings, current, youth, salary, and escrow accounts do not share the same interest, fee, hold, and overdraft rules. Without product inheritance, runtime parameters drift into record-by-record exceptions that are hard to audit.
+**Improvement:** Layer `banking_core_accounts_runtime_parameter` so account product defaults flow into `deposit_account`, with controlled local overrides for branch, tenant, or regulatory reason. Show the inherited value, the override source, and the approval reason in the detail view.
+**Acceptance evidence:** Tests prove product defaults apply consistently, override reasons are stored and queryable, and release evidence shows a product comparison with different fee, interest, and overdraft settings.
+
+### 4. Ledger, available, and withdrawable balance decomposition
+**Justification:** A single balance number is not enough for deposit operations. Core banking users need ledger balance, available balance, withdrawable balance, uncleared funds, and held funds separated to explain customer-facing and operational outcomes.
+**Improvement:** Expand `account_balance` into a projection model that keeps ledger, available, withdrawable, held, uncleared, and accrued-interest components with value date and posting date. Make the workbench explain why available funds differ from the ledger figure.
+**Acceptance evidence:** Balance calculation tests cover cash deposit, cheque hold, fee posting, interest accrual, and overdraft draw scenarios, and the detail page exposes a component-by-component balance explanation.
+
+### 5. Value-dated balance replay
+**Justification:** Deposit disputes often hinge on what the balance looked like on a prior value date, not only on the current day. Reconstructing those positions from mutable rows is slow and fragile.
+**Improvement:** Use the event-sourced operational history capability to replay `account_balance` as-of any posting date or value date. Surface as-of balance replay from the workbench for dispute handling and reconciliation.
+**Acceptance evidence:** Replay tests match stored projections for historical dates, event ordering is deterministic, and release evidence shows a statement dispute resolved from balance replay rather than manual reconstruction.
+
+### 6. Hold taxonomy and priority model
+**Justification:** Not all holds are equivalent. Legal, fraud, cheque, card authorization, compliance, deceased-customer, and internal-review holds each need different release rules and different customer communication.
+**Improvement:** Add typed `account_hold` categories with priority, effect on available funds, expiry logic, renewal rules, and release authority. Show each hold with reason code, amount, expiry, owning queue, and whether it blocks debit, credit, closure, or statement generation.
+**Acceptance evidence:** Tests cover overlapping hold categories, hold priority ordering, partial releases, and the workbench displays the impact of each active hold on withdrawable funds.
+
+### 7. Hold release waterfall
+**Justification:** When funds are released or reversed, the order in which holds fall away affects available balance and possible overdraft usage. Ad hoc release logic creates customer harm and reconciliation noise.
+**Improvement:** Implement a configurable waterfall for releasing `account_hold` records by business priority, age, and legal precedence. Record why a hold was released automatically, manually, or because a source event expired.
+**Acceptance evidence:** Simulation tests prove available balance changes correctly across competing holds, audit history captures release rationale, and release evidence shows manual and timed expiry releases.
+
+### 8. Overdraft facility and grace-period controls
+**Justification:** Overdraft behavior is central to transaction accounts and must align with product, risk, and customer servicing rules. It is not enough to post a negative balance and infer meaning later.
+**Improvement:** Add overdraft limit, grace days, excess handling, and overdraft block rules to `deposit_account` and `account_balance` projections. Distinguish arranged overdraft, unarranged overdraft, and unauthorized excess with separate customer and operator treatments.
+**Acceptance evidence:** Tests cover entering overdraft, curing within grace, exceeding limit, and blocking new debits, and the workbench shows current overdraft status with next fee or cure milestone.
+
+### 9. Overdraft fee and interest reversal flows
+**Justification:** Customers frequently challenge overdraft charges after same-day credits, technical outages, or bank-side errors. Reversal logic must explain which fee or interest entry is being unwound and why.
+**Improvement:** Add reversal linkage from `fee_assessment` and `interest_accrual` back to the originating overdraft condition, including waiver reason, approving role, and customer-impact notes. Show the net financial impact before the reversal is committed.
+**Acceptance evidence:** Reversal scenarios are covered by tests, waived and reversed items are visibly linked in the detail view, and release evidence includes a recovered overdraft case with before-and-after balances.
+
+### 10. Interest rate tiering and accrual calendars
+**Justification:** Deposit interest depends on product tiers, minimum balances, step rates, day-count conventions, and posting calendars. A generic accrual record is too shallow for real savings and term-based products.
+**Improvement:** Enrich `interest_accrual` with tier tables, balance bands, day-count basis, holiday handling, and posting cadence. Distinguish accrual amount from capitalization amount so month-end, quarter-end, and maturity rules stay explicit.
+**Acceptance evidence:** Tests cover daily accrual, step-tier transitions, month-end posting, and leap-year handling, and the workbench can explain the rate tier used for a given accrual period.
+
+### 11. Interest capitalization versus payout handling
+**Justification:** Some deposit products capitalize interest into principal, others pay it to a settlement account, and others suspend payout under restriction. Those paths affect statements, withholding, and reconciliation differently.
+**Improvement:** Extend `interest_accrual` and `deposit_account` rules to support capitalization, payout-to-linked-account, tax withholding placeholder fields, and restricted-account suspense handling. Make the posting outcome visible before approval.
+**Acceptance evidence:** Tests cover capitalization, external payout, restricted payout suspension, and statement presentation, and release evidence includes the journal-style breakdown used to support customer enquiries.
+
+### 12. Fee schedule engine for deposit servicing
+**Justification:** Maintenance fees, excess withdrawal fees, dormancy fees, stop-payment fees, paper statement fees, and account closure fees follow different triggers. Treating all charges as generic `fee_assessment` rows loses the trigger semantics needed for control and dispute handling.
+**Improvement:** Introduce typed fee schedules with trigger condition, waiver policy, customer notice requirement, tax flag, and reversal rules. Link each `fee_assessment` to the rule version that produced it.
+**Acceptance evidence:** Tests prove different fee triggers fire only under the right conditions, operators can trace a posted fee to its rule version, and release evidence shows maintenance, dormancy, and stop-payment fee examples.
+
+### 13. Fee waiver governance
+**Justification:** Fee waivers are common in branch and contact-center servicing, but uncontrolled waivers distort revenue and create fairness issues. Waiver evidence must be visible to supervisors and auditors.
+**Improvement:** Add waiver reason codes, approval tiers, customer-impact notes, and repeat-waiver analytics to `fee_assessment`. Expose a waiver workbench queue for review of high-value or repeated discretionary waivers.
+**Acceptance evidence:** Tests cover waiver approval thresholds and denial paths, the workbench shows repeat-waiver patterns by account and operator, and `RELEASE_EVIDENCE.md` includes a supervisor approval trail.
+
+### 14. Statement cycle calendar and cutover controls
+**Justification:** Statement generation is a domain event with strict cutoffs, not a background convenience feature. Cutover mistakes create wrong opening balances, duplicate charges, and customer complaints.
+**Improvement:** Enhance `statement_cycle` to track cycle definition, cutoff timestamp, posting freeze window, rerun reason, and exception status. Make statement cutover visible on the workbench with warnings for pending holds, late fees, or unresolved balance anomalies.
+**Acceptance evidence:** Tests cover standard cycle, rerun cycle, and cutoff-after-late-posting scenarios, and release evidence includes a statement cycle dashboard with pre-close and post-close evidence.
+
+### 15. Statement line composition and balance-forward proof
+**Justification:** A statement must explain how the opening balance became the closing balance through deposits, withdrawals, fees, interest, holds, and reversals. If the balance-forward proof is weak, both customer service and audit suffer.
+**Improvement:** Build statement composition logic that groups entries by posting rules, preserves reversals, and proves opening balance plus net activity equals closing balance. Surface line-level provenance from `account_balance`, `interest_accrual`, `fee_assessment`, and `account_hold`.
+**Acceptance evidence:** Statement proof tests pass across normal and corrected cycles, detail screens show provenance for each line item, and release evidence includes a redacted statement with balance-forward reconciliation.
+
+### 16. Signatory and mandate registry
+**Justification:** Many deposit accounts are joint, trustee, guardian, or business accounts with specific signing rules. Without explicit mandate modeling, servicing actions can be approved by the wrong party.
+**Improvement:** Extend `deposit_account` and `account_service_case` to capture mandate type, signatory set, signing rule, effective dates, and evidence references. Project mandate status into account detail so staff can tell whether one signer, two signers, or all signers are required.
+**Acceptance evidence:** Tests cover single-sign, joint-sign, guardian, and expired-mandate scenarios, and release evidence shows a mandate-driven service request approval path.
+
+### 17. Effective-dated mandate changes
+**Justification:** Signatory changes often overlap with address changes, account restrictions, and pending instructions. Core banking needs forward-dated mandate changes so service teams can schedule updates without losing current authority rules.
+**Improvement:** Add pending, active, superseded, and revoked mandate versions with effective dates and approval status. Block sensitive servicing actions when a mandate change is incomplete or conflicting.
+**Acceptance evidence:** Tests cover future-dated mandate activation and revocation overlap, the workbench warns about in-flight mandate changes, and release evidence includes a before/after signatory timeline.
+
+### 18. Compliance restriction boundary model
+**Justification:** AML review, sanctions concern, fraud investigation, and court order restrictions have different operational boundaries. Operators need to know exactly whether debit, credit, closure, statement delivery, or profile maintenance is blocked.
+**Improvement:** Represent compliance boundaries on `deposit_account` and `account_hold` as structured capabilities blocked or allowed. Expose the restriction source, review owner, expiry, and escalation route without leaking external compliance-system internals into this PBC.
+**Acceptance evidence:** Tests verify debit-only, full-freeze, and closure-block scenarios, and release evidence shows a restricted account view with action-level controls correctly disabled.
+
+### 19. Compliance review servicing cases
+**Justification:** Restriction decisions are never just balance events; they create open work that must be tracked until resolution. Without typed service cases, restrictions linger without ownership and customer communication degrades.
+**Improvement:** Add `account_service_case` templates for sanctions review, source-of-funds request, suspicious-activity follow-up, deceased-customer hold, and documentation deficiency. Make case status, SLA, and required evidence visible beside the impacted account.
+**Acceptance evidence:** Tests cover case opening from restriction events and case closure after evidence review, and the workbench can filter cases by compliance type, queue, and ageing bucket.
+
+### 20. Dormancy, inactivity, and reactivation controls
+**Justification:** Dormancy changes what transactions are allowed, what fees apply, and what customer identification is required before reactivation. It should be a first-class lifecycle branch, not an afterthought.
+**Improvement:** Use `deposit_account`, `statement_cycle`, and `fee_assessment` to track inactivity counters, dormancy threshold, dormancy notices, reactivation evidence, and escheat readiness. Distinguish dormant status from compliance restriction and from ordinary low activity.
+**Acceptance evidence:** Tests cover inactivity ageing, dormancy conversion, reactivation, and fee treatment, and release evidence includes a dormant account reactivation path with required checks.
+
+### 21. Account closure with residual balance handling
+**Justification:** Closing a deposit account requires more than flipping a status. Residual balances, accrued interest, pending fees, holds, and statement obligations must be cleared or transferred in a controlled order.
+**Improvement:** Build a closure checklist that verifies zero or transferred balance, cleared holds, final interest treatment, pending fee disposition, final statement generation, and customer communication completion. Refuse closure when any required step is incomplete.
+**Acceptance evidence:** Closure tests cover zero-balance closure, transfer-out closure, and blocked closure due to unresolved hold or statement cycle, and the detail page exposes the closure checklist state.
+
+### 22. Controlled account reopening
+**Justification:** Reopening closed accounts is operationally sensitive because prior number, mandate, and fee history may still matter. Reopening must distinguish true reinstatement from opening a fresh account for the same customer.
+**Improvement:** Add reopening rules that preserve lineage to the closed `deposit_account`, require reason codes, and re-evaluate mandates, holds, and product parameters before activation. Show whether the reopened account inherits prior restrictions or starts clean.
+**Acceptance evidence:** Tests cover allowable and disallowed reopen paths, lineage is queryable in projections, and release evidence includes a reopened account with preserved historical statement access.
+
+### 23. Internal transfer and linked-account relationships
+**Justification:** Deposit products often depend on linked settlement, sweep, or charges accounts. Those relationships shape overdraft cure, fee collection, and interest payout behavior.
+**Improvement:** Model linked account relationships and transfer permissions as part of `deposit_account` servicing context, while keeping actual transfer execution outside this PBC's ownership. Use the relationship projection to inform fee debit fallback and interest payout routing.
+**Acceptance evidence:** Tests cover permitted and blocked linked-account usage, projections show active relationships, and release evidence includes interest payout routed to a linked settlement account.
+
+### 24. Subledger-to-balance reconciliation
+**Justification:** Core banking operations need daily proof that account-level projections agree with the authoritative posting stream that fed them. Without structured reconciliation, balance defects surface only after customer impact.
+**Improvement:** Introduce reconciliation runs that compare `account_balance` projections, statement totals, fee postings, and interest postings against imported posting evidence. Open `account_service_case` items automatically for unreconciled differences.
+**Acceptance evidence:** Reconciliation tests classify matched, timing, and broken cases, the workbench exposes break counts and materiality, and `RELEASE_EVIDENCE.md` includes a sample reconciliation report.
+
+### 25. Intraday versus end-of-day posting boundary
+**Justification:** Some balances must react intraday while other controls and customer artifacts are end-of-day. If the boundary is vague, operators cannot explain why a fee is visible but not yet statemented, or why a hold reduced available funds before formal posting.
+**Improvement:** Make every `account_balance`, `interest_accrual`, `fee_assessment`, and `statement_cycle` update declare whether it is intraday, end-of-day, or backdated correction. Present the posting boundary in operator and auditor views.
+**Acceptance evidence:** Tests cover intraday visibility, overnight roll, and backdated corrections, and release evidence shows the same account across intraday and end-of-day snapshots.
+
+### 26. Typed domain events for lifecycle and servicing
+**Justification:** The current emitted events are too coarse to explain the actual business action. Consumers need to differentiate account activation from hold release, statement closure, fee waiver, and overdraft breach without unpacking opaque payloads.
+**Improvement:** Add typed events for deposit account opened, activated, restricted, dormant, reactivated, closed, hold applied, hold released, fee waived, interest capitalized, statement closed, and reconciliation break opened. Keep the existing manifest events as compatibility envelopes if needed.
+**Acceptance evidence:** Event schemas are versioned, sample payloads are documented, compatibility tests pass, and release evidence shows downstream consumers reacting to typed events without custom parsing.
+
+### 27. Idempotent command keys for external requests
+**Justification:** Balance, hold, interest, and fee requests can arrive more than once from channels or batch sources. Deposit operations cannot tolerate duplicate holds or duplicate fee postings because a caller retried.
+**Improvement:** Require idempotency keys and source-system references on `POST /account-balances`, `POST /account-holds`, `POST /interest-accruals`, and `POST /fee-assessments`. Expose duplicate detection results to the operator instead of silently dropping or replaying commands.
+**Acceptance evidence:** Tests prove duplicate requests do not double-post domain effects, stored idempotency evidence is queryable, and release evidence includes a retry sequence with a single business outcome.
+
+### 28. Dead-letter recovery workbench
+**Justification:** Retry and dead-letter evidence is already declared in the manifest, but operators need a domain-aware recovery lane, not just infrastructure counters. Failures should point to the impacted account, balance, or statement cycle immediately.
+**Improvement:** Build a workbench view that groups failed commands and events by affected `deposit_account`, `account_balance`, `account_hold`, or `statement_cycle`, with retry eligibility, poison-message hints, and linked service cases. Allow replay only through governed actions.
+**Acceptance evidence:** Failed-message scenarios are reproducible in tests, the workbench shows domain grouping and replay decisions, and release evidence includes recovery of a failed hold event without manual datastore edits.
+
+### 29. Query APIs for operational retrieval
+**Justification:** The manifest lists command-heavy APIs, but servicing teams also need query surfaces for account detail, hold detail, fee history, statement history, and lifecycle evidence. Workbench screens should not depend on private query hacks.
+**Improvement:** Add read APIs for account summary, balance components, active holds, interest history, fee history, statement cycle history, and open service cases. Keep filters aligned to branch, product, state, restriction, and ageing use cases.
+**Acceptance evidence:** API contracts are documented, permission tests protect sensitive retrieval, and release evidence shows the workbench using supported query endpoints rather than undeclared data paths.
+
+### 30. Operations workbench by role
+**Justification:** Branch staff, central operations, contact-center agents, supervisors, and auditors do not need the same controls. A single generic workbench makes high-volume servicing slower and increases the chance of acting on the wrong evidence.
+**Improvement:** Split `BankingCoreAccountsWorkbench` into role-focused views: opening and maintenance queue, restrictions queue, statement operations, fee and interest review, reconciliation breaks, and audit evidence. Keep one underlying domain model while changing only what each role sees and can do.
+**Acceptance evidence:** Permission-aware UI tests pass, each role sees only its relevant actions, and release evidence includes screenshots for branch operator, supervisor, and auditor personas.
+
+### 31. Account detail timeline
+**Justification:** Service teams need a time-ordered story of what happened to an account across lifecycle, balances, holds, fees, interest, statements, and service cases. Jumping across separate tabs slows resolution and obscures causal chains.
+**Improvement:** Build a unified timeline in `BankingCoreAccountsDetail` that merges typed events, balance changes, hold changes, statement milestones, fee activity, interest activity, and case actions. Allow filtering by event family and date range.
+**Acceptance evidence:** Timeline ordering tests pass across mixed event types, the detail page can filter to disputes or compliance history, and release evidence shows a customer complaint resolved from one consolidated timeline.
+
+### 32. Assistant skill for governed servicing instructions
+**Justification:** The manifest declares AI agent task assistance and document instruction intake, but account servicing needs domain-bounded skills. An assistant should prepare a safe deposit-account action plan, not improvise unrestricted data changes.
+**Improvement:** Add an assistant skill in `BankingCoreAccountsAssistantPanel` that can interpret a servicing request, identify the affected account, summarize mandates and restrictions, draft the next governed command, and ask for approval when policy requires it. The assistant must reference only supported APIs, events, and projections inside `banking_core_accounts`.
+**Acceptance evidence:** Skill tests cover address-change support, hold enquiry, fee waiver request, and closure request scenarios, and release evidence shows previewed actions with explicit approvals and audit traces.
+
+### 33. Assistant skill for statement and fee explanations
+**Justification:** A large share of contact-center traffic comes from customers asking why a balance moved, why a fee posted, or why a statement looks different. Those explanations require a domain-aware synthesis across balances, fees, interest, and holds.
+**Improvement:** Add a read-only assistant skill that explains statement lines, fee triggers, interest computation, and hold impact using `account_balance`, `fee_assessment`, `interest_accrual`, and `statement_cycle` evidence. Return explanation cards that can be copied into a service case note.
+**Acceptance evidence:** Prompt-and-response evaluations cover common customer questions, cited source spans link back to domain records, and release evidence shows an operator using the assistant without creating unauthorized changes.
+
+### 34. Exception taxonomy and ageing
+**Justification:** Not every exception is the same. Missing mandate evidence, failed reconciliation, stuck statement close, invalid balance component, and unresolved compliance block each need different queues, SLAs, and escalation paths.
+**Improvement:** Add a typed exception model within `account_service_case` and supporting projections, with severity, materiality, ageing bucket, owner, blocked capability, and resolution evidence. Link every emitted exception to the domain object it prevents from progressing.
+**Acceptance evidence:** Tests cover creation and ageing of multiple exception classes, the workbench can filter by blocked capability and severity, and release evidence includes an ageing dashboard tied to real case states.
+
+### 35. Policy rule versioning with effective dating
+**Justification:** Changes to hold rules, fee triggers, dormancy thresholds, or overdraft settings must be explainable after the fact. Current and prior account outcomes need to remain traceable to the rule version that governed them.
+**Improvement:** Extend `banking_core_accounts_policy_rule` with effective-from, effective-to, superseded-by, approval evidence, and targeted account-product scope. Make rules queryable from impacted account, fee, hold, and statement records.
+**Acceptance evidence:** Tests prove future-dated and superseded policies evaluate correctly, the workbench can trace a domain outcome to a rule version, and release evidence includes a policy change timeline plus impacted-account sample.
+
+### 36. Runtime parameter scoping and drift detection
+**Justification:** Parameters are useful only if operators know where they apply and whether they drifted away from approved values. Product teams need to see if a branch or tenant quietly diverged from the intended operating model.
+**Improvement:** Add scope metadata to `banking_core_accounts_runtime_parameter` for tenant, product, branch, segment, and emergency override, plus drift detection against approved baselines. Show active scope resolution in the workbench before a parameter affects live accounts.
+**Acceptance evidence:** Tests cover scope precedence and emergency override expiry, drift alerts appear in the workbench, and release evidence includes a resolved parameter conflict across product and branch layers.
+
+### 37. Continuous control assertions for maker-checker and segregation of duties
+**Justification:** Deposit account opening, overdraft changes, fee waivers, and mandate changes often require separation of duties. Control failures should be detected as the work happens, not only after an audit sample.
+**Improvement:** Use `banking_core_accounts_control_assertion` to continuously test maker-checker presence, role separation, approval materiality thresholds, and restricted-action overrides. Raise visible exceptions when controls fail or are bypassed.
+**Acceptance evidence:** Tests trigger control failures for self-approval and missing second checker, the workbench surfaces failed control assertions, and `RELEASE_EVIDENCE.md` includes control-pass and control-fail examples.
+
+### 38. Release evidence pack for core banking operations
+**Justification:** This PBC already declares `RELEASE_EVIDENCE.md`, but release proof should cover domain correctness, not only deployment success. Account lifecycle, balance integrity, statement accuracy, and control evidence all need to be demonstrable.
+**Improvement:** Define a release pack that includes lifecycle walkthroughs, balance component proofs, hold behavior, overdraft edge cases, interest and fee samples, statement cutover evidence, reconciliation summaries, and control assertion results. Keep the evidence organized by domain scenario rather than by internal component.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` contains repeatable scenario evidence across the main deposit-account flows, release reviewers can trace each scenario to tests and screenshots, and the pack is complete before a release is marked ready.
+
+### 39. Tenant isolation and jurisdiction boundary checks
+**Justification:** The manifest includes multi-tenant policy isolation, and deposit-account controls can vary by tenant and jurisdiction. Leakage across tenant or jurisdiction boundaries is a severe operational and regulatory risk.
+**Improvement:** Enforce tenant-scoped records, parameter resolution, workbench filters, and emitted event context across `deposit_account`, `account_balance`, `fee_assessment`, and `account_service_case`. Prevent an operator from applying the wrong jurisdictional rule set to an account.
+**Acceptance evidence:** Tests prove tenant and jurisdiction isolation, UI filters never cross tenant context, and release evidence includes negative tests for cross-tenant and cross-jurisdiction access attempts.
+
+### 40. Schema extension registry for product-specific account fields
+**Justification:** Deposit products evolve and often need controlled extra attributes such as notice period, passbook flag, payroll anchor, or trustee reference. Those additions should not become uncontrolled JSON clutter that breaks servicing and evidence.
+**Improvement:** Use `banking_core_accounts_schema_extension` to register product-specific fields with owner, validation rule, display rule, and migration plan. Surface approved extensions in detail and workbench views without weakening core field discipline.
+**Acceptance evidence:** Tests cover extension validation and rendering, incompatible extensions are rejected before release, and release evidence includes one approved extension flowing through API, UI, and event payloads.
+
+### 41. Product and branch analytics for deposit behavior
+**Justification:** The manifest exposes analytics, but account teams need domain measures that matter operationally. Hold spikes, overdraft penetration, dormancy growth, fee waiver concentration, and statement reruns all indicate real servicing issues.
+**Improvement:** Create analytics projections for product, branch, and tenant that summarize active accounts, balance composition, hold ratios, overdraft usage, fee waivers, interest cost, dormant accounts, and reconciliation breaks. Make each metric drill into the affected accounts.
+**Acceptance evidence:** Metric definitions are documented, projections update from domain events, and release evidence shows product and branch drill-downs tied to actual account records.
+
+### 42. Cryptographic sealing of account evidence
+**Justification:** AuditEventSealed is already consumed, so the PBC should make high-value account evidence tamper-evident. Statements, approvals, mandate changes, and reconciliation reports benefit from integrity proofing.
+**Improvement:** Hash and seal approved statement artifacts, mandate evidence, major fee waivers, overdraft-limit changes, and reconciliation reports. Record seal references on the relevant domain objects for later verification.
+**Acceptance evidence:** Verification tests prove sealed evidence can be re-validated, the detail page displays seal status for high-value artifacts, and release evidence includes a successful seal verification run.
+
+### 43. Counterfactual simulation for fee, rate, and policy changes
+**Justification:** Banking operations need to understand customer and revenue impact before changing fee schedules, overdraft policy, or interest rules. Simulation is especially valuable when multiple products and branches are affected.
+**Improvement:** Add non-mutating simulations that project how a proposed `banking_core_accounts_policy_rule` or runtime parameter change would affect fees, interest expense, overdraft incidents, dormant-account revenue, and exception queues. Expose simulation outputs through the workbench before approval.
+**Acceptance evidence:** Simulations can be run against historical snapshots, results are reproducible, and release evidence includes a sample policy change showing forecast impact and approval notes.
+
+### 44. Anomaly detection for balance and fee behavior
+**Justification:** The manifest includes autonomous anomaly detection, but the highest-value anomalies are domain-specific. Unexpected fee bursts, repeated hold-reapply cycles, same-day overdraft cures, and statement reruns should raise targeted concern.
+**Improvement:** Train anomaly features on `account_balance`, `fee_assessment`, `account_hold`, and `statement_cycle` patterns relevant to deposit operations. Route flagged anomalies into the appropriate service or control queue with an explanation of the unusual pattern.
+**Acceptance evidence:** Detection tests cover known anomalous scenarios, anomaly cards cite the responsible domain signals, and release evidence shows operator review of flagged balance and fee anomalies.
+
+### 45. Account number, alias, and external reference integrity
+**Justification:** Deposit operations rely on stable account identifiers, but customers and channels may also use aliases, masked numbers, and external references. Identifier confusion causes posting errors and servicing mistakes.
+**Improvement:** Standardize identifier handling on `deposit_account` with canonical account number, masked display number, product alias, and channel reference mappings. Ensure APIs and workbench views display the right identifier for the right audience.
+**Acceptance evidence:** Tests cover duplicate prevention, masked display rules, and external reference lookups, and release evidence includes branch, customer-service, and audit views using different safe identifier formats.
+
+### 46. Negative-balance cure and collections handoff boundary
+**Justification:** When unarranged overdrafts are not cured, the account eventually crosses from ordinary servicing into recovery or collections workflows. That boundary must be explicit so this PBC stops at the right point and emits the right evidence.
+**Improvement:** Add cure milestones, customer notification stages, and handoff-ready evidence to `account_service_case` for prolonged negative balances. Emit a specific handoff event when the case leaves ordinary deposit-account servicing.
+**Acceptance evidence:** Tests cover cure, non-cure, and handoff thresholds, the workbench shows countdown to handoff, and release evidence includes a negative-balance case that cleanly transitions out of this PBC's operating scope.
+
+### 47. Operational calendar and holiday-aware servicing
+**Justification:** Interest posting, statement closure, and fee assessment depend on business days, weekends, and local holidays. Without explicit calendars, operators cannot explain why one account posted today and another waits until the next business day.
+**Improvement:** Add calendar awareness to `interest_accrual`, `fee_assessment`, and `statement_cycle`, including business-day adjustment rules and holiday overrides. Show the next scheduled action date and the rule that produced it.
+**Acceptance evidence:** Tests cover weekend, holiday, and month-end adjustment scenarios, the workbench shows scheduled dates with adjustment reasons, and release evidence includes a holiday-shifted posting example.
+
+### 48. Correction and restatement workflow
+**Justification:** Core banking operations occasionally need to restate balances, fees, or statements after a discovered defect or late posting. Corrections must preserve the original event trail rather than pretending the first version never existed.
+**Improvement:** Add controlled correction flows for `account_balance`, `fee_assessment`, `interest_accrual`, and `statement_cycle`, with original-versus-corrected linkage, reason code, approval evidence, and customer-impact notes. Distinguish operational correction from fraud or compliance intervention.
+**Acceptance evidence:** Tests cover corrected statement lines and corrected fee entries, timelines preserve both original and corrected versions, and release evidence includes a restated statement with linked correction evidence.
+
+### 49. End-to-end event and API boundary map
+**Justification:** This PBC already declares APIs and emitted and consumed events, but boundary ownership needs to be explicit for future extensions. Account servicing breaks when teams cannot tell whether a change belongs in an API, an event, a projection, or another PBC.
+**Improvement:** Document the command, query, and event boundary for opening accounts, updating balances, applying holds, posting interest, assessing fees, closing statements, and opening service cases. Make the map visible in `SPECIFICATION.md` and use it to reject undeclared coupling.
+**Acceptance evidence:** Boundary documentation references every current API and event, contract tests assert the documented interfaces, and release evidence includes a trace from one API command through emitted events to refreshed projections.
+
+### 50. Structural release gate for this backlog's domain scope
+**Justification:** A backlog is useful only if it drives verifiable implementation and release discipline. The final gate should prove that `banking_core_accounts` handles the promised deposit-account domain with testable evidence across API, UI, event, and control surfaces.
+**Improvement:** Convert this backlog into a release-readiness checklist that groups work under lifecycle, balances, holds, overdraft, interest, fees, statements, mandates, compliance boundaries, reconciliation, assistant skills, workbench UX, and evidence sealing. Require each group to point to tests, projections, UI flows, and `RELEASE_EVIDENCE.md` artifacts before calling the PBC production-ready.
+**Acceptance evidence:** The checklist exists beside the release evidence, every group has linked proof, unresolved gaps are visible, and a reviewer can verify end-to-end readiness for `banking_core_accounts` without searching outside the package.

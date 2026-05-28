@@ -1,418 +1,416 @@
-# Construction Contracts and Commercials PBC Better-Than-World-Class Improvement Backlog
+# Construction Contracts and Commercials PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `construction_contracts_commercials`. The backlog is specific to construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `construction_contracts_commercials` with a hand-curated construction commercial-controls roadmap. The PBC owns construction contracts, pay applications, retainage, variation orders, commercial claims, lien waivers, subcontract packages, commercial controls, governed rules, agent assistance, and release evidence without owning project scheduling, procurement sourcing, general ledger, or document storage source-of-truth tables.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `construction_contracts_commercials`.
-- Domain purpose: Construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls.
+- Domain purpose: construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls.
 - Owned domain tables: `construction_contract`, `pay_application`, `retainage`, `variation_order`, `commercial_claim`, `lien_waiver`, `subcontract_package`, `construction_contracts_commercials_policy_rule`, `construction_contracts_commercials_runtime_parameter`, `construction_contracts_commercials_schema_extension`, `construction_contracts_commercials_control_assertion`, `construction_contracts_commercials_governed_model`.
 - Public APIs: `POST /construction-contracts`, `POST /pay-applications`, `POST /retainages`, `POST /variation-orders`, `POST /commercial-claims`, `GET /construction-contracts-commercials-workbench`.
 - Emitted AppGen-X events: `ConstructionContractsCommercialsCreated`, `ConstructionContractsCommercialsUpdated`, `ConstructionContractsCommercialsApproved`, `ConstructionContractsCommercialsExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `construction_contract_management`, `construction_contracts_commercials_workflow`, `construction_contracts_commercials_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `construction_contracts_commercials_event_sourced_operational_history`, `construction_contracts_commercials_multi_tenant_policy_isolation`, `construction_contracts_commercials_schema_evolution_resilience`, `construction_contracts_commercials_autonomous_anomaly_detection`, `construction_contracts_commercials_semantic_document_instruction_understanding`, `construction_contracts_commercials_predictive_risk_scoring`, `construction_contracts_commercials_counterfactual_scenario_simulation`, `construction_contracts_commercials_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Construction Contract
+### 1. Contract Commercial Lifecycle
 
-**Justification:** This closes shallow CRUD gaps by making every construction contracts and commercials transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Construction contracts move through tender, award, execution, variation, suspension, practical completion, final account, defects, and closeout states.
 
-**Improvement:** Define a complete state machine for `construction_contract` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add contract lifecycle states with effective dates, responsible party, required evidence, allowed transitions, and closeout blockers.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ConstructionContractsCommercialsCreated, ConstructionContractsCommercialsUpdated, ConstructionContractsCommercialsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid transitions and show contract stage, blockers, and next commercial action in the workbench.
 
-### 2. Domain intake and normalization for Pay Application
+### 2. Contract Type and Pricing Basis
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls, not only already-clean records.
+**Justification:** Lump-sum, unit-rate, cost-plus, guaranteed maximum, target-cost, framework, and reimbursable contracts have different controls.
 
-**Improvement:** Build a typed intake pipeline for `pay_application` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `construction_contract` with pricing basis, measurement rules, pain/gain share, provisional sums, contingency, allowances, escalation, and risk allocation.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate pay applications and variations differently by contract type and pricing basis.
 
-### 3. Specialist validation rules for Retainage
+### 3. Scope and Schedule of Values
 
-**Justification:** World-class Construction Contracts and Commercials requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Payment certification depends on a controlled schedule of values and scope breakdown.
 
-**Improvement:** Add a domain rule compiler for `retainage` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add schedule-of-values lines with work package, quantity, unit, original value, approved changes, previous certified, current claimed, stored materials, and remaining balance.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `CONSTRUCTION_CONTRACTS_COMMERCIALS_DATABASE_URL, CONSTRUCTION_CONTRACTS_COMMERCIALS_EVENT_TOPIC, CONSTRUCTION_CONTRACTS_COMMERCIALS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block over-claiming and reconcile current certificate totals to line evidence.
 
-### 4. Parameter governance and tuning for Variation Order
+### 4. Pay Application Intake
 
-**Justification:** Parameters are where operations teams tune construction contracts and commercials; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Pay applications often arrive as mixed documents with progress claims, materials, variations, deductions, and attachments.
 
-**Improvement:** Expose bounded runtime parameters for `variation_order` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add intake states for received, parsed, incomplete, under review, certified, disputed, rejected, revised, paid event emitted, and archived.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must parse structured and document-derived applications, identify missing attachments, and require certification before payment events.
 
-### 5. Deep owned schema expansion for Commercial Claim
+### 5. Progress Measurement Evidence
 
-**Justification:** A single payload column cannot express the full surface of construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls or prove cross-PBC boundaries are respected.
+**Justification:** Claimed progress should be supported by inspections, quantities, milestones, photographs, or engineer certificates.
 
-**Improvement:** Extend the owned schema around `commercial_claim` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add progress evidence references, measurement method, certifier, field verification status, variance reason, and disputed quantity.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `construction_contracts_commercials_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject certification where required progress evidence is absent or inconsistent with claimed percentage.
 
-### 6. Event-sourced operational history for Lien Waiver
+### 6. Retainage Rules
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in construction contracts and commercials.
+**Justification:** Retainage can vary by contract, work package, jurisdiction, milestone, cap, and release event.
 
-**Improvement:** Capture every material mutation of `lien_waiver` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `retainage` with percentage, cap, withheld amount, release trigger, partial release, substitution bond, and final release blockers.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate retainage and release it only when configured milestones and waiver requirements are met.
 
-### 7. Projection and read-model strategy for Subcontract Package
+### 7. Advance Payment and Recovery
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Advances and mobilization payments require guarantees, recovery schedules, and exposure controls.
 
-**Improvement:** Create purpose-built projections for `subcontract_package`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add advance amount, guarantee evidence, recovery percentage, recovered-to-date, outstanding exposure, expiry, and default trigger.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate recovery across pay applications and flag expired guarantees.
 
-### 8. Exception taxonomy and remediation for Construction Contracts Commercials Policy Rule
+### 8. Variation Order Lifecycle
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Changes need instruction, quotation, evaluation, approval, implementation, valuation, and incorporation into contract value.
 
-**Improvement:** Model the full exception taxonomy for `construction_contracts_commercials_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `variation_order` with initiator, instruction source, cost/time impact, quote, negotiation, approval route, disputed status, and executed amount.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent unapproved variations from increasing certified contract value.
 
-### 9. Predictive risk scoring for Construction Contracts Commercials Runtime Parameter
+### 9. Change Notice Timeliness
 
-**Justification:** The package should warn users before construction contracts and commercials work fails, breaches policy, or creates downstream cost.
+**Justification:** Construction contracts often require notice within strict time bars.
 
-**Improvement:** Add predictive risk scoring for `construction_contracts_commercials_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add notice date, event date, contractual deadline, waiver status, late reason, and entitlement risk scoring for variations and claims.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must classify timely, late, waived, and disputed notice scenarios.
 
-### 10. Counterfactual simulation for Construction Contracts Commercials Schema Extension
+### 10. Commercial Claim Register
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls operations.
+**Justification:** Delay, disruption, acceleration, differing site condition, prolongation, and loss/expense claims need separate handling.
 
-**Improvement:** Provide scenario simulation for `construction_contracts_commercials_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `commercial_claim` with claim type, causation event, notice evidence, quantum basis, time impact, entitlement assessment, status, and settlement.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route claims through entitlement, substantiation, negotiation, determination, settlement, and rejection states.
 
-### 11. Autonomous anomaly triage for Construction Contracts Commercials Control Assertion
+### 11. Delay and Time Impact Boundary
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Commercial claims depend on schedule analysis but should not own the project schedule.
 
-**Improvement:** Implement anomaly detection for `construction_contracts_commercials_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store schedule impact projections, critical-path evidence, delay window, concurrent delay marker, and freshness from declared project-controls events.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on direct schedule table reads and pass on declared projection evidence.
 
-### 12. Semantic document understanding for Construction Contracts Commercials Governed Model
+### 12. Quantum Calculation
 
-**Justification:** Document-heavy work in Construction Contracts and Commercials cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Claim valuation requires labor, equipment, material, overhead, markup, escalation, and disruption evidence.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `construction_contracts_commercials_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add quantum lines with cost category, rate, quantity, source evidence, markup rule, disallowed amount, and negotiated amount.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must recalculate claimed, assessed, and settled values from line evidence.
 
-### 13. Agent-safe CRUD execution for Construction Contract
+### 13. Subcontract Package Lifecycle
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Subcontracts require award, insurance, bonds, scope alignment, payment, variations, claims, and closeout controls.
 
-**Improvement:** Add a professional chatbot skill for `construction_contract` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `subcontract_package` with package scope, subcontractor projection, contract value, insurance/bond status, compliance holds, and closeout checklist.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block subcontract pay certification when required commercial compliance evidence is missing.
 
-### 14. Workbench persona coverage for Pay Application
+### 14. Lien Waiver Governance
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Lien waivers protect owners and contractors but vary by payment, jurisdiction, conditionality, and party.
 
-**Improvement:** Design dedicated workbench panels for `pay_application`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `lien_waiver` with waiver type, covered amount, covered period, party, conditional/unconditional status, notarization, and release dependency.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block configured payments until required valid waivers are present.
 
-### 15. Cross-PBC dependency contracts for Retainage
+### 15. Bonds and Guarantees
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Performance bonds, payment bonds, retention bonds, parent guarantees, and advance guarantees need expiry and value controls.
 
-**Improvement:** Represent dependencies for `retainage` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add guarantee records with type, issuer, value, expiry, beneficiary, linked obligation, renewal requirement, and call status.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag expiring or insufficient guarantees and block closeout when required guarantees are missing.
 
-### 16. API completeness and versioning for Variation Order
+### 16. Insurance Compliance
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Contracts require insurance evidence by coverage type, limit, deductible, expiry, and project-specific endorsement.
 
-**Improvement:** Expand APIs beyond POST /construction-contracts, POST /pay-applications, POST /retainages to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add insurance compliance projections, coverage requirements, certificate evidence, expiry warning, and noncompliance holds.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open compliance exceptions and prevent payment release according to policy.
 
-### 17. Typed emitted-event expansion for Commercial Claim
+### 17. Backcharge and Contra-Charge
 
-**Justification:** Consumers should understand what happened in Construction Contracts and Commercials without parsing opaque payloads.
+**Justification:** Contractors may recover costs for damage, rework, cleanup, or third-party impacts.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `commercial_claim` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add backcharge case, responsible party, notice, cost evidence, response, offset link, and dispute state.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must apply approved backcharges to payment certification and preserve dispute evidence.
 
-### 18. Consumed-event handlers for Lien Waiver
+### 18. Liquidated Damages and Incentives
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Delay damages, milestone bonuses, safety incentives, and performance deductions must be transparent.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add damage/incentive rules, trigger evidence, grace periods, cap, assessed amount, waiver, and approval route.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate damages and incentives from milestone and contract evidence.
 
-### 19. Retry and dead-letter operations for Subcontract Package
+### 19. Provisional Sums and Allowances
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls.
+**Justification:** Allowances and provisional sums need drawdown, conversion to variations, and remaining balance controls.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `subcontract_package` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add allowance ledger with original value, committed amount, approved draw, remaining balance, and closeout disposition.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent allowance overdraws and reconcile final account treatment.
 
-### 20. RBAC and attribute policy for Construction Contracts Commercials Policy Rule
+### 20. Escalation and Price Adjustment
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Material, labor, fuel, and index escalation clauses can materially change payment.
 
-**Improvement:** Extend permissions for `construction_contracts_commercials_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add escalation formula, index projection, base date, calculation period, cap/floor, assessed amount, and evidence references.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate escalation and reject stale or missing index projections.
 
-### 21. Continuous control testing for Construction Contracts Commercials Runtime Parameter
+### 21. Tax and Withholding Boundary
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Pay applications may require taxes and withholdings while tax engines own tax rules.
 
-**Improvement:** Embed control assertions for `construction_contracts_commercials_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store tax projection, withholding status, exemption evidence, and freshness as declared dependencies tied to payment certification.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `construction_contracts_commercials_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on tax table reads and pass on declared projection usage.
 
-### 22. Cryptographic audit proofing for Construction Contracts Commercials Schema Extension
+### 22. Payment Certificate Generation
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Certified payment must reconcile contract value, previous payments, variations, retainage, deductions, tax, and net due.
 
-**Improvement:** Hash-chain material `construction_contracts_commercials_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add payment certificate records with calculation trace, certifier, approval, revision, and payable event reference.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct net due and emit idempotent payment events after approval.
 
-### 23. Privacy, consent, and secrecy controls for Construction Contracts Commercials Control Assertion
+### 23. Final Account Workflow
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Final account closes all variations, claims, retainage, bonds, waivers, and disputed amounts.
 
-**Improvement:** Add field-level privacy classifications for `construction_contracts_commercials_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add final account checklist, agreed contract sum, outstanding matters, settlement terms, signoff, and release conditions.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block contract closeout until final account prerequisites are resolved or formally reserved.
 
-### 24. Multi-tenant operating model for Construction Contracts Commercials Governed Model
+### 24. Dispute and Determination Tracking
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Construction disputes can move through negotiation, determination, adjudication, arbitration, or settlement.
 
-**Improvement:** Support tenant-specific `construction_contracts_commercials_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dispute forum, disputed amount, issues, submissions, decisions, settlement terms, and financial impact.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve dispute timeline and update claim/pay status based on determinations.
 
-### 25. Schema evolution and extension registry for Construction Contract
+### 25. Commercial Correspondence Evidence
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Notices, instructions, determinations, and acknowledgements often live in correspondence.
 
-**Improvement:** Make schema extensions for `construction_contract` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add evidence references with source document, sender, recipient, date, contract clause, extracted obligation, confidence, and reviewer.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require reviewer confirmation before document-derived commercial mutations.
 
-### 26. Master data quality gates for Pay Application
+### 26. Contract Clause Obligation Register
 
-**Justification:** Many construction contracts and commercials errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Payment, notice, insurance, reporting, quality, and closeout obligations are clause-driven.
 
-**Improvement:** Define reference-data contracts for `pay_application`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add obligation records with clause, responsible party, due date, trigger, status, evidence, and noncompliance consequence.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open obligation tasks from contract terms and route overdue obligations to the workbench.
 
-### 27. Bulk operations and correction workflows for Retainage
+### 27. Commercial Risk Register
 
-**Justification:** Enterprise-scale Construction Contracts and Commercials users cannot operate one record at a time.
+**Justification:** Commercial exposure accumulates through claims, variations, under-certified work, expiring guarantees, and disputed deductions.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `retainage` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add risk entries with exposure value, probability, driver, owner, mitigation, linked contract records, and trend.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compute risk exposure and update it from claim and variation lifecycle changes.
 
-### 28. Lifecycle collaboration and tasking for Variation Order
+### 28. Forecast Final Cost Boundary
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Commercial controls need cost forecast evidence but should not own project cost-control ledgers.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `variation_order` without leaking into external shared task tables. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store cost forecast projection, committed value, approved changes, pending changes, claims exposure, and confidence from declared project events.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on project-cost table reads and pass on declared AppGen-X projections.
 
-### 29. SLA and service-level governance for Commercial Claim
+### 29. Cash Flow Forecast
 
-**Justification:** Users need to know when construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Pay applications and retainage releases affect cash planning.
 
-**Improvement:** Define SLAs for `commercial_claim` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add cash flow projections by contract, period, certified amount, expected payment date, retainage release, claim settlement, and confidence.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate cash flow forecasts without writing treasury or GL tables.
 
-### 30. Operational analytics cockpit for Lien Waiver
+### 30. Contractor Performance Scorecard
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Commercial outcomes depend on claim frequency, payment accuracy, waiver compliance, change discipline, and closeout quality.
 
-**Improvement:** Build analytics for `lien_waiver`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add scorecards for variation cycle time, claim substantiation, pay-app rejection rate, compliance holds, dispute rate, and closeout aging.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate scorecards from owned contract evidence.
 
-### 31. Decision intelligence and recommendations for Subcontract Package
+### 31. Commercial Controls Workbench
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Commercial managers need actionable queues, not raw contract lists.
 
-**Improvement:** Generate ranked recommendations for `subcontract_package` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workbench views for pay apps awaiting certification, missing waivers, expiring guarantees, notice deadlines, disputed variations, claims, retainage release, and final account blockers.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove each queue maps to owned records or declared projections with permission-aware actions.
 
-### 32. Quality and completeness scoring for Construction Contracts Commercials Policy Rule
+### 32. Agent-Assisted Contract Review
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** The agent should summarize payment, claim, variation, and clause evidence but not create unsupported commercial decisions.
 
-**Improvement:** Score each `construction_contracts_commercials_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add skills for pay application summary, variation entitlement draft, claim evidence gap analysis, waiver checklist, final account blockers, and contract clause explanation.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require citations and human approval before any commercial record mutation.
 
-### 33. End-to-end scenario library for Construction Contracts Commercials Runtime Parameter
+### 33. Governed Agent CRUD Commands
 
-**Justification:** Release evidence is stronger when every important construction contracts and commercials behavior has executable examples.
+**Justification:** Chat-driven commercial operations must be previewed and approved.
 
-**Improvement:** Create seeded scenarios for `construction_contracts_commercials_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for certify pay application, hold payment, create variation, open claim, release retainage, record waiver, and close final account item.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must require contract identity, evidence, preview, confirmation, authority, and audit trail.
 
-### 34. Domain ontology and terminology model for Construction Contracts Commercials Schema Extension
+### 34. Commercial Document Ingestion
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Pay apps, lien waivers, notices, bonds, insurance certificates, and claims are document-heavy.
 
-**Improvement:** Add an ontology for `construction_contracts_commercials_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add extraction pipelines with source spans, extracted fields, confidence, reviewer, accepted fields, and rejected fields.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block low-confidence or high-impact extracted changes until reviewed.
 
-### 35. Advanced search and investigation for Construction Contracts Commercials Control Assertion
+### 35. Change Impact Simulation
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Commercial rule changes can affect payment timing, retained cash, claims exposure, and compliance holds.
 
-**Improvement:** Provide search across `construction_contracts_commercials_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add simulations for retainage rules, waiver requirements, certification thresholds, approval tiers, and notice deadlines.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce impact reports before high-risk configuration activation.
 
-### 36. Reconciliation and closure controls for Construction Contracts Commercials Governed Model
+### 36. Continuous Control Assertions
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Construction commercial governance needs controls over approvals, waivers, retainage, claims, variations, guarantees, and closeout.
 
-**Improvement:** Add reconciliation workflows that compare `construction_contracts_commercials_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add controls with population, threshold, failing records, owner, remediation, recurrence, and closure evidence.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open control failures and require remediation evidence before closure.
 
-### 37. Regulatory and policy reporting for Construction Contract
+### 37. Dead-Letter and Retry Operations
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Contract events, document intake, payment events, and project projections can fail.
 
-**Improvement:** Generate domain reporting packs for `construction_contract` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retry reason, risk, idempotency key, replay checkpoint, remediation action, and dead-letter queue.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed events without duplicate pay certificates, variations, claims, or payment events.
 
-### 38. Carbon and resource awareness for Pay Application
+### 38. Cryptographic Commercial Evidence
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Disputes and audits need tamper-evident proof of notices, certifications, variations, claims, waivers, and final accounts.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `pay_application` decisions and batch operations. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash chains for contract, pay application, certificate, retainage, variation, claim, waiver, and closeout events.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 39. Resilience and offline behavior for Retainage
+### 39. Role-Based Permission Model
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Contract admins, quantity surveyors, commercial managers, project managers, finance users, legal users, and auditors need distinct authority.
 
-**Improvement:** Define resilience modes for `retainage`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add permissions for certify, approve variation, assess claim, release retainage, accept waiver, approve settlement, and close final account.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must block unauthorized commands and show disabled UI actions.
 
-### 40. Human-in-the-loop automation for Variation Order
+### 40. Contractor Portal Contract
 
-**Justification:** Automation should accelerate construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls while preserving accountability for high-risk decisions.
+**Justification:** Contractors need scoped ways to submit pay apps, waivers, notices, and claims without internal table access.
 
-**Improvement:** Set explicit automation boundaries for `variation_order`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add scoped API views for submissions, status, missing evidence, responses, and certified outcomes.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove portal scopes cannot access unrelated contracts or internal assessment notes.
 
-### 41. Package discovery and fit scoring for Commercial Claim
+### 41. Lien and Statutory Compliance Localization
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Waiver, notice, withholding, and payment requirements vary by jurisdiction.
 
-**Improvement:** Improve package metadata so composition can explain when `construction_contracts_commercials` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add jurisdiction-specific rules for lien waivers, prompt payment, statutory notices, retention limits, and dispute deadlines.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate identical payment facts differently by jurisdiction and policy version.
 
-### 42. Configuration deployment pipeline for Lien Waiver
+### 42. Commercial Claim Analytics
 
-**Justification:** Configuration changes can materially alter construction contracts and commercials; they need the same discipline as code releases.
+**Justification:** Recurring claim causes should drive project and contract improvements.
 
-**Improvement:** Add configuration promotion for `lien_waiver` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics for claim type, root cause, entitlement success, substantiation quality, settlement ratio, cycle time, and prevented recurrence.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate tenant-scoped metrics with drilldown to claim evidence.
 
-### 43. Workbench command completeness for Subcontract Package
+### 43. Variation Trend Analytics
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Change growth and approval lag indicate scope instability and commercial risk.
 
-**Improvement:** Expose every high-value operation for `subcontract_package` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics for variation source, value growth, cycle time, pending exposure, approved/unapproved ratio, and contract-value impact.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate trend metrics and open risk tasks for threshold breaches.
 
-### 44. Document packet and evidence vault for Construction Contracts Commercials Policy Rule
+### 44. Final Account Evidence Packet
 
-**Justification:** Documents often carry the legal or operational truth behind construction contracts, pay applications, retainage, claims, variations, lien waivers, and commercial controls.
+**Justification:** Final account agreements need defensible proof of all payments, changes, claims, deductions, waivers, and releases.
 
-**Improvement:** Create a governed evidence vault for `construction_contracts_commercials_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add packet generation with contract summary, payment history, variations, claims, retainage, waivers, guarantees, disputes, and signoffs.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate scoped evidence packets with source links and redaction.
 
-### 45. Data correction and amendment history for Construction Contracts Commercials Runtime Parameter
+### 45. Financial Handoff Boundary
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Commercial certification feeds payables and finance but should not write accounting entries.
 
-**Improvement:** Support formal amendments for `construction_contracts_commercials_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Emit payable, retainage, deduction, claim settlement, and final account events with idempotency keys and evidence references.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Contract tests must prove finance handoff events are complete and replay-safe.
 
-### 46. External participant collaboration for Construction Contracts Commercials Schema Extension
+### 46. Sustainability and Local Content Clauses
 
-**Justification:** Many construction contracts and commercials workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Construction contracts increasingly include carbon, local content, labor, and social value obligations.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `construction_contracts_commercials_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add clause obligations, measurement evidence, reporting cadence, noncompliance consequence, and commercial impact.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must track obligation compliance and connect failures to holds or claims where configured.
 
-### 47. Advanced dependency freshness scoring for Construction Contracts Commercials Control Assertion
+### 47. Seeded Commercial Scenario Library
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Release audits need realistic construction commercial stories.
 
-**Improvement:** Score freshness and reliability of dependencies used by `construction_contracts_commercials_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for pay application, retainage release, missing waiver, variation negotiation, delay claim, backcharge, expiring bond, and final account closeout.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and create expected queues, events, and evidence packets.
 
-### 48. Model governance and explainability for Construction Contracts Commercials Governed Model
+### 48. Full Commercial Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Construction Contracts and Commercials.
+**Justification:** A complete PBC must prove contract-to-final-account behavior end to end.
 
-**Improvement:** For every predictive or agentic feature around `construction_contracts_commercials_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where a contract activates, pay applications certify, retainage withholds, variations approve, claims settle, waivers validate, and final account closes.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, workbench views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Construction Contract
+### 49. Package Overlap Guardrails
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** This PBC must not duplicate project scheduling, cost management, procurement, finance, legal matter, or document storage ownership.
 
-**Improvement:** Plan scale behavior for `construction_contract`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `construction_contracts_commercials_create_construction_contract_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overlap checks and dependency contracts for project status, schedule impact, cost forecasts, vendor identity, finance postings, legal disputes, and document references.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared external table references and pass on declared AppGen-X dependency usage.
 
-### 50. Release gate expansion for Pay Application
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose construction commercial controls through DSL, UI, APIs, and the composed application agent.
 
-**Improvement:** Expand release gates for `construction_contracts_commercials` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `construction_contracts_commercials_record_pay_application_workflow` where applicable, and make it visible in `ConstructionContractsCommercialsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for contracts, pay applications, retainage, variations, claims, waivers, subcontract packages, controls, workbench fragments, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/construction_contracts_commercials` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include commercial models, routes, services, event contracts, UI artifacts, and assistant skills without stream-engine picker exposure.

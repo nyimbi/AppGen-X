@@ -1,418 +1,265 @@
-# Capital Projects Delivery PBC Better-Than-World-Class Improvement Backlog
+# Capital Projects Delivery Improvement Backlog
 
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `capital_projects_delivery`. The backlog is specific to megaproject governance, epc packages, permits, progress, commissioning, risk, and capital delivery controls and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This backlog is hand-curated for the `capital_projects_delivery` PBC and focuses on capital project lifecycle control, project controls depth, delivery workbench usability, governed event boundaries, and release-auditable execution.
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `capital_projects_delivery`.
-- Domain purpose: Megaproject governance, EPC packages, permits, progress, commissioning, risk, and capital delivery controls.
-- Owned domain tables: `capital_project`, `epc_package`, `permit_milestone`, `progress_measurement`, `commissioning_system`, `project_risk`, `turnover_package`, `capital_projects_delivery_policy_rule`, `capital_projects_delivery_runtime_parameter`, `capital_projects_delivery_schema_extension`, `capital_projects_delivery_control_assertion`, `capital_projects_delivery_governed_model`.
-- Public APIs: `POST /capital-projects`, `POST /epc-packages`, `POST /permit-milestones`, `POST /progress-measurements`, `POST /commissioning-systems`, `GET /capital-projects-delivery-workbench`.
-- Emitted AppGen-X events: `CapitalProjectsDeliveryCreated`, `CapitalProjectsDeliveryUpdated`, `CapitalProjectsDeliveryApproved`, `CapitalProjectsDeliveryExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `capital_project_management`, `capital_projects_delivery_workflow`, `capital_projects_delivery_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `capital_projects_delivery_event_sourced_operational_history`, `capital_projects_delivery_multi_tenant_policy_isolation`, `capital_projects_delivery_schema_evolution_resilience`, `capital_projects_delivery_autonomous_anomaly_detection`, `capital_projects_delivery_semantic_document_instruction_understanding`, `capital_projects_delivery_predictive_risk_scoring`, `capital_projects_delivery_counterfactual_scenario_simulation`, `capital_projects_delivery_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Capital Project
-
-**Justification:** This closes shallow CRUD gaps by making every capital projects delivery transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `capital_project` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for CapitalProjectsDeliveryCreated, CapitalProjectsDeliveryUpdated, CapitalProjectsDeliveryApproved. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Epc Package
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of megaproject governance, epc packages, permits, progress, commissioning, risk, and capital delivery controls, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `epc_package` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Permit Milestone
-
-**Justification:** World-class Capital Projects Delivery requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `permit_milestone` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `CAPITAL_PROJECTS_DELIVERY_DATABASE_URL, CAPITAL_PROJECTS_DELIVERY_EVENT_TOPIC, CAPITAL_PROJECTS_DELIVERY_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Progress Measurement
-
-**Justification:** Parameters are where operations teams tune capital projects delivery; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `progress_measurement` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Commissioning System
-
-**Justification:** A single payload column cannot express the full surface of megaproject governance, epc packages, permits, progress, commissioning, risk, and capital delivery controls or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `commissioning_system` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `capital_projects_delivery_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Project Risk
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in capital projects delivery.
-
-**Improvement:** Capture every material mutation of `project_risk` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Turnover Package
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `turnover_package`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Capital Projects Delivery Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `capital_projects_delivery_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Capital Projects Delivery Runtime Parameter
-
-**Justification:** The package should warn users before capital projects delivery work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `capital_projects_delivery_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Capital Projects Delivery Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live megaproject governance, epc packages, permits, progress, commissioning, risk, and capital delivery controls operations.
-
-**Improvement:** Provide scenario simulation for `capital_projects_delivery_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Capital Projects Delivery Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `capital_projects_delivery_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Capital Projects Delivery Governed Model
-
-**Justification:** Document-heavy work in Capital Projects Delivery cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `capital_projects_delivery_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Capital Project
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `capital_project` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Epc Package
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `epc_package`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Permit Milestone
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `permit_milestone` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Progress Measurement
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /capital-projects, POST /epc-packages, POST /permit-milestones to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Commissioning System
-
-**Justification:** Consumers should understand what happened in Capital Projects Delivery without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `commissioning_system` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Project Risk
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Turnover Package
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block megaproject governance, epc packages, permits, progress, commissioning, risk, and capital delivery controls.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `turnover_package` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Capital Projects Delivery Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `capital_projects_delivery_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Capital Projects Delivery Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `capital_projects_delivery_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `capital_projects_delivery_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Capital Projects Delivery Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `capital_projects_delivery_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Capital Projects Delivery Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `capital_projects_delivery_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Capital Projects Delivery Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `capital_projects_delivery_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Capital Project
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `capital_project` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Epc Package
-
-**Justification:** Many capital projects delivery errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `epc_package`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Permit Milestone
-
-**Justification:** Enterprise-scale Capital Projects Delivery users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `permit_milestone` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Progress Measurement
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `progress_measurement` without leaking into external shared task tables. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Commissioning System
-
-**Justification:** Users need to know when megaproject governance, epc packages, permits, progress, commissioning, risk, and capital delivery controls is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `commissioning_system` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Project Risk
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `project_risk`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Turnover Package
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `turnover_package` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Capital Projects Delivery Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `capital_projects_delivery_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Capital Projects Delivery Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important capital projects delivery behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `capital_projects_delivery_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Capital Projects Delivery Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `capital_projects_delivery_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Capital Projects Delivery Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `capital_projects_delivery_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Capital Projects Delivery Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `capital_projects_delivery_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Capital Project
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `capital_project` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Epc Package
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `epc_package` decisions and batch operations. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Permit Milestone
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `permit_milestone`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Progress Measurement
-
-**Justification:** Automation should accelerate megaproject governance, epc packages, permits, progress, commissioning, risk, and capital delivery controls while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `progress_measurement`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Commissioning System
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `capital_projects_delivery` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Project Risk
-
-**Justification:** Configuration changes can materially alter capital projects delivery; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `project_risk` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Turnover Package
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `turnover_package` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Capital Projects Delivery Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind megaproject governance, epc packages, permits, progress, commissioning, risk, and capital delivery controls.
-
-**Improvement:** Create a governed evidence vault for `capital_projects_delivery_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Capital Projects Delivery Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `capital_projects_delivery_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Capital Projects Delivery Schema Extension
-
-**Justification:** Many capital projects delivery workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `capital_projects_delivery_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Capital Projects Delivery Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `capital_projects_delivery_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Capital Projects Delivery Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Capital Projects Delivery.
-
-**Improvement:** For every predictive or agentic feature around `capital_projects_delivery_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Capital Project
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `capital_project`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `capital_projects_delivery_create_capital_project_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Epc Package
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `capital_projects_delivery` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `capital_projects_delivery_record_epc_package_workflow` where applicable, and make it visible in `CapitalProjectsDeliveryWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/capital_projects_delivery` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- PBC key: `capital_projects_delivery`.
+- Manifest description: megaproject governance, EPC packages, permits, progress, commissioning, risk, and capital delivery controls.
+- Core tables: `capital_project`, `epc_package`, `permit_milestone`, `progress_measurement`, `commissioning_system`, `project_risk`, `turnover_package`, `capital_projects_delivery_policy_rule`, `capital_projects_delivery_runtime_parameter`, `capital_projects_delivery_schema_extension`, `capital_projects_delivery_control_assertion`, `capital_projects_delivery_governed_model`.
+- Workflows: `capital_projects_delivery_create_capital_project_workflow`, `capital_projects_delivery_record_epc_package_workflow`.
+- APIs: `POST /capital-projects`, `POST /epc-packages`, `POST /permit-milestones`, `POST /progress-measurements`, `POST /commissioning-systems`, `GET /capital-projects-delivery-workbench`.
+- UI fragments: `CapitalProjectsDeliveryWorkbench`, `CapitalProjectsDeliveryDetail`, `CapitalProjectsDeliveryAssistantPanel`.
+- Emitted events: `CapitalProjectsDeliveryCreated`, `CapitalProjectsDeliveryUpdated`, `CapitalProjectsDeliveryApproved`, `CapitalProjectsDeliveryExceptionOpened`.
+- Consumed events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Relevant capabilities already declared in the manifest: `capital_project_management`, `workbench`, `agentic_document_instruction_intake`, `ai_agent_task_assistance`, `continuous_release_assurance`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`, `configuration_workbench`.
+
+### 1. Stage-gate lifecycle aligned to capital project phases
+**Justification:** Capital delivery is governed through gated phases such as concept, definition, execution, commissioning, startup, and closeout. A generic status field cannot protect funding decisions, readiness reviews, or turnover timing.
+**Improvement:** Introduce a canonical lifecycle for `capital_project` that distinguishes idea, screening, FEL, approved for execution, active construction, mechanical completion, ready for startup, handover complete, and closeout. Require explicit gate approval records, approver roles, exit criteria, and re-baseline rules when a project moves backward.
+**Acceptance evidence:** `CapitalProjectsDeliveryDetail` shows gate status, gate dates, and blocked criteria; invalid phase transitions are rejected; approval records support `CapitalProjectsDeliveryApproved` emission with the gate context attached.
+
+### 2. Work breakdown structure as a governed hierarchy
+**Justification:** Cost, schedule, progress, and risk only reconcile when they share the same WBS spine. Without a governed WBS, package updates and field progress become impossible to roll up consistently.
+**Improvement:** Add WBS hierarchy management to `capital_project` and `epc_package`, including parent-child validation, control account boundaries, discipline tagging, and area/system splits that can support engineering, procurement, construction, and commissioning reporting.
+**Acceptance evidence:** Each package and progress record resolves to an approved WBS node; the workbench can roll up by area, discipline, and control account; orphaned or duplicate WBS nodes are surfaced as exceptions.
+
+### 3. Estimate class and basis-of-estimate control
+**Justification:** Capital projects evolve from conceptual ranges to control estimates. Teams need to know whether current cost confidence comes from a screening estimate, sanctioned estimate, or field reforecast.
+**Improvement:** Extend `capital_project` with estimate class, estimating basis, quantity source, market check date, contingency philosophy, and assumption lineage. Keep revisions time-bound so the sanctioned basis remains visible after execution changes begin.
+**Acceptance evidence:** Estimate history appears in `CapitalProjectsDeliveryDetail`; every revised estimate references its predecessor and justification; release evidence includes the sanctioned estimate basis and latest approved forecast.
+
+### 4. Baseline schedule governance with critical path traceability
+**Justification:** A capital project needs more than milestone dates. Delivery leadership must understand critical path movement, float erosion, and near-critical work that can consume contingency.
+**Improvement:** Add schedule baseline records to `capital_project` with logic revision history, baseline issue date, total float thresholds, and milestone ownership. Record when an `epc_package` or permit change alters the critical path.
+**Acceptance evidence:** The workbench highlights current critical and near-critical paths; schedule variance is tied to a named baseline; approval is required before a new baseline replaces the prior control schedule.
+
+### 5. Milestone library for engineering, procurement, construction, and startup
+**Justification:** Capital delivery cannot be managed through ad hoc milestones. Teams need a consistent milestone library spanning design, long-lead procurement, civil, mechanical, electrical, pre-commissioning, commissioning, and handover.
+**Improvement:** Expand `permit_milestone` and related scheduling constructs to support standardized milestone types, predecessor relationships, success criteria, hold-point flags, and phase ownership across the full project lifecycle.
+**Acceptance evidence:** Milestones can be filtered by phase and owner; every key turnover and startup milestone has explicit entry criteria; late milestones raise `CapitalProjectsDeliveryExceptionOpened` with the impacted path identified.
+
+### 6. Package-level commitment, accrual, and forecast control
+**Justification:** Capital project cost control depends on seeing budget, committed value, accruals, actuals, forecast-to-complete, and estimate-at-completion together at the package level.
+**Improvement:** Extend `epc_package` and `capital_project` controls to capture original budget, approved budget, awarded value, pending change exposure, accrual timing, forecast final cost, and management reserve usage with clear package ownership.
+**Acceptance evidence:** `CapitalProjectsDeliveryWorkbench` can display package cost status by awarded, forecast, and variance views; cost movements require dated explanations; release evidence includes a control account level cost rollup.
+
+### 7. Earned progress rules tied to measurable work
+**Justification:** Physical progress in capital construction is often overstated when percentage complete is entered without quantity logic. Progress should be earned against measurable rules, not informal opinion.
+**Improvement:** Strengthen `progress_measurement` to support installed quantities, earned quantities, weighted milestones, rules of credit, and discipline-specific progress methods for engineering deliverables, procurement, and field installation.
+**Acceptance evidence:** Each progress record shows its earning rule and quantity basis; unsupported manual percentages are blocked; workbench rollups can distinguish weighted progress from direct quantity progress.
+
+### 8. Schedule and cost performance index tracking
+**Justification:** Delivery leadership needs early warning, not just raw variance. CPI and SPI style indicators help expose underperformance before monthly review packs are compiled.
+**Improvement:** Add analytic rollups for planned value, earned value, actual cost, SPI, CPI, and trend direction at project, area, and package level using existing `capital_projects_delivery_workbench_metric` support.
+**Acceptance evidence:** The workbench provides indexed cost and schedule trend cards; thresholds are configurable through `capital_projects_delivery_runtime_parameter`; trend breaches create explainable exceptions rather than silent metric drift.
+
+### 9. Change order pipeline from field cause to approved recovery plan
+**Justification:** Change orders are a primary source of capital project overruns and disputes. The PBC should show when a change starts, who owns it, how it affects time and cost, and whether funding is authorized.
+**Improvement:** Add change order tracking to `epc_package` and `capital_project` with cause code, originating event, contractor notice date, estimated impact, approved impact, funding status, and schedule entitlement assessment.
+**Acceptance evidence:** Every material package change appears with pending, quoted, approved, rejected, or disputed state; time and cost impacts are rolled into package forecast only after approval; the workbench separates pending exposure from approved change.
+
+### 10. Early warning and claims avoidance register
+**Justification:** Waiting for formal claims is too late. Capital teams need an auditable early warning register to capture emerging contractor, owner, and interface issues before they harden into disputes.
+**Improvement:** Add an early warning workflow linked to `epc_package` and `project_risk`, capturing event date, notifying party, probable entitlement path, mitigation action, and expected cost or schedule consequence.
+**Acceptance evidence:** Open early warnings appear beside related change orders and risks; aging warnings trigger exceptions; closed warnings preserve disposition and whether they converted into formal claims.
+
+### 11. Risk register with quantitative exposure and trigger logic
+**Justification:** Capital project risk management needs more than high-medium-low scoring. Teams need quantified exposure, trigger conditions, mitigation maturity, and owner accountability.
+**Improvement:** Extend `project_risk` with probability distributions, time and cost ranges, trigger events, mitigation due dates, owner role, residual risk state, and quantitative rollup into project contingency views.
+**Acceptance evidence:** Risks show current and residual exposure; triggered risks automatically escalate; the workbench can sort by cost risk, schedule risk, and mitigation lateness.
+
+### 12. Opportunity management alongside threats
+**Justification:** Delivery controls should preserve upside as well as defend against downside. Recovery ideas, productivity gains, and packaging changes are often lost when the system only models threats.
+**Improvement:** Add opportunity handling to `project_risk` or a tightly related governed model so beneficial options can be logged, quantified, approved, and tracked without being mixed into threat-only reporting.
+**Acceptance evidence:** Opportunity items have expected benefit, confidence, and owner; approved opportunities appear in forecast commentary; the workbench can distinguish upside capture from threat reduction.
+
+### 13. Permit dependency matrix by authority and workfront
+**Justification:** Permit slippage frequently blocks mobilization, energization, heavy lifts, or environmental releases. A capital project needs permit visibility at the workfront level, not only a flat permit list.
+**Improvement:** Expand `permit_milestone` to store authority, permit type, submission date, review cycle, resubmission count, tied workfront, expiry, and downstream work constraint so field execution knows exactly what is blocked.
+**Acceptance evidence:** Permit views can show upcoming expiries and blocked workfronts; resubmission cycles are visible; permit delays can be traced to affected milestones and packages.
+
+### 14. Long-lead equipment tracking through procurement and site readiness
+**Justification:** Major equipment often controls the project finish date. Delivery controls need to show when design release, purchase, manufacturing, inspection, shipment, and site readiness fall out of sync.
+**Improvement:** Add long-lead item tracking under `epc_package` with manufacturing milestones, inspection releases, logistics status, receiving dates, preservation requirements, and installation readiness checks.
+**Acceptance evidence:** Long-lead items can be viewed on the same path as package milestones; late manufacturing or shipment events flag critical-path risk; receiving without site readiness creates a visible storage exposure exception.
+
+### 15. Contractor package readiness before notice to proceed
+**Justification:** Package award does not mean package readiness. Scope gaps, missing drawings, poor interfaces, or incomplete access conditions create immediate downstream loss.
+**Improvement:** Add a package readiness checklist to `epc_package` covering scope freeze, IFC maturity, material strategy, access handoff, temporary facilities, owner-furnished items, and interface agreement before field execution starts.
+**Acceptance evidence:** Packages cannot move into active field execution without readiness signoff; blocked checklist items remain visible in the workbench; readiness findings link to risks and early warnings.
+
+### 16. Field constraint log tied to package and area
+**Justification:** Construction performance is shaped by access, scaffolding, craft availability, weather, vendor support, and preceding work. These constraints need structured capture to explain lost productivity and resequencing.
+**Improvement:** Introduce a constraint register linked to `epc_package`, WBS area, and `progress_measurement`, with start date, expected release, responsible party, and quantified impact on crews or milestones.
+**Acceptance evidence:** Constraint aging appears next to package progress; repeated unresolved constraints raise escalation; closed constraints retain evidence of how the blockage was removed.
+
+### 17. Interface management across EPC packages
+**Justification:** Capital projects fail at interfaces: battery limits, tie-ins, utility dependencies, and vendor-owner-contractor handoffs. These are not secondary details; they are delivery-critical boundaries.
+**Improvement:** Add interface records between `epc_package` entities with interface type, required deliverable, due date, owning side, receiving side, and acceptance evidence so unresolved boundaries are actively managed.
+**Acceptance evidence:** Each interface has a clear owner and due date; late interfaces are visible in package health views; handoff acceptance closes the interface with dated evidence.
+
+### 18. Mechanical completion by system and subsystem
+**Justification:** Commissioning starts from systems, not from package totals. Mechanical completion should be measured at the system and subsystem level so turnover sequencing is credible.
+**Improvement:** Extend `commissioning_system` and `turnover_package` to define systems, subsystems, completion boundaries, completion criteria, and package-to-system mappings for construction completion.
+**Acceptance evidence:** Mechanical completion can be reported by system; system completion is impossible unless mapped construction work is complete; turnover packages show which systems they enable.
+
+### 19. Punch list severity and closeout thresholds
+**Justification:** Projects often declare mechanical completion or handover while critical punch items remain unresolved. Severity and closure standards must be explicit.
+**Improvement:** Add punch list severity, system impact, responsible party, due date, and closeout rules tied to `commissioning_system` and `turnover_package`, distinguishing A-punch, B-punch, and cosmetic items.
+**Acceptance evidence:** System readiness views show punch counts by severity; critical punch items block readiness; closure evidence is attached to each resolved item.
+
+### 20. Pre-commissioning activity tracking
+**Justification:** Cleaning, flushing, loop checks, calibration, and pressure testing are often the hidden drivers of startup readiness. They need their own governed delivery visibility.
+**Improvement:** Add pre-commissioning activities beneath `commissioning_system` with test type, procedure reference, planned date, actual completion, fail-retest state, and dependency on construction turnover.
+**Acceptance evidence:** Pre-commissioning completion is visible per system; failed activities remain open until passed; the assistant panel can surface all prerequisite gaps before commissioning starts.
+
+### 21. Commissioning sequence and startup window control
+**Justification:** Startup windows are narrow and interdependent. Losing a commissioning sequence can trigger major rework, resource standby cost, or commercial delay.
+**Improvement:** Model commissioning sequence dependencies across `commissioning_system` entities, including utility availability, vendor attendance, energization approvals, performance test windows, and startup permits.
+**Acceptance evidence:** The workbench can display commissioning sequences and blockers; delayed prerequisite utilities or permits automatically flag downstream startup impact; readiness reviews show unmet sequence prerequisites.
+
+### 22. Handover dossier completeness before owner acceptance
+**Justification:** Owner handover depends on more than physical completion. As-built drawings, test packs, warranties, spares, training, and operating procedures must be complete and traceable.
+**Improvement:** Expand `turnover_package` to carry dossier requirements, document completeness, approved deviations, training completion, spare parts transfer, and asset data handoff status before final acceptance.
+**Acceptance evidence:** Handover packages cannot be marked complete without dossier completeness; missing owner documents are visible by package; release evidence includes a turnover completeness snapshot.
+
+### 23. Defect liability and post-handover obligation tracking
+**Justification:** Delivery control should continue through the defect liability period so unresolved issues, retention, and warranty obligations are not lost after initial handover.
+**Improvement:** Add post-handover obligation tracking to `turnover_package` and `epc_package`, including warranty start, warranty end, retention release, defects outstanding, and final close certificate readiness.
+**Acceptance evidence:** Warranty obligations remain queryable after handover; retention release is blocked by unresolved critical defects; closeout views show obligations remaining by package.
+
+### 24. Funding approval and appropriation checkpoints
+**Justification:** Capital projects often move through staged funding. Execution should not outrun authorized spend, and forecast changes should show when new appropriation is required.
+**Improvement:** Add funding approval checkpoints to `capital_project`, including approved amount, committed amount, forecast overrun, next approval threshold, and submission package status for governance review.
+**Acceptance evidence:** The workbench warns when committed plus pending exposure exceeds authorized funding; gate reviews can show funding sufficiency; forecast overruns record the date approval was requested and granted.
+
+### 25. Contingency drawdown discipline
+**Justification:** Contingency is frequently consumed without enough transparency. Delivery teams need to know whether drawdown was driven by risk realization, estimate maturity, or scope change.
+**Improvement:** Add contingency registers on `capital_project` with source category, approved release, remaining balance, linked risk or change reference, and governance notes on why funds were consumed.
+**Acceptance evidence:** Contingency usage can be traced to approved events; drawdown without linked justification is blocked; monthly evidence shows opening, used, and remaining contingency by category.
+
+### 26. Resource and productivity risk tracking
+**Justification:** Craft shortages, labor instability, and poor crew productivity materially affect schedule recovery plans. These conditions should be visible before milestone slips become irreversible.
+**Improvement:** Extend `project_risk` and `progress_measurement` to capture labor productivity assumptions, crew loading, shift pattern changes, camp or transport constraints, and recovery productivity expectations.
+**Acceptance evidence:** Productivity variance can be seen by package or area; resource-driven risks are linked to forecast schedule impact; recovery plans show the productivity delta they assume.
+
+### 27. Weather and seasonal disruption modeling
+**Justification:** Weather exposure is a normal part of field execution and must be separated from self-inflicted delay to support realistic forecasts and fair entitlement discussions.
+**Improvement:** Add weather delay classification to `project_risk`, package progress commentary, and schedule exception logic so the project can compare actual seasonal disruption against planned weather calendars.
+**Acceptance evidence:** Weather-tagged delays are reported separately from controllable slippage; the workbench shows cumulative weather impact by period; entitlement reviews can trace relevant days and workfronts.
+
+### 28. Quality hold-point and release boundary management
+**Justification:** Work cannot progress safely through fabrication, installation, and turnover unless inspections and hold points are released in the right order.
+**Improvement:** Add quality release boundaries to `epc_package`, `permit_milestone`, and `commissioning_system` so inspection release, test acceptance, and construction release status are visible without collapsing quality records into generic comments.
+**Acceptance evidence:** Package and system readiness views show outstanding hold points; blocked work is tied to the exact release boundary; accepted releases clear the corresponding execution block.
+
+### 29. Construction sequence of work visualization in the workbench
+**Justification:** Delivery teams need to see how packages progress through areas and systems, not just read tables. Visual sequence context is essential for resequencing and recovery reviews.
+**Improvement:** Upgrade `CapitalProjectsDeliveryWorkbench` to show a phase-aware sequence of work view by WBS area, package, and system with current blockers, late predecessors, and nearing turnover boundaries.
+**Acceptance evidence:** Users can pivot between package, area, and system views; blocked sequences are visually distinct; the detail panel explains the predecessor or permit causing the block.
+
+### 30. Monthly project review pack generation
+**Justification:** Capital projects live on recurring governance packs. Preparing them manually wastes time and introduces inconsistency across cost, schedule, risk, and commissioning narratives.
+**Improvement:** Use `continuous_release_assurance` and governed reporting to generate a monthly review pack from `capital_project`, `epc_package`, `project_risk`, `progress_measurement`, and `turnover_package` with a locked evidence snapshot.
+**Acceptance evidence:** A review pack can be reproduced for a given cutoff date; the evidence snapshot lists exact record versions used; late adjustments after pack freeze are clearly marked as post-cutoff.
+
+### 31. Release evidence tailored to capital project readiness
+**Justification:** Release evidence should prove the PBC is safe to operate for live capital delivery, not just that routes respond. Evidence must show business-critical readiness.
+**Improvement:** Expand `RELEASE_EVIDENCE.md` expectations for `capital_projects_delivery` to include lifecycle gates, WBS rollups, change order flow, permit dependency handling, commissioning readiness, and handover dossier completeness.
+**Acceptance evidence:** Release evidence includes representative scenarios for sanction, field execution, startup readiness, and handover; scenario outputs reference actual PBC events, APIs, and workbench states.
+
+### 32. Assistant skills for project controls roles
+**Justification:** Capital delivery teams work in specialized roles such as project controls lead, scheduler, cost engineer, permit coordinator, package engineer, and commissioning manager. The assistant should support these roles directly.
+**Improvement:** Define role-scoped `ai_agent_task_assistance` behaviors for schedule diagnostics, forecast narrative drafting, permit action lists, package readiness summaries, and turnover gap analysis within `CapitalProjectsDeliveryAssistantPanel`.
+**Acceptance evidence:** The assistant panel offers role-specific prompts and task outputs; generated actions stay within PBC boundaries; approval is required before agent-generated updates can change governed records.
+
+### 33. Document instruction intake for contractor and owner artifacts
+**Justification:** Capital delivery decisions often start in contractor letters, field memos, permit notices, and readiness checklists. The intake path should convert those artifacts into structured tasks and proposed updates.
+**Improvement:** Strengthen `agentic_document_instruction_intake` so notices, permits, meeting minutes, and startup procedures can produce structured proposals for `epc_package`, `permit_milestone`, `project_risk`, and `turnover_package`.
+**Acceptance evidence:** Intake previews show extracted dates, responsible parties, and affected packages; uncertain fields are flagged for review; accepted proposals produce a dated audit trail linking source artifact and final mutation.
+
+### 34. Event boundary refinement for lifecycle and control decisions
+**Justification:** The current emitted events are too coarse for rich downstream consumption. Capital delivery needs downstream consumers to know whether a project was sanctioned, rebaselined, blocked, or handed over.
+**Improvement:** Refine event payloads for `CapitalProjectsDeliveryCreated`, `CapitalProjectsDeliveryUpdated`, `CapitalProjectsDeliveryApproved`, and `CapitalProjectsDeliveryExceptionOpened` so they carry lifecycle stage, affected object type, project key, WBS scope, and package or system references.
+**Acceptance evidence:** Event contracts show distinct payload fields for project, package, permit, risk, and turnover contexts; subscribers can filter on lifecycle or workfront scope without reading opaque blobs.
+
+### 35. Consumed event handling with explicit capital project effects
+**Justification:** `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged` should have clear operational meaning in the capital project domain. Otherwise the inbox becomes an audit artifact instead of a working control surface.
+**Improvement:** Define explicit handlers for each consumed event so policy updates can re-evaluate active controls, sealed audits can freeze review-pack evidence, and KPI changes can update package or project health thresholds.
+**Acceptance evidence:** Consumed event processing shows the records re-evaluated and the resulting actions; no-op events are logged as such; replaying the inbox produces the same project control state.
+
+### 36. API boundary hardening around workbench and mutation routes
+**Justification:** Capital project operators need confidence that each route has a clear purpose and cannot be used to bypass business gates. API ambiguity usually leads to hidden side channels and inconsistent control application.
+**Improvement:** Clarify route responsibilities for `POST /capital-projects`, `POST /epc-packages`, `POST /permit-milestones`, `POST /progress-measurements`, `POST /commissioning-systems`, and `GET /capital-projects-delivery-workbench`, including required approvals, immutable fields, and versioning expectations.
+**Acceptance evidence:** Route contracts distinguish create, revise, approve, and query behaviors; attempting to change sanctioned fields through the wrong boundary is rejected; the workbench only reads from governed projections.
+
+### 37. Idempotent handling for repeated field and document updates
+**Justification:** Capital delivery updates often arrive repeatedly from integrations, spreadsheets, and document ingestion. Duplicate handling must be safe or package and progress histories become unreliable.
+**Improvement:** Use `idempotent_handlers` with domain-specific keys for package updates, permit revisions, progress imports, and commissioning test results so retries do not create duplicate operational facts.
+**Acceptance evidence:** Replaying the same update leaves one effective mutation; duplicate attempts are visible in support diagnostics; downstream metrics remain stable after retry storms.
+
+### 38. Dead-letter triage for operational exceptions
+**Justification:** A dead-letter queue that nobody can interpret is operationally useless. Capital project support staff need a domain view of what failed, why it failed, and what business process is now at risk.
+**Improvement:** Build `retry_dead_letter_evidence` views that classify failures by project, package, permit, system, and event type, and provide recovery guidance grounded in capital delivery semantics.
+**Acceptance evidence:** Dead-letter items can be filtered by object type and operational severity; retry decisions preserve history; workbench support views show which project controls are currently degraded by message failure.
+
+### 39. Configuration workbench for project controls calendars and thresholds
+**Justification:** Working day calendars, reporting cutoffs, float alarms, and escalation thresholds vary across projects and regions. Operators need a safe way to configure them without code changes.
+**Improvement:** Expand `configuration_workbench` and `capital_projects_delivery_runtime_parameter` to manage holiday calendars, reporting periods, float thresholds, late action SLAs, and commissioning readiness tolerances per tenant or project type.
+**Acceptance evidence:** Configuration changes are versioned and approved; affected analytics show when a new threshold took effect; existing data is re-evaluated deterministically after approved parameter changes.
+
+### 40. Policy rule library for capital delivery controls
+**Justification:** Capital project controls rely on repeatable governance rules such as sanction before award, permit before workfront release, and dossier completeness before handover. These should be explicit and testable.
+**Improvement:** Populate `capital_projects_delivery_policy_rule` with domain rules covering package readiness, funding sufficiency, permit gating, critical punch thresholds, and startup prerequisites, with severity and waiver support.
+**Acceptance evidence:** Policy simulations show pass, fail, and waived outcomes; waived rules require named approvers and justification; exceptions reference the exact rule violated.
+
+### 41. Control assertions for monthly and gate review readiness
+**Justification:** Governance reviews should not rely on someone remembering whether data is complete. Control assertions can continuously prove whether the project is ready for formal review.
+**Improvement:** Expand `capital_projects_delivery_control_assertion` to check stale forecasts, unmapped WBS records, packages without readiness signoff, expired permits, unresolved critical punch items, and missing handover documents.
+**Acceptance evidence:** Control assertions run on schedule and on demand; failing assertions are visible before review pack freeze; evidence can be attached directly to gate approval records.
+
+### 42. Schema extension governance for owner-specific fields
+**Justification:** Capital projects commonly need owner-specific metadata such as facility codes, funding lines, or regional permit attributes. Those additions must not destabilize the shared control model.
+**Improvement:** Use `capital_projects_delivery_schema_extension` to register owner-specific fields with declared purpose, owning team, projection impact, validation rules, and rollout plan before they appear in live forms or APIs.
+**Acceptance evidence:** Every extension has approval history and compatibility notes; the workbench identifies extension-derived fields; unsupported extensions cannot leak into emitted events or standard analytics by accident.
+
+### 43. Governed model definitions for package and system semantics
+**Justification:** Terms such as package complete, mechanical complete, ready for startup, and handover complete often vary across organizations. The PBC should make those semantics explicit instead of leaving them to tribal interpretation.
+**Improvement:** Use `capital_projects_delivery_governed_model` to define canonical domain objects and status semantics for packages, systems, permits, and turnover so downstream analytics and agents use the same vocabulary.
+**Acceptance evidence:** Model definitions are queryable from the detail view; analytics can cite the exact governed definition behind a status; agent outputs use canonical terms rather than free-form synonyms.
+
+### 44. Multi-project portfolio rollup with drill-back to delivery drivers
+**Justification:** Capital leaders often oversee multiple projects. Portfolio views are only useful if they preserve the ability to drill from top-level red status back to the specific package, permit, or system driving it.
+**Improvement:** Add portfolio rollups on top of `capital_project_management` so executives can compare sanctioned budget, forecast variance, milestone health, permit exposure, and startup readiness across projects.
+**Acceptance evidence:** Portfolio cards link directly to project, package, and system detail; red portfolio indicators explain their underlying driver; drill-back stays within governed projections rather than ad hoc queries.
+
+### 45. Cross-PBC boundary map for adjacent delivery domains
+**Justification:** Capital project delivery touches procurement, document control, maintenance readiness, and financial governance. The PBC should document what it owns and what it only references.
+**Improvement:** Define an explicit boundary map in the backlog and downstream implementation notes for package control, permit control, commissioning, turnover, and cost-schedule analytics, including which adjacent capabilities are consumed through events or APIs rather than direct mutation.
+**Acceptance evidence:** Boundary notes are reflected in service and schema contracts; outbound and inbound events show which domain owns the source truth; the workbench labels referenced data as external when it is not PBC-owned.
+
+### 46. Startup readiness review workflow
+**Justification:** Startup readiness is a formal decision point that combines construction completion, commissioning results, permits, operations training, and risk acceptance. It deserves its own governed workflow.
+**Improvement:** Add a startup readiness workflow on `commissioning_system`, `turnover_package`, and `capital_project` that assembles prerequisites, unresolved risks, temporary deviations, and final authorization to introduce energy or feed.
+**Acceptance evidence:** Readiness reviews show complete, blocked, or conditional status with explicit blockers; approval emits a lifecycle-aware event; conditional approvals retain follow-up obligations and due dates.
+
+### 47. Handover to operations with training and spare-parts verification
+**Justification:** Owner acceptance is fragile when operations teams are not trained or critical spares are missing. Handover should prove operational preparedness, not just construction completion.
+**Improvement:** Extend `turnover_package` to confirm operator training, operating procedures, maintenance task seeds, spare-part availability, and vendor support arrangements before the package reaches accepted handover.
+**Acceptance evidence:** Handover detail shows training completion percentages and missing spares; accepted turnover requires all mandatory preparedness fields; post-handover defects can be traced back to preparedness gaps.
+
+### 48. Live project onboarding and baseline migration discipline
+**Justification:** Many projects will enter the PBC midstream, with partial history and imperfect baseline data. Onboarding needs structure or the system will start from a compromised control position.
+**Improvement:** Define onboarding routines for `capital_project`, `epc_package`, `permit_milestone`, `progress_measurement`, and `project_risk` that distinguish imported baseline facts, open exceptions, and unknown historical gaps.
+**Acceptance evidence:** Imported projects carry an onboarding status and data confidence note; missing historical fields are explicit rather than silently defaulted; initial release evidence includes migration reconciliation results.
+
+### 49. Continuous release assurance against domain scenarios
+**Justification:** For this PBC, release safety depends on proving realistic delivery scenarios, not only route tests. The domain needs scenario assurance around sanction, package control, commissioning, and handover.
+**Improvement:** Focus `continuous_release_assurance` on scenario suites covering gate approval, WBS rollup, long-lead slip, permit expiry, change order approval, system completion, startup readiness, and handover dossier closure.
+**Acceptance evidence:** Scenario runs produce pass-fail evidence with referenced APIs, events, and workbench states; failed scenarios block release signoff; evidence remains reproducible for the same code and seed state.
+
+### 50. Capital project closeout knowledge capture
+**Justification:** Closeout is the point where delivery knowledge is either preserved or lost. The PBC should leave behind auditable lessons on estimate drift, schedule recovery, package performance, and commissioning bottlenecks.
+**Improvement:** Add structured closeout capture to `capital_project` with final cost versus sanctioned estimate, milestone slippage root causes, change concentration by package, startup bottlenecks, handover defects, and reusable lessons for future projects.
+**Acceptance evidence:** Closeout cannot finish without a lessons summary and variance narrative; portfolio views can compare lessons across completed projects; future project teams can search prior closeout findings by phase, discipline, and package type.

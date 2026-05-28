@@ -1,418 +1,266 @@
-# Capital Markets Trading Operations PBC Better-Than-World-Class Improvement Backlog
+# Capital Markets Trading Operations Improvement Backlog
 
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `capital_markets_trading_ops`. The backlog is specific to trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This backlog is a hand-curated improvement set for the `capital_markets_trading_ops` package. It stays inside the actual trading operations boundary described by the manifest: order capture, execution intake, allocations, confirmations, settlement instructions, trade breaks, position evidence, controls, event/API contracts, operator workbenches, and release assurance.
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `capital_markets_trading_ops`.
-- Domain purpose: Trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls.
-- Owned domain tables: `trade_order`, `execution`, `allocation`, `confirmation`, `settlement_instruction`, `trade_break`, `position_snapshot`, `capital_markets_trading_ops_policy_rule`, `capital_markets_trading_ops_runtime_parameter`, `capital_markets_trading_ops_schema_extension`, `capital_markets_trading_ops_control_assertion`, `capital_markets_trading_ops_governed_model`.
-- Public APIs: `POST /trade-orders`, `POST /executions`, `POST /allocations`, `POST /confirmations`, `POST /settlement-instructions`, `GET /capital-markets-trading-ops-workbench`.
-- Emitted AppGen-X events: `CapitalMarketsTradingOpsCreated`, `CapitalMarketsTradingOpsUpdated`, `CapitalMarketsTradingOpsApproved`, `CapitalMarketsTradingOpsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `trade_order_management`, `capital_markets_trading_ops_workflow`, `capital_markets_trading_ops_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `capital_markets_trading_ops_event_sourced_operational_history`, `capital_markets_trading_ops_multi_tenant_policy_isolation`, `capital_markets_trading_ops_schema_evolution_resilience`, `capital_markets_trading_ops_autonomous_anomaly_detection`, `capital_markets_trading_ops_semantic_document_instruction_understanding`, `capital_markets_trading_ops_predictive_risk_scoring`, `capital_markets_trading_ops_counterfactual_scenario_simulation`, `capital_markets_trading_ops_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Trade Order
-
-**Justification:** This closes shallow CRUD gaps by making every capital markets trading operations transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `trade_order` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for CapitalMarketsTradingOpsCreated, CapitalMarketsTradingOpsUpdated, CapitalMarketsTradingOpsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Execution
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `execution` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Allocation
-
-**Justification:** World-class Capital Markets Trading Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `allocation` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `CAPITAL_MARKETS_TRADING_OPS_DATABASE_URL, CAPITAL_MARKETS_TRADING_OPS_EVENT_TOPIC, CAPITAL_MARKETS_TRADING_OPS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Confirmation
-
-**Justification:** Parameters are where operations teams tune capital markets trading operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `confirmation` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Settlement Instruction
-
-**Justification:** A single payload column cannot express the full surface of trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `settlement_instruction` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `capital_markets_trading_ops_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Trade Break
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in capital markets trading operations.
-
-**Improvement:** Capture every material mutation of `trade_break` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Position Snapshot
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `position_snapshot`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Capital Markets Trading Ops Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `capital_markets_trading_ops_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Capital Markets Trading Ops Runtime Parameter
-
-**Justification:** The package should warn users before capital markets trading operations work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `capital_markets_trading_ops_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Capital Markets Trading Ops Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls operations.
-
-**Improvement:** Provide scenario simulation for `capital_markets_trading_ops_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Capital Markets Trading Ops Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `capital_markets_trading_ops_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Capital Markets Trading Ops Governed Model
-
-**Justification:** Document-heavy work in Capital Markets Trading Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `capital_markets_trading_ops_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Trade Order
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `trade_order` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Execution
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `execution`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Allocation
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `allocation` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Confirmation
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /trade-orders, POST /executions, POST /allocations to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Settlement Instruction
-
-**Justification:** Consumers should understand what happened in Capital Markets Trading Operations without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `settlement_instruction` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Trade Break
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Position Snapshot
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `position_snapshot` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Capital Markets Trading Ops Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `capital_markets_trading_ops_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Capital Markets Trading Ops Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `capital_markets_trading_ops_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `capital_markets_trading_ops_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Capital Markets Trading Ops Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `capital_markets_trading_ops_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Capital Markets Trading Ops Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `capital_markets_trading_ops_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Capital Markets Trading Ops Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `capital_markets_trading_ops_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Trade Order
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `trade_order` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Execution
-
-**Justification:** Many capital markets trading operations errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `execution`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Allocation
-
-**Justification:** Enterprise-scale Capital Markets Trading Operations users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `allocation` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Confirmation
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `confirmation` without leaking into external shared task tables. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Settlement Instruction
-
-**Justification:** Users need to know when trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `settlement_instruction` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Trade Break
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `trade_break`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Position Snapshot
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `position_snapshot` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Capital Markets Trading Ops Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `capital_markets_trading_ops_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Capital Markets Trading Ops Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important capital markets trading operations behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `capital_markets_trading_ops_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Capital Markets Trading Ops Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `capital_markets_trading_ops_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Capital Markets Trading Ops Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `capital_markets_trading_ops_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Capital Markets Trading Ops Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `capital_markets_trading_ops_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Trade Order
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `trade_order` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Execution
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `execution` decisions and batch operations. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Allocation
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `allocation`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Confirmation
-
-**Justification:** Automation should accelerate trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `confirmation`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Settlement Instruction
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `capital_markets_trading_ops` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Trade Break
-
-**Justification:** Configuration changes can materially alter capital markets trading operations; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `trade_break` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Position Snapshot
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `position_snapshot` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Capital Markets Trading Ops Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls.
-
-**Improvement:** Create a governed evidence vault for `capital_markets_trading_ops_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Capital Markets Trading Ops Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `capital_markets_trading_ops_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Capital Markets Trading Ops Schema Extension
-
-**Justification:** Many capital markets trading operations workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `capital_markets_trading_ops_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Capital Markets Trading Ops Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `capital_markets_trading_ops_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Capital Markets Trading Ops Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Capital Markets Trading Operations.
-
-**Improvement:** For every predictive or agentic feature around `capital_markets_trading_ops_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Trade Order
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `trade_order`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `capital_markets_trading_ops_create_trade_order_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Execution
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `capital_markets_trading_ops` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `capital_markets_trading_ops_record_execution_workflow` where applicable, and make it visible in `CapitalMarketsTradingOpsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/capital_markets_trading_ops` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- PBC key: `capital_markets_trading_ops`.
+- Manifest label: `Capital Markets Trading Operations`.
+- Domain description: trade orders, executions, allocations, confirmations, settlement, breaks, positions, and trading operations controls.
+- Owned tables in scope: `trade_order`, `execution`, `allocation`, `confirmation`, `settlement_instruction`, `trade_break`, `position_snapshot`, `capital_markets_trading_ops_policy_rule`, `capital_markets_trading_ops_runtime_parameter`, `capital_markets_trading_ops_schema_extension`, `capital_markets_trading_ops_control_assertion`, `capital_markets_trading_ops_governed_model`.
+- Workflows in scope: `capital_markets_trading_ops_create_trade_order_workflow` and `capital_markets_trading_ops_record_execution_workflow`.
+- Public APIs in scope: `POST /trade-orders`, `POST /executions`, `POST /allocations`, `POST /confirmations`, `POST /settlement-instructions`, and `GET /capital-markets-trading-ops-workbench`.
+- UI fragments in scope: `CapitalMarketsTradingOpsWorkbench`, `CapitalMarketsTradingOpsDetail`, and `CapitalMarketsTradingOpsAssistantPanel`.
+- Event contracts in scope: emits `CapitalMarketsTradingOpsCreated`, `CapitalMarketsTradingOpsUpdated`, `CapitalMarketsTradingOpsApproved`, `CapitalMarketsTradingOpsExceptionOpened`; consumes `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- Advanced capability signals in scope: event-sourced operational history, anomaly detection, semantic document intake, predictive risk scoring, counterfactual simulation, cryptographic audit proofs, continuous control testing, cross-PBC event federation, and governed AI agent execution.
+- Release surfaces in scope: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`, `tests/test_contract.py`, and the initial migration.
+
+### 1. Canonical trade order lifecycle
+**Justification:** Trading ops teams need an exact lifecycle for an order from draft through release, hold, cancel, replace, completion, and archive or every downstream queue becomes interpretation-heavy.
+**Improvement:** Define state and transition rules for `trade_order` that distinguish draft, validated, risk-passed, routed, partially-filled, fully-filled, cancelled, replaced, rejected, and operationally-closed outcomes, with explicit actors and timestamps.
+**Acceptance evidence:** Lifecycle transition matrix, invalid-transition tests, workbench status badges, and event emission evidence showing which state changes produce `CapitalMarketsTradingOpsCreated`, `CapitalMarketsTradingOpsUpdated`, or `CapitalMarketsTradingOpsApproved`.
+
+### 2. Order versioning and cancel-replace lineage
+**Justification:** Capital markets order flow routinely creates superseded instructions, and operations cannot resolve breaks if cancel-replace chains are flattened into one mutable row.
+**Improvement:** Add first-class lineage between original orders, amendments, and replacements so the package can show what changed in quantity, side, limit, destination, account, or trader instruction.
+**Acceptance evidence:** Version-chain query examples, cancel-replace fixtures, audit views in `CapitalMarketsTradingOpsDetail`, and release evidence proving downstream executions keep the correct parent order reference.
+
+### 3. Pre-trade reference-data completeness checks
+**Justification:** A large share of execution failures begin before the first fill because instrument, account, broker, venue, or settlement standing data is incomplete or stale.
+**Improvement:** Validate that every order has resolved instrument identity, trading account, desk, trader, broker or venue target, settlement model, and regulatory classification before it can be routed.
+**Acceptance evidence:** Rejection fixtures for missing reference data, operator exception reasons, and evidence that incomplete orders remain visible in the workbench with actionable remediation fields.
+
+### 4. Pre-trade operational risk gates
+**Justification:** Operational controls in trading ops are not limited to market risk; they also include fat-finger tolerances, restricted books, blocked counterparties, and incomplete approvals.
+**Improvement:** Introduce configurable pre-trade checks for notional thresholds, quantity tolerances, duplicate instruction windows, restricted lists, account funding prerequisites, and missing four-eyes approval.
+**Acceptance evidence:** Policy rule examples, blocked-order test scenarios, approval override records, and workbench views that show which specific risk gate stopped release.
+
+### 5. Market data boundary snapshots on order release
+**Justification:** Trading ops should consume prices and reference values without mutating or owning the market data domain, but it still needs a frozen view of the data used for decisions.
+**Improvement:** Persist a market data snapshot reference on `trade_order` capturing the quote time, source, currency, and tolerance context used for checks and downstream confirmation of expected value.
+**Acceptance evidence:** Snapshot linkage tests, stale-quote exception cases, and operator evidence showing when an order was validated against current versus stale market data.
+
+### 6. Partial-fill execution capture
+**Justification:** Real execution flow arrives in slices, and the package must distinguish fill-by-fill capture from the parent order’s aggregate status.
+**Improvement:** Model `execution` as a sequence of partial and final fills with execution identifiers, venue time, broker time, price, quantity, fees, and source channel so cumulative fill math is explicit.
+**Acceptance evidence:** Multi-fill fixtures, cumulative quantity checks, average-price calculations, and workbench drill-down from one order to all linked executions.
+
+### 7. Execution cancel and correction handling
+**Justification:** Late broker corrections and exchange cancels create the most dangerous hidden discrepancies because gross activity and net activity diverge.
+**Improvement:** Add correction types for busts, price corrections, quantity corrections, and duplicate suppression so each `execution` retains the original record and the corrective event rather than overwriting history.
+**Acceptance evidence:** Correct-and-bust test cases, net-versus-gross position proofs, and event history views that show the chain of corrections without ambiguity.
+
+### 8. Allocation eligibility validation
+**Justification:** Allocation quality is central to post-trade control because the wrong fund, sleeve, or legal entity assignment turns a good execution into a settlement or compliance problem.
+**Improvement:** Validate `allocation` instructions against account eligibility, mandate restrictions, soft and hard limits, settlement model compatibility, and residual allocation policy.
+**Acceptance evidence:** Allocation rejection scenarios, account-eligibility fixtures, and supervisor review screens that expose why an allocation cannot proceed.
+
+### 9. Residual and rounding allocation policy
+**Justification:** Multi-account fills often create residual shares or cash fragments, and those leftovers need governed handling rather than ad hoc operator judgment.
+**Improvement:** Support explicit residual handling rules for `allocation`, including pro-rata, designated account, cash-in-lieu, and round-lot preference policies, with desk-level overrides where justified.
+**Acceptance evidence:** Residual-allocation simulations, policy-rule records, and test evidence that rounding decisions remain reproducible across reruns.
+
+### 10. Block trade split auditability
+**Justification:** When one block execution is later split across funds or books, the package must preserve the commercial block and the operational distribution as separate but linked facts.
+**Improvement:** Add linkage from parent block execution to child `allocation` records with timestamps, allocator identity, reason codes, and post-allocation balance checks.
+**Acceptance evidence:** Block-to-child lineage reports, over-allocation prevention tests, and detail views proving every child allocation sums back to the block parent.
+
+### 11. Confirmation channel normalization
+**Justification:** Broker and counterparty confirmations arrive through different channels and formats, and the operational queue should normalize them before analysts compare economics.
+**Improvement:** Standardize `confirmation` intake from API payloads, files, and document extraction into a consistent structure for economics, parties, settlement dates, commission, and status.
+**Acceptance evidence:** Channel-specific parsing fixtures, normalized confirmation samples, and queue evidence showing mixed-source confirmations in one comparable analyst worklist.
+
+### 12. Economic affirmation and mismatch handling
+**Justification:** The core confirmation problem is whether economics actually match the booked execution and allocation picture, not whether a message merely arrived.
+**Improvement:** Add comparison logic for price, quantity, side, account, settlement date, commission, tax, and counterparty details, with mismatch classes for material and immaterial differences.
+**Acceptance evidence:** Match and mismatch test packs, analyst exception queues, and evidence that immaterial differences can be dispositioned without suppressing true breaks.
+
+### 13. Settlement instruction golden-source governance
+**Justification:** Settlement instructions are safety-critical data; any ambiguity about which SSI was active for a given market or account drives fails and manual repairs.
+**Improvement:** Treat `settlement_instruction` as an effective-dated governed record with activation, expiry, approval, and supersession semantics across account, market, currency, and counterparty dimensions.
+**Acceptance evidence:** Effective-date tests, duplicate-active-SSI prevention checks, and workbench evidence that a trade references the exact instruction in force at booking time.
+
+### 14. Market-specific settlement enrichment
+**Justification:** Settlement fields vary materially across depositories, custodians, and market models, so a generic SSI structure leaves operators to improvise critical details.
+**Improvement:** Add market-aware enrichment for place of settlement, custodian or agent bank, local market account, depository code, payment model, and standing narrative fields where required.
+**Acceptance evidence:** Market-specific fixtures, missing-field exception cases, and release evidence showing the package can reject incomplete instructions before they create settlement breaks.
+
+### 15. Fails, penalties, and buy-in workflow
+**Justification:** Settlement is not complete when an instruction is sent; the package should continue through failed settlement outcomes and their operational consequences.
+**Improvement:** Track settlement status progression from instructed to matched, settled, failed, re-instructed, and resolved, including penalty exposure, buy-in triggers, and accountable owner.
+**Acceptance evidence:** Failed-settlement scenarios, aging dashboards, and operator evidence that penalties and escalations remain attached to the original trade context.
+
+### 16. Trade break taxonomy
+**Justification:** Break management becomes unmanageable when all discrepancies are stored as one undifferentiated exception type.
+**Improvement:** Classify `trade_break` records into booking, allocation, confirmation, settlement, position, cash, fee, corporate action, and external reference-data discrepancies with severity and root-cause fields.
+**Acceptance evidence:** Taxonomy definitions, break classification tests, and workbench filters that let analysts separate economic breaks from static-data or workflow breaks.
+
+### 17. Break lineage across lifecycle events
+**Justification:** A break should point back to the lifecycle event that caused it or operators cannot tell whether to fix the order, the execution, the allocation, or the settlement instruction.
+**Improvement:** Link each `trade_break` to the exact upstream order, execution, allocation, confirmation, or settlement event that introduced the discrepancy and to the remediation action that closed it.
+**Acceptance evidence:** End-to-end break lineage fixtures, closure audit trails, and drill-through views from a break to the originating lifecycle event.
+
+### 18. Position snapshot provenance
+**Justification:** Position evidence is only useful if operations can explain whether a snapshot was derived from executions, allocations, settlement status, or manual repair.
+**Improvement:** Add provenance attributes to `position_snapshot` for source cut, valuation time, data completeness, correction status, and whether the view is intraday provisional or end-of-day affirmed.
+**Acceptance evidence:** Snapshot provenance tests, provisional-versus-final examples, and detail screens showing the chain from executions and allocations into position evidence.
+
+### 19. Corporate actions boundary protection
+**Justification:** Trading ops must recognize corporate actions impact without swallowing the corporate actions domain and creating duplicated business logic.
+**Improvement:** Define explicit boundaries where stock splits, symbol changes, spin-offs, rights issues, and cash dividends can create or explain breaks, but require those events to enter through governed external contracts.
+**Acceptance evidence:** Boundary notes in the specification, simulated corporate-action impact cases, and proof that adjustments are traceable to an external event rather than silently recomputed locally.
+
+### 20. Trading calendar and timezone normalization
+**Justification:** Cross-market operations fail quietly when trade dates, settlement dates, and cutoff times are interpreted in inconsistent local and venue timezones.
+**Improvement:** Normalize order, execution, confirmation, and settlement timestamps against venue timezone, desk timezone, and legal-entity business calendar, including holiday and half-day logic.
+**Acceptance evidence:** Calendar fixtures across multiple markets, cutoff-edge test cases, and visible timezone context in detail and workbench views.
+
+### 21. Asset-class-sensitive booking rules
+**Justification:** Even within one PBC, equities, fixed income, FX, and listed derivatives carry different operational fields and validation rules.
+**Improvement:** Introduce booking profiles that apply different required fields, lifecycle events, and exception tolerances by product type while keeping the package’s surface coherent.
+**Acceptance evidence:** Product-specific validation cases, profile configuration evidence, and workbench forms that adapt required fields by product type without collapsing into generic blobs.
+
+### 22. Fee, tax, and commission transparency
+**Justification:** Economic agreement is incomplete if analysts cannot see how commissions, fees, taxes, or local charges were expected and then confirmed.
+**Improvement:** Capture expected versus confirmed charges on `execution` and `confirmation` records, with break logic for materially different commissions, levies, and stamp duties.
+**Acceptance evidence:** Charge comparison fixtures, materiality threshold rules, and analytics showing break rates attributable to fees and taxes rather than core economics.
+
+### 23. Broker, venue, and counterparty boundary modeling
+**Justification:** Trading ops works across brokers, venues, and custodians, and each boundary creates separate statuses, acknowledgements, and failure modes.
+**Improvement:** Model external party roles explicitly so the package can distinguish executing broker, venue, clearing broker, custodian, and settlement agent responsibilities through the lifecycle.
+**Acceptance evidence:** Party-role examples, multi-party workflow tests, and detail views that show which party owns the next operational action.
+
+### 24. Compliance holds and restricted-list workflow
+**Justification:** Post-trade operations still needs compliance-sensitive controls because a trade may be captured operationally before all downstream restrictions are cleared.
+**Improvement:** Support restricted-list, sanctions, and mandate-breach holds that prevent allocation, confirmation release, or settlement progression until the hold is approved, lifted, or escalated.
+**Acceptance evidence:** Hold scenarios, policy-rule records, and workbench queues separating compliance-hold items from ordinary operational backlog.
+
+### 25. Best-execution evidence attachment
+**Justification:** Trading operations frequently has to support best-execution review even when the decision occurred earlier on the desk or in another system.
+**Improvement:** Add evidence slots for venue choice rationale, quote context, routing notes, and external review references so each order and execution can carry its own best-execution support pack.
+**Acceptance evidence:** Evidence attachment tests, immutable evidence references after approval, and release evidence showing best-execution artifacts can be exported for audit.
+
+### 26. Surveillance handoff boundaries
+**Justification:** The package should raise suspicious patterns but must not pretend to own the entire surveillance domain.
+**Improvement:** Emit explicit event contracts and exception records when wash-trade-like patterns, duplicate offsets, unusual timing, or restricted-account activity require surveillance review outside this PBC.
+**Acceptance evidence:** Handoff event schemas, suspicious-pattern fixtures, and boundary proof that the package opens a governed exception rather than embedding a parallel surveillance engine.
+
+### 27. Event vocabulary for lifecycle changes
+**Justification:** Generic create and update events are too weak for real integration because downstream consumers need to know whether the change was an approval, correction, hold, or closure.
+**Improvement:** Expand event payload semantics around order release, execution correction, allocation approval, confirmation mismatch, settlement fail, and break resolution while preserving the manifest’s top-level emitted contract family.
+**Acceptance evidence:** Event examples, schema compatibility notes, and tests proving downstream consumers can differentiate operational meaning without inspecting raw row diffs.
+
+### 28. Idempotent intake at every external edge
+**Justification:** Duplicate executions, repeated confirmations, and replayed settlement acknowledgements are common operational facts and must not create duplicate records or false breaks.
+**Improvement:** Apply idempotency keys and source-fingerprint logic across all inbound order, execution, allocation, confirmation, and settlement instruction channels.
+**Acceptance evidence:** Duplicate-message fixtures, replay tests, and operator evidence showing suppressed duplicates remain visible with reason codes instead of disappearing.
+
+### 29. Bulk operations workbench for high-volume days
+**Justification:** Month-end, rebalance, and index event days create workload spikes that cannot be handled one record at a time.
+**Improvement:** Extend `CapitalMarketsTradingOpsWorkbench` with bulk validate, bulk approve, bulk assign, bulk retry, and bulk export actions, each constrained by role and exception type.
+**Acceptance evidence:** Bulk-action permission tests, partial-success result displays, and workbench evidence for high-volume queue handling without losing row-level traceability.
+
+### 30. Supervisor approval cockpit
+**Justification:** Supervisors need a different surface from analysts because they focus on materiality, aging, concentrated risk, and override governance.
+**Improvement:** Add supervisor views that group pending approvals by desk, legal entity, notional size, settlement urgency, and repeated operator override patterns.
+**Acceptance evidence:** Role-based UI tests, approval-aging metrics, and screenshots or snapshots in release evidence showing materiality-ranked queues.
+
+### 31. Governed agent skills for trading ops tasks
+**Justification:** The assistant should accelerate operations, but only as a constrained operator that drafts actions, explains reasoning, and respects permissions.
+**Improvement:** Expand `CapitalMarketsTradingOpsAssistantPanel` with skills for triaging breaks, preparing allocation suggestions, summarizing mismatches, drafting SSI changes, and assembling release evidence packs without directly bypassing approval controls.
+**Acceptance evidence:** Skill manifest examples, blocked-action tests, human-confirmation checkpoints, and audit entries for every accepted assistant proposal.
+
+### 32. Semantic document intake for broker confirms and SSIs
+**Justification:** Many post-trade facts still arrive as documents, and analysts waste time rekeying details that a governed extractor could stage safely.
+**Improvement:** Use the manifest’s document-intake capability to parse broker confirmations, custodian settlement instructions, and exception notices into reviewable structured drafts linked back to source spans.
+**Acceptance evidence:** Extraction quality fixtures, confidence thresholds, redaction handling, and operator review evidence showing source text next to proposed structured fields.
+
+### 33. Dead-letter triage with domain explanations
+**Justification:** Operational staff can only recover failed handlers if the retry queue explains the business impact rather than exposing a generic integration error.
+**Improvement:** Present dead-lettered events in business terms such as duplicate execution, unknown account, stale policy version, or missing settlement instruction, with replay and quarantine actions.
+**Acceptance evidence:** Dead-letter queue scenarios, replay safety tests, and workbench evidence that operators can resolve a business cause without reading infrastructure internals.
+
+### 34. Replay-safe projection rebuilds
+**Justification:** Trading ops needs trustworthy projections for positions, breaks, and workload analytics, and those views must be recoverable after code or schema changes.
+**Improvement:** Add controlled rebuild and backfill procedures for projections derived from event-sourced operational history, with checkpointing and reconciliation against current read models.
+**Acceptance evidence:** Projection rebuild tests, checksum comparisons, and release evidence proving rebuilds preserve operational counts and balances.
+
+### 35. Continuous control assertions
+**Justification:** Controls should fail loudly when segregation of duties, missing approvals, or stale exceptions appear, not only during periodic review.
+**Improvement:** Populate `capital_markets_trading_ops_control_assertion` with continuous checks for self-approval, unresolved aged breaks, inactive SSIs on live trades, and unmatched confirmations past SLA.
+**Acceptance evidence:** Failing-control fixtures, dashboard summaries, and event evidence that control breaches create explicit operational exceptions.
+
+### 36. Tenant and legal-entity isolation
+**Justification:** A single deployment may support multiple funds, books, or legal entities, and trading operations data leakage between them is unacceptable.
+**Improvement:** Apply tenant isolation to orders, executions, allocations, confirmations, and position evidence, including policy rules and runtime parameters that can differ by tenant or legal entity.
+**Acceptance evidence:** Cross-tenant negative tests, tenant-specific policy examples, and workbench proof that filters and permissions never cross entity boundaries.
+
+### 37. Release evidence pack for operational readiness
+**Justification:** The package manifest already points to `RELEASE_EVIDENCE.md`, so the backlog should make release proof concrete rather than aspirational.
+**Improvement:** Define a release evidence pack that captures contract tests, lifecycle coverage, break-resolution scenarios, permission proofs, projection rebuild results, and representative workbench snapshots for trading ops flows.
+**Acceptance evidence:** A documented release checklist, evidence artifact index, and package-level proof that every critical lifecycle stage has at least one regression artifact.
+
+### 38. Workbench metrics that matter to operations
+**Justification:** Generic counts do not help desk support or middle-office leads decide where to intervene first.
+**Improvement:** Expand analytics to surface backlog aging, confirmation mismatch rate, settlement fail rate, repeat-break recurrence, stale market-data usage, and manual override frequency by desk and product.
+**Acceptance evidence:** Metric definitions, projection tests, and workbench screens showing drill-through from KPI to the underlying queue.
+
+### 39. Counterfactual simulation for disruption scenarios
+**Justification:** Trading ops leaders need to test the effect of market holidays, settlement agent outages, cutoff changes, or policy tightening before those changes hit live flow.
+**Improvement:** Use the simulation capability to model how order release, confirmation throughput, settlement timeliness, and break backlog would change under alternate policies or market disruptions.
+**Acceptance evidence:** Scenario comparison outputs, non-mutating simulation logs, and release evidence demonstrating at least one settlement disruption and one policy-change simulation.
+
+### 40. Carbon and sustainability annotations at the boundary
+**Justification:** The manifest includes sustainability awareness, but in trading ops this should remain evidence-aware and not distort core booking logic.
+**Improvement:** Add optional sustainability annotations such as venue or counterparty sustainability tags and downstream reporting references while keeping them outside the core economic validation path.
+**Acceptance evidence:** Optional-field tests, UI evidence that sustainability data is visible but non-blocking unless policy requires it, and boundary notes in the specification.
+
+### 41. Cross-PBC event federation contracts
+**Justification:** Trading ops sits between trading, treasury, custody, accounting, and compliance domains, so event boundaries must be explicit to prevent hidden data coupling.
+**Improvement:** Document and test which lifecycle facts are emitted for downstream consumers and which external events are accepted for policy, audit, and KPI context, including freshness and ownership expectations.
+**Acceptance evidence:** Event contract tables, federation tests, and proof that no downstream workflow depends on direct table reads outside this PBC.
+
+### 42. API surface completion beyond create endpoints
+**Justification:** The listed APIs cover core creates, but operations also needs validate-only, search, exception, and evidence endpoints to function at scale.
+**Improvement:** Extend the package API design to include queue retrieval, lifecycle search, validate-only order intake, break disposition, simulation access, and evidence export endpoints aligned to the existing route family.
+**Acceptance evidence:** API contract examples, route authorization tests, and release evidence showing operators can complete full post-trade workflows without resorting to ad hoc data access.
+
+### 43. Permission model by desk, role, and action
+**Justification:** Read, create, update, approve, and admin are necessary but not sufficient for real separation of duties in trading operations.
+**Improvement:** Define action-level permissions for releasing orders, approving allocations, changing SSIs, closing breaks, replaying dead letters, and accepting agent proposals, all scoped by desk or legal entity.
+**Acceptance evidence:** Permission matrix, denial test cases, and UI proof that unavailable actions are absent or explicitly disabled with reason text.
+
+### 44. Retention, masking, and evidentiary redaction
+**Justification:** Trading ops records contain sensitive identifiers and commercial details, but audit and release evidence still need exportable artifacts.
+**Improvement:** Apply field-level masking and retention rules to confirmations, SSIs, and evidence attachments so exported packs reveal enough for review without leaking sensitive settlement or client data.
+**Acceptance evidence:** Redaction fixtures, retention policy examples, and release evidence exports that demonstrate masked but still verifiable artifacts.
+
+### 45. FX and price tolerance management
+**Justification:** Cross-currency trades and manually entered prices create frequent false breaks unless tolerances are explicit and product-aware.
+**Improvement:** Add runtime-parameter support for price, FX, and accrued-value tolerances by asset class, market, and settlement currency, with separate thresholds for auto-match and analyst review.
+**Acceptance evidence:** Tolerance policy records, match-threshold test cases, and workbench examples showing why one difference auto-matched while another opened a break.
+
+### 46. Custodian and settlement-agent communication status
+**Justification:** Operators need to know whether a settlement problem is internal, at the custodian, or with a counterparty before escalating.
+**Improvement:** Track acknowledgement and status milestones from custodian, settlement agent, or depository interactions on `settlement_instruction` and related post-trade records.
+**Acceptance evidence:** External-status fixtures, escalation routing tests, and workbench history that shows each external acknowledgement in sequence.
+
+### 47. Cutoff-aware escalation logic
+**Justification:** A break opened at 09:00 and one opened ten minutes before market cutoff do not have the same operational urgency.
+**Improvement:** Make SLA and escalation rules aware of market cutoff windows, value date, and local holiday schedules so urgent items rise automatically and with the right severity.
+**Acceptance evidence:** Cutoff-edge scenarios, escalation timer tests, and dashboard evidence that near-cutoff exceptions are highlighted separately from ordinary backlog.
+
+### 48. Manual override governance
+**Justification:** A resilient trading ops package must allow rare manual intervention without turning every hard case into an untraceable exception.
+**Improvement:** Require reason codes, approver identity, expiration rules, and post-override review for any manual change to allocations, confirmations, settlement instructions, or break closures.
+**Acceptance evidence:** Override fixtures, approval audit records, and analytics showing override rates by team and process stage.
+
+### 49. Realistic seed data and operator runbooks
+**Justification:** Trading ops quality is hard to judge from toy examples because the real domain depends on partial fills, crossed timezones, broken confirmations, and failed settlement chains.
+**Improvement:** Expand seed and example data to include realistic lifecycle stories across order entry, execution capture, allocation, confirmation mismatch, settlement fail, and break resolution, paired with concise operator runbooks.
+**Acceptance evidence:** Seed data scenarios, runbook references in package docs, and release evidence demonstrating that the sample stories exercise the main operational queues.
+
+### 50. Continuous release assurance for the full trade lifecycle
+**Justification:** The package claims continuous release assurance, so the final standard should prove the entire trading ops chain keeps working as changes land.
+**Improvement:** Gate releases on contract tests, lifecycle scenario tests, permission checks, event-contract validation, projection rebuild verification, and curated UI evidence across `CapitalMarketsTradingOpsWorkbench`, `CapitalMarketsTradingOpsDetail`, and `CapitalMarketsTradingOpsAssistantPanel`.
+**Acceptance evidence:** Passing package contract tests, release checklist completion, updated `RELEASE_EVIDENCE.md` expectations, and proof that the full order-to-break-to-resolution lifecycle remains covered.
