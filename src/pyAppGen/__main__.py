@@ -26,6 +26,7 @@ _TOOLING_SUBCOMMANDS = {
     "parser-golden",
     "drift",
     "doctor",
+    "tooling-audit",
 }
 _legacy_click_main = main.main
 

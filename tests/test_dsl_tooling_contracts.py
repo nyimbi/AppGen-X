@@ -25,6 +25,7 @@ from pyAppGen.dsl import release_verifier_report_dsl
 from pyAppGen.dsl import semantic_drift_audit_dsl
 from pyAppGen.dsl import semantic_model_dsl
 from pyAppGen.dsl import symbol_coverage_dsl
+from pyAppGen.dsl import tooling_audit_report_dsl
 from pyAppGen.dsl import validate_report_dsl
 from pyAppGen.dsl import completion_coverage_dsl
 from pyAppGen.dsl import apply_lsp_code_action_dsl
@@ -1783,6 +1784,44 @@ def test_appgen_doctor_and_generate_subcommands_emit_json_contracts(tmp_path: Pa
     assert json.loads(doctor_result.stdout)["format"] == "appgen.doctor-report.v1"
     assert json.loads(generate_result.stdout)["format"] == "appgen.generate-report.v1"
     assert (output_dir / "appgen.json").exists()
+
+
+def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
+    report = tooling_audit_report_dsl()
+    root = Path(__file__).resolve().parents[1]
+    cli_json = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "tooling-audit", "--json"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    cli_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "tooling-audit"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+
+    assert report["format"] == "appgen.tooling-audit.v1"
+    assert report["ok"] is True
+    assert report["passed"] == report["required"] >= 16
+    assert report["blocking_gaps"] == ()
+    assert {
+        "shared_semantic_model",
+        "language_server_core_features",
+        "ide_visual_designer_round_trip",
+        "vscode_extension_surface",
+        "studio_semantic_service",
+        "package_and_release_verifiers",
+        "parser_golden_and_drift_gates",
+    } <= {check["id"] for check in report["checks"]}
+    assert all(check["section"].startswith("docs/tooling.md#") for check in report["checks"])
+    assert cli_json.returncode == 0, cli_json.stderr
+    assert json.loads(cli_json.stdout)["format"] == "appgen.tooling-audit.v1"
+    assert cli_text.returncode == 0, cli_text.stderr
+    assert cli_text.stdout.startswith("tooling-audit ok:")
 
 
 def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_path: Path) -> None:

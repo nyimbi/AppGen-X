@@ -9,6 +9,7 @@ import hashlib
 import json
 import re
 import sys
+import tempfile
 from pathlib import Path
 from typing import Iterable
 
@@ -1175,6 +1176,9 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     doctor_parser = subparsers.add_parser("doctor")
     doctor_parser.add_argument("--json", action="store_true")
 
+    tooling_audit_parser = subparsers.add_parser("tooling-audit")
+    tooling_audit_parser.add_argument("--json", action="store_true")
+
     args = parser.parse_args(tuple(argv or ()))
     path = Path(args.path) if hasattr(args, "path") else None
     source = "" if path is None or path.is_dir() else path.read_text(encoding="utf-8")
@@ -1323,6 +1327,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
         report = doctor_report_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
+    if args.command == "tooling-audit":
+        report = tooling_audit_report_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
     return 2
 
 
@@ -1384,6 +1392,12 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         print(f"doctor {status}")
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}: {check.get('message', '')}")
+        return
+    if payload.get("format") == "appgen.tooling-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(f"tooling-audit {status}: {payload.get('passed', 0)}/{payload.get('required', 0)} checks")
+        for check in payload.get("checks", ()):
+            print(f"{'ok' if check['ok'] else 'fail'} {check['id']}: {check.get('evidence', '')}")
         return
     if payload.get("format") == "appgen.pbc-publish-report.v1":
         status = "ok" if payload.get("ok") else "failed"
@@ -1720,6 +1734,547 @@ def doctor_report_dsl() -> dict:
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
+
+
+def tooling_audit_report_dsl() -> dict:
+    """Return one executable audit for the docs/tooling.md implementation surface."""
+    root = Path(__file__).resolve().parents[2]
+    source = _tooling_audit_sample_dsl()
+    broken_handler_source = """
+app Bad { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
+"""
+
+    semantic = semantic_model_dsl(source, source_name="tooling-audit.appgen")
+    lint = lint_report_dsl(source, source_name="tooling-audit.appgen")
+    strict_lint = lint_report_dsl(source, source_name="tooling-audit.appgen", strict=True)
+    formatted = format_report_dsl(source, source_name="tooling-audit.appgen")
+    validation = validate_report_dsl(source, source_name="tooling-audit.appgen", targets=("web", "mobile", "desktop"))
+    graphs = graph_suite_report_dsl(source, source_name="tooling-audit.appgen")
+    lsp = lsp_service_dsl(source, source_name="tooling-audit.appgen", prefix="cu")
+    quick_fix = apply_lsp_code_action_dsl(
+        broken_handler_source,
+        source_name="bad-handler.appgen",
+        action_id="create_operation_from_handler",
+    )
+    designer = designer_sync_report_dsl(
+        source,
+        source_name="tooling-audit.appgen",
+        visual_edit={
+            "surface": "database_designer",
+            "kind": "add_field",
+            "table": "Invoice",
+            "name": "memo",
+            "type": "string",
+        },
+    )
+    migration_reports = _tooling_audit_migration_reports()
+    migration_detected = tuple(
+        sorted(
+            {
+                detected
+                for report in migration_reports
+                for detected in report.get("coverage", {}).get("detected", ())
+            }
+        )
+    )
+    nl_plan = nl_plan_dsl(
+        source,
+        source_name="tooling-audit.appgen",
+        prompt="Add credit memo tracking to invoices",
+        backend="postgresql",
+    )
+    release = release_verifier_report_dsl(
+        source,
+        source_name="tooling-audit.appgen",
+        targets=("web", "mobile", "desktop", "pbc", "deployment"),
+    )
+    with tempfile.TemporaryDirectory(prefix="appgen-tooling-audit-") as tmp:
+        generation = generate_report_dsl(
+            source,
+            source_name="tooling-audit.appgen",
+            output_dir=Path(tmp) / "generated",
+            targets=("web",),
+        )
+        package = release_verifier_report_dsl(
+            source,
+            source_name="tooling-audit.appgen",
+            targets=("web", "mobile", "desktop", "pbc", "deployment"),
+            output_dir=str(Path(tmp) / "package"),
+        )
+
+    diagnostics = diagnostic_catalog_dsl()
+    diagnostic_fixtures = diagnostic_fixture_audit_dsl()
+    parser_golden = parser_golden_audit_dsl()
+    drift = semantic_drift_audit_dsl(source, source_name="tooling-audit.appgen")
+    doctor = doctor_report_dsl()
+    pbc_catalog = pbc_verifier_catalog_report()
+    vscode = _tooling_audit_vscode_extension(root)
+    studio = _tooling_audit_studio_semantic_service(source)
+    package_artifact_names = tuple(Path(item["path"]).name for item in package.get("written_artifacts", ()))
+
+    checks = (
+        _tooling_audit_check(
+            "shared_semantic_model",
+            semantic["format"] == "appgen.semantic-model.v1"
+            and semantic["ok"]
+            and _tooling_audit_semantic_keys_present(semantic),
+            "Semantic model emits required top-level sections and symbol coverage.",
+            "docs/tooling.md#semantic-model-contract",
+            {"format": semantic.get("format"), "symbol_coverage": semantic.get("symbol_coverage", {}).get("format")},
+        ),
+        _tooling_audit_check(
+            "diagnostic_registry_and_fixtures",
+            diagnostics["ok"] and diagnostic_fixtures["ok"],
+            "Diagnostic registry and golden fixture audit cover required AGX codes.",
+            "docs/tooling.md#diagnostic-specification",
+            {"catalog": diagnostics.get("format"), "fixtures": diagnostic_fixtures.get("format")},
+        ),
+        _tooling_audit_check(
+            "lint_directory_and_strict_profiles",
+            lint["ok"] and strict_lint["ok"] and lint_report_dsl_sources({"a.appgen": source, "b.appgen": _doctor_sample_dsl()})["ok"],
+            "Linter accepts files/source sets and supports strict profile reporting.",
+            "docs/tooling.md#linter-specification",
+            {"format": lint.get("format"), "strict": strict_lint.get("strict")},
+        ),
+        _tooling_audit_check(
+            "formatter_idempotent",
+            formatted["format"] == "appgen.format-result.v1" and formatted["idempotent"],
+            "Formatter is deterministic, idempotent, and returns lint diagnostics.",
+            "docs/tooling.md#formatter-specification",
+            {"changed": formatted.get("changed"), "idempotent": formatted.get("idempotent")},
+        ),
+        _tooling_audit_check(
+            "cli_validation_and_generation_contracts",
+            validation["ok"] and generation["ok"] and generation["generated"],
+            "Validation and generation reports gate lint/semantic readiness before writing generated artifacts.",
+            "docs/tooling.md#command-line-interface",
+            {"validate": validation.get("format"), "generate": generation.get("format")},
+        ),
+        _tooling_audit_check(
+            "graph_and_explain_tooling",
+            graphs["ok"]
+            and set(REQUIRED_GRAPH_KINDS) <= set(graphs["graph_reports"])
+            and set(GRAPH_TEXT_FORMATS) <= set(next(iter(graphs["renderings"].values())).keys())
+            and explain_report_dsl(source, source_name="tooling-audit.appgen", symbol="table.Invoice")["ok"]
+            and explain_report_dsl(source, source_name="tooling-audit.appgen", diagnostic="AGX0303")["ok"]
+            and explain_report_dsl(source, source_name="tooling-audit.appgen", handler="Save")["ok"],
+            "Graph suite emits every required graph in JSON/Mermaid/DOT and explain covers symbols, diagnostics, and handlers.",
+            "docs/tooling.md#graph-tooling",
+            {"format": graphs.get("format"), "graphs": graphs.get("required_kinds")},
+        ),
+        _tooling_audit_check(
+            "language_server_core_features",
+            lsp["ok"]
+            and lsp["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
+            and lsp["completionCoverage"]["missing"] == ()
+            and lsp["formatting"]["format"] == "appgen.lsp-formatting.v1",
+            "Language server exposes diagnostics, completion, hover, definitions, references, symbols, rename, code actions, and formatting from the shared model.",
+            "docs/tooling.md#language-server-specification",
+            {"format": lsp.get("format"), "coverage": lsp.get("completionCoverage", {}).get("format")},
+        ),
+        _tooling_audit_check(
+            "lsp_quick_fix_application",
+            quick_fix["ok"] and quick_fix["changed"] and "operation SubmitInvoice" in quick_fix["patched_source"],
+            "LSP code actions are executable through a deterministic DSL patch application contract.",
+            "docs/tooling.md#code-actions",
+            {"format": quick_fix.get("format"), "action": quick_fix.get("action_id")},
+        ),
+        _tooling_audit_check(
+            "ide_visual_designer_round_trip",
+            designer["ok"]
+            and designer["semantic_model_format"] == "appgen.semantic-model.v1"
+            and designer["visual_edit"]["round_trip_ok"],
+            "Studio designer projections and visual edits round-trip through linted DSL patches.",
+            "docs/tooling.md#ide-integration",
+            {"format": designer.get("format"), "surfaces": designer.get("surfaces")},
+        ),
+        _tooling_audit_check(
+            "vscode_extension_surface",
+            vscode["ok"],
+            "VS Code extension declares syntax, language configuration, LSP client, commands, previews, and PBC catalog browser.",
+            "docs/tooling.md#vs-code-extension",
+            vscode,
+        ),
+        _tooling_audit_check(
+            "studio_semantic_service",
+            studio["ok"],
+            "Studio semantic service composes LSP, designer sync, graph, quick-fix, and natural-language planner evidence.",
+            "docs/tooling.md#appgen-x-studio--monaco",
+            studio,
+        ),
+        _tooling_audit_check(
+            "migration_detection_coverage",
+            set(REQUIRED_MIGRATION_DETECTIONS) <= set(migration_detected),
+            "Migration planner detects the required table, field, relationship, directive, calculated-field, PBC ownership, and backfill families.",
+            "docs/tooling.md#migration-planner",
+            {"detected": migration_detected, "required": REQUIRED_MIGRATION_DETECTIONS},
+        ),
+        _tooling_audit_check(
+            "natural_language_patch_planner",
+            nl_plan["ok"]
+            and nl_plan["dsl_patch"]
+            and nl_plan["lint"]["ok"]
+            and nl_plan["migration_preview"]["format"] == "appgen.migration-plan.v1",
+            "Natural-language change planning produces a bounded DSL patch, lint result, migration preview, tests, and token-budget notes.",
+            "docs/tooling.md#natural-language-change-planner",
+            {"format": nl_plan.get("format"), "intent": nl_plan.get("intent")},
+        ),
+        _tooling_audit_check(
+            "package_and_release_verifiers",
+            release["ok"]
+            and package["ok"]
+            and "appgen-release-evidence.json" in package_artifact_names
+            and {
+                "appgen-package-web.json",
+                "appgen-package-mobile.json",
+                "appgen-package-desktop.json",
+                "appgen-package-pbc.json",
+                "appgen-package-deployment.json",
+            }
+            <= set(package_artifact_names),
+            "Release verifier and package command materialize target evidence for web, mobile, desktop, PBC, and deployment targets.",
+            "docs/tooling.md#package-and-verifier-tooling",
+            {"release": release.get("format"), "artifacts": package_artifact_names},
+        ),
+        _tooling_audit_check(
+            "pbc_manifest_catalog_commands",
+            pbc_catalog["ok"] and pbc_catalog["count"] > 0,
+            "PBC tooling lists and verifies manifest-backed package catalog entries without grammar-specific PBC names.",
+            "docs/tooling.md#appgen-pbc",
+            {"format": pbc_catalog.get("format"), "count": pbc_catalog.get("count")},
+        ),
+        _tooling_audit_check(
+            "parser_golden_and_drift_gates",
+            parser_golden["ok"] and drift["ok"] and doctor["ok"],
+            "Parser golden, semantic drift, and doctor gates prove grammar coverage and shared-model alignment across tooling surfaces.",
+            "docs/tooling.md#test-strategy",
+            {"parser": parser_golden.get("format"), "drift": drift.get("format"), "doctor": doctor.get("format")},
+        ),
+    )
+    sections = tuple(sorted({check["section"] for check in checks}))
+    blocking_gaps = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.tooling-audit.v1",
+        "ok": not blocking_gaps,
+        "required": len(checks),
+        "passed": sum(1 for check in checks if check["ok"]),
+        "sections": sections,
+        "checks": checks,
+        "blocking_gaps": blocking_gaps,
+        "source_of_truth": "docs/tooling.md",
+    }
+
+
+def _tooling_audit_check(check_id: str, ok: bool, evidence: str, section: str, detail: dict | None = None) -> dict:
+    return {
+        "id": check_id,
+        "ok": bool(ok),
+        "section": section,
+        "evidence": evidence,
+        "detail": detail or {},
+    }
+
+
+def _tooling_audit_semantic_keys_present(semantic: dict) -> bool:
+    required = {
+        "source_files",
+        "app",
+        "symbols",
+        "tables",
+        "views",
+        "flows",
+        "operations",
+        "rules",
+        "roles",
+        "security",
+        "agents",
+        "llms",
+        "pbcs",
+        "composition",
+        "contracts",
+        "deployment",
+        "packages",
+        "graphs",
+        "diagnostics",
+    }
+    return required <= set(semantic)
+
+
+def _tooling_audit_vscode_extension(root: Path) -> dict:
+    extension = root / "extensions" / "vscode-appgen-x"
+    package_path = extension / "package.json"
+    language_config = extension / "language-configuration.json"
+    grammar = extension / "syntaxes" / "appgen.tmLanguage.json"
+    source_path = extension / "src" / "extension.js"
+    package = json.loads(package_path.read_text(encoding="utf-8")) if package_path.exists() else {}
+    source = source_path.read_text(encoding="utf-8") if source_path.exists() else ""
+    commands = {item.get("command") for item in package.get("contributes", {}).get("commands", ())}
+    required_commands = {
+        "appgen.lint",
+        "appgen.format",
+        "appgen.graph",
+        "appgen.previewGraph",
+        "appgen.explain",
+        "appgen.generate",
+        "appgen.previewArtifacts",
+        "appgen.package",
+        "appgen.pbcCatalog",
+        "appgen.restartLanguageServer",
+    }
+    provider_markers = (
+        "registerCompletionItemProvider",
+        "registerHoverProvider",
+        "registerDefinitionProvider",
+        "registerReferenceProvider",
+        "registerDocumentSymbolProvider",
+        "registerWorkspaceSymbolProvider",
+        "registerRenameProvider",
+        "registerCodeActionsProvider",
+        "registerDocumentFormattingEditProvider",
+        '["lsp", "--stdio"]',
+    )
+    checks = {
+        "package_json": package_path.exists(),
+        "language_configuration": language_config.exists(),
+        "grammar": grammar.exists(),
+        "commands": required_commands <= commands,
+        "providers": all(marker in source for marker in provider_markers),
+    }
+    return {
+        "format": "appgen.vscode-extension-audit.v1",
+        "ok": all(checks.values()),
+        "checks": checks,
+        "commands": tuple(sorted(commands)),
+        "required_commands": tuple(sorted(required_commands)),
+    }
+
+
+def _tooling_audit_studio_semantic_service(source: str) -> dict:
+    try:
+        from .studio import studio_semantic_service_workspace
+    except Exception as exc:  # pragma: no cover - import boundary
+        return {
+            "format": "appgen.studio-semantic-service-audit.v1",
+            "ok": False,
+            "error": str(exc),
+        }
+    report = studio_semantic_service_workspace(source)
+    required_surfaces = {
+        "dsl_editor",
+        "component_palette",
+        "form_designer",
+        "database_designer",
+        "workflow_designer",
+        "pbc_composition_designer",
+        "package_deployment_designer",
+        "diagnostics_panel",
+        "graph_explain_panel",
+        "natural_language_planner",
+    }
+    return {
+        "format": "appgen.studio-semantic-service-audit.v1",
+        "ok": report.get("ok") and required_surfaces <= set(report.get("designer_surfaces", {})),
+        "service_format": report.get("format"),
+        "surfaces": tuple(report.get("designer_surfaces", {})),
+        "required_surfaces": tuple(sorted(required_surfaces)),
+    }
+
+
+def _tooling_audit_migration_reports() -> tuple[dict, ...]:
+    broad_previous = """
+app Coverage { targets: web }
+table Customer { id: int pk; name: string required }
+table Legacy { id: int pk; obsolete: string }
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  subtotal: decimal default 0
+  status: string
+  old_note: string
+  total: decimal = subtotal
+  index(customer_id)
+}
+pbc Billing { owns: Invoice }
+"""
+    broad_current = """
+app Coverage { targets: web }
+table Account { id: int pk; name: string required }
+table Invoice {
+  id: int pk
+  account_id: int -> Account.id
+  subtotal: string
+  status: string required
+  tax: decimal required
+  total: decimal = subtotal + tax
+  unique(account_id)
+}
+table CreditMemo { id: int pk; amount: decimal }
+pbc Finance { owns: Invoice }
+"""
+    directive_previous = """
+app FinanceOps { targets: web }
+table Invoice {
+  id: int pk
+  total: decimal
+  index(total)
+  constraint(total_positive, total)
+}
+pbc Billing { owns: Invoice }
+"""
+    directive_current = """
+app FinanceOps { targets: web }
+table Invoice {
+  id: int pk
+  total: decimal
+  unique(total)
+  index(id)
+  constraint(non_negative_total, total)
+}
+pbc Finance { owns: Invoice }
+"""
+    return (
+        migration_plan_dsl(
+            broad_previous,
+            broad_current,
+            backend="postgresql",
+            rename_hints=("table:Customer=Account", "field:Invoice.customer_id=Invoice.account_id"),
+        ),
+        migration_plan_dsl(directive_previous, directive_current, backend="postgresql"),
+    )
+
+
+def _tooling_audit_sample_dsl() -> str:
+    return """
+app ToolingAudit { targets: web, mobile, desktop }
+
+table Customer {
+  id: int pk
+  name: string required search
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id [many-to-one]
+  subtotal: decimal default 0
+  tax: decimal default 0
+  total: decimal = subtotal + tax
+  lookup customer_name (customer.name)
+}
+
+view InvoiceForm for Invoice {
+  Main: customer.name, total
+  @ customer.name Lookup 0 0 6 1
+  on Save -> SubmitInvoice
+}
+
+flow SubmitInvoice {
+  draft -> reviewed
+  reviewed -> posted
+  human Review assigned Accountant -> reviewed
+  timer reviewed "P2D" -> escalated
+  compensate posted -> ReverseInvoice
+}
+
+operation ReverseInvoice {
+  posted -> reversed
+}
+
+role Accountant {
+  Invoice: read, write
+}
+
+rule InvoicePolicy for Invoice {
+  total >= 0
+}
+
+llm LocalModel {
+  provider: ollama
+  mode: local
+}
+
+agent InvoiceAssistant {
+  provider: LocalModel
+  tools: read, schema
+  Invoice: read
+  on Explain -> ReverseInvoice
+}
+
+composition FinanceSuite {
+  include pbc gl_core version 1.0.0
+  require database postgresql
+}
+
+audit ReleaseAudit {
+  evidence: tests
+}
+
+version Release2026 {
+  number: 1.0.0
+}
+
+security TenantSecurity {
+  Invoice: read, write
+}
+
+api InvoiceApi {
+  on Create -> ReverseInvoice
+  Invoice: read
+}
+
+event InvoicePosted {
+  topic: invoices
+}
+
+job InvoiceJob {
+  run nightly -> ReverseInvoice
+}
+
+report InvoiceReport {
+  source Invoice -> InvoiceApi
+}
+
+menu MainMenu {
+  on Open -> ReverseInvoice
+}
+
+component CustomerLookup {
+  on Select -> ReverseInvoice
+}
+
+package ReleaseWeb {
+  target: web
+  smoke: launch
+}
+
+package ReleaseMobile {
+  target: mobile
+  signing: yes
+  offline: yes
+  permission: camera, explained
+  smoke: launch
+}
+
+package ReleaseDesktop {
+  target: desktop
+  format: installer
+  splash: declared
+  menu_ref: MainMenu
+  smoke: launch
+}
+
+test ReleaseSmoke {
+  run happy_path -> ReverseInvoice
+}
+
+deploy Production {
+  unit ReverseInvoice as worker
+  health ReverseInvoice "/health"
+  resource ReverseInvoice cpu 1
+  env ReverseInvoice DATABASE_URL
+}
+"""
 
 
 def _generated_artifact_summary(output_path: Path) -> tuple[dict, ...]:

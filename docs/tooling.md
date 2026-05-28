@@ -605,6 +605,22 @@ Explain output should be human-readable by default and JSON with `--json`.
 Checks parser generation, Python package imports, catalog availability, template
 paths, generator backends, and optional IDE/LSP dependencies.
 
+### `appgen tooling-audit`
+
+```console
+appgen tooling-audit --json
+```
+
+Emits `appgen.tooling-audit.v1`, the executable release gate for this document.
+The audit composes evidence from the shared semantic model, diagnostic fixtures,
+linter, formatter, validation/generation contracts, graph/explain tooling,
+language server, code-action application, visual designer round trips, VS Code
+extension surface, Studio semantic service, migration coverage,
+natural-language planner, package/release verifiers, PBC catalog tooling,
+parser golden fixtures, drift audit, and doctor checks. A passing report means
+every audited requirement section has a concrete machine-readable proof instead
+of relying on prose or scattered manual checks.
+
 ### `appgen package`
 
 ```console
