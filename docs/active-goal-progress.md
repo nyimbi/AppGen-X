@@ -2975,3 +2975,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
   tests, scoped diff whitespace check, and restricted-name scan. Commit:
   `8668d1aa`.
+- Current formatter organization pass makes the documented `appgen format
+  --organize` table-body ordering profile executable. The formatter now keeps
+  top-level declarations in place while ordering table spreads/identity fields,
+  business keys, relationships, editable scalar fields, calculated fields,
+  audit fields, and directives inside each table, with leading comments
+  attached to the item they describe. Verification passed: Python compile for
+  touched CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`,
+  focused DSL platform/CLI regression tests, scoped diff whitespace check, and
+  restricted-name scan. Commit: `3bf2a382`.
