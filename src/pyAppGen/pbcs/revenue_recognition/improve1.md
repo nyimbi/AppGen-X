@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `revenue_recognition`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `revenue_recognition`. Each item is specific to revenue contracts, contract lines, performance obligations, transaction price allocation, variable consideration, satisfaction events, recognition schedules, deferrals, recognition entries, contract modifications, standalone selling prices, holds, adjustments, disclosures, close readiness, policy rules, controls, agent assistance, and AppGen-X event reliability.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
-- Representative owned tables: `revenue_recognition_revenue_contract`, `revenue_recognition_contract_line`, `revenue_recognition_performance_obligation`, `revenue_recognition_obligation_satisfaction_event`, `revenue_recognition_transaction_price_allocation`, `revenue_recognition_variable_consideration_estimate`, `revenue_recognition_revenue_schedule`, `revenue_recognition_revenue_schedule_line`, `revenue_recognition_revenue_deferral`, `revenue_recognition_entry`, `revenue_recognition_contract_modification`, `revenue_recognition_standalone_selling_price`, ...
-- Representative operations/APIs: `create_revenue_contract`, `identify_obligations`, `estimate_variable_consideration`, `allocate_transaction_price`, `record_satisfaction_event`, `generate_revenue_schedule`, `post_recognition_entry`, `create_deferral`, `process_contract_modification`, `apply_revenue_hold`, `record_revenue_adjustment`, `build_disclosure_packet`, ...
-- Representative events: `RevenueContractCreated`, `PerformanceObligationIdentified`, `RevenueScheduled`, `RevenueRecognized`, `RevenueHoldApplied`, `DisclosurePacketGenerated`.
-- Representative advanced capabilities: `probabilistic variable consideration`, `contract-modification counterfactuals`, `continuous close controls`, `semantic contract obligation extraction`, `cryptographic recognition proof`, `policy-versioned accounting logic`.
+- Domain purpose: revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+- Owned operational surface: revenue contracts, contract lines, performance obligations, satisfaction events, transaction price allocations, variable consideration estimates, revenue schedules, schedule lines, deferrals, recognition entries, contract modifications, standalone selling prices, holds, adjustments, disclosure packets, close readiness checks, exception cases, policy rules, runtime parameters, schema extensions, control assertions, governed models, and AppGen-X runtime event tables.
+- Declared operations: contract creation, obligation identification, variable consideration estimation, transaction price allocation, satisfaction recording, schedule generation, recognition entry posting, deferral creation, modification processing, hold application, adjustment recording, disclosure packet construction, close readiness checks, exception resolution, rule compilation, and modification impact simulation.
+- Declared events and integrations: emits `RevenueContractCreated`, `PerformanceObligationIdentified`, `RevenueScheduled`, `RevenueRecognized`, `RevenueHoldApplied`, and `DisclosurePacketGenerated`; consumes `OrderCompleted`, `SubscriptionActivated`, `InvoiceIssued`, and `PolicyChanged`; catalog traceability also includes contract, invoice, payment, policy, and recognition events.
+- Advanced capability evidence: probabilistic variable consideration, contract-modification counterfactuals, continuous close controls, semantic contract obligation extraction, cryptographic recognition proof, policy-versioned accounting logic, event-sourced operational history, multi-tenant policy isolation, schema-evolution resilience, anomaly detection, predictive risk scoring, scenario simulation, continuous control testing, cross-PBC event federation, and governed agent execution.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `revenue_recognition_revenue_contract`
+### 1. Revenue contract intake gate
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** Revenue recognition quality starts before schedule generation. Contracts missing enforceable rights, customer identity, currency, term, consideration, renewal terms, or source evidence cannot safely drive revenue.
 
-**Improvement:** Extend `revenue_recognition_revenue_contract` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `revenue_contract_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add an intake gate that validates contract identity, customer projection, source document, approval state, currency, term, effective dates, commercial substance, collectability indicators, cancellation terms, and required attachments. The agent should produce a side-effect-free contract readiness plan before creating owned records.
 
-### 2. Deep specialist lifecycle semantics for `revenue_recognition_contract_line`
+### 2. Contract line normalization
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** Contract lines often come from orders, subscriptions, invoices, amendments, imports, or documents with inconsistent product, quantity, period, price, and service definitions.
 
-**Improvement:** Extend `revenue_recognition_contract_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `revenue_recognition_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Normalize contract lines into typed line categories with quantity, term, service period, price components, discount attribution, renewal link, delivery pattern, fulfillment dependency, and source projection. Store unresolved line exceptions and block obligation identification until line evidence is complete.
 
-### 3. Deep specialist lifecycle semantics for `revenue_recognition_performance_obligation`
+### 3. Performance obligation identification workbench
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** Identifying distinct obligations requires judgment about promises, bundles, integrations, customer benefit, interdependence, and service patterns.
 
-**Improvement:** Extend `revenue_recognition_performance_obligation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `revenue_recognition_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build an obligation workbench that groups contract lines into candidate obligations, records distinctness rationale, bundle relationships, series treatment, support/service obligations, material rights, and reviewer approval. Provide side-by-side document evidence, extracted clauses, and policy citations.
 
-### 4. Deep specialist lifecycle semantics for `revenue_recognition_obligation_satisfaction_event`
+### 4. Semantic obligation extraction from documents
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** Revenue terms are frequently buried in contracts, statements of work, order forms, amendments, and side letters.
 
-**Improvement:** Extend `revenue_recognition_obligation_satisfaction_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add document extraction that identifies promises, service periods, acceptance clauses, termination rights, usage commitments, rebates, penalties, renewal options, and nonstandard terms. The agent should flag uncertain clauses and require human confirmation before converting them to obligations.
 
-### 5. Deep specialist lifecycle semantics for `revenue_recognition_transaction_price_allocation`
+### 5. Material right assessment
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** Options, discounts, renewal rights, credits, and loyalty-like benefits may create material rights that require separate treatment.
 
-**Improvement:** Extend `revenue_recognition_transaction_price_allocation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add material-right assessment with option value, expected exercise probability, standalone selling price evidence, customer economics, and allocation impact. Store rationale and generate schedule implications for accepted material rights.
 
-### 6. Deep specialist lifecycle semantics for `revenue_recognition_variable_consideration_estimate`
+### 6. Standalone selling price evidence registry
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** Allocation depends on defensible standalone selling prices, which can vary by product, region, customer tier, channel, term, and time.
 
-**Improvement:** Extend `revenue_recognition_variable_consideration_estimate` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Create an SSP registry with method, evidence source, effective interval, product scope, region, currency, confidence, approval, and exception policy. Allocation should reference SSP version and reject expired or unsupported evidence.
 
-### 7. Deep specialist lifecycle semantics for `revenue_recognition_revenue_schedule`
+### 7. SSP estimation governance
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** When direct SSP is unavailable, estimation methods must be transparent, reproducible, and controlled.
 
-**Improvement:** Extend `revenue_recognition_revenue_schedule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add estimation workflows for adjusted market assessment, expected cost plus margin, residual approaches, and constrained residual use. Store assumptions, data set, outlier handling, confidence intervals, and approver evidence.
 
-### 8. Deep specialist lifecycle semantics for `revenue_recognition_revenue_schedule_line`
+### 8. Transaction price component model
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** Transaction price can include fixed fees, usage fees, discounts, credits, rebates, penalties, financing components, noncash consideration, and payable-to-customer amounts.
 
-**Improvement:** Extend `revenue_recognition_revenue_schedule_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model transaction price components separately with type, probability, constraint status, timing, source, currency, tax exclusion, and allocation treatment. UI should show how each component affects total allocable consideration.
 
-### 9. Deep specialist lifecycle semantics for `revenue_recognition_revenue_deferral`
+### 9. Variable consideration estimate lifecycle
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** Variable consideration changes over time as usage, refunds, rebates, performance bonuses, penalties, and customer behavior become clearer.
 
-**Improvement:** Extend `revenue_recognition_revenue_deferral` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add estimate versions with method, inputs, probability distribution, constraint assessment, confidence, update trigger, and true-up policy. Every schedule and entry should reference the estimate version used.
 
-### 10. Deep specialist lifecycle semantics for `revenue_recognition_entry`
+### 10. Constraint and reversal-risk analysis
 
-**Justification:** This owned table is part of the Revenue Recognition operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns revenue contracts, performance obligations, transaction price allocation, modifications, satisfaction events, schedules, holds, adjustments, disclosures, and close-ready revenue evidence.
+**Justification:** Revenue should not be recognized where reversal risk is not acceptably constrained.
 
-**Improvement:** Extend `revenue_recognition_entry` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add reversal-risk scoring for variable fees, uncertain acceptance, refund rights, penalties, collectability, customer disputes, and history volatility. Require hold, deferral, or approval when reversal risk exceeds configured thresholds.
 
-### 11. Make `create_revenue_contract` a complete command lifecycle
+### 11. Allocation engine traceability
 
-**Justification:** High-value users need `create_revenue_contract` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Allocation errors are hard to audit if users cannot see how total transaction price was distributed across obligations.
 
-**Improvement:** Implement `create_revenue_contract` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RevenueContractCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store allocation traces showing contract price, exclusions, SSPs, relative weights, discounts, variable consideration assignment, rounding, residual treatment, and before/after amounts. Provide downloadable allocation proof.
 
-### 12. Make `identify_obligations` a complete command lifecycle
+### 12. Discount and rebate allocation controls
 
-**Justification:** High-value users need `identify_obligations` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Discounts and rebates may apply to all obligations or only specific goods/services depending on contract evidence.
 
-**Improvement:** Implement `identify_obligations` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PerformanceObligationIdentified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add controls for proportional allocation, specific-obligation attribution, portfolio treatment, rebate caps, coupon-like rights, and approval for nonstandard allocations. Simulations should show revenue impact under alternative allocation policies.
 
-### 13. Make `estimate_variable_consideration` a complete command lifecycle
+### 13. Satisfaction pattern library
 
-**Justification:** High-value users need `estimate_variable_consideration` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Obligations may be satisfied at a point in time, over time, by milestones, by usage, by stand-ready service, or by output measures.
 
-**Improvement:** Implement `estimate_variable_consideration` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RevenueScheduled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Provide a satisfaction pattern library with required evidence, progress measure, service period, acceptance event, usage input, milestone dependency, and schedule-generation method. Obligation records should declare a pattern before schedules are generated.
 
-### 14. Make `allocate_transaction_price` a complete command lifecycle
+### 14. Satisfaction event evidence gate
 
-**Justification:** High-value users need `allocate_transaction_price` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Recognition requires proof that the obligation has been satisfied or progress has occurred.
 
-**Improvement:** Implement `allocate_transaction_price` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RevenueRecognized`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate satisfaction events for source event, delivery/activation/usage evidence, customer acceptance, service period, milestone completion, quantity, date, reversal risk, and idempotency. Hold events with incomplete or contradictory evidence.
 
-### 15. Make `record_satisfaction_event` a complete command lifecycle
+### 15. Usage-based recognition handling
 
-**Justification:** High-value users need `record_satisfaction_event` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Usage-based contracts require recognition tied to usage measurement, reporting cutoffs, corrections, and late-arriving data.
 
-**Improvement:** Implement `record_satisfaction_event` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RevenueHoldApplied`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add usage evidence models with measurement source, billing period, usage type, estimate/actual status, cutoff, correction event, and true-up logic. Generate schedules that can adjust prospectively or retrospectively according to policy.
 
-### 16. Make `generate_revenue_schedule` a complete command lifecycle
+### 16. Subscription activation integration controls
 
-**Justification:** High-value users need `generate_revenue_schedule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Subscription activation events can start service periods, create obligations, affect deferrals, and trigger revenue schedules.
 
-**Improvement:** Implement `generate_revenue_schedule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DisclosurePacketGenerated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Harden `SubscriptionActivated` handling with activation idempotency, entitlement period, plan version, term, cancellation rights, billing alignment, and late activation correction. Store projection freshness and reject undeclared subscription table access.
 
-### 17. Make `post_recognition_entry` a complete command lifecycle
+### 17. Invoice-issued reconciliation
 
-**Justification:** High-value users need `post_recognition_entry` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Billed amounts, deferred revenue, and recognized revenue must reconcile without treating invoices as automatic recognition events.
 
-**Improvement:** Implement `post_recognition_entry` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RevenueContractCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add invoice reconciliation that compares invoice lines to contract lines, deferrals, schedules, taxes/exclusions, discounts, and recognized entries. Flag overbilling, underbilling, missing deferrals, and invoice-contract mismatches.
 
-### 18. Make `create_deferral` a complete command lifecycle
+### 18. Payment and collectability risk signals
 
-**Justification:** High-value users need `create_deferral` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Payment status and collectability affect revenue risk and disclosures, but must be consumed through declared events/projections.
 
-**Improvement:** Implement `create_deferral` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PerformanceObligationIdentified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add collectability signals from payment/invoice projections with aging, disputes, reversals, failed payment patterns, credit holds, and customer risk. Use them to trigger holds or exception cases while preserving PBC boundaries.
 
-### 19. Make `process_contract_modification` a complete command lifecycle
+### 19. Revenue schedule generation engine
 
-**Justification:** High-value users need `process_contract_modification` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Schedules must reflect obligation pattern, service period, allocation, variable estimates, deferrals, holds, and calendar conventions.
 
-**Improvement:** Implement `process_contract_modification` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RevenueScheduled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Generate schedule lines with period, recognition method, amount, currency, source obligation, allocation trace, hold state, deferral link, rounding policy, and recalculation lineage. Provide schedule diff views after changes.
 
-### 20. Make `apply_revenue_hold` a complete command lifecycle
+### 20. Schedule recalculation and versioning
 
-**Justification:** High-value users need `apply_revenue_hold` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Modifications, estimate changes, satisfaction corrections, holds, and policy changes require schedule updates without losing auditability.
 
-**Improvement:** Implement `apply_revenue_hold` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RevenueRecognized`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Version schedules with prior state, recalculation reason, affected periods, cumulative catch-up, prospective treatment, reviewer, and entry impact. Allow rollback only through controlled reversal schedules.
 
-### 21. Operationalize `probabilistic variable consideration` as a governed decision system
+### 21. Recognition entry posting controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition risk score without hiding assumptions.
+**Justification:** Recognition entries are close-sensitive and must be tied to approved schedule lines and policy evidence.
 
-**Improvement:** Promote `probabilistic variable consideration` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Validate recognition entries against open period, approved schedule, holds, materiality, currency, deferral state, prior postings, and duplicate entries. Store entry hash, posting batch, and close-readiness evidence.
 
-### 22. Operationalize `contract-modification counterfactuals` as a governed decision system
+### 22. Deferral lifecycle management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition workbench metric without hiding assumptions.
+**Justification:** Deferred revenue requires controlled creation, release, adjustment, reversal, and reconciliation to billed amounts.
 
-**Improvement:** Promote `contract-modification counterfactuals` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add deferral states, source invoice/contract evidence, liability classification, release schedule, balance rollforward, and reconciliation to recognition entries. UI should show beginning balance, additions, releases, adjustments, and ending balance.
 
-### 23. Operationalize `continuous close controls` as a governed decision system
+### 23. Contract modification classifier
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition risk score without hiding assumptions.
+**Justification:** Modifications can create new contracts, terminate obligations, adjust existing obligations, or require cumulative catch-up treatment.
 
-**Improvement:** Promote `continuous close controls` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Classify modifications by added distinct goods/services, price changes, remaining obligations, termination rights, effective date, and policy. Store classification rationale, required approvals, and schedule impact.
 
-### 24. Operationalize `semantic contract obligation extraction` as a governed decision system
+### 24. Modification counterfactual simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition workbench metric without hiding assumptions.
+**Justification:** Revenue teams need to compare accounting outcomes before approving amendments or operational changes.
 
-**Improvement:** Promote `semantic contract obligation extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate modification treatments with prospective, retrospective, cumulative catch-up, termination, and new-contract alternatives. Show revenue, deferral, disclosure, and close impacts with assumptions and policy warnings.
 
-### 25. Operationalize `cryptographic recognition proof` as a governed decision system
+### 25. Contract combination analysis
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition risk score without hiding assumptions.
+**Justification:** Related contracts entered near the same time may need combined evaluation for pricing, obligations, and commercial objective.
 
-**Improvement:** Promote `cryptographic recognition proof` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add combination checks using customer, timing, negotiated package evidence, cross-discounts, dependent obligations, and amendment links. Flag candidate combinations and require reviewer disposition before final allocation.
 
-### 26. Operationalize `policy-versioned accounting logic` as a governed decision system
+### 26. Portfolio practical expedient governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition workbench metric without hiding assumptions.
+**Justification:** Applying portfolio methods can improve efficiency but requires evidence that results are not materially different.
 
-**Improvement:** Promote `policy-versioned accounting logic` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add portfolio grouping rules, homogeneity checks, materiality tests, sample validation, approval, and periodic reassessment. Store proof that portfolio treatment remains within configured tolerance.
 
-### 27. Operationalize `probabilistic variable consideration` as a governed decision system
+### 27. Revenue hold policy workbench
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition risk score without hiding assumptions.
+**Justification:** Holds may arise from missing evidence, disputed contracts, collectability risk, acceptance uncertainty, policy change, or close controls.
 
-**Improvement:** Promote `probabilistic variable consideration` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build a hold workbench with hold type, trigger, owner, affected obligations/schedules/entries, release criteria, customer impact, and aging. Prevent recognition while a blocking hold is active and store release evidence.
 
-### 28. Operationalize `contract-modification counterfactuals` as a governed decision system
+### 28. Adjustment and true-up governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition workbench metric without hiding assumptions.
+**Justification:** Adjustments affect recognized revenue and must distinguish estimate true-ups, corrections, reversals, currency effects, and policy changes.
 
-**Improvement:** Promote `contract-modification counterfactuals` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add adjustment types with source, period treatment, materiality, approval, related schedule version, entry reversal link, and disclosure impact. The agent should preview period and disclosure effects before proposing an adjustment.
 
-### 29. Operationalize `continuous close controls` as a governed decision system
+### 29. Close readiness control center
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition risk score without hiding assumptions.
+**Justification:** Revenue close requires evidence that schedules, entries, holds, exceptions, deferrals, disclosures, and integrations are ready.
 
-**Improvement:** Promote `continuous close controls` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build a close readiness center with controls for unapproved contracts, unallocated obligations, missing SSP, open holds, schedule errors, unposted entries, unreconciled invoices, aged exceptions, and dead letters. Provide remediation actions and signoff evidence.
 
-### 30. Operationalize `semantic contract obligation extraction` as a governed decision system
+### 30. Continuous close monitoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Revenue Recognition and measurably improves revenue recognition workbench metric without hiding assumptions.
+**Justification:** Revenue should be close-ready continuously rather than discovered late in the period.
 
-**Improvement:** Promote `semantic contract obligation extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `revenue_recognition_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Run daily controls for new contracts, activation events, invoice mismatches, variable estimate updates, schedule recalculations, and hold aging. Surface trend risk and predicted close blockers before period-end.
 
-### 31. Create simulation-grade governance for `obligation_identification_policy` and `materiality_threshold`
+### 31. Disclosure packet builder
 
-**Justification:** Complete Revenue Recognition coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Disclosures need consistent evidence for remaining performance obligations, significant judgments, contract balances, variable consideration, and policy changes.
 
-**Improvement:** Add a policy cockpit where `obligation_identification_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `materiality_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate disclosure packets with source schedules, deferral rollforwards, obligation maturity, judgments, estimates, modifications, holds, and variance explanations. Store packet version, reviewer signoff, and supporting proof.
 
-### 32. Create simulation-grade governance for `allocation_policy` and `variable_consideration_confidence`
+### 32. Revenue exception case workflow
 
-**Justification:** Complete Revenue Recognition coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Revenue teams need structured resolution for missing documents, disputed terms, allocation exceptions, late events, policy conflicts, and close blockers.
 
-**Improvement:** Add a policy cockpit where `allocation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `variable_consideration_confidence` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add exception types, severity, owner, SLA, affected contracts, financial exposure, evidence checklist, resolution action, and closure criteria. Link exceptions to holds, adjustments, schedules, and controls.
 
-### 33. Create simulation-grade governance for `variable_consideration_policy` and `recognition_window_days`
+### 33. Policy-versioned accounting logic
 
-**Justification:** Complete Revenue Recognition coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Recognition policies change as standards, interpretations, products, and internal rules evolve; historical decisions must remain reproducible.
 
-**Improvement:** Add a policy cockpit where `variable_consideration_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `recognition_window_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Version revenue policies with effective dates, scope, compiled rule hash, migration guidance, test fixtures, approvers, and supersession links. Every contract decision should reference the policy version used.
 
-### 34. Create simulation-grade governance for `revenue_hold_policy` and `close_cutoff_hours`
+### 34. Policy impact and migration analysis
 
-**Justification:** Complete Revenue Recognition coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Policy changes can affect active contracts, future schedules, disclosures, and controls.
 
-**Improvement:** Add a policy cockpit where `revenue_hold_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `close_cutoff_hours` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Simulate policy changes against active contracts to identify affected obligations, revenue impact, required recalculations, disclosure changes, and exceptions. Require approval for material policy migrations.
 
-### 35. Create simulation-grade governance for `close_readiness_policy` and `disclosure_precision`
+### 35. Revenue anomaly detection
 
-**Justification:** Complete Revenue Recognition coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Unusual recognition spikes, negative revenue, allocation outliers, late satisfaction events, or frequent adjustments can indicate defects or policy risk.
 
-**Improvement:** Add a policy cockpit where `close_readiness_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `disclosure_precision` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add anomaly detection for schedule amounts, entry timing, variable estimate swings, modification volume, hold patterns, deferral rollforward, and invoice mismatches. Route high-risk anomalies to exception cases.
 
-### 36. Upgrade `revenue contract workbench` into a full specialist command center
+### 36. Predictive revenue risk scoring
 
-**Justification:** The PBC UI must expose the complete Revenue Recognition surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Revenue managers need to know which contracts are likely to cause close delays, reversals, disputes, or disclosure issues.
 
-**Improvement:** Expand `revenue contract workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Score contracts by evidence completeness, variable consideration, modification history, collectability, hold exposure, schedule complexity, manual adjustments, and integration freshness. Provide drivers and recommended remediation.
 
-### 37. Upgrade `obligation map` into a full specialist command center
+### 37. Multi-currency recognition controls
 
-**Justification:** The PBC UI must expose the complete Revenue Recognition surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Revenue contracts, invoices, payments, and reporting may involve different currencies and exchange-rate timing.
 
-**Improvement:** Expand `obligation map` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add currency controls for contract currency, functional/reporting currency, rate source, rate date, remeasurement policy, rounding, and disclosure. Store rate evidence and isolate currency effects from revenue adjustments.
 
-### 38. Upgrade `allocation board` into a full specialist command center
+### 38. Tax and non-revenue exclusion evidence
 
-**Justification:** The PBC UI must expose the complete Revenue Recognition surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Taxes, pass-through fees, deposits, refundable amounts, and certain charges should not be treated as revenue.
 
-**Improvement:** Expand `allocation board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add exclusion classification with source line, legal basis, tax/fee type, refundable status, allocation treatment, and reconciliation. Block schedules from including excluded amounts unless explicitly approved by policy.
 
-### 39. Upgrade `schedule calendar` into a full specialist command center
+### 39. Contract asset and liability rollforward
 
-**Justification:** The PBC UI must expose the complete Revenue Recognition surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Revenue reporting requires clear movement in contract assets, contract liabilities, deferrals, billings, and recognized revenue.
 
-**Improvement:** Expand `schedule calendar` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add rollforward views by contract, customer, obligation, period, currency, and policy. Explain additions, billings, recognition, adjustments, modifications, write-offs, and ending balances.
 
-### 40. Upgrade `hold and exception queue` into a full specialist command center
+### 40. Audit hash chain and recognition proof
 
-**Justification:** The PBC UI must expose the complete Revenue Recognition surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Revenue evidence must be tamper-evident across contracts, obligations, allocations, schedules, entries, holds, adjustments, and disclosures.
 
-**Improvement:** Expand `hold and exception queue` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Hash-chain recognition lifecycle artifacts with redacted payload fingerprints, policy versions, source event hashes, and schedule versions. Provide verifier exports for auditors without exposing unrelated contract data.
 
-### 41. Prove cross-PBC federation for `POST /revenue-contracts` and `OrderCompleted`
+### 41. AppGen-X event reliability proof
 
-**Justification:** Revenue Recognition must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Revenue recognition depends on order, subscription, invoice, payment, contract, and policy events; missed or duplicated events can misstate revenue.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /revenue-contracts` and consumed event `OrderCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Strengthen event descriptors with schema versions, idempotency keys, ordering assumptions, retry envelopes, dead-letter taxonomy, replay eligibility, and handler evidence. Add replay tests for duplicate invoices, late activations, and policy changes.
 
-### 42. Prove cross-PBC federation for `POST /performance-obligations` and `SubscriptionActivated`
+### 42. Cross-PBC boundary proof
 
-**Justification:** Revenue Recognition must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The PBC must use orders, subscriptions, invoices, payments, contracts, and policy context without reading foreign tables directly.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /performance-obligations` and consumed event `SubscriptionActivated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Generate a boundary proof listing every external dependency, API projection, consumed event, cached field, staleness rule, and retention rule. Release audits should fail if recognition logic references undeclared tables or fields.
 
-### 43. Prove cross-PBC federation for `POST /revenue-schedules` and `InvoiceIssued`
+### 43. Agent-assisted contract review
 
-**Justification:** Revenue Recognition must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Revenue specialists need AI help extracting obligations and risk from documents, but unreviewed automation can create accounting errors.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /revenue-schedules` and consumed event `InvoiceIssued` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent parse contracts, order forms, amendments, and side letters into candidate obligations, variable terms, acceptance clauses, and risk flags. It should cite source text, show confidence, and require approval before CRUD.
 
-### 44. Prove cross-PBC federation for `POST /recognition-runs` and `PolicyChanged`
+### 44. Agent-assisted close remediation
 
-**Justification:** Revenue Recognition must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Close blockers often require coordinated fixes across holds, missing evidence, schedules, and exceptions.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /recognition-runs` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add an agent skill that explains close readiness failures, groups root causes, proposes remediation plans, previews financial impact, drafts evidence requests, and prepares safe service commands for reviewer approval.
 
-### 45. Temporal reconstruction and bitemporal audit for Revenue Recognition
+### 45. Revenue workbench drilldowns
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Users need to move from high-level revenue totals to contract, obligation, schedule, event, entry, hold, and proof details quickly.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Build drilldowns from dashboard totals to contract portfolios, obligation maps, allocation traces, schedule calendars, close controls, disclosure packets, and audit proofs. Every drilldown should show permission scope and source evidence.
 
-### 46. Bulk operations and migration-grade controls for Revenue Recognition
+### 46. UI capability surface proof
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** A complete Revenue Recognition PBC must expose all domain capabilities, not only contracts and schedules.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add release checks proving dedicated UI surfaces for contracts, lines, obligations, satisfaction events, allocations, variable estimates, schedules, deferrals, entries, modifications, SSP, holds, adjustments, disclosures, close readiness, exceptions, policies, parameters, controls, models, events, and agent tools.
 
-### 47. Specialist edge-case playbooks for Revenue Recognition
+### 47. Revenue control testing library
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Revenue processes require continuous controls over policy, allocation, schedule generation, posting, holds, and disclosures.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Ship controls for missing SSP, unsupported variable estimates, unapproved modifications, schedule-entry mismatch, hold override, disclosure completeness, stale projections, and boundary access. Store control owners, frequency, results, and remediation evidence.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Revenue Recognition
+### 48. Revenue resilience drills
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Revenue operations must recover from event backlogs, policy deployment errors, invoice feed delays, corrupted schedules, and close-time dead letters.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add drills for invoice replay, subscription activation backlog, policy rollback, schedule recalculation failure, dead-letter surge, and close freeze. Store recovery time, financial exposure, data-loss estimate, and corrective actions.
 
-### 49. Continuous control testing and operational assurance for Revenue Recognition
+### 49. Revenue readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Operators need a concise signal showing whether the PBC is ready for production revenue processing in a composed application.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from contract completeness, obligation approvals, SSP evidence, allocation traceability, schedule quality, hold aging, close controls, disclosure readiness, event health, UI coverage, and agent safety. Show blockers with remediation links.
 
-### 50. Human-in-the-loop domain agent execution for Revenue Recognition
+### 50. End-to-end revenue release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class Revenue Recognition PBC needs one evidence package proving that contract intake can flow through obligation identification, allocation, scheduling, recognition, close, and disclosure safely.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Create an end-to-end proof exercising document intake, contract creation, obligation identification, variable consideration, SSP validation, allocation, satisfaction event, schedule generation, deferral, recognition entry, modification simulation, hold/release, adjustment, disclosure packet, close readiness, exception resolution, policy rule compilation, AppGen-X eventing, boundary verification, UI coverage, and agent-safe CRUD planning.
