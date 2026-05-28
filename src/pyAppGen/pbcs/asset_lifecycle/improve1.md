@@ -1,315 +1,314 @@
-# Asset Lifecycle and Depreciation PBC Improvement Backlog
+# Asset Lifecycle PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `asset_lifecycle`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `asset_lifecycle`. The items are specific to fixed asset operations: acquisition, capitalization, componentization, book assignment, placed-in-service control, depreciation, transfers, revaluation, impairment, maintenance-life adjustment, insurance, warranty, physical verification, retirement, disposal, audit proof, and agent-assisted asset accounting work.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
-- Representative owned tables: `asset_lifecycle_fixed_asset`, `asset_lifecycle_asset_component`, `asset_lifecycle_asset_component_history`, `asset_lifecycle_asset_book`, `asset_lifecycle_asset_book_assignment`, `asset_lifecycle_asset_acquisition`, `asset_lifecycle_asset_capitalization`, `asset_lifecycle_asset_lease_right_of_use`, `asset_lifecycle_asset_depreciation_schedule`, `asset_lifecycle_asset_depreciation_schedule_line`, `asset_lifecycle_asset_depreciation_run`, `asset_lifecycle_asset_depreciation_journal`, ...
-- Representative operations/APIs: `command_assets`, `command_assets_asset_id_service`, `command_assets_asset_id_depreciation_schedules`, `command_depreciation_runs`, `command_assets_asset_id_transfers`, `command_assets_asset_id_revaluations`, `command_assets_asset_id_impairments`, `command_assets_asset_id_maintenance_adjustments`, `command_assets_asset_id_retirements`, `command_assets_events_inbox`, `query_assets`, `query_assets_asset_id_risk`.
-- Representative events: `AssetRegistered`, `AssetPlacedInService`, `DepreciationCalculated`, `AssetTransferred`, `AssetRevalued`, `AssetImpaired`, `MaintenanceAdjustedAssetLife`, `AssetRetired`.
-- Representative advanced capabilities: `event_sourced_asset_lifecycle`, `graph_relational_asset_topology`, `multi_tenant_asset_book_isolation`, `schema_evolution_resilient_asset_schema`, `probabilistic_useful_life_estimation`, `real_time_depreciation_valuation_projection`, `counterfactual_lifecycle_optimization`, `temporal_asset_value_risk_forecasting`, `autonomous_impairment_revaluation`, `semantic_capitalization_parsing`, ...
+- Domain purpose: fixed asset operations from acquisition intent through capitalization, componentization, book assignment, placed-in-service control, depreciation, transfer, revaluation, impairment, maintenance-life adjustment, insurance, warranty, physical verification, retirement, disposal proceeds, audit proof, federation, identity evidence, controls, rules, parameters, configuration, workbench fragments, and release evidence.
+- Owned boundary: fixed assets, components, component history, books, book assignments, acquisitions, capitalization, right-of-use assets, depreciation schedules/lines/runs/journals, transfers, valuation adjustments, impairment indicators, maintenance adjustments, insurance/warranty, claims, retirement, disposal proceeds, physical verification, location/custodian/cost-center history, policy screening, audit proofs, federation, identity credentials, carbon utilization, portfolio optimization, allocation mechanisms, anomaly signals, risk models, seed data, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: asset registration, placed-in-service, depreciation schedules, depreciation runs, transfers, revaluations, impairments, maintenance adjustments, retirements, event inbox, asset search, asset risk, rules, parameters, schema extensions, configuration, and workbench views.
+- Existing events and dependencies: emits `AssetRegistered`, `AssetPlacedInService`, `DepreciationCalculated`, `AssetTransferred`, `AssetRevalued`, `AssetImpaired`, `MaintenanceAdjustedAssetLife`, and `AssetRetired`; consumes purchase receipt, maintenance, insurance, tax book, and access-policy events through AppGen-X projections and declared APIs only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `asset_lifecycle_fixed_asset`
+### 1. Acquisition-to-asset traceability
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Fixed asset accuracy begins before capitalization. Purchase receipts, invoices, projects, construction-in-progress, and acquisition approvals must be traceable to the resulting asset.
 
-**Improvement:** Extend `asset_lifecycle_fixed_asset` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add acquisition trace records linking purchase receipt projections, supplier invoice references, project/CIP references, acquisition amount, intended category, capitalization decision, and final fixed asset. The workbench should show unresolved acquisition candidates and duplicate capitalization risks.
 
-### 2. Deep specialist lifecycle semantics for `asset_lifecycle_asset_component`
+### 2. Capitalization policy compiler
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Capitalization depends on threshold, asset class, useful life, entity policy, tax book, project status, and expense-versus-capital judgment.
 
-**Improvement:** Extend `asset_lifecycle_asset_component` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compile capitalization rules with thresholds, asset categories, component rules, expense exceptions, approval levels, and effective dates. Every capitalization should store the rule version, failed tests, and human override reason.
 
-### 3. Deep specialist lifecycle semantics for `asset_lifecycle_asset_component_history`
+### 3. Asset identity and tag governance
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Assets need stable physical and digital identities across labels, serials, IoT tags, locations, custodians, and external registers.
 
-**Improvement:** Extend `asset_lifecycle_asset_component_history` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add identity profiles with asset tag, serial, manufacturer, model, digital credential, physical label status, duplicate tag detection, and identity proof. Block service placement when identity evidence is incomplete for controlled asset classes.
 
-### 4. Deep specialist lifecycle semantics for `asset_lifecycle_asset_book`
+### 4. Componentization decision engine
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Major assets often contain components with different useful lives, depreciation methods, maintenance patterns, and retirement paths.
 
-**Improvement:** Extend `asset_lifecycle_asset_book` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add componentization rules that split cost by component, useful life, book, location, and replacement policy. Store parent-child topology, capitalization basis, and component history for partial retirement and replacement.
 
-### 5. Deep specialist lifecycle semantics for `asset_lifecycle_asset_book_assignment`
+### 5. Multi-book asset accounting
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Assets commonly require corporate, statutory, tax, management, grant, and regulatory books with different methods and calendars.
 
-**Improvement:** Extend `asset_lifecycle_asset_book_assignment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_register`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand book assignment with book purpose, currency, calendar, depreciation method, convention, useful life, residual value, tax class, and effective dates. Workbench views should compare book values and exceptions across books.
 
-### 6. Deep specialist lifecycle semantics for `asset_lifecycle_asset_acquisition`
+### 6. Placed-in-service control
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Depreciation and capitalization should not begin until an asset is available for intended use and required evidence is complete.
 
-**Improvement:** Extend `asset_lifecycle_asset_acquisition` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_acquisition`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add service-readiness checks for acquisition evidence, location, custodian, book assignment, cost center, insurance requirement, verification tag, and approval. Emit `AssetPlacedInService` only after checks pass or an approved exception exists.
 
-### 7. Deep specialist lifecycle semantics for `asset_lifecycle_asset_capitalization`
+### 7. Depreciation method library
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Straight-line alone is insufficient; asset accounting needs declining balance, units-of-production, sum-of-years, tax methods, and custom schedules.
 
-**Improvement:** Extend `asset_lifecycle_asset_capitalization` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `capitalization`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add method descriptors with formula, convention, rounding, partial-period policy, residual value handling, useful-life rule, and book eligibility. Generate tests for every method and schedule line.
 
-### 8. Deep specialist lifecycle semantics for `asset_lifecycle_asset_lease_right_of_use`
+### 8. Depreciation schedule versioning
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Changes to cost, life, residual value, method, service date, or impairment require schedule revision without erasing history.
 
-**Improvement:** Extend `asset_lifecycle_asset_lease_right_of_use` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `purchase_receipt_capitalization`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Version schedules with reason, source event, old/new assumptions, recalculation policy, affected periods, catch-up amount, and approval. Preserve prior schedule lines for audit.
 
-### 9. Deep specialist lifecycle semantics for `asset_lifecycle_asset_depreciation_schedule`
+### 9. Depreciation run idempotency and proof
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Depreciation runs can create material duplicate journals if retried unsafely.
 
-**Improvement:** Extend `asset_lifecycle_asset_depreciation_schedule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `placed_in_service`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add run-level idempotency keys, included books, included assets, excluded assets, calculated totals, journal handoff proof, retry state, and reversal handling. Duplicate runs should return prior evidence rather than recalculating.
 
-### 10. Deep specialist lifecycle semantics for `asset_lifecycle_asset_depreciation_schedule_line`
+### 10. Depreciation journal reconciliation
 
-**Justification:** This owned table is part of the Asset Lifecycle and Depreciation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fixed assets, acquisitions, books, depreciation, transfers, valuation, maintenance, insurance, retirement, verification, and asset controls.
+**Justification:** Asset subledger depreciation must reconcile to GL postings by book, entity, cost center, and period.
 
-**Improvement:** Extend `asset_lifecycle_asset_depreciation_schedule_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `component_assets`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add reconciliation records comparing depreciation schedule totals, run totals, journal events, and GL projection acknowledgements. Surface unreconciled depreciation as close blockers.
 
-### 11. Make `command_assets` a complete command lifecycle
+### 11. Asset transfer lifecycle
 
-**Justification:** High-value users need `command_assets` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Transfers affect location, custodian, cost center, entity, depreciation responsibility, insurance, and sometimes tax.
 
-**Improvement:** Implement `command_assets` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add transfer workflows with requested/current/future location, custodian, cost center, entity, effective date, approval, physical movement evidence, book impact, and intercompany implications.
 
-### 12. Make `command_assets_asset_id_service` a complete command lifecycle
+### 12. Custodian accountability controls
 
-**Justification:** High-value users need `command_assets_asset_id_service` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Asset custodianship determines physical accountability, verification, loss reporting, and handover.
 
-**Improvement:** Implement `command_assets_asset_id_service` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetPlacedInService`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add custodian assignment history with acceptance, delegation, handover, lost/stolen report, and overdue acknowledgement. The workbench should expose assets with stale or missing custodian confirmation.
 
-### 13. Make `command_assets_asset_id_depreciation_schedules` a complete command lifecycle
+### 13. Location hierarchy and geofence evidence
 
-**Justification:** High-value users need `command_assets_asset_id_depreciation_schedules` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Asset location matters for insurance, tax, maintenance, verification, and impairment.
 
-**Improvement:** Implement `command_assets_asset_id_depreciation_schedules` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DepreciationCalculated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model location hierarchy, allowed asset classes, geofence proof, movement rules, and verification cadence. Transfers to restricted or unverified locations should require approval.
 
-### 14. Make `command_depreciation_runs` a complete command lifecycle
+### 14. Cost center and project assignment rules
 
-**Justification:** High-value users need `command_depreciation_runs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Depreciation expense and asset responsibility depend on valid cost center/project assignments.
 
-**Improvement:** Implement `command_depreciation_runs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetTransferred`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add account-combination rules for asset category, book, cost center, project, entity, and period. Validate assignments before service, transfer, depreciation, and retirement.
 
-### 15. Make `command_assets_asset_id_transfers` a complete command lifecycle
+### 15. Lease right-of-use asset depth
 
-**Justification:** High-value users need `command_assets_asset_id_transfers` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Right-of-use assets need lease term, liability, reassessment, modification, impairment, and disclosure evidence.
 
-**Improvement:** Implement `command_assets_asset_id_transfers` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetRevalued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add lease component records with commencement date, term, discount rate, liability link, payment schedule, reassessment triggers, modification history, and depreciation treatment by book.
 
-### 16. Make `command_assets_asset_id_revaluations` a complete command lifecycle
+### 16. Construction-in-progress conversion
 
-**Justification:** High-value users need `command_assets_asset_id_revaluations` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** CIP assets accumulate cost over time and convert into one or many fixed assets when ready.
 
-**Improvement:** Implement `command_assets_asset_id_revaluations` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetImpaired`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add CIP work-in-progress records, accumulated cost, project milestones, capitalization candidate assets, split rules, placed-in-service evidence, and residual CIP reconciliation.
 
-### 17. Make `command_assets_asset_id_impairments` a complete command lifecycle
+### 17. Maintenance-driven useful-life adjustment
 
-**Justification:** High-value users need `command_assets_asset_id_impairments` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Major maintenance, overhaul, refurbishment, or damage changes useful life, residual value, and impairment risk.
 
-**Improvement:** Implement `command_assets_asset_id_impairments` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaintenanceAdjustedAssetLife`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Link maintenance completion projections to useful-life assessment, component replacement, capitalizable maintenance, impairment indicator, schedule revision, and audit explanation. Require approval for material life changes.
 
-### 18. Make `command_assets_asset_id_maintenance_adjustments` a complete command lifecycle
+### 18. Repair-versus-capitalize decision support
 
-**Justification:** High-value users need `command_assets_asset_id_maintenance_adjustments` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Maintenance spend can be expense, capitalize, component replacement, impairment, or life-extension depending on facts and policy.
 
-**Improvement:** Implement `command_assets_asset_id_maintenance_adjustments` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetRetired`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add decision records using maintenance description, cost, asset class, component affected, expected benefit, policy rule, and accounting recommendation. The agent should draft evidence-backed decisions for review.
 
-### 19. Make `command_assets_asset_id_retirements` a complete command lifecycle
+### 19. Revaluation model governance
 
-**Justification:** High-value users need `command_assets_asset_id_retirements` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Revaluation affects carrying amount, reserves, depreciation, impairment, and financial statements.
 
-**Improvement:** Implement `command_assets_asset_id_retirements` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add revaluation basis, valuation source, appraiser evidence, fair-value hierarchy, book eligibility, reserve impact, depreciation reset, approval, and disclosure proof. Store rejected valuation alternatives.
 
-### 20. Make `command_assets_events_inbox` a complete command lifecycle
+### 20. Impairment indicator lifecycle
 
-**Justification:** High-value users need `command_assets_events_inbox` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Market, usage, damage, obsolescence, regulation, and performance signals can trigger impairment review.
 
-**Improvement:** Implement `command_assets_events_inbox` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetPlacedInService`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add impairment indicators with source, severity, affected cash-generating unit, recoverable amount evidence, value-in-use/fair-value basis, recommended adjustment, and closure state.
 
-### 21. Operationalize `event_sourced_asset_lifecycle` as a governed decision system
+### 21. Impairment testing workbench
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves accuracy rate without hiding assumptions.
+**Justification:** Impairment testing requires assumptions, recoverable amount, carrying amount, sensitivities, approvals, and journal evidence.
 
-**Improvement:** Promote `event_sourced_asset_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add testing records with asset group, carrying value, cash-flow assumptions, discount rate, fair-value estimate, impairment amount, reversal eligibility, and disclosure notes.
 
-### 22. Operationalize `graph_relational_asset_topology` as a governed decision system
+### 22. Insurance coverage adequacy
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves close cycle time without hiding assumptions.
+**Justification:** Assets may be uninsured, underinsured, overinsured, excluded, or outside policy location.
 
-**Improvement:** Promote `graph_relational_asset_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Compare asset value, class, location, and risk to insurance policy projections. Flag coverage gaps, expired policies, excluded assets, deductibles, and required claim documentation.
 
-### 23. Operationalize `multi_tenant_asset_book_isolation` as a governed decision system
+### 23. Warranty tracking and claim triggers
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves cash impact without hiding assumptions.
+**Justification:** Warranty recovery is lost when coverage, failure events, and claim deadlines are not tracked.
 
-**Improvement:** Promote `multi_tenant_asset_book_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add warranty terms, covered components, expiry, claim threshold, maintenance/failure linkage, vendor evidence, and claim deadline alerts. Agent workflows should draft warranty claim packets.
 
-### 24. Operationalize `schema_evolution_resilient_asset_schema` as a governed decision system
+### 24. Insurance claim lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** Asset losses and damage require claim preparation, insurer communication, proceeds, repair, impairment, or retirement decisions.
 
-**Improvement:** Promote `schema_evolution_resilient_asset_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add claim records with incident, asset/component, policy, estimated loss, claim amount, documents, adjuster status, proceeds, deductible, accounting treatment, and closure proof.
 
-### 25. Operationalize `probabilistic_useful_life_estimation` as a governed decision system
+### 25. Physical verification planning
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves asset registered throughput without hiding assumptions.
+**Justification:** Physical counts must be risk-based and planned by asset class, location, custodian, materiality, and prior exceptions.
 
-**Improvement:** Promote `probabilistic_useful_life_estimation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `asset_registered_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add verification plans with scope, sampling method, scan method, due dates, assigned teams, expected assets, and risk weighting. Generate count sheets and mobile scan tasks.
 
-### 26. Operationalize `real_time_depreciation_valuation_projection` as a governed decision system
+### 26. Physical verification exception management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves asset placed in service throughput without hiding assumptions.
+**Justification:** Missing, extra, moved, damaged, duplicate-tagged, or custodian-mismatched assets require structured resolution.
 
-**Improvement:** Promote `real_time_depreciation_valuation_projection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `asset_placed_in_service_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add exception categories, evidence, owner, proposed resolution, financial impact, insurance impact, approval, and follow-up verification. unresolved material exceptions should block close where policy requires.
 
-### 27. Operationalize `counterfactual_lifecycle_optimization` as a governed decision system
+### 27. Asset retirement decision governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves accuracy rate without hiding assumptions.
+**Justification:** Retirement can result from sale, scrap, loss, theft, donation, exchange, obsolescence, or destruction, each with different accounting.
 
-**Improvement:** Promote `counterfactual_lifecycle_optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add retirement reason, method, approval, final book value, accumulated depreciation, impairment, proceeds expectation, tax treatment, and required disposal evidence before retirement posting.
 
-### 28. Operationalize `temporal_asset_value_risk_forecasting` as a governed decision system
+### 28. Disposal proceeds and gain/loss proof
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves close cycle time without hiding assumptions.
+**Justification:** Disposal gain or loss must reconcile proceeds, carrying value, costs, tax, and GL handoff.
 
-**Improvement:** Promote `temporal_asset_value_risk_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add proceeds records with receipt, buyer, amount, currency, sale costs, tax, settlement date, carrying value, gain/loss calculation, and journal proof.
 
-### 29. Operationalize `autonomous_impairment_revaluation` as a governed decision system
+### 29. Partial retirement and component replacement
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves cash impact without hiding assumptions.
+**Justification:** Components may be replaced while the parent asset remains in service.
 
-**Improvement:** Promote `autonomous_impairment_revaluation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add partial retirement logic for component cost, accumulated depreciation, replacement capitalization, gain/loss, and updated component topology. Preserve parent asset continuity.
 
-### 30. Operationalize `semantic_capitalization_parsing` as a governed decision system
+### 30. Asset impairment and retirement fraud controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Asset Lifecycle and Depreciation and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** Asset write-downs, retirements, and disposals can hide theft, unauthorized sale, or manipulation.
 
-**Improvement:** Promote `semantic_capitalization_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add anomaly signals for unusual retirements, repeated location exceptions, low proceeds, rapid impairment after acquisition, custodian conflicts, and duplicate tags. Route findings to control assertions and approvals.
 
-### 31. Create simulation-grade governance for `ASSET_LIFECYCLE_DATABASE_URL` and `ASSET_LIFECYCLE_DATABASE_URL`
+### 31. Carbon utilization and sustainability evidence
 
-**Justification:** Complete Asset Lifecycle and Depreciation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Assets increasingly require utilization, energy, emissions, and sustainability reporting.
 
-**Improvement:** Add a policy cockpit where `ASSET_LIFECYCLE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ASSET_LIFECYCLE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add carbon utilization records with asset class, usage window, energy source, intensity, operating schedule, and reporting allocation. Link high-emission assets to replacement/optimization scenarios.
 
-### 32. Create simulation-grade governance for `ASSET_LIFECYCLE_EVENT_TOPIC` and `ASSET_LIFECYCLE_EVENT_TOPIC`
+### 32. Portfolio optimization for repair, replace, retain
 
-**Justification:** Complete Asset Lifecycle and Depreciation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Asset strategy depends on value, maintenance cost, downtime, energy, risk, residual value, and replacement alternatives.
 
-**Improvement:** Add a policy cockpit where `ASSET_LIFECYCLE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ASSET_LIFECYCLE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add optimization scenarios comparing repair, replace, retain, sell, lease, or retire options with NPV, risk, downtime, carbon, tax, and accounting impacts.
 
-### 33. Create simulation-grade governance for `ASSET_LIFECYCLE_RETRY_LIMIT` and `ASSET_LIFECYCLE_RETRY_LIMIT`
+### 33. Shared asset allocation mechanism
 
-**Justification:** Complete Asset Lifecycle and Depreciation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Shared assets must allocate usage, cost, depreciation, and capacity across departments or entities.
 
-**Improvement:** Add a policy cockpit where `ASSET_LIFECYCLE_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ASSET_LIFECYCLE_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add allocation rules using usage meters, bookings, capacity, cost center bids, entity shares, and clearing accounts. Store allocation evidence and disputes.
 
-### 34. Create simulation-grade governance for `ASSET_LIFECYCLE_DATABASE_URL` and `ASSET_LIFECYCLE_DATABASE_URL`
+### 34. Asset risk model governance
 
-**Justification:** Complete Asset Lifecycle and Depreciation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Useful-life, impairment, failure, and portfolio models affect accounting and operations.
 
-**Improvement:** Add a policy cockpit where `ASSET_LIFECYCLE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ASSET_LIFECYCLE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Govern models with feature lineage, training data class, drift, explainability, fallback rules, materiality, and review state. Require human approval for material accounting recommendations.
 
-### 35. Create simulation-grade governance for `ASSET_LIFECYCLE_EVENT_TOPIC` and `ASSET_LIFECYCLE_EVENT_TOPIC`
+### 35. Asset audit proof bundles
 
-**Justification:** Complete Asset Lifecycle and Depreciation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Auditors need proof of existence, ownership, valuation, depreciation, transfer, and retirement without full operational data exposure.
 
-**Improvement:** Add a policy cockpit where `ASSET_LIFECYCLE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ASSET_LIFECYCLE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate disclosure-minimized proof bundles for asset existence, book value, depreciation run, physical verification, impairment, and retirement. Include verifier instructions and proof expiry.
 
-### 36. Upgrade `AssetLifecycleWorkbench` into a full specialist command center
+### 36. Asset federation contracts
 
-**Justification:** The PBC UI must expose the complete Asset Lifecycle and Depreciation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Asset data may exist in procurement, maintenance, insurance, tax, and external registers, but this PBC must not share tables.
 
-**Improvement:** Expand `AssetLifecycleWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add federation contracts with source, projection freshness, trust level, allowed use, reconciliation method, and stale-data behavior. Workbench should flag stale or conflicting projections.
 
-### 37. Upgrade `AssetLifecycleDetail` into a full specialist command center
+### 37. Asset identity credential lifecycle
 
-**Justification:** The PBC UI must expose the complete Asset Lifecycle and Depreciation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** High-value assets need verifiable identity and ownership claims across internal and external systems.
 
-**Improvement:** Expand `AssetLifecycleDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add asset credentials with issuer, subject, claim type, validity, revocation status, and verification evidence. Link credentials to acquisition, transfer, insurance, and disposal workflows.
 
-### 38. Upgrade `AssetLifecycleWorkbench` into a full specialist command center
+### 38. Tax book alignment
 
-**Justification:** The PBC UI must expose the complete Asset Lifecycle and Depreciation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Tax books and corporate books often differ in methods, lives, bonus depreciation, and recapture rules.
 
-**Improvement:** Expand `AssetLifecycleWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Consume tax book projections and compare tax/corporate book assignments, depreciation, retirements, and revaluations. Flag mismatches and required tax disclosures.
 
-### 39. Upgrade `AssetLifecycleDetail` into a full specialist command center
+### 39. Asset close cockpit
 
-**Justification:** The PBC UI must expose the complete Asset Lifecycle and Depreciation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Period close requires depreciation, transfers, impairments, retirements, physical verification, and GL handoff visibility.
 
-**Improvement:** Expand `AssetLifecycleDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add a close cockpit with depreciation run status, unposted journals, new assets not in service, pending transfers, impairment reviews, retirement approvals, verification exceptions, and reconciliation status.
 
-### 40. Upgrade `AssetLifecycleWorkbench` into a full specialist command center
+### 40. Depreciation forecast and budget view
 
-**Justification:** The PBC UI must expose the complete Asset Lifecycle and Depreciation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Finance needs future depreciation expense by book, entity, cost center, project, and asset class.
 
-**Improvement:** Expand `AssetLifecycleWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add forecast projections from schedules, planned acquisitions, retirements, impairments, and life changes. Include confidence and scenario assumptions.
 
-### 41. Prove cross-PBC federation for `POST /assets` and `PurchaseReceiptCapitalized`
+### 41. Asset bulk import and migration controls
 
-**Justification:** Asset Lifecycle and Depreciation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Asset registers are often migrated or corrected in bulk, creating high risk of duplicate, invalid, or unbalanced records.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /assets` and consumed event `PurchaseReceiptCapitalized` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add staged import batches with validation, duplicate detection, capitalization policy checks, book assignment checks, sampling approval, partial failure handling, and rollback/correction events.
 
-### 42. Prove cross-PBC federation for `POST /assets/{asset_id}/service` and `MaintenanceCompleted`
+### 42. Asset rules and parameter simulation
 
-**Justification:** Asset Lifecycle and Depreciation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Capitalization thresholds, impairment thresholds, verification intervals, batch sizes, and retirement limits materially change operations.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /assets/{asset_id}/service` and consumed event `MaintenanceCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Simulate rule/parameter changes against historical and open assets, showing changed capitalization, depreciation, impairment reviews, verification workload, retirement approvals, and close blockers.
 
-### 43. Prove cross-PBC federation for `POST /assets/{asset_id}/depreciation-schedules` and `InsurancePolicyChanged`
+### 43. Agent-safe capitalization assistance
 
-**Justification:** Asset Lifecycle and Depreciation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The asset chatbot can help classify acquisitions, but capitalization decisions affect financial statements.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /assets/{asset_id}/depreciation-schedules` and consumed event `InsurancePolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require agent previews with source receipt, suggested asset category, capitalization rule, component split, useful life, book assignments, policy exceptions, and approval route. Agent actions should create drafts only.
 
-### 44. Prove cross-PBC federation for `POST /depreciation-runs` and `TaxBookChanged`
+### 44. Agent-safe depreciation and valuation actions
 
-**Justification:** Asset Lifecycle and Depreciation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Depreciation, revaluation, and impairment actions are financially material and must be controlled.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /depreciation-runs` and consumed event `TaxBookChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Define agent competencies for depreciation explanation, schedule simulation, impairment recommendation, and revaluation review. Require human approval for postings or carrying-value changes.
 
-### 45. Temporal reconstruction and bitemporal audit for Asset Lifecycle and Depreciation
+### 45. Agent-safe physical verification support
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Agents can assist verification planning and exception triage but should not silently resolve existence exceptions.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add agent workflows for count-plan drafting, scan evidence summarization, exception grouping, custodian outreach, and remediation proposals with confirmation gates for financial changes.
 
-### 46. Bulk operations and migration-grade controls for Asset Lifecycle and Depreciation
+### 46. Workbench coverage for all asset operations
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Asset specialists need direct UI access to lifecycle operations, not hidden backend records.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Expand UI into acquisition queue, capitalization workbench, asset register, component topology, book/depreciation console, transfer board, valuation/impairment panel, maintenance-life view, insurance/warranty, verification, retirement/disposal, close cockpit, risk, and agent panels.
 
-### 47. Specialist edge-case playbooks for Asset Lifecycle and Depreciation
+### 47. Continuous asset controls
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Asset controls should run continuously for existence, completeness, depreciation, valuation, and authorization.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add control assertions for untagged assets, assets not placed in service, depreciation omissions, stale useful life, expired insurance, overdue verification, missing custodian, unusual retirement, and GL reconciliation.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Asset Lifecycle and Depreciation
+### 48. Boundary proof for asset-only ownership
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Asset lifecycle must integrate with procurement, maintenance, insurance, tax, GL, identity, and audit without reading their tables.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add static/runtime checks proving every command uses only asset-owned tables plus declared APIs/events/projections. Include failing fixtures for direct foreign-table references.
 
-### 49. Continuous control testing and operational assurance for Asset Lifecycle and Depreciation
+### 49. Asset release readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need a concise measure of whether asset lifecycle is complete enough for production fixed asset accounting.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from acquisition traceability, capitalization controls, book coverage, depreciation proof, transfer governance, valuation controls, verification status, retirement controls, GL/tax/insurance handoffs, UI coverage, boundary proof, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Asset Lifecycle and Depreciation
+### 50. End-to-end asset lifecycle trace
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Asset accounting excellence requires tracing each asset from acquisition through service, depreciation, transfers, maintenance, verification, valuation, insurance, and retirement.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Build an end-to-end trace view using asset-owned records and declared projections. The agent should answer asset status, book value, depreciation, location, custodian, and disposal questions from this trace with source evidence.
