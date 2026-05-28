@@ -3096,3 +3096,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and agent skills. Verification passed: Python compile for touched DSL
   modules, focused LSP completion/doctor tests, `tests/test_dsl_tooling_contracts.py -q`,
   scoped diff whitespace check, and restricted-name scan. Commit: `923e933d`.
+- Current semantic symbol coverage pass makes the symbol-table contract
+  executable. `appgen.semantic-model.v1` now includes `symbol_coverage` using
+  `appgen.symbol-coverage.v1`, and symbol extraction covers required nested
+  kinds such as field groups, component bindings, permissions, agent skills,
+  and deployment units in addition to top-level declarations. `appgen doctor`
+  now checks `semantic_symbol_coverage`. Verification passed: Python compile
+  for touched DSL modules, focused semantic symbol/doctor tests,
+  `tests/test_dsl_tooling_contracts.py -q`, scoped diff whitespace check, and
+  restricted-name scan. Commit: `bae9a900`.
