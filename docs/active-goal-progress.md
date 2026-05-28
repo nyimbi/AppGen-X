@@ -3229,3 +3229,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entrypoints, focused package/audit tests, `tests/test_dsl_tooling_contracts.py
   -q`, tooling-audit JSON proof, scoped diff whitespace check, and
   restricted-name scan. Commit: `731f35ae`.
+- Current Studio visual-edit matrix pass strengthens the IDE/designer evidence
+  required by `docs/tooling.md`. `appgen.designer-visual-edit-matrix.v1` now
+  proves database field edits, form component placement, workflow transition
+  edits, PBC composition includes, package creation, deployment-unit creation,
+  and invalid form binding rejection all run through linted DSL patches before
+  acceptance. `appgen.tooling-audit.v1` embeds this matrix in the IDE visual
+  designer check. Verification passed: Python compile for touched tooling
+  entrypoints, focused visual-edit-matrix/audit tests,
+  `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
+  diff whitespace check, and restricted-name scan. Commit: `8682982f`.
