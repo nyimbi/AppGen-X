@@ -1,315 +1,314 @@
-# Enterprise Lead and Opportunity Management PBC Improvement Backlog
+# Lead Opportunity PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `lead_opportunity`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `lead_opportunity`. The items are specific to revenue pipeline execution: account hierarchy, lead intake, enrichment, deduplication, scoring, assignment, qualification, opportunities, stage history, pipeline forecasting, quote/proposal handoffs, win/loss outcomes, sales activities, coaching insights, customer segment projections, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted sales operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
-- Representative owned tables: `lead_opportunity_lead`, `lead_opportunity_lead_enrichment_snapshot`, `lead_opportunity_lead_dedup_case`, `lead_opportunity_lead_score_snapshot`, `lead_opportunity_lead_assignment`, `lead_opportunity_qualification_decision`, `lead_opportunity_opportunity`, `lead_opportunity_opportunity_stage_history`, `lead_opportunity_pipeline_forecast_snapshot`, `lead_opportunity_quote_proposal_handoff`, `lead_opportunity_opportunity_outcome`, `lead_opportunity_account_hierarchy`, ...
-- Representative operations/APIs: `command_leads`, `command_opportunities`, `command_quote_proposal_handoffs`, `command_opportunity_losses`, `query_pipeline`.
-- Representative events: `LeadQualified`, `OpportunityWon`, `OpportunityLost`, `CustomerUpdated`, `QuoteProposalRequested`.
-- Representative advanced capabilities: `event_sourced_revenue_lifecycle`, `owned_pipeline_schema_boundary`, `multi_tenant_revenue_isolation`, `schema_evolution_resilient_lead_context`, `lead_capture_and_deduplication`, `lead_enrichment_snapshot_execution`, `lead_dedup_case_resolution`, `qualification_decision_execution`, `account_hierarchy_management`, `lead_scoring_and_qualification`, ...
+- Domain purpose: `lead_opportunity` owns revenue pipeline intake, lead scoring, qualification, account hierarchy management, opportunity execution, sales activity evidence, revenue forecasting, and customer-update publication.
+- Owned boundary: leads, enrichment snapshots, dedupe cases, score snapshots, assignments, qualification decisions, opportunities, stage history, forecast snapshots, quote/proposal handoffs, outcomes, account hierarchies, sales activities, coaching insights, audit events, rules, parameters, configuration, governed models, seed data, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameters, rules, schema extensions, event receiving, account hierarchy creation, lead creation/enrichment/qualification, opportunity creation, sales activity recording, stage advancement, quote/proposal handoff, opportunity win/loss, workbench, API/schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `LeadQualified`, `OpportunityWon`, `OpportunityLost`, `CustomerUpdated`, and `QuoteProposalRequested`; consumes `CustomerSegmentUpdated`; integrates with customer, segment, billing, territory, marketing, product, quote/proposal, and finance only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `lead_opportunity_lead`
+### 1. Account hierarchy readiness gate
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Opportunity ownership and forecast rollups are unreliable when account identity, parentage, owner, region, and customer projection evidence are incomplete.
 
-**Improvement:** Extend `lead_opportunity_lead` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lead_capture`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for account id, tenant, parent account, customer projection key, region, owner, active status, duplicate account risk, hierarchy depth, and audit proof before account hierarchy creation.
 
-### 2. Deep specialist lifecycle semantics for `lead_opportunity_lead_enrichment_snapshot`
+### 2. Account hierarchy integrity controls
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Bad account hierarchy creates duplicate selling effort, wrong territory credit, and distorted pipeline forecasts.
 
-**Improvement:** Extend `lead_opportunity_lead_enrichment_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lead_enrichment`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Enforce acyclic parentage, effective dating, parent-child region compatibility, owner inheritance, customer projection freshness, merge/split lineage, and hierarchy rollup recalculation.
 
-### 3. Deep specialist lifecycle semantics for `lead_opportunity_lead_dedup_case`
+### 3. Lead intake readiness gate
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Lead capture must verify source, contact, consent, region, currency, account context, and duplicate risk before entering the pipeline.
 
-**Improvement:** Extend `lead_opportunity_lead_dedup_case` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lead_deduplication`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate source, contact fields, email/domain, tenant, region, currency, estimated value, consent marker, customer/account projection, duplicate candidates, and assignment policy before lead creation.
 
-### 4. Deep specialist lifecycle semantics for `lead_opportunity_lead_score_snapshot`
+### 4. Lead lifecycle state machine
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Leads move through captured, enriched, dedup_review, scored, assigned, qualified, disqualified, converted, stale, and archived states.
 
-**Improvement:** Extend `lead_opportunity_lead_score_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lead_dedup_case_resolution`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement lead transitions with actor, timestamp, reason, score snapshot, assignment evidence, qualification decision, emitted event expectations, and invalid-transition explanations.
 
-### 5. Deep specialist lifecycle semantics for `lead_opportunity_lead_assignment`
+### 5. Lead enrichment snapshot governance
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Enrichment changes firmographic, contact, segment, value, and fit evidence used for qualification.
 
-**Improvement:** Extend `lead_opportunity_lead_assignment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lead_assignment`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store enrichment source, fields changed, confidence, freshness, consent status, segment fit, account match, value estimate, rejected enrichments, and audit hash.
 
-### 6. Deep specialist lifecycle semantics for `lead_opportunity_qualification_decision`
+### 6. Lead dedupe case workflow
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Duplicate leads fragment pipeline ownership and inflate funnel metrics.
 
-**Improvement:** Extend `lead_opportunity_qualification_decision` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lead_scoring`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add dedupe cases with candidate leads, matching factors, confidence, owner conflicts, merge/suppress/keep decisions, reviewer, account impact, and downstream score recalculation.
 
-### 7. Deep specialist lifecycle semantics for `lead_opportunity_opportunity`
+### 7. Lead score snapshot model
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Qualification and assignment need explainable scoring rather than opaque totals.
 
-**Improvement:** Extend `lead_opportunity_opportunity` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lead_qualification`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Record source weight, segment fit, engagement score, account fit, estimated value, region fit, stale activity, negative signals, score version, confidence, and threshold comparison.
 
-### 8. Deep specialist lifecycle semantics for `lead_opportunity_opportunity_stage_history`
+### 8. Assignment engine governance
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Lead assignment affects response time, fairness, territory rules, and quota credit.
 
-**Improvement:** Extend `lead_opportunity_opportunity_stage_history` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `qualification_decisions`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add assignment rules for territory, segment, account owner, workload, skill, language, value, round-robin, named account, and fallback owner with assignment rationale.
 
-### 9. Deep specialist lifecycle semantics for `lead_opportunity_pipeline_forecast_snapshot`
+### 9. Qualification decision evidence
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Qualified leads trigger opportunity creation and must be auditably justified.
 
-**Improvement:** Extend `lead_opportunity_pipeline_forecast_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `opportunity_creation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store threshold, score, missing data, disqualifying factors, reviewer override, decision reason, valid-through date, and `LeadQualified` event evidence.
 
-### 10. Deep specialist lifecycle semantics for `lead_opportunity_quote_proposal_handoff`
+### 10. Open opportunity limit controls
 
-**Justification:** This owned table is part of the Enterprise Lead and Opportunity Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Pipeline, deal velocity, account hierarchy, interaction history, quote handoffs, forecasting, and revenue outcomes.
+**Justification:** Excess open opportunities per account or owner can distort forecasts and reduce execution quality.
 
-**Improvement:** Extend `lead_opportunity_quote_proposal_handoff` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `pipeline_stage_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Enforce configurable limits by account, customer, owner, segment, and region with exception workflow and assignment/reassignment recommendations.
 
-### 11. Make `command_leads` a complete command lifecycle
+### 11. Opportunity creation readiness
 
-**Justification:** High-value users need `command_leads` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Opportunities should be created only from qualified leads or explicit account expansion with value, stage, owner, and close-date evidence.
 
-**Improvement:** Implement `command_leads` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LeadQualified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate qualified lead, account hierarchy, amount, currency, stage, close date, owner, win probability, forecast amount, risk score, and quote/proposal eligibility.
 
-### 12. Make `command_opportunities` a complete command lifecycle
+### 12. Opportunity lifecycle state machine
 
-**Justification:** High-value users need `command_opportunities` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Opportunities require controlled progression through pipeline stages, forecast changes, quote handoffs, win/loss, and closure.
 
-**Improvement:** Implement `command_opportunities` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OpportunityWon`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement states for open, qualified, discovery, proposal, negotiation, commit, won, lost, stalled, slipped, and archived with transition rules and audit events.
 
-### 13. Make `command_quote_proposal_handoffs` a complete command lifecycle
+### 13. Stage history integrity
 
-**Justification:** High-value users need `command_quote_proposal_handoffs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Stage velocity, slippage, and forecast accuracy depend on accurate stage history.
 
-**Improvement:** Implement `command_quote_proposal_handoffs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OpportunityLost`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Record prior/new stage, timestamp, owner, reason, required fields, probability change, expected close-date change, stale activity warning, and forecast snapshot linkage.
 
-### 14. Make `command_opportunity_losses` a complete command lifecycle
+### 14. Pipeline forecast snapshot engine
 
-**Justification:** High-value users need `command_opportunity_losses` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Forecasts must be reproducible by time, stage, probability, owner, region, and confidence.
 
-**Improvement:** Implement `command_opportunity_losses` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Generate snapshots with open amount, weighted amount, commit/best-case/pipeline views, probability, close-date distribution, slippage risk, confidence, and source opportunity list.
 
-### 15. Turn `query_pipeline` into an expert read-model experience
+### 15. Deal slippage detection
 
-**Justification:** Domain experts rely on `query_pipeline` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Slipped opportunities degrade forecast trust and need early intervention.
 
-**Improvement:** Build `query_pipeline` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `QuoteProposalRequested` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Detect close-date pushes, stale activity, stage stagnation, negative sentiment, missing next step, quote delay, and low engagement with slippage risk score and recommended action.
 
-### 16. Make `command_leads` a complete command lifecycle
+### 16. Win probability calibration
 
-**Justification:** High-value users need `command_leads` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Static stage probabilities rarely reflect actual deal quality.
 
-**Improvement:** Implement `command_leads` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LeadQualified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Calibrate win probability from stage, activity sentiment, account fit, segment fit, deal age, owner history, quote status, competitor/risk notes, and historical outcomes.
 
-### 17. Make `command_opportunities` a complete command lifecycle
+### 17. Quote/proposal handoff governance
 
-**Justification:** High-value users need `command_opportunities` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Quote handoffs should include enough opportunity, customer, pricing, and approval context without sharing quote tables.
 
-**Improvement:** Implement `command_opportunities` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OpportunityWon`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store handoff id, opportunity id, requested products/services, amount, currency, customer/account projection, required approvals, deadline, idempotency key, and `QuoteProposalRequested` evidence.
 
-### 18. Make `command_quote_proposal_handoffs` a complete command lifecycle
+### 18. Opportunity outcome capture
 
-**Justification:** High-value users need `command_quote_proposal_handoffs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Win/loss outcomes feed forecasting, coaching, customer updates, and product/pricing feedback.
 
-**Improvement:** Implement `command_quote_proposal_handoffs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OpportunityLost`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Capture outcome type, reason, competitor, amount, close date, sales cycle, lost stage, customer feedback, next opportunity flag, and downstream event evidence.
 
-### 19. Make `command_opportunity_losses` a complete command lifecycle
+### 19. Win handoff controls
 
-**Justification:** High-value users need `command_opportunity_losses` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Won opportunities trigger customer updates and downstream revenue activity.
 
-**Improvement:** Implement `command_opportunity_losses` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Gate `OpportunityWon` and `CustomerUpdated` on final stage, amount/currency validation, account/customer projection freshness, quote/proposal status, owner approval, and duplicate-win prevention.
 
-### 20. Turn `query_pipeline` into an expert read-model experience
+### 20. Loss analysis workflow
 
-**Justification:** Domain experts rely on `query_pipeline` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Losses need structured reasons and coaching feedback to improve future pipeline quality.
 
-**Improvement:** Build `query_pipeline` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `QuoteProposalRequested` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add loss categories, competitor, price/product/fit reason, engagement pattern, stage lost, late-stage risk flags, coaching insight, and forecast model feedback.
 
-### 21. Operationalize `event_sourced_revenue_lifecycle` as a governed decision system
+### 21. Sales activity evidence model
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves response time without hiding assumptions.
+**Justification:** Activity history drives next-best action, forecast confidence, and coaching.
 
-**Improvement:** Promote `event_sourced_revenue_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `response_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store activity type, subject, timestamp, owner, channel, sentiment, participants, outcome, next step, follow-up date, opportunity link, and immutable proof.
 
-### 22. Operationalize `owned_pipeline_schema_boundary` as a governed decision system
+### 22. Sentiment and intent extraction
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves engagement quality without hiding assumptions.
+**Justification:** Activity notes can reveal budget, authority, need, timing, risk, and objections.
 
-**Improvement:** Promote `owned_pipeline_schema_boundary` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `engagement_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extract structured sentiment, intent, objections, buying signals, timeline, decision makers, competitor mentions, and next-best action candidates with reviewer confidence.
 
-### 23. Operationalize `multi_tenant_revenue_isolation` as a governed decision system
+### 23. Next-best-action engine
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves segment lift without hiding assumptions.
+**Justification:** Sellers need prioritized actions that improve conversion and deal velocity.
 
-**Improvement:** Promote `multi_tenant_revenue_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `segment_lift`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Recommend actions based on stage, stale activity, sentiment, missing stakeholders, quote delay, close-date risk, buyer objections, and segment fit with rationale and expected impact.
 
-### 24. Operationalize `schema_evolution_resilient_lead_context` as a governed decision system
+### 24. Sales coaching insight lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves retention signal without hiding assumptions.
+**Justification:** Coaching should be actionable, accepted or dismissed, and measured against outcomes.
 
-**Improvement:** Promote `schema_evolution_resilient_lead_context` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `retention_signal`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add insight states, source activity, recommendation, owner, manager review, accepted/dismissed reason, follow-up evidence, and outcome correlation.
 
-### 25. Operationalize `lead_capture_and_deduplication` as a governed decision system
+### 25. Customer segment projection handling
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves opportunity won throughput without hiding assumptions.
+**Justification:** Lead and opportunity scoring depends on customer-segment context that must remain projection-only.
 
-**Improvement:** Promote `lead_capture_and_deduplication` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `opportunity_won_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Consume `CustomerSegmentUpdated` into package-local projections with segment id, version, freshness, confidence, allowed use, tenant, event id, and retry/dead-letter evidence.
 
-### 26. Operationalize `lead_enrichment_snapshot_execution` as a governed decision system
+### 26. Territory projection controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves opportunity lost throughput without hiding assumptions.
+**Justification:** Assignment and forecast rollups require territory context without direct territory-table access.
 
-**Improvement:** Promote `lead_enrichment_snapshot_execution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `opportunity_lost_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store territory projection freshness, owner mapping, region compatibility, override reason, assignment impact, and boundary evidence for territory-dependent decisions.
 
-### 27. Operationalize `lead_dedup_case_resolution` as a governed decision system
+### 27. Billing projection controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves quote proposal requested throughput without hiding assumptions.
+**Justification:** Existing customer billing health influences expansion opportunities, churn risk, and qualification.
 
-**Improvement:** Promote `lead_dedup_case_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `quote_proposal_requested_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track billing projection status, unpaid balance band, payment health, renewal timing, expansion eligibility, projection freshness, and use in scoring explanations.
 
-### 28. Operationalize `qualification_decision_execution` as a governed decision system
+### 28. Revenue policy screening
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves customer updated throughput without hiding assumptions.
+**Justification:** Pipeline rules vary by region, currency, segment, opportunity type, open opportunity count, and owner assignment.
 
-**Improvement:** Promote `qualification_decision_execution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_updated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Compile deterministic policies for lead qualification, assignment, opportunity creation, stage advancement, quote handoff, win/loss, forecast inclusion, and customer updates.
 
-### 29. Operationalize `account_hierarchy_management` as a governed decision system
+### 29. Runtime parameter governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves response time without hiding assumptions.
+**Justification:** Qualification thresholds, win probability, stale activity days, forecast floor, and source/segment weights materially affect pipeline outcomes.
 
-**Improvement:** Promote `account_hierarchy_management` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `response_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, tenant/region overrides, rollback, and release evidence.
 
-### 30. Operationalize `lead_scoring_and_qualification` as a governed decision system
+### 30. Schema extension governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Lead and Opportunity Management and measurably improves engagement quality without hiding assumptions.
+**Justification:** Sales teams need custom lead/opportunity fields while preserving owned boundaries and auditability.
 
-**Improvement:** Promote `lead_scoring_and_qualification` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `engagement_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Allow extensions only on owned lead/opportunity tables with field validation, sensitivity classification, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 31. Create simulation-grade governance for `LEAD_OPPORTUNITY_DATABASE_URL` and `LEAD_OPPORTUNITY_DATABASE_URL`
+### 31. AppGen-X inbox reliability
 
-**Justification:** Complete Enterprise Lead and Opportunity Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Segment events directly affect lead score, assignment, and opportunity risk.
 
-**Improvement:** Add a policy cockpit where `LEAD_OPPORTUNITY_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LEAD_OPPORTUNITY_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox validation, idempotency, duplicate suppression, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, and workbench replay/quarantine controls.
 
-### 32. Create simulation-grade governance for `LEAD_OPPORTUNITY_EVENT_TOPIC` and `LEAD_OPPORTUNITY_EVENT_TOPIC`
+### 32. AppGen-X outbox delivery assurance
 
-**Justification:** Complete Enterprise Lead and Opportunity Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Lead and opportunity events drive customer, quote, billing, analytics, and audit flows.
 
-**Improvement:** Add a policy cockpit where `LEAD_OPPORTUNITY_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LEAD_OPPORTUNITY_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add outbox state, ordering group, payload hash, retry attempts, next retry, delivery proof, dead-letter linkage, and replay controls for emitted pipeline events.
 
-### 33. Create simulation-grade governance for `LEAD_OPPORTUNITY_RETRY_LIMIT` and `LEAD_OPPORTUNITY_RETRY_LIMIT`
+### 33. Cross-PBC boundary proof
 
-**Justification:** Complete Enterprise Lead and Opportunity Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Lead Opportunity must not directly read customer, segment, billing, territory, marketing, product, quote, or finance tables.
 
-**Improvement:** Add a policy cockpit where `LEAD_OPPORTUNITY_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LEAD_OPPORTUNITY_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, workbench bindings, and agent plans for foreign table access, proving dependencies are APIs, events, or projections only.
 
-### 34. Create simulation-grade governance for `LEAD_OPPORTUNITY_DATABASE_URL` and `LEAD_OPPORTUNITY_DATABASE_URL`
+### 34. Pipeline audit trail
 
-**Justification:** Complete Enterprise Lead and Opportunity Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Revenue audits and disputes require reconstructing lead, assignment, qualification, stage, forecast, activity, and outcome decisions.
 
-**Improvement:** Add a policy cockpit where `LEAD_OPPORTUNITY_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LEAD_OPPORTUNITY_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Hash-chain leads, enrichments, dedupe cases, score snapshots, assignments, qualification decisions, opportunities, activities, forecasts, handoffs, outcomes, and event deliveries.
 
-### 35. Create simulation-grade governance for `LEAD_OPPORTUNITY_EVENT_TOPIC` and `LEAD_OPPORTUNITY_EVENT_TOPIC`
+### 35. Cryptographic pipeline proof
 
-**Justification:** Complete Enterprise Lead and Opportunity Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Leadership and downstream consumers may need proof of pipeline state without exposing sensitive deal details.
 
-**Improvement:** Add a policy cockpit where `LEAD_OPPORTUNITY_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LEAD_OPPORTUNITY_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate selective-disclosure proofs for qualified leads, forecast snapshots, stage history, opportunity outcome, quote handoff, and customer-update publication.
 
-### 36. Upgrade `LeadOpportunityWorkbench` into a full specialist command center
+### 36. Pipeline anomaly detection
 
-**Justification:** The PBC UI must expose the complete Enterprise Lead and Opportunity Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Abnormal pipeline patterns can indicate bad data, sandbagging, duplicate leads, assignment defects, or forecast manipulation.
 
-**Improvement:** Expand `LeadOpportunityWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies in lead velocity, duplicate rate, score jumps, assignment skew, stage aging, close-date pushes, forecast changes, win/loss patterns, and dead-letter spikes.
 
-### 37. Upgrade `LeadOpportunityDetail` into a full specialist command center
+### 37. Stochastic revenue exposure model
 
-**Justification:** The PBC UI must expose the complete Enterprise Lead and Opportunity Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Pipeline risk spans deal loss, slippage, forecast miss, assignment overload, stale activity, and customer health.
 
-**Improvement:** Expand `LeadOpportunityDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Model exposure by opportunity, owner, region, segment, stage, close period, amount, activity health, and projection freshness with mitigation actions.
 
-### 38. Upgrade `LeadEnrichmentBoard` into a full specialist command center
+### 38. Governed revenue model evidence
 
-**Justification:** The PBC UI must expose the complete Enterprise Lead and Opportunity Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Lead scoring, win probability, next-best action, and forecast models influence customer treatment and revenue decisions.
 
-**Improvement:** Expand `LeadEnrichmentBoard` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track model purpose, training window, feature lineage, validation metrics, drift, fairness/segment impact, approval status, rollback, and explainability evidence.
 
-### 39. Upgrade `DedupResolutionQueue` into a full specialist command center
+### 39. Counterfactual pipeline simulation
 
-**Justification:** The PBC UI must expose the complete Enterprise Lead and Opportunity Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Sales leaders need to test assignment, qualification, stage probability, and activity policies before changing live operations.
 
-**Improvement:** Expand `DedupResolutionQueue` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Simulate thresholds, owner assignment modes, stage probabilities, stale activity rules, forecast confidence floors, and max open opportunities with pipeline and conversion effects.
 
-### 40. Upgrade `QualificationDecisionLedger` into a full specialist command center
+### 40. Semantic sales instruction parsing
 
-**Justification:** The PBC UI must expose the complete Enterprise Lead and Opportunity Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Sellers and managers often request pipeline updates in natural language.
 
-**Improvement:** Expand `QualificationDecisionLedger` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Parse instructions into safe query or command previews with target lead/opportunity, action, stage, amount, date, owner, reason, policy checks, and no mutation until confirmed.
 
-### 41. Prove cross-PBC federation for `POST /leads` and `CustomerSegmentUpdated`
+### 41. Agent-safe revenue plans
 
-**Justification:** Enterprise Lead and Opportunity Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The sales chatbot must not silently qualify leads, move stages, request quotes, or close deals.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /leads` and consumed event `CustomerSegmentUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require side-effect-free plans naming command, permission, owned tables, idempotency key, expected event, forecast impact, customer impact, rollback limits, and human confirmation.
 
-### 42. Prove cross-PBC federation for `POST /opportunities` and `CustomerSegmentUpdated`
+### 42. Lead inbox workbench coverage
 
-**Justification:** Enterprise Lead and Opportunity Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Sales operations need complete lead triage, not raw lead rows.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /opportunities` and consumed event `CustomerSegmentUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand lead inbox with source, enrichment gaps, duplicate risk, score factors, assignment status, qualification decision, stale warnings, and safe actions.
 
-### 43. Prove cross-PBC federation for `POST /quote-proposal-handoffs` and `CustomerSegmentUpdated`
+### 43. Opportunity pipeline workbench coverage
 
-**Justification:** Enterprise Lead and Opportunity Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Sellers and leaders need full deal execution visibility.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /quote-proposal-handoffs` and consumed event `CustomerSegmentUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add stage board, stage history, amount, probability, close-date risk, activities, quote handoffs, forecasts, outcomes, coaching, and customer update evidence.
 
-### 44. Prove cross-PBC federation for `POST /opportunity-losses` and `CustomerSegmentUpdated`
+### 44. Forecast rollup cockpit
 
-**Justification:** Enterprise Lead and Opportunity Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Forecast review needs explainable rollups and risk flags.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /opportunity-losses` and consumed event `CustomerSegmentUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add views by owner, region, segment, stage, close period, commit/best-case/pipeline, slippage risk, stale activity, confidence, and changed-since-last-forecast.
 
-### 45. Temporal reconstruction and bitemporal audit for Enterprise Lead and Opportunity Management
+### 45. Dedupe and enrichment console
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Lead quality teams need focused queues for duplicates and enrichment gaps.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add queues for duplicate candidates, incomplete enrichment, stale segment projection, missing account match, invalid contact, and owner conflicts with review actions.
 
-### 46. Bulk operations and migration-grade controls for Enterprise Lead and Opportunity Management
+### 46. Continuous revenue control testing
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Pipeline controls must run continuously across leads, opportunities, forecasts, events, and agent plans.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add assertions for opportunity without qualified lead, win without final stage, quote handoff without opportunity, stale segment scoring, duplicate lead unresolved, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 47. Specialist edge-case playbooks for Enterprise Lead and Opportunity Management
+### 47. Revenue resilience drills
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Revenue operations must degrade safely through duplicate events, projection failures, assignment conflicts, and outbox failures.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add drills for duplicate segment event, projection delay, assignment fallback, stage update conflict, quote handoff outbox failure, win event replay, and workbench degraded mode.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Enterprise Lead and Opportunity Management
+### 48. Customer update governance
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Won opportunities can update customer projections and must be controlled.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Gate `CustomerUpdated` on won outcome, account/customer projection freshness, amount/currency, owner approval, duplicate prevention, payload version, and delivery proof.
 
-### 49. Continuous control testing and operational assurance for Enterprise Lead and Opportunity Management
+### 49. Lead Opportunity readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `lead_opportunity` is ready for live revenue pipeline execution.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from account hierarchy, lead capture, enrichment, dedupe, scoring, assignment, qualification, opportunities, stage history, forecasting, activities, handoffs, outcomes, event reliability, UI coverage, model governance, boundary proof, controls, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Enterprise Lead and Opportunity Management
+### 50. End-to-end revenue pipeline proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Lead Opportunity PBC must prove it can execute the full lifecycle from lead capture to won/lost outcome and customer update.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering account hierarchy, segment event intake, lead capture, enrichment, dedupe, scoring, assignment, qualification, opportunity creation, activity, stage advancement, quote handoff, forecast snapshot, win/loss outcome, emitted events, UI evidence, boundary proof, controls, and agent explanation.
