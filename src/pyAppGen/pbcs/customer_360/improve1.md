@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `customer_360`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `customer_360`. The items are specific to customer data management: unified profiles, identities, account/contact relationships, consent, communication preferences, touchpoints, engagement events, timelines, segmentation projections, merge evidence, privacy controls, customer value and health signals, event reliability, workbench coverage, and agent-assisted customer operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Profiles, touchpoints, preferences, channel history, and customer read models.
-- Representative owned tables: `customer_360_customer_profile`, `customer_360_engagement_event`, `customer_360_communication_preference`, `customer_360_touchpoint`.
-- Representative operations/APIs: `command_profiles`, `command_touchpoints`, `query_customer_timeline`.
-- Representative events: `CustomerUpdated`, `PreferenceChanged`.
-- Representative advanced capabilities: `event_sourced_customer_lifecycle`, `graph_relational_customer_topology`, `multi_tenant_customer_isolation`, `schema_evolution_resilient_customer_schema`, `probabilistic_identity_consent_engagement_scoring`, `real_time_customer_timeline_analytics`, `counterfactual_preference_segment_simulation`, `temporal_customer_value_churn_forecasting`, `autonomous_customer_data_exception_resolution`, `semantic_customer_instruction_parsing`, ...
+- Domain purpose: unified customer profile and engagement registry for customer identities, profile attributes, account and contact relationships, consent, communication preferences, touchpoints, engagement events, customer timelines, lifecycle state, loyalty and service signals, segmentation projections, merge evidence, privacy controls, rules, parameters, configuration, and workbench fragments.
+- Owned boundary: customer profiles, identities, relationships, engagement events, communication preferences, touchpoints, consent records, timelines, segment projections, profile merge cases, rules, parameters, configuration, inbox/outbox, and dead-letter evidence; generated schema evidence also covers identity evidence, survivorship, households, value snapshots, health signals, churn forecasts, exception remediation, cryptographic proofs, policy screenings, controls, federation views, resilience drills, crypto epochs, carbon windows, optimization artifacts, anomaly signals, exposure forecasts, governed models, and seed data.
+- Existing command/query surface: profile creation, identity linking, consent recording, preference updates, touchpoint capture, engagement ingestion, merge case open/resolve, AppGen-X inbox handling, timeline queries, workbench, schema extensions, rules, parameters, configuration, boundary checks, UI contracts, and release evidence.
+- Existing events and dependencies: emits `CustomerUpdated`, `CustomerIdentityLinked`, `PreferenceChanged`, `ConsentRecorded`, `TouchpointCaptured`, `CustomerSegmentUpdated`, `ProfileMergeCaseOpened`, and `ProfileMergeResolved`; consumes billing, payment, order, service, loyalty, and hiring events through declared APIs/projections only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `customer_360_customer_profile`
+### 1. Customer profile identity spine
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** A Customer 360 profile must anchor all downstream engagement, service, order, billing, loyalty, notification, and analytics projections without duplicating customers.
 
-**Improvement:** Extend `customer_360_customer_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `customer_profile`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add an identity spine with stable profile ID, tenant/entity, lifecycle state, source lineage, primary identity, confidence, profile type, effective dates, and immutable creation evidence. Every update should preserve source and survivorship decisions.
 
-### 2. Deep specialist lifecycle semantics for `customer_360_engagement_event`
+### 2. Profile lifecycle state machine
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** Customer records move through prospect, active, dormant, restricted, deleted, anonymized, merged, and archived states with different legal and operational effects.
 
-**Improvement:** Extend `customer_360_engagement_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `profile_versioning`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement lifecycle transitions with allowed commands, permissions, reasons, consent impact, retention effect, emitted events, and audit trace. Block engagement actions when lifecycle state forbids them.
 
-### 3. Deep specialist lifecycle semantics for `customer_360_communication_preference`
+### 3. Profile attribute governance
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** Demographic, firmographic, household, value, and service attributes have different provenance, sensitivity, and survivorship requirements.
 
-**Improvement:** Extend `customer_360_communication_preference` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `profile_attribute_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model attributes with source, confidence, verified/unverified status, sensitivity, effective dates, jurisdiction, retention class, and survivorship priority. UI should distinguish owned values, projections, and inferred values.
 
-### 4. Deep specialist lifecycle semantics for `customer_360_touchpoint`
+### 4. Identity resolution evidence model
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** Linking email, phone, device, external IDs, loyalty IDs, and verified credentials without evidence creates privacy and service risks.
 
-**Improvement:** Extend `customer_360_touchpoint` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `identity_resolution`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store identity evidence with type, normalized value, verifier, confidence, source event, expiry, consent basis, conflict status, and match rationale. Identity links should be explainable and reversible through merge governance.
 
-### 5. Deep specialist lifecycle semantics for `customer_360_customer_profile`
+### 5. Probabilistic identity matching
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** Customer identity is often uncertain because of shared devices, reused phones, misspellings, family accounts, and stale external IDs.
 
-**Improvement:** Extend `customer_360_customer_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `identity_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add probabilistic matching with thresholds, feature explanations, candidate profiles, false-positive risk, false-negative risk, and review queues. Auto-link only above policy confidence and route ambiguous matches to humans.
 
-### 6. Deep specialist lifecycle semantics for `customer_360_engagement_event`
+### 6. Duplicate detection and merge case workflow
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** Duplicate profiles fragment consent, preferences, orders, service context, value metrics, and customer experience.
 
-**Improvement:** Extend `customer_360_engagement_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `identity_match_review`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add merge cases with candidate profiles, evidence, survivorship proposal, affected identities, consent conflicts, relationship impact, downstream event effects, approver, decision, rollback constraints, and emitted `ProfileMergeResolved` evidence.
 
-### 7. Deep specialist lifecycle semantics for `customer_360_communication_preference`
+### 7. Survivorship rule compiler
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** Profile merges and updates need deterministic rules for which data wins under conflicts.
 
-**Improvement:** Extend `customer_360_communication_preference` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `survivorship_rules`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compile survivorship rules by attribute type, source trust, recency, verification, consent, jurisdiction, and manual override. Store rule hash and show field-level survivorship explanations during merge.
 
-### 8. Deep specialist lifecycle semantics for `customer_360_touchpoint`
+### 8. Account, household, and contact relationship graph
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** Customer understanding requires relationships: households, businesses, contacts, dependents, employees, agents, billing accounts, and service accounts.
 
-**Improvement:** Extend `customer_360_touchpoint` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `relationship_graph`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model relationship types, direction, role, authority, effective dates, confidence, privacy constraints, and allowed use cases. Timeline and workbench views should show relationship context without leaking restricted data.
 
-### 9. Deep specialist lifecycle semantics for `customer_360_customer_profile`
+### 9. Consent record lifecycle
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** Consent must be specific, provable, revocable, jurisdiction-aware, and linked to channel and purpose.
 
-**Improvement:** Extend `customer_360_customer_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `households`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model consent with purpose, channel, lawful basis, jurisdiction, capture source, evidence, timestamp, expiry, withdrawal, versioned language, and downstream eligibility. Emit `ConsentRecorded` with idempotent evidence.
 
-### 10. Deep specialist lifecycle semantics for `customer_360_engagement_event`
+### 10. Communication preference center
 
-**Justification:** This owned table is part of the Customer 360 and Engagement Registry operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Profiles, touchpoints, preferences, channel history, and customer read models.
+**Justification:** Preferences are not simple flags; they combine opt-in/out, channel, topic, frequency, quiet hours, language, and legal constraints.
 
-**Improvement:** Extend `customer_360_engagement_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `profile_merge_case`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add preference records for channel, topic, frequency, locale, quiet hours, priority, jurisdiction, consent dependency, source, and effective dates. Preference changes should emit `PreferenceChanged` and update timeline projections.
 
-### 11. Make `command_profiles` a complete command lifecycle
+### 11. Privacy policy screening
 
-**Justification:** High-value users need `command_profiles` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customer actions must comply with consent, jurisdiction, retention, lifecycle state, sensitivity, and purpose limits.
 
-**Improvement:** Implement `command_profiles` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Screen profile updates, identity links, consent changes, touchpoint capture, engagement ingestion, merge resolution, segment projection, and export actions. Store policy version, attributes evaluated, decision, explanation, and override path.
 
-### 12. Make `command_touchpoints` a complete command lifecycle
+### 12. Data subject request workflow
 
-**Justification:** High-value users need `command_touchpoints` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customers may request access, correction, deletion, restriction, portability, or opt-out, and those requests need governed handling.
 
-**Improvement:** Implement `command_touchpoints` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PreferenceChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add request lifecycle with identity verification, request type, scope, jurisdiction, due date, impacted records, allowed actions, proof package, exception reasons, and completion evidence.
 
-### 13. Turn `query_customer_timeline` into an expert read-model experience
+### 13. Touchpoint capture normalization
 
-**Justification:** Domain experts rely on `query_customer_timeline` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Touchpoints from web, mobile, store, email, service, order, payment, support, and field channels have inconsistent metadata.
 
-**Improvement:** Build `query_customer_timeline` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `CustomerUpdated` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Normalize touchpoints with channel, journey stage, device/source, location granularity, actor, purpose, timestamp confidence, consent applicability, and source payload hash. Reject or quarantine touchpoints that violate policy.
 
-### 14. Make `command_profiles` a complete command lifecycle
+### 14. Engagement event ingestion taxonomy
 
-**Justification:** High-value users need `command_profiles` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Engagement events drive timeline, segmentation, value, and churn, so event semantics must be precise.
 
-**Improvement:** Implement `command_profiles` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PreferenceChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Define event types, channel, direction, intent, sentiment, outcome, campaign/service/order reference projection, source trust, timestamp, deduplication key, and replay behavior. Unsupported events should create retry/dead-letter evidence.
 
-### 15. Make `command_touchpoints` a complete command lifecycle
+### 15. Customer timeline reconstruction
 
-**Justification:** High-value users need `command_touchpoints` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customer-facing teams need a chronological, explainable view of profile, consent, preference, engagement, order, billing, service, and loyalty context.
 
-**Improvement:** Implement `command_touchpoints` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build timeline read models with source, event type, projection freshness, sensitivity filters, relationship context, actor, confidence, and redaction rules. Support as-of timeline reconstruction for audits and disputes.
 
-### 16. Turn `query_customer_timeline` into an expert read-model experience
+### 16. Recency, frequency, and value metrics
 
-**Justification:** Domain experts rely on `query_customer_timeline` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Customer value and engagement health need consistent operational metrics derived from events and projections.
 
-**Improvement:** Build `query_customer_timeline` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `PreferenceChanged` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add RFM metrics with calculation window, source projections, currency/value assumptions, channel filters, confidence, and stale-state warnings. Store metric versions so segments and decisions can be reproduced.
 
-### 17. Make `command_profiles` a complete command lifecycle
+### 17. Customer health signal model
 
-**Justification:** High-value users need `command_profiles` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Service, payment, order, loyalty, and engagement events reveal satisfaction, churn, retention, and support risk.
 
-**Improvement:** Implement `command_profiles` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Compute health signals from service closures, order verification, payment capture, loyalty earn, engagement decay, sentiment, complaints, and lifecycle state. Provide reason codes and recommended follow-up actions.
 
-### 18. Make `command_touchpoints` a complete command lifecycle
+### 18. Churn and engagement forecasting
 
-**Justification:** High-value users need `command_touchpoints` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customer teams need proactive retention signals instead of only historical timelines.
 
-**Improvement:** Implement `command_touchpoints` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PreferenceChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Forecast churn and engagement decline by segment, channel, lifecycle, value tier, recent events, service outcomes, and preference constraints. Include confidence, drift, feature lineage, and recommended interventions.
 
-### 19. Turn `query_customer_timeline` into an expert read-model experience
+### 19. Segment projection governance
 
-**Justification:** Domain experts rely on `query_customer_timeline` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Segment membership affects campaigns, personalization, service, eligibility, and analytics, so stale or opaque segments are risky.
 
-**Improvement:** Build `query_customer_timeline` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `CustomerUpdated` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Store segment projections with source, rule/model version, membership confidence, effective dates, purpose, consent dependency, exclusion reason, and freshness. Emit `CustomerSegmentUpdated` when owned segment evidence changes.
 
-### 20. Make `command_profiles` a complete command lifecycle
+### 20. Counterfactual segmentation simulation
 
-**Justification:** High-value users need `command_profiles` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Teams need to understand who would enter or leave a segment before changing rules.
 
-**Improvement:** Implement `command_profiles` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PreferenceChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Simulate segment and preference rule changes against current profiles, showing membership deltas, consent blockers, channel reach, value impact, privacy risk, and workload without mutating state.
 
-### 21. Operationalize `event_sourced_customer_lifecycle` as a governed decision system
+### 21. Customer value snapshot
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves conversion quality without hiding assumptions.
+**Justification:** Value is temporal and cross-domain; Customer 360 should provide a governed read model without owning billing or order tables.
 
-**Improvement:** Promote `event_sourced_customer_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `conversion_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build value snapshots from declared billing, payment, order, and loyalty projections with freshness, window, currency, value type, confidence, and exclusions. Mark projections distinctly from owned profile facts.
 
-### 22. Operationalize `graph_relational_customer_topology` as a governed decision system
+### 22. Service and loyalty signal integration
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves fulfillment accuracy without hiding assumptions.
+**Justification:** Customer experience depends on service outcomes and loyalty activity as much as profile data.
 
-**Improvement:** Promote `graph_relational_customer_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fulfillment_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Project `ServiceTicketClosed` and `LoyaltyRewardEarned` events into service satisfaction, issue resolution, loyalty engagement, reward recency, and health signals. Preserve event lineage and stale projection warnings.
 
-### 23. Operationalize `multi_tenant_customer_isolation` as a governed decision system
+### 23. Candidate-to-customer continuity
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves customer health without hiding assumptions.
+**Justification:** Hiring or candidate events may create relationships that later affect customer or employee-facing contexts.
 
-**Improvement:** Promote `multi_tenant_customer_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_health`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Ingest `CandidateHired` as a bounded projection with identity confidence, relationship type, privacy scope, and allowed downstream use. Prevent inappropriate marketing or service use when purpose is restricted.
 
-### 24. Operationalize `schema_evolution_resilient_customer_schema` as a governed decision system
+### 24. Preference conflict resolution
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves margin impact without hiding assumptions.
+**Justification:** Preferences can conflict across channels, topics, jurisdictions, accounts, households, and source systems.
 
-**Improvement:** Promote `schema_evolution_resilient_customer_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `margin_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add conflict detection, precedence rules, human review, source trust, customer-confirmation requirement, and effective communication eligibility. Timeline should show why a preference wins.
 
-### 25. Operationalize `probabilistic_identity_consent_engagement_scoring` as a governed decision system
+### 25. Consent confidence scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves customer updated throughput without hiding assumptions.
+**Justification:** Old, imported, ambiguous, or unsupported consent evidence may not be safe enough for customer actions.
 
-**Improvement:** Promote `probabilistic_identity_consent_engagement_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_updated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score consent confidence from evidence quality, source, language version, age, jurisdiction, capture method, identity match confidence, and withdrawal history. Block actions below `minimum_consent_confidence`.
 
-### 26. Operationalize `real_time_customer_timeline_analytics` as a governed decision system
+### 26. Customer communication eligibility view
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves preference changed throughput without hiding assumptions.
+**Justification:** Notifications and engagement packages need a safe customer-facing eligibility projection.
 
-**Improvement:** Promote `real_time_customer_timeline_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `preference_changed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Produce eligibility read models by profile, channel, topic, purpose, locale, quiet hours, preference, consent, lifecycle state, and policy result. Keep notifications integration projection-based.
 
-### 27. Operationalize `counterfactual_preference_segment_simulation` as a governed decision system
+### 27. Engagement attribution lineage
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves conversion quality without hiding assumptions.
+**Justification:** Engagement events often originate from campaigns, service cases, orders, support sessions, and loyalty actions, and attribution affects value analysis.
 
-**Improvement:** Promote `counterfactual_preference_segment_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `conversion_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track attribution source, campaign/service/order projection reference, first/last-touch semantics, confidence, and channel contribution. Analytics should cite attribution lineage.
 
-### 28. Operationalize `temporal_customer_value_churn_forecasting` as a governed decision system
+### 28. Sentiment and intent enrichment governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves fulfillment accuracy without hiding assumptions.
+**Justification:** Sentiment and intent are useful but uncertain, subjective, and sensitive.
 
-**Improvement:** Promote `temporal_customer_value_churn_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fulfillment_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store sentiment/intent with model version, source text reference, confidence, reviewer override, sensitivity flag, and allowed use. Avoid using low-confidence sentiment for automated adverse decisions.
 
-### 29. Operationalize `autonomous_customer_data_exception_resolution` as a governed decision system
+### 29. Customer anomaly detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves customer health without hiding assumptions.
+**Justification:** Sudden profile changes, identity churn, preference flips, event spikes, and value drops can indicate fraud, integration defects, or privacy issues.
 
-**Improvement:** Promote `autonomous_customer_data_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_health`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Detect anomalies in identities, profile attributes, consent changes, touchpoints, engagement frequency, segment membership, merge cases, and projection updates. Route anomalies to review with explanations.
 
-### 30. Operationalize `semantic_customer_instruction_parsing` as a governed decision system
+### 30. Stochastic customer exposure model
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer 360 and Engagement Registry and measurably improves margin impact without hiding assumptions.
+**Justification:** Customer risk spans churn, privacy, consent, engagement, value, service dissatisfaction, merge uncertainty, and projection staleness.
 
-**Improvement:** Promote `semantic_customer_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `margin_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model exposure distributions by profile, segment, channel, lifecycle, region, and relationship graph. Provide mitigation suggestions and confidence, not binary labels.
 
-### 31. Create simulation-grade governance for `CUSTOMER_360_DATABASE_URL` and `CUSTOMER_360_DATABASE_URL`
+### 31. Customer MLOps governance
 
-**Justification:** Complete Customer 360 and Engagement Registry coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Identity, churn, health, sentiment, segmentation, and anomaly models affect customer treatment and fairness.
 
-**Improvement:** Add a policy cockpit where `CUSTOMER_360_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CUSTOMER_360_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add governed model evidence with feature lineage, training windows, approval status, explainability, drift monitoring, fairness checks, rollback, and release evidence for every customer model.
 
-### 32. Create simulation-grade governance for `CUSTOMER_360_EVENT_TOPIC` and `CUSTOMER_360_EVENT_TOPIC`
+### 32. Cryptographic customer proof
 
-**Justification:** Complete Customer 360 and Engagement Registry coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Internal or external parties may need proof of consent, preference, identity link, or merge decision without seeing sensitive profile data.
 
-**Improvement:** Add a policy cockpit where `CUSTOMER_360_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CUSTOMER_360_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate redacted proofs for consent, preference, identity evidence, merge decisions, and timeline snapshots with hash, policy version, timestamp, and verification API.
 
-### 33. Create simulation-grade governance for `CUSTOMER_360_RETRY_LIMIT` and `CUSTOMER_360_RETRY_LIMIT`
+### 33. Immutable customer audit trace
 
-**Justification:** Complete Customer 360 and Engagement Registry coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Customer profile and consent changes are high-risk and must be reconstructable.
 
-**Improvement:** Add a policy cockpit where `CUSTOMER_360_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CUSTOMER_360_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Hash-chain profile updates, identity links, consent changes, preference changes, touchpoints, engagement ingestion, merge cases, rule changes, agent previews, and event handling. Support temporal audit in the workbench.
 
-### 34. Create simulation-grade governance for `CUSTOMER_360_DATABASE_URL` and `CUSTOMER_360_DATABASE_URL`
+### 34. AppGen-X event reliability cockpit
 
-**Justification:** Complete Customer 360 and Engagement Registry coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Customer 360 relies on consumed billing, payment, order, service, loyalty, and hiring events plus emitted customer lifecycle events.
 
-**Improvement:** Add a policy cockpit where `CUSTOMER_360_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CUSTOMER_360_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox/outbox/dead-letter views for idempotency, duplicates, retries, handler version, payload lineage, projection freshness, replay eligibility, and downstream event effects. Warn when stale projections affect timeline or eligibility.
 
-### 35. Create simulation-grade governance for `CUSTOMER_360_EVENT_TOPIC` and `CUSTOMER_360_EVENT_TOPIC`
+### 35. Boundary proof for customer ownership
 
-**Justification:** Complete Customer 360 and Engagement Registry coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Customer 360 must integrate with order, billing, service, loyalty, notifications, identity, audit, and analytics without shared tables.
 
-**Improvement:** Add a policy cockpit where `CUSTOMER_360_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CUSTOMER_360_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add static/runtime checks proving commands touch only Customer 360-owned tables plus AppGen-X runtime tables. Include failing fixtures for direct order, billing, service, loyalty, notification, and analytics table access.
 
-### 36. Upgrade `Customer360Workbench` into a full specialist command center
+### 36. Multi-tenant and regional privacy isolation
 
-**Justification:** The PBC UI must expose the complete Customer 360 and Engagement Registry surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Customer data is sensitive and subject to tenant, entity, region, jurisdiction, and purpose constraints.
 
-**Improvement:** Expand `Customer360Workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Enforce isolation in profiles, identities, consents, preferences, touchpoints, timelines, segments, merge cases, events, UI filters, saved views, and agent previews with release evidence.
 
-### 37. Upgrade `Customer360Detail` into a full specialist command center
+### 37. Schema extension governance for profiles
 
-**Justification:** The PBC UI must expose the complete Customer 360 and Engagement Registry surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Customer attributes vary by industry, but uncontrolled extensions create privacy and integration risk.
 
-**Improvement:** Expand `Customer360Detail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Require extension metadata for owned table, field name, sensitivity, purpose, retention, allowed regions, validation, and UI exposure. Reject malformed names and foreign table extensions.
 
-### 38. Upgrade `Customer360Workbench` into a full specialist command center
+### 38. Customer workbench coverage
 
-**Justification:** The PBC UI must expose the complete Customer 360 and Engagement Registry surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Operators, analysts, and auditors need the full Customer 360 surface in UI, not only backend commands.
 
-**Improvement:** Expand `Customer360Workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand UI into profile registry, identity resolution, relationship graph, consent center, preference center, touchpoint capture, engagement ingestion, timeline, merge review, segment dashboard, value/health views, privacy requests, anomalies, controls, rules, parameters, configuration, events, and agent panels.
 
-### 39. Upgrade `Customer360Detail` into a full specialist command center
+### 39. Agent-safe customer document intake
 
-**Justification:** The PBC UI must expose the complete Customer 360 and Engagement Registry surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** The Customer 360 chatbot should parse contact-center notes, preference instructions, consent forms, profile updates, and merge evidence without unsafe writes.
 
-**Improvement:** Expand `Customer360Detail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add intake skills that extract candidate customer facts, map them to owned tables, validate rules/permissions/privacy, reject foreign-table mutations, and produce side-effect-free previews with confidence, risks, confirmations, and expected AppGen-X events.
 
-### 40. Upgrade `Customer360Workbench` into a full specialist command center
+### 40. Agent-safe profile and consent actions
 
-**Justification:** The PBC UI must expose the complete Customer 360 and Engagement Registry surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** AI assistance around customer data can create privacy violations if it mutates records without controls.
 
-**Improvement:** Expand `Customer360Workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Require agent plans for profile updates, identity links, consent records, preference changes, touchpoint capture, merge resolution, and data subject requests to list command, permission, owned tables, idempotency key, emitted event, privacy basis, rollback limits, and human approval.
 
-### 41. Prove cross-PBC federation for `POST /profiles` and `InvoiceIssued`
+### 41. Customer federation views
 
-**Justification:** Customer 360 and Engagement Registry must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Business users need a unified view enriched with order, billing, service, loyalty, notification, and analytics signals without shared datastore access.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /profiles` and consumed event `InvoiceIssued` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Build federated views using declared projections with freshness, source event, confidence, purpose limit, and boundary evidence. UI should mark projected data distinctly from Customer 360-owned data.
 
-### 42. Prove cross-PBC federation for `POST /touchpoints` and `PaymentCaptured`
+### 42. Channel allocation optimization
 
-**Justification:** Customer 360 and Engagement Registry must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Engagement channels should be allocated based on consent, preference, value, urgency, fatigue, and fairness.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /touchpoints` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add optimization for next-best eligible channel with frequency caps, quiet hours, consent confidence, expected value, customer fatigue, service urgency, and fairness constraints. Keep execution in downstream communication packages.
 
-### 43. Prove cross-PBC federation for `GET /customer-timeline` and `CandidateHired`
+### 43. Carbon-aware customer processing
 
-**Justification:** Customer 360 and Engagement Registry must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Large customer workloads, batch enrichment, and analytics can have operational energy impact.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /customer-timeline` and consumed event `CandidateHired` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add carbon-aware scheduling windows for non-urgent enrichment, segmentation rebuilds, embedding generation, and analytics refresh while preserving urgent consent/privacy actions.
 
-### 44. Prove cross-PBC federation for `POST /profiles` and `InvoiceIssued`
+### 44. Rule and parameter simulation
 
-**Justification:** Customer 360 and Engagement Registry must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Changing identity thresholds, churn thresholds, consent confidence, engagement decay, or retention periods materially changes customer operations.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /profiles` and consumed event `InvoiceIssued` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Simulate changes against current and historical profiles, showing match changes, merge workload, consent eligibility, segment deltas, churn alerts, retention actions, dead-letter volume, and privacy risk.
 
-### 45. Temporal reconstruction and bitemporal audit for Customer 360 and Engagement Registry
+### 45. Data retention and minimization controls
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Customer 360 must retain enough history for service and audit while minimizing unnecessary personal data.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add retention schedules by record type, purpose, jurisdiction, consent, lifecycle state, legal hold, and anonymization policy. Workbench should show records approaching purge or anonymization.
 
-### 46. Bulk operations and migration-grade controls for Customer 360 and Engagement Registry
+### 46. Resilience drills for customer data routes
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Customer projections and events can arrive late, duplicate, malformed, or unavailable.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add drills for duplicate events, unsupported events, dead-letter replay, projection outage, identity conflict, consent withdrawal during processing, and merge rollback. Store drill evidence in release gates.
 
-### 47. Specialist edge-case playbooks for Customer 360 and Engagement Registry
+### 47. Continuous customer control testing
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Customer controls should run continuously across identity, consent, preferences, privacy, merges, timelines, and event handling.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add assertions for low-confidence identity auto-link, missing consent evidence, preference conflict, restricted lifecycle engagement, cross-tenant leakage, stale projection use, merge without approval, dead-letter aging, and agent-preview bypass.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Customer 360 and Engagement Registry
+### 48. Customer timeline quality score
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** A timeline can look complete while missing key sources, stale projections, or sensitive redactions.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Score timeline quality from source coverage, projection freshness, event ordering, deduplication, consent filtering, redaction completeness, relationship context, and unresolved exceptions. Show gaps by profile.
 
-### 49. Continuous control testing and operational assurance for Customer 360 and Engagement Registry
+### 49. Customer 360 readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether Customer 360 is ready for production customer operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from profile schema, identity confidence, consent policy, preferences, touchpoint coverage, timeline quality, merge governance, privacy workflows, event reliability, UI coverage, boundary proof, control assertions, model governance, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Customer 360 and Engagement Registry
+### 50. End-to-end customer profile proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Customer 360 PBC must prove it can manage the full customer lifecycle with privacy and boundary controls.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering profile creation, identity link, consent record, preference change, touchpoint capture, engagement ingestion, timeline projection, merge review, segment update, emitted events, privacy proof, UI evidence, controls, and agent explanation.
