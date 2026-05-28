@@ -7,6 +7,7 @@ import hashlib
 from .manifest import PBC_MANIFEST
 from . import routes
 from . import services
+from .app_surface import document_instruction_trade_plan
 
 
 PBC_KEY = 'cross_border_trade'
@@ -93,6 +94,7 @@ def document_instruction_plan(document=None, instructions=None):
     document_text = str(document or '')
     instruction_text = str(instructions or '')
     digest = hashlib.sha256(f'{PBC_KEY}:{document_text}:{instruction_text}'.encode('utf-8')).hexdigest()
+    domain_plan = document_instruction_trade_plan(document_text, instruction_text)
     return {
         'ok': bool(document_text or instruction_text),
         'pbc': PBC_KEY,
@@ -100,6 +102,12 @@ def document_instruction_plan(document=None, instructions=None):
         'document_actions': _DOCUMENT_ACTIONS,
         'candidate_tables': _owned_tables(),
         'candidate_operations': _command_operations() + _query_operations(),
+        'domain_plan': domain_plan,
+        'crud_preview': {
+            'operation': domain_plan['proposed_operation'],
+            'table': domain_plan['target_table'],
+            'event_contract': 'AppGen-X',
+        },
         'requires_human_confirmation': True,
         'side_effects': (),
     }

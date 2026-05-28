@@ -8,6 +8,7 @@ from .runtime import CROSS_BORDER_TRADE_EMITTED_EVENT_TYPES
 from .runtime import CROSS_BORDER_TRADE_REQUIRED_EVENT_TOPIC
 from .runtime import cross_border_trade_build_workbench_view
 from .runtime import cross_border_trade_permissions_contract
+from .app_surface import single_pbc_trade_app_contract, trade_controls_contract, trade_forms_contract, trade_wizards_contract
 
 
 CROSS_BORDER_TRADE_UI_FRAGMENT_KEYS = (
@@ -31,12 +32,17 @@ CROSS_BORDER_TRADE_UI_FRAGMENT_KEYS = (
 
 def cross_border_trade_ui_contract() -> dict:
     permissions = cross_border_trade_permissions_contract()
+    single_pbc_app = single_pbc_trade_app_contract()
     return {
         "format": "appgen.cross-border-trade-ui-contract.v1",
         "ok": True,
         "pbc": "cross_border_trade",
         "implementation_directory": "src/pyAppGen/pbcs/cross_border_trade",
         "fragments": CROSS_BORDER_TRADE_UI_FRAGMENT_KEYS,
+        "forms": trade_forms_contract()["forms"],
+        "wizards": trade_wizards_contract()["wizards"],
+        "controls": trade_controls_contract()["controls"],
+        "single_pbc_app": single_pbc_app,
         "routes": (
             "/workbench/pbcs/cross_border_trade",
             "/workbench/pbcs/cross_border_trade/classifications",
@@ -171,6 +177,18 @@ def cross_border_trade_ui_contract() -> dict:
     }
 
 
+def cross_border_trade_forms_contract() -> dict:
+    return trade_forms_contract()
+
+
+def cross_border_trade_wizards_contract() -> dict:
+    return trade_wizards_contract()
+
+
+def cross_border_trade_controls_contract() -> dict:
+    return trade_controls_contract()
+
+
 def cross_border_trade_render_workbench(
     state: dict,
     *,
@@ -229,6 +247,10 @@ def cross_border_trade_render_workbench(
         "route": "/workbench/pbcs/cross_border_trade",
         "fragments": contract["fragments"],
         "cards": cards,
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "single_pbc_app": contract["single_pbc_app"],
         "visible_actions": visible_actions,
         "locked_actions": tuple(
             action for action in contract["action_permissions"] if action not in visible_actions
@@ -300,6 +322,10 @@ def smoke_test():
         and bool(contract.get("routes"))
         and bool(cards)
         and bool(contract.get("action_permissions"))
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and contract.get("single_pbc_app", {}).get("single_pbc_app") is True
         and bool(configuration_editor)
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
         and bool(contract.get("parameter_editor"))

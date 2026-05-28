@@ -150,6 +150,10 @@ CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS = (
     "carrier_status_tracking",
     "document_packet_lifecycle",
     "denied_party_case_management",
+    "single_pbc_domain_app",
+    "forms",
+    "wizards",
+    "controls",
 )
 
 _SUPPORTED_PARAMETERS = {
@@ -230,6 +234,9 @@ _DEFAULT_BROKERS = (
 
 def cross_border_trade_runtime_capabilities() -> dict:
     smoke = cross_border_trade_runtime_smoke()
+    from .app_surface import single_pbc_trade_app_contract
+
+    app = single_pbc_trade_app_contract()
     return {
         "format": "appgen.cross-border-trade-runtime-capabilities.v1",
         "ok": smoke["ok"],
@@ -243,6 +250,10 @@ def cross_border_trade_runtime_capabilities() -> dict:
         "emits": CROSS_BORDER_TRADE_EMITTED_EVENT_TYPES,
         "capabilities": CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS,
+        "single_pbc_app": app,
+        "forms": app["forms"],
+        "wizards": app["wizards"],
+        "controls": app["controls"],
         "operations": (
             "configure_runtime",
             "set_parameter",
@@ -276,6 +287,7 @@ def cross_border_trade_runtime_capabilities() -> dict:
 
 
 def cross_border_trade_runtime_smoke() -> dict:
+    from .app_surface import app_surface_smoke_test
     from .ui import cross_border_trade_ui_contract
 
     state = cross_border_trade_empty_state()
@@ -575,6 +587,7 @@ def cross_border_trade_runtime_smoke() -> dict:
         "trade_risk",
         {"features": ("destination", "classification", "counterparty"), "auc": 0.9, "drift_score": 0.04},
     )
+    app_surface = app_surface_smoke_test()
     workbench = cross_border_trade_build_workbench_view(state, tenant="tenant_alpha")
     boundary = cross_border_trade_verify_owned_table_boundary(
         (
@@ -642,6 +655,7 @@ def cross_border_trade_runtime_smoke() -> dict:
         {"id": "parameter_engine", "ok": len(state["parameters"]) >= 10},
         {"id": "rule_engine", "ok": bool(state["rules"]) and all(rule["compiled_hash"] for rule in state["rules"].values())},
         {"id": "seed_data", "ok": state["seed_data"]["owned_tables"] == CROSS_BORDER_TRADE_OWNED_TABLES},
+        {"id": "single_pbc_domain_app", "ok": app_surface["ok"] is True},
         {
             "id": "workbench_ui",
             "ok": workbench["binding_evidence"]["owned_tables"] == CROSS_BORDER_TRADE_OWNED_TABLES
@@ -658,6 +672,7 @@ def cross_border_trade_runtime_smoke() -> dict:
         "checks": checks,
         "blocking_gaps": blocking_gaps,
         "workbench": workbench,
+        "single_pbc_app": app_surface,
     }
 
 
