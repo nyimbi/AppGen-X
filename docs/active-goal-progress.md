@@ -3258,6 +3258,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   passed`), selected aviation `pbc_implementation_release_audit`, selected
   aviation `pbc_generation_smoke_audit`, Python compile, and scoped diff
   whitespace check. Commit: `72b17c1b`.
+- Current finance/platform PBC batch delivered executable code for
+  `audit_ledger`, `asset_lifecycle`, `ar_credit`, and `api_gateway_mesh`.
+  The batch adds audit proof and notarization behavior, versioned depreciation
+  and idempotent depreciation runs, receivables/credit workflow execution, and
+  gateway route-publication safety analysis, each wired through the owned PBC
+  runtime/service/UI/agent/release-evidence surfaces with README,
+  implementation-status, implementation-plan, and focused tests. Verification
+  passed: combined implementation/runtime/contract suites for the four PBCs
+  (`65 passed`), selected four-PBC `pbc_implementation_release_audit`,
+  selected four-PBC `pbc_generation_smoke_audit`, and scoped diff whitespace
+  check. Commit: `6d6ce83e`.
 - Current Studio visual-edit matrix pass strengthens the IDE/designer evidence
   required by `docs/tooling.md`. `appgen.designer-visual-edit-matrix.v1` now
   proves database field edits, form component placement, workflow transition
@@ -3287,3 +3298,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tooling entrypoints, focused formatter/audit tests,
   `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
   diff whitespace check, and restricted-name scan. Commit: `ef136d32`.
+- Current natural-language planner contract pass closes the supported edit
+  operation coverage gap in `docs/tooling.md`. `appgen.nl-plan-contract-audit.v1`
+  now proves bounded, linted DSL patches for add table, field, relationship,
+  view section, component placement, handler, operation, rule, flow transition,
+  PBC include, API/event contract, package/deployment unit, and agent
+  skill/permission prompts, and proves out-of-DSL generated-code requests are
+  rejected with `AGX1201`. `appgen.tooling-audit.v1` embeds this contract under
+  the natural-language planner section. Verification passed: Python compile for
+  touched tooling entrypoints, focused NL/audit tests,
+  `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
+  diff whitespace check, and restricted-name scan. Commit: pending.

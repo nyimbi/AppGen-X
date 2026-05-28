@@ -1003,6 +1003,12 @@ Supported edit operations:
 - add package/deployment unit;
 - add agent skill and permission.
 
+`appgen.nl-plan-contract-audit.v1` is the executable proof for this list. It
+runs a fixture prompt for each supported operation, verifies that accepted
+requests produce DSL patches, lint results, migration previews, generated test
+plans, and token-budget notes, and verifies that out-of-DSL requests are
+rejected with `AGX1201` instead of generating code.
+
 ## Package And Verifier Tooling
 
 Release verifiers should generate evidence for each target.
