@@ -2680,7 +2680,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   service-method adapters, relationship lookups, offline replay, replication
   monitoring, module smokes, and release scenarios without unpacking nested
   payloads. Verification is focused under the low-battery delivery constraint.
-  Commit: pending.
+  Commit: `6888313`.
 - Current PBC specification gate pass makes first-class agent/chatbot skills
   and side-effect-free self-registration explicit specification requirements.
   All 47 PBC `SPECIFICATION.md` files now include package-local agent, chatbot,
