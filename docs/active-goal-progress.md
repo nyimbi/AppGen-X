@@ -3247,6 +3247,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   is the explicit command-line override. Verification passed: Python compile
   for touched tooling entrypoints and full `appgen tooling-audit --json` with
   `16/16` checks and no blocking gaps. Commit: `cf0742cb`.
+- Current test-strategy CLI audit pass closes the gap between helper-level
+  fixture evidence and the documented CI gate commands. `appgen.tooling-audit.v1`
+  now embeds `appgen.test-strategy-cli-audit.v1`, which runs
+  `appgen diagnostics --audit-fixtures --json`, `appgen parser-golden --json`,
+  `appgen drift <file> --json`, and `appgen doctor --json` through the command
+  boundary and proves the expected diagnostic fixture, parser golden, semantic
+  drift, and doctor report contracts. Verification passed: Python compile for
+  touched tooling entrypoints and full `appgen tooling-audit --json` with
+  `16/16` checks and no blocking gaps. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,

@@ -2138,6 +2138,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         graph_cli = _tooling_audit_graph_cli_formats(Path(tmp), source)
         explain_cli = _tooling_audit_explain_cli_formats(Path(tmp), source)
         migration_cli = _tooling_audit_migration_cli(Path(tmp))
+        test_strategy_cli = _tooling_audit_test_strategy_cli(Path(tmp), source)
         generation = generate_report_dsl(
             source,
             source_name="tooling-audit.appgen",
@@ -2373,10 +2374,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "parser_golden_and_drift_gates",
-            parser_golden["ok"] and drift["ok"] and doctor["ok"],
-            "Parser golden, semantic drift, and doctor gates prove grammar coverage and shared-model alignment across tooling surfaces.",
+            parser_golden["ok"] and drift["ok"] and doctor["ok"] and test_strategy_cli["ok"],
+            "Parser golden, diagnostic fixture, semantic drift, and doctor gates prove grammar coverage and shared-model alignment across tooling surfaces.",
             "docs/tooling.md#test-strategy",
-            {"parser": parser_golden.get("format"), "drift": drift.get("format"), "doctor": doctor.get("format")},
+            {
+                "parser": parser_golden.get("format"),
+                "drift": drift.get("format"),
+                "doctor": doctor.get("format"),
+                "cli": test_strategy_cli,
+            },
         ),
     )
     sections = tuple(sorted({check["section"] for check in checks}))
@@ -2933,6 +2939,73 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
     )
     return {
         "format": "appgen.validate-generate-cli-audit.v1",
+        "ok": all(case["ok"] for case in cases),
+        "cases": cases,
+    }
+
+
+def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
+    source_path = tmp / "test-strategy.appgen"
+    source_path.write_text(source, encoding="utf-8")
+
+    def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        try:
+            payload = json.loads(output.getvalue())
+        except json.JSONDecodeError:
+            payload = {}
+        return exit_code, payload
+
+    diagnostics_exit, diagnostics_payload = run_json(("diagnostics", "--audit-fixtures", "--json"))
+    parser_exit, parser_payload = run_json(("parser-golden", "--json"))
+    drift_exit, drift_payload = run_json(("drift", str(source_path), "--json"))
+    doctor_exit, doctor_payload = run_json(("doctor", "--json"))
+    cases = (
+        {
+            "case": "diagnostics_audit_fixtures",
+            "ok": diagnostics_exit == 0
+            and diagnostics_payload.get("format") == "appgen.diagnostic-fixture-audit.v1"
+            and diagnostics_payload.get("ok") is True
+            and not diagnostics_payload.get("missing_codes"),
+            "exit_code": diagnostics_exit,
+            "payload_format": diagnostics_payload.get("format"),
+            "required_count": len(diagnostics_payload.get("required_codes", ())),
+        },
+        {
+            "case": "parser_golden",
+            "ok": parser_exit == 0
+            and parser_payload.get("format") == "appgen.parser-golden-audit.v1"
+            and parser_payload.get("ok") is True
+            and not parser_payload.get("missing_constructs"),
+            "exit_code": parser_exit,
+            "payload_format": parser_payload.get("format"),
+            "fixture_count": parser_payload.get("fixture_count"),
+        },
+        {
+            "case": "semantic_drift",
+            "ok": drift_exit == 0
+            and drift_payload.get("format") == "appgen.semantic-drift-audit.v1"
+            and drift_payload.get("ok") is True
+            and {"cli", "lsp", "studio", "graph", "release_verifier"} <= set(drift_payload.get("surfaces", ())),
+            "exit_code": drift_exit,
+            "payload_format": drift_payload.get("format"),
+            "surfaces": tuple(drift_payload.get("surfaces", ())),
+        },
+        {
+            "case": "doctor",
+            "ok": doctor_exit == 0
+            and doctor_payload.get("format") == "appgen.doctor-report.v1"
+            and doctor_payload.get("ok") is True
+            and not doctor_payload.get("blocking_gaps"),
+            "exit_code": doctor_exit,
+            "payload_format": doctor_payload.get("format"),
+            "check_count": len(doctor_payload.get("checks", ())),
+        },
+    )
+    return {
+        "format": "appgen.test-strategy-cli-audit.v1",
         "ok": all(case["ok"] for case in cases),
         "cases": cases,
     }
