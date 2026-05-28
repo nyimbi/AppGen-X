@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `multi_sided_market`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `multi_sided_market`. Each item is specific to multi-party market exchange: participant roles, listings, goods, services, assets, availability, bookings, rentals, loans, barter, trades, sales, proposals, escrow, settlements, disputes, reputation, market rules, dynamic matching, trust, liquidity, market clearing, and governed agent assistance. The intent is complete domain coverage for a better-than-world-class market exchange PBC while preserving AppGen-X package boundaries.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
-- Representative owned tables: `multi_sided_market_participant_profile`, `multi_sided_market_marketplace_listing`, `multi_sided_market_listing_asset`, `multi_sided_market_service_offer`, `multi_sided_market_availability_window`, `multi_sided_market_booking_reservation`, `multi_sided_market_rental_contract`, `multi_sided_market_loan_agreement`, `multi_sided_market_barter_offer`, `multi_sided_market_trade_order`, `multi_sided_market_sale_order`, `multi_sided_market_exchange_proposal`, ...
-- Representative operations/APIs: `command_market_participants`, `command_market_listings`, `command_market_listing_assets`, `command_market_service_offers`, `command_market_availability_windows`, `command_market_trade_orders`, `command_market_barter_offers`, `command_market_exchange_proposals`, `command_market_sale_orders`, `command_market_bookings`, `command_market_rentals`, `command_market_loans`, ...
-- Representative events: `MarketParticipantVerified`, `MarketListingPublished`, `ListingAssetRegistered`, `ServiceOfferCreated`, `AvailabilityWindowPublished`, `TradeOrderPlaced`, `BarterOfferMatched`, `ExchangeProposalPrepared`, `SaleCompleted`, `BookingReserved`, ...
-- Representative advanced capabilities: `multi_party_exchange_graph_matching`, `barter_equivalence_valuation`, `combinatorial_trade_optimization`, `dynamic_liquidity_and_trust_scoring`, `availability_aware_booking_optimization`, `rental_condition_and_collateral_modeling`, `loan_term_risk_simulation`, `escrow_release_policy_compilation`, `real_time_market_clearing_projection`, `counterfactual_price_and_slot_simulation`, ...
+- Domain purpose: supports marketplaces where participants trade, barter, sell, book, rent, and loan goods or services.
+- Owned tables include participant profile, marketplace listing, listing asset, service offer, availability window, booking reservation, rental contract, loan agreement, barter offer, trade order, sale order, exchange proposal, escrow account, settlement instruction, dispute case, reputation signal, market rule, market parameter, schema extension, governed model, outbox, inbox, and dead-letter evidence.
+- Operations include participant verification, listing publication, asset registration, service offer creation, availability publication, trade order placement, barter matching, exchange proposal preparation, sale completion, booking reservation, rental start, loan issue, escrow preparation, escrow release policy compilation, settlement preparation, reputation signal recording, dispute opening/resolution, market-clearing projection, and governed CRUD planning.
+- Events include `MarketParticipantVerified`, `MarketListingPublished`, `ListingAssetRegistered`, `ServiceOfferCreated`, `AvailabilityWindowPublished`, `TradeOrderPlaced`, `BarterOfferMatched`, `ExchangeProposalPrepared`, `SaleCompleted`, `BookingReserved`, `RentalStarted`, `LoanIssued`, `EscrowOpened`, `EscrowReleased`, `MarketSettlementPrepared`, `ReputationSignalRecorded`, `MarketDisputeOpened`, `MarketDisputeResolved`, and `MarketClearingProjected`.
+- Existing advanced claims include multi-party exchange graph matching, barter equivalence valuation, combinatorial trade optimization, dynamic liquidity and trust scoring, availability-aware booking, rental condition and collateral modeling, loan term risk simulation, escrow release policy compilation, market clearing projections, counterfactual pricing and slot simulation, semantic listing understanding, dispute triage, collusion anomaly detection, reputation proofs, carbon-aware fulfillment, and cross-PBC catalog/inventory/payment/tax integration.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `multi_sided_market_participant_profile`
+### 1. Participant Role and Capability Graph
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Multi-sided markets need participants who can act as buyers, sellers, providers, borrowers, lenders, renters, owners, brokers, and dispute respondents. A flat participant record cannot enforce role-specific rights and obligations.
 
-**Improvement:** Extend `multi_sided_market_participant_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `participant_onboarding`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand participant profiles with role graph, verified capabilities, jurisdiction, service area, trust tier, policy restrictions, payout eligibility, borrowing eligibility, lending authority, business identity, and role-effective dates. Commands should validate role permissions before listings, bookings, loans, or settlements.
 
-### 2. Deep specialist lifecycle semantics for `multi_sided_market_marketplace_listing`
+### 2. Participant Verification and Trust Onboarding
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Market safety depends on knowing who can transact, hold escrow, offer regulated goods or services, receive settlement, or lend assets. Weak onboarding creates fraud, disputes, and regulatory exposure.
 
-**Improvement:** Extend `multi_sided_market_marketplace_listing` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `seller_buyer_provider_borrower_roles`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add verification workflows with identity evidence, business documents, payment readiness projection, fraud risk projection, address/region checks, role-specific document requirements, and trust tier assignment. Emit `MarketParticipantVerified` only when evidence and policy requirements are met.
 
-### 3. Deep specialist lifecycle semantics for `multi_sided_market_listing_asset`
+### 3. Listing Taxonomy and Exchange Mode Eligibility
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Listings can support direct sale, booking, rental, loan, barter, trade, bundle, auction-like negotiation, or service delivery. Each mode has different policy, availability, pricing, and fulfillment requirements.
 
-**Improvement:** Extend `multi_sided_market_listing_asset` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `goods_listing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand marketplace listings with exchange mode matrix, listing taxonomy, prohibited category checks, required disclosures, price/consideration types, service/goods distinction, regulated status, and supported settlement paths. The listing console should show eligibility blockers by mode.
 
-### 4. Deep specialist lifecycle semantics for `multi_sided_market_service_offer`
+### 4. Listing Asset Condition and Provenance
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Goods, rental assets, loanable items, and traded assets need condition, authenticity, ownership, serial identity, defects, location, and custody evidence. Generic assets make exchanges risky.
 
-**Improvement:** Extend `multi_sided_market_service_offer` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `service_listing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add asset condition records, photos, inspection status, ownership proof, authenticity evidence, serial numbers, defect disclosures, custody holder, location, and depreciation assumptions. Use condition evidence for rentals, loans, disputes, collateral, and reputation.
 
-### 5. Deep specialist lifecycle semantics for `multi_sided_market_availability_window`
+### 5. Service Offer Scope and Fulfillment Definition
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Service marketplaces need precise scope, duration, deliverables, qualifications, service area, cancellation terms, required inputs, and acceptance criteria.
 
-**Improvement:** Extend `multi_sided_market_availability_window` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `availability_calendar`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand service offers with deliverable templates, provider credentials, duration, service radius, remote/on-site mode, prerequisites, cancellation windows, acceptance criteria, recurrence, and capacity. Booking and dispute workflows should cite the offer scope.
 
-### 6. Deep specialist lifecycle semantics for `multi_sided_market_booking_reservation`
+### 6. Availability Window Capacity Semantics
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Availability is not just start/end time. It can include capacity, simultaneous bookings, buffers, location constraints, blackout periods, provider calendars, asset turnaround, and hold expiry.
 
-**Improvement:** Extend `multi_sided_market_booking_reservation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `booking_reservation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade availability windows with capacity units, reserved count, pending holds, setup/turnaround buffers, location, provider/asset dependency, recurrence, blackout reason, and overbooking policy. Reservations should reserve capacity atomically with idempotency.
 
-### 7. Deep specialist lifecycle semantics for `multi_sided_market_rental_contract`
+### 7. Hold, Expiry, and Reservation Consistency
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Marketplaces fail when holds linger, double-book, or expire inconsistently across booking, rental, sale, and barter workflows.
 
-**Improvement:** Extend `multi_sided_market_rental_contract` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rental_contracting`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add reservation hold states, expiry timers, release reasons, waitlists, replacement offers, and conflict resolution. Publish availability changes when holds expire or reservations become confirmed.
 
-### 8. Deep specialist lifecycle semantics for `multi_sided_market_loan_agreement`
+### 8. Booking Optimization and Rescheduling
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Booking markets need to optimize slot choice across participant preference, provider capacity, trust, cancellation risk, location, and fulfillment cost.
 
-**Improvement:** Extend `multi_sided_market_loan_agreement` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `loan_agreement_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add booking optimization that recommends time slots, alternate providers/assets, split bookings, waitlist promotion, and reschedule options. Store counterfactual slot simulations and require approval for changes that displace confirmed bookings.
 
-### 9. Deep specialist lifecycle semantics for `multi_sided_market_barter_offer`
+### 9. Rental Contract Lifecycle
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Rentals involve condition at handoff/return, duration, late returns, deposits, collateral, maintenance, usage limits, damage, and extension. A sale-like order cannot cover rental risk.
 
-**Improvement:** Extend `multi_sided_market_barter_offer` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `barter_negotiation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand rental contracts with handoff checklist, return checklist, deposit/collateral, allowed use, late fee rules, extension process, condition deltas, maintenance obligations, and damage adjudication. Link rental state to escrow and dispute workflows.
 
-### 10. Deep specialist lifecycle semantics for `multi_sided_market_trade_order`
+### 10. Loan Agreement and Return Obligation Modeling
 
-**Justification:** This owned table is part of the Multi-Sided Market Exchange operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Participant, listing, exchange, booking, rental, loan, escrow, settlement, reputation, and dispute orchestration for goods and services.
+**Justification:** Loaning goods differs from renting: value may be non-monetary, obligations can be social or contractual, and risk depends on due dates, collateral, borrower trust, and use restrictions.
 
-**Improvement:** Extend `multi_sided_market_trade_order` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `trade_order_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add loan agreements with lender/borrower duties, due date, collateral requirement, usage restrictions, renewal, recall rights, return evidence, and breach outcomes. Simulate borrower risk before `LoanIssued`.
 
-### 11. Make `command_market_participants` a complete command lifecycle
+### 11. Barter Equivalence Valuation
 
-**Justification:** High-value users need `command_market_participants` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Barter trades require fair value comparisons across different goods, services, durations, conditions, locations, and risks. Simple price equality does not work.
 
-**Improvement:** Implement `command_market_participants` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MarketParticipantVerified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add barter valuation models using market price projections, condition, service effort, scarcity, timing, location, trust, and carbon/fulfillment cost. Explain equivalence, imbalance, and suggested counteroffers.
 
-### 12. Make `command_market_listings` a complete command lifecycle
+### 12. Multi-Party Exchange Graph Matching
 
-**Justification:** High-value users need `command_market_listings` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Multi-sided markets can unlock value through cyclic trades and multi-party swaps that no pairwise match would find.
 
-**Improvement:** Implement `command_market_listings` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MarketListingPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build exchange graph matching over participants, wants, offers, assets, services, availability, trust, location, and constraints. Generate candidate two-party and multi-party proposals with feasibility, fairness, and settlement complexity.
 
-### 13. Make `command_market_listing_assets` a complete command lifecycle
+### 13. Combinatorial Trade Optimization
 
-**Justification:** High-value users need `command_market_listing_assets` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Participants may want bundles, alternatives, partial fills, or multi-item combinations. Single listing/order matching leaves liquidity unused.
 
-**Improvement:** Implement `command_market_listing_assets` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ListingAssetRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add combinatorial matching that supports bundles, substitutions, minimum acceptance sets, partial fills, and linked conditions. Show objective function, constraints, winners, losers, and counterfactual outcomes.
 
-### 14. Make `command_market_service_offers` a complete command lifecycle
+### 14. Exchange Proposal Negotiation Ledger
 
-**Justification:** High-value users need `command_market_service_offers` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Negotiations across sale, barter, rental, booking, and service terms need a clear history of offers, counteroffers, expiries, and accepted terms.
 
-**Improvement:** Implement `command_market_service_offers` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ServiceOfferCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand exchange proposals with term sheets, counteroffers, expiry, conditions, included assets/services, availability slots, settlement path, escrow requirement, and participant acknowledgements. Store every revision in a negotiation timeline.
 
-### 15. Make `command_market_availability_windows` a complete command lifecycle
+### 15. Direct Sale Checkout Handoff
 
-**Justification:** High-value users need `command_market_availability_windows` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Sales need price, tax, payment, fraud, inventory, fulfillment, and settlement coordination without owning those domains.
 
-**Improvement:** Implement `command_market_availability_windows` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AvailabilityWindowPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add sale order readiness checks for price, buyer/seller eligibility, inventory projection, fraud score, tax calculation projection, payment capture reference, and fulfillment terms. Use AppGen-X events and projections only.
 
-### 16. Make `command_market_trade_orders` a complete command lifecycle
+### 16. Escrow Account State Machine
 
-**Justification:** High-value users need `command_market_trade_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Escrow protects participants in bookings, rentals, loans, sales, and barter when fulfillment or dispute windows exist. Escrow needs precise state and release logic.
 
-**Improvement:** Implement `command_market_trade_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TradeOrderPlaced`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand escrow accounts with opened, funded, partially releasable, locked, disputed, released, expired, refunded, and forfeited states. Link each state to payment evidence, fulfillment confirmation, dispute status, and policy hash.
 
-### 17. Make `command_market_barter_offers` a complete command lifecycle
+### 17. Escrow Release Policy Compiler
 
-**Justification:** High-value users need `command_market_barter_offers` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Release rules vary by exchange type, dispute window, fulfillment proof, tax evidence, fraud risk, participant trust, and partial delivery. Hardcoded escrow logic is unsafe.
 
-**Improvement:** Implement `command_market_barter_offers` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BarterOfferMatched`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Compile escrow release policies into auditable checks for payment, condition, delivery, service acceptance, tax, fraud, dispute, and time windows. Store release evaluation traces before any release event.
 
-### 18. Make `command_market_exchange_proposals` a complete command lifecycle
+### 18. Settlement Instruction Governance
 
-**Justification:** High-value users need `command_market_exchange_proposals` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Settlement can involve sellers, providers, lenders, platform fees, tax, refunds, deposits, collateral, and multi-party distributions. Incorrect settlement creates financial and trust risk.
 
-**Improvement:** Implement `command_market_exchange_proposals` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ExchangeProposalPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand settlement instructions with beneficiaries, fee schedule, currency, tax reference, payment reference, escrow source, split percentages, holdbacks, refund paths, and approval evidence. Publish settlement events only after all prerequisites are satisfied.
 
-### 19. Make `command_market_sale_orders` a complete command lifecycle
+### 19. Commission and Fee Rule Management
 
-**Justification:** High-value users need `command_market_sale_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Multi-sided markets often charge commissions, booking fees, service fees, dispute fees, late fees, deposits, or subscription charges that vary by participant and exchange type.
 
-**Improvement:** Implement `command_market_sale_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SaleCompleted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add fee schedules with rule type, applicability, caps, minimums, currency, tax handling, promotional overrides, and effective dates. Simulate fee impact on proposed exchanges.
 
-### 20. Make `command_market_bookings` a complete command lifecycle
+### 20. Reputation Signal Provenance
 
-**Justification:** High-value users need `command_market_bookings` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Reputation can be manipulated or unfair when signals lack source, weight, decay, dispute outcome, and transaction context.
 
-**Improvement:** Implement `command_market_bookings` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BookingReserved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand reputation signals with exchange id, role, signal source, evidence, weight, decay, dispute adjustment, privacy level, and confidence. Explain reputation changes without exposing private transaction details.
 
-### 21. Operationalize `multi_party_exchange_graph_matching` as a governed decision system
+### 21. Privacy-Preserving Reputation Proofs
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves gross exchange value without hiding assumptions.
+**Justification:** Participants need trust signals, but exposing full history can violate privacy or reveal sensitive trading behavior.
 
-**Improvement:** Promote `multi_party_exchange_graph_matching` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `gross_exchange_value`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add reputation proofs that disclose trust bands, verified milestones, dispute rates, and recency without revealing full transaction history. Support proof exports with cryptographic evidence and role-based redaction.
 
-### 22. Operationalize `barter_equivalence_valuation` as a governed decision system
+### 22. Dispute Case Typology and Evidence
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves market liquidity without hiding assumptions.
+**Justification:** Market disputes differ: no-show, non-delivery, misrepresentation, damage, late return, payment issue, service quality, fraud, or harassment. Generic disputes cannot support fair resolution.
 
-**Improvement:** Promote `barter_equivalence_valuation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `market_liquidity`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand dispute cases with type, exchange context, policy reference, evidence checklist, involved roles, timeline, requested remedy, severity, and resolution path. The board should guide evidence collection by dispute type.
 
-### 23. Operationalize `combinatorial_trade_optimization` as a governed decision system
+### 23. Autonomous Dispute Triage With Human Review
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves booking utilization without hiding assumptions.
+**Justification:** Dispute volume can overwhelm operators, but automated decisions can be unfair. Triage should recommend paths, not silently decide.
 
-**Improvement:** Promote `combinatorial_trade_optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `booking_utilization`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add agent-assisted dispute triage that summarizes evidence, classifies dispute type, flags missing proof, estimates policy outcome, and proposes next actions. Require human confirmation for remedies, refunds, releases, or penalties.
 
-### 24. Operationalize `dynamic_liquidity_and_trust_scoring` as a governed decision system
+### 24. Remedy and Resolution Catalog
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves rental default rate without hiding assumptions.
+**Justification:** Disputes need consistent remedies: refund, partial refund, escrow release, replacement, reschedule, return, repair, reputation adjustment, suspension, or no action.
 
-**Improvement:** Promote `dynamic_liquidity_and_trust_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `rental_default_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add a remedy catalog with eligibility rules, authority, financial impact, reputation impact, required evidence, and participant notification. Store remedy rationale and appeal windows.
 
-### 25. Operationalize `availability_aware_booking_optimization` as a governed decision system
+### 25. Collusion and Market Manipulation Detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves barter match rate without hiding assumptions.
+**Justification:** Multi-sided markets are vulnerable to fake trades, reputation farming, price manipulation, circular exchanges, shill activity, and coordinated disputes.
 
-**Improvement:** Promote `availability_aware_booking_optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `barter_match_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add collusion anomaly detection using exchange graph cycles, repeated counterparties, abnormal reputation patterns, price anomalies, dispute clusters, and timing. Route suspicious clusters to risk cases through declared fraud projections.
 
-### 26. Operationalize `rental_condition_and_collateral_modeling` as a governed decision system
+### 26. Liquidity and Market Health Metrics
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves dispute resolution time without hiding assumptions.
+**Justification:** A market succeeds when supply, demand, trust, availability, and settlement all clear efficiently. Listing count alone is not a health metric.
 
-**Improvement:** Promote `rental_condition_and_collateral_modeling` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `dispute_resolution_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add liquidity metrics for fill rate, match latency, inventory depth, service availability, booking utilization, price spread, barter imbalance, dispute rate, and trust-weighted supply. Show health by category, geography, and exchange mode.
 
-### 27. Operationalize `loan_term_risk_simulation` as a governed decision system
+### 27. Market Clearing Projection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves exchange proposal acceptance rate without hiding assumptions.
+**Justification:** Operators need to understand whether current supply, demand, availability, trust, and settlement capacity can clear the market.
 
-**Improvement:** Promote `loan_term_risk_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `exchange_proposal_acceptance_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand clearing projections with unmatched demand, constrained supply, expected matches, escrow capacity, settlement blockers, risk exclusions, and recommendations. Emit `MarketClearingProjected` with confidence and assumptions.
 
-### 28. Operationalize `escrow_release_policy_compilation` as a governed decision system
+### 28. Dynamic Pricing and Counterfactual Terms
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves escrow release block rate without hiding assumptions.
+**Justification:** Participants need help setting prices, deposits, collateral, cancellation windows, and barter terms that balance conversion and risk.
 
-**Improvement:** Promote `escrow_release_policy_compilation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `escrow_release_block_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add counterfactual term simulation for price, slot, deposit, collateral, trust threshold, fulfillment method, and commission. Show expected conversion, risk, fee, and dispute effects.
 
-### 29. Operationalize `real_time_market_clearing_projection` as a governed decision system
+### 29. Availability-Aware Service Marketplace
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves collusion anomaly score without hiding assumptions.
+**Justification:** Services depend on provider calendars, travel, duration, skills, preparation, and capacity. Treating services like goods produces failed bookings.
 
-**Improvement:** Promote `real_time_market_clearing_projection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `collusion_anomaly_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add service availability constraints, provider skills, travel/service radius, setup time, recurring schedules, waitlists, and reschedule policies. Match services by both skill and slot feasibility.
 
-### 30. Operationalize `counterfactual_price_and_slot_simulation` as a governed decision system
+### 30. Rental Condition and Damage Workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Sided Market Exchange and measurably improves carbon fulfillment savings without hiding assumptions.
+**Justification:** Rental disputes often depend on before/after condition, damage causality, usage restrictions, and repair estimates.
 
-**Improvement:** Promote `counterfactual_price_and_slot_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `carbon_fulfillment_savings`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add condition capture at handoff and return, media evidence, inspection checklist, damage category, repair estimate, deposit impact, and dispute linkage. Use condition deltas in reputation and escrow release.
 
-### 31. Create simulation-grade governance for `MULTI_SIDED_MARKET_DATABASE_URL` and `MULTI_SIDED_MARKET_DATABASE_URL`
+### 31. Loan Recall and Extension Handling
 
-**Justification:** Complete Multi-Sided Market Exchange coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Loaned goods may need early recall, renewal, extension, or replacement when circumstances change.
 
-**Improvement:** Add a policy cockpit where `MULTI_SIDED_MARKET_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MULTI_SIDED_MARKET_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add recall rights, extension requests, renewal approvals, replacement obligations, due-date changes, and late-return penalties. Notify participants and update risk exposure before changing loan terms.
 
-### 32. Create simulation-grade governance for `MULTI_SIDED_MARKET_EVENT_TOPIC` and `MULTI_SIDED_MARKET_EVENT_TOPIC`
+### 32. Fulfillment and Meetup Optimization
 
-**Justification:** Complete Multi-Sided Market Exchange coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Goods exchange may require delivery, pickup, shipping, meetup, locker, or third-party fulfillment. Fulfillment affects cost, carbon, risk, and participant convenience.
 
-**Improvement:** Add a policy cockpit where `MULTI_SIDED_MARKET_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MULTI_SIDED_MARKET_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add fulfillment options with location, time, cost, carbon estimate, safety rating, custody transfer, and confirmation evidence. Recommend options based on trust, distance, value, and policy.
 
-### 33. Create simulation-grade governance for `MULTI_SIDED_MARKET_RETRY_LIMIT` and `MULTI_SIDED_MARKET_RETRY_LIMIT`
+### 33. Carbon-Aware Exchange Selection
 
-**Justification:** Complete Multi-Sided Market Exchange coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Marketplaces can reduce emissions by optimizing local matches, pickup routes, shared fulfillment, and service travel.
 
-**Improvement:** Add a policy cockpit where `MULTI_SIDED_MARKET_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MULTI_SIDED_MARKET_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add carbon estimates for delivery, meetup, provider travel, rental return, and alternative matches. Let participants choose lower-carbon viable proposals with explicit time/cost tradeoffs.
 
-### 34. Create simulation-grade governance for `MULTI_SIDED_MARKET_DEFAULT_CURRENCY` and `MULTI_SIDED_MARKET_DEFAULT_CURRENCY`
+### 34. Participant Safety and Conduct Controls
 
-**Justification:** Complete Multi-Sided Market Exchange coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Markets that enable meetups, services, rentals, or loans need safety rules, conduct reporting, restricted categories, and emergency escalation.
 
-**Improvement:** Add a policy cockpit where `MULTI_SIDED_MARKET_DEFAULT_CURRENCY` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MULTI_SIDED_MARKET_DEFAULT_CURRENCY` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add safety policies, conduct reports, blocked counterparties, safe-meetup recommendations, age/eligibility rules, incident escalation, and role-based restrictions. Use safety state in matching and booking recommendations.
 
-### 35. Create simulation-grade governance for `MULTI_SIDED_MARKET_ESCROW_HOLD_DAYS` and `MULTI_SIDED_MARKET_ESCROW_HOLD_DAYS`
+### 35. Regulated Goods and Services Controls
 
-**Justification:** Complete Multi-Sided Market Exchange coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Some goods and services require licenses, age checks, jurisdiction restrictions, insurance, disclosures, or prohibition. Market policy must enforce this.
 
-**Improvement:** Add a policy cockpit where `MULTI_SIDED_MARKET_ESCROW_HOLD_DAYS` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MULTI_SIDED_MARKET_ESCROW_HOLD_DAYS` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add regulated category definitions, required credentials, region rules, prohibited items, disclosure requirements, and compliance evidence. Block listing publication or exchange proposals that violate active policy.
 
-### 36. Upgrade `MarketExchangeWorkbench` into a full specialist command center
+### 36. Insurance and Collateral Requirement Modeling
 
-**Justification:** The PBC UI must expose the complete Multi-Sided Market Exchange surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Rentals, loans, and high-value trades may require collateral, insurance, warranties, or guarantees to protect participants.
 
-**Improvement:** Expand `MarketExchangeWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add collateral rules, insurance evidence, replacement value, deposit amount, guarantee provider projection, and release conditions. Simulate risk and cost before transaction confirmation.
 
-### 37. Upgrade `ListingConsole` into a full specialist command center
+### 37. Tax and Fee Evidence Integration
 
-**Justification:** The PBC UI must expose the complete Multi-Sided Market Exchange surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Sales, rentals, services, and marketplace fees may carry tax obligations. The PBC must consume tax evidence without owning tax rules.
 
-**Improvement:** Expand `ListingConsole` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add tax reference projections, taxable exchange classification, settlement tax evidence, participant tax responsibility, and blocked settlement explanations. Integrate only through declared tax events/APIs.
 
-### 38. Upgrade `BookingRentalCalendar` into a full specialist command center
+### 38. Fraud Risk-Aware Market Operations
 
-**Justification:** The PBC UI must expose the complete Multi-Sided Market Exchange surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Fraud risk should influence trust gates, escrow, settlement holds, listing visibility, and dispute triage while preserving fraud PBC boundaries.
 
-**Improvement:** Expand `BookingRentalCalendar` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Consume fraud risk projections with freshness, score, reason bands, and allowed use. Apply risk to policy decisions, but store only market-owned decisions and explanation references.
 
-### 39. Upgrade `EscrowSettlementConsole` into a full specialist command center
+### 39. Inventory and Asset Availability Boundary
 
-**Justification:** The PBC UI must expose the complete Multi-Sided Market Exchange surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Listings may refer to inventory or catalog data owned elsewhere. The market PBC should not mutate inventory while still preventing oversell or double booking.
 
-**Improvement:** Expand `EscrowSettlementConsole` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add inventory projection freshness, reservation reference, quantity available, asset eligibility, and fallback behavior. Validate availability before sale, rental, loan, or barter confirmation.
 
-### 40. Upgrade `DisputeResolutionBoard` into a full specialist command center
+### 40. Exchange Policy and Parameter Studio
 
-**Justification:** The PBC UI must expose the complete Multi-Sided Market Exchange surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Listing eligibility, exchange rules, escrow duration, trust thresholds, commissions, max rental days, collateral rates, and dispute policies need governed tuning.
 
-**Improvement:** Expand `DisputeResolutionBoard` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand market rules and parameters into a studio with simulations, test cases, approvals, effective dates, rollback, impact analysis, and agent explanations before activation.
 
-### 41. Prove cross-PBC federation for `POST /market/participants` and `ProductPublished`
+### 41. Semantic Listing and Document Intake
 
-**Justification:** Multi-Sided Market Exchange must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Participants create listings from photos, messages, inventory exports, contracts, service descriptions, and loan terms. Manual entry is slow and inconsistent.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /market/participants` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Give the PBC agent skills to parse documents/instructions into proposed listings, assets, service offers, availability, rentals, loans, barter offers, and policy disclosures. Require citations, confidence, owned-table preview, and confirmation.
 
-### 42. Prove cross-PBC federation for `POST /market/listings` and `InventoryPoolChanged`
+### 42. Market Agent Negotiation Assistance
 
-**Justification:** Multi-Sided Market Exchange must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Participants need help understanding fair terms, counteroffers, escrow implications, rental obligations, and barter value without autonomous unsafe negotiation.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /market/listings` and consumed event `InventoryPoolChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add assistant skills that draft counteroffers, explain term tradeoffs, propose safer escrow/settlement structures, and identify missing evidence. All proposals remain side-effect-free until participant confirmation.
 
-### 43. Prove cross-PBC federation for `POST /market/listing-assets` and `PaymentCaptured`
+### 43. Accessibility and Inclusion for Market Participation
 
-**Justification:** Multi-Sided Market Exchange must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Services, rentals, bookings, and meetups may need accessibility accommodations, language preferences, and inclusive policies.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /market/listing-assets` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add accessibility attributes for listings, service offers, locations, communications, and booking requirements. Match participants to accessible options and enforce accommodation disclosures where required.
 
-### 44. Prove cross-PBC federation for `POST /market/service-offers` and `TaxCalculated`
+### 44. Market Abuse and Policy Enforcement Workflow
 
-**Justification:** Multi-Sided Market Exchange must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Market operators need workflows for prohibited listings, harassment, repeated cancellations, payment evasion, platform fee avoidance, and unsafe conduct.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /market/service-offers` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add abuse cases with policy type, evidence, participant history, enforcement action, appeal, expiry, and reputation impact. Link abuse enforcement to listing visibility and participant role eligibility.
 
-### 45. Temporal reconstruction and bitemporal audit for Multi-Sided Market Exchange
+### 45. Exchange Time Travel and Audit Reconstruction
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Disputes, audits, and investigations require reconstructing what listing terms, availability, reputation, rules, escrow state, and settlement instructions existed at a prior time.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add temporal reconstruction across listings, availability, proposals, orders, escrow, settlements, disputes, and reputation using transaction time and effective time.
 
-### 46. Bulk operations and migration-grade controls for Multi-Sided Market Exchange
+### 46. Market Release Evidence Packs
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Market exchanges affect money, trust, goods, services, and participant safety. Releases must prove routes, services, events, policies, escrow, disputes, and agent skills are safe.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Generate release evidence packs with schema hashes, migration manifests, service contracts, route contracts, event schemas, handler idempotency proofs, retry/dead-letter tests, market simulations, escrow checks, UI coverage, and agent manifests.
 
-### 47. Specialist edge-case playbooks for Multi-Sided Market Exchange
+### 47. Cross-PBC Boundary Proofs
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** The market depends on catalog, inventory, payments, tax, fraud, identity, access, and possibly sustainability data. Shared-table mutation would break composability.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add projection contracts and tests proving services mutate only `multi_sided_market_` tables plus AppGen-X runtime tables. External facts must flow through APIs, events, or read-only projections.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Multi-Sided Market Exchange
+### 48. Dead-Letter and Replay Operations
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Market event reliability matters for bookings, escrow, settlement, disputes, and reputation. Late or failed events must be visible and safely replayable.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add operations views for inbox, outbox, retry, dead-letter, quarantine, idempotency keys, payload lineage, replay eligibility, and dependency health. Unknown consumed events must not mutate market state.
 
-### 49. Continuous control testing and operational assurance for Multi-Sided Market Exchange
+### 49. Marketplace Operations Metrics
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Operators need more than revenue: liquidity, trust, match quality, fill rate, dispute rate, escrow holds, settlement latency, churn, and category health drive market success.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add governed metrics for participant activation, listing quality, booking conversion, rental returns, loan lateness, barter match rate, escrow release time, settlement success, disputes, reputation movement, and clearing efficiency.
 
-### 50. Human-in-the-loop domain agent execution for Multi-Sided Market Exchange
+### 50. Complete Multi-Sided Market Workbench Coverage
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Participants, operators, dispute specialists, settlement analysts, trust reviewers, and executives need full operational visibility. Hidden APIs are not enough.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Expand the workbench into role-specific surfaces for participant, marketplace operator, listing moderator, matching analyst, escrow/settlement analyst, dispute resolver, trust/safety reviewer, and executive sponsor. Cover participants, listings, assets, services, availability, bookings, rentals, loans, barter, trades, sales, proposals, escrow, settlements, disputes, reputation, rules, parameters, agent panels, and release evidence.
