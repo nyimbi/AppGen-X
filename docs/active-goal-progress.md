@@ -2896,6 +2896,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   for 147 PBCs, all-catalog `pbc_implemented_capability_audit`, 160 generated
   expansion runtime tests, `tests/test_pbc_source_packages.py`, and focused
   industry expansion tests. Commit: `d44802b`.
+- Current industry PBC improvement-backlog pass replaces the shallow generated
+  `improve1.md` backlog in each of the 80 new PBC directories with exactly 50
+  domain-specific, high-impact improvement proposals. Each item includes
+  justification, the proposed improvement, and package-local acceptance
+  evidence tied to the PBC's manifest entities, APIs, AppGen-X events,
+  workbench, agent behavior, rules, parameters, release gates, and owned
+  datastore boundary. Verification passed: a validation script confirmed 80
+  target files, exactly 50 numbered improvements per file, 50
+  Justification/Improvement/Acceptance evidence sections per file, no banned
+  legacy product references, and no non-`improve1.md` PBC file changes;
+  `tests/test_pbc_improvement_backlogs.py -q` passed. Commit: `9b782b72`.
 - Current tooling expansion pass makes parser-golden coverage executable for
   the full AppGen-X grammar surface described in `docs/tooling.md`. The
   platform now exposes `appgen parser-golden --json` with an
