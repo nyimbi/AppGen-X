@@ -267,6 +267,17 @@ class AgentSchema:
 
 
 @dataclass(frozen=True)
+class PlatformBlockSchema:
+    """An enterprise platform block parsed from the AppGen DSL."""
+
+    kind: str
+    name: str
+    options: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    steps: tuple[FlowStepSchema, ...] = field(default_factory=tuple)
+    permissions: tuple[PermissionSchema, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
 class TableSchema:
     """A portable table definition."""
 
@@ -290,6 +301,7 @@ class AppSchema:
     enums: tuple[EnumSchema, ...] = field(default_factory=tuple)
     llm_providers: tuple[LLMProviderSchema, ...] = field(default_factory=tuple)
     agents: tuple[AgentSchema, ...] = field(default_factory=tuple)
+    platform_blocks: tuple[PlatformBlockSchema, ...] = field(default_factory=tuple)
 
     def table(self, name: str) -> TableSchema:
         for table in self.tables:

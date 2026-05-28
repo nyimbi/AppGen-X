@@ -31,6 +31,13 @@ element
   | ruleDecl
   | llmDecl
   | agentDecl
+  | pbcDecl
+  | compositionDecl
+  | auditDecl
+  | deploymentDecl
+  | versionDecl
+  | operationDecl
+  | securityDecl
   ;
 
 tableDecl
@@ -135,6 +142,52 @@ agentDecl
   : AGENT IDENT LBRACE agenticOption* RBRACE
   ;
 
+pbcDecl
+  : PBC IDENT LBRACE agenticOption* RBRACE
+  ;
+
+compositionDecl
+  : COMPOSITION IDENT LBRACE compositionItem* RBRACE
+  ;
+
+compositionItem
+  : INCLUDE PBC IDENT VERSION agenticValue SEMI?
+  | REQUIRE IDENT agenticValue (COMMA agenticValue)* SEMI?
+  | EXPOSE IDENT agenticValue (COMMA agenticValue)* SEMI?
+  | CONNECT IDENT IDENT IDENT ARROW IDENT IDENT IDENT SEMI?
+  | agenticOption
+  ;
+
+auditDecl
+  : AUDIT IDENT LBRACE agenticOption* RBRACE
+  ;
+
+deploymentDecl
+  : DEPLOY IDENT LBRACE agenticOption* RBRACE
+  ;
+
+versionDecl
+  : VERSION IDENT LBRACE agenticOption* RBRACE
+  ;
+
+operationDecl
+  : OPERATION IDENT LBRACE operationItem* RBRACE
+  ;
+
+operationItem
+  : flowStep
+  | agenticOption
+  ;
+
+securityDecl
+  : SECURITY IDENT LBRACE securityItem* RBRACE
+  ;
+
+securityItem
+  : permission
+  | agenticOption
+  ;
+
 agenticOption
   : IDENT COLON agenticValue (COMMA agenticValue)* SEMI?
   ;
@@ -196,6 +249,17 @@ FOR      : 'for';
 FLOW     : 'flow';
 ROLE     : 'role';
 RULE     : 'rule';
+PBC      : 'pbc';
+COMPOSITION : 'composition';
+AUDIT    : 'audit';
+DEPLOY   : 'deploy';
+VERSION  : 'version';
+OPERATION : 'operation';
+SECURITY : 'security';
+INCLUDE  : 'include';
+REQUIRE  : 'require';
+EXPOSE   : 'expose';
+CONNECT  : 'connect';
 LLM      : 'llm';
 AGENT    : 'agent';
 PK       : 'pk';

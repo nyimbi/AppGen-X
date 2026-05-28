@@ -1,6 +1,6 @@
 # Generated from lang/appgen.g4 by ANTLR 4.13.2
 from antlr4 import *
-if "." in __name__:
+if __name__ is not None and "." in __name__:
     from .appgenParser import appgenParser
 else:
     from appgenParser import appgenParser
@@ -146,6 +146,56 @@ class appgenVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by appgenParser#agentDecl.
     def visitAgentDecl(self, ctx:appgenParser.AgentDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#pbcDecl.
+    def visitPbcDecl(self, ctx:appgenParser.PbcDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#compositionDecl.
+    def visitCompositionDecl(self, ctx:appgenParser.CompositionDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#compositionItem.
+    def visitCompositionItem(self, ctx:appgenParser.CompositionItemContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#auditDecl.
+    def visitAuditDecl(self, ctx:appgenParser.AuditDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#deploymentDecl.
+    def visitDeploymentDecl(self, ctx:appgenParser.DeploymentDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#versionDecl.
+    def visitVersionDecl(self, ctx:appgenParser.VersionDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#operationDecl.
+    def visitOperationDecl(self, ctx:appgenParser.OperationDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#operationItem.
+    def visitOperationItem(self, ctx:appgenParser.OperationItemContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#securityDecl.
+    def visitSecurityDecl(self, ctx:appgenParser.SecurityDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#securityItem.
+    def visitSecurityItem(self, ctx:appgenParser.SecurityItemContext):
         return self.visitChildren(ctx)
 
 

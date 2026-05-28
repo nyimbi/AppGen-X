@@ -1,6 +1,6 @@
 # Generated from lang/appgen.g4 by ANTLR 4.13.2
 from antlr4 import *
-if "." in __name__:
+if __name__ is not None and "." in __name__:
     from .appgenParser import appgenParser
 else:
     from appgenParser import appgenParser
@@ -257,6 +257,96 @@ class appgenListener(ParseTreeListener):
 
     # Exit a parse tree produced by appgenParser#agentDecl.
     def exitAgentDecl(self, ctx:appgenParser.AgentDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#pbcDecl.
+    def enterPbcDecl(self, ctx:appgenParser.PbcDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#pbcDecl.
+    def exitPbcDecl(self, ctx:appgenParser.PbcDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#compositionDecl.
+    def enterCompositionDecl(self, ctx:appgenParser.CompositionDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#compositionDecl.
+    def exitCompositionDecl(self, ctx:appgenParser.CompositionDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#compositionItem.
+    def enterCompositionItem(self, ctx:appgenParser.CompositionItemContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#compositionItem.
+    def exitCompositionItem(self, ctx:appgenParser.CompositionItemContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#auditDecl.
+    def enterAuditDecl(self, ctx:appgenParser.AuditDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#auditDecl.
+    def exitAuditDecl(self, ctx:appgenParser.AuditDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#deploymentDecl.
+    def enterDeploymentDecl(self, ctx:appgenParser.DeploymentDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#deploymentDecl.
+    def exitDeploymentDecl(self, ctx:appgenParser.DeploymentDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#versionDecl.
+    def enterVersionDecl(self, ctx:appgenParser.VersionDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#versionDecl.
+    def exitVersionDecl(self, ctx:appgenParser.VersionDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#operationDecl.
+    def enterOperationDecl(self, ctx:appgenParser.OperationDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#operationDecl.
+    def exitOperationDecl(self, ctx:appgenParser.OperationDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#operationItem.
+    def enterOperationItem(self, ctx:appgenParser.OperationItemContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#operationItem.
+    def exitOperationItem(self, ctx:appgenParser.OperationItemContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#securityDecl.
+    def enterSecurityDecl(self, ctx:appgenParser.SecurityDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#securityDecl.
+    def exitSecurityDecl(self, ctx:appgenParser.SecurityDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#securityItem.
+    def enterSecurityItem(self, ctx:appgenParser.SecurityItemContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#securityItem.
+    def exitSecurityItem(self, ctx:appgenParser.SecurityItemContext):
         pass
 
 

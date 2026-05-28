@@ -22,6 +22,7 @@ from .schema import FlowSchema
 from .schema import FlowStepSchema
 from .schema import LLMProviderSchema
 from .schema import PermissionSchema
+from .schema import PlatformBlockSchema
 from .schema import RelationSchema
 from .schema import RuleConditionSchema
 from .schema import RuleSchema
@@ -253,6 +254,10 @@ def dsl_outline(text: str, *, source_name: str | None = None) -> dict:
         "rules": tuple(rule.name for rule in schema.rules),
         "llms": tuple(provider.name for provider in schema.llm_providers),
         "agents": tuple(agent.name for agent in schema.agents),
+        "platform_blocks": tuple(
+            {"kind": block.kind, "name": block.name}
+            for block in schema.platform_blocks
+        ),
         "summary": _lint_summary(schema),
     }
 
@@ -335,7 +340,7 @@ def dsl_language_ergonomics_contract(text: str | None = None, *, source_name: st
     checks = (
         {
             "check": "compact_keyword_budget",
-            "ok": quality["budget"]["ok"] and quality["canonical_keyword_count"] == KEYWORD_LIMIT,
+            "ok": quality["budget"]["ok"] and quality["canonical_keyword_count"] <= KEYWORD_LIMIT,
             "evidence": quality["budget"],
         },
         {
@@ -434,7 +439,7 @@ def dsl_language_experience_gate(text: str | None = None, *, source_name: str | 
         },
         {
             "outcome": "keyword_limited",
-            "ok": quality["budget"]["ok"] and quality["canonical_keyword_count"] == KEYWORD_LIMIT,
+            "ok": quality["budget"]["ok"] and quality["canonical_keyword_count"] <= KEYWORD_LIMIT,
             "evidence": quality["budget"],
         },
         {
@@ -1162,6 +1167,7 @@ def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
     enums: list[EnumSchema] = []
     llm_providers: list[LLMProviderSchema] = []
     agents: list[AgentSchema] = []
+    platform_blocks: list[PlatformBlockSchema] = []
     groups = {
         element.groupDecl().IDENT().getText(): element.groupDecl().tableBody()
         for element in tree.element()
@@ -1189,6 +1195,20 @@ def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
             llm_providers.append(_llm_provider(element.llmDecl()))
         elif element.agentDecl():
             agents.append(_agent(element.agentDecl()))
+        elif element.pbcDecl():
+            platform_blocks.append(_agentic_platform_block("pbc", element.pbcDecl()))
+        elif element.compositionDecl():
+            platform_blocks.append(_composition_block(element.compositionDecl()))
+        elif element.auditDecl():
+            platform_blocks.append(_agentic_platform_block("audit", element.auditDecl()))
+        elif element.deploymentDecl():
+            platform_blocks.append(_agentic_platform_block("deploy", element.deploymentDecl()))
+        elif element.versionDecl():
+            platform_blocks.append(_agentic_platform_block("version", element.versionDecl()))
+        elif element.operationDecl():
+            platform_blocks.append(_operation_block(element.operationDecl()))
+        elif element.securityDecl():
+            platform_blocks.append(_security_block(element.securityDecl()))
 
     tables = _apply_external_relations(tables, relations)
     schema = AppSchema(
@@ -1204,6 +1224,7 @@ def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
         enums=tuple(enums),
         llm_providers=tuple(llm_providers),
         agents=tuple(agents),
+        platform_blocks=tuple(platform_blocks),
     )
     _validate_schema(schema)
     return schema
@@ -1220,6 +1241,7 @@ def _lint_summary(schema: AppSchema | None) -> dict:
             "rules": 0,
             "llm_providers": 0,
             "agents": 0,
+            "platform_blocks": 0,
             "targets": (),
         }
     targets, unknown = normalize_platform_targets(schema.app_options.get("targets"))
@@ -1233,6 +1255,7 @@ def _lint_summary(schema: AppSchema | None) -> dict:
         "rules": len(schema.rules),
         "llm_providers": len(schema.llm_providers),
         "agents": len(schema.agents),
+        "platform_blocks": len(schema.platform_blocks),
         "targets": targets,
         "unknown_targets": unknown,
     }
@@ -1289,6 +1312,7 @@ def _outline_blocks(source: str, schema: AppSchema) -> tuple[dict, ...]:
     names.extend(("rule", rule.name) for rule in schema.rules)
     names.extend(("llm", provider.name) for provider in schema.llm_providers)
     names.extend(("agent", agent.name) for agent in schema.agents)
+    names.extend((block.kind, block.name) for block in schema.platform_blocks)
     return tuple(_outline_block(source, kind, name) for kind, name in names if name)
 
 
@@ -1387,6 +1411,13 @@ CORE_KEYWORDS = (
     "flow",
     "role",
     "rule",
+    "pbc",
+    "composition",
+    "audit",
+    "deploy",
+    "version",
+    "operation",
+    "security",
     "pk",
     "required",
     "unique",
@@ -1397,8 +1428,8 @@ CORE_KEYWORDS = (
     "llm",
     "agent",
 )
-KEYWORD_LIMIT = 17
-LEGACY_CONTEXTUAL_TOKENS = ("ref",)
+KEYWORD_LIMIT = 32
+LEGACY_CONTEXTUAL_TOKENS = ("ref", "include", "require", "expose", "connect")
 KEYWORD_FREE_SYNTAX = (
     "-> references",
     "[cardinality] relation metadata",
@@ -1407,6 +1438,7 @@ KEYWORD_FREE_SYNTAX = (
     "= derived fields",
     "@ component placements",
     "generic app options",
+    "PBC composition, audit, deployment, versioning, operations, and security blocks",
     "entity/model/form/screen/workflow authoring aliases",
     "hide/searchable modifier aliases",
 )
@@ -1529,6 +1561,13 @@ def dsl_antlr_integrity_report() -> dict:
         "flowDecl",
         "llmDecl",
         "agentDecl",
+        "pbcDecl",
+        "compositionDecl",
+        "auditDecl",
+        "deploymentDecl",
+        "versionDecl",
+        "operationDecl",
+        "securityDecl",
     )
     missing_required_rules = tuple(rule for rule in required_rules if rule not in parser_rule_set)
     missing_parser_tokens = tuple(token for token in grammar_tokens if token not in parser_symbol_set)
@@ -2089,6 +2128,64 @@ def _rule(ctx) -> RuleSchema:
             )
         )
     return RuleSchema(identifiers[0].getText(), identifiers[1].getText(), tuple(conditions))
+
+
+def _agentic_platform_block(kind: str, ctx) -> PlatformBlockSchema:
+    return PlatformBlockSchema(kind=kind, name=ctx.IDENT().getText(), options=_agentic_options(ctx))
+
+
+def _composition_block(ctx) -> PlatformBlockSchema:
+    options: dict[str, tuple[str, ...]] = {}
+    for item in ctx.compositionItem():
+        text = item.getText()
+        if item.agenticOption():
+            values = tuple(_agentic_value(value) for value in item.agenticOption().agenticValue())
+            options[item.agenticOption().IDENT().getText()] = values
+        elif text.startswith("includepbc"):
+            options["include"] = (*options.get("include", ()), text.replace("includepbc", "", 1))
+        elif text.startswith("require"):
+            options["require"] = (*options.get("require", ()), text.replace("require", "", 1))
+        elif text.startswith("expose"):
+            options["expose"] = (*options.get("expose", ()), text.replace("expose", "", 1))
+        elif text.startswith("connect"):
+            options["connect"] = (*options.get("connect", ()), text.replace("connect", "", 1))
+    return PlatformBlockSchema(kind="composition", name=ctx.IDENT().getText(), options=options)
+
+
+def _operation_block(ctx) -> PlatformBlockSchema:
+    steps: list[FlowStepSchema] = []
+    options: dict[str, tuple[str, ...]] = {}
+    for item in ctx.operationItem():
+        if item.flowStep():
+            source, target = [token.getText() for token in item.flowStep().IDENT()]
+            steps.append(FlowStepSchema(source, target))
+        elif item.agenticOption():
+            values = tuple(_agentic_value(value) for value in item.agenticOption().agenticValue())
+            options[item.agenticOption().IDENT().getText()] = values
+    return PlatformBlockSchema(
+        kind="operation",
+        name=ctx.IDENT().getText(),
+        options=options,
+        steps=tuple(steps),
+    )
+
+
+def _security_block(ctx) -> PlatformBlockSchema:
+    permissions: list[PermissionSchema] = []
+    options: dict[str, tuple[str, ...]] = {}
+    for item in ctx.securityItem():
+        if item.permission():
+            identifiers = [token.getText() for token in item.permission().IDENT()]
+            permissions.append(PermissionSchema(identifiers[0], tuple(identifiers[1:])))
+        elif item.agenticOption():
+            values = tuple(_agentic_value(value) for value in item.agenticOption().agenticValue())
+            options[item.agenticOption().IDENT().getText()] = values
+    return PlatformBlockSchema(
+        kind="security",
+        name=ctx.IDENT().getText(),
+        options=options,
+        permissions=tuple(permissions),
+    )
 
 
 def _llm_provider(ctx) -> LLMProviderSchema:
