@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `ap_automation`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `ap_automation`. The items are specific to accounts payable operations: vendor onboarding, invoice capture, two-way and three-way matching, tax/withholding, approvals, fraud controls, payment scheduling, discounts, vendor reconciliation, and agent-assisted AP work.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Vendor obligations, OCR intake, invoice matching, approval, and withholding.
-- Representative owned tables: `ap_automation_vendor`, `ap_automation_vendor_site`, `ap_automation_vendor_bank_account`, `ap_automation_vendor_tax_profile`, `ap_automation_vendor_risk_signal`, `ap_automation_purchase_order`, `ap_automation_purchase_order_line`, `ap_automation_goods_receipt`, `ap_automation_goods_receipt_line`, `ap_automation_invoice`, `ap_automation_invoice_line`, `ap_automation_invoice_capture_artifact`, ...
-- Representative operations/APIs: `command_ap_vendors`, `command_ap_vendor_bank_accounts`, `command_ap_vendor_tax_profiles`, `command_ap_purchase_orders`, `command_ap_goods_receipts`, `command_ap_invoices`, `command_ap_invoices_invoice_id_match`, `command_ap_exceptions`, `command_ap_approval_tasks`, `command_ap_payment_schedules`, `command_ap_payment_batches`, `command_ap_payments`, ...
-- Representative events: `VendorOnboarded`, `PurchaseOrderIssued`, `GoodsReceiptRecorded`, `InvoiceCaptured`, `PaymentScheduled`, `PaymentExecuted`, `InvoiceExceptionResolved`, `VendorRiskChanged`, `DiscountOpportunityCaptured`.
-- Representative advanced capabilities: `event_sourced_invoice_lifecycle`, `graph_relational_vendor_data_model`, `multi_tenant_liquidity_isolation`, `schema_evolution_resilient_invoice_schema`, `probabilistic_three_way_matching`, `real_time_liquidity_aware_payment_scheduling`, `counterfactual_discount_analysis`, `temporal_cash_flow_forecasting`, `autonomous_exception_resolution`, `semantic_contract_to_invoice_alignment`, ...
+- Domain purpose: vendor onboarding, vendor bank/tax profiles, PO/receipt references, invoice capture, e-invoice ingestion, matching, contract compliance, exceptions, approval policy, tax validation, withholding, payment scheduling/execution, remittance, discount optimization, vendor statement reconciliation, vendor risk, and AP workbench evidence.
+- Owned boundary: vendors, vendor sites, bank accounts, tax profiles, risk signals, purchase orders, PO lines, goods receipts, receipt lines, invoices, invoice lines, capture artifacts, match results, payments, payment batches, rail decisions, discount opportunities, vendor statements, withholding tax, e-invoice submissions, exception cases, approval tasks, cash forecast projections, rules, parameters, schema extensions, controls, governed models, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: vendor, bank, tax, PO, receipt, invoice, invoice match, exception, approval, payment schedule, batch, payment, discount, statement, withholding, e-invoice, configuration, rules, parameters, and workbench operations.
+- Existing events and dependencies: emits vendor, PO, receipt, invoice, payment, exception, risk, and discount events; integrates with GL, treasury, tax, procurement, workflow, identity, schema registry, audit ledger, and gateway only through APIs, AppGen-X events, and local projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `ap_automation_vendor`
+### 1. Vendor onboarding evidence pack
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** AP risk starts at vendor setup. A vendor record without ownership, tax, banking, screening, approval, and change evidence is a payment-fraud and compliance weakness.
 
-**Improvement:** Extend `ap_automation_vendor` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a vendor onboarding evidence pack with beneficial owner proof, tax profile, bank validation, site verification, sanctions/screening result, payment terms, approver trail, and activation decision. The workbench should block payment-enabled status until mandatory evidence passes.
 
-### 2. Deep specialist lifecycle semantics for `ap_automation_vendor_site`
+### 2. Vendor master lifecycle and change control
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** Vendor changes, especially bank and remit-to changes, are high-risk events requiring stronger controls than ordinary profile edits.
 
-**Improvement:** Extend `ap_automation_vendor_site` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model vendor lifecycle states and change requests for name, tax identity, site, terms, bank, remit-to, and hold status. Require reason, independent approval, effective date, duplicate check, and AppGen-X audit evidence for material changes.
 
-### 3. Deep specialist lifecycle semantics for `ap_automation_vendor_bank_account`
+### 3. Beneficial ownership and related-party graph
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** Duplicate vendors, related parties, shell suppliers, and conflicts of interest often hide behind separate vendor records.
 
-**Improvement:** Extend `ap_automation_vendor_bank_account` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build a vendor relationship graph over beneficial owners, addresses, bank fingerprints, tax identifiers, contacts, and employee/approver projections. Flag related-party risks and require enhanced approval before invoice payment.
 
-### 4. Deep specialist lifecycle semantics for `ap_automation_vendor_tax_profile`
+### 4. Vendor bank account validation workflow
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** Payment fraud frequently occurs through bank account substitution or unverified payment credentials.
 
-**Improvement:** Extend `ap_automation_vendor_tax_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `vendor_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add bank validation states for submitted, independently verified, micro-test pending, active, suspended, and retired. Store tokenized account evidence, verification method, approver independence, rail compatibility, and last-use proof.
 
-### 5. Deep specialist lifecycle semantics for `ap_automation_vendor_risk_signal`
+### 5. Payment hold and release governance
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** AP needs precise holds for vendor risk, invoice dispute, tax failure, duplicate concern, liquidity freeze, or legal instruction.
 
-**Improvement:** Extend `ap_automation_vendor_risk_signal` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `vendor_onboarding`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add hold records with scope, reason, owner, expiry, affected invoices/payments, release requirements, and audit trail. Payment scheduling should explain every hold and prevent hidden bypass.
 
-### 6. Deep specialist lifecycle semantics for `ap_automation_purchase_order`
+### 6. Vendor tax profile completeness gate
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** Incorrect tax and withholding setup creates regulatory exposure and rework.
 
-**Improvement:** Extend `ap_automation_purchase_order` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `purchase_order_reference`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate jurisdiction, registration identifiers, exemption certificate, withholding code, expiry date, treaty basis, and proof hash before invoices can be tax-cleared. Add alerts for expiring or inconsistent certificates.
 
-### 7. Deep specialist lifecycle semantics for `ap_automation_purchase_order_line`
+### 7. E-invoice jurisdiction compliance matrix
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** E-invoicing rules differ by jurisdiction, format, clearance model, and response state.
 
-**Improvement:** Extend `ap_automation_purchase_order_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `goods_receipt_reference`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add jurisdiction matrices for required invoice fields, submission timing, clearance response, cancellation/amendment behavior, archival proof, and tax authority acknowledgement. Block payment for invoices requiring clearance until accepted evidence exists.
 
-### 8. Deep specialist lifecycle semantics for `ap_automation_goods_receipt`
+### 8. Multi-channel invoice capture normalization
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** AP receives invoices by portal, email, OCR document, e-invoice network, supplier upload, and API; inconsistent intake creates duplicates and missing evidence.
 
-**Improvement:** Extend `ap_automation_goods_receipt` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `receipt_line_reconciliation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Normalize every capture artifact into a canonical invoice intake record with channel, source hash, extraction confidence, original reference, sender identity, duplicate candidates, and document retention policy.
 
-### 9. Deep specialist lifecycle semantics for `ap_automation_goods_receipt_line`
+### 9. OCR and extraction confidence governance
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** Automated extraction must not silently accept low-confidence vendor, amount, tax, PO, or bank fields.
 
-**Improvement:** Extend `ap_automation_goods_receipt_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `invoice_capture`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track field-level confidence, source coordinates, extraction model version, human corrections, and downstream match impact. Route low-confidence fields to review and use corrections as governed model feedback.
 
-### 10. Deep specialist lifecycle semantics for `ap_automation_invoice`
+### 10. Semantic invoice-to-contract alignment
 
-**Justification:** This owned table is part of the Accounts Payable Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Vendor obligations, OCR intake, invoice matching, approval, and withholding.
+**Justification:** Matching only PO and receipt data misses contractual terms, service periods, price escalators, caps, and penalty clauses.
 
-**Improvement:** Extend `ap_automation_invoice` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `ocr_extraction`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add contract-term extraction and alignment for billing period, rate card, discounts, service level credits, tax jurisdiction, and payment terms. Store semantic evidence and exception reasons when invoice terms diverge from contract terms.
 
-### 11. Make `command_ap_vendors` a complete command lifecycle
+### 11. Two-way and three-way match policy compiler
 
-**Justification:** High-value users need `command_ap_vendors` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Matching rules vary by vendor, category, amount, service/goods type, tolerance, tax, freight, and receiving status.
 
-**Improvement:** Implement `command_ap_vendors` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `VendorOnboarded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Compile match policies with tolerance bands, quantity/price variance, receipt requirement, service acceptance, tax/freight handling, and exception routing. Each rule version should include fixtures and impact simulation.
 
-### 12. Make `command_ap_vendor_bank_accounts` a complete command lifecycle
+### 12. Probabilistic match explanation
 
-**Justification:** High-value users need `command_ap_vendor_bank_accounts` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Probabilistic matching is only useful if AP specialists can understand why an invoice matched or failed.
 
-**Improvement:** Implement `command_ap_vendor_bank_accounts` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PurchaseOrderIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store candidate PO/receipt lines, match weights, confidence, conflicting evidence, missing fields, and final decision. The UI should show side-by-side invoice, PO, receipt, and contract evidence with suggested resolution.
 
-### 13. Make `command_ap_vendor_tax_profiles` a complete command lifecycle
+### 13. Service invoice acceptance workflow
 
-**Justification:** High-value users need `command_ap_vendor_tax_profiles` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Services often lack goods receipts and need service-period, milestone, timesheet, or deliverable acceptance.
 
-**Improvement:** Implement `command_ap_vendor_tax_profiles` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GoodsReceiptRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add service acceptance records linked to invoice lines, period, approver, deliverable evidence, milestone state, and partial acceptance. Match policies should support two-way, service acceptance, and contract milestone modes.
 
-### 14. Make `command_ap_purchase_orders` a complete command lifecycle
+### 14. Freight, tax, and miscellaneous charge matching
 
-**Justification:** High-value users need `command_ap_purchase_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Non-item charges frequently cause exceptions and leakage when not handled by explicit rules.
 
-**Improvement:** Implement `command_ap_purchase_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InvoiceCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add charge classification, allowed variance, allocation basis, tax treatment, freight terms, and approval policy for non-PO line charges. Route unusual charges to exception cases with suggested account assignment.
 
-### 15. Make `command_ap_goods_receipts` a complete command lifecycle
+### 15. Duplicate invoice detection across weak signals
 
-**Justification:** High-value users need `command_ap_goods_receipts` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Duplicate invoices can vary by invoice number formatting, vendor site, amount, date, currency, and capture channel.
 
-**Improvement:** Implement `command_ap_goods_receipts` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PaymentScheduled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add duplicate scoring using normalized invoice number, vendor graph, amount, currency, date, PO, source hash, bank account, and line similarity. Require explicit override with reason and approver for high-score duplicates.
 
-### 16. Make `command_ap_invoices` a complete command lifecycle
+### 16. Credit memo and debit memo lifecycle
 
-**Justification:** High-value users need `command_ap_invoices` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Payables operations include credits, debit memos, short-pay, overpayment recovery, and supplier adjustments.
 
-**Improvement:** Implement `command_ap_invoices` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PaymentExecuted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add memo records with original invoice link, reason, amount, tax impact, open balance, application policy, and GL handoff. Payment scheduling should net eligible credits and explain unapplied memos.
 
-### 17. Make `command_ap_invoices_invoice_id_match` a complete command lifecycle
+### 17. Invoice exception case management
 
-**Justification:** High-value users need `command_ap_invoices_invoice_id_match` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Exceptions need owner, cause, evidence, SLA, supplier communication, resolution, and close proof, not just a status.
 
-**Improvement:** Implement `command_ap_invoices_invoice_id_match` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InvoiceExceptionResolved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand exception cases with category, root cause, affected invoice lines, owner, supplier contact, required evidence, SLA, escalation, resolution action, and recurrence flag. The agent should draft resolution steps and supplier messages.
 
-### 18. Make `command_ap_exceptions` a complete command lifecycle
+### 18. Approval route optimization with SoD
 
-**Justification:** High-value users need `command_ap_exceptions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Approval delays hurt discounts and vendor relationships, but approvals must preserve authority and segregation of duties.
 
-**Improvement:** Implement `command_ap_exceptions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `VendorRiskChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add approval routing based on amount, account assignment, requester, vendor risk, PO owner, project, cost center, and SoD constraints. Store routing rationale, skipped approvers, delegation, and escalation evidence.
 
-### 19. Make `command_ap_approval_tasks` a complete command lifecycle
+### 19. Delegation and out-of-office handling
 
-**Justification:** High-value users need `command_ap_approval_tasks` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** AP approvals often stall when approvers are unavailable.
 
-**Improvement:** Implement `command_ap_approval_tasks` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DiscountOpportunityCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add delegation policies with valid dates, scope, limits, SoD checks, and emergency fallback. Approval tasks should reroute before SLA breach while preserving independent approval evidence.
 
-### 20. Make `command_ap_payment_schedules` a complete command lifecycle
+### 20. Dynamic discount capture strategy
 
-**Justification:** High-value users need `command_ap_payment_schedules` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Early payment discounts require balancing discount value, cash availability, payment risk, and supplier priority.
 
-**Improvement:** Implement `command_ap_payment_schedules` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `VendorOnboarded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add discount decisioning that compares discount yield, cash forecast projection, treasury liquidity buffer, payment rail cost, vendor risk, and alternative cash use. Store accepted and rejected opportunities with financial rationale.
 
-### 21. Operationalize `event_sourced_invoice_lifecycle` as a governed decision system
+### 21. Payment scheduling with liquidity constraints
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves accuracy rate without hiding assumptions.
+**Justification:** AP payment plans must respect due dates, discounts, cash forecasts, holds, priority suppliers, and payment limits.
 
-**Improvement:** Promote `event_sourced_invoice_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build a scheduler that ranks invoices by due date, discount net benefit, vendor criticality, cash projection, currency, rail cutoff, and hold status. Provide what-if scenarios for delaying, accelerating, or batching payments.
 
-### 22. Operationalize `graph_relational_vendor_data_model` as a governed decision system
+### 22. Payment batch approval and release control
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves close cycle time without hiding assumptions.
+**Justification:** Payment batches concentrate financial risk and require control over composition, approval, and release.
 
-**Improvement:** Promote `graph_relational_vendor_data_model` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add batch controls for amount, currency, rail, vendor risk, duplicate checks, approver independence, release window, and settlement proof. UI should show every invoice included, excluded, or held.
 
-### 23. Operationalize `multi_tenant_liquidity_isolation` as a governed decision system
+### 23. Payment rail selection and failover
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves cash impact without hiding assumptions.
+**Justification:** Payment route choice affects cost, settlement speed, risk, cutoff times, and resilience.
 
-**Improvement:** Promote `multi_tenant_liquidity_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add rail scoring across cost, latency, currency, vendor capability, bank validation, fraud risk, carbon window, and outage state. Store failover decisions and require approval when route changes after batch approval.
 
-### 24. Operationalize `schema_evolution_resilient_invoice_schema` as a governed decision system
+### 24. Remittance advice lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** Suppliers need clear remittance details to reconcile payments and reduce disputes.
 
-**Improvement:** Promote `schema_evolution_resilient_invoice_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add remittance advice records with payment, invoices, credits, deductions, tax withheld, currency, delivery channel, delivery proof, and supplier acknowledgement. Support regenerated advice with correction evidence.
 
-### 25. Operationalize `probabilistic_three_way_matching` as a governed decision system
+### 25. Vendor statement reconciliation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves vendor onboarded throughput without hiding assumptions.
+**Justification:** Supplier statements reveal missing invoices, unapplied credits, duplicate payments, disputes, and aging errors.
 
-**Improvement:** Promote `probabilistic_three_way_matching` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_onboarded_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add statement ingestion, line matching, missing-document detection, disputed balance cases, aging comparison, and settlement proposals. Workbench should show vendor statement reconciliation by vendor/site/period.
 
-### 26. Operationalize `real_time_liquidity_aware_payment_scheduling` as a governed decision system
+### 26. Withholding tax calculation and certificate expiry
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves purchase order issued throughput without hiding assumptions.
+**Justification:** Withholding depends on jurisdiction, vendor status, certificate validity, service type, treaty, and payment date.
 
-**Improvement:** Promote `real_time_liquidity_aware_payment_scheduling` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `purchase_order_issued_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add withholding decision records with tax profile, rate, base amount, exemption proof, certificate expiry, payment timing, and remittance obligation. Block payment when withholding evidence is missing or expired.
 
-### 27. Operationalize `counterfactual_discount_analysis` as a governed decision system
+### 27. Tax engine handoff proof
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves accuracy rate without hiding assumptions.
+**Justification:** AP should not own tax law globally, but it must prove it asked tax services correctly and applied returned decisions.
 
-**Improvement:** Promote `counterfactual_discount_analysis` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store tax API request/response digests, schema version, tax decision, line allocation, override, and proof hash. Reconcile invoice tax, withholding, and payment remittance against this evidence.
 
-### 28. Operationalize `temporal_cash_flow_forecasting` as a governed decision system
+### 28. GL accrual and liability handoff
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves close cycle time without hiding assumptions.
+**Justification:** AP invoices create liabilities, accruals, expenses, prepaids, and reversals that must be traceable to GL without shared tables.
 
-**Improvement:** Promote `temporal_cash_flow_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add GL handoff records for invoice accrual, liability recognition, payment clearing, discount taken, tax withheld, and reversal events. Validate account assignments and emit AppGen-X events with idempotency evidence.
 
-### 29. Operationalize `autonomous_exception_resolution` as a governed decision system
+### 29. Accrual for received-not-invoiced items
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves cash impact without hiding assumptions.
+**Justification:** Goods and services received but not invoiced must be accrued for accurate close.
 
-**Improvement:** Promote `autonomous_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add uninvoiced receipt/service accrual proposals with PO/receipt evidence, expected amount, account assignment, reversal policy, and GL handoff. Close workbench should expose unaccrued receipt risk.
 
-### 30. Operationalize `semantic_contract_to_invoice_alignment` as a governed decision system
+### 30. Prepayment and advance management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Payable Automation and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** AP often manages deposits, advances, prepayments, amortization, and application to future invoices.
 
-**Improvement:** Promote `semantic_contract_to_invoice_alignment` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add prepayment records with supplier, purpose, contract/PO link, approval, remaining balance, application rules, amortization schedule, and reconciliation evidence.
 
-### 31. Create simulation-grade governance for `AP_AUTOMATION_DATABASE_URL` and `AP_AUTOMATION_DATABASE_URL`
+### 31. Supplier financing and reverse factoring
 
-**Justification:** Complete Accounts Payable Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** AP may offer early payment through financing programs that affect discount economics, supplier cash flow, and treasury exposure.
 
-**Improvement:** Add a policy cockpit where `AP_AUTOMATION_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AP_AUTOMATION_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add financing offers, supplier election, funding source, fee, advance amount, settlement date, and accounting handoff. Simulate buyer/supplier benefit and treasury impact before execution.
 
-### 32. Create simulation-grade governance for `AP_AUTOMATION_EVENT_TOPIC` and `AP_AUTOMATION_EVENT_TOPIC`
+### 32. Fraud pattern detection
 
-**Justification:** Complete Accounts Payable Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** AP is a high-value fraud target through fake vendors, changed bank accounts, duplicate invoices, split invoices, and unusual approval paths.
 
-**Improvement:** Add a policy cockpit where `AP_AUTOMATION_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AP_AUTOMATION_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add fraud signals for vendor-bank changes, invoice-number patterns, payment timing, split amounts, approver anomalies, duplicate clusters, and outlier suppliers. Each finding should create an explainable risk signal or payment hold.
 
-### 33. Create simulation-grade governance for `AP_AUTOMATION_RETRY_LIMIT` and `AP_AUTOMATION_RETRY_LIMIT`
+### 33. Split invoice and threshold avoidance detection
 
-**Justification:** Complete Accounts Payable Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Fraud or policy avoidance can appear as multiple invoices just below approval thresholds.
 
-**Improvement:** Add a policy cockpit where `AP_AUTOMATION_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AP_AUTOMATION_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Detect invoice clusters by vendor, requester, PO, date range, amount, account assignment, and approver. Route suspected splits to enhanced approval with evidence.
 
-### 34. Create simulation-grade governance for `AP_AUTOMATION_DATABASE_URL` and `AP_AUTOMATION_DATABASE_URL`
+### 34. Vendor risk scoring governance
 
-**Justification:** Complete Accounts Payable Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Vendor risk scores influence holds and payments, so they must be explainable and controlled.
 
-**Improvement:** Add a policy cockpit where `AP_AUTOMATION_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AP_AUTOMATION_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Govern risk models with feature lineage, source signals, drift checks, deterministic fallback, override reasons, and review cadence. Display risk contributors and recommended controls in vendor views.
 
-### 35. Create simulation-grade governance for `AP_AUTOMATION_EVENT_TOPIC` and `AP_AUTOMATION_EVENT_TOPIC`
+### 35. Supplier communication workspace
 
-**Justification:** Complete Accounts Payable Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** AP exceptions and statements require controlled communication with suppliers.
 
-**Improvement:** Add a policy cockpit where `AP_AUTOMATION_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AP_AUTOMATION_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add communication records linked to invoices, statements, exceptions, and payments with template, channel, recipient, sent proof, reply summary, and next action. The agent should draft messages from owned evidence.
 
-### 36. Upgrade `ApAutomationWorkbench` into a full specialist command center
+### 36. Vendor portal task queue
 
-**Justification:** The PBC UI must expose the complete Accounts Payable Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Suppliers can resolve missing tax forms, invoice disputes, statement mismatches, and bank verification without internal AP rework.
 
-**Improvement:** Expand `ApAutomationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add supplier-facing task descriptors with evidence request, due date, secure upload, validation status, and AP review outcome. Keep portal state inside AP-owned tables or declared APIs.
 
-### 37. Upgrade `ApAutomationDetail` into a full specialist command center
+### 37. AP close cockpit
 
-**Justification:** The PBC UI must expose the complete Accounts Payable Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Month-end AP close requires open invoice, accrual, payment, tax, statement, and exception visibility.
 
-**Improvement:** Expand `ApAutomationDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add close dashboards for unmatched invoices, pending approvals, held payments, uninvoiced receipts, withholding exceptions, vendor statement differences, and GL handoff status by period and entity.
 
-### 38. Upgrade `ApAutomationWorkbench` into a full specialist command center
+### 38. Aging and working-capital analytics
 
-**Justification:** The PBC UI must expose the complete Accounts Payable Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** AP affects cash, supplier relationships, and working capital.
 
-**Improvement:** Expand `ApAutomationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add aging analytics by vendor, category, entity, due date, discount status, hold reason, and payment priority. Show working-capital impact of payment scenarios and overdue risk.
 
-### 39. Upgrade `ApAutomationDetail` into a full specialist command center
+### 39. Payment recovery and overpayment management
 
-**Justification:** The PBC UI must expose the complete Accounts Payable Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Overpayments, duplicate payments, and credits require recovery workflows.
 
-**Improvement:** Expand `ApAutomationDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add recovery cases with source invoice/payment, vendor contact, recovery method, expected amount, settlement status, write-off approval, and GL adjustment evidence.
 
-### 40. Upgrade `ApAutomationWorkbench` into a full specialist command center
+### 40. Cash forecast feedback loop
 
-**Justification:** The PBC UI must expose the complete Accounts Payable Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Treasury forecasts depend on AP schedules, and AP schedules depend on treasury liquidity.
 
-**Improvement:** Expand `ApAutomationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Publish payment commitments and consume cash forecast projections with freshness checks. Track forecast accuracy by scheduled vs executed payments and expose stale forecast risk.
 
-### 41. Prove cross-PBC federation for `POST /ap/vendors` and `VendorApproved`
+### 41. Cross-border payment compliance
 
-**Justification:** Accounts Payable Automation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** International payments require currency, beneficiary, bank, sanctions, tax, document, and remittance controls.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /ap/vendors` and consumed event `VendorApproved` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add cross-border payment requirements by country/currency/rail, including beneficiary validation, documentary proof, FX quote, withholding, sanction check, and settlement trace.
 
-### 42. Prove cross-PBC federation for `POST /ap/vendor-bank-accounts` and `PurchaseOrderApproved`
+### 42. Payment execution idempotency ledger
 
-**Justification:** Accounts Payable Automation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Duplicate payment execution is a severe AP failure.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /ap/vendor-bank-accounts` and consumed event `PurchaseOrderApproved` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add an idempotency ledger for payment schedules, batch release, rail submission, settlement callback, and remittance generation. Duplicate calls should return prior result and never create duplicate payments.
 
-### 43. Prove cross-PBC federation for `POST /ap/vendor-tax-profiles` and `GoodsReceiptPosted`
+### 43. Dead-letter and payment failure recovery
 
-**Justification:** Accounts Payable Automation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Failed events or payment callbacks can leave invoices, batches, and GL handoffs inconsistent.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /ap/vendor-tax-profiles` and consumed event `GoodsReceiptPosted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Build recovery workbench for failed AppGen-X events, rejected payment submissions, settlement mismatches, and stale callbacks. Provide replay simulation, duplicate-payment risk check, and corrective event generation.
 
-### 44. Prove cross-PBC federation for `POST /ap/purchase-orders` and `TaxPolicyChanged`
+### 44. Agent-safe invoice ingestion
 
-**Justification:** Accounts Payable Automation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The AP chatbot should help ingest invoices and documents, but it must not create payable liabilities blindly.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /ap/purchase-orders` and consumed event `TaxPolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require agent ingestion previews with extracted fields, source citations, confidence, duplicate candidates, tax/match status, suggested coding, and required human review. Low-confidence or high-risk invoices should remain draft.
 
-### 45. Temporal reconstruction and bitemporal audit for Accounts Payable Automation
+### 45. Agent-safe payment actions
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Payment scheduling and release are financially material actions that require strong confirmation.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Define agent payment competencies that can analyze, draft, and simulate schedules but require explicit approval for holds, batch creation, release, rail failover, or payment cancellation. Previews should show cash, discount, risk, and duplicate impact.
 
-### 46. Bulk operations and migration-grade controls for Accounts Payable Automation
+### 46. AP rules and parameter simulation
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Match thresholds, approval limits, discount floors, risk thresholds, and liquidity buffers can materially alter operations.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add simulation for rule/parameter changes against historical invoices and open work. Show changes in auto-match rate, exceptions, approval workload, discounts captured, payments delayed, and fraud holds.
 
-### 47. Specialist edge-case playbooks for Accounts Payable Automation
+### 47. Workbench surface for all AP capabilities
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** AP specialists need operational views, not hidden backend commands.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Expand UI into vendor onboarding, bank verification, tax profile, invoice capture, match cockpit, exception board, approval queue, payment scheduler, batch release, discount dashboard, statement reconciliation, close cockpit, fraud/risk panel, and agent assistant.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Accounts Payable Automation
+### 48. Boundary proof for AP-only ownership
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** AP must integrate with procurement, treasury, tax, GL, workflow, identity, and audit without reading their operational tables.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add static/runtime checks proving every AP command touches only AP-owned tables plus declared APIs/events/projections. Include failing fixtures for direct foreign-table references.
 
-### 49. Continuous control testing and operational assurance for Accounts Payable Automation
+### 49. AP release readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need a concise but defensible view of whether AP is ready for production use.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from vendor evidence, bank validation, tax completeness, invoice capture confidence, match automation, exception aging, approval SoD, payment idempotency, GL/tax/treasury handoff, fraud controls, UI coverage, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Accounts Payable Automation
+### 50. End-to-end procure-to-pay trace
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** AP excellence depends on tracing obligations from purchase order to receipt, invoice, approval, payment, remittance, tax, GL, and vendor statement.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Build an end-to-end trace view using AP-owned records and declared projections, showing every state transition, event, control, exception, and financial handoff. The agent should answer procure-to-pay status questions from this trace.

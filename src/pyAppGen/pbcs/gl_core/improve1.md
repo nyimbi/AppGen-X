@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `gl_core`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `gl_core`. The items are specific to general ledger operations: immutable posting, accounting invariants, chart governance, allocations, accruals, revaluation, consolidation, continuous close, regulatory reporting, audit proof, and agent-assisted finance work.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Immutable financial truth, journal orchestration, chart of accounts, and balances.
-- Representative owned tables: `gl_core_ledger_event_log`, `gl_core_journal_entry`, `gl_core_journal_line`, `gl_core_ledger_account`, `gl_core_accounting_period`, `gl_core_ledger_projection`, `gl_core_consensus_replica`, `gl_core_schema_extension`, `gl_core_tenant_ledger_partition`, `gl_core_probabilistic_posting`, `gl_core_close_snapshot`, `gl_core_causal_scenario`, ...
-- Representative operations/APIs: `command_journals`, `query_trial_balance`, `query_chart_of_accounts`, `query_ledger_events`, `command_ledger_projections`, `command_consensus_commits`, `command_schema_extensions`, `query_temporal_ledger`, `command_probabilistic_postings`, `command_continuous_close_snapshots`, `command_causal_scenarios`, `command_reconciliation_cases`, ...
-- Representative events: `JournalPosted`, `PeriodClosed`, `TrialBalanceCalculated`, `LedgerEventAppended`, `ConsensusCommitted`, `LedgerProjectionRebuilt`, `ContinuousCloseSnapshotCreated`, `ReconciliationSuggested`, `AuditProofGenerated`, `RegulatoryRuleCompiled`, ...
-- Representative advanced capabilities: `event_sourced_ledger_core`, `distributed_consensus_protocol`, `schema_on_read_extensibility`, `multi_tenant_isolation`, `real_time_olap_oltp_convergence`, `probabilistic_accounting_primitives`, `continuous_close_architecture`, `causal_inference_engine`, `autonomous_reconciliation`, `semantic_transaction_understanding`, ...
+- Domain purpose: financial-accounting truth, balanced journal activity, immutable ledger events, derived projections, continuous close, posting policy, audit proofs, and AppGen-X subledger synchronization.
+- Owned boundary: ledger event log, journal events, journal entries, journal lines, ledger accounts, accounting periods, ledger/account projections, consensus replicas, tenant partitions, probabilistic postings, close snapshots, causal scenarios, reconciliation cases, semantic source documents, regulatory rules, policy decisions, controls, federation links, identity credentials, resilience drills, crypto epochs, carbon execution windows, financial models, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: journal posting/validation, projections, trial balance, close snapshots, reconciliation, policy rules, audit proofs, configuration, schema extension, event inbox, rules, parameters, and workbench views.
+- Existing events and dependencies: emits `JournalPosted`, `CloseSnapshotCreated`, `ReconciliationSuggested`, `PostingPolicyChanged`, and `LedgerProjectionBuilt`; consumes invoice, payment, payroll, asset, and tax events through AppGen-X without shared tables.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `gl_core_ledger_event_log`
+### 1. Double-entry invariant proof engine
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** The core promise of a GL is that every posted entry balances by entity, currency, ledger, and accounting basis. A ledger that merely stores debit and credit lines is incomplete without proof that posting invariants cannot be bypassed.
 
-**Improvement:** Extend `gl_core_ledger_event_log` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add an invariant engine that proves journal balance, account validity, period admissibility, entity isolation, currency consistency, source-document lineage, and immutable event append before a `JournalPosted` event is emitted. Store invariant proof hashes with each journal event and expose failed invariant reasons in the workbench.
 
-### 2. Deep specialist lifecycle semantics for `gl_core_journal_entry`
+### 2. Chart of accounts governance lifecycle
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** Chart changes affect postings, statements, consolidations, budgets, tax reporting, allocations, and integrations. Account records need controlled lifecycle, not generic create/update behavior.
 
-**Improvement:** Extend `gl_core_journal_entry` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model account lifecycle states such as proposed, active, posting-blocked, deprecated, mapped-only, and retired. Add hierarchy validation, normal-balance checks, effective dating, statement mapping, consolidation mapping, and impact preview for open journals and downstream reports.
 
-### 3. Deep specialist lifecycle semantics for `gl_core_journal_line`
+### 3. Multi-ledger and accounting-basis support
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** Enterprises maintain operational, statutory, management, tax, and adjustment ledgers with different accounting bases and reporting rules.
 
-**Improvement:** Extend `gl_core_journal_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add ledger-set descriptors with ledger type, accounting basis, permitted posting sources, reporting currency, adjustment policy, consolidation participation, and close calendar. Journal validation should ensure lines post to the correct ledger set and basis.
 
-### 4. Deep specialist lifecycle semantics for `gl_core_ledger_account`
+### 4. Bitemporal accounting queries
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** Finance teams need to answer what was booked, what was valid, what was processed, and what was visible at a historical time.
 
-**Improvement:** Extend `gl_core_ledger_account` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `chart_of_accounts`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend projections and queries with transaction time, valid time, processing time, and close-snapshot time. Trial balance, account detail, and statement queries should support as-of reconstruction with source event counts and projection freshness evidence.
 
-### 5. Deep specialist lifecycle semantics for `gl_core_accounting_period`
+### 5. Journal source lineage graph
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** Auditors and controllers need to trace a journal from subledger event, source document, approval, transformation, posting, reversal, and report impact.
 
-**Improvement:** Extend `gl_core_accounting_period` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `journal_entry`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build a lineage graph linking consumed AppGen-X events, semantic source documents, journal headers, journal lines, policy decisions, outbox events, audit proofs, and projections. UI drilldowns should show lineage without reading foreign PBC tables.
 
-### 6. Deep specialist lifecycle semantics for `gl_core_ledger_projection`
+### 6. Journal lifecycle with draft, approval, posting, and correction
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** Manual and automated journals require different states, approvals, reversals, attachments, and correction patterns.
 
-**Improvement:** Extend `gl_core_ledger_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `journal_line_balancing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add explicit journal states for draft, validated, pending approval, rejected, posted, reversed, correcting, and superseded. Corrections must create new immutable events linked to the original, never update sealed postings.
 
-### 7. Deep specialist lifecycle semantics for `gl_core_consensus_replica`
+### 7. Reversal and recurring journal engine
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** Standard GL operations rely on recurring journals, auto-reversals, recurring accruals, and scheduled postings.
 
-**Improvement:** Extend `gl_core_consensus_replica` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `posting_periods`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add recurring journal templates with schedule, end condition, approval policy, auto-reversal date, holiday handling, and idempotency key. Generate future-dated draft entries with previewable amounts and release evidence.
 
-### 8. Deep specialist lifecycle semantics for `gl_core_schema_extension`
+### 8. Accrual and deferral schedule management
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** Revenue, expenses, prepaids, and liabilities often need systematic recognition across periods.
 
-**Improvement:** Extend `gl_core_schema_extension` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `trial_balance`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add owned accrual/deferral schedule records with source, basis, start/end dates, recognition method, account mapping, remaining balance, and generated journal linkage. Workbench users should see schedule rollforwards and exceptions.
 
-### 9. Deep specialist lifecycle semantics for `gl_core_tenant_ledger_partition`
+### 9. Allocation and apportionment engine
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** Cost centers, departments, projects, and entities require repeatable allocation rules with transparent basis and reversibility.
 
-**Improvement:** Extend `gl_core_tenant_ledger_partition` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `ledger_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add allocation rules with source pool, target basis, driver data projection, rounding policy, intercompany handling, effective dates, and simulation. Generated journals should include allocation proof and rejected alternatives.
 
-### 10. Deep specialist lifecycle semantics for `gl_core_probabilistic_posting`
+### 10. Intercompany accounting and settlement
 
-**Justification:** This owned table is part of the General Ledger Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Immutable financial truth, journal orchestration, chart of accounts, and balances.
+**Justification:** Cross-entity transactions require due-to/due-from balancing, eliminations, dispute handling, and settlement workflows.
 
-**Improvement:** Extend `gl_core_probabilistic_posting` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `account_reconciliation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add intercompany pair rules, reciprocal account mappings, counterparty entity validation, imbalance detection, settlement status, elimination eligibility, and dispute cases. Emit reconciliation suggestions and close blockers for unresolved imbalances.
 
-### 11. Make `command_journals` a complete command lifecycle
+### 11. Multi-currency translation and revaluation
 
-**Justification:** High-value users need `command_journals` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** GLs must manage transaction currency, functional currency, reporting currency, FX rates, revaluation, realized/unrealized gains, and translation adjustments.
 
-**Improvement:** Implement `command_journals` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `JournalPosted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add FX rate set projections, rate source evidence, revaluation runs, translation runs, rounding policy, CTA account mapping, and journal linkage. Trial balances should expose currency layers and revaluation proof.
 
-### 12. Turn `query_trial_balance` into an expert read-model experience
+### 12. Period close control framework
 
-**Justification:** Domain experts rely on `query_trial_balance` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Closing a period is a controlled assurance process, not a date flag.
 
-**Improvement:** Build `query_trial_balance` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `PeriodClosed` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add close tasks, dependencies, approvals, reconciliations, lock rules, late-posting policy, reopen policy, and materiality thresholds. Continuous close snapshots should summarize open blockers and proof status by ledger, entity, and period.
 
-### 13. Turn `query_chart_of_accounts` into an expert read-model experience
+### 13. Soft close and hard close distinction
 
-**Justification:** Domain experts rely on `query_chart_of_accounts` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Finance teams often run preliminary close, management close, statutory close, and final locked close with different permissions and tolerance.
 
-**Improvement:** Build `query_chart_of_accounts` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `TrialBalanceCalculated` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Model close phases with allowed posting types, adjustment windows, required controls, reporting visibility, and reopen governance. Journal validation should enforce phase-specific constraints.
 
-### 14. Turn `query_ledger_events` into an expert read-model experience
+### 14. Close snapshot reproducibility
 
-**Justification:** Domain experts rely on `query_ledger_events` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** A close snapshot must be reproducible from immutable events, not just stored as a balance copy.
 
-**Improvement:** Build `query_ledger_events` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `LedgerEventAppended` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Store snapshot recipe, event sequence range, projection version, control assertions, rule versions, and source counts. Add a verifier that rebuilds the snapshot and compares proof hashes.
 
-### 15. Make `command_ledger_projections` a complete command lifecycle
+### 15. Financial statement mapping engine
 
-**Justification:** High-value users need `command_ledger_projections` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Trial balances become statements through mappings, subtotals, eliminations, currency translation, and disclosure rules.
 
-**Improvement:** Implement `command_ledger_projections` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ConsensusCommitted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add statement line mappings for balance sheet, income statement, cash flow, equity, and custom statutory reports. Include effective dates, account ranges, dimension filters, sign convention, and validation tests.
 
-### 16. Make `command_consensus_commits` a complete command lifecycle
+### 16. Segment and management reporting dimensions
 
-**Justification:** High-value users need `command_consensus_commits` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Finance teams report by entity, cost center, product, project, region, channel, and custom dimensions.
 
-**Improvement:** Implement `command_consensus_commits` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LedgerProjectionRebuilt`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add dimension schema governance with mandatory/optional dimensions by account, allowed combinations, effective dating, and hierarchy mapping. Journal validation should reject invalid dimension combinations before posting.
 
-### 17. Make `command_schema_extensions` a complete command lifecycle
+### 17. Retained earnings and opening balance rollforward
 
-**Justification:** High-value users need `command_schema_extensions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Year-end close requires profit/loss transfer, balance carryforward, and opening-balance proof.
 
-**Improvement:** Implement `command_schema_extensions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ContinuousCloseSnapshotCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add retained-earnings rules, year-end close jobs, opening balance records, carryforward exceptions, and proof linking prior-year closing balances to new-year opening balances.
 
-### 18. Turn `query_temporal_ledger` into an expert read-model experience
+### 18. Consolidation and elimination support
 
-**Justification:** Domain experts rely on `query_temporal_ledger` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Group reporting requires ownership percentages, currency translation, intercompany eliminations, minority interest, and consolidation adjustments.
 
-**Improvement:** Build `query_temporal_ledger` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `ReconciliationSuggested` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add consolidation scopes, ownership structures, consolidation methods, elimination rules, group currency translation, and adjustment journals. Keep external ledgers as projections/federation links rather than shared tables.
 
-### 19. Make `command_probabilistic_postings` a complete command lifecycle
+### 19. Budgetary control at posting time
 
-**Justification:** High-value users need `command_probabilistic_postings` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** GL postings can violate budget, grant, project, or fund controls if not checked pre-posting.
 
-**Improvement:** Implement `command_probabilistic_postings` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AuditProofGenerated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add budget-control projections, encumbrance links, tolerance rules, override approvals, and budget impact simulation. Posting validation should produce an explainable pass/block/override decision.
 
-### 20. Make `command_continuous_close_snapshots` a complete command lifecycle
+### 20. Fund and grant accounting primitives
 
-**Justification:** High-value users need `command_continuous_close_snapshots` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Public sector, nonprofit, and grant-funded organizations require restrictions, funds, grants, allowable costs, and reporting constraints.
 
-**Improvement:** Implement `command_continuous_close_snapshots` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RegulatoryRuleCompiled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add fund/grant dimension controls, restriction status, allowable account combinations, sponsor reporting tags, matching requirements, and close controls for restricted balances.
 
-### 21. Operationalize `event_sourced_ledger_core` as a governed decision system
+### 21. Source-document semantic account derivation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves accuracy rate without hiding assumptions.
+**Justification:** Automated journal creation must explain how source text, invoice lines, contracts, or events mapped to accounts and dimensions.
 
-**Improvement:** Promote `event_sourced_ledger_core` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store semantic derivation candidates, confidence, source spans, rule hits, model version, human override, and final account decision. The agent should show evidence and require confirmation for low-confidence mappings.
 
-### 22. Operationalize `distributed_consensus_protocol` as a governed decision system
+### 22. Agent-safe journal creation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves close cycle time without hiding assumptions.
+**Justification:** GL agents must help create journals from instructions and documents without silently posting material entries.
 
-**Improvement:** Promote `distributed_consensus_protocol` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add agent journal plans with proposed header, lines, accounts, dimensions, tax/currency assumptions, balance proof, policy results, risk score, required approvals, and rollback/correction limits. Agent-generated entries should remain drafts until approved.
 
-### 23. Operationalize `schema_on_read_extensibility` as a governed decision system
+### 23. Materiality-aware posting validation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves cash impact without hiding assumptions.
+**Justification:** Controls and approvals depend on materiality by entity, account, period, currency, and close phase.
 
-**Improvement:** Promote `schema_on_read_extensibility` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add materiality profiles and route validation through amount thresholds, volatility, account sensitivity, close status, and actor authority. Store the materiality decision trace with each journal.
 
-### 24. Operationalize `multi_tenant_isolation` as a governed decision system
+### 24. Segregation-of-duties enforcement
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** Journal preparation, approval, posting, reversal, close approval, and rule modification must be separated for high-risk activities.
 
-**Improvement:** Promote `multi_tenant_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Consume identity policy projections to enforce SoD constraints, emergency overrides, and reviewer independence. Workbench actions should hide or block conflicted approvals and record denial reasons.
 
-### 25. Operationalize `real_time_olap_oltp_convergence` as a governed decision system
+### 25. Dynamic approval policy compiler
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves journal posted throughput without hiding assumptions.
+**Justification:** Approval thresholds vary by account, entity, amount, currency, source, close phase, and risk.
 
-**Improvement:** Promote `real_time_olap_oltp_convergence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `journal_posted_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Compile approval rules into versioned predicates with fixtures, effective dates, and simulation against historical journals. Store compiled evidence and impact analysis before activating rule changes.
 
-### 26. Operationalize `probabilistic_accounting_primitives` as a governed decision system
+### 26. Autonomous reconciliation workbench
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves period closed throughput without hiding assumptions.
+**Justification:** Reconciliation cases need evidence, matching candidates, explanations, disputes, and closure proof.
 
-**Improvement:** Promote `probabilistic_accounting_primitives` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `period_closed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand reconciliation with bank/subledger/intercompany/clearing types, matched items, unmatched aging, confidence, suggested action, human decision, supporting proof, and close blocker status. The agent should recommend matches with explainable evidence.
 
-### 27. Operationalize `continuous_close_architecture` as a governed decision system
+### 27. Clearing account governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves accuracy rate without hiding assumptions.
+**Justification:** Suspense and clearing accounts accumulate risk when aged balances are not resolved.
 
-**Improvement:** Promote `continuous_close_architecture` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add clearing-account aging, expected clearing source, auto-clear rules, exception thresholds, owner assignment, and close blockers. Dashboards should show unresolved balances by account, entity, and age bucket.
 
-### 28. Operationalize `causal_inference_engine` as a governed decision system
+### 28. Probabilistic accounting with disclosure controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves close cycle time without hiding assumptions.
+**Justification:** Uncertain postings are useful only if finance can report confidence, exposure, and disclosure treatment.
 
-**Improvement:** Promote `causal_inference_engine` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend probabilistic postings with scenario distribution, confidence interval, expected value, materiality impact, statement line propagation, disclosure note, and conversion path to deterministic posting.
 
-### 29. Operationalize `autonomous_reconciliation` as a governed decision system
+### 29. Causal scenario analysis for finance decisions
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves cash impact without hiding assumptions.
+**Justification:** Controllers and CFOs need counterfactual analysis such as rate changes, reclassification, delayed close, or intercompany settlement impact.
 
-**Improvement:** Promote `autonomous_reconciliation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add scenario templates that replay ledger projections under changed FX rates, allocation drivers, account mappings, or posting timing. Persist assumptions, affected statement lines, and confidence.
 
-### 30. Operationalize `semantic_transaction_understanding` as a governed decision system
+### 30. Ledger projection rebuild governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside General Ledger Core and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** Rebuilding projections can change reported balances if event ordering, rules, or schema changed.
 
-**Improvement:** Promote `semantic_transaction_understanding` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add rebuild plans with event ranges, projection version, rule version, expected balance deltas, validation checks, and approval for material differences. Store before/after hashes and explanations.
 
-### 31. Create simulation-grade governance for `GL_CORE_DATABASE_URL` and `GL_CORE_DATABASE_URL`
+### 31. Real-time trial balance with freshness evidence
 
-**Justification:** Complete General Ledger Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Real-time balances are only trustworthy when users know projection lag and included event ranges.
 
-**Improvement:** Add a policy cockpit where `GL_CORE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GL_CORE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add trial balance freshness indicators, last event sequence, projection lag, stale dimension warnings, and confidence for incomplete subledger feeds. UI should show why a balance is preliminary or final.
 
-### 32. Create simulation-grade governance for `GL_CORE_EVENT_TOPIC` and `GL_CORE_EVENT_TOPIC`
+### 32. Regulatory rule versioning and impact analysis
 
-**Justification:** Complete General Ledger Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Changes in accounting standards, local rules, or statutory reporting mappings can materially alter postings and statements.
 
-**Improvement:** Add a policy cockpit where `GL_CORE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GL_CORE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add regulatory rule versions with effective dates, impacted accounts, impacted statement lines, historical simulation, and adoption status. Release evidence should prove rule changes were tested before activation.
 
-### 33. Create simulation-grade governance for `GL_CORE_RETRY_LIMIT` and `GL_CORE_RETRY_LIMIT`
+### 33. Electronic audit file generation
 
-**Justification:** Complete General Ledger Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Many jurisdictions require standardized audit exports with chart, journals, tax, source, and balances.
 
-**Improvement:** Add a policy cockpit where `GL_CORE_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GL_CORE_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add audit-file descriptors by jurisdiction, required fields, mapping rules, validation checks, disclosure limits, and export proof. Generated files should be reproducible from event sequences and close snapshots.
 
-### 34. Create simulation-grade governance for `GL_CORE_DATABASE_URL` and `GL_CORE_DATABASE_URL`
+### 34. Disclosure-minimized audit proof channels
 
-**Justification:** Complete General Ledger Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Regulators or external reviewers may need proof of integrity without full journal-line disclosure.
 
-**Improvement:** Add a policy cockpit where `GL_CORE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GL_CORE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add proof bundles for balance existence, journal inclusion, period completeness, and control pass/fail with minimized claims, verifier instructions, and revocation/expiry metadata.
 
-### 35. Create simulation-grade governance for `GL_CORE_EVENT_TOPIC` and `GL_CORE_EVENT_TOPIC`
+### 35. Immutable event-chain anomaly detection
 
-**Justification:** Complete General Ledger Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Ledger integrity can be weakened by sequence gaps, unusual posting bursts, duplicate source hashes, or entropy shifts.
 
-**Improvement:** Add a policy cockpit where `GL_CORE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GL_CORE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add anomaly detection over ledger event cadence, actor/action patterns, account usage, source hashes, and sequence behavior. Each anomaly should create an explainable control assertion or reconciliation case.
 
-### 36. Upgrade `GlCoreWorkbench` into a full specialist command center
+### 36. Consensus and geo-resilience drill evidence
 
-**Justification:** The PBC UI must expose the complete General Ledger Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Distributed ledger claims require operational proof of quorum behavior, failover, and recovery.
 
-**Improvement:** Expand `GlCoreWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add resilience drills for node failure, region partition, stale replica, duplicate commit, and recovery replay. Store quorum state, committed index, data-loss exposure, and release readiness evidence.
 
-### 37. Upgrade `GlCoreDetail` into a full specialist command center
+### 37. Tenant ledger partition isolation tests
 
-**Justification:** The PBC UI must expose the complete General Ledger Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** A GL must prevent cross-tenant journal visibility, key reuse, sequence leakage, and reporting contamination.
 
-**Improvement:** Expand `GlCoreDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add tenant isolation tests for journal posting, projections, trial balance, close snapshots, audit proofs, agent responses, and dead-letter handling. Release audit should fail on any cross-tenant leakage.
 
-### 38. Upgrade `GlCoreWorkbench` into a full specialist command center
+### 38. Privacy-preserving consolidation proof
 
-**Justification:** The PBC UI must expose the complete General Ledger Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Group reporting may need consolidation evidence across legal entities without exposing all transaction detail.
 
-**Improvement:** Expand `GlCoreWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add private consolidation commitments for entity balances, eliminations, ownership, and group totals. Store proof inputs and limitations so reviewers can verify group numbers with minimized detail.
 
-### 39. Upgrade `GlCoreDetail` into a full specialist command center
+### 39. Ledger federation contract governance
 
-**Justification:** The PBC UI must expose the complete General Ledger Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** External ledgers and subledgers must join through explicit contracts rather than shared databases.
 
-**Improvement:** Expand `GlCoreDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add federation contracts with source system, trust level, API/event schema, freshness, reconciliation method, and allowed reporting use. Flag stale or untrusted federation links before reporting.
 
-### 40. Upgrade `GlCoreWorkbench` into a full specialist command center
+### 40. Carbon-aware non-urgent ledger workloads
 
-**Justification:** The PBC UI must expose the complete General Ledger Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Heavy projection rebuilds, audit-file generation, and analytics can often be scheduled outside urgent close windows.
 
-**Improvement:** Expand `GlCoreWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add workload urgency classification and carbon windows for deferrable ledger tasks. Record why work ran immediately or was deferred, and ensure close-critical work is never delayed blindly.
 
-### 41. Prove cross-PBC federation for `POST /journals` and `InvoiceApproved`
+### 41. Financial model governance for automation
 
-**Justification:** General Ledger Core must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** ML-assisted account derivation, reconciliation, anomaly detection, and risk scoring affect financial statements and controls.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /journals` and consumed event `InvoiceApproved` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add model approval workflows with feature lineage, training data class, drift metrics, explainability, fallback rules, materiality gate, and human override evidence.
 
-### 42. Prove cross-PBC federation for `GET /trial-balance` and `PaymentCaptured`
+### 42. Journal import and bulk correction controls
 
-**Justification:** General Ledger Core must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Large imports and corrections are high-risk because they can bypass normal UI controls.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /trial-balance` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add staged import batches with template validation, duplicate detection, balance proof, sample approval, partial failure handling, and correction-event generation. The agent should explain rejected rows and draft remediation.
 
-### 43. Prove cross-PBC federation for `GET /chart-of-accounts` and `DepreciationCalculated`
+### 43. Account combination rule engine
 
-**Justification:** General Ledger Core must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Invalid account/dimension combinations create reporting and control defects.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /chart-of-accounts` and consumed event `DepreciationCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add account-combination rules by account type, entity, cost center, project, product, fund, and period. Compile rules with fixtures and enforce them in journal validation and allocation generation.
 
-### 44. Prove cross-PBC federation for `GET /ledger-events` and `OrderShipped`
+### 44. Close cockpit UI coverage
 
-**Justification:** General Ledger Core must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Close, reconciliation, controls, approvals, snapshots, and reporting need an integrated finance workbench.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /ledger-events` and consumed event `OrderShipped` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand UI into close cockpit, journal workspace, account explorer, reconciliation board, allocation console, FX/revaluation panel, consolidation view, audit proof viewer, and agent assistant panel with permission-aware actions.
 
-### 45. Temporal reconstruction and bitemporal audit for General Ledger Core
+### 45. Ledger agent competency catalog
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** In composed apps, the single agent must know GL-specific finance skills and their safety limits.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Publish competencies for journal drafting, account lookup, trial balance explanation, reconciliation suggestion, close blocker triage, audit proof explanation, regulatory impact analysis, and document-to-journal extraction. Declare permissions, safe reads, mutation previews, and approval requirements.
 
-### 46. Bulk operations and migration-grade controls for General Ledger Core
+### 46. Natural-language financial query explanations
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Finance users ask why balances changed, why close is blocked, or why an entry failed in natural language.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add query explanation plans that translate user questions into safe ledger queries, projection checks, lineage drilldowns, and answer evidence. The agent should cite journal events, controls, and projections rather than inventing explanations.
 
-### 47. Specialist edge-case playbooks for General Ledger Core
+### 47. Statement-level variance analysis
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Controllers need to explain movement between periods, versions, close snapshots, and forecasts.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add variance records by statement line, account, dimension, source event class, allocation, FX, and one-time posting. Workbench drilldowns should reconcile variance to journal events.
 
-### 48. Pre-mutation simulation and blast-radius analysis for General Ledger Core
+### 48. Release audit for GL-specific completeness
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Generic PBC evidence can pass while missing essential ledger controls.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add GL release gates for double-entry proof, chart governance, period close controls, journal lifecycle, reversals, accruals, allocations, FX, intercompany, consolidation, audit proofs, SoD, tenant isolation, and agent safety tests.
 
-### 49. Continuous control testing and operational assurance for General Ledger Core
+### 49. Formal accounting invariant specification
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Core financial invariants are precise enough to be specified and tested beyond unit examples.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add machine-readable invariant descriptors for balance equality, period lock, account normal balance, retained-earnings rollforward, currency layers, intercompany reciprocity, and event-chain append-only behavior. Generate tests from these descriptors.
 
-### 50. Human-in-the-loop domain agent execution for General Ledger Core
+### 50. End-to-end financial truth readiness score
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Users need one defensible view of whether the GL is ready for real financial truth.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Compute readiness from journal invariants, projection freshness, account governance, close controls, reconciliation aging, control assertions, audit proof health, model governance, tenant isolation, UI coverage, and agent competency coverage. Show blockers and next best remediation actions.
