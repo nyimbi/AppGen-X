@@ -3161,3 +3161,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   format-write and tooling-audit tests, `tests/test_dsl_tooling_contracts.py
   -q`, tooling-audit JSON proof, scoped diff whitespace check, and
   restricted-name scan. Commit: `c8fec8dd`.
+- Current internal-error exit pass makes the documented CLI exit code `3`
+  executable. `dsl_tooling_cli` now preserves argparse `SystemExit` for usage
+  errors while converting unexpected tooling exceptions into
+  `appgen.internal-error.v1` with `AGX9000`; `appgen.tooling-audit.v1` embeds
+  `appgen.internal-error-exit-audit.v1` proving the JSON/text CLI boundary
+  returns exit code `3` without traceback output. Verification passed: Python
+  compile for touched tooling entrypoints, focused internal-error/audit tests,
+  `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
+  diff whitespace check, and restricted-name scan. Commit: `3875c9a4`.
