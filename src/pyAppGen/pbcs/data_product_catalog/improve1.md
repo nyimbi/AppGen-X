@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `data_product_catalog`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `data_product_catalog`. Each item is specific to productized data governance: data product identity, ownership, contracts, schemas, quality, lineage, access, grants, subscriptions, certifications, usage analytics, service commitments, incidents, changes, retention, policy, discovery, stewardship, and release evidence. The intent is complete domain coverage for a better-than-world-class data product catalog while preserving AppGen-X package boundaries.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
-- Representative owned tables: `data_product_catalog_data_product`, `data_product_catalog_data_product_owner`, `data_product_catalog_data_contract`, `data_product_catalog_data_schema_version`, `data_product_catalog_data_quality_signal`, `data_product_catalog_data_lineage_edge`, `data_product_catalog_data_access_request`, `data_product_catalog_data_access_grant`, `data_product_catalog_data_subscription`, `data_product_catalog_data_product_certification`, `data_product_catalog_data_product_usage`, `data_product_catalog_data_product_sla`, ...
-- Representative operations/APIs: `create_data_product`, `assign_data_owner`, `publish_data_contract`, `register_schema_version`, `record_quality_signal`, `map_lineage_edge`, `request_data_access`, `grant_data_access`, `subscribe_to_data_product`, `certify_data_product`, `record_usage`, `define_product_sla`, ...
-- Representative events: `DataProductCreated`, `DataContractPublished`, `DataQualityChanged`, `DataAccessGranted`, `DataProductCertified`, `DataProductIncidentOpened`.
-- Representative advanced capabilities: `contract-aware data discovery`, `lineage impact simulation`, `quality drift detection`, `AI data product steward`, `policy-aware access recommendation`, `cryptographic contract evidence`.
+- Domain purpose: owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+- Owned tables include data product, owner, data contract, schema version, quality signal, lineage edge, access request, access grant, subscription, certification, usage, SLA, incident, change, retention policy, exception case, policy rule, runtime parameter, schema extension, control assertion, governed model, outbox, inbox, and dead-letter evidence.
+- Operations include `create_data_product`, `assign_data_owner`, `publish_data_contract`, `register_schema_version`, `record_quality_signal`, `map_lineage_edge`, `request_data_access`, `grant_data_access`, `subscribe_to_data_product`, `certify_data_product`, `record_usage`, `define_product_sla`, `open_product_incident`, `publish_product_change`, `define_retention_policy`, `resolve_data_product_exception`, `compile_data_product_rule`, and `simulate_contract_change_impact`.
+- Events include `DataProductCreated`, `DataContractPublished`, `DataQualityChanged`, `DataAccessGranted`, `DataProductCertified`, and `DataProductIncidentOpened`; consumed events include policy, access policy, schema acceptance, and audit proof signals.
+- Existing advanced claims include contract-aware discovery, lineage impact simulation, quality drift detection, AI data product stewardship, policy-aware access recommendation, and cryptographic contract evidence.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `data_product_catalog_data_product`
+### 1. Data Product Identity and Value Proposition Model
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** Data products are not just datasets; they need a purpose, consumer promise, domain boundary, owner, contract, quality expectations, usage model, and lifecycle. Without clear product identity, the catalog becomes a passive inventory.
 
-**Improvement:** Extend `data_product_catalog_data_product` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `data_product_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `create_data_product` with product value proposition, target consumers, served business outcomes, source domain, data product type, consumption modes, support model, fitness-for-use statement, and product lifecycle state. The workbench should show the product promise before technical metadata.
 
-### 2. Deep specialist lifecycle semantics for `data_product_catalog_data_product_owner`
+### 2. Product Lifecycle State Machine
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** Data products move through proposed, designed, contract-drafted, published, certified, deprecated, retired, suspended, and incident states. Generic active/inactive flags do not support governed consumption.
 
-**Improvement:** Extend `data_product_catalog_data_product_owner` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `data_product_catalog_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a configurable data product lifecycle with required evidence, allowed transitions, approval gates, consumer notifications, access impacts, and AppGen-X events. Block certification, access grants, or subscriptions when lifecycle requirements are not met.
 
-### 3. Deep specialist lifecycle semantics for `data_product_catalog_data_contract`
+### 3. Ownership and Stewardship Accountability
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** Data product quality and trust depend on accountable product owners, data stewards, technical owners, privacy owners, and support contacts. Unowned products decay quickly.
 
-**Improvement:** Extend `data_product_catalog_data_contract` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `data_product_catalog_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `assign_data_owner` with ownership roles, delegation, backup owners, effective dates, review cadence, accountable domain, support hours, escalation path, and vacancy alerts. The catalog should flag products with missing or stale ownership evidence.
 
-### 4. Deep specialist lifecycle semantics for `data_product_catalog_data_schema_version`
+### 4. Consumer Persona and Use-Case Registry
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** A productized catalog must know who uses a data product and why. Quality, contracts, access, retention, and change impact vary by consumer use case.
 
-**Improvement:** Extend `data_product_catalog_data_schema_version` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add consumer persona and use-case records for analytics, operational workflows, AI features, regulatory reports, integrations, and experiments. Link access requests, subscriptions, SLAs, and change impact to declared use cases.
 
-### 5. Deep specialist lifecycle semantics for `data_product_catalog_data_quality_signal`
+### 5. Data Contract Clause Library
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** Data contracts need standardized clauses for schema, semantics, quality, freshness, retention, privacy, access, incident response, deprecation, and consumer obligations. Free-text contracts are hard to test.
 
-**Improvement:** Extend `data_product_catalog_data_quality_signal` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `publish_data_contract` with a clause library, required clause sets, versioned templates, policy bindings, consumer commitments, producer obligations, breach definitions, and machine-readable contract sections.
 
-### 6. Deep specialist lifecycle semantics for `data_product_catalog_data_lineage_edge`
+### 6. Contract Compatibility and Breaking Change Rules
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** Consumers depend on stable schemas and semantics. Contract changes can break dashboards, workflows, models, and operational decisions.
 
-**Improvement:** Extend `data_product_catalog_data_lineage_edge` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add compatibility rules for schema, semantics, freshness, quality thresholds, partitions, identifiers, and access terms. `simulate_contract_change_impact` should classify changes as safe, risky, breaking, or prohibited with affected consumers and required approvals.
 
-### 7. Deep specialist lifecycle semantics for `data_product_catalog_data_access_request`
+### 7. Schema Version Governance
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** Schema versions require compatibility level, field semantics, deprecation, nullability, identifiers, units, code sets, and lineage. A structural schema alone is incomplete.
 
-**Improvement:** Extend `data_product_catalog_data_access_request` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `register_schema_version` with field-level semantic metadata, compatibility tests, deprecation windows, data type rules, units, enumerations, primary business keys, and contract linkages. Reject schema versions that violate active contract policy.
 
-### 8. Deep specialist lifecycle semantics for `data_product_catalog_data_access_grant`
+### 8. Semantic Field Glossary and Business Meaning
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** Consumers cannot safely use data when fields lack business definitions, calculation logic, allowed values, and ownership. Technical names are not enough.
 
-**Improvement:** Extend `data_product_catalog_data_access_grant` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add field-level glossary entries, calculation definitions, units, valid ranges, code lists, examples, owner, and semantic version. Surface field semantics beside schema and expose agent guidance for usage.
 
-### 9. Deep specialist lifecycle semantics for `data_product_catalog_data_subscription`
+### 9. Data Quality Dimensions and Thresholds
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** Data quality is multidimensional: completeness, accuracy, validity, timeliness, uniqueness, consistency, integrity, and freshness. A single score hides actionable failures.
 
-**Improvement:** Extend `data_product_catalog_data_subscription` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `record_quality_signal` with dimension, threshold, observation window, affected fields, sample size, rule version, severity, trend, and consumer impact. The quality dashboard should show dimension-level failures and contract breaches.
 
-### 10. Deep specialist lifecycle semantics for `data_product_catalog_data_product_certification`
+### 10. Quality Drift and Anomaly Detection
 
-**Justification:** This owned table is part of the Data Product Catalog operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns data products, ownership, contracts, schemas, quality, lineage, access, subscriptions, certifications, usage analytics, and productized data governance.
+**Justification:** Quality can degrade gradually before thresholds fail. Consumers need early warning about distribution shifts, freshness drift, sparsity changes, and semantic anomalies.
 
-**Improvement:** Extend `data_product_catalog_data_product_certification` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add quality drift detection for distributions, freshness, null rates, volume, referential integrity, uniqueness, and categorical changes. Emit `DataQualityChanged` when drift materially affects the product promise or contract.
 
-### 11. Make `create_data_product` a complete command lifecycle
+### 11. Quality Incident Lifecycle
 
-**Justification:** High-value users need `create_data_product` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Data product incidents need severity, affected consumers, root cause, workaround, remediation, notifications, and resolution proof. Treating incidents as generic exceptions weakens trust.
 
-**Improvement:** Implement `create_data_product` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataProductCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `open_product_incident` with incident type, detected time, impact window, affected subscriptions, SLA breach status, root cause, mitigation, consumer communications, fix validation, and post-incident review.
 
-### 12. Make `assign_data_owner` a complete command lifecycle
+### 12. Lineage Graph Semantics
 
-**Justification:** High-value users need `assign_data_owner` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Lineage edges must distinguish source, transformation, aggregation, enrichment, filtering, publication, replication, and consumption. Generic edges cannot support impact analysis.
 
-**Improvement:** Implement `assign_data_owner` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataContractPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `map_lineage_edge` with edge type, transformation description, freshness, trust level, source ownership, fields affected, version, and confidence. The lineage graph should support upstream, downstream, field-level, and contract-level views.
 
-### 13. Make `publish_data_contract` a complete command lifecycle
+### 13. Lineage Impact Simulation
 
-**Justification:** High-value users need `publish_data_contract` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Changes to upstream sources, schemas, policies, or quality can affect many products and consumers. Manual impact analysis is slow and incomplete.
 
-**Improvement:** Implement `publish_data_contract` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataQualityChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add impact simulation that traverses lineage, contracts, schemas, subscriptions, certifications, and access grants. Show affected products, consumers, SLAs, reports, AI features, and required notifications before changes are approved.
 
-### 14. Make `register_schema_version` a complete command lifecycle
+### 14. Access Request Intent and Risk Scoring
 
-**Justification:** High-value users need `register_schema_version` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Access decisions require business purpose, use case, data sensitivity, consumer identity, retention need, sharing intent, and policy basis. Simple approve/deny is insufficient.
 
-**Improvement:** Implement `register_schema_version` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataAccessGranted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `request_data_access` with access purpose, consumer role, data elements requested, sensitivity, legal basis, retention period, downstream sharing, usage limits, and risk score. The agent should explain missing evidence and policy blockers.
 
-### 15. Make `record_quality_signal` a complete command lifecycle
+### 15. Policy-Aware Access Recommendation
 
-**Justification:** High-value users need `record_quality_signal` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Access approvers need consistent guidance from privacy, security, contract, retention, and data product rules. Manual review causes inconsistent grants.
 
-**Improvement:** Implement `record_quality_signal` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataProductCertified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add access recommendations that evaluate policy rules, product lifecycle, sensitivity, purpose, user entitlement, consumer obligations, and prior violations. Human approvers should see recommended grant scope, conditions, and denial reasons.
 
-### 16. Make `map_lineage_edge` a complete command lifecycle
+### 16. Access Grant Scope and Expiry Control
 
-**Justification:** High-value users need `map_lineage_edge` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Data access should be scoped, time-bound, purpose-bound, and reviewable. Perpetual broad grants create privacy, security, and compliance risk.
 
-**Improvement:** Implement `map_lineage_edge` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataProductIncidentOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `grant_data_access` with field scope, row/tenant scope, purpose, expiry, review date, revocation triggers, masking policy, export restrictions, and consumer obligations. Emit events on grants, expirations, and revocations.
 
-### 17. Make `request_data_access` a complete command lifecycle
+### 17. Subscription Lifecycle and Consumer Commitments
 
-**Justification:** High-value users need `request_data_access` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Subscriptions represent active dependency on a data product. Consumers need notifications, SLA commitments, change warnings, support channels, and exit paths.
 
-**Improvement:** Implement `request_data_access` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataProductCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `subscribe_to_data_product` with subscription state, use case, consumer owner, delivery mode, notification preferences, SLA tier, change windows, incident contacts, and cancellation workflow.
 
-### 18. Make `grant_data_access` a complete command lifecycle
+### 18. Data Product Service Commitments
 
-**Justification:** High-value users need `grant_data_access` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Data products need measurable commitments for freshness, availability, delivery latency, support response, quality, and incident notification. Vague expectations erode trust.
 
-**Improvement:** Implement `grant_data_access` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataContractPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `define_product_sla` with commitment type, measurement rule, calendar, threshold, consumer tier, breach definition, observation source, and remediation obligation. Link SLA observations to incidents and certification.
 
-### 19. Make `subscribe_to_data_product` a complete command lifecycle
+### 19. Certification Readiness Framework
 
-**Justification:** High-value users need `subscribe_to_data_product` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Certification should prove ownership, contract, schema, quality, lineage, access policy, retention, documentation, and operational support. A checkbox certification is not credible.
 
-**Improvement:** Implement `subscribe_to_data_product` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataQualityChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `certify_data_product` with readiness checklist, evidence requirements, reviewer roles, quality history, incident history, access controls, lineage completeness, documentation, and certification expiry. Show certification gaps in the catalog.
 
-### 20. Make `certify_data_product` a complete command lifecycle
+### 20. Certification Levels and Trust Badges
 
-**Justification:** High-value users need `certify_data_product` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Data products vary in reliability and governance maturity. Consumers need clear trust tiers, not a binary certified flag.
 
-**Improvement:** Implement `certify_data_product` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DataAccessGranted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add certification levels such as experimental, internal, production, regulated, executive-reporting, and AI-ready. Each level should carry required controls, evidence, usage limits, and visual trust badges.
 
-### 21. Operationalize `contract-aware data discovery` as a governed decision system
+### 21. Usage Analytics and Adoption Signals
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog risk score without hiding assumptions.
+**Justification:** Product managers need to know who uses a data product, how often, for which use cases, with what latency, and whether consumption is growing or stale.
 
-**Improvement:** Promote `contract-aware data discovery` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `record_usage` with consumer, use case, access grant, query/API mode, volume, latency, freshness at consumption, errors, and downstream dependency. Provide adoption, abandonment, and critical-dependency dashboards.
 
-### 22. Operationalize `lineage impact simulation` as a governed decision system
+### 22. Usage Anomaly and Misuse Detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog workbench metric without hiding assumptions.
+**Justification:** Unusual data access can indicate misuse, broken jobs, policy violations, cost spikes, or emerging dependency. Usage analytics should trigger governance action.
 
-**Improvement:** Promote `lineage impact simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add anomaly detection for unusual volume, new fields, export bursts, off-hours access, expired use cases, repeated failures, and consumption outside approved scope. Route risky anomalies to access review or incident workflows.
 
-### 23. Operationalize `quality drift detection` as a governed decision system
+### 23. Data Product Cost and Value Tracking
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog risk score without hiding assumptions.
+**Justification:** Data products require stewardship, compute, storage, support, monitoring, and incident response. Value must be visible to prioritize investment.
 
-**Improvement:** Promote `quality drift detection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add cost and value metrics: operating cost, support burden, consumer count, avoided duplication, decision impact, revenue influence, risk reduction, and quality remediation cost. Show value evidence in product detail pages.
 
-### 24. Operationalize `AI data product steward` as a governed decision system
+### 24. Productized Documentation Experience
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog workbench metric without hiding assumptions.
+**Justification:** Data consumers need examples, sample queries, field explanations, caveats, freshness, policies, and contact paths in one place. Metadata fragments do not create adoption.
 
-**Improvement:** Promote `AI data product steward` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add structured product documentation with quick start, sample usage, field guide, limitations, known issues, support path, change log, and FAQs. The agent should help draft docs from contract and schema metadata with steward approval.
 
-### 25. Operationalize `policy-aware access recommendation` as a governed decision system
+### 25. Discovery Ranking and Relevance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog risk score without hiding assumptions.
+**Justification:** A catalog is only useful if consumers can find the right product. Search must understand domain, quality, trust, freshness, usage, access eligibility, and semantic intent.
 
-**Improvement:** Promote `policy-aware access recommendation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add discovery ranking signals for semantic match, certification, freshness, quality, usage, ownership, consumer persona, access eligibility, and product health. Record search misses and feed them into documentation and product creation workflows.
 
-### 26. Operationalize `cryptographic contract evidence` as a governed decision system
+### 26. Sensitive Data Classification
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog workbench metric without hiding assumptions.
+**Justification:** Data products can include personal, financial, health, security, location, confidential, or restricted data. Access, retention, and usage depend on classification.
 
-**Improvement:** Promote `cryptographic contract evidence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add sensitivity classifications at product, field, contract, and access-grant levels, with source evidence, reviewer approval, policy bindings, masking rules, and consumer obligations. Flag classification conflicts with schema or glossary metadata.
 
-### 27. Operationalize `contract-aware data discovery` as a governed decision system
+### 27. Retention and Disposition Governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog risk score without hiding assumptions.
+**Justification:** Data products must define how long data is retained, when snapshots expire, whether consumers can persist extracts, and how legal or privacy constraints are handled.
 
-**Improvement:** Promote `contract-aware data discovery` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Upgrade `define_retention_policy` with retention period, trigger, legal basis, hold constraints, extract rules, archive path, deletion proof, consumer obligations, and exceptions. Link retention to access grants and subscriptions.
 
-### 28. Operationalize `lineage impact simulation` as a governed decision system
+### 28. Data Sharing and Redistribution Controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog workbench metric without hiding assumptions.
+**Justification:** Consumers may export, share, embed, or republish product data. Redistribution can violate contracts, privacy, security, and licensing.
 
-**Improvement:** Promote `lineage impact simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add redistribution rules to contracts and access grants, including allowed channels, downstream consumer registration, masking requirements, expiration, and audit obligations. Detect usage suggesting unapproved redistribution.
 
-### 29. Operationalize `quality drift detection` as a governed decision system
+### 29. Data Product Change Management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog risk score without hiding assumptions.
+**Justification:** Product changes can alter schema, semantics, quality, freshness, access, retention, or SLA. Consumers need predictable notice and compatibility guarantees.
 
-**Improvement:** Promote `quality drift detection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Upgrade `publish_product_change` with change type, compatibility assessment, impacted consumers, notice period, migration guide, rollback plan, exception approvals, and event notifications. Show change calendars in subscriptions.
 
-### 30. Operationalize `AI data product steward` as a governed decision system
+### 30. Deprecation and Retirement Workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Data Product Catalog and measurably improves data product catalog workbench metric without hiding assumptions.
+**Justification:** Retiring a data product without dependency analysis breaks consumers; never retiring products creates governance debt.
 
-**Improvement:** Promote `AI data product steward` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `data_product_catalog_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add deprecation states, consumer migration tracking, alternative product suggestions, grace periods, blocked new subscriptions, sunset communications, and final retirement proof. Require executive approval for high-dependency retirements.
 
-### 31. Create simulation-grade governance for `data_contract_policy` and `quality_score_floor`
+### 31. Data Product Incident Communications
 
-**Justification:** Complete Data Product Catalog coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Consumers need timely, accurate incident communications for quality failures, delays, access outages, contract breaches, and schema problems.
 
-**Improvement:** Add a policy cockpit where `data_contract_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `quality_score_floor` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add incident communication templates, affected consumer lists, notification SLAs, public/internal notes, status updates, resolution messages, and postmortem publishing. Link communications to incident state and SLA breaches.
 
-### 32. Create simulation-grade governance for `quality_certification_policy` and `access_review_days`
+### 32. Stewardship Task Board
 
-**Justification:** Complete Data Product Catalog coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Data product owners and stewards need operational queues for reviews, certifications, access requests, quality issues, incidents, stale docs, and contract changes.
 
-**Improvement:** Add a policy cockpit where `quality_certification_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `access_review_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Build a stewardship board with owner tasks, due dates, severity, required evidence, policy basis, and aging. The agent should recommend prioritization by consumer impact and risk.
 
-### 33. Create simulation-grade governance for `access_approval_policy` and `schema_compatibility_level`
+### 33. Data Contract Test Harness
 
-**Justification:** Complete Data Product Catalog coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Contracts must be executable, not just documents. Producers and consumers need tests for schema, quality, freshness, semantics, and access terms.
 
-**Improvement:** Add a policy cockpit where `access_approval_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `schema_compatibility_level` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add contract test cases, expected results, sample payloads, compatibility checks, quality assertions, freshness checks, and consumer acceptance tests. Release gates should fail when active contract tests fail.
 
-### 34. Create simulation-grade governance for `lineage_policy` and `usage_anomaly_threshold`
+### 34. Consumer Impact Evidence
 
-**Justification:** Complete Data Product Catalog coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Product owners need to understand which consumers rely on which fields, contracts, access grants, and SLAs. Without evidence, impact analysis is guesswork.
 
-**Improvement:** Add a policy cockpit where `lineage_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `usage_anomaly_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add consumer dependency records derived from subscriptions, usage, access grants, field usage, and declared use cases. Show dependency confidence and require consumers to attest critical usage periodically.
 
-### 35. Create simulation-grade governance for `SLA_policy` and `sla_warning_minutes`
+### 35. Data Product Health Score
 
-**Justification:** Complete Data Product Catalog coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Consumers need a concise health indicator that combines quality, freshness, availability, incidents, certification, ownership, documentation, and change stability.
 
-**Improvement:** Add a policy cockpit where `SLA_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `sla_warning_minutes` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Create a health score with transparent components, thresholds, trend, confidence, and drilldown. Use health score in search ranking, access recommendations, and certification review.
 
-### 36. Upgrade `data product catalog` into a full specialist command center
+### 36. Data Product Exception Workflow
 
-**Justification:** The PBC UI must expose the complete Data Product Catalog surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Governance exceptions are common: temporary quality waivers, late certifications, access overrides, retention deviations, and schema compatibility waivers. They must be controlled.
 
-**Improvement:** Expand `data product catalog` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Upgrade `resolve_data_product_exception` with exception type, scope, approver authority, expiry, compensating controls, impacted consumers, risk acceptance, and closure evidence.
 
-### 37. Upgrade `contract studio` into a full specialist command center
+### 37. Policy and Parameter Studio
 
-**Justification:** The PBC UI must expose the complete Data Product Catalog surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Contract, quality, access, lineage, SLA, and retention rules evolve by domain, sensitivity, and product tier. Hardcoded policies prevent mature governance.
 
-**Improvement:** Expand `contract studio` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand `compile_data_product_rule` into a rule studio with versioning, simulation, approval workflow, effective dates, rollback, test cases, and impact analysis against products, access grants, and subscriptions.
 
-### 38. Upgrade `quality dashboard` into a full specialist command center
+### 38. Cross-PBC Schema and Policy Federation
 
-**Justification:** The PBC UI must expose the complete Data Product Catalog surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Data products consume schema, policy, access, audit, and search signals from other PBCs. Shared-table coupling would undermine composability.
 
-**Improvement:** Expand `quality dashboard` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Define projection contracts for schema acceptance, policy changes, access policy changes, audit proofs, and search refreshes, including freshness, allowed fields, source PBC, idempotency, and fallback behavior.
 
-### 39. Upgrade `lineage graph` into a full specialist command center
+### 39. AI-Ready Data Product Controls
 
-**Justification:** The PBC UI must expose the complete Data Product Catalog surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** AI consumers require stronger metadata: training suitability, prohibited use, leakage risk, bias, label quality, representativeness, evaluation sets, and drift.
 
-**Improvement:** Expand `lineage graph` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add AI-readiness controls with allowed AI use cases, training restrictions, bias indicators, feature leakage flags, label lineage, consent basis, evaluation evidence, and model-consumer obligations.
 
-### 40. Upgrade `access request queue` into a full specialist command center
+### 40. Data Product Privacy Review
 
-**Justification:** The PBC UI must expose the complete Data Product Catalog surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Products containing personal or sensitive data require purpose limitation, minimization, consent, transfer, retention, access, and subject-rights considerations.
 
-**Improvement:** Expand `access request queue` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add privacy review records with data subject categories, purpose, lawful basis, minimization assessment, cross-border restrictions, consent dependency, and privacy approval evidence through declared privacy projections.
 
-### 41. Prove cross-PBC federation for `POST /data-products` and `PolicyChanged`
+### 41. Lineage Completeness Scoring
 
-**Justification:** Data Product Catalog must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Lineage gaps make change impact, quality root cause, and trust decisions unreliable. Catalog users need to know how complete lineage is.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /data-products` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add lineage completeness metrics by upstream coverage, downstream coverage, field-level coverage, transformation documentation, confidence, and freshness. Flag products that cannot be certified due to lineage gaps.
 
-### 42. Prove cross-PBC federation for `POST /data-contracts` and `AccessPolicyChanged`
+### 42. Root Cause Analysis for Quality Failures
 
-**Justification:** Data Product Catalog must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Quality signals are useful only when failures lead to root cause, remediation, and prevention. Otherwise teams repeatedly triage the same issues.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /data-contracts` and consumed event `AccessPolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add quality root-cause records tied to lineage, schema changes, upstream incidents, transformations, data entry defects, and access misuse. Feed root causes into incidents, product changes, and contract updates.
 
-### 43. Prove cross-PBC federation for `POST /quality-slas` and `SchemaAccepted`
+### 43. Producer and Consumer Scorecards
 
-**Justification:** Data Product Catalog must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Data product ecosystems require accountability from producers and consumers. Producers must meet contracts; consumers must use data responsibly.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /quality-slas` and consumed event `SchemaAccepted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add scorecards for producer reliability, incident response, quality history, contract compliance, consumer usage hygiene, access review compliance, and policy violations. Use scorecards in certification and access decisions.
 
-### 44. Prove cross-PBC federation for `POST /access-requests` and `AuditProofGenerated`
+### 44. Marketplace-Like Product Packaging
 
-**Justification:** Data Product Catalog must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Data products should feel discoverable and consumable like packaged capabilities, with clear terms, previews, examples, and onboarding.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /access-requests` and consumed event `AuditProofGenerated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add product cards with trust badges, preview samples, access requirements, subscription path, support owner, SLA, usage examples, and consumer obligations. The workbench should support saved lists and comparison views.
 
-### 45. Temporal reconstruction and bitemporal audit for Data Product Catalog
+### 45. Agent-Assisted Data Product Stewardship
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Stewards receive contracts, schemas, access requests, incident notes, and policy documents that need structured updates without unsafe autonomous writes.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Give the PBC agent skills to parse documents and instructions into proposed data products, contracts, schema versions, quality signals, lineage edges, access decisions, certifications, and incidents. Require source citations, confidence, affected tables, event plans, and human confirmation.
 
-### 46. Bulk operations and migration-grade controls for Data Product Catalog
+### 46. Cryptographic Contract and Certification Evidence
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Consumers, auditors, and regulators may need proof of what contract, schema, quality state, and certification existed when access was granted or a product was used.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Generate tamper-evident evidence packets for contracts, schema versions, certifications, access grants, quality history, and product changes. Include hashes, event lineage, policy versions, owner approvals, and export manifests.
 
-### 47. Specialist edge-case playbooks for Data Product Catalog
+### 47. Productized Data Release Evidence
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** A data catalog must prove generated schemas, services, events, handlers, rules, access controls, UI, and agent skills work before users rely on it.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Generate release evidence packs containing schema hashes, migration manifests, route contracts, service contracts, event schemas, handler idempotency proofs, retry/dead-letter tests, rule simulations, contract test runs, UI coverage, and agent manifests.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Data Product Catalog
+### 48. Data Product Time Travel and Historical Discovery
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Consumers and auditors need to know what a product contract, schema, quality score, access grant, and certification looked like at a prior time.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add time-travel views for transaction time, valid time, and publication time across product metadata, contracts, schemas, grants, certifications, quality, lineage, and subscriptions.
 
-### 49. Continuous control testing and operational assurance for Data Product Catalog
+### 49. Dead-Letter and Event Replay Operations
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Catalog integrity depends on reliable handling of schema, policy, access, audit, and search events. Late or malformed events can create stale governance decisions.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add operational views for inbox, outbox, retry, quarantine, dead-letter payloads, idempotency keys, replay, dependency health, and event lineage. Release gates should prove unknown events do not mutate state.
 
-### 50. Human-in-the-loop domain agent execution for Data Product Catalog
+### 50. Complete Data Product Catalog Workbench Coverage
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Data product managers, stewards, owners, consumers, access approvers, auditors, and executives need full operational surfaces. Hidden APIs are not enough.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Expand the UI into role-specific workbenches for product manager, steward, owner, consumer, access approver, governance reviewer, incident manager, and executive sponsor. Cover product cards, contracts, schemas, quality, lineage, access, subscriptions, certification, usage, incidents, changes, retention, policies, agent panels, and release evidence.
