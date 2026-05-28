@@ -1,418 +1,361 @@
-# Lending Origination and Servicing PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `lending_origination_servicing`. The backlog is specific to loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Lending Origination and Servicing Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `lending_origination_servicing`.
-- Domain purpose: Loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring.
-- Owned domain tables: `loan_application`, `borrower_profile`, `underwriting_decision`, `loan_offer`, `disbursement`, `repayment_schedule`, `servicing_case`, `lending_origination_servicing_policy_rule`, `lending_origination_servicing_runtime_parameter`, `lending_origination_servicing_schema_extension`, `lending_origination_servicing_control_assertion`, `lending_origination_servicing_governed_model`.
-- Public APIs: `POST /loan-applications`, `POST /borrower-profiles`, `POST /underwriting-decisions`, `POST /loan-offers`, `POST /disbursements`, `GET /lending-origination-servicing-workbench`.
-- Emitted AppGen-X events: `LendingOriginationServicingCreated`, `LendingOriginationServicingUpdated`, `LendingOriginationServicingApproved`, `LendingOriginationServicingExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `loan_application_management`, `lending_origination_servicing_workflow`, `lending_origination_servicing_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `lending_origination_servicing_event_sourced_operational_history`, `lending_origination_servicing_multi_tenant_policy_isolation`, `lending_origination_servicing_schema_evolution_resilience`, `lending_origination_servicing_autonomous_anomaly_detection`, `lending_origination_servicing_semantic_document_instruction_understanding`, `lending_origination_servicing_predictive_risk_scoring`, `lending_origination_servicing_counterfactual_scenario_simulation`, `lending_origination_servicing_cryptographic_audit_proofs`.
+- Manifest key: `lending_origination_servicing`.
+- Label and description: Lending Origination and Servicing covering loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring.
+- Owned tables named in the manifest: `loan_application`, `borrower_profile`, `underwriting_decision`, `loan_offer`, `disbursement`, `repayment_schedule`, `servicing_case`, `lending_origination_servicing_policy_rule`, `lending_origination_servicing_runtime_parameter`, `lending_origination_servicing_schema_extension`, `lending_origination_servicing_control_assertion`, and `lending_origination_servicing_governed_model`.
+- Published APIs named in the manifest: `POST /loan-applications`, `POST /borrower-profiles`, `POST /underwriting-decisions`, `POST /loan-offers`, `POST /disbursements`, and `GET /lending-origination-servicing-workbench`.
+- Event mesh contracts already declared: emitted `LendingOriginationServicingCreated`, `LendingOriginationServicingUpdated`, `LendingOriginationServicingApproved`, `LendingOriginationServicingExceptionOpened`; consumed `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- UI fragments already declared: `LendingOriginationServicingWorkbench`, `LendingOriginationServicingDetail`, `LendingOriginationServicingAssistantPanel`.
+- Advanced capability anchors already declared: event-sourced operational history, multi-tenant policy isolation, schema evolution resilience, anomaly detection, semantic document understanding, predictive risk scoring, counterfactual simulation, cryptographic audit proofs, continuous control testing, and governed AI agent execution.
 
-## 50 High-Impact Improvements
+### 1. Borrower And Application Intake Normalization
+**Justification:** `loan_application` and `borrower_profile` are present in the manifest, but real lending intake is not one shape. Consumer, SME, refinance, secured, and co-borrower requests all carry different mandatory facts, and weak intake normalization creates avoidable underwriting churn.
 
-### 1. Canonical lifecycle state model for Loan Application
+**Improvement:** Build a canonical intake contract that captures borrower role, product request, purpose, occupancy or business use, requested amount, term preference, channel, and consent artifacts before any decisioning begins. Normalize applicant, co-borrower, guarantor, and beneficial-owner roles so downstream rules do not infer them from free text.
 
-**Justification:** This closes shallow CRUD gaps by making every lending origination and servicing transition explainable and testable instead of implicit in free-form status values.
+**Acceptance evidence:** Payload fixtures for individual and joint borrowers, validation cases for missing consent or unsupported role combinations, and workbench screenshots showing the normalized party structure before the record reaches underwriting.
 
-**Improvement:** Define a complete state machine for `loan_application` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 2. Document Stipulation Checklist Management
+**Justification:** Lending files rarely move from application to funding with complete documentation on first pass. Missing bank statements, tax returns, formation documents, or insurance binders directly affect cycle time and approval quality.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for LendingOriginationServicingCreated, LendingOriginationServicingUpdated, LendingOriginationServicingApproved. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a stipulation model tied to `loan_application` that tracks requested document, source, owner, due date, received date, verification result, and waiver rationale. Separate pre-underwriting stipulations from pre-funding stipulations so the queue reflects the actual stage of work.
 
-### 2. Domain intake and normalization for Borrower Profile
+**Acceptance evidence:** Tests proving incomplete stipulations block the correct stage, UI evidence of aged stipulations grouped by owner, and audit entries linking each waived item to an approver and reason.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring, not only already-clean records.
+### 3. Income And Cash-Flow Verification
+**Justification:** Underwriting depends on verified repayment capacity, not just declared income. The current manifest surfaces underwriting but does not yet imply domain-specific verification for salaried, self-employed, and seasonal borrowers.
 
-**Improvement:** Build a typed intake pipeline for `borrower_profile` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Introduce verification routines for paystubs, payroll deposits, tax returns, business statements, rent rolls, and recurring obligation offsets. Store gross, net, stable, and excluded income components separately so debt-service logic can explain the final number used in decisioning.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Calculation fixtures for wage earners and self-employed borrowers, variance flags when declared income diverges from verified income, and detail views showing how each component rolled into the approved repayment capacity.
 
-### 3. Specialist validation rules for Underwriting Decision
+### 4. Identity, Fraud, And KYC Gating
+**Justification:** Fraud loss often enters before underwriting through synthetic identities, account takeover, altered documents, or mismatched beneficial ownership. A lending package needs explicit front-door gates rather than after-the-fact exception cleanup.
 
-**Justification:** World-class Lending Origination and Servicing requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Add identity verification and fraud review checkpoints covering name-date-of-birth mismatches, document tampering signals, duplicate tax identifiers, watchlist hits, device anomalies, and beneficial-owner screening. Route hard fails into `servicing_case` only when the file has already advanced; otherwise hold the origination record in a pre-decision queue.
 
-**Improvement:** Add a domain rule compiler for `underwriting_decision` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Negative fixtures for watchlist and duplicate identity scenarios, escalation routing tests, and dashboard evidence that separates fraud review queues from ordinary underwriting backlog.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `LENDING_ORIGINATION_SERVICING_DATABASE_URL, LENDING_ORIGINATION_SERVICING_EVENT_TOPIC, LENDING_ORIGINATION_SERVICING_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Credit Bureau Ingestion And Dispute Handling
+**Justification:** Credit pull data is foundational to underwriting and pricing, yet disputes, freezes, thin files, and bureau discrepancies are common and require explicit handling instead of one opaque score field.
 
-### 4. Parameter governance and tuning for Loan Offer
+**Improvement:** Model bureau pulls, tradeline snapshots, inquiry counts, freeze status, and dispute flags as first-class underwriting evidence. Allow the underwriter to choose which bureau set was used, when re-pull is required, and whether disputed tradelines were excluded from policy calculations.
 
-**Justification:** Parameters are where operations teams tune lending origination and servicing; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Acceptance evidence:** Fixtures for frozen-file retries, multi-bureau mismatch handling, and decision screens that show the exact bureau snapshot and exclusions used for a final approval or decline.
 
-**Improvement:** Expose bounded runtime parameters for `loan_offer` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 6. Collateral, Appraisal, And Lien Data Capture
+**Justification:** Secured lending cannot be governed well if collateral facts are stuffed into narrative notes. Asset identity, valuation source, lien position, and title conditions all change the credit and boarding path.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Extend the domain model to capture collateral type, identifier, valuation date, valuation source, haircut policy, lien position, title status, insurance requirement, and pending condition. Link these facts to `underwriting_decision` and `loan_offer` so loan structure reflects collateral reality.
 
-### 5. Deep owned schema expansion for Disbursement
+**Acceptance evidence:** Schema and contract tests for secured-loan collateral payloads, pricing cases that change based on lien position or haircut, and boarding evidence confirming the collateral terms approved are the terms booked.
 
-**Justification:** A single payload column cannot express the full surface of loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring or prove cross-PBC boundaries are respected.
+### 7. Affordability And Debt-Service Calculation Engine
+**Justification:** Decisioning quality depends on consistent affordability math. Debt-to-income, debt-service-coverage, residual-income, and global-cash-flow ratios should be reproducible from stored facts and policy versions.
 
-**Improvement:** Extend the owned schema around `disbursement` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Implement a calculation engine that stores ratio inputs, inclusions, exclusions, stress assumptions, and rounding rules with the resulting affordability metrics. Support consumer and commercial variants without burying one inside custom rule code for the other.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `lending_origination_servicing_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Golden tests for DTI, DSCR, and residual-income scenarios, policy-version snapshots attached to each calculation, and UI drill-down showing why a file passed or failed the affordability thresholds.
 
-### 6. Event-sourced operational history for Repayment Schedule
+### 8. Underwriting Rule Versioning And Decision Policy Lineage
+**Justification:** `underwriting_decision` exists, but regulated lending requires the institution to explain which policy version, threshold set, and override chain produced that decision on that date.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in lending origination and servicing.
+**Improvement:** Version every underwriting policy package in `lending_origination_servicing_policy_rule` with effective dates, target products, risk tiers, override authority, and supersession links. Persist the exact rule bundle and runtime parameter values used for each decision so later reviews do not reconstruct policy from memory.
 
-**Improvement:** Capture every material mutation of `repayment_schedule` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Simulation tests across two policy versions, immutable lineage links from decision to policy package, and release evidence showing who approved a policy change and when it became effective.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Decision Explanation And Adverse Action Support
+**Justification:** A decline or counteroffer is not operationally complete until the institution can articulate the decision basis in borrower-facing and auditor-facing language. Unexplained models create compliance and reputation risk.
 
-### 7. Projection and read-model strategy for Servicing Case
+**Improvement:** Generate structured decision explanations from rule outcomes, affordability results, collateral findings, and fraud dispositions. Support decline, conditional approval, reduced amount, shorter term, and pricing counteroffer explanations, including adverse-action reason mapping where the file is declined.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Acceptance evidence:** Test cases covering decline and counteroffer reason generation, rendered notice previews with mapped reason codes, and audit exports showing the exact evidence points behind each explanation.
 
-**Improvement:** Create purpose-built projections for `servicing_case`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 10. Offer Construction, Pricing, And Expiration Control
+**Justification:** `loan_offer` is named in the manifest, but a lending offer is more than amount and rate. Product fit, pricing exceptions, lock expiration, and required conditions must stay aligned with approved risk posture.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Expand offer modeling to include term, amortization method, pricing index or fixed-rate basis, fees, lock date, expiration date, conditions precedent, and permitted variance from the approved structure. Require second review when pricing deviates from policy or when the approved amount is increased after underwriting.
 
-### 8. Exception taxonomy and remediation for Lending Origination Servicing Policy Rule
+**Acceptance evidence:** Offer-assembly tests for fixed and variable products, expiration behavior validated in the workbench, and approval records for any pricing or amount exception.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+### 11. Closing Conditions And Approval-To-Fund Orchestration
+**Justification:** Many losses and customer escalations happen between approval and funding because the institution lacks a precise control layer for closing conditions, final verification, and readiness to fund.
 
-**Improvement:** Model the full exception taxonomy for `lending_origination_servicing_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add an approval-to-fund checklist spanning executed documents, funding instructions, fraud re-check, lien perfection prerequisites, insurance evidence, and final approval expiry. Distinguish advisory items from hard funding blockers so operations knows exactly what prevents disbursement.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests showing hard blockers stop `POST /disbursements`, stage-aware UI badges for unresolved conditions, and trace logs connecting the funding decision to the last completed verification step.
 
-### 9. Predictive risk scoring for Lending Origination Servicing Runtime Parameter
+### 12. Loan Boarding Completeness Gate
+**Justification:** A file can be approved and funded yet still board incorrectly because note terms, balances, due dates, and fee settings were not reconciled before the servicing account was created.
 
-**Justification:** The package should warn users before lending origination and servicing work fails, breaches policy, or creates downstream cost.
+**Improvement:** Introduce a boarding gate that compares approved offer terms, executed contract terms, and funded amounts before the servicing record becomes active. Require explicit resolution for mismatched first payment date, payment frequency, interest basis, escrow requirement, or late-fee setup.
 
-**Improvement:** Add predictive risk scoring for `lending_origination_servicing_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Boarding comparison reports, tests for mismatched note-to-system fields, and evidence that no active servicing account is created until all hard discrepancies are cleared.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Executed Contract And Note Version Linkage
+**Justification:** Lending operations need to know which executed paper or electronic package governs the loan after funding. Without version linkage, later servicing and payoff actions can drift from the actual note.
 
-### 10. Counterfactual simulation for Lending Origination Servicing Schema Extension
+**Improvement:** Link every boarded loan to the definitive signed note, disclosure package, modification agreement, and rider set with execution timestamps and signature completion status. Preserve prior versions so the system can show what changed between original closing and later modifications.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring operations.
+**Acceptance evidence:** Document lineage tests, UI evidence that the active contract version is visible in `LendingOriginationServicingDetail`, and audit records showing when a superseding agreement replaced an earlier one.
 
-**Improvement:** Provide scenario simulation for `lending_origination_servicing_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 14. Funding Disbursement And Settlement Reconciliation
+**Justification:** `disbursement` is present, but the domain needs more than a send-funds command. Warehouse funding, escrow netting, fee withholding, and settlement corrections require explicit reconciliation.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Model gross funded amount, net borrower proceeds, payoffs to prior lenders, reserve holds, fee deductions, and settlement account references. Add reconciliation steps that confirm outbound funding instructions match booked balances and settlement acknowledgments.
 
-### 11. Autonomous anomaly triage for Lending Origination Servicing Control Assertion
+**Acceptance evidence:** Disbursement tests covering refinance and purchase scenarios, exception queues for unmatched settlement acknowledgments, and reconciliation reports showing gross-to-net funding math.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+### 15. Amortization Method Library
+**Justification:** A servicing platform cannot rely on one repayment schedule shape. Standard installment, interest-only, balloon, step-rate, and irregular first-period loans all need distinct amortization behavior.
 
-**Improvement:** Implement anomaly detection for `lending_origination_servicing_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `repayment_schedule` to support multiple amortization methods with explicit rules for payment amount calculation, schedule generation, balloon balance, and curtailment effects. Store method metadata with the schedule so payoff, modification, and delinquency logic use the same canonical source.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Schedule fixtures for level-pay, interest-only, balloon, and step-rate products, comparison tests against known amortization outputs, and UI evidence showing the selected method on the loan detail screen.
 
-### 12. Semantic document understanding for Lending Origination Servicing Governed Model
+### 16. Interest Accrual Basis And Fee Accrual Controls
+**Justification:** Loans that appear similar can accrue differently based on day-count convention, accrual start date, compounding treatment, and fee capitalization rules. Misstating these rules creates servicing defects and payoff errors.
 
-**Justification:** Document-heavy work in Lending Origination and Servicing cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Store interest basis, accrual start rule, non-business-day handling, fee accrual treatment, and capitalization policy as explicit boarded terms. Ensure the schedule engine, delinquency engine, and payoff quote logic all reference the same accrual metadata.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `lending_origination_servicing_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests for 30/360 and actual-day conventions, cross-checks between accrual ledger and payoff quote outputs, and exception alerts when boarded accrual settings differ from executed note terms.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Escrow Setup, Analysis, And Shortage Handling
+**Justification:** The manifest already covers repayment and servicing, but escrow is a distinct operational domain with its own funding, analysis, shortage, surplus, and disbursement rules.
 
-### 13. Agent-safe CRUD execution for Loan Application
+**Improvement:** Add escrow sub-ledgers for tax, insurance, and special assessment buckets with payment due dates, cushion settings, annual analysis rules, shortage spread options, and borrower-notice requirements. Treat escrow setup as part of boarding completeness, not as a later manual correction.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Acceptance evidence:** Escrow analysis fixtures for surplus and shortage cases, UI evidence of bucket-level balances and next disbursement dates, and notice-generation tests for shortage or surplus outcomes.
 
-**Improvement:** Add a professional chatbot skill for `loan_application` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 18. Payment Allocation Waterfall
+**Justification:** Servicing accuracy depends on a clear allocation hierarchy. Institutions differ on how they apply borrower funds across principal, interest, escrow, fees, suspense, and recoveries.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Define configurable allocation waterfalls in `lending_origination_servicing_runtime_parameter` by product and delinquency status. Support exact payment, partial payment, extra principal, payoff remittance, and restricted funds without letting operations hand-edit balances.
 
-### 14. Workbench persona coverage for Borrower Profile
+**Acceptance evidence:** Allocation tests for current and delinquent accounts, evidence that unapplied funds enter suspense when required, and servicing detail views showing how each payment posted across components.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+### 19. Returned Payments, Reversals, And Unapplied Funds
+**Justification:** NSF returns, payment reversals, duplicate payments, and unidentified remittances are common servicing events that change delinquency posture and fee treatment.
 
-**Improvement:** Design dedicated workbench panels for `borrower_profile`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit reversal workflows that unwind principal, interest, escrow, and fee postings while preserving the original transaction lineage. Separate true unapplied funds from suspense balances created by policy, and force a reason code for every manual resolution.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** End-to-end fixtures for NSF and duplicate-payment reversal, lineage views showing original transaction and reversal pairings, and queue evidence for aged unidentified funds.
 
-### 15. Cross-PBC dependency contracts for Underwriting Decision
+### 20. Delinquency Bucket Progression And Collections Strategy
+**Justification:** A generic `servicing_case` is not enough for collections. Delinquency handling needs deterministic bucket movement, contact strategy, and escalation rules tied to days past due and product type.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Build bucket logic for current, grace, early delinquency, late-stage delinquency, default, and workout statuses. Associate each bucket with required notices, contact cadence, eligible loss-mitigation paths, and supervisor approvals for unusual actions.
 
-**Improvement:** Represent dependencies for `underwriting_decision` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Aging tests that move loans between buckets based on posting dates and due dates, collections queue views segmented by severity, and evidence that required notices are created at the correct thresholds.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Promise-To-Pay And Workout Commitment Tracking
+**Justification:** Collections teams need more than note fields. Promise-to-pay commitments, broken arrangements, and borrower contact outcomes directly change next-action strategy and supervisory oversight.
 
-### 16. API completeness and versioning for Loan Offer
+**Improvement:** Add commitment records with promised amount, due date, channel, collector, success criteria, and breach outcome. When the promise fails, automatically reopen the collections strategy with the right contact history and delinquency context attached.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Acceptance evidence:** Tests for kept and broken commitments, queue evidence showing promise dates and status, and audit entries proving the next collections step was system-selected after a breach.
 
-**Improvement:** Expand APIs beyond POST /loan-applications, POST /borrower-profiles, POST /underwriting-decisions to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 22. Late Charges, Grace Periods, And Cure Reinstatement
+**Justification:** Late-fee handling affects customer fairness, compliance, and balance integrity. Grace days, waiver rules, and reinstatement logic cannot remain implicit if the platform will generate payoffs and modification terms correctly.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Store late-charge basis, one-time versus recurring assessment, grace-period treatment, cure reversal behavior, and fee-waiver authority on each boarded loan. Ensure reinstatement after cure removes or preserves fees according to policy rather than operator judgment.
 
-### 17. Typed emitted-event expansion for Disbursement
+**Acceptance evidence:** Fee-assessment fixtures for current, delinquent, and cured loans, evidence of waiver approvals by role, and statement previews showing fee treatment after reinstatement.
 
-**Justification:** Consumers should understand what happened in Lending Origination and Servicing without parsing opaque payloads.
+### 23. Hardship Modification Intake And Trial Plan Workflow
+**Justification:** Borrowers in distress often enter through hardship channels rather than ordinary collections. Modification work needs a full intake path, not a one-off note against the loan.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `disbursement` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hardship intake capturing cause, duration, requested relief, supporting documents, occupancy or business status, and prior workout history. Support trial-plan creation, scheduled review milestones, and conversion rules from trial to permanent modification.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Test journeys for hardship intake through permanent modification, timeline evidence of trial milestones, and decision records showing why a trial succeeded, failed, or was canceled.
 
-### 18. Consumed-event handlers for Repayment Schedule
+### 24. Capitalization, Re-Aging, And Modification Accounting Controls
+**Justification:** A modification changes balances, amortization, delinquency status, and regulatory reporting. Capitalizing arrears or re-aging a loan without clear controls can mask risk and corrupt later payoff or charge-off calculations.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Make modification accounting explicit: capitalized interest, capitalized fees, deferred principal, forgiven amounts, re-age authority, and post-modification delinquency reset rules. Require an approval path distinct from ordinary servicing actions when the modification changes principal balance or schedule structure.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Accounting fixtures for capitalize, defer, and forgive scenarios, approval logs for re-aging decisions, and balance snapshots showing pre- and post-modification states with no unexplained delta.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Payoff Quote Generation And Per-Diem Accuracy
+**Justification:** Payoff requests are high-risk customer moments. A wrong per-diem or omitted fee creates legal exposure, borrower complaints, and settlement defects.
 
-### 19. Retry and dead-letter operations for Servicing Case
+**Improvement:** Build payoff quote generation that calculates unpaid principal, accrued interest, escrow surplus or shortage, recoverable fees, prepayment charges where allowed, and good-through date treatment. Preserve the quote assumptions so later disputes can reproduce the exact number given.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring.
+**Acceptance evidence:** Quote fixtures across current, delinquent, and modified loans, cross-checks between payoff quote and accrual engine, and closure evidence when the remittance differs from the quoted amount.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `servicing_case` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 26. Satisfaction, Lien Release, And Account Closure Evidence
+**Justification:** A loan is not operationally finished when the balance reaches zero. The institution still owes title release, lien satisfaction, statement closure, and archival evidence.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a payoff completion workflow that tracks final funds receipt, pending refunds, lien release preparation, document dispatch, and account closure hold periods. Keep closure blocked if unresolved disputes, reversals, or escrow refunds remain open.
 
-### 20. RBAC and attribute policy for Lending Origination Servicing Policy Rule
+**Acceptance evidence:** Tests for payoff-to-closure progression, evidence that release actions are generated only after final reconciliation, and detail views showing the closed-loan evidence pack attached to the account.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+### 27. Charge-Off, Recovery, And Post-Charge-Off Servicing
+**Justification:** Charge-off is not the end of servicing. Recoveries, settlements, external placement, and borrower communication restrictions still need governed behavior.
 
-**Improvement:** Extend permissions for `lending_origination_servicing_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model charge-off trigger date, charged-off components, post-charge-off fee policy, recovery allocation, settlement authority, and referral status. Separate accounting posture from legal or customer-contact posture so the platform can represent charged-off loans that remain actively managed.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Fixtures for charge-off and recovery posting, dashboards showing gross charge-off and net recovery movement, and audit records for settlement approvals.
 
-### 21. Continuous control testing for Lending Origination Servicing Runtime Parameter
+### 28. Bankruptcy, Deceased Borrower, And Legal Hold Servicing
+**Justification:** Certain servicing scenarios require strict treatment changes that ordinary delinquency workflows cannot safely handle. Bankruptcy stays, probate, and legal holds need hard operational boundaries.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add special-status flags and workflow branches for bankruptcy chapter, filing date, stay restrictions, counsel information, deceased-borrower handling, probate representative, and litigation hold scope. Prevent prohibited notices, automated calls, and fee actions while these statuses are active.
 
-**Improvement:** Embed control assertions for `lending_origination_servicing_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Negative tests proving blocked actions during stay or hold status, special-case servicing screens with status banners, and evidence logs for court- or estate-related document handling.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `lending_origination_servicing_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Insurance, Tax, And Escrow Exception Servicing
+**Justification:** Escrow operations do not end with annual analysis. Lapsed insurance, delinquent taxes, force-placed coverage, and shortage cures are daily servicing problems that need structured exception handling.
 
-### 22. Cryptographic audit proofing for Lending Origination Servicing Schema Extension
+**Improvement:** Build exception flows for missing insurance proof, force-placement timing, tax delinquency notices, escrow advances, and repayment-plan setup for shortages. Link these exceptions to both the servicing balance view and the borrower communication timeline.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Acceptance evidence:** Exception fixtures for lapsed coverage and tax delinquency, alerts showing the next required action, and account timelines proving notices and advances were recorded in order.
 
-**Improvement:** Hash-chain material `lending_origination_servicing_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 30. Customer Complaints, Disputes, And Regulatory Clocks
+**Justification:** Complaints and payment disputes create deadline-driven work distinct from normal servicing. Institutions need a clock, owner, and evidence trail from intake through response.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add complaint and dispute cases within `servicing_case` with intake channel, alleged issue, requested remedy, assigned owner, response due date, and final disposition. Route complaints about payoff, escrow, credit reporting, or collections into the correct specialist queue automatically.
 
-### 23. Privacy, consent, and secrecy controls for Lending Origination Servicing Control Assertion
+**Acceptance evidence:** Clock tests for due-date calculation, case-routing evidence by complaint type, and exported response packets showing the facts reviewed before closure.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+### 31. Compliance Rules For Disclosures And Notices
+**Justification:** Lending origination and servicing both depend on timely, accurate disclosures. Missing a pre-closing notice, delinquency letter, escrow analysis notice, or payoff communication can turn an operational defect into a regulatory issue.
 
-**Improvement:** Add field-level privacy classifications for `lending_origination_servicing_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Catalog disclosure and notice obligations by product, lifecycle stage, borrower state or segment, and triggering event. Store notice template version, generation date, delivery channel, and suppression rule with the governed record so the platform can prove exactly what was sent.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Notice-generation fixtures for origination, delinquency, escrow, modification, and payoff stages, suppression tests for prohibited contact scenarios, and release evidence that maps each notice path to its governing rule.
 
-### 24. Multi-tenant operating model for Lending Origination Servicing Governed Model
+### 32. Fair Lending And Adverse-Impact Monitoring
+**Justification:** Underwriting and pricing need post-decision surveillance, not just front-end rules. A lending package should surface whether policy or model behavior is producing unexplained disparities across protected or monitored groups.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add monitoring views that compare approval rate, counteroffer rate, exception usage, pricing outcome, and modification relief outcome across defined segments. Treat this as a compliance and governance surface rather than a hidden analytics notebook.
 
-**Improvement:** Support tenant-specific `lending_origination_servicing_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Drift and disparity reports built from `lending_origination_servicing_risk_score` and decision outcomes, threshold alerts when monitored gaps widen, and documented review actions by the governance owner.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Covenant Monitoring And Breach Workflows
+**Justification:** The manifest description explicitly includes covenant monitoring. Commercial and structured products need covenant schedules, reporting obligations, and breach escalation inside the same package that owns the loan lifecycle.
 
-### 25. Schema evolution and extension registry for Loan Application
+**Improvement:** Add covenant records for financial reporting due dates, leverage thresholds, liquidity requirements, collateral tests, and reporting receipt status. Open a governed breach workflow when a covenant is missed or violated, with cure period tracking and approval gates for waivers.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Acceptance evidence:** Covenant calendar fixtures, breach escalation tests, and workbench evidence showing open covenant exceptions alongside core servicing queues.
 
-**Improvement:** Make schema extensions for `loan_application` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 34. Servicing Fee Authorization And Fee-Waiver Governance
+**Justification:** Fees often become the flashpoint in complaints, payoffs, and collections audits. Servicing needs precise controls over who can assess, waive, reverse, or capitalize each fee type.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Create a fee catalog with allowable triggers, cap rules, waiver authority, refund logic, and statement presentation rules. Prevent ad hoc fee mutations by forcing all fee actions through governed commands with reason codes.
 
-### 26. Master data quality gates for Borrower Profile
+**Acceptance evidence:** Authorization tests by role and fee type, balance-change evidence for fee reversal and waiver, and UI history showing who changed a fee and under which policy authority.
 
-**Justification:** Many lending origination and servicing errors begin as bad reference data; the PBC should catch them before workflow execution.
+### 35. Overrides, Exceptions, And Second-Review Controls
+**Justification:** High-value lending operations always contain exceptions, but unmanaged override culture erodes risk discipline. The platform should distinguish allowed judgment from silent policy drift.
 
-**Improvement:** Define reference-data contracts for `borrower_profile`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require structured override reasons, evidence attachments, approval thresholds, and expiry handling for underwriting, pricing, boarding, modification, and payoff exceptions. Add second-review requirements when the exception touches policy-critical fields such as amount, rate, collateral value, or delinquency reset.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests that block privileged actions without the required approval chain, queue evidence for pending second review, and monthly override reports grouped by rule family and approver.
 
-### 27. Bulk operations and correction workflows for Underwriting Decision
+### 36. Multi-Tenant Policy Isolation And Configuration
+**Justification:** The manifest already names multi-tenant isolation and runtime parameters. Lending operators need tenant-specific products, policies, notice packs, fee rules, and approval limits without data leakage or accidental cross-tenant rule reuse.
 
-**Justification:** Enterprise-scale Lending Origination and Servicing users cannot operate one record at a time.
+**Improvement:** Scope policy rules, runtime parameters, template sets, and governed models to tenant and product family. Add safe defaults for tenant onboarding while preventing one tenant from inheriting another tenant's disclosures, covenant packs, or loss-mitigation settings.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `underwriting_decision` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Isolation tests for policy and template retrieval, negative fixtures for cross-tenant access, and configuration screens that display tenant scoping for every mutable rule or notice set.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Event-Sourced Loan Timeline And Replayability
+**Justification:** The manifest includes event-sourced operational history, which is particularly valuable in lending where the institution must reconstruct the full path from application through payoff or charge-off.
 
-### 28. Lifecycle collaboration and tasking for Loan Offer
+**Improvement:** Emit domain-specific events for intake, decisioning, offer acceptance, funding, boarding, payment posting, delinquency movement, modification approval, payoff, and closure. Expose a replayable loan timeline so support, audit, and engineering can explain current state from immutable events rather than inferred snapshots.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Acceptance evidence:** Event schema tests, timeline reconstruction tests for a full loan life cycle, and UI evidence that a user can inspect event order, actor, and resulting state from within the detail view.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `loan_offer` without leaking into external shared task tables. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 38. Cross-PBC Event Contracts And Downstream Handoffs
+**Justification:** Lending rarely lives alone. Policy, audit, and KPI events are already declared as consumed contracts, and funding or accounting consumers will also depend on precise event payloads.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Harden event contracts around `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`, and add downstream handoff events for booked-loan activation, escrow setup, charge-off status change, and payoff completion. Each event should carry enough context to support dependent packages without exposing internal-only detail.
 
-### 29. SLA and service-level governance for Disbursement
+**Acceptance evidence:** Contract tests for emitted and consumed event versions, idempotency checks on repeated deliveries, and release notes showing exactly which downstream consumers were validated against the new payloads.
 
-**Justification:** Users need to know when loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring is late, blocked, or at risk before customer or regulator impact.
+### 39. Workbench Queue And Persona-Specific UI
+**Justification:** `LendingOriginationServicingWorkbench` exists in the manifest, but lending operations are queue-driven. Underwriters, closers, servicing specialists, collectors, and compliance reviewers do not need the same landing page.
 
-**Improvement:** Define SLAs for `disbursement` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Split the workbench into persona-specific queues with saved filters, aging buckets, SLA indicators, exception severity, and quick actions appropriate to each role. Prioritize the queues that correspond to application review, stipulation chase, funding readiness, delinquency, complaints, and modification review.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI contract coverage for each persona queue, role-based action availability tests, and screenshots showing stage-appropriate columns and badges rather than one generic list.
 
-### 30. Operational analytics cockpit for Repayment Schedule
+### 40. Application Detail UI With Underwriting Evidence
+**Justification:** `LendingOriginationServicingDetail` should make the approval rationale obvious. An underwriter or reviewer should not have to navigate across five tabs to reconstruct borrower facts, policy results, and conditions.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Build an origination detail layout that presents borrower parties, verified income, bureau pulls, collateral summary, affordability ratios, decision reasons, and outstanding conditions in one coherent narrative. Surface the rule version and risk score used for decisioning beside the evidence that drove them.
 
-**Improvement:** Build analytics for `repayment_schedule`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** View-model tests for the detail screen, screenshots showing the evidence layout for approved and declined files, and usability evidence that condition status and decision rationale remain visible without extra drilling.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Servicing Detail UI With Timeline And Balances
+**Justification:** Servicing specialists need one place to see unpaid principal, accrued interest, escrow position, delinquency state, recent payments, and pending exceptions. Fragmented views slow down collections, payoff work, and complaint response.
 
-### 31. Decision intelligence and recommendations for Servicing Case
+**Improvement:** Build a servicing detail experience that combines balance snapshot, transaction history, next due breakdown, escrow buckets, delinquency posture, active cases, and payoff readiness. Make the event timeline a first-class sidebar so recent actions and notices are visible in context.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Acceptance evidence:** Screen contracts for current, delinquent, and modified loans, component tests for balance and timeline widgets, and visual proof that the key servicing facts fit within the primary view hierarchy.
 
-**Improvement:** Generate ranked recommendations for `servicing_case` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 42. Collections And Delinquency UI Tooling
+**Justification:** Collections work is interaction-heavy. Agents need rapid access to contact history, payment commitments, hardship path eligibility, and prohibited-action warnings without leaving the queue.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a collections workspace inside `LendingOriginationServicingAssistantPanel` that shows contact log, call outcome, promise-to-pay status, available workout options, and compliance warnings for stay, cease-contact, or complaint hold scenarios. Optimize keyboard-driven queue progression for high-volume collectors.
 
-### 32. Quality and completeness scoring for Lending Origination Servicing Policy Rule
+**Acceptance evidence:** UI interaction tests for collector workflows, accessibility checks on quick-action controls, and screenshots showing compliance warnings pinned next to available next steps.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+### 43. Agent Skill For Origination Intake Assistant
+**Justification:** The manifest already includes agentic document intake and AI task assistance. Origination benefits from a guided assistant that helps assemble complete files without mutating governed data blindly.
 
-**Improvement:** Score each `lending_origination_servicing_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Create an intake skill that drafts borrower and application records from uploaded documents and structured prompts, highlights missing fields, proposes stipulations, and requests confirmation before writing anything to governed tables. The skill should understand borrower role assignment, purpose, product fit, and document sufficiency.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Skill prompts and test conversations that produce draft-but-not-posted changes, citation spans back to source documents, and permission tests proving the assistant cannot bypass required confirmations.
 
-### 33. End-to-end scenario library for Lending Origination Servicing Runtime Parameter
+### 44. Agent Skill For Underwriter Copilot
+**Justification:** Underwriters need acceleration, not automation theater. A useful copilot summarizes evidence, identifies policy tensions, and prepares decision rationales while leaving the credit judgment with the authorized reviewer.
 
-**Justification:** Release evidence is stronger when every important lending origination and servicing behavior has executable examples.
+**Improvement:** Build an underwriting assistant that assembles income, bureau, collateral, affordability, and exception facts into a structured recommendation with explicit uncertainty markers. Include simulation support so the underwriter can ask how amount, term, or collateral haircut changes would alter the decision.
 
-**Improvement:** Create seeded scenarios for `lending_origination_servicing_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Conversation traces showing evidence-backed recommendations, simulation outputs tied to policy versions, and reviewer feedback capture on whether the assistant's proposed rationale was accepted, edited, or rejected.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Agent Skill For Servicing And Modification Assistant
+**Justification:** Servicing staff spend large amounts of time reconstructing account status before answering one question. An assistant can reduce handling time only if it understands balances, delinquency, escrow, promises, and modification history.
 
-### 34. Domain ontology and terminology model for Lending Origination Servicing Schema Extension
+**Improvement:** Add a servicing skill that can summarize account posture, explain recent balance movement, prepare payoff checklists, outline hardship options, and draft modification comparison views. Keep the skill read-first and approval-gated for any action that would affect balance, delinquency status, or borrower communication.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Acceptance evidence:** Evaluated conversations for payoff, delinquency, and hardship scenarios, evidence of blocked attempts to take privileged actions without approval, and operator ratings on answer usefulness and factual accuracy.
 
-**Improvement:** Add an ontology for `lending_origination_servicing_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 46. Agent Skill For Compliance And Audit Evidence Assembly
+**Justification:** Audit preparation is expensive when evidence lives in many records and event streams. The package already names cryptographic proofs and continuous control testing; the assistant should help assemble those artifacts, not invent them.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Build a compliance skill that gathers policy version, decision lineage, notice history, override approvals, control results, and sealed audit references into a review packet for a specified loan, period, or rule family. The skill should point to existing evidence rather than narrate unsupported conclusions.
 
-### 35. Advanced search and investigation for Lending Origination Servicing Control Assertion
+**Acceptance evidence:** Skill runs that produce auditable evidence packets for underwriting review and servicing complaint review, citation links to the underlying records and events, and tests showing that unsupported claims are withheld when evidence is incomplete.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+### 47. Release Evidence Pack And Traceability Matrix
+**Justification:** The manifest includes `RELEASE_EVIDENCE.md`, but lending changes require more than a generic release note. Teams need traceability from rule change or UI change to tests, approvals, and impacted lifecycle stages.
 
-**Improvement:** Provide search across `lending_origination_servicing_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Create a release evidence structure that maps every change to affected APIs, tables, events, notices, controls, UI fragments, and agent skills. Include explicit coverage for origination, decisioning, boarding, servicing, delinquency, modification, escrow, and payoff flows so no critical stage is omitted from signoff.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** A traceability matrix generated for a sample release, signoff records by product owner and compliance reviewer, and proof that each changed surface has linked verification artifacts.
 
-### 36. Reconciliation and closure controls for Lending Origination Servicing Governed Model
+### 48. Continuous Control Testing And Sealed Audit Proofs
+**Justification:** The advanced capabilities already call out continuous control testing and cryptographic audit proofs. Lending benefits when segregation-of-duties, approval, notice, and balance-integrity checks run continuously instead of waiting for a quarterly review.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Add control assertions for approval authority, override limits, boarding completeness, notice delivery, payment allocation integrity, escrow analysis timing, and payoff closure steps. Seal the resulting evidence so later audits can verify that the test results were not altered after the fact.
 
-**Improvement:** Add reconciliation workflows that compare `lending_origination_servicing_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Passing and intentionally failing control runs stored against `lending_origination_servicing_control_assertion`, sealed proof verification for a sampled control set, and dashboards showing open control breaks by severity.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Synthetic Test Portfolios And Operational Dashboards
+**Justification:** Lending quality is best proven on realistic portfolios, not only isolated unit cases. Operations also need a supervisory layer that turns raw events into throughput, risk, and aging insight.
 
-### 37. Regulatory and policy reporting for Loan Application
+**Improvement:** Build synthetic portfolios that cover prime consumer loans, thin-file applicants, secured collateralized loans, modified hardship loans, escrowed mortgages, delinquent accounts, charged-off accounts, and payoff requests. Use those portfolios to drive `lending_origination_servicing_workbench_metric` dashboards for volume, turn time, delinquency migration, modification outcomes, complaint aging, and queue health.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Acceptance evidence:** Reusable seeded scenarios, dashboard tests built from the synthetic portfolio data, and KPI evidence showing the package can report lifecycle performance without manual spreadsheet assembly.
 
-**Improvement:** Generate domain reporting packs for `loan_application` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
+### 50. Release Readiness, Cutover, And Post-Release Verification
+**Justification:** Lending changes touch balances, notices, and customer outcomes. Production readiness needs explicit cutover criteria, rollback posture, and early-life monitoring rather than a generic deploy checklist.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Define release gates for migration readiness, policy effective-date alignment, queue backfill completion, user training, notice-template approval, and dashboard baselines. Add post-release verification for sample application decisions, funded-loan boarding, payment posting, delinquency movement, escrow analysis, modification booking, and payoff closure during the first operating window after release.
 
-### 38. Carbon and resource awareness for Borrower Profile
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `borrower_profile` decisions and batch operations. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Underwriting Decision
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `underwriting_decision`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Loan Offer
-
-**Justification:** Automation should accelerate loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `loan_offer`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Disbursement
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `lending_origination_servicing` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Repayment Schedule
-
-**Justification:** Configuration changes can materially alter lending origination and servicing; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `repayment_schedule` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Servicing Case
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `servicing_case` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Lending Origination Servicing Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind loan applications, underwriting, offers, disbursement, repayment, servicing, collections, and covenant monitoring.
-
-**Improvement:** Create a governed evidence vault for `lending_origination_servicing_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Lending Origination Servicing Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `lending_origination_servicing_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Lending Origination Servicing Schema Extension
-
-**Justification:** Many lending origination and servicing workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `lending_origination_servicing_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Lending Origination Servicing Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `lending_origination_servicing_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Lending Origination Servicing Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Lending Origination and Servicing.
-
-**Improvement:** For every predictive or agentic feature around `lending_origination_servicing_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Loan Application
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `loan_application`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `lending_origination_servicing_create_loan_application_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Borrower Profile
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `lending_origination_servicing` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `lending_origination_servicing_record_borrower_profile_workflow` where applicable, and make it visible in `LendingOriginationServicingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/lending_origination_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** A signed readiness checklist, cutover validation logs, post-release sample review results across the major lifecycle stages, and a documented rollback decision path if any verification step fails.

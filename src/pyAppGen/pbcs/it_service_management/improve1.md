@@ -1,418 +1,412 @@
-# IT Service Management PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `it_service_management`. The backlog is specific to incidents, requests, changes, problems, configuration items, service levels, and it operations controls and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# IT Service Management Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `it_service_management`.
-- Domain purpose: Incidents, requests, changes, problems, configuration items, service levels, and IT operations controls.
-- Owned domain tables: `it_incident`, `service_request`, `change_request`, `problem_record`, `configuration_item`, `sla_clock`, `knowledge_article`, `it_service_management_policy_rule`, `it_service_management_runtime_parameter`, `it_service_management_schema_extension`, `it_service_management_control_assertion`, `it_service_management_governed_model`.
-- Public APIs: `POST /it-incidents`, `POST /service-requests`, `POST /change-requests`, `POST /problem-records`, `POST /configuration-items`, `GET /it-service-management-workbench`.
-- Emitted AppGen-X events: `ItServiceManagementCreated`, `ItServiceManagementUpdated`, `ItServiceManagementApproved`, `ItServiceManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `it_incident_management`, `it_service_management_workflow`, `it_service_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `it_service_management_event_sourced_operational_history`, `it_service_management_multi_tenant_policy_isolation`, `it_service_management_schema_evolution_resilience`, `it_service_management_autonomous_anomaly_detection`, `it_service_management_semantic_document_instruction_understanding`, `it_service_management_predictive_risk_scoring`, `it_service_management_counterfactual_scenario_simulation`, `it_service_management_cryptographic_audit_proofs`.
+- Stable package key: `it_service_management`.
+- Manifest label and purpose: IT Service Management for incidents, service requests, change requests, problem records, configuration items, service levels, knowledge, rules, parameters, and operations controls.
+- Owned tables named in the manifest: `it_incident`, `service_request`, `change_request`, `problem_record`, `configuration_item`, `sla_clock`, `knowledge_article`, `it_service_management_policy_rule`, `it_service_management_runtime_parameter`, `it_service_management_schema_extension`, `it_service_management_control_assertion`, `it_service_management_governed_model`.
+- Public routes already declared: `POST /it-incidents`, `POST /service-requests`, `POST /change-requests`, `POST /problem-records`, `POST /configuration-items`, `GET /it-service-management-workbench`.
+- Emitted events already declared: `ItServiceManagementCreated`, `ItServiceManagementUpdated`, `ItServiceManagementApproved`, `ItServiceManagementExceptionOpened`.
+- Consumed events already declared: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Workbench and assistant surfaces already declared: `ItServiceManagementWorkbench`, `ItServiceManagementDetail`, `ItServiceManagementAssistantPanel`.
+- Domain operations in the package specification include `create_it_incident`, `record_service_request`, `review_change_request`, `approve_problem_record`, `simulate_configuration_item`, and `create_sla_clock`.
 
-## 50 High-Impact Improvements
+### 1. Major incident declaration model
 
-### 1. Canonical lifecycle state model for It Incident
+**Justification:** The package owns `it_incident`, but the current evidence does not show a formal major-incident path with explicit command authority, impact thresholds, or communications discipline.
 
-**Justification:** This closes shallow CRUD gaps by making every it service management transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Add a major-incident state overlay for `it_incident` with severity matrix rules, commander assignment, declaration timestamp, affected business service list, bridge details, and exit criteria that differ from routine incident handling.
 
-**Improvement:** Define a complete state machine for `it_incident` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests prove declaration, downgrade, and closure rules; the workbench shows commander, severity, and blast radius; emitted events distinguish routine incidents from major incidents.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ItServiceManagementCreated, ItServiceManagementUpdated, ItServiceManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Impact and urgency matrix for incident prioritization
 
-### 2. Domain intake and normalization for Service Request
+**Justification:** Priority needs to be calculated from business impact and urgency rather than left to free-text operator judgment, or queues become noisy and SLA clocks become unreliable.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of incidents, requests, changes, problems, configuration items, service levels, and it operations controls, not only already-clean records.
+**Improvement:** Introduce an impact-by-urgency matrix for `it_incident` that derives priority, target response, escalation path, and customer communication cadence from business service criticality, user count, revenue exposure, and regulatory exposure.
 
-**Improvement:** Build a typed intake pipeline for `service_request` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Rule fixtures cover P1 through low-priority cases; `sla_clock` targets are derived from the matrix; queue views expose why a ticket reached its assigned priority.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Duplicate incident correlation and outage rollup
 
-### 3. Specialist validation rules for Change Request
+**Justification:** During outages, dozens of near-identical tickets can flood intake and obscure the parent issue that operators actually need to restore.
 
-**Justification:** World-class IT Service Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Add duplicate and related-incident correlation for `it_incident`, including parent outage records, child symptom tickets, merge history, and rules for preserving separate VIP or regulated-customer cases when they require distinct handling.
 
-**Improvement:** Add a domain rule compiler for `change_request` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Correlation tests show child tickets rolling into a parent outage; the workbench displays parent-child relationships; merged tickets retain audit history and requester notifications.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `IT_SERVICE_MANAGEMENT_DATABASE_URL, IT_SERVICE_MANAGEMENT_EVENT_TOPIC, IT_SERVICE_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Incident timeline and evidence freeze
 
-### 4. Parameter governance and tuning for Problem Record
+**Justification:** Operators and auditors need a reliable chronology of detection, triage, escalation, mitigation, recovery, and closure, especially when problem management follows later.
 
-**Justification:** Parameters are where operations teams tune it service management; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Record structured timeline entries on `it_incident` for every material action, with source, actor, timestamp, before/after state, linked artifacts, and an evidence-freeze marker when the record moves into review or dispute.
 
-**Improvement:** Expose bounded runtime parameters for `problem_record` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Replay tests reconstruct the full incident timeline; detail views render a chronological ledger; late edits after evidence freeze require explicit exception approval.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Service restoration milestones inside SLA handling
 
-### 5. Deep owned schema expansion for Configuration Item
+**Justification:** Incident SLAs usually depend on restoring service first and closing paperwork later; one clock cannot accurately represent both outcomes.
 
-**Justification:** A single payload column cannot express the full surface of incidents, requests, changes, problems, configuration items, service levels, and it operations controls or prove cross-PBC boundaries are respected.
+**Improvement:** Expand `sla_clock` to track acknowledgement, restoration, workaround, and final-resolution milestones for incident records, with distinct pause and breach rules for each milestone.
 
-**Improvement:** Extend the owned schema around `configuration_item` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** SLA tests cover acknowledgement-only, workaround, and full-resolution paths; dashboards show which milestone is at risk; breach events reference the breached milestone, not just the ticket.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `it_service_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Swarming and resolver-group handoff rules
 
-### 6. Event-sourced operational history for Sla Clock
+**Justification:** Practical incident response depends on coordinated resolver groups and fast handoffs; uncontrolled reassignment causes ownership gaps and missed updates.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in it service management.
+**Improvement:** Add swarming support to `it_incident` with primary owner, active resolver groups, paging status, handoff reason, and transfer safeguards that block silent reassignment when no accepting team is recorded.
 
-**Improvement:** Capture every material mutation of `sla_clock` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workflow tests prove safe handoff behavior; workbench queues show active swarm participants; audit history records every ownership transfer and acknowledgment.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Service request catalog structure
 
-### 7. Projection and read-model strategy for Knowledge Article
+**Justification:** `service_request` needs to distinguish catalog-backed fulfillment from ad hoc ticketing, or approvals, entitlements, and fulfillment steps remain inconsistent.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Model service catalog entries for `service_request` with request type, required form fields, fulfillment template, approval policy, expected lead time, and entitlement checks tied to the requested service.
 
-**Improvement:** Create purpose-built projections for `knowledge_article`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Catalog fixtures create repeatable request types; request forms render required fields by catalog item; fulfillment metrics compare actual completion time against the catalog promise.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Access request entitlement validation
 
-### 8. Exception taxonomy and remediation for It Service Management Policy Rule
+**Justification:** Access-related service requests carry segregation-of-duties and least-privilege risk that ordinary fulfillment logic does not cover.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Add entitlement-aware validation for access-oriented `service_request` records, including requester identity, manager chain, target system, access level, segregation-of-duties conflicts, and time-bounded access expiry.
 
-**Improvement:** Model the full exception taxonomy for `it_service_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Rule tests reject conflicting access combinations; approvals capture manager and system-owner decisions; fulfilled requests include expiry or recertification evidence where required.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for missing approvals. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Multi-step fulfillment task orchestration
 
-### 9. Predictive risk scoring for It Service Management Runtime Parameter
+**Justification:** Many requests require several internal tasks across service desk, infrastructure, security, and application teams before the customer sees completion.
 
-**Justification:** The package should warn users before it service management work fails, breaches policy, or creates downstream cost.
+**Improvement:** Break `service_request` fulfillment into ordered or parallel tasks with prerequisites, due dates, owning group, completion evidence, and customer-visible progress markers.
 
-**Improvement:** Add predictive risk scoring for `it_service_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** End-to-end tests show task fan-out and completion gates; request detail views expose open tasks and blockers; SLA pause rules reflect waiting-on-customer versus waiting-on-fulfiller states.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Request closure with requester confirmation
 
-### 10. Counterfactual simulation for It Service Management Schema Extension
+**Justification:** Closing a request without validating delivery quality produces reopen churn and undermines service catalog trust.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live incidents, requests, changes, problems, configuration items, service levels, and it operations controls operations.
+**Improvement:** Add post-fulfillment verification to `service_request` so closures can require requester confirmation, proof-of-delivery artifacts, or timed auto-close after a configurable observation period.
 
-**Improvement:** Provide scenario simulation for `it_service_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests cover confirmed closure, timeout closure, and reopen cases; queue views highlight pending customer confirmation; closure analytics track reopen rates by catalog item.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Standard, normal, and emergency change paths
 
-### 11. Autonomous anomaly triage for It Service Management Control Assertion
+**Justification:** `change_request` should not force every change through the same governance path because low-risk standard changes and urgent emergency changes have different control expectations.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Split `change_request` into standard, normal, and emergency modes with separate risk checks, evidence requirements, approval counts, implementation windows, and post-change review expectations.
 
-**Improvement:** Implement anomaly detection for `it_service_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Rule fixtures prove route selection by change type; workbench views expose change class and required approvals; emergency changes require expedited review evidence after implementation.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Change risk scoring and blast-radius estimation
 
-### 12. Semantic document understanding for It Service Management Governed Model
+**Justification:** Change approval quality depends on likely impact to business services, technical dependencies, customer-facing uptime, and rollback complexity.
 
-**Justification:** Document-heavy work in IT Service Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add a risk model for `change_request` that considers affected `configuration_item` records, service tier, dependency count, maintenance-window timing, previous failure history, and presence of a tested backout plan.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `it_service_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Test cases show low-, medium-, and high-risk scoring outcomes; approvers can inspect the scoring factors; analytics correlate predicted risk with post-implementation incidents.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Maintenance windows and blackout calendar enforcement
 
-### 13. Agent-safe CRUD execution for It Incident
+**Justification:** Change scheduling needs to respect freeze periods, regional business calendars, payroll or quarter-end deadlines, and service-specific blackout periods.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Enforce maintenance windows for `change_request` with calendar-aware validation against business freezes, service blackouts, and local holidays, while allowing governed exceptions with written justification.
 
-**Improvement:** Add a professional chatbot skill for `it_incident` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scheduling tests reject blocked windows; simulation previews show the violated calendar rule; approved exceptions are visible with approver, justification, and expiration date.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. CAB agenda, quorum, and decision capture
 
-### 14. Workbench persona coverage for Service Request
+**Justification:** Advisory review becomes untrustworthy when meeting decisions are lost in notes or reflected only as a status change.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Add CAB support for `change_request` with agenda order, attendee roles, quorum rules, discussion summary, requested follow-ups, decision outcome, and linked evidence from risk review.
 
-**Improvement:** Design dedicated workbench panels for `service_request`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** CAB workflow tests require quorum before approval; detail views show the exact CAB decision package; rejected changes retain reasons and required resubmission actions.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Backout plan and validation checklist enforcement
 
-### 15. Cross-PBC dependency contracts for Change Request
+**Justification:** A change without a realistic backout plan and clear validation steps is a preventable production risk.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Require `change_request` records to capture implementation checklist items, validation steps, success criteria, backout triggers, estimated rollback time, and responsible rollback owner before approval.
 
-**Improvement:** Represent dependencies for `change_request` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Approval tests fail when backout content is incomplete; workbench detail pages show the implementation and rollback checklists; post-change review confirms whether the plan was used.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Post-implementation review workflow
 
-### 16. API completeness and versioning for Problem Record
+**Justification:** Learning from failed or risky changes is core ITSM behavior and should be first-class instead of being left to ad hoc follow-up.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Add a post-implementation review lifecycle for `change_request` that records actual outcome, unexpected impact, remediation work, follow-on incidents, and policy feedback for future changes.
 
-**Improvement:** Expand APIs beyond POST /it-incidents, POST /service-requests, POST /change-requests to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Changes that trigger incidents automatically require review; review forms capture outcome classifications; metrics show failed-change rate and overdue reviews.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Problem record linkage to incidents and changes
 
-### 17. Typed emitted-event expansion for Configuration Item
+**Justification:** `problem_record` is most valuable when it connects recurring incidents and unsuccessful changes into a single root-cause effort.
 
-**Justification:** Consumers should understand what happened in IT Service Management without parsing opaque payloads.
+**Improvement:** Add many-to-many linkage among `problem_record`, `it_incident`, and `change_request`, with distinction between symptom tickets, suspected causes, confirmed causes, and change-introduced faults.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `configuration_item` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests prove linked records stay consistent through closure and reopen events; detail pages show related incidents and changes; analytics identify top recurring symptoms by problem record.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Root-cause analysis template library
 
-### 18. Consumed-event handlers for Sla Clock
+**Justification:** Problem management quality rises when investigators use repeatable methods such as timeline reconstruction, five-whys, fault tree reasoning, and contributing-factor capture.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Equip `problem_record` with RCA templates, contributing-factor categories, hypothesis tracking, evidence links, and explicit status values for suspected, validated, and disproven causes.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** RCA fixtures cover multiple methods; workbench detail pages render structured root-cause evidence; closure rules require approved corrective or preventive actions.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Known error database and workaround publication
 
-### 19. Retry and dead-letter operations for Knowledge Article
+**Justification:** Service desk agents need approved workarounds before the permanent fix is ready, or incident queues keep rediscovering the same temporary steps.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block incidents, requests, changes, problems, configuration items, service levels, and it operations controls.
+**Improvement:** Connect `problem_record` and `knowledge_article` so confirmed known errors can publish controlled workarounds, customer-facing guidance, and internal resolver notes with separate visibility rules.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `knowledge_article` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests prove knowledge visibility rules for internal versus customer-safe content; incidents can attach the approved workaround; metrics track workaround usage before permanent remediation.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Recurrence detection across incident history
 
-### 20. RBAC and attribute policy for It Service Management Policy Rule
+**Justification:** A problem candidate should surface from patterns in the package’s own incident stream rather than waiting for manual recognition.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Add recurrence detection across `it_incident` history using service, CI, symptom signature, time window, and workaround reuse to propose new `problem_record` creation or reopening.
 
-**Improvement:** Extend permissions for `it_service_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Detection tests generate candidate problems from repeated incidents; workbench panels show recurrence scores and linked evidence; analysts can accept or dismiss the recommendation with rationale.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Configuration item relationship graph
 
-### 21. Continuous control testing for It Service Management Runtime Parameter
+**Justification:** Impact analysis is weak without service maps showing how infrastructure, applications, integrations, and business services depend on each other.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Expand `configuration_item` to model relationships such as runs-on, depends-on, provides, supports, hosted-in, and owned-by, with directional semantics for incident impact and change risk analysis.
 
-**Improvement:** Embed control assertions for `it_service_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Graph tests prove relationship traversal; change and incident views show upstream and downstream affected services; import or update flows block invalid circular relationships where policy forbids them.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `it_service_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. CI ownership and support model
 
-### 22. Cryptographic audit proofing for It Service Management Schema Extension
+**Justification:** A CI record without service owner, support group, business criticality, or maintenance contact cannot drive escalation or approval routing.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Require `configuration_item` records to capture technical owner, service owner, support group, criticality tier, maintenance calendar, and after-hours contact model.
 
-**Improvement:** Hash-chain material `it_service_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Validation tests reject incomplete operational ownership; workbench detail pages display owner and support context; major-incident escalation can resolve contacts from the CI record.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. CI drift and stale-data detection
 
-### 23. Privacy, consent, and secrecy controls for It Service Management Control Assertion
+**Justification:** CMDB value collapses when records are outdated, duplicated, or no longer reflect production reality.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Add drift detection for `configuration_item` using event history, change completion data, last verification date, and mismatch rules that flag stale ownership, missing relationships, or unverified decommission states.
 
-**Improvement:** Add field-level privacy classifications for `it_service_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Drift fixtures open exceptions on stale CIs; dashboards show stale-data percentages by service; approved remediation updates clear the exception with timestamped evidence.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Service dependency impact preview before change approval
 
-### 24. Multi-tenant operating model for It Service Management Governed Model
+**Justification:** Approvers need to know which business services, customer journeys, and support teams could be affected by a proposed change.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Use the `configuration_item` graph to generate an impact preview for `change_request`, including directly touched components, dependent services, support groups to notify, and likely monitoring signals to watch.
 
-**Improvement:** Support tenant-specific `it_service_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Approval screens include an impact preview panel; simulation tests match expected service dependencies; post-change reviews compare predicted versus observed impact.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. SLA, OLA, and underpinning commitment separation
 
-### 25. Schema evolution and extension registry for It Incident
+**Justification:** External customer commitments and internal support obligations should not share the same policy object or the same breach semantics.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Extend `sla_clock` and related rules to distinguish customer SLAs, internal OLAs, and supplier or underpinning commitments, with separate breach logic, clock ownership, and evidence expectations.
 
-**Improvement:** Make schema extensions for `it_incident` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests show different breach handling for SLA, OLA, and underpinning cases; analytics report each clock type separately; incident and request detail views show the active clock category.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Calendar-aware pause and resume logic
 
-### 26. Master data quality gates for Service Request
+**Justification:** Timers that ignore waiting-on-customer states, after-hours coverage, or approved maintenance windows misreport performance and drive the wrong escalations.
 
-**Justification:** Many it service management errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Add explicit pause reasons for `sla_clock`, including waiting on requester, vendor action pending, CAB review pending, planned implementation window, and emergency freeze review, with business-calendar awareness.
 
-**Improvement:** Define reference-data contracts for `service_request`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Timer tests cover pause/resume transitions and elapsed-time calculations; workbench views show current pause reason; breaches never occur while an approved pause is active.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Role-based operational queues in the workbench
 
-### 27. Bulk operations and correction workflows for Change Request
+**Justification:** The same record set must answer different questions for service desk agents, major-incident commanders, change managers, problem managers, and auditors.
 
-**Justification:** Enterprise-scale IT Service Management users cannot operate one record at a time.
+**Improvement:** Rework `ItServiceManagementWorkbench` into role-based queue presets for incident triage, request fulfillment, change governance, problem backlog, SLA risk, and audit exceptions.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `change_request` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Route and permission tests show role-appropriate queue visibility; saved views include queue definitions and sort logic; operators can move from queue to detail without losing context.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. Aging, load, and attention routing
 
-### 28. Lifecycle collaboration and tasking for Problem Record
+**Justification:** ITSM operations need to surface what deserves attention now, not just what was opened most recently.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Add attention scores across `it_incident`, `service_request`, `change_request`, and `problem_record` using age, SLA risk, customer tier, recent updates, blocked status, and missing-owner conditions.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `problem_record` without leaking into external shared task tables. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Queue ordering tests prove high-attention records float to the top; workbench cards show the factors behind the score; analysts can filter by blocked or neglected items.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Knowledge article lifecycle and quality checks
 
-### 29. SLA and service-level governance for Configuration Item
+**Justification:** `knowledge_article` should support operational knowledge that is reviewed, current, and easy to trust during active incidents and routine requests.
 
-**Justification:** Users need to know when incidents, requests, changes, problems, configuration items, service levels, and it operations controls is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Add draft, review, published, retired, and superseded states for `knowledge_article`, along with review cadence, owner, approved audience, linked service, and article quality score.
 
-**Improvement:** Define SLAs for `configuration_item` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Publication tests enforce required review before release; article detail pages show review due date and service linkage; stale articles appear in a dedicated workbench queue.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Contextual knowledge suggestion during ticket work
 
-### 30. Operational analytics cockpit for Sla Clock
+**Justification:** Agents and analysts should see likely fixes or procedures while working the ticket, not only after a separate knowledge search.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Use symptom, service, CI, request type, and problem linkage to suggest relevant `knowledge_article` records in incident, request, and change detail views, while requiring confidence thresholds and visible source rationale.
 
-**Improvement:** Build analytics for `sla_clock`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Suggestion tests rank the expected articles first; UI evidence shows why an article was suggested; analysts can mark suggestions as helpful or irrelevant to improve future ranking.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Structured intake from documents and operator notes
 
-### 31. Decision intelligence and recommendations for Knowledge Article
+**Justification:** The package already declares document-instruction understanding, but the domain benefit comes from extracting actionable ITSM signals, not just generic text spans.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Parse emails, outage summaries, handoff notes, and implementation plans into draft `it_incident`, `service_request`, or `change_request` records with extracted service, CI, urgency, proposed window, affected users, and missing-information prompts.
 
-**Improvement:** Generate ranked recommendations for `knowledge_article` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Extraction fixtures cover incident mail, access request text, and change plans; the assistant shows a draft preview with confidence and gaps; writes still require explicit human confirmation.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Policy-rule sandbox and dry-run evaluation
 
-### 32. Quality and completeness scoring for It Service Management Policy Rule
+**Justification:** Operations teams need to tune rule behavior without discovering unintended consequences in live tickets.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Add a sandbox for `it_service_management_policy_rule` that runs candidate rules against representative incidents, requests, changes, problems, and SLA cases before publication.
 
-**Improvement:** Score each `it_service_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Dry-run reports show which records would change outcome; rule publication requires reviewed simulation output; rollback restores the prior rule version with provenance intact.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Runtime parameter guardrails and safe ranges
 
-### 33. End-to-end scenario library for It Service Management Runtime Parameter
+**Justification:** Parameters such as risk thresholds, workbench limits, and approval SLAs can destabilize operations if set outside practical bounds.
 
-**Justification:** Release evidence is stronger when every important it service management behavior has executable examples.
+**Improvement:** Add bounded range validation and change-impact notes for `it_service_management_runtime_parameter`, including tenant overrides, effective dates, and rollback checkpoints for operational tuning.
 
-**Improvement:** Create seeded scenarios for `it_service_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Parameter tests reject unsafe values; detail pages show active value, source, and effective period; audit evidence links each change to approver and rationale.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Event-sourced ticket history and replay
 
-### 34. Domain ontology and terminology model for It Service Management Schema Extension
+**Justification:** The manifest already claims event-sourced operational history, but operators need replayable evidence that explains how a record reached its current state.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Persist immutable lifecycle events for `it_incident`, `service_request`, `change_request`, `problem_record`, and `configuration_item` so the package can rebuild read models and compare replayed versus stored state.
 
-**Improvement:** Add an ontology for `it_service_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Replay tests rebuild target records deterministically; checksum evidence shows projection parity; detail views can render an event-by-event operational history.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Dead-letter triage tailored to ITSM workflows
 
-### 35. Advanced search and investigation for It Service Management Control Assertion
+**Justification:** Failed event handling in this package can leave approvals, queue metrics, or exception states out of sync with real operations.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Add dead-letter tooling for package event failures with reason taxonomy, retry eligibility, owner assignment, linked record lookup, and workbench actions for safe replay or controlled discard.
 
-**Improvement:** Provide search across `it_service_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Duplicate, poison-message, and exhausted-retry tests open the expected dead-letter records; operators can inspect the failed payload context; replay actions produce new lineage entries.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Consumed-event lineage and dependency freshness
 
-### 36. Reconciliation and closure controls for It Service Management Governed Model
+**Justification:** `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged` should influence local behavior in a traceable way, or downstream decisions become hard to defend.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Track which consumed events affected local rules, clocks, queue metrics, and exception states, including freshness windows and alerts when dependent data becomes stale.
 
-**Improvement:** Add reconciliation workflows that compare `it_service_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Handler tests prove lineage is recorded on local state changes; dashboards highlight stale dependency inputs; auditors can trace a decision back to the consumed event version.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Predictive breach and backlog risk scoring
 
-### 37. Regulatory and policy reporting for It Incident
+**Justification:** ITSM teams need early warning on likely SLA misses, overloaded resolver groups, and risky pending changes before the failure becomes visible to customers.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Expand `it_service_management_risk_score` to forecast incident breach risk, request aging risk, failed-change likelihood, and problem backlog escalation using queue depth, historical performance, and dependency signals.
 
-**Improvement:** Generate domain reporting packs for `it_incident` covering statutory, contractual, operational, board, customer, or regulator evidence depending on domain lifecycle completeness, operational evidence, exception handling, governed automation, composable integration, and release-grade auditability. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Risk fixtures produce expected high-risk alerts; workbench cards explain the scoring factors; calibration reports compare predicted versus observed breaches and failures.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Counterfactual simulation for change timing and staffing
 
-### 38. Carbon and resource awareness for Service Request
+**Justification:** Change managers often need to decide whether to move a window, add resolvers, or split scope before approval.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Use `simulate_configuration_item` and package-local scenario tooling to compare alternate implementation windows, staffing plans, rollout scope, and backout thresholds for `change_request`.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `service_request` decisions and batch operations. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Simulation outputs compare risk, service impact, and calendar conflicts across scenarios; the workbench presents side-by-side options; accepted plans retain a reference to the evaluated scenarios.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Continuous control testing for approvals and segregation of duties
 
-### 39. Resilience and offline behavior for Change Request
+**Justification:** Approval misuse, self-approval, and missing evidence are control failures that should surface immediately rather than during release review.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Add continuous assertions in `it_service_management_control_assertion` for self-approval, missing manager review, emergency change without post-review, access request without entitlement check, and unresolved major-incident action items.
 
-**Improvement:** Define resilience modes for `change_request`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Control tests raise exceptions on each failure mode; dashboards show open control findings by severity; closure requires linked remediation evidence and reviewer signoff.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Cryptographic sealing for high-value operational evidence
 
-### 40. Human-in-the-loop automation for Problem Record
+**Justification:** Major incidents, emergency changes, and disputed SLA outcomes may require stronger proof that operational evidence was not altered after the fact.
 
-**Justification:** Automation should accelerate incidents, requests, changes, problems, configuration items, service levels, and it operations controls while preserving accountability for high-risk decisions.
+**Improvement:** Hash and seal critical evidence packages for `it_incident`, `change_request`, `problem_record`, and `sla_clock`, including attached timelines, approvals, and exported audit packets.
 
-**Improvement:** Set explicit automation boundaries for `problem_record`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Verification APIs confirm the hash chain; tamper tests detect altered evidence; exported audit packets include proof metadata without exposing restricted payloads.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Tenant isolation across queues, policies, and evidence
 
-### 41. Package discovery and fit scoring for Configuration Item
+**Justification:** The manifest claims multi-tenant policy isolation, but the operational risk is in queue leakage, cross-tenant suggestions, and incorrect evidence visibility.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Enforce tenant scoping across `ItServiceManagementWorkbench`, event handlers, knowledge suggestions, rule evaluation, and export flows so no record, metric, or recommendation crosses tenant boundaries.
 
-**Improvement:** Improve package metadata so composition can explain when `it_service_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Negative tests prove one tenant cannot see another tenant’s tickets or analytics; handler tests enforce tenant ownership on incoming events; exports are watermarked with tenant scope.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Tenant-specific calendars, support hours, and service tiers
 
-### 42. Configuration deployment pipeline for Sla Clock
+**Justification:** SLA policies and maintenance windows vary materially by tenant, service tier, and geography.
 
-**Justification:** Configuration changes can materially alter it service management; they need the same discipline as code releases.
+**Improvement:** Let each tenant define support hours, service tiers, holiday calendars, priority targets, and blackout periods that feed `sla_clock`, incident priority, and change scheduling rules.
 
-**Improvement:** Add configuration promotion for `sla_clock` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tenant policy fixtures produce different due dates from the same ticket inputs; workbench views show the active service tier; calendar changes create versioned policy history.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Carbon-aware scheduling for non-urgent changes
 
-### 43. Workbench command completeness for Knowledge Article
+**Justification:** The package already cites sustainability awareness, and non-urgent maintenance can sometimes move to lower-impact windows without harming service quality.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Add optional sustainability guidance to `change_request` that compares proposed windows by estimated energy profile, region, and workload type, while keeping risk and service commitments as the primary decision factors.
 
-**Improvement:** Expose every high-value operation for `knowledge_article` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Simulation evidence shows when a lower-impact window is available; approvers can compare operational risk and sustainability notes together; the feature is clearly advisory, not mandatory.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Service continuity and disaster-recovery readiness checks
 
-### 44. Document packet and evidence vault for It Service Management Policy Rule
+**Justification:** Changes and incidents affecting critical services should expose whether failover plans, runbooks, and restore evidence are current before a crisis deepens.
 
-**Justification:** Documents often carry the legal or operational truth behind incidents, requests, changes, problems, configuration items, service levels, and it operations controls.
+**Improvement:** Link `configuration_item`, `knowledge_article`, and `change_request` to continuity metadata such as recovery tier, failover pattern, test date, and restoration runbook currency.
 
-**Improvement:** Create a governed evidence vault for `it_service_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Critical-service records show continuity readiness in detail pages; change approvals warn when DR evidence is stale; major-incident screens surface the latest validated recovery steps.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Release-assurance coverage for routes, events, and UI fragments
 
-### 45. Data correction and amendment history for It Service Management Runtime Parameter
+**Justification:** The package should prove that its declared routes, events, and workbench fragments remain aligned as the backlog is implemented.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Expand package release assurance so each declared route, emitted event, consumed event handler, permission, and UI fragment has traceable verification coverage tied to the ITSM domain scenarios it serves.
 
-**Improvement:** Support formal amendments for `it_service_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Release evidence references `POST /it-incidents`, `POST /service-requests`, `POST /change-requests`, `POST /problem-records`, `POST /configuration-items`, and `GET /it-service-management-workbench`; missing coverage fails package verification.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Metrics dictionary for operational analytics
 
-### 46. External participant collaboration for It Service Management Schema Extension
+**Justification:** Analytics become hard to trust when teams interpret “breach,” “restoration,” or “failed change” differently.
 
-**Justification:** Many it service management workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Publish a package-local metrics dictionary covering incident response, restoration, request fulfillment, change success, problem recurrence, SLA compliance, queue attention, and control findings.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `it_service_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Every workbench metric links to a definition; tests prove metric calculations for representative scenarios; exported analytics include metric version and calculation notes.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Audit packet and regulator-ready export flow
 
-### 47. Advanced dependency freshness scoring for It Service Management Control Assertion
+**Justification:** High-friction evidence gathering wastes time during audits, customer reviews, and post-outage investigations.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Add export flows that assemble ticket history, approvals, SLA milestones, knowledge references, change evidence, and control findings into a governed audit packet for a selected incident, request, change, problem, or service.
 
-**Improvement:** Score freshness and reliability of dependencies used by `it_service_management_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Export tests generate redacted and full-detail packets; audit packets include lineage to events and approvals; access rules prevent unauthorized export of restricted evidence.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Operator ergonomics for high-volume service desk work
 
-### 48. Model governance and explainability for It Service Management Governed Model
+**Justification:** ITSM effectiveness depends on how quickly analysts can triage, update, and close records during heavy load, not only on correctness of the data model.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in IT Service Management.
+**Improvement:** Improve `ItServiceManagementWorkbench` for keyboard-heavy triage, bulk safe actions, inline status updates, recent-context panels, and visible next-best-action cues for incident and request queues.
 
-**Improvement:** For every predictive or agentic feature around `it_service_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** UI tests cover bulk safe actions and keyboard flows; analysts can update status without leaving the queue; queue views preserve filters and scroll position during rapid triage.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. API completeness, idempotency, and correction commands
 
-### 49. High-scale partitioning and archival for It Incident
+**Justification:** Create-only routes are insufficient for mature ITSM operations that must reopen, correct, simulate, and close records without duplicating state.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Extend the package API surface with correction, reopen, approve, reject, simulate, export, and acknowledge commands for the core record types while preserving idempotency keys and permission checks.
 
-**Improvement:** Plan scale behavior for `it_incident`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `it_service_management_create_it_incident_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Contract tests prove duplicate submissions are safe; route manifests show command coverage across incidents, requests, changes, problems, and CIs; emitted events reflect the true action taken.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. End-to-end domain scenario harness
 
-### 50. Release gate expansion for Service Request
+**Justification:** The backlog needs a package-local proving ground that exercises realistic ITSM journeys rather than isolated table behavior.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Create seeded acceptance scenarios that walk through major incident response, catalog request fulfillment, emergency change, recurring problem creation, CI impact analysis, and SLA breach handling using only package-declared routes, events, rules, and UI surfaces.
 
-**Improvement:** Expand release gates for `it_service_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `it_service_management_record_service_request_workflow` where applicable, and make it visible in `ItServiceManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/it_service_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario runs produce deterministic evidence bundles; release verification reports each scenario outcome by name; maintainers can trace every scenario step back to package-owned capabilities.

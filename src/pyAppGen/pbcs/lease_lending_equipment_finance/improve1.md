@@ -1,418 +1,414 @@
-# Lease Lending and Equipment Finance PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `lease_lending_equipment_finance`. The backlog is specific to equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Lease Lending and Equipment Finance Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `lease_lending_equipment_finance`.
-- Domain purpose: Equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing.
-- Owned domain tables: `equipment_lease`, `leased_asset`, `payment_schedule`, `residual_value`, `buyout_quote`, `repo_case`, `lease_servicing_event`, `lease_lending_equipment_finance_policy_rule`, `lease_lending_equipment_finance_runtime_parameter`, `lease_lending_equipment_finance_schema_extension`, `lease_lending_equipment_finance_control_assertion`, `lease_lending_equipment_finance_governed_model`.
-- Public APIs: `POST /equipment-leases`, `POST /leased-assets`, `POST /payment-schedules`, `POST /residual-values`, `POST /buyout-quotes`, `GET /lease-lending-equipment-finance-workbench`.
-- Emitted AppGen-X events: `LeaseLendingEquipmentFinanceCreated`, `LeaseLendingEquipmentFinanceUpdated`, `LeaseLendingEquipmentFinanceApproved`, `LeaseLendingEquipmentFinanceExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `equipment_lease_management`, `lease_lending_equipment_finance_workflow`, `lease_lending_equipment_finance_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `lease_lending_equipment_finance_event_sourced_operational_history`, `lease_lending_equipment_finance_multi_tenant_policy_isolation`, `lease_lending_equipment_finance_schema_evolution_resilience`, `lease_lending_equipment_finance_autonomous_anomaly_detection`, `lease_lending_equipment_finance_semantic_document_instruction_understanding`, `lease_lending_equipment_finance_predictive_risk_scoring`, `lease_lending_equipment_finance_counterfactual_scenario_simulation`, `lease_lending_equipment_finance_cryptographic_audit_proofs`.
+- Manifest key: `lease_lending_equipment_finance`.
+- Label: Lease Lending and Equipment Finance.
+- Manifest description: equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing.
+- Declared APIs: `POST /equipment-leases`, `POST /leased-assets`, `POST /payment-schedules`, `POST /residual-values`, `POST /buyout-quotes`, `GET /lease-lending-equipment-finance-workbench`.
+- Owned tables: `equipment_lease`, `leased_asset`, `payment_schedule`, `residual_value`, `buyout_quote`, `repo_case`, `lease_servicing_event`, policy rules, runtime parameters, schema extensions, control assertions, and governed models.
+- Emitted events: `LeaseLendingEquipmentFinanceCreated`, `LeaseLendingEquipmentFinanceUpdated`, `LeaseLendingEquipmentFinanceApproved`, `LeaseLendingEquipmentFinanceExceptionOpened`.
+- Consumed events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Declared UI fragments: `LeaseLendingEquipmentFinanceWorkbench`, `LeaseLendingEquipmentFinanceDetail`, `LeaseLendingEquipmentFinanceAssistantPanel`.
+- Declared workflows: create equipment lease and record leased asset.
+- Release artifacts already expected by the package: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
 
-## 50 High-Impact Improvements
+### 1. Canonical product structure model
 
-### 1. Canonical lifecycle state model for Equipment Lease
+**Justification:** Equipment finance teams book leases, loans, TRAC leases, finance leases, operating leases, fair market value deals, $1 buyout contracts, and rentals with purchase options. If those structures are flattened into one generic record, pricing, accrual, tax treatment, end-of-term processing, and default handling all become unreliable.
 
-**Justification:** This closes shallow CRUD gaps by making every lease lending and equipment finance transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Expand `equipment_lease` into a product structure model with explicit contract family, booking basis, purchase-option type, expected title transfer path, residual-bearing flag, usage billing flag, and servicing playbook selection. Include structure-specific validation for municipal leases, construction progress funding, vendor-originated paper, and refinance or sale-leaseback transactions.
 
-**Improvement:** Define a complete state machine for `equipment_lease` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Sample deals for each structure book successfully, invalid combinations fail with precise reasons, workbench filters distinguish structure families, and release evidence includes screenshots plus test fixtures proving structure-specific behavior.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for LeaseLendingEquipmentFinanceCreated, LeaseLendingEquipmentFinanceUpdated, LeaseLendingEquipmentFinanceApproved. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Full deal intake from application to booking
 
-### 2. Domain intake and normalization for Leased Asset
+**Justification:** In equipment finance, the operational breakpoints start before booking: application, credit package, vendor quote, approval conditions, and funding instructions shape the final contract. A backlog that starts only at booked leases leaves the riskiest transitions uncontrolled.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing, not only already-clean records.
+**Improvement:** Add an intake pipeline that captures opportunity source, borrower request, equipment quote, dealer invoice, guarantor details, credit approval conditions, and booking prerequisites before creating the final `equipment_lease`. Persist an explicit pre-book status ladder such as application received, underwriting, approved with conditions, docs pending, ready to fund, and booked.
 
-**Improvement:** Build a typed intake pipeline for `leased_asset` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A single workbench timeline shows every pre-book milestone, missing conditions prevent booking, assistant summaries cite the intake data they used, and release evidence contains a full application-to-book scenario trace.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Party and role hierarchy for obligors and support parties
 
-### 3. Specialist validation rules for Payment Schedule
+**Justification:** Equipment transactions often involve borrower, co-borrower, guarantor, dealer, broker, supplier, insurer, service provider, and remarketing partner roles. Mis-modeling those parties causes approval, notice, collateral, and collections actions to target the wrong counterparty.
 
-**Justification:** World-class Lease Lending and Equipment Finance requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Add party-role modeling around `equipment_lease` and `leased_asset` with effective dates, notice roles, funding roles, beneficial-owner relationships, cross-default links, and guarantor liability scope. Support borrower groups and master agreements that cover multiple schedules or assets.
 
-**Improvement:** Add a domain rule compiler for `payment_schedule` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Test data covers single-obligor, multi-obligor, and guarantor-backed deals, notices route to the correct party roles, and the detail UI renders role cards with effective dates and liabilities.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `LEASE_LENDING_EQUIPMENT_FINANCE_DATABASE_URL, LEASE_LENDING_EQUIPMENT_FINANCE_EVENT_TOPIC, LEASE_LENDING_EQUIPMENT_FINANCE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Equipment asset identity and collateral traceability
 
-### 4. Parameter governance and tuning for Residual Value
+**Justification:** Serial-numbered assets are the spine of equipment finance collateral control. If the platform cannot distinguish chassis, VIN, engine, aircraft tail, trailer, or heavy-equipment fleet identities, collateral perfection and recovery become weak.
 
-**Justification:** Parameters are where operations teams tune lease lending and equipment finance; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Enrich `leased_asset` with manufacturer, model, serial set, asset class, mobility status, location, installation date, in-service date, title identifier, registration identifier, and replacement or substitution lineage. Support pools, schedules, and parent-child assemblies so a financed machine with attachments remains traceable.
 
-**Improvement:** Expose bounded runtime parameters for `residual_value` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Asset-level validation rejects duplicate serials within the tenant, substitution history is visible, collateral schedules export correctly, and evidence includes examples for mobile, titled, and stationary equipment.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Vendor, invoice, and disbursement controls
 
-### 5. Deep owned schema expansion for Buyout Quote
+**Justification:** Funding risk in equipment finance is often vendor-driven: duplicate invoices, unsupported soft costs, partial deliveries, and invoice manipulation can create immediate loss exposure. The PBC needs stronger funding controls than a simple approved amount field.
 
-**Justification:** A single payload column cannot express the full surface of equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing or prove cross-PBC boundaries are respected.
+**Improvement:** Add supplier and invoice controls that distinguish equipment, freight, installation, training, taxes, and ineligible soft costs; require delivery or acceptance evidence; and support split disbursements, progress payments, and holdbacks. Link every funding line to the asset or schedule it supports.
 
-**Improvement:** Extend the owned schema around `buyout_quote` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Funding cannot proceed when invoice totals, asset lines, or acceptance prerequisites do not reconcile, disbursement packs show source documents and reviewer sign-off, and release evidence includes a multi-draw construction-equipment example.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `lease_lending_equipment_finance_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Credit memo and approval-condition tracking
 
-### 6. Event-sourced operational history for Repo Case
+**Justification:** Credit decisions in equipment finance are rarely binary. Approvals often include insurance binders, lien searches, GPS devices, guaranty delivery, field inspection, or extra equity requirements that must be tracked through booking and servicing.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in lease lending and equipment finance.
+**Improvement:** Add approval-condition records linked to `equipment_lease`, with owner, due date, waiver authority, fulfillment evidence, and breach severity. Separate pricing conditions from documentation conditions and post-close trailing conditions so operations can govern them differently.
 
-**Improvement:** Capture every material mutation of `repo_case` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Deals cannot move to funded or active when blocking conditions remain open, waived conditions record the approving authority, and the workbench shows condition aging with escalation rules.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Pricing engine for lease and loan structures
 
-### 7. Projection and read-model strategy for Lease Servicing Event
+**Justification:** Equipment finance pricing is sensitive to structure, advance rate, residual assumptions, collateral mobility, borrower risk, syndication appetite, and funding source. Flat rate entry hides margin leakage and makes exceptions hard to defend.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Add a pricing engine that models yield, implicit rate, money factor, base curve, spread, fees, dealer reserve, documentation fees, subsidies, and minimum return floors. Support separate pricing paths for amortizing loans, level-pay leases, step-up schedules, and balloon structures.
 
-**Improvement:** Create purpose-built projections for `lease_servicing_event`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Pricing worksheets reconcile to booked cash flows, exception pricing requires explicit approval, scenario comparisons show margin impact, and release evidence contains worked examples for loan, FMV lease, and balloon structures.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Tax, accounting, and booking classification controls
 
-### 8. Exception taxonomy and remediation for Lease Lending Equipment Finance Policy Rule
+**Justification:** The same equipment contract can be handled differently for tax, accounting, and operations depending on jurisdiction and structure. The platform needs explicit classification fields so teams do not infer treatment from notes or naming conventions.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Capture contract classification, tax owner, property-tax billing method, depreciation beneficiary, maintenance-of-title expectation, and revenue or accrual treatment flags as governed attributes. Add policy rules that prevent incompatible combinations and expose the rationale to reviewers.
 
-**Improvement:** Model the full exception taxonomy for `lease_lending_equipment_finance_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Classification conflicts are blocked before approval, classification rationale is visible in the detail panel, and release evidence includes decision tables and test scenarios across common structure types.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Commencement and acceptance governance
 
-### 9. Predictive risk scoring for Lease Lending Equipment Finance Runtime Parameter
+**Justification:** A finance contract often should not commence until equipment is delivered, installed, accepted, or ready for beneficial use. Premature commencement creates billing disputes and audit issues.
 
-**Justification:** The package should warn users before lease lending and equipment finance work fails, breaches policy, or creates downstream cost.
+**Improvement:** Add commencement logic that can anchor to ship date, delivery date, acceptance date, installation completion, or scheduled commencement with waiver approval. Support delayed funding, interim rent, and pre-commencement milestones for staged deliveries.
 
-**Improvement:** Add predictive risk scoring for `lease_lending_equipment_finance_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Schedules generate only after the correct commencement trigger, interim rent rules apply when configured, and evidence includes acceptance-document capture with date-driven schedule calculations.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Payment schedule engine beyond simple level-pay
 
-### 10. Counterfactual simulation for Lease Lending Equipment Finance Schema Extension
+**Justification:** Equipment finance schedules routinely include stubs, advance rent, arrears billing, seasonal patterns, construction-period interest, balloon payments, and end-of-term purchase options. A simple installment table is not enough.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing operations.
+**Improvement:** Rebuild `payment_schedule` generation to support advance versus arrears timing, odd first periods, daily accrual, step payments, seasonal skips, balloon or bullet maturity, and rent streams tied to acceptance or usage milestones. Allow regenerated schedules only through controlled correction paths.
 
-**Improvement:** Provide scenario simulation for `lease_lending_equipment_finance_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Generated schedules match test vectors for stub periods, seasonal schedules, and balloon maturities, corrections retain lineage to prior versions, and the UI shows schedule version comparisons.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Day-count, grace, delinquency, and fee logic
 
-### 11. Autonomous anomaly triage for Lease Lending Equipment Finance Control Assertion
+**Justification:** Collections accuracy depends on exact timing rules. Different products use different day-count conventions, late-fee rules, grace periods, and delinquency escalation points.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Introduce policy-driven timing logic for actual/360, 30/360, actual/365, payment grace windows, late-charge caps, default interest, and cure periods. Store which rule set governed each posted schedule and delinquency event.
 
-**Improvement:** Implement anomaly detection for `lease_lending_equipment_finance_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Test fixtures prove timing and fee calculations across conventions, servicing events show the governing policy version, and release evidence includes examples of cured and uncured delinquency paths.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Usage and meter-based billing support
 
-### 12. Semantic document understanding for Lease Lending Equipment Finance Governed Model
+**Justification:** Many equipment contracts include base rent plus overage by hours, miles, cycles, prints, or production units. If the PBC ignores usage, it cannot support common copier, fleet, and industrial-equipment deals.
 
-**Justification:** Document-heavy work in Lease Lending and Equipment Finance cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add usage contracts to `equipment_lease` and `payment_schedule`, with included allowance, overage rate, meter source, estimated billing, true-up cadence, and disputed-usage workflow. Support manual meter entry, telematics feeds, and locked billing snapshots.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `lease_lending_equipment_finance_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Usage-driven invoices reconcile to the underlying meter records, disputed readings pause only the disputed component, and workbench evidence shows allowance consumption and true-up history.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Maintenance reserve and escrow administration
 
-### 13. Agent-safe CRUD execution for Equipment Lease
+**Justification:** Aviation, transportation, and specialty assets often require reserves or escrow balances for maintenance and end-of-term obligations. These balances affect payoff, transfer, and default outcomes.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Add reserve ledgers for `equipment_lease` covering collection basis, draw rules, approval thresholds, expiration, and unused-balance disposition. Link each reserve movement to the underlying asset, event, or maintenance approval.
 
-**Improvement:** Add a professional chatbot skill for `equipment_lease` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reserve balances recalculate correctly through billing and draw events, unauthorized draws are blocked, and release evidence includes a reserve-funded maintenance reimbursement flow.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Residual setting and review workflow
 
-### 14. Workbench persona coverage for Leased Asset
+**Justification:** Residual assumptions drive pricing, structuring, and investor appetite. A weak residual process creates losses at end of term and masks concentration risk in certain equipment classes.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Expand `residual_value` into a governed workflow with origination assumptions, supporting market comps, appraisal source, residual curve version, review cadence, and downgrade triggers. Distinguish booked residual, current estimated residual, and stressed residual.
 
-**Improvement:** Design dedicated workbench panels for `leased_asset`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Residual reviews are due according to policy, downgrades create pricing or risk alerts where appropriate, and the detail UI shows original versus current versus stressed values with supporting evidence.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Residual remarketing and realized-value feedback loop
 
-### 15. Cross-PBC dependency contracts for Payment Schedule
+**Justification:** Residual risk management improves only when actual sale or re-lease outcomes feed back into future pricing and review decisions. Otherwise the platform keeps repeating the same assumption errors.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Link `residual_value`, `repo_case`, and end-of-term disposition events so realized proceeds, selling costs, downtime, and asset condition scores update residual analytics. Add concentration reporting by equipment class, manufacturer, age band, and geography.
 
-**Improvement:** Represent dependencies for `payment_schedule` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Actual remarketing outcomes update residual performance dashboards, realized-versus-booked variances are measurable by cohort, and release evidence includes at least one repossessed and one voluntary return feedback example.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Buyout quote engine with date-sensitive economics
 
-### 16. API completeness and versioning for Residual Value
+**Justification:** Buyout requests are common and often contentious. Quotes must reflect payoff date, unearned income treatment, taxes, residual, unpaid fees, stipulations, and whether the contract allows partial or early buyout.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Enrich `buyout_quote` to calculate scheduled payoff, accelerated payoff, FMV quote, fixed purchase option, casualty payoff, and sectioned quote components such as principal, accrued rent, fees, taxes, reserve adjustments, and title charges. Preserve the assumptions used to generate each quote.
 
-**Improvement:** Expand APIs beyond POST /equipment-leases, POST /leased-assets, POST /payment-schedules to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Quotes reproduce consistently for the same effective date and policy version, expired quotes are clearly marked, and workbench detail shows a line-by-line payoff explanation suitable for customer service and audit review.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. End-of-term decision management
 
-### 17. Typed emitted-event expansion for Buyout Quote
+**Justification:** The contract does not end when the last rent posts. Equipment finance teams must manage renewals, returns, purchases, extensions, holds, and month-to-month rent without losing control of asset location or obligation status.
 
-**Justification:** Consumers should understand what happened in Lease Lending and Equipment Finance without parsing opaque payloads.
+**Improvement:** Add end-of-term workflows for purchase, return, renewal, extension, evergreen rent, and holdover review. Track notice deadlines, asset-inspection requirements, quote expirations, and approval rules for concessionary extensions.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `buyout_quote` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Upcoming maturities appear in dedicated workbench queues, missed notice deadlines raise exceptions, and release evidence includes one exercised purchase option and one returned-asset path.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Renewal, restructure, and modification controls
 
-### 18. Consumed-event handlers for Repo Case
+**Justification:** Borrowers regularly request maturity extensions, payment relief, collateral substitutions, and restructures. Those actions change economics and risk and need more than a free-text servicing note.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Add formal modification cases linked to `equipment_lease` with reason code, effective date, pre- and post-change economics, consent requirements, and whether the change is a true modification, refinance, or replacement booking. Preserve the original schedule and the approved replacement schedule.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Modification packages show before-and-after cash flows, unauthorized material changes are blocked, and servicing history displays a clear chain of restructures and their approvals.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Collateral package and perfection tracking
 
-### 19. Retry and dead-letter operations for Lease Servicing Event
+**Justification:** Collateral control is central to equipment lending and leasing. Teams need to know what secures the obligation, where liens were filed, when they expire, and what perfection defects remain open.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing.
+**Improvement:** Add collateral package records that capture primary asset collateral, additional collateral, cross-collateralization, filing jurisdiction, filing number, continuation deadlines, title status, and possession or control requirements. Link deficiencies directly to booking and default workflows.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `lease_servicing_event` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Perfection gaps block funding or raise tracked exceptions according to policy, upcoming continuation deadlines appear in operational queues, and evidence includes lien and title status examples for titled and non-titled assets.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Insurance and collateral-protection monitoring
 
-### 20. RBAC and attribute policy for Lease Lending Equipment Finance Policy Rule
+**Justification:** Lapses in insurance or loss-payee coverage materially change recovery risk. Equipment portfolios also rely on GPS, service obligations, or location restrictions that need ongoing monitoring.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Add insurance and collateral-protection controls for policy type, coverage amount, named insured, additional insured or loss-payee status, expiration, tracking-device requirement, and field-inspection cadence. Generate servicing events when required protections lapse.
 
-**Improvement:** Extend permissions for `lease_lending_equipment_finance_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Coverage expirations and missing endorsements surface as timed alerts, proof-of-insurance documents are linked to the lease and asset, and release evidence includes lapse, cure, and escalation scenarios.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Delinquency, collections, and workout segmentation
 
-### 21. Continuous control testing for Lease Lending Equipment Finance Runtime Parameter
+**Justification:** Collections strategies differ by product, collateral recoverability, customer type, and promise-to-pay quality. A single generic collections status does not support equipment finance operations.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add collections segmentation for soft delinquency, hard delinquency, workout, litigation hold, bankruptcy hold, and charge-off preparation. Track promises to pay, dispute flags, cure deadlines, deferment approvals, and collector strategy notes in structured form.
 
-**Improvement:** Embed control assertions for `lease_lending_equipment_finance_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Collection queues segment correctly by delinquency and strategy, promise-to-pay breaches create timed follow-up tasks, and release evidence shows the journey from first missed payment to either cure or workout escalation.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `lease_lending_equipment_finance_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. Hardship, deferral, and covenant-waiver controls
 
-### 22. Cryptographic audit proofing for Lease Lending Equipment Finance Schema Extension
+**Justification:** Temporary payment relief and covenant waivers are common in stressed portfolios, but they can quietly distort portfolio metrics if they are not modeled explicitly. Operations needs to distinguish approved relief from uncontrolled delinquency.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Add formal relief programs with reason, term, payment treatment, accrued-interest handling, reporting classification, and expiration rules. Require dual approval for covenant waivers, payment holidays, or principal-only periods above a configurable materiality threshold.
 
-**Improvement:** Hash-chain material `lease_lending_equipment_finance_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Relief-modified schedules are reproducible, waiver approvals are visible in the case history, and release evidence includes side-by-side reporting for normal, deferred, and re-aged accounts.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Repossession case management
 
-### 23. Privacy, consent, and secrecy controls for Lease Lending Equipment Finance Control Assertion
+**Justification:** Repossession is a high-risk, high-visibility domain process involving notices, third parties, field actions, asset condition, and legal restrictions. The current `repo_case` surface should become a full operational case.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Expand `repo_case` with notice generation, assignment to repossession vendors, legal hold flags, cure-period countdowns, voluntary surrender path, asset-location updates, condition grading, and chain-of-custody evidence. Support state-specific or country-specific workflow differences through policy rules.
 
-**Improvement:** Add field-level privacy classifications for `lease_lending_equipment_finance_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Repo timelines are complete and auditable, mandatory notices cannot be skipped, vendor actions are time-stamped, and release evidence contains a full cure-versus-recover scenario.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Disposition, remarketing, and loss allocation
 
-### 24. Multi-tenant operating model for Lease Lending Equipment Finance Governed Model
+**Justification:** After recovery, teams need to manage refurbishment, storage, transport, sale channel, proceeds, and deficiency calculations. Without structured disposition data, recovery performance stays opaque.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add post-recovery workflows covering inspection, repair authorization, auction or negotiated sale, re-lease, storage costs, transport costs, net proceeds, and deficiency or surplus allocation. Feed realized disposition economics back to residual and loss reporting.
 
-**Improvement:** Support tenant-specific `lease_lending_equipment_finance_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Net recovery waterfalls reconcile from gross proceeds to final gain or loss, disposition cycle times are measurable, and evidence includes one auction disposition and one re-lease example.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Syndication and participation allocations
 
-### 25. Schema evolution and extension registry for Equipment Lease
+**Justification:** Many equipment finance originators syndicate or sell participations in booked deals. The platform needs to know which investors own which slices so cash, risk, and servicing responsibilities remain accurate.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Add investor allocation records to `equipment_lease` for lead-owned, syndicated, participated, or warehouse-funded positions, including effective dates, retained strip, servicing fee basis, and consent requirements for modifications or defaults. Support post-book assignment changes.
 
-**Improvement:** Make schema extensions for `equipment_lease` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Investor shares reconcile to 100 percent of the tracked exposure, cash distributions reflect retained and sold interests, and release evidence includes one pre-funding syndication and one post-book participation transfer.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Investor reporting and remittance waterfalls
 
-### 26. Master data quality gates for Leased Asset
+**Justification:** Syndicated equipment deals require transparent remittance reporting. If investor waterfalls are opaque, accounting disputes and servicing breaches follow quickly.
 
-**Justification:** Many lease lending and equipment finance errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Build remittance logic for billed rent, collected cash, fees, recoveries, losses, reserve balances, and servicing compensation across multiple investor positions. Distinguish booked cash, allocated cash, and remitted cash with exception handling for shortfalls and reversals.
 
-**Improvement:** Define reference-data contracts for `leased_asset`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Investor statements reconcile to servicing events and cash movements, remittance exceptions create work queues, and release evidence includes waterfall reports with supporting calculations.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Portfolio concentration and exposure analytics
 
-### 27. Bulk operations and correction workflows for Payment Schedule
+**Justification:** Equipment finance risk accumulates by collateral type, manufacturer, geography, industry, obligor group, residual profile, and syndication channel. Operational teams need concentration views inside the workbench, not only in external reporting.
 
-**Justification:** Enterprise-scale Lease Lending and Equipment Finance users cannot operate one record at a time.
+**Improvement:** Add portfolio analytics that segment exposure by equipment category, mobility, vintage, residual-bearing status, investor channel, dealer, and covenant profile. Include stressed exposure views for delinquent, uninsured, under-collateralized, and high-residual cohorts.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `payment_schedule` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Analytics drill from portfolio view to deal and asset detail, thresholds trigger policy-driven alerts, and release evidence includes concentration packs with threshold breaches and operator responses.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. Exception taxonomy tuned for equipment finance
 
-### 28. Lifecycle collaboration and tasking for Residual Value
+**Justification:** Domain exceptions are not interchangeable. A missing serial number, a stale UCC continuation, a disputed meter reading, and an expired insurance binder require different queues, owners, and SLA rules.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Replace generic exception handling with a controlled taxonomy covering origination, documentation, funding, schedule, usage, collateral, insurance, collections, repo, remarketing, investor, and release-readiness exceptions. Track severity, customer impact, recovery impact, and regulatory or legal sensitivity separately.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `residual_value` without leaking into external shared task tables. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Every exception opens in a typed queue with the correct owner and SLA, dashboards show aging by taxonomy, and evidence includes representative resolution narratives for at least five distinct exception classes.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Manual override governance
 
-### 29. SLA and service-level governance for Buyout Quote
+**Justification:** Equipment finance operations needs overrides, but ungoverned overrides destroy consistency and auditability. The platform should make exceptions visible without preventing legitimate business judgment.
 
-**Justification:** Users need to know when equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Require structured justification, approving authority, expiration, and compensating control for overrides affecting pricing, collateral, residual, schedule regeneration, buyout concessions, or repossession holds. Separate temporary operational overrides from permanent policy exceptions.
 
-**Improvement:** Define SLAs for `buyout_quote` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Overrides are searchable by type and approver, expired overrides trigger follow-up actions, and release evidence includes both an approved override and a blocked override attempt.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Document intake and semantic extraction for finance packs
 
-### 30. Operational analytics cockpit for Repo Case
+**Justification:** Equipment finance files contain quotes, invoices, purchase orders, master lease agreements, schedules, guaranties, insurance certificates, titles, UCC searches, and payoff letters. Agents can help only if they extract the right fields and expose confidence clearly.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Extend assistant intake to classify document type, extract finance-relevant fields, and map them to safe draft updates for `equipment_lease`, `leased_asset`, `buyout_quote`, and `repo_case`. Require citation spans for extracted purchase option language, serials, payoff terms, and notice clauses.
 
-**Improvement:** Build analytics for `repo_case`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Extraction tests cover agreements, invoices, insurance certificates, and payoff letters, low-confidence fields require human confirmation, and UI previews show the source text for every suggested mutation.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Agent skill for structuring and pricing assistance
 
-### 31. Decision intelligence and recommendations for Lease Servicing Event
+**Justification:** Deal teams need guided help assembling a viable structure, not a generic assistant that only restates inputs. The assistant should reason about equipment finance choices while staying inside policy boundaries.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Add a structuring skill in `LeaseLendingEquipmentFinanceAssistantPanel` that proposes lease versus loan alternatives, highlights collateral or residual implications, suggests schedule patterns, and explains likely approval conditions. Limit the skill to draft outputs and policy-aware recommendations until a human confirms the structure.
 
-**Improvement:** Generate ranked recommendations for `lease_servicing_event` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Prompt-to-draft runs are reproducible, recommendations cite the inputs and policy rules used, and blocked recommendations appear when the assistant tries to exceed approved authority.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Agent skill for servicing and customer-ops assistance
 
-### 32. Quality and completeness scoring for Lease Lending Equipment Finance Policy Rule
+**Justification:** Servicing teams field payoff, extension, usage dispute, and default-status requests continuously. A domain-trained assistant can reduce cycle time if it summarizes the account state accurately and safely.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Add a servicing skill that assembles account snapshots, explains delinquency and payoff composition, drafts customer-ready summaries, and prepares structured servicing actions such as quote generation or modification requests. Require permission-aware redaction of sensitive party or investor data.
 
-**Improvement:** Score each `lease_lending_equipment_finance_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Assistant responses match the current governed record state, sensitive data is hidden for unauthorized roles, and release evidence includes audited examples of quote, extension, and collections support flows.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Agent skill for exception triage and next-best action
 
-### 33. End-to-end scenario library for Lease Lending Equipment Finance Runtime Parameter
+**Justification:** High-value operations gains come from clearing exceptions faster. The assistant should help sort the queue by severity, recoverability, due date, and missing evidence rather than answering free-form questions only.
 
-**Justification:** Release evidence is stronger when every important lease lending and equipment finance behavior has executable examples.
+**Improvement:** Add a triage skill that groups equipment finance exceptions, suggests next-best actions, drafts follow-up tasks, and identifies stale blockers such as missing titles, stale insurance, incomplete repo notices, or unresolved investor approvals. Require every suggestion to reference the underlying lease, asset, or case records.
 
-**Improvement:** Create seeded scenarios for `lease_lending_equipment_finance_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Triage suggestions reduce queue-aging in test scenarios, every suggestion links to record evidence, and reviewers can accept, edit, or reject recommendations with feedback logged for future tuning.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Workbench landing page for origination and servicing queues
 
-### 34. Domain ontology and terminology model for Lease Lending Equipment Finance Schema Extension
+**Justification:** Equipment finance users need to enter the system through operational queues, not static summary cards. The landing page should immediately show what requires underwriting action, funding action, collections action, or end-of-term action.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Redesign `LeaseLendingEquipmentFinanceWorkbench` around queue-first panels: ready to fund, conditions due, schedule exceptions, insurance lapses, maturities within window, delinquent accounts, repossession cases, and investor remittance breaks. Include saved views for originations, servicing, collateral, and recovery personas.
 
-**Improvement:** Add an ontology for `lease_lending_equipment_finance_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Queue counts reconcile to underlying records, persona-specific default layouts load correctly, and release evidence includes screenshots and interaction traces for each major persona.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Deal detail UI with economics, collateral, and history together
 
-### 35. Advanced search and investigation for Lease Lending Equipment Finance Control Assertion
+**Justification:** Operators lose time when contract economics, collateral facts, schedule history, and exception state sit on separate disconnected pages. A deal detail view should tell the whole story of a financed asset set.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Expand `LeaseLendingEquipmentFinanceDetail` into a tabbed or sectional view that combines contract summary, cash-flow profile, assets, collateral status, conditions, servicing history, investor allocations, and end-of-term outlook. Make history version-aware so users can compare the current state to prior approved states.
 
-**Improvement:** Provide search across `lease_lending_equipment_finance_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The detail UI shows a coherent record history without hidden joins, users can compare schedule versions and modification states, and evidence includes role-based view differences for operations, credit, and collections users.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Asset and collateral workspace
 
-### 36. Reconciliation and closure controls for Lease Lending Equipment Finance Governed Model
+**Justification:** Asset-level issues often drive the real risk: missing serials, mismatched locations, title defects, inactive insurance, or pending substitutions. Those issues deserve a dedicated workspace rather than scattered fields.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Add an asset and collateral workspace that groups `leased_asset`, perfection records, insurance status, inspections, condition scores, telematics data, and substitution history. Let users pivot from one asset to every lease, schedule, exception, and repo case tied to it.
 
-**Improvement:** Add reconciliation workflows that compare `lease_lending_equipment_finance_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Asset searches find records by serial, title, registration, or location, asset-centric exception counts reconcile correctly, and release evidence includes an asset substitution and collateral-cure example.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Collections, repo, and recovery workspace
 
-### 37. Regulatory and policy reporting for Equipment Lease
+**Justification:** Once a deal is troubled, teams need one place to manage cure notices, field actions, promises to pay, repo assignments, asset recovery, and disposition economics. Fragmented tooling slows recovery and increases legal risk.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Build a recovery workspace centered on `lease_servicing_event` and `repo_case` with configurable case boards, countdown timers, vendor assignments, cure payment tracking, recovered-asset milestones, and net recovery waterfalls. Expose legal-hold and bankruptcy flags prominently.
 
-**Improvement:** Generate domain reporting packs for `equipment_lease` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Collections-to-repo-to-disposition handoffs are visible without leaving the package, overdue case steps are highlighted, and release evidence includes full lifecycle screenshots plus event logs.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Event model and immutable servicing history
 
-### 38. Carbon and resource awareness for Leased Asset
+**Justification:** Disputes over funding, delinquency, quote timing, and repossession notices often turn on sequence and timing. The platform needs a reliable event stream, not a mutable notes table.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Expand `lease_servicing_event` into an immutable event ledger that captures who did what, on which record, under which policy version, with before-and-after economic summaries where applicable. Separate user actions, system calculations, assistant suggestions, and inbound dependency events.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `leased_asset` decisions and batch operations. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event replay reconstructs the current state for representative deals, event ordering is deterministic, and evidence includes redacted event timelines for origination, modification, default, and payoff scenarios.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. API surface for search, simulation, correction, and exports
 
-### 39. Resilience and offline behavior for Payment Schedule
+**Justification:** The current manifest exposes create-oriented APIs, but equipment finance operations also needs search, quote recalculation, exception management, and evidence exports. Without those surfaces, UI and automation stay thin.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Add governed APIs for deal search, asset search, schedule simulation, residual review, buyout recalculation, modification drafting, exception acknowledgement, repo progression, investor remittance export, and release-evidence export. Require idempotency keys for any mutating endpoint that may be retried.
 
-**Improvement:** Define resilience modes for `payment_schedule`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** API contracts cover both command and query use cases, idempotent retries do not duplicate actions, and release evidence includes request and response examples for the new critical routes.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Data model expansion for economic and legal subrecords
 
-### 40. Human-in-the-loop automation for Residual Value
+**Justification:** The manifest tables are a solid start, but equipment finance needs richer subrecords than the current top-level list implies. Economic components, legal documents, perfection details, and investor allocations should be explicit entities.
 
-**Justification:** Automation should accelerate equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing while preserving accountability for high-risk decisions.
+**Improvement:** Add owned child records for fee components, tax components, approval conditions, collateral filings, insurance coverage, reserve balances, usage snapshots, investor allocations, remittance runs, modification cases, and disposition outcomes. Keep these owned by the PBC rather than spreading finance logic into adjacent packages.
 
-**Improvement:** Set explicit automation boundaries for `residual_value`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Schema migrations create the new owned records, relational tests prove referential behavior, and release evidence lists each new entity with its operating purpose.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Policy-rule and parameter governance
 
-### 41. Package discovery and fit scoring for Buyout Quote
+**Justification:** Product behavior in equipment finance changes through policy: maximum advance rates, residual caps, dual-approval thresholds, grace windows, and repo escalation timing. Those controls need transparent governance and versioning.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Use the existing policy-rule and runtime-parameter surfaces to version origination, servicing, collateral, residual, and recovery policies with effective dates, tenant scope, and approval history. Add simulation before activation so teams can see which active leases or open cases would be affected.
 
-**Improvement:** Improve package metadata so composition can explain when `lease_lending_equipment_finance` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Policy diffs are visible, future-dated changes can be simulated without mutating production records, and release evidence includes activation records plus regression tests for retired and current policy versions.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Release evidence pack tied to domain workflows
 
-### 42. Configuration deployment pipeline for Repo Case
+**Justification:** A package that handles financing, collateral, and recovery must prove more than unit-test coverage. Release readiness should show that the major business flows are demonstrably supported end to end.
 
-**Justification:** Configuration changes can materially alter lease lending and equipment finance; they need the same discipline as code releases.
+**Improvement:** Turn `RELEASE_EVIDENCE.md` into a structured pack containing origination, funding, schedule generation, usage billing, residual review, buyout, modification, delinquency, repossession, recovery, and syndication scenarios. Include role screenshots, API examples, event traces, and assistant transcripts where relevant.
 
-**Improvement:** Add configuration promotion for `repo_case` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Every major workflow listed above appears in the release pack with a dated trace, evidence references are reproducible, and missing evidence blocks release approval until the gap is resolved.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Scenario library and regression matrix
 
-### 43. Workbench command completeness for Lease Servicing Event
+**Justification:** Equipment finance behavior breaks at the edges: odd first periods, partial deliveries, serial substitutions, partial payoffs, quote expirations, investor transfers, and disputed usage. Those edge cases need explicit regression scenarios.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Build a scenario library covering product structures, funding patterns, payment shapes, asset substitutions, residual downgrades, buyout concessions, hardship modifications, repossession outcomes, and syndication events. Tie scenarios directly to package tests and release evidence references.
 
-**Improvement:** Expose every high-value operation for `lease_servicing_event` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The regression matrix maps scenarios to tests and evidence artifacts, new defects add new scenarios, and release evidence identifies which scenario IDs passed for the build.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Migration and backfill evidence for existing portfolios
 
-### 44. Document packet and evidence vault for Lease Lending Equipment Finance Policy Rule
+**Justification:** Real-world rollout often starts with an existing booked portfolio. Migration quality is critical because bad imported schedules, collateral facts, or investor allocations can undermine trust immediately.
 
-**Justification:** Documents often carry the legal or operational truth behind equipment leases, assets, schedules, residuals, buyouts, repossession, and finance servicing.
+**Improvement:** Add migration and backfill plans for booked leases, open schedules, residual assumptions, buyout quotes in flight, active repo cases, and existing servicing history. Validate imported data against the new policy and asset-traceability rules before activation.
 
-**Improvement:** Create a governed evidence vault for `lease_lending_equipment_finance_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Migration dry runs produce reconciliation reports, unmapped or invalid records are quarantined with reasons, and release evidence includes import validation for at least one active and one distressed portfolio segment.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Operational SLA and cycle-time instrumentation
 
-### 45. Data correction and amendment history for Lease Lending Equipment Finance Runtime Parameter
+**Justification:** Teams need to know how long origination, funding, quote issuance, exception resolution, repo progression, and investor remittance take in practice. Without timing evidence, backlog improvements cannot be prioritized rationally.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Instrument the package to measure time-to-approve, time-to-fund, schedule-generation latency, quote-turnaround time, exception-aging, recovery-cycle time, and remittance completion time. Distinguish policy pauses from operational delays.
 
-**Improvement:** Support formal amendments for `lease_lending_equipment_finance_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** SLA dashboards show current and breached items, timers pause and resume according to configured rules, and release evidence includes baseline and target cycle times for the core workflows.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Risk scoring and anomaly detection grounded in finance signals
 
-### 46. External participant collaboration for Lease Lending Equipment Finance Schema Extension
+**Justification:** The manifest already declares predictive risk and anomaly capabilities, but they need equipment-finance features rather than generic activity signals. Residual stress, serial anomalies, insurance lapses, and collateral perfection defects matter more than generic volume spikes.
 
-**Justification:** Many lease lending and equipment finance workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Train risk and anomaly models using domain signals such as residual volatility, unusual usage trends, funding-before-acceptance patterns, concentration build-up, repeat dealer exceptions, delinquency cures followed by repeat default, and mismatched title or insurance data. Expose model explanations in business language.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `lease_lending_equipment_finance_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scores and anomalies cite the finance features that drove them, reviewers can compare recommended action to actual outcomes, and release evidence includes calibration and false-positive summaries.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Security, privacy, and authority boundaries for agent-assisted actions
 
-### 47. Advanced dependency freshness scoring for Lease Lending Equipment Finance Control Assertion
+**Justification:** Finance servicing and recovery data is sensitive, and assistant actions can become a hidden control bypass if they are not tightly bounded. The package needs clear authority boundaries for people and agents.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Enforce action-level permissions for quote generation, modification drafting, condition waiver, repo progression, investor export, and release-evidence publication. Require assistant actions to generate proposed commands, visible diffs, and actor attribution before execution.
 
-**Improvement:** Score freshness and reliability of dependencies used by `lease_lending_equipment_finance_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Unauthorized agent actions are blocked with auditable reasons, every assistant-issued command is attributable and reviewable, and release evidence includes permission matrices plus denial-path tests.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Continuous control testing for financing and collateral controls
 
-### 48. Model governance and explainability for Lease Lending Equipment Finance Governed Model
+**Justification:** Control assertions are most useful when they run continuously against live operations. Equipment finance needs automated checks for segregation of duties, missing approvals, stale collateral filings, expired insurance, and unreconciled investor balances.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Lease Lending and Equipment Finance.
+**Improvement:** Use `lease_lending_equipment_finance_control_assertion` to schedule recurring control tests over funding approvals, residual changes, buyout concessions, repo notices, remittance allocation, and release-evidence completeness. Publish failures directly into typed exception queues.
 
-**Improvement:** For every predictive or agentic feature around `lease_lending_equipment_finance_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Control failures are reproducible from source data, exceptions link back to the failed control and affected deals, and release evidence includes current control-pass and control-fail examples with remediation.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Go-live readiness by phased operating scope
 
-### 49. High-scale partitioning and archival for Equipment Lease
+**Justification:** Equipment finance rollouts usually land in phases: basic origination first, then servicing, then recovery, then investor operations. The backlog should explicitly support staged deployment instead of assuming one big-bang launch.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Define readiness gates for phase 1 origination and booking, phase 2 servicing and end-of-term, phase 3 collections and repossession, and phase 4 syndication and investor remittance. Map required evidence, training, data quality, and fallback plans to each phase.
 
-**Improvement:** Plan scale behavior for `equipment_lease`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `lease_lending_equipment_finance_create_equipment_lease_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Each phase has a signed checklist, missing capabilities block only the relevant phase, and release evidence shows which phase scope was approved for the current version.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Final acceptance rubric for the package
 
-### 50. Release gate expansion for Leased Asset
+**Justification:** A domain-deep backlog needs a clear finish line. Without a package-specific rubric, teams will declare success based on code completion instead of operational readiness and finance correctness.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Add a final acceptance rubric for `lease_lending_equipment_finance` covering contract structures, asset and collateral traceability, schedule accuracy, usage billing, residual governance, buyout correctness, repossession workflow, syndication support, typed exceptions, persona UI coverage, agent-skill safety, and release evidence completeness. Require the rubric to be reviewed on every material release.
 
-**Improvement:** Expand release gates for `lease_lending_equipment_finance` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `lease_lending_equipment_finance_record_leased_asset_workflow` where applicable, and make it visible in `LeaseLendingEquipmentFinanceWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/lease_lending_equipment_finance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The rubric is stored with the package docs, every release marks pass, partial, or fail for each acceptance area, and the current release evidence contains the completed rubric with named reviewers and dated sign-off.

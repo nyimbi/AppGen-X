@@ -1,418 +1,416 @@
-# Livestock Herd Management PBC Better-Than-World-Class Improvement Backlog
+# Livestock Herd Management PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `livestock_herd_management`. The backlog is specific to animals, health, breeding, feed, movements, treatments, compliance, and herd productivity and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This hand-crafted backlog replaces generic roadmap text for `livestock_herd_management` with livestock-specific improvements for animal identity, herd groups, health, breeding, feed, movements, treatments, compliance, productivity, sustainability, workbench operations, and governed agent assistance.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `livestock_herd_management`.
-- Domain purpose: Animals, health, breeding, feed, movements, treatments, compliance, and herd productivity.
-- Owned domain tables: `animal`, `herd_group`, `health_event`, `breeding_record`, `feed_ration`, `movement_permit`, `treatment`, `livestock_herd_management_policy_rule`, `livestock_herd_management_runtime_parameter`, `livestock_herd_management_schema_extension`, `livestock_herd_management_control_assertion`, `livestock_herd_management_governed_model`.
-- Public APIs: `POST /animals`, `POST /herd-groups`, `POST /health-events`, `POST /breeding-records`, `POST /feed-rations`, `GET /livestock-herd-management-workbench`.
-- Emitted AppGen-X events: `LivestockHerdManagementCreated`, `LivestockHerdManagementUpdated`, `LivestockHerdManagementApproved`, `LivestockHerdManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `animal_management`, `livestock_herd_management_workflow`, `livestock_herd_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `livestock_herd_management_event_sourced_operational_history`, `livestock_herd_management_multi_tenant_policy_isolation`, `livestock_herd_management_schema_evolution_resilience`, `livestock_herd_management_autonomous_anomaly_detection`, `livestock_herd_management_semantic_document_instruction_understanding`, `livestock_herd_management_predictive_risk_scoring`, `livestock_herd_management_counterfactual_scenario_simulation`, `livestock_herd_management_cryptographic_audit_proofs`.
+- Domain purpose: animals, health, breeding, feed, movements, treatments, compliance, and herd productivity.
+- Owned records include `animal`, `herd_group`, `health_event`, `breeding_record`, `feed_ration`, `movement_permit`, `treatment`, policy rules, runtime parameters, schema extensions, control assertions, and governed models.
+- Public APIs include `POST /animals`, `POST /herd-groups`, `POST /health-events`, `POST /breeding-records`, `POST /feed-rations`, and `GET /livestock-herd-management-workbench`.
+- Workbench surfaces include `LivestockHerdManagementWorkbench`, `LivestockHerdManagementDetail`, and `LivestockHerdManagementAssistantPanel`.
+- AppGen-X events include `LivestockHerdManagementCreated`, `LivestockHerdManagementUpdated`, `LivestockHerdManagementApproved`, and `LivestockHerdManagementExceptionOpened`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Animal
+### 1. Permanent animal identity with tag history
 
-**Justification:** This closes shallow CRUD gaps by making every livestock herd management transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Herd records fail when ear tags, RFID devices, tattoos, brands, or registry numbers are replaced without preserving identity continuity.
 
-**Improvement:** Define a complete state machine for `animal` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `animal` identity with primary identifier, alternate identifiers, tag issue and retirement events, lost-tag incidents, duplicate checks, and evidence attachments.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for LivestockHerdManagementCreated, LivestockHerdManagementUpdated, LivestockHerdManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove tag replacement preserves the same animal record, duplicate identifiers open an exception, and the detail view shows full identifier history.
 
-### 2. Domain intake and normalization for Herd Group
+### 2. Birth, acquisition, and source provenance
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of animals, health, breeding, feed, movements, treatments, compliance, and herd productivity, not only already-clean records.
+**Justification:** Productivity, disease traceability, and compliance depend on whether an animal was born on farm, purchased, leased, transferred, rescued, or imported.
 
-**Improvement:** Build a typed intake pipeline for `herd_group` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add source provenance, dam and sire references, acquisition documents, seller or origin premises projection, arrival condition, and quarantine requirement flags.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intake tests must require source provenance before active herd assignment and show acquisition evidence in `LivestockHerdManagementDetail`.
 
-### 3. Specialist validation rules for Health Event
+### 3. Herd group membership periods
 
-**Justification:** World-class Livestock Herd Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Animals move between pens, flocks, paddocks, cohorts, production strings, and treatment groups over time.
 
-**Improvement:** Add a domain rule compiler for `health_event` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model `herd_group` membership as dated intervals with entry reason, exit reason, location, stocking density, responsible handler, and overlap validation.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `LIVESTOCK_HERD_MANAGEMENT_DATABASE_URL, LIVESTOCK_HERD_MANAGEMENT_EVENT_TOPIC, LIVESTOCK_HERD_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject overlapping active memberships and reconstruct group composition at any historical date.
 
-### 4. Parameter governance and tuning for Breeding Record
+### 4. Species and production-type profiles
 
-**Justification:** Parameters are where operations teams tune livestock herd management; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Dairy cattle, beef cattle, poultry, swine, small ruminants, aquaculture, and working animals have different data needs.
 
-**Improvement:** Expose bounded runtime parameters for `breeding_record` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add configurable species and production profiles that control required fields, productivity metrics, breeding semantics, health protocols, and movement rules.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show different required fields for dairy, beef, poultry, and swine profiles without changing the PBC key or owned boundaries.
 
-### 5. Deep owned schema expansion for Feed Ration
+### 5. Animal lifecycle state machine
 
-**Justification:** A single payload column cannot express the full surface of animals, health, breeding, feed, movements, treatments, compliance, and herd productivity or prove cross-PBC boundaries are respected.
+**Justification:** Active, quarantined, sick, treated, bred, pregnant, lactating, finished, sold, deceased, culled, and archived states must be explicit.
 
-**Improvement:** Extend the owned schema around `feed_ration` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add lifecycle states with transition reasons, allowed commands, required evidence, effective date, and event emission for material changes.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `livestock_herd_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Invalid transition tests must fail and the workbench must show next allowed actions by animal state.
 
-### 6. Event-sourced operational history for Movement Permit
+### 6. Biosecurity quarantine workflow
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in livestock herd management.
+**Justification:** New arrivals, returning animals, disease exposure, and regulatory holds require controlled isolation.
 
-**Improvement:** Capture every material mutation of `movement_permit` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add quarantine records with start trigger, location, testing schedule, observation notes, release criteria, responsible staff, and movement restrictions.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block movement, breeding, and group mixing for quarantined animals until release criteria are approved.
 
-### 7. Projection and read-model strategy for Treatment
+### 7. Health event clinical taxonomy
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** A generic health note cannot support morbidity analysis, treatment protocols, or disease reporting.
 
-**Improvement:** Create purpose-built projections for `treatment`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `health_event` with symptom, diagnosis, severity, body system, infectious risk, observation method, veterinarian involvement, and reportability.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Health-event tests must require disease-specific fields and produce workbench filters for reportable, severe, and unresolved cases.
 
-### 8. Exception taxonomy and remediation for Livestock Herd Management Policy Rule
+### 8. Vaccination protocol scheduler
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Preventive health depends on protocol timing by species, age, production stage, risk area, and regulatory requirement.
 
-**Improvement:** Model the full exception taxonomy for `livestock_herd_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add vaccination protocols, due windows, booster rules, batch and lot capture, contraindications, missed-dose handling, and certificate evidence.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate due vaccinations, mark overdue animals, and reject completion without product lot and administrator evidence.
 
-### 9. Predictive risk scoring for Livestock Herd Management Runtime Parameter
+### 9. Treatment administration ledger
 
-**Justification:** The package should warn users before livestock herd management work fails, breaches policy, or creates downstream cost.
+**Justification:** Treatments affect withdrawal, residue, welfare, cost, productivity, and auditability.
 
-**Improvement:** Add predictive risk scoring for `livestock_herd_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `treatment` with medication, dose, route, frequency, administrator, prescribing party, lot, reason, response, adverse reaction, and completion status.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate treatment schedules and show incomplete treatments on the clinical workbench.
 
-### 10. Counterfactual simulation for Livestock Herd Management Schema Extension
+### 10. Withdrawal and residue controls
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live animals, health, breeding, feed, movements, treatments, compliance, and herd productivity operations.
+**Justification:** Milk, eggs, meat, and other outputs must not enter production channels during withdrawal periods.
 
-**Improvement:** Provide scenario simulation for `livestock_herd_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add withdrawal intervals by product type, treatment, dose, jurisdiction, and animal output, then block sale or production release while active.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent animals under active withdrawal from eligible sale or production rosters and display release dates.
 
-### 11. Autonomous anomaly triage for Livestock Herd Management Control Assertion
+### 11. Veterinary prescription boundary
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** The PBC must record veterinary authority without becoming a pharmacy, inventory, or external credential system.
 
-**Improvement:** Implement anomaly detection for `livestock_herd_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store prescription references, veterinarian projection, authorization window, permitted treatments, and validation status through declared API/event dependencies.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove veterinary data is consumed as projection evidence and no external professional registry table is mutated.
 
-### 12. Semantic document understanding for Livestock Herd Management Governed Model
+### 12. Disease outbreak investigation
 
-**Justification:** Document-heavy work in Livestock Herd Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Contagious disease management requires tracing contacts, groups, movements, treatments, and outcomes quickly.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `livestock_herd_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add outbreak case clusters, suspected source, contact graph, isolation orders, testing status, control measures, and closure evidence.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate contact lists from owned movements and group intervals for a selected disease window.
 
-### 13. Agent-safe CRUD execution for Animal
+### 13. Mortality and necropsy workflow
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Deaths need cause analysis, carcass disposition, welfare review, and productivity impact.
 
-**Improvement:** Add a professional chatbot skill for `animal` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add mortality records with discovered time, suspected cause, necropsy request, lab result projection, disposal method, regulatory notice, and corrective action.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require disposition evidence before closing a mortality event and surface mortality trend metrics.
 
-### 14. Workbench persona coverage for Herd Group
+### 14. Welfare scoring and intervention tracking
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Animal welfare is operational, ethical, and regulatory; it cannot be reduced to health events alone.
 
-**Improvement:** Design dedicated workbench panels for `herd_group`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add welfare scorecards for body condition, lameness, behavior, housing, handling, heat stress, and intervention actions.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag low welfare scores, require intervention owner, and report unresolved welfare cases.
 
-### 15. Cross-PBC dependency contracts for Health Event
+### 15. Breeding eligibility rules
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Breeding decisions depend on age, weight, genetics, health, production status, relationship, and rest intervals.
 
-**Improvement:** Represent dependencies for `health_event` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `breeding_record` with eligibility checks, contraindications, planned service method, breeding objective, and rule-version evidence.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject ineligible breeding events and cite the failed eligibility rule.
 
-### 16. API completeness and versioning for Breeding Record
+### 16. Service, insemination, and mating records
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Reproductive performance requires exact service events, semen or sire identity, technician, method, and timing.
 
-**Improvement:** Expand APIs beyond POST /animals, POST /herd-groups, POST /health-events to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add service events with method, sire or semen batch, technician, heat detection evidence, synchronization protocol, and repeat-service marker.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate conception and repeat-service metrics from service events.
 
-### 17. Typed emitted-event expansion for Feed Ration
+### 17. Pregnancy diagnosis and expected due dates
 
-**Justification:** Consumers should understand what happened in Livestock Herd Management without parsing opaque payloads.
+**Justification:** Herd planning depends on pregnancy status, expected calving/farrowing/lambing date, and risk flags.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `feed_ration` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add pregnancy checks with method, result, confidence, examiner, gestation estimate, expected date, and follow-up schedule.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must update reproductive status and generate due-date workbench queues.
 
-### 18. Consumed-event handlers for Movement Permit
+### 18. Parturition and offspring linkage
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Birth events connect dam, sire, offspring, birth weight, assistance, complications, and survival.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add parturition records with offspring creation, litter or calf identifiers, birth outcomes, assistance level, colostrum evidence, and dam recovery notes.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create offspring records from an approved birth event and retain dam-offspring lineage.
 
-### 19. Retry and dead-letter operations for Treatment
+### 19. Genetic and pedigree evidence
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block animals, health, breeding, feed, movements, treatments, compliance, and herd productivity.
+**Justification:** Breeding quality, inbreeding risk, disease traits, and market value depend on pedigree and genomic evidence.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `treatment` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add pedigree projections, genomic test references, trait markers, relationship coefficients, and breeding-risk warnings.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must warn on prohibited relationship thresholds and display pedigree evidence without owning external registry tables.
 
-### 20. RBAC and attribute policy for Livestock Herd Management Policy Rule
+### 20. Feed ration formulation details
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Feed cost, growth, milk output, health, and emissions depend on ration composition, not a free-text ration name.
 
-**Improvement:** Extend permissions for `livestock_herd_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `feed_ration` with ingredients, nutrient targets, dry matter, energy, protein, mineral balance, cost, effective dates, and assigned groups.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject ration assignment without required nutrient and ingredient evidence.
 
-### 21. Continuous control testing for Livestock Herd Management Runtime Parameter
+### 21. Feeding schedule and consumption tracking
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Planned rations do not prove animals actually consumed feed or that refusals were monitored.
 
-**Improvement:** Embed control assertions for `livestock_herd_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add feeding events with planned quantity, delivered quantity, refusals, feeding time, equipment, handler, weather context, and exception reason.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `livestock_herd_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate intake variance and surface underfed or overfed groups.
 
-### 22. Cryptographic audit proofing for Livestock Herd Management Schema Extension
+### 22. Feed inventory dependency boundary
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** The herd PBC needs feed availability but should not own warehouse stock or procurement.
 
-**Improvement:** Hash-chain material `livestock_herd_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Consume feed inventory projections with lot, freshness, contaminant hold, quantity, and allocation status through declared events or APIs.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must show ration execution uses feed projections and does not mutate inventory tables.
 
-### 23. Privacy, consent, and secrecy controls for Livestock Herd Management Control Assertion
+### 23. Pasture and grazing rotation plan
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Grazing operations need paddock assignments, rest periods, forage availability, water access, and stocking pressure.
 
-**Improvement:** Add field-level privacy classifications for `livestock_herd_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add grazing plans with paddock projection, entry and exit dates, forage estimate, animal units, rest requirement, and overgrazing alerts.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must warn when stocking density or rest period thresholds are breached.
 
-### 24. Multi-tenant operating model for Livestock Herd Management Governed Model
+### 24. Weight and growth monitoring
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Growth performance drives feed decisions, market readiness, health investigation, and breeding eligibility.
 
-**Improvement:** Support tenant-specific `livestock_herd_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add weight observations with scale source, condition, age-adjusted metrics, average daily gain, target curve, and anomaly detection.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compute growth trends and flag animals deviating from expected curves.
 
-### 25. Schema evolution and extension registry for Animal
+### 25. Milk, egg, wool, or output productivity
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Herd productivity differs by species and output type and needs time-series capture.
 
-**Improvement:** Make schema extensions for `animal` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add output records by animal or group for milk, eggs, wool, fiber, honey, meat readiness, or other configured product metrics.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must aggregate output by group and detect output drops after health or feed events.
 
-### 26. Master data quality gates for Herd Group
+### 26. Movement permit lifecycle
 
-**Justification:** Many livestock herd management errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Animal movement can require permits, certificates, inspections, quarantine, transport documents, and destination acceptance.
 
-**Improvement:** Define reference-data contracts for `herd_group`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `movement_permit` with origin, destination, animals, transport party, certificate, inspection, route, permit status, and movement completion.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block movement completion without approved permit and arrival confirmation.
 
-### 27. Bulk operations and correction workflows for Health Event
+### 27. Traceability from birth to sale
 
-**Justification:** Enterprise-scale Livestock Herd Management users cannot operate one record at a time.
+**Justification:** Buyers and regulators need a chain of custody across birth, groups, treatments, movements, and sale eligibility.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `health_event` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add traceability views that reconstruct animal lifecycle, health, treatment, feed, group, and movement history.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate a complete trace packet for an animal without external table reads.
 
-### 28. Lifecycle collaboration and tasking for Breeding Record
+### 28. Sale, transfer, cull, and slaughter readiness
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Exit decisions depend on health status, withdrawal, weight, market class, welfare, and documentation.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `breeding_record` without leaking into external shared task tables. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add readiness checks for sale, transfer, culling, or slaughter with blocker reasons, approval, and destination projection.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent exit approval when withdrawal, quarantine, or missing movement evidence exists.
 
-### 29. SLA and service-level governance for Feed Ration
+### 29. Regulatory report generation
 
-**Justification:** Users need to know when animals, health, breeding, feed, movements, treatments, compliance, and herd productivity is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Livestock operations often must report disease events, movements, treatments, mortality, and inventory counts.
 
-**Improvement:** Define SLAs for `feed_ration` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add report definitions with jurisdiction, reportable triggers, due dates, included records, approval status, and submission evidence.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate reports from owned records and open exceptions for overdue submissions.
 
-### 30. Operational analytics cockpit for Movement Permit
+### 30. Certification and audit readiness
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Organic, humane, breed, export, food-safety, and quality schemes require auditable operational evidence.
 
-**Improvement:** Build analytics for `movement_permit`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add certification controls, required evidence by scheme, audit findings, corrective actions, and expiry monitoring.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show certification readiness score and block certification claim when evidence is missing.
 
-### 31. Decision intelligence and recommendations for Treatment
+### 31. Controlled-substance and restricted treatment controls
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Some treatments require special authority, logs, reconciliation, and tighter approval.
 
-**Improvement:** Generate ranked recommendations for `treatment` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add restricted-treatment rules, authorization evidence, inventory projection, administrator verification, and exception escalation.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require elevated permission for restricted treatment recording.
 
-### 32. Quality and completeness scoring for Livestock Herd Management Policy Rule
+### 32. Antimicrobial stewardship analytics
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Responsible antimicrobial use requires tracking drug class, indication, dose, duration, recurrence, and resistance concerns.
 
-**Improvement:** Score each `livestock_herd_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add stewardship metrics, repeated-use warnings, protocol deviation tracking, and review queues for veterinarian oversight.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag repeated antimicrobial use outside configured protocol windows.
 
-### 33. End-to-end scenario library for Livestock Herd Management Runtime Parameter
+### 33. Environmental and emissions indicators
 
-**Justification:** Release evidence is stronger when every important livestock herd management behavior has executable examples.
+**Justification:** Herd decisions affect methane, manure, land use, water, and feed-related footprint.
 
-**Improvement:** Create seeded scenarios for `livestock_herd_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add sustainability indicators by group and production unit using feed, weight, output, manure handling projection, and configured emission factors.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate emissions intensity and show assumptions used in the workbench.
 
-### 34. Domain ontology and terminology model for Livestock Herd Management Schema Extension
+### 34. Manure and waste handling coordination
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Manure storage and application affect compliance, nutrient planning, and environmental risk.
 
-**Improvement:** Add an ontology for `livestock_herd_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add manure handling events with collection source, volume estimate, storage, application projection, spill risk, and corrective action.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag storage capacity breaches and link waste events to affected herd groups.
 
-### 35. Advanced search and investigation for Livestock Herd Management Control Assertion
+### 35. Heat stress and weather risk response
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Weather extremes affect welfare, feed intake, fertility, mortality, and production.
 
-**Improvement:** Provide search across `livestock_herd_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Consume weather projections and add heat-stress risk rules, mitigation tasks, hydration checks, shade status, and outcome tracking.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create mitigation tasks for high-risk groups and verify closure evidence.
 
-### 36. Reconciliation and closure controls for Livestock Herd Management Governed Model
+### 36. Staff tasking and competency requirements
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Treatments, vaccinations, breeding, inspections, and handling require trained staff and accountability.
 
-**Improvement:** Add reconciliation workflows that compare `livestock_herd_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add task assignments with competency requirements, due windows, staff projection, completion evidence, and supervisor review.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block assignment of restricted tasks to staff lacking required competency projection.
 
-### 37. Regulatory and policy reporting for Animal
+### 37. Equipment and facility readiness checks
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Handling systems, chutes, scales, milking equipment, feeders, and transport crates can affect safety and data quality.
 
-**Improvement:** Generate domain reporting packs for `animal` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add readiness checks for equipment and facilities with inspection status, calibration projection, defect notes, and task blockers.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block weight capture or treatment sessions when required equipment is out of service.
 
-### 38. Carbon and resource awareness for Herd Group
+### 38. Mobile offline field capture
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Barns, paddocks, and remote holdings often have unreliable connectivity.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `herd_group` decisions and batch operations. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add offline capture for health, treatment, movement, breeding, and weight events with device id, sync timestamp, conflict handling, and review queue.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve original observation time and open conflicts instead of overwriting newer records.
 
-### 39. Resilience and offline behavior for Health Event
+### 39. Sensor and wearable data ingestion
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Activity, rumination, temperature, location, and water intake sensors can reveal disease, estrus, stress, or equipment failures.
 
-**Improvement:** Define resilience modes for `health_event`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add sensor observation ingestion with device projection, signal quality, anomaly score, linked animal or group, and triage workflow.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create reviewable alerts from abnormal sensor readings and ignore stale or low-quality signals.
 
-### 40. Human-in-the-loop automation for Breeding Record
+### 40. Herd productivity dashboard
 
-**Justification:** Automation should accelerate animals, health, breeding, feed, movements, treatments, compliance, and herd productivity while preserving accountability for high-risk decisions.
+**Justification:** Operators need actionable metrics across health, reproduction, feed, mortality, growth, output, and compliance.
 
-**Improvement:** Set explicit automation boundaries for `breeding_record`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build workbench metrics for morbidity, mortality, conception, calving interval, feed conversion, growth, output, withdrawal, and open exceptions.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI contract tests must expose metric cards and drilldowns tied to owned records.
 
-### 41. Package discovery and fit scoring for Feed Ration
+### 41. Exception taxonomy for herd operations
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Generic exceptions hide the difference between animal welfare, compliance, health, feed, movement, and data-quality issues.
 
-**Improvement:** Improve package metadata so composition can explain when `livestock_herd_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add exception categories, severity, blocker type, owner, due date, escalation policy, closure evidence, and reopen reason.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route exception types to the correct workbench queues and emit exception events.
 
-### 42. Configuration deployment pipeline for Movement Permit
+### 42. Herd rule and parameter workbench
 
-**Justification:** Configuration changes can materially alter livestock herd management; they need the same discipline as code releases.
+**Justification:** Farmers, veterinarians, and compliance teams need governed configuration without source-code edits.
 
-**Improvement:** Add configuration promotion for `movement_permit` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add UI controls for species profiles, withdrawal tables, health protocols, breeding eligibility, ration thresholds, movement rules, and alert parameters.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate parameter bounds, approval history, rollback, and runtime effect.
 
-### 43. Workbench command completeness for Treatment
+### 43. Agent-assisted clinical note interpretation
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Field notes, lab summaries, and veterinary instructions arrive as unstructured text or images.
 
-**Improvement:** Expose every high-value operation for `treatment` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant skills that extract suspected diagnosis, treatment, follow-up, withdrawal, and tasks into governed CRUD previews.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require human confirmation for writes and retain source-document evidence for each extracted field.
 
-### 44. Document packet and evidence vault for Livestock Herd Management Policy Rule
+### 44. Agent-guided daily herd work plan
 
-**Justification:** Documents often carry the legal or operational truth behind animals, health, breeding, feed, movements, treatments, compliance, and herd productivity.
+**Justification:** Operators need prioritized tasks for sick animals, due treatments, breeding checks, movements, feeding, welfare, and compliance.
 
-**Improvement:** Create a governed evidence vault for `livestock_herd_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant-generated daily plan with task rationale, route grouping, dependencies, required equipment, and confirmation prompts.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show task ordering uses due dates, severity, group location, and required competency.
 
-### 45. Data correction and amendment history for Livestock Herd Management Runtime Parameter
+### 45. Agent boundary and safety controls
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** AI assistance must not silently alter animal records, compliance status, or treatment evidence.
 
-**Improvement:** Support formal amendments for `livestock_herd_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require agent proposals to declare command type, affected owned records, source evidence, confidence, policy checks, and approval requirement.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject agent writes without confirmation and log every accepted proposal.
 
-### 46. External participant collaboration for Livestock Herd Management Schema Extension
+### 46. AppGen-X event outbox and inbox specialization
 
-**Justification:** Many livestock herd management workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Herd operations must coordinate with inventory, procurement, compliance, logistics, and finance without shared tables.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `livestock_herd_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Define typed emitted and consumed events for animal lifecycle, treatment, withdrawal, movement, productivity, and exception changes.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event contract tests must verify idempotency keys, retry behavior, dead-letter evidence, and declared dependency usage.
 
-### 47. Advanced dependency freshness scoring for Livestock Herd Management Control Assertion
+### 47. Cryptographic herd audit packet
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Certifications, recalls, disputes, and regulatory reviews need tamper-evident evidence packages.
 
-**Improvement:** Score freshness and reliability of dependencies used by `livestock_herd_management_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash-linked audit packets for animal lifecycle, treatment history, movement history, certification evidence, and report submissions.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect altered packet contents and verify packet generation from owned records.
 
-### 48. Model governance and explainability for Livestock Herd Management Governed Model
+### 48. Data quality scoring
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Livestock Herd Management.
+**Justification:** Missing birth dates, uncertain identifiers, stale group memberships, and unverified treatments undermine decisions.
 
-**Improvement:** For every predictive or agentic feature around `livestock_herd_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add data quality scores by animal and herd group with issue type, severity, remediation task, and confidence trend.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag incomplete records and show remediation queues in the workbench.
 
-### 49. High-scale partitioning and archival for Animal
+### 49. Release smoke scenarios
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** The PBC needs evidence that the package can execute realistic livestock workflows after generation.
 
-**Improvement:** Plan scale behavior for `animal`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `livestock_herd_management_create_animal_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add smoke scenarios for new arrival quarantine, vaccination, treatment withdrawal, breeding, birth, movement permit, and sale readiness.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release evidence must show each scenario creates owned records, emits AppGen-X events, and respects boundary rules.
 
-### 50. Release gate expansion for Herd Group
+### 50. Cross-PBC boundary proof
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Livestock workflows touch feed inventory, staff, transport, compliance, weather, finance, and sales domains but must retain owned boundaries.
 
-**Improvement:** Expand release gates for `livestock_herd_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `livestock_herd_management_record_herd_group_workflow` where applicable, and make it visible in `LivestockHerdManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add automated boundary proof that every generated model, service, route, handler, projection, and agent command uses only owned tables plus declared APIs/events.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/livestock_herd_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on any undeclared table reference and pass for declared projection or event dependency references.
