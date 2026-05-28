@@ -2790,3 +2790,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the 53-test PBC runtime/governance/agent/domain-depth suite,
   `pbc_release_audit()`, and `pbc_generation_smoke_audit(IMPLEMENTED_PBC_KEYS)`.
   Commit: `dd5db7a`.
+- Current field-service workforce execution pass closes the live-dispatch
+  gaps in `field_service_management` without touching the AppGen-X language
+  work owned by another agent. The package now has executable contracts and
+  runtime functions for consented technician live-location tracking, technician
+  availability, route optimization and disruption reoptimization, mobile task
+  dependency/safety-gate planning, job-tool requirement validation, tool
+  calibration and reservation, van-stock awareness, and skill/location/tool
+  assignment scoring. The domain-depth contract, manifest, UI/workbench
+  panels, agent/chatbot skills, specification, release evidence, and focused
+  tests now expose those capabilities. Focused verification passed: Python
+  compile for touched field-service modules, `tests/test_pbc_field_service_management_runtime.py`
+  plus package-local `tests/test_contract.py`, field-service implementation
+  release audit, field-service generation smoke audit, and source/spec/agent
+  release audits. Commit: `535156f`.
