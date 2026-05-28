@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `enterprise_search_vector`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `enterprise_search_vector`. Each item is specific to enterprise search and vector discovery: source indexes, embedding jobs, vector documents, chunking, hybrid queries, query traces, ranking simulations, freshness forecasts, quality remediation, policy screening, relevance controls, cryptographic index proofs, federated search views, query intent risk, retention/deletion evidence, governed models, and search workbench operations. The intent is complete domain coverage for a better-than-world-class discovery PBC while preserving AppGen-X package boundaries.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
-- Representative owned tables: `enterprise_search_vector_search_index`, `enterprise_search_vector_embedding_job`, `enterprise_search_vector_vector_document`, `enterprise_search_vector_query_trace`, `enterprise_search_vector_ranking_simulation`, `enterprise_search_vector_freshness_forecast`, `enterprise_search_vector_quality_remediation`, `enterprise_search_vector_search_policy_screening`, `enterprise_search_vector_relevance_control_assertion`, `enterprise_search_vector_index_proof`, `enterprise_search_vector_federated_search_view`, `enterprise_search_vector_query_intent_risk`, ...
-- Representative operations/APIs: `configure_runtime`, `set_parameter`, `register_rule`, `register_schema_extension`, `create_index`, `ingest_document`, `run_embedding_job`, `refresh_index`, `query`, `record_feedback`, `simulate_counterfactual_ranking`, `forecast_index_freshness`, ...
-- Representative events: `SearchIndexUpdated`, `DiscoveryInsightGenerated`.
-- Representative advanced capabilities: `event_sourced_search_index_lifecycle`, `owned_search_schema_boundary`, `multi_tenant_search_isolation`, `schema_evolution_resilient_document_context`, `source_index_management`, `document_chunk_and_acl_ingestion`, `embedding_job_orchestration`, `semantic_and_hybrid_query`, `ranking_and_relevance_feedback`, `retention_and_deletion_evidence`, ...
+- Domain purpose: owns semantic and hybrid discovery for governed product, customer, audit, and knowledge projections through AppGen-X APIs/events and read-only projections.
+- Owned tables include search index, embedding job, vector document, query trace, ranking simulation, freshness forecast, quality remediation, search policy screening, relevance control assertion, index proof, federated search view, query intent risk, retention deletion record, search audit entry, search governed model, outbox, inbox, and dead-letter evidence.
+- Operations include runtime configuration, parameter/rule registration, index creation, source registration, document ingestion, chunking, ACL capture, embedding jobs, refresh orchestration, semantic/hybrid queries, ranking, query tracing, relevance feedback, freshness tracking, policy screening, relevance controls, index proofs, federated source views, query-intent risk scoring, retention/deletion recording, governed model registration, and idempotent AppGen-X event handling.
+- Events include `SearchIndexUpdated` and `DiscoveryInsightGenerated`; consumed events include `ProductPublished`, `CustomerUpdated`, and `AuditEventSealed`.
+- Existing advanced claims include event-sourced index lifecycle, schema-evolution evidence, multi-tenant search isolation, probabilistic relevance confidence, counterfactual ranking simulation, temporal freshness forecasting, autonomous quality remediation, semantic document understanding, predictive query-intent risk, cryptographic index proofs, dynamic search policy screening, relevance control testing, and cross-system federation.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `enterprise_search_vector_search_index`
+### 1. Search Index Product Lifecycle
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Enterprise search indexes are operational products with source scope, locale, ACL policy, ranking mode, freshness expectations, readiness, consumers, and retirement. A basic index record cannot govern production discovery.
 
-**Improvement:** Extend `enterprise_search_vector_search_index` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `search_indexes`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand index lifecycle states for draft, building, ready, degraded, stale, restricted, reindexing, deprecated, and retired. Link each state to document counts, embedding readiness, freshness, ACL health, proof status, owner approval, and AppGen-X events.
 
-### 2. Deep specialist lifecycle semantics for `enterprise_search_vector_embedding_job`
+### 2. Source Registration and Projection Contracts
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Search indexes depend on product, customer, audit, knowledge, and other source domains without owning their tables. Source ingestion needs explicit projection contracts.
 
-**Improvement:** Extend `enterprise_search_vector_embedding_job` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `source_registration`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add source registration metadata for source PBC, allowed fields, freshness SLA, event types, projection schema, access basis, fallback behavior, and idempotency rules. Reject source ingestion that lacks a declared projection contract.
 
-### 3. Deep specialist lifecycle semantics for `enterprise_search_vector_vector_document`
+### 3. Document Identity and Version Lineage
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Search results must distinguish document identity, source identity, content version, projection version, chunk version, and embedding version. Without lineage, stale and duplicated results are hard to debug.
 
-**Improvement:** Extend `enterprise_search_vector_vector_document` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `document_ingestion`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand vector documents with source document id, version, projection timestamp, content hash, chunk hash, embedding hash, superseded-by relation, and deletion status. Query traces should cite the exact document and chunk versions returned.
 
-### 4. Deep specialist lifecycle semantics for `enterprise_search_vector_query_trace`
+### 4. Intelligent Chunking Strategy Library
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Chunking quality drives retrieval quality. Different content types need different chunk boundaries, overlaps, metadata preservation, and token budgets.
 
-**Improvement:** Extend `enterprise_search_vector_query_trace` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `document_chunking`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add chunking strategies for product descriptions, customer records, audit logs, knowledge articles, policy documents, tables, long narratives, and structured records. Store chunking strategy, token counts, overlap, section anchors, and quality metrics.
 
-### 5. Deep specialist lifecycle semantics for `enterprise_search_vector_ranking_simulation`
+### 5. Field and Metadata-Aware Embeddings
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Enterprise search often needs semantics from title, body, field names, tags, ownership, locale, authority, freshness, and ACL metadata. Embedding only raw text loses critical ranking signals.
 
-**Improvement:** Extend `enterprise_search_vector_ranking_simulation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `embedding_jobs`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add embedding payload templates that include weighted fields, structured metadata, locale, source authority, business glossary terms, and access-safe context. Track embedding template version per document.
 
-### 6. Deep specialist lifecycle semantics for `enterprise_search_vector_freshness_forecast`
+### 6. Embedding Job Orchestration and Backpressure
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Embedding jobs can overwhelm systems or produce partial indexes. Jobs need batching, retries, priority, dependency, failure analysis, and readiness evidence.
 
-**Improvement:** Extend `enterprise_search_vector_freshness_forecast` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `semantic_search`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade embedding jobs with queue priority, batch plan, dependency set, retry policy, partial failure handling, throughput, cost estimate, completion proof, and blocked document list. The console should show readiness by index and source.
 
-### 7. Deep specialist lifecycle semantics for `enterprise_search_vector_quality_remediation`
+### 7. Embedding Model Governance
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Embedding model changes alter similarity behavior, recall, bias, and explainability. Production search needs governed model metadata and migration paths.
 
-**Improvement:** Extend `enterprise_search_vector_quality_remediation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `hybrid_search`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add governed embedding model records with dimensions, provider abstraction, approval, validation set, drift metrics, known limitations, compatible indexes, migration status, and rollback. Block model changes without evaluation evidence.
 
-### 8. Deep specialist lifecycle semantics for `enterprise_search_vector_search_policy_screening`
+### 8. Multi-Locale and Cross-Lingual Search
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Enterprise users search across locales, translations, synonyms, and regional terminology. Single-locale indexing produces weak discovery for global teams.
 
-**Improvement:** Extend `enterprise_search_vector_search_policy_screening` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `ranking`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add locale-aware indexes, translation metadata, cross-lingual embeddings, locale fallback, regional synonyms, and language-specific relevance testing. Query traces should show language detection and locale routing.
 
-### 9. Deep specialist lifecycle semantics for `enterprise_search_vector_relevance_control_assertion`
+### 9. ACL Capture and Result-Time Enforcement
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Search must never reveal documents a principal cannot access. ACL enforcement needs capture-time and query-time controls with proof.
 
-**Improvement:** Extend `enterprise_search_vector_relevance_control_assertion` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `acl_filtering`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand ACL metadata with source permissions, tenant, role, object-level restrictions, field masking, expiration, and access-policy version. Query execution must filter results before ranking output and store policy-screening evidence.
 
-### 10. Deep specialist lifecycle semantics for `enterprise_search_vector_index_proof`
+### 10. Policy-Aware Snippet and Explanation Redaction
 
-**Justification:** This owned table is part of the Enterprise Search and Vector Discovery operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Semantic and hybrid enterprise search across governed product, customer, audit, and knowledge projections with source indexing, document chunking, embeddings, ACL-filtered retrieval, feedback, query traces, freshness, rules, parameters, configuration, and AppGen-X event orchestration.
+**Justification:** Even if a document is accessible, snippets and explanations can expose sensitive fields, hidden terms, or derived context. Discovery surfaces need redaction controls.
 
-**Improvement:** Extend `enterprise_search_vector_index_proof` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `query_traces`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add snippet redaction rules, sensitive field masks, role-specific explanation depth, and leakage tests. Store redaction decisions in query traces and relevance control assertions.
 
-### 11. Make `configure_runtime` a complete command lifecycle
+### 11. Hybrid Ranking Decomposition
 
-**Justification:** High-value users need `configure_runtime` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Users and operators need to understand why results ranked highly: semantic match, keyword overlap, authority, freshness, feedback, access, or source weight.
 
-**Improvement:** Implement `configure_runtime` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SearchIndexUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store per-result ranking decomposition with weighted components, normalized scores, thresholds, source boosts, penalties, and explanation text. Provide UI sliders for controlled what-if analysis.
 
-### 12. Make `set_parameter` a complete command lifecycle
+### 12. Counterfactual Ranking Simulation
 
-**Justification:** High-value users need `set_parameter` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Ranking parameter changes can alter many user workflows. Operators need to simulate impact before changing weights or policies.
 
-**Improvement:** Implement `set_parameter` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DiscoveryInsightGenerated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand ranking simulations with historical query sets, proposed weights, result deltas, relevance impact, zero-result changes, ACL impact, freshness shifts, and confidence. Require approval for high-impact ranking changes.
 
-### 13. Make `register_rule` a complete command lifecycle
+### 13. Query Trace Completeness
 
-**Justification:** High-value users need `register_rule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Debugging enterprise search requires full query context: principal, permissions, locale, index, filters, ranking mode, results, explanations, feedback, and policy decisions.
 
-**Improvement:** Implement `register_rule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SearchIndexUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand query traces with normalized query, intent, filters, principal permissions, query plan, candidate count, filtered count, ranking components, returned chunks, redactions, latency, and feedback state.
 
-### 14. Make `register_schema_extension` a complete command lifecycle
+### 14. Query Intent Risk Scoring
 
-**Justification:** High-value users need `register_schema_extension` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Some queries reveal risky intent, such as attempts to find restricted data, exfiltrate sensitive records, bypass policy, or infer hidden information.
 
-**Improvement:** Implement `register_schema_extension` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DiscoveryInsightGenerated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add query intent risk classification with sensitive-intent taxonomy, confidence, policy basis, principal context, source categories, allowed response behavior, and escalation. Block or redact risky discovery paths by policy.
 
-### 15. Make `create_index` a complete command lifecycle
+### 15. Zero-Result and Low-Confidence Recovery
 
-**Justification:** High-value users need `create_index` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Search failures occur when vocabulary, freshness, permissions, source coverage, or ranking are weak. Users need recovery paths, not dead ends.
 
-**Improvement:** Implement `create_index` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SearchIndexUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add zero-result diagnostics, synonym suggestions, alternate indexes, access request prompts, spelling correction, freshness warnings, and missing-source signals. Feed failures into quality remediation tasks.
 
-### 16. Make `ingest_document` a complete command lifecycle
+### 16. Search Feedback Quality Loop
 
-**Justification:** High-value users need `ingest_document` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Relevance feedback can improve search only if it is tied to query intent, result position, user action, and outcome quality. Clicks alone are noisy.
 
-**Improvement:** Implement `ingest_document` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DiscoveryInsightGenerated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand feedback with positive/negative signal type, dwell, save, open, correction, result usefulness, user role, query intent, and confidence. Use feedback to prioritize ranking simulations and remediation.
 
-### 17. Make `run_embedding_job` a complete command lifecycle
+### 17. Relevance Control Assertions
 
-**Justification:** High-value users need `run_embedding_job` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Search quality must be tested continuously for known queries, sensitive queries, regulated content, and critical business workflows.
 
-**Improvement:** Implement `run_embedding_job` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SearchIndexUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add relevance assertions with query set, expected documents, prohibited documents, minimum score, ACL expectation, locale, freshness, and regression status. Release gates should fail when critical assertions regress.
 
-### 18. Make `refresh_index` a complete command lifecycle
+### 18. Freshness Forecasting and Refresh Recommendations
 
-**Justification:** High-value users need `refresh_index` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Stale indexes erode trust, but unnecessary refreshes waste compute. Freshness should be forecasted from source update patterns and usage.
 
-**Improvement:** Implement `refresh_index` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DiscoveryInsightGenerated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand freshness forecasts with source event cadence, document age, query demand, SLA, freshness risk, refresh cost, and recommended schedule. Trigger refresh recommendations before freshness SLA breach.
 
-### 19. Make `query` a complete command lifecycle
+### 19. Self-Healing Index Refresh
 
-**Justification:** High-value users need `query` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Search systems need automated remediation for stale, partial, or degraded indexes while preserving governance and auditability.
 
-**Improvement:** Implement `query` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SearchIndexUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add self-healing refresh plans that identify degraded sources, missing documents, failed embeddings, stale chunks, and ACL mismatches. Require policy approval for automatic remediation in restricted indexes.
 
-### 20. Make `record_feedback` a complete command lifecycle
+### 20. Index Proof and Integrity Verification
 
-**Justification:** High-value users need `record_feedback` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Users and auditors may need proof that an index contains expected documents, excludes deleted documents, and applies the correct policies.
 
-**Improvement:** Implement `record_feedback` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DiscoveryInsightGenerated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Generate cryptographic index proofs with document hashes, chunk hashes, embedding hashes, ACL policy version, source snapshot, refresh id, and verification status. Surface proof failures as incidents.
 
-### 21. Operationalize `event_sourced_search_index_lifecycle` as a governed decision system
+### 21. Retention and Deletion Enforcement
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves query result count without hiding assumptions.
+**Justification:** Search indexes can preserve content after source deletion or retention expiry. This creates privacy, legal, and compliance risk.
 
-**Improvement:** Promote `event_sourced_search_index_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `query_result_count`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand retention/deletion records with source deletion event, affected documents/chunks/embeddings, purge proof, tombstone state, retention basis, hold exceptions, and verification. Query should exclude purged content immediately.
 
-### 22. Operationalize `owned_search_schema_boundary` as a governed decision system
+### 22. Legal Hold and Preservation Awareness
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves relevance confidence without hiding assumptions.
+**Justification:** Some indexed content must be preserved for legal or audit purposes while ordinary retention deletion continues elsewhere.
 
-**Improvement:** Promote `owned_search_schema_boundary` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `relevance_confidence`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add preservation flags from declared legal/audit projections, purge exceptions, hold scope, release evidence, and query visibility rules. Distinguish hidden-but-preserved content from deleted content.
 
-### 23. Operationalize `multi_tenant_search_isolation` as a governed decision system
+### 23. Federated Search View Governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves index freshness without hiding assumptions.
+**Justification:** Enterprise discovery often spans multiple indexes and source domains. Federation must respect source policy, ranking comparability, freshness, and traceability.
 
-**Improvement:** Promote `multi_tenant_search_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `index_freshness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add federated views with included indexes, source weights, policy screening, locale handling, result blending strategy, source freshness, and per-source result counts. Query traces should show federation decisions.
 
-### 24. Operationalize `schema_evolution_resilient_document_context` as a governed decision system
+### 24. Search Source Coverage Analytics
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves acl filter rate without hiding assumptions.
+**Justification:** Users may assume search covers everything when sources are missing, stale, or restricted. Coverage needs explicit evidence.
 
-**Improvement:** Promote `schema_evolution_resilient_document_context` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `acl_filter_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add coverage dashboards showing indexed sources, document counts, skipped documents, ACL restrictions, stale sources, failed ingestion, and unsupported content types. Show coverage warnings in search UI.
 
-### 25. Operationalize `source_index_management` as a governed decision system
+### 25. Authority and Trust Ranking
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves embedding job latency without hiding assumptions.
+**Justification:** Search results should prefer authoritative, certified, current, and high-quality sources over duplicates or informal content.
 
-**Improvement:** Promote `source_index_management` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `embedding_job_latency`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add authority scoring from source certification, owner, update history, feedback, quality signals, audit proof, and consumer use. Explain authority boosts and penalties in result details.
 
-### 26. Operationalize `document_chunk_and_acl_ingestion` as a governed decision system
+### 26. Duplicate and Near-Duplicate Collapse
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves feedback score without hiding assumptions.
+**Justification:** Enterprise search often returns many versions or copies of similar documents, hiding the best answer and wasting user time.
 
-**Improvement:** Promote `document_chunk_and_acl_ingestion` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `feedback_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add duplicate detection by content hash, semantic similarity, source lineage, version, and canonical authority. Collapse duplicate groups while preserving access and version details.
 
-### 27. Operationalize `embedding_job_orchestration` as a governed decision system
+### 27. Personalization With Governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves search index updated throughput without hiding assumptions.
+**Justification:** Search relevance can improve with role, team, recent work, locale, and subscriptions, but personalization can create filter bubbles or privacy concerns.
 
-**Improvement:** Promote `embedding_job_orchestration` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `search_index_updated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add governed personalization signals with opt-in policy, role-based constraints, privacy limits, explainability, and disable controls. Query traces should show when personalization affected ranking.
 
-### 28. Operationalize `semantic_and_hybrid_query` as a governed decision system
+### 28. Saved Searches and Alerting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves discovery insight generated throughput without hiding assumptions.
+**Justification:** Users need recurring discovery for new products, customers, audit events, knowledge articles, and policy changes. Manual re-querying is inefficient.
 
-**Improvement:** Promote `semantic_and_hybrid_query` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `discovery_insight_generated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add saved searches with query, filters, ACL context, alert cadence, source scope, delivery preference, and change detection. Notify users when new authorized content matches saved intent.
 
-### 29. Operationalize `ranking_and_relevance_feedback` as a governed decision system
+### 29. Search Incident Management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves query result count without hiding assumptions.
+**Justification:** Search failures such as stale indexes, bad rankings, ACL leakage, missing sources, embedding failures, or query outages require incident workflows.
 
-**Improvement:** Promote `ranking_and_relevance_feedback` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `query_result_count`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add search incident records linked to indexes, sources, query traces, embedding jobs, proofs, and affected users. Include severity, root cause, mitigation, consumer communication, and resolution evidence.
 
-### 30. Operationalize `retention_and_deletion_evidence` as a governed decision system
+### 30. Search Quality Remediation Playbooks
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Search and Vector Discovery and measurably improves relevance confidence without hiding assumptions.
+**Justification:** Quality issues need targeted fixes: synonyms, chunking, source refresh, ACL repair, ranking weight changes, duplicate collapse, or document cleanup.
 
-**Improvement:** Promote `retention_and_deletion_evidence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `relevance_confidence`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand quality remediation with issue type, affected queries, fix plan, owner, simulation evidence, deployment status, regression tests, and post-fix measurement.
 
-### 31. Create simulation-grade governance for `ENTERPRISE_SEARCH_VECTOR_DATABASE_URL` and `ENTERPRISE_SEARCH_VECTOR_DATABASE_URL`
+### 31. Synonym, Acronym, and Domain Vocabulary Governance
 
-**Justification:** Complete Enterprise Search and Vector Discovery coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Enterprise search fails when it does not understand acronyms, internal terminology, product names, aliases, and business vocabulary.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_SEARCH_VECTOR_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_SEARCH_VECTOR_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add governed synonym and vocabulary records with source, locale, approval, scope, conflict detection, and impact testing. Use vocabulary in hybrid search, query expansion, and explanation.
 
-### 32. Create simulation-grade governance for `ENTERPRISE_SEARCH_VECTOR_EVENT_TOPIC` and `ENTERPRISE_SEARCH_VECTOR_EVENT_TOPIC`
+### 32. Structured and Tabular Search
 
-**Justification:** Complete Enterprise Search and Vector Discovery coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Enterprise data often lives in records and tables, not only prose. Search should understand fields, rows, identifiers, and numeric constraints.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_SEARCH_VECTOR_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_SEARCH_VECTOR_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add structured document indexing for field names, values, units, identifiers, ranges, and row-level provenance. Support queries that mix semantic intent with structured filters.
 
-### 33. Create simulation-grade governance for `ENTERPRISE_SEARCH_VECTOR_RETRY_LIMIT` and `ENTERPRISE_SEARCH_VECTOR_RETRY_LIMIT`
+### 33. Temporal Search and As-Of Discovery
 
-**Justification:** Complete Enterprise Search and Vector Discovery coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Users may need to find what was true at a previous time, especially for audit, customer, product, and policy records.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_SEARCH_VECTOR_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_SEARCH_VECTOR_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add temporal indexing with valid time, source event time, index time, and query as-of filters. Query traces should record temporal context and returned version evidence.
 
-### 34. Create simulation-grade governance for `ENTERPRISE_SEARCH_VECTOR_DEFAULT_LOCALE` and `ENTERPRISE_SEARCH_VECTOR_DEFAULT_LOCALE`
+### 34. Query Privacy and Audit Controls
 
-**Justification:** Complete Enterprise Search and Vector Discovery coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Search queries can reveal sensitive investigations, customer names, planned actions, or restricted topics. Query logs need privacy controls.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_SEARCH_VECTOR_DEFAULT_LOCALE` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_SEARCH_VECTOR_DEFAULT_LOCALE` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add query log classification, masking, retention, restricted visibility, audit access, and deletion policies. Ensure workbench views hide sensitive query text unless permitted.
 
-### 35. Create simulation-grade governance for `ENTERPRISE_SEARCH_VECTOR_EMBEDDING_DIMENSIONS` and `ENTERPRISE_SEARCH_VECTOR_EMBEDDING_DIMENSIONS`
+### 35. Prompt-Injection and Content Safety Screening
 
-**Justification:** Complete Enterprise Search and Vector Discovery coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Search indexes may contain adversarial or unsafe content that manipulates assistants or leaks instructions. Vector retrieval must screen content before agent use.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_SEARCH_VECTOR_EMBEDDING_DIMENSIONS` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_SEARCH_VECTOR_EMBEDDING_DIMENSIONS` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add prompt-injection detection, unsafe content flags, retrieval safety labels, source trust penalties, and agent-consumption policies. Query traces should show blocked or sanitized chunks.
 
-### 36. Upgrade `EnterpriseSearchWorkbench` into a full specialist command center
+### 36. Search-to-Action Guardrails
 
-**Justification:** The PBC UI must expose the complete Enterprise Search and Vector Discovery surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Search results can drive CRUD actions through composed agents. Bad retrieval or stale content can cause unsafe actions.
 
-**Improvement:** Expand `EnterpriseSearchWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add guardrails that require freshness, authority, policy screening, and source citations before search results can be used in agent action plans. Record result-to-action lineage.
 
-### 37. Upgrade `SearchIndexRegistry` into a full specialist command center
+### 37. Semantic Answer Grounding
 
-**Justification:** The PBC UI must expose the complete Enterprise Search and Vector Discovery surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Users increasingly expect answers, not just result lists. Answers must be grounded in authorized, fresh, and cited chunks.
 
-**Improvement:** Expand `SearchIndexRegistry` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add answer grounding evidence with cited chunks, source versions, freshness, ACL status, confidence, contradictions, and missing-evidence warnings. Do not produce unsupported answers.
 
-### 38. Upgrade `VectorDocumentExplorer` into a full specialist command center
+### 38. Contradiction and Conflict Detection
 
-**Justification:** The PBC UI must expose the complete Enterprise Search and Vector Discovery surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Enterprise sources can disagree. Search should surface conflicts rather than silently selecting one result.
 
-**Improvement:** Expand `VectorDocumentExplorer` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add contradiction detection across documents, versions, policies, product facts, customer facts, and audit records. Show conflict clusters, source authority, and resolution tasks.
 
-### 39. Upgrade `EmbeddingJobConsole` into a full specialist command center
+### 39. Search Benchmark Suite
 
-**Justification:** The PBC UI must expose the complete Enterprise Search and Vector Discovery surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Search quality cannot be managed without benchmark queries, expected outcomes, and regression history.
 
-**Improvement:** Expand `EmbeddingJobConsole` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add benchmark suites with representative queries, expected results, prohibited results, relevance labels, locale, ACL context, and score thresholds. Run benchmarks before ranking, embedding, chunking, or policy changes.
 
-### 40. Upgrade `HybridQueryWorkbench` into a full specialist command center
+### 40. Latency and Cost Optimization
 
-**Justification:** The PBC UI must expose the complete Enterprise Search and Vector Discovery surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Search must be fast and economically sustainable. Embedding, indexing, hybrid ranking, and federation can become expensive.
 
-**Improvement:** Expand `HybridQueryWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add latency/cost metrics by index, query type, embedding job, source, federation view, and ranking mode. Recommend caching, batch sizing, refresh cadence, and index partition changes.
 
-### 41. Prove cross-PBC federation for `POST /indexes` and `ProductPublished`
+### 41. Multi-Tenant Isolation Proofs
 
-**Justification:** Enterprise Search and Vector Discovery must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Search has high leakage risk because a single query can reveal cross-tenant documents. Isolation must be proven continuously.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /indexes` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add tenant isolation assertions for ingestion, embeddings, query, traces, feedback, proofs, retention, and federated views. Release gates should include adversarial cross-tenant tests.
 
-### 42. Prove cross-PBC federation for `POST /indexes/{id}/refresh` and `CustomerUpdated`
+### 42. Search Rule and Parameter Studio
 
-**Justification:** Enterprise Search and Vector Discovery must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Search weights, thresholds, ACL policies, retention, supported sources, locales, and chunking settings evolve over time and need governed changes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /indexes/{id}/refresh` and consumed event `CustomerUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand rule and parameter management into a studio with simulations, approvals, test cases, effective dates, rollback, impact analysis, and evidence for every material search behavior change.
 
-### 43. Prove cross-PBC federation for `POST /documents` and `AuditEventSealed`
+### 43. Query Feedback Abuse Detection
 
-**Justification:** Enterprise Search and Vector Discovery must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Feedback can be gamed or biased, degrading ranking quality and authority. Search feedback needs trust and anomaly controls.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /documents` and consumed event `AuditEventSealed` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add feedback abuse detection for repeated boosting, coordinated negative feedback, low-trust users, unusual feedback bursts, and source-owner manipulation. Weight feedback by trust and review suspicious patterns.
 
-### 44. Prove cross-PBC federation for `POST /embeddings` and `ProductPublished`
+### 44. Source Owner Remediation Workflow
 
-**Justification:** Enterprise Search and Vector Discovery must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Many search problems require source owners to fix metadata, content, policy, or freshness. Search teams cannot remediate everything centrally.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /embeddings` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add source-owner tasks for missing metadata, stale documents, bad snippets, ACL errors, duplicate content, and quality issues. Track owner response, SLA, and recurrence.
 
-### 45. Temporal reconstruction and bitemporal audit for Enterprise Search and Vector Discovery
+### 45. Governed Model and Retrieval Evaluation
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Retrieval models, ranking models, and intent-risk models shape discovery outcomes and need governance similar to other decision models.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add governed model records with validation data, benchmark results, drift, bias checks, limitations, approval, deployment status, rollback plan, and monitoring evidence.
 
-### 46. Bulk operations and migration-grade controls for Enterprise Search and Vector Discovery
+### 46. Agent-Assisted Search Operations
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Search operators need help diagnosing low relevance, stale indexes, ACL failures, bad chunks, and source coverage gaps, but agent actions must be controlled.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Give the PBC agent skills to summarize traces, propose remediation, generate benchmark queries, draft source-owner tasks, and create CRUD plans with citations, confidence, affected tables, AppGen-X events, and human confirmation.
 
-### 47. Specialist edge-case playbooks for Enterprise Search and Vector Discovery
+### 47. Cross-PBC Boundary Proofs
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Enterprise search references product, customer, audit, knowledge, data catalog, policy, and identity facts. It must not mutate those domains directly.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add projection contracts for all external search sources and tests proving services mutate only `enterprise_search_vector_` owned tables plus AppGen-X runtime tables.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Enterprise Search and Vector Discovery
+### 48. Dead-Letter and Event Replay Operations
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Search freshness and correctness depend on reliable event ingestion. Late, duplicate, malformed, or failed events can corrupt discovery quality.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add operations UI for inbox, outbox, retry, dead-letter, quarantine, payload lineage, idempotency keys, replay, and dependency health. Unknown events should never mutate search state.
 
-### 49. Continuous control testing and operational assurance for Enterprise Search and Vector Discovery
+### 49. Search Release Evidence Packs
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Search changes can affect access, compliance, customer work, and AI grounding. Release evidence must prove safe indexing, retrieval, ranking, policy, and event handling.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Generate release evidence packs with schema hashes, migration manifests, service contracts, route contracts, event schemas, handler idempotency proofs, retry/dead-letter tests, benchmark results, ACL tests, retention proofs, UI coverage, and agent manifests.
 
-### 50. Human-in-the-loop domain agent execution for Enterprise Search and Vector Discovery
+### 50. Complete Enterprise Search Workbench Coverage
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Search administrators, source owners, relevance engineers, compliance reviewers, knowledge managers, and executives need full operational surfaces. Hidden APIs are not enough.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Expand the UI into role-specific workbenches for search admin, source owner, relevance engineer, compliance reviewer, knowledge manager, support analyst, and executive sponsor. Cover indexes, documents, chunks, embeddings, queries, traces, ranking, feedback, freshness, policy, relevance controls, proofs, federation, incidents, rules, agent panels, and release evidence.
