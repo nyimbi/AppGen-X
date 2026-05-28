@@ -2917,3 +2917,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`, focused DSL
   platform/CLI regression tests, scoped diff whitespace check, and
   restricted-name scan. Commit: `29b9a15d`.
+- Current validation target-gate pass makes the documented
+  `appgen validate --targets web,mobile,desktop --json` behavior enforceable.
+  Requested targets are now parsed by the CLI, normalized through the shared
+  platform target policy, exposed in `appgen.validate-report.v1`, and checked
+  against app-declared targets. Unknown or undeclared requested targets fail
+  validation with `AGX0802`, and generation reuses the same validate target
+  gate before writing output. Verification passed: Python compile for touched
+  CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`, focused DSL
+  platform/CLI regression tests, scoped diff whitespace check, and
+  restricted-name scan. Commit: `73d2009f`.
