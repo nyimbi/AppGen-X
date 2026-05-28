@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `talent_onboarding`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `talent_onboarding`. The items are specific to requisition-to-day-one operations: job requisitions, approvals, budgets, skills, sourcing campaigns, candidates, consent, candidate profiles, stage history, duplicate checks, privacy requests, interviews, evaluations, scorecards, background checks, adjudication, adverse action, offers, compensation projections, onboarding tasks, equipment requests, access preload and welcome notification handoffs, provisioning, event reliability, UI workbenches, and agent-assisted hiring operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
-- Representative owned tables: `talent_onboarding_job_requisition`, `talent_onboarding_job_requisition_approval`, `talent_onboarding_job_requisition_budget`, `talent_onboarding_job_requisition_skill`, `talent_onboarding_sourcing_campaign`, `talent_onboarding_candidate_source`, `talent_onboarding_candidate`, `talent_onboarding_candidate_consent`, `talent_onboarding_candidate_profile`, `talent_onboarding_candidate_skill`, `talent_onboarding_candidate_stage_history`, `talent_onboarding_candidate_duplicate_check`, ...
-- Representative operations/APIs: `command_job_requisitions`, `command_job_requisitions_id_approvals`, `command_candidates`, `command_candidates_id_stage`, `command_interviews`, `command_background_checks`, `command_offers`, `command_offers_id_acceptance`, `command_onboarding_tasks`, `command_onboarding_provision`, `command_talent_events_inbox`, `command_talent_rules`, ...
-- Representative events: `EmployeeProvisioned`, `CandidateHired`.
-- Representative advanced capabilities: `event_sourced_talent_lifecycle`, `graph_relational_hiring_topology`, `multi_tenant_talent_isolation`, `schema_evolution_resilient_talent_schema`, `probabilistic_candidate_match_compliance_scoring`, `real_time_pipeline_onboarding_analytics`, `counterfactual_hiring_policy_simulation`, `temporal_hiring_demand_cycle_forecasting`, `autonomous_candidate_exception_resolution`, `semantic_candidate_instruction_parsing`, ...
+- Domain purpose: job requisitions, candidates, consents, interview and evaluation evidence, background checks, offers, onboarding tasks, provisioning handoffs, event evidence, rules, parameters, configuration, UI fragments, and release validation from requisition through day-one employee provisioning.
+- Owned boundary: requisitions, approvals, budgets, skills, sourcing campaigns, candidate sources, candidates, candidate consents, profiles, skills, stage histories, duplicate checks, privacy requests, interview plans/panels/schedules/feedback, evaluation evidence, scorecards, background checks, background packages, adjudications, adverse-action notices, offers, offer approvals, acceptances, compensation projections, onboarding tasks/templates/checklists, equipment requests, access preload projections, welcome notification projections, personnel identity projections, payroll worker projections, role projections, policy screenings, audit traces, candidate proofs, federation projections, carbon schedule windows, pipeline optimization, interview allocation, anomaly signals, candidate risk models, hiring forecasts, parsed instructions, seed data, schema extensions, controls, governed models, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: job requisition creation, candidate creation, candidate stage advancement, background check recording, offer extension and acceptance, onboarding task creation/completion, employee provisioning, AppGen-X inbox handling, rules, parameters, configuration, schema extensions, workbench, candidate proofs, policy screening, federation, identity verification, resilience drills, carbon-aware interviews, pipeline optimization, interview allocation, controls, governed models, and boundary verification.
+- Existing events and dependencies: emits `EmployeeProvisioned` and `CandidateHired`; consumes `RoleChanged` and `WorkerIdentityVerified`; integrates with personnel, access, payroll, notification, identity, and audit packages only through declared APIs/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `talent_onboarding_job_requisition`
+### 1. Requisition readiness gate
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Weak requisitions produce poor candidate matches, approval rework, budget leakage, and onboarding failures.
 
-**Improvement:** Extend `talent_onboarding_job_requisition` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `job_requisition_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for job title, department, manager, location, legal entity, worker type, headcount, budget, required skills, role projection, compensation range, opening reason, and approval status. Block opening until mandatory evidence is complete.
 
-### 2. Deep specialist lifecycle semantics for `talent_onboarding_job_requisition_approval`
+### 2. Requisition approval and headcount control
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Hiring starts a financial and organizational commitment, so approvals must prove headcount, budget, and manager authority.
 
-**Improvement:** Extend `talent_onboarding_job_requisition_approval` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `job_requisition_approval`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model approval routing by requisition type, manager, department, location, budget threshold, backfill/new headcount, and worker type. Store approval decisions, rejection reasons, delegated approvals, and policy version.
 
-### 3. Deep specialist lifecycle semantics for `talent_onboarding_job_requisition_budget`
+### 3. Requisition budget governance
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Recruiting without budget evidence creates offer delays and compensation exceptions.
 
-**Improvement:** Extend `talent_onboarding_job_requisition_budget` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `job_requisition_budget`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track budget source, approved range, currency, compensation projection, headcount allocation, expiry, and change history. Offer extension should reconcile against requisition budget.
 
-### 4. Deep specialist lifecycle semantics for `talent_onboarding_job_requisition_skill`
+### 4. Skill requirement taxonomy
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Poorly defined skills produce biased screening, inconsistent interviews, and bad matches.
 
-**Improvement:** Extend `talent_onboarding_job_requisition_skill` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `job_requisition_skill`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model required, preferred, trainable, certification, proficiency, and evidence expectations for each skill. Candidate scoring and interviews should cite skill definitions and avoid free-form ambiguity.
 
-### 5. Deep specialist lifecycle semantics for `talent_onboarding_sourcing_campaign`
+### 5. Sourcing campaign governance
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Sourcing strategy affects candidate quality, cost, diversity, time-to-fill, and compliance.
 
-**Improvement:** Extend `talent_onboarding_sourcing_campaign` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `sourcing_campaign`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add campaign goals, channels, target markets, budget, diversity objectives, consent language, source attribution, campaign dates, and effectiveness metrics. Campaigns should link to requisitions and candidate sources.
 
-### 6. Deep specialist lifecycle semantics for `talent_onboarding_candidate_source`
+### 6. Candidate source attribution
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Candidate source drives cost attribution, vendor performance, referral rewards, and compliance reporting.
 
-**Improvement:** Extend `talent_onboarding_candidate_source` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `candidate_source`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track source type, campaign, referrer/vendor, attribution confidence, first/last source, duplicate source conflict, and fee/referral eligibility. Preserve source lineage through hire.
 
-### 7. Deep specialist lifecycle semantics for `talent_onboarding_candidate`
+### 7. Candidate capture completeness
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Candidate records without identity, consent, skills, location, eligibility, and source evidence cannot be safely processed.
 
-**Improvement:** Extend `talent_onboarding_candidate` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `candidate_capture`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add candidate readiness checks for identity, contact, country, work authorization indicator, source, consent, resume/profile, skills, desired location, availability, and privacy notices. Incomplete candidates should remain in intake.
 
-### 8. Deep specialist lifecycle semantics for `talent_onboarding_candidate_consent`
+### 8. Candidate consent lifecycle
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Recruiting data requires consent, purpose limitation, withdrawal, and retention controls.
 
-**Improvement:** Extend `talent_onboarding_candidate_consent` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `consent_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model consent with purpose, source, language version, jurisdiction, capture timestamp, expiry, withdrawal, allowed processing, and downstream effects. Candidate actions should require current consent evidence.
 
-### 9. Deep specialist lifecycle semantics for `talent_onboarding_candidate_profile`
+### 9. Candidate privacy request workflow
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Candidates can request access, correction, deletion, restriction, portability, or consent withdrawal.
 
-**Improvement:** Extend `talent_onboarding_candidate_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `candidate_profile`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add privacy request lifecycle with identity verification, scope, due date, affected records, legal hold, deletion/anonymization action, response evidence, and exception reasons.
 
-### 10. Deep specialist lifecycle semantics for `talent_onboarding_candidate_skill`
+### 10. Duplicate candidate detection
 
-**Justification:** This owned table is part of the Talent Acquisition and Onboarding operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, sourcing, candidates, screening, interviews, offers, onboarding tasks, provisioning handoffs, controls, and talent-risk evidence.
+**Justification:** Duplicate candidates fragment stage history, interview feedback, consent, source attribution, and offer controls.
 
-**Improvement:** Extend `talent_onboarding_candidate_skill` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `candidate_skill`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Detect duplicates using email, phone, external profile, resume fingerprints, identity proofs, source identifiers, and semantic profile similarity. Route ambiguous duplicates to review with merge/split evidence.
 
-### 11. Make `command_job_requisitions` a complete command lifecycle
+### 11. Candidate profile enrichment
 
-**Justification:** High-value users need `command_job_requisitions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Profiles need structured, verified evidence rather than raw resumes.
 
-**Improvement:** Implement `command_job_requisitions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EmployeeProvisioned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extract education, experience, skills, certifications, work authorization, location, compensation expectations, availability, and portfolio evidence with confidence and reviewer approval. Keep raw documents linked but not authoritative.
 
-### 12. Make `command_job_requisitions_id_approvals` a complete command lifecycle
+### 12. Stage state machine
 
-**Justification:** High-value users need `command_job_requisitions_id_approvals` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Candidate pipeline stages must be deterministic and policy-compliant from application to provisioning or rejection.
 
-**Improvement:** Implement `command_job_requisitions_id_approvals` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CandidateHired`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement allowed transitions for application, screen, interview, assessment, background check, offer, accepted, hired, rejected, withdrawn, and provisioned. Store actor, reason, timestamp, policy hash, and candidate communication readiness.
 
-### 13. Make `command_candidates` a complete command lifecycle
+### 13. Fair screening controls
 
-**Justification:** High-value users need `command_candidates` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Screening recommendations can create bias or unlawful exclusion if opaque.
 
-**Improvement:** Implement `command_candidates` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EmployeeProvisioned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add screening scorecards with job-related criteria, evidence, weights, adverse-impact monitoring, explainability, reviewer override, and prohibited-attribute exclusion. Require human review for rejection recommendations.
 
-### 14. Make `command_candidates_id_stage` a complete command lifecycle
+### 14. Interview plan design
 
-**Justification:** High-value users need `command_candidates_id_stage` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Interviews should measure job requirements consistently without overburdening candidates or interviewers.
 
-**Improvement:** Implement `command_candidates_id_stage` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CandidateHired`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build interview plans with competencies, structured questions, evaluation rubric, required panel roles, sequence, duration, accommodation needs, and evidence requirements. Plans should align to requisition skills.
 
-### 15. Make `command_interviews` a complete command lifecycle
+### 15. Interview panel allocation
 
-**Justification:** High-value users need `command_interviews` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Panel choice affects fairness, availability, expertise, load, and candidate experience.
 
-**Improvement:** Implement `command_interviews` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EmployeeProvisioned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Allocate interviewers by skill coverage, role, seniority, availability, conflict-of-interest, diversity goals, workload, and training status. Show why panelists are selected or rejected.
 
-### 16. Make `command_background_checks` a complete command lifecycle
+### 16. Interview scheduling resilience
 
-**Justification:** High-value users need `command_background_checks` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Scheduling failures slow hiring and damage candidate experience.
 
-**Improvement:** Implement `command_background_checks` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CandidateHired`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add scheduling states, timezone handling, candidate availability, interviewer conflicts, reschedule reasons, SLA, reminders, no-show handling, and carbon-aware remote/in-person tradeoffs.
 
-### 17. Make `command_offers` a complete command lifecycle
+### 17. Structured feedback quality
 
-**Justification:** High-value users need `command_offers` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Interview feedback must be timely, job-related, comparable, and defensible.
 
-**Improvement:** Implement `command_offers` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EmployeeProvisioned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add feedback completeness checks, rubric scoring, evidence fields, prohibited-content detection, late feedback escalation, calibration, and confidence. Block stage advancement when mandatory feedback is missing.
 
-### 18. Make `command_offers_id_acceptance` a complete command lifecycle
+### 18. Evaluation evidence chain
 
-**Justification:** High-value users need `command_offers_id_acceptance` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Hiring decisions require traceable evidence across screens, interviews, assessments, checks, and offers.
 
-**Improvement:** Implement `command_offers_id_acceptance` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CandidateHired`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Create an evaluation evidence chain with source, competency, score, evaluator, confidence, timestamp, candidate visibility policy, and audit hash. Scorecards should cite evidence rather than summaries alone.
 
-### 19. Make `command_onboarding_tasks` a complete command lifecycle
+### 19. Candidate scorecard explainability
 
-**Justification:** High-value users need `command_onboarding_tasks` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Scorecards influence hire/no-hire decisions and must be explainable and fair.
 
-**Improvement:** Implement `command_onboarding_tasks` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EmployeeProvisioned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build scorecards with job-related dimensions, required skill coverage, interview feedback, assessment evidence, check status, risk flags, calibration, and decision rationale. Show sensitivity to weight changes.
 
-### 20. Make `command_onboarding_provision` a complete command lifecycle
+### 20. Background check package governance
 
-**Justification:** High-value users need `command_onboarding_provision` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Background checks vary by role, location, country, customer access, and regulatory requirements.
 
-**Improvement:** Implement `command_onboarding_provision` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CandidateHired`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Define check packages by role, jurisdiction, worker type, access level, and customer/regulatory exposure. Store provider, required checks, consent, expiry, and policy version.
 
-### 21. Operationalize `event_sourced_talent_lifecycle` as a governed decision system
+### 21. Background check adjudication
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves cycle time without hiding assumptions.
+**Justification:** Check results require nuanced, fair, and legally controlled review.
 
-**Improvement:** Promote `event_sourced_talent_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add adjudication states, result type, confidence threshold, relevance to role, reviewer, adverse-action eligibility, candidate response, decision reason, and audit evidence. Avoid automatic disqualification for ambiguous results.
 
-### 22. Operationalize `graph_relational_hiring_topology` as a governed decision system
+### 22. Adverse-action notice workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves policy exceptions without hiding assumptions.
+**Justification:** Some jurisdictions require notice, waiting period, evidence, and candidate response before adverse decisions.
 
-**Improvement:** Promote `graph_relational_hiring_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `policy_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model notices with reason, check reference, notice date, waiting period, response deadline, candidate response, final decision, and proof of delivery. Stage transitions should respect adverse-action status.
 
-### 23. Operationalize `multi_tenant_talent_isolation` as a governed decision system
+### 23. Offer readiness gate
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves pay accuracy without hiding assumptions.
+**Justification:** Offers should not be extended until requisition, budget, candidate, checks, compensation, and approvals are ready.
 
-**Improvement:** Promote `multi_tenant_talent_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `pay_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Check requisition status, budget, candidate stage, consent, check adjudication, compensation projection, offer approval policy, start date, and onboarding dependencies before offer extension.
 
-### 24. Operationalize `schema_evolution_resilient_talent_schema` as a governed decision system
+### 24. Compensation projection governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves workforce readiness without hiding assumptions.
+**Justification:** Offers require compensation data without payroll table access.
 
-**Improvement:** Promote `schema_evolution_resilient_talent_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `workforce_readiness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store compensation projection with range, currency, pay frequency, variable pay, equity/bonus references, benefits eligibility, source, approval, and freshness. Offer approvals should cite projection evidence.
 
-### 25. Operationalize `probabilistic_candidate_match_compliance_scoring` as a governed decision system
+### 25. Offer approval workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves employee provisioned throughput without hiding assumptions.
+**Justification:** Offers create binding commitments and can exceed budget, policy, or equity controls.
 
-**Improvement:** Promote `probabilistic_candidate_match_compliance_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `employee_provisioned_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add approval routing by amount, role, location, compensation variance, exception reason, relocation/sign-on terms, and hiring manager authority. Preserve approvals and reapproval triggers for changed offers.
 
-### 26. Operationalize `real_time_pipeline_onboarding_analytics` as a governed decision system
+### 26. Offer acceptance and expiry control
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves candidate hired throughput without hiding assumptions.
+**Justification:** Acceptance status drives onboarding, provisioning, payroll setup, and communication.
 
-**Improvement:** Promote `real_time_pipeline_onboarding_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `candidate_hired_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track offer sent, viewed, accepted, declined, expired, rescinded, renegotiated, and withdrawn states with timestamps, candidate signature evidence, start date, and dependency triggers.
 
-### 27. Operationalize `counterfactual_hiring_policy_simulation` as a governed decision system
+### 27. Candidate communication readiness
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves cycle time without hiding assumptions.
+**Justification:** Hiring operations require communication but must preserve notification package boundaries.
 
-**Improvement:** Promote `counterfactual_hiring_policy_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate communication-ready facts for interview invites, feedback requests, offer messages, adverse notices, onboarding reminders, and welcome sequences. Handoff via declared notification projections, not shared notification tables.
 
-### 28. Operationalize `temporal_hiring_demand_cycle_forecasting` as a governed decision system
+### 28. Onboarding checklist generation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves policy exceptions without hiding assumptions.
+**Justification:** Day-one readiness depends on role, location, worker type, jurisdiction, equipment, access, payroll, and compliance tasks.
 
-**Improvement:** Promote `temporal_hiring_demand_cycle_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `policy_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate checklists from task templates, role projections, location, worker type, start date, equipment needs, compliance documents, and access requirements. Show why each task is included.
 
-### 29. Operationalize `autonomous_candidate_exception_resolution` as a governed decision system
+### 29. Onboarding task SLA management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves pay accuracy without hiding assumptions.
+**Justification:** Late tasks cause day-one failures, access gaps, equipment delays, and payroll setup issues.
 
-**Improvement:** Promote `autonomous_candidate_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `pay_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track task owner, due date, dependency, SLA, blocker, completion evidence, escalation, exception reason, and downstream provisioning impact. Workbench should rank tasks by day-one risk.
 
-### 30. Operationalize `semantic_candidate_instruction_parsing` as a governed decision system
+### 30. Equipment request lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Talent Acquisition and Onboarding and measurably improves workforce readiness without hiding assumptions.
+**Justification:** Equipment readiness affects onboarding and requires coordination without sharing procurement or asset tables.
 
-**Improvement:** Promote `semantic_candidate_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `workforce_readiness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model equipment requests with role need, location, due date, approved device type, delivery status projection, exception, and receipt evidence. Preserve handoff boundary to procurement/asset packages.
 
-### 31. Create simulation-grade governance for `TALENT_ONBOARDING_DATABASE_URL` and `TALENT_ONBOARDING_DATABASE_URL`
+### 31. Access preload governance
 
-**Justification:** Complete Talent Acquisition and Onboarding coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** New hires need access on day one, but premature or excessive access creates security risk.
 
-**Improvement:** Add a policy cockpit where `TALENT_ONBOARDING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TALENT_ONBOARDING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate access preload requests with role, start date, manager, location, least-privilege bundles, approval, expiry, and activation condition. Use declared access APIs/projections only.
 
-### 32. Create simulation-grade governance for `TALENT_ONBOARDING_EVENT_TOPIC` and `TALENT_ONBOARDING_EVENT_TOPIC`
+### 32. Personnel identity provisioning handoff
 
-**Justification:** Complete Talent Acquisition and Onboarding coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Talent must hand off hire facts cleanly to personnel identity without writing employee master tables.
 
-**Improvement:** Add a policy cockpit where `TALENT_ONBOARDING_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TALENT_ONBOARDING_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate provisioning payloads with candidate identity, accepted offer, start date, role, manager, location, consent/privacy scope, and proof hash. Emit `CandidateHired` and `EmployeeProvisioned` idempotently.
 
-### 33. Create simulation-grade governance for `TALENT_ONBOARDING_RETRY_LIMIT` and `TALENT_ONBOARDING_RETRY_LIMIT`
+### 33. Payroll worker projection handoff
 
-**Justification:** Complete Talent Acquisition and Onboarding coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Payroll readiness starts during onboarding but payroll remains a separate package.
 
-**Improvement:** Add a policy cockpit where `TALENT_ONBOARDING_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TALENT_ONBOARDING_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Produce payroll worker projection handoffs with pay group, compensation projection, start date, legal entity, bank readiness status, and missing setup tasks. Do not write payroll-owned tables.
 
-### 34. Create simulation-grade governance for `TALENT_ONBOARDING_DATABASE_URL` and `TALENT_ONBOARDING_DATABASE_URL`
+### 34. Candidate proof generation
 
-**Justification:** Complete Talent Acquisition and Onboarding coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Auditors may need proof of eligibility, consent, checks, offer, and hire decision without full candidate file disclosure.
 
-**Improvement:** Add a policy cockpit where `TALENT_ONBOARDING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TALENT_ONBOARDING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate redacted candidate proofs for consent, stage, evaluation, check, offer, acceptance, and provisioning status with hashes, policy version, and verification API.
 
-### 35. Create simulation-grade governance for `TALENT_ONBOARDING_EVENT_TOPIC` and `TALENT_ONBOARDING_EVENT_TOPIC`
+### 35. Immutable talent audit trace
 
-**Justification:** Complete Talent Acquisition and Onboarding coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Hiring records are legally sensitive and must be reconstructable.
 
-**Improvement:** Add a policy cockpit where `TALENT_ONBOARDING_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TALENT_ONBOARDING_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Hash-chain requisition changes, approvals, candidate capture, consent, stages, interviews, feedback, checks, adjudications, offers, tasks, provisioning, agent previews, and event handling.
 
-### 36. Upgrade `TalentOnboardingWorkbench` into a full specialist command center
+### 36. Talent policy screening
 
-**Justification:** The PBC UI must expose the complete Talent Acquisition and Onboarding surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Hiring actions must comply with country, worker type, consent, background check, offer, retention, and provisioning policies.
 
-**Improvement:** Expand `TalentOnboardingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Screen requisition, candidate creation, stage movement, interview scheduling, check adjudication, offer, onboarding task, and provisioning actions. Store policy version, attributes evaluated, decision, explanation, and override route.
 
-### 37. Upgrade `TalentOnboardingDetail` into a full specialist command center
+### 37. Hiring pipeline analytics
 
-**Justification:** The PBC UI must expose the complete Talent Acquisition and Onboarding surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Recruiters need real-time pipeline health across requisitions, sources, stages, interviews, offers, and onboarding.
 
-**Improvement:** Expand `TalentOnboardingDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add analytics for funnel conversion, cycle time, source quality, stage aging, interview load, offer acceptance, onboarding SLA, diversity proxy safeguards, and requisition risk. Cite source records and freshness.
 
-### 38. Upgrade `TalentOnboardingWorkbench` into a full specialist command center
+### 38. Hiring forecast and capacity model
 
-**Justification:** The PBC UI must expose the complete Talent Acquisition and Onboarding surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Talent teams need to anticipate hiring demand, cycle time, recruiter load, and onboarding capacity.
 
-**Improvement:** Expand `TalentOnboardingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Forecast time-to-fill, interview demand, offer acceptance, background check delay, task workload, and provisioning risk by role, location, source, and season. Include confidence and drift evidence.
 
-### 39. Upgrade `TalentOnboardingDetail` into a full specialist command center
+### 39. Candidate risk model governance
 
-**Justification:** The PBC UI must expose the complete Talent Acquisition and Onboarding surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Match, attrition, compliance, and exception models influence candidate treatment and must be governed.
 
-**Improvement:** Expand `TalentOnboardingDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add model registry, feature lineage, training windows, approval status, explainability, fairness/adverse-impact checks, drift monitoring, rollback, and release evidence for every talent model.
 
-### 40. Upgrade `TalentOnboardingWorkbench` into a full specialist command center
+### 40. Talent anomaly detection
 
-**Justification:** The PBC UI must expose the complete Talent Acquisition and Onboarding surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Abnormal hiring patterns can indicate fraud, bias, integration defects, or process breakdown.
 
-**Improvement:** Expand `TalentOnboardingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies in source spikes, duplicate candidates, stage loops, feedback delays, offer exceptions, check failures, task overdue clusters, and provisioning retries. Route to review with explanations.
 
-### 41. Prove cross-PBC federation for `POST /job-requisitions` and `RoleChanged`
+### 41. Stochastic hiring exposure model
 
-**Justification:** Talent Acquisition and Onboarding must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Hiring exposure spans compliance, attrition, cycle time, offer decline, check delay, onboarding failure, and provisioning risk.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /job-requisitions` and consumed event `RoleChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Model exposure by requisition, candidate, role, location, source, stage, and start date. Provide mitigation actions and confidence intervals.
 
-### 42. Prove cross-PBC federation for `POST /job-requisitions/{id}/approvals` and `WorkerIdentityVerified`
+### 42. AppGen-X event reliability cockpit
 
-**Justification:** Talent Acquisition and Onboarding must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Talent onboarding depends on role and identity events and emits candidate/hire provisioning events.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /job-requisitions/{id}/approvals` and consumed event `WorkerIdentityVerified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add inbox/outbox/dead-letter panels for idempotency, duplicates, retries, handler version, payload lineage, projection freshness, replay eligibility, and downstream provisioning effects.
 
-### 43. Prove cross-PBC federation for `POST /candidates` and `RoleChanged`
+### 43. Boundary proof for talent ownership
 
-**Justification:** Talent Acquisition and Onboarding must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Talent must integrate with personnel, payroll, access, notifications, recruiting providers, and audit without shared tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /candidates` and consumed event `RoleChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add static/runtime checks proving commands touch only talent-owned tables plus AppGen-X runtime tables. Include failing fixtures for direct personnel, payroll, access, notification, provider, and audit table access.
 
-### 44. Prove cross-PBC federation for `POST /candidates/{id}/stage` and `WorkerIdentityVerified`
+### 44. Talent workbench coverage
 
-**Justification:** Talent Acquisition and Onboarding must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Recruiters, coordinators, managers, HR, and auditors need the full hiring and onboarding surface in UI.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /candidates/{id}/stage` and consumed event `WorkerIdentityVerified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand UI into requisition console, sourcing campaigns, candidate intake, consent/privacy, pipeline board, duplicate review, interview planning, scheduling, feedback, scorecards, checks, adverse action, offer board, onboarding tasks, equipment, provisioning, analytics, rules, parameters, configuration, events, and agent panels.
 
-### 45. Temporal reconstruction and bitemporal audit for Talent Acquisition and Onboarding
+### 45. Agent-safe candidate document intake
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** The talent_onboarding chatbot should parse resumes, job descriptions, interview notes, check results, offer instructions, and onboarding documents without unsafe writes.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add intake skills that extract candidate/requisition facts, map them to owned tables, validate rules/permissions/privacy, reject foreign-table mutations, and produce side-effect-free previews with confidence, risks, approvals, and expected AppGen-X events.
 
-### 46. Bulk operations and migration-grade controls for Talent Acquisition and Onboarding
+### 46. Agent-safe hiring and onboarding planning
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** AI can improve recruiter throughput only if decisions remain human-reviewed and policy-bound.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Require agent plans for requisitions, candidate stages, interviews, checks, offers, tasks, and provisioning to list command, permission, owned tables, idempotency key, emitted event, candidate impact, privacy basis, rollback limits, and human approval.
 
-### 47. Specialist edge-case playbooks for Talent Acquisition and Onboarding
+### 47. Carbon-aware interview and onboarding scheduling
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Interview and onboarding logistics can reduce travel and energy while preserving candidate experience.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add carbon-aware scheduling for interviews, onboarding sessions, equipment delivery windows, and non-urgent tasks with remote/in-person tradeoffs, fairness constraints, and candidate preference.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Talent Acquisition and Onboarding
+### 48. Resilience drills for screening and provisioning
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Background providers, identity verification, access preload, and notification routes fail during active hiring.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add drills for provider outage, duplicate event, identity verification delay, notification failure, provisioning retry, dead-letter replay, and offer expiry handling. Store drill evidence in release gates.
 
-### 49. Continuous control testing and operational assurance for Talent Acquisition and Onboarding
+### 49. Talent onboarding readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether the package is ready for production hiring operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from requisition setup, approval rules, consent policy, candidate capture, interview workflows, check packages, offer controls, onboarding templates, provisioning handoffs, event reliability, UI coverage, boundary proof, controls, model governance, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Talent Acquisition and Onboarding
+### 50. End-to-end hire-to-provision proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Talent Onboarding PBC must prove it can run the full lifecycle from approved requisition to day-one provisioning.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering requisition, approval, sourcing, candidate capture, consent, screening, interview, background check, offer, acceptance, onboarding tasks, access preload, personnel/payroll projections, emitted `CandidateHired` and `EmployeeProvisioned`, UI evidence, controls, and agent explanation.
