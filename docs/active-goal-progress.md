@@ -3087,3 +3087,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Verification passed: Python compile for touched DSL modules, focused package
   manifest tests, `tests/test_dsl_tooling_contracts.py -q`, scoped diff
   whitespace check, and restricted-name scan. Commit: `fefbd493`.
+- Current LSP completion coverage pass makes context-aware completion claims
+  executable. `appgen.completion-coverage.v1` now reports required, detected,
+  and missing completion source families, and `appgen lsp` includes it as
+  `completionCoverage`. The provider now covers keywords, snippets, tables,
+  fields, lookup paths, components, handler events, operation targets, flow
+  states, PBC keys/contracts, package targets, deployment units, LLM providers,
+  and agent skills. Verification passed: Python compile for touched DSL
+  modules, focused LSP completion/doctor tests, `tests/test_dsl_tooling_contracts.py -q`,
+  scoped diff whitespace check, and restricted-name scan. Commit: `923e933d`.
