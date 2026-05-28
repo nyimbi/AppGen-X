@@ -1217,7 +1217,7 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             print(f"fail {gap['name']}: {gap.get('error', '')}")
         return
     if payload.get("format") == "appgen.explain-report.v1":
-        print(json.dumps(payload, indent=2, sort_keys=True, default=list))
+        _emit_explain_text(payload)
         return
     if payload.get("format") == "appgen.doctor-report.v1":
         status = "ok" if payload.get("ok") else "failed"
@@ -1234,6 +1234,34 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
     print(json.dumps(payload, indent=2, sort_keys=True, default=list))
+
+
+def _emit_explain_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    kind = payload.get("kind", "unknown")
+    query = payload.get("query") or payload.get("message", "")
+    print(f"explain {kind} {status}: {query}")
+    if kind == "diagnostic":
+        explanation = payload.get("explanation", {})
+        print(f"{explanation.get('code')}: {explanation.get('title')}")
+        print(explanation.get("summary", ""))
+        print(f"docs: {explanation.get('docs_url')}")
+        return
+    if kind == "symbol":
+        symbol = payload.get("symbol") or {}
+        if symbol:
+            print(f"{symbol.get('id')}: {symbol.get('kind')} {symbol.get('name')}")
+            parent = symbol.get("parent")
+            if parent:
+                print(f"parent: {parent}")
+            references = symbol.get("references", ())
+            print(f"references: {len(references)}")
+        return
+    if kind == "handler":
+        matches = payload.get("matches", ())
+        print(f"matches: {len(matches)}")
+        for match in matches:
+            print(f"{match.get('from')} -> {match.get('to')} [{match.get('label')}]")
 
 
 def _graph_as_text(graph: dict, output_format: str) -> str:

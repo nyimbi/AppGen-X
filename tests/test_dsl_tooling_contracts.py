@@ -1101,6 +1101,20 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
         text=True,
         capture_output=True,
     )
+    explain_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "explain", str(source_path), "--symbol", "table.Invoice"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    explain_json = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "explain", str(source_path), "--diagnostic", "AGX0303", "--json"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
     doctor_text = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "doctor"],
         check=False,
@@ -1146,6 +1160,12 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "format changed: idempotent" in format_check.stdout
     assert graph_suite_text.returncode == 0, graph_suite_text.stderr
     assert "graph-suite ok: 9 kinds, 3 formats" in graph_suite_text.stdout
+    assert explain_text.returncode == 0, explain_text.stderr
+    assert explain_text.stdout.startswith("explain symbol ok: table.Invoice")
+    assert "table.Invoice: table Invoice" in explain_text.stdout
+    assert not explain_text.stdout.lstrip().startswith("{")
+    assert explain_json.returncode == 0, explain_json.stderr
+    assert json.loads(explain_json.stdout)["format"] == "appgen.explain-report.v1"
     assert doctor_text.returncode == 0, doctor_text.stderr
     assert doctor_text.stdout.startswith("doctor ok")
     assert generate_text.returncode == 0, generate_text.stderr
