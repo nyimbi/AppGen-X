@@ -1772,7 +1772,7 @@ def lsp_code_actions_dsl(text: str, *, source_name: str | None = None) -> dict:
                 "data": {"id": action["id"], "changed": action["changed"]},
             }
         )
-    actions.extend(_lsp_create_handler_actions(text, source_name=source_name))
+    actions.extend(_lsp_required_quick_actions(text, source_name=source_name))
     return {"format": "appgen.lsp-code-actions.v1", "ok": True, "actions": tuple(actions)}
 
 
@@ -2018,40 +2018,213 @@ def _lsp_occurrence_ranges(source: str, token: str) -> tuple[dict, ...]:
     return tuple(ranges)
 
 
-def _lsp_create_handler_actions(text: str, *, source_name: str | None = None) -> tuple[dict, ...]:
+def _lsp_required_quick_actions(text: str, *, source_name: str | None = None) -> tuple[dict, ...]:
     actions = []
     report = lint_report_dsl(text, source_name=source_name)
     for diagnostic in report["diagnostics"]:
-        if diagnostic["code"] != "AGX0403":
-            continue
-        token = _diagnostic_token(diagnostic["message"])
-        if not token:
-            match = re.search(r"Unknown handler target:\s+[A-Za-z_][A-Za-z0-9_]*\.([A-Za-z_][A-Za-z0-9_]*)", diagnostic["message"])
-            token = match.group(1) if match else None
-        if not token:
-            continue
-        actions.append(
-            {
-                "title": f"Create operation {token}",
-                "kind": "quickfix",
-                "diagnostics": (_lsp_diagnostic(diagnostic),),
-                "edit": {
-                    "changes": {
-                        source_name or "memory://appgen": (
-                            {
-                                "range": {
-                                    "start": {"line": len((text or "").splitlines()), "character": 0},
-                                    "end": {"line": len((text or "").splitlines()), "character": 0},
-                                },
-                                "newText": f"\noperation {token} {{\n  step validate -> complete\n}}\n",
-                            },
-                        )
-                    }
-                },
-                "data": {"id": "create_operation_from_handler", "target": token},
-            }
-        )
+        actions.extend(_lsp_required_actions_for_diagnostic(text or "", diagnostic, source_name=source_name))
+    actions.extend(_lsp_missing_package_actions(text or "", source_name=source_name))
+    return tuple({action["data"]["id"] + ":" + action["title"]: action for action in actions}.values())
+
+
+def _lsp_required_actions_for_diagnostic(source: str, diagnostic: dict, *, source_name: str | None = None) -> tuple[dict, ...]:
+    code = diagnostic.get("code")
+    message = diagnostic.get("message", "")
+    actions: list[dict] = []
+    if code in {"AGX0301", "AGX0401"}:
+        table = _missing_table_name(message)
+        if table:
+            actions.append(_lsp_append_action(source, source_name, diagnostic, "create_missing_table", f"Create table {table}", f"\ntable {table} {{\n  id: int pk\n  name: string\n}}\n"))
+    if code in {"AGX0302", "AGX0402", "AGX0502"}:
+        table, field = _missing_field_target(message, source)
+        if table and field and "." not in field:
+            actions.append(_lsp_insert_in_block_action(source, source_name, diagnostic, "create_missing_field", f"Create field {table}.{field}", "table", table, f"  {field}: string\n"))
+    if code == "AGX0303":
+        view, binding = _view_binding_from_message(message)
+        table = _view_table_for_view(source, view)
+        field = binding.rsplit(".", 1)[-1] if binding else "display_value"
+        if table:
+            actions.append(_lsp_insert_in_block_action(source, source_name, diagnostic, "create_calculated_field_for_binding", f"Create calculated field {table}.{field}", "table", table, f"  {field}: string = \"TODO\"\n"))
+            actions.append(_lsp_insert_in_block_action(source, source_name, diagnostic, "add_lookup_directive", f"Add lookup directive for {binding}", "table", table, f"  lookup {field} ({binding})\n"))
+    if code == "AGX0403":
+        target = _handler_target_from_message(message)
+        if target:
+            actions.append(_lsp_append_action(source, source_name, diagnostic, "create_operation_from_handler", f"Create operation {target}", f"\noperation {target} {{\n  step validate -> complete\n}}\n"))
+            actions.append(_lsp_append_action(source, source_name, diagnostic, "create_flow_from_handler", f"Create flow {target}", f"\nflow {target} {{\n  draft -> complete\n}}\n"))
+    if code == "AGX0901":
+        pbc = _diagnostic_token(message)
+        if pbc:
+            actions.append(_lsp_append_action(source, source_name, diagnostic, "register_or_import_pbc_manifest", f"Declare PBC {pbc}", f"\npbc {pbc} {{\n  label: \"{pbc}\"\n  datastore: postgresql\n}}\n"))
+    if code == "AGX0902":
+        contract = _missing_contract_name(message)
+        if contract:
+            actions.append(_lsp_append_action(source, source_name, diagnostic, "create_event_contract", f"Create event contract {contract}", f"\nevent {contract} {{\n  topic: pbc.events\n}}\n"))
+    if code == "AGX1002":
+        agent = _agent_name_from_message(message)
+        if agent:
+            actions.append(_lsp_insert_in_block_action(source, source_name, diagnostic, "add_missing_permission_for_agent_skill", f"Add permission for {agent}", "agent", agent, "  GeneratedResource: write\n"))
+    if code == "AGX0702":
+        actions.append(_lsp_replace_action(source, source_name, diagnostic, "replace_secret_literal_with_env", "Replace secret literal with env binding", r"api_key\s*:\s*['\"][^'\"]+['\"]", "api_key: OPENAI_API_KEY"))
+    if diagnostic.get("legacy_code") in {"unknown_view_field", "unknown_component_field", "unknown_rule_field"} or diagnostic.get("hint"):
+        token = _diagnostic_token(message)
+        hint = diagnostic.get("hint") or _nearest_symbol_hint(source, token)
+        if token and hint:
+            actions.append(_lsp_replace_action(source, source_name, diagnostic, "replace_typo_with_nearest_symbol", f"Replace {token} with {hint}", rf"\b{re.escape(token)}\b", hint, first_only=True))
     return tuple(actions)
+
+
+def _lsp_missing_package_actions(source: str, *, source_name: str | None = None) -> tuple[dict, ...]:
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    targets = set(semantic.get("app", {}).get("targets", ()))
+    packages = semantic.get("packages", {})
+    declared_targets = {
+        target
+        for package in packages.values()
+        for target in package.get("options", {}).get("target", ()) + package.get("options", {}).get("targets", ())
+    }
+    missing = tuple(sorted(targets - declared_targets))
+    actions = []
+    for target in missing:
+        package_name = f"{_pascal_case(target)}Package"
+        actions.append(_lsp_append_action(source, source_name, None, "add_package_for_app_target", f"Add package for {target}", f"\npackage {package_name} {{\n  target: {target}\n  smoke: launch\n}}\n"))
+    if semantic.get("flows") and not semantic.get("contracts", {}).get("test"):
+        first_flow = next(iter(semantic["flows"]))
+        actions.append(_lsp_append_action(source, source_name, None, "create_smoke_test_declaration", f"Create smoke test for {first_flow}", f"\ntest {first_flow}Smoke {{\n  run happy_path -> {first_flow}\n}}\n"))
+    return tuple(actions)
+
+
+def _lsp_append_action(source: str, source_name: str | None, diagnostic: dict | None, action_id: str, title: str, new_text: str) -> dict:
+    line_count = len(source.splitlines())
+    return _lsp_edit_action(source_name, diagnostic, action_id, title, ({"range": {"start": {"line": line_count, "character": 0}, "end": {"line": line_count, "character": 0}}, "newText": new_text},))
+
+
+def _lsp_insert_in_block_action(source: str, source_name: str | None, diagnostic: dict | None, action_id: str, title: str, kind: str, name: str, new_text: str) -> dict:
+    line = _closing_line_for_block(source, kind, name)
+    if line is None:
+        return _lsp_append_action(source, source_name, diagnostic, action_id, title, f"\n{kind} {name} {{\n{new_text}}}\n")
+    return _lsp_edit_action(source_name, diagnostic, action_id, title, ({"range": {"start": {"line": line, "character": 0}, "end": {"line": line, "character": 0}}, "newText": new_text},))
+
+
+def _lsp_replace_action(
+    source: str,
+    source_name: str | None,
+    diagnostic: dict | None,
+    action_id: str,
+    title: str,
+    pattern: str,
+    replacement: str,
+    *,
+    first_only: bool = False,
+) -> dict:
+    regex = re.compile(pattern)
+    matches = tuple(regex.finditer(source))
+    selected = matches[:1] if first_only else matches
+    edits = tuple(
+        {"range": _source_range(source, match.start(), match.end()), "newText": match.expand(replacement)}
+        for match in selected
+    )
+    return _lsp_edit_action(source_name, diagnostic, action_id, title, edits)
+
+
+def _lsp_edit_action(source_name: str | None, diagnostic: dict | None, action_id: str, title: str, edits: tuple[dict, ...]) -> dict:
+    return {
+        "title": title,
+        "kind": "quickfix",
+        "diagnostics": (_lsp_diagnostic(diagnostic),) if diagnostic else (),
+        "edit": {"changes": {source_name or "memory://appgen": edits}},
+        "data": {"id": action_id, "changed": bool(edits)},
+    }
+
+
+def _missing_table_name(message: str) -> str | None:
+    for pattern in (r"Unknown view table: [^.]+ for ([A-Za-z_][A-Za-z0-9_]*)", r"Unknown (?:relation|reference) target table: ([A-Za-z_][A-Za-z0-9_]*)"):
+        match = re.search(pattern, message)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _missing_field_target(message: str, source: str) -> tuple[str | None, str | None]:
+    for pattern in (
+        r"Unknown (?:relation|reference) target field: ([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown rule field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown (?:view|component) field: ([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)",
+    ):
+        match = re.search(pattern, message)
+        if match and len(match.groups()) == 2:
+            left, right = match.groups()
+            return (_view_table_for_view(source, left) or left, right)
+        if match and len(match.groups()) == 1:
+            table = _rule_table_from_message(message, source)
+            return (table, match.group(1))
+    return None, None
+
+
+def _view_binding_from_message(message: str) -> tuple[str | None, str | None]:
+    match = re.search(r"(?:Unresolved lookup path|Multi-hop lookup chain breaks): ([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_.]*)", message)
+    return (match.group(1), match.group(2)) if match else (None, None)
+
+
+def _handler_target_from_message(message: str) -> str | None:
+    match = re.search(r"Unknown handler target:\s+[A-Za-z_][A-Za-z0-9_]*\.([A-Za-z_][A-Za-z0-9_]*)", message)
+    return match.group(1) if match else _diagnostic_token(message)
+
+
+def _missing_contract_name(message: str) -> str | None:
+    match = re.search(r"Unknown cross-PBC contract: .*?(?:event|domain_event|command|api)\s+([A-Za-z_][A-Za-z0-9_]*)", message)
+    return match.group(1) if match else None
+
+
+def _agent_name_from_message(message: str) -> str | None:
+    match = re.search(r"Agent write-capable skill has no permission: ([A-Za-z_][A-Za-z0-9_]*)\.", message)
+    return match.group(1) if match else None
+
+
+def _view_table_for_view(source: str, view_name: str | None) -> str | None:
+    if not view_name:
+        return None
+    match = re.search(rf"\bview\s+{re.escape(view_name)}\s+for\s+([A-Za-z_][A-Za-z0-9_]*)", source)
+    return match.group(1) if match else None
+
+
+def _rule_table_from_message(message: str, source: str) -> str | None:
+    match = re.search(r"Unknown rule field: ([A-Za-z_][A-Za-z0-9_]*)\.", message)
+    if not match:
+        return None
+    rule = match.group(1)
+    rule_match = re.search(rf"\brule\s+{re.escape(rule)}\s+for\s+([A-Za-z_][A-Za-z0-9_]*)", source)
+    return rule_match.group(1) if rule_match else None
+
+
+def _closing_line_for_block(source: str, kind: str, name: str) -> int | None:
+    pattern = re.compile(rf"\b{kind}\s+{re.escape(name)}\b[^\{{]*\{{")
+    match = pattern.search(source)
+    if not match:
+        return None
+    depth = 1
+    for index in range(match.end(), len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source.count("\n", 0, index)
+    return None
+
+
+def _nearest_symbol_hint(source: str, token: str | None) -> str | None:
+    if not token:
+        return None
+    semantic = semantic_model_dsl(source)
+    candidates = [symbol["name"] for symbol in semantic.get("symbols", {}).values()]
+    if not candidates:
+        candidates = [
+            field
+            for fields in _declared_table_fields_for_suggestions(source).values()
+            for field in fields
+        ]
+    matches = difflib.get_close_matches(token, candidates, n=1)
+    return matches[0] if matches else None
 
 
 def designer_sync_report_dsl(

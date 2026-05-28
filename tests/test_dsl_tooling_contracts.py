@@ -333,6 +333,94 @@ def test_lsp_service_exposes_code_action_for_missing_handler_target() -> None:
     assert any(action["data"]["id"] == "create_operation_from_handler" for action in report["codeAction"]["actions"])
 
 
+def test_lsp_code_actions_cover_required_tooling_quick_fixes() -> None:
+    source = """
+    app Bad { targets: web, mobile }
+    table Customer { id: int pk; name: string }
+    table Invoice {
+      id: int pk
+      total: decimal
+      customer_id: int -> Customer.missing_id
+    }
+    view MissingForm for Missing { Main: id }
+    view InvoiceForm for Invoice {
+      Main: totl, customer.missing_name
+      on Save -> SubmitInvoice
+    }
+    rule InvoicePolicy for Invoice { missing_status == active }
+    composition Suite {
+      include pbc missing_pbc version 1.0.0
+      include pbc gl_core version 1.0.0
+      include pbc ap_automation version 1.0.0
+      connect ap_automation domain_event MissingEvent -> gl_core domain_event MissingCommand
+    }
+    llm ApiModel { provider: openai; api_key: "sk-secret" }
+    agent Writer {
+      provider: ApiModel
+      tools: write
+    }
+    """
+
+    report = lsp_service_dsl(source, source_name="bad.appgen")
+    action_ids = {action["data"]["id"] for action in report["codeAction"]["actions"]}
+
+    assert {
+        "create_missing_table",
+        "create_missing_field",
+        "create_calculated_field_for_binding",
+        "create_operation_from_handler",
+        "create_flow_from_handler",
+        "add_lookup_directive",
+        "replace_typo_with_nearest_symbol",
+        "replace_secret_literal_with_env",
+    } <= action_ids
+
+
+def test_lsp_code_actions_cover_pbc_and_agent_quick_fixes_on_parseable_sources() -> None:
+    pbc_source = """
+    app BadPbc { targets: web }
+    table Thing { id: int pk }
+    view ThingForm for Thing { Main: id }
+    composition Suite {
+      include pbc missing_pbc version 1.0.0
+      include pbc gl_core version 1.0.0
+      include pbc ap_automation version 1.0.0
+      connect ap_automation domain_event MissingEvent -> gl_core domain_event MissingCommand
+    }
+    """
+    agent_source = """
+    app BadAgent { targets: web }
+    table Thing { id: int pk }
+    view ThingForm for Thing { Main: id }
+    llm LocalModel { provider: ollama; mode: local }
+    agent Writer {
+      provider: LocalModel
+      tools: write
+    }
+    """
+
+    pbc_actions = {action["data"]["id"] for action in lsp_service_dsl(pbc_source, source_name="pbc.appgen")["codeAction"]["actions"]}
+    agent_actions = {action["data"]["id"] for action in lsp_service_dsl(agent_source, source_name="agent.appgen")["codeAction"]["actions"]}
+
+    assert {"create_event_contract", "register_or_import_pbc_manifest"} <= pbc_actions
+    assert "add_missing_permission_for_agent_skill" in agent_actions
+
+
+def test_lsp_code_actions_add_package_and_smoke_test_for_valid_sources() -> None:
+    source = """
+    app Packaged { targets: web, mobile }
+    table Book { id: int pk; title: string }
+    view BookForm for Book { Main: title }
+    flow PublishBook { draft -> live }
+    """
+
+    report = lsp_service_dsl(source, source_name="packaged.appgen")
+    action_ids = {action["data"]["id"] for action in report["codeAction"]["actions"]}
+
+    assert "add_package_for_app_target" in action_ids
+    assert "create_smoke_test_declaration" in action_ids
+
+
 def test_appgen_lsp_subcommand_emits_json_contract(tmp_path: Path) -> None:
     path = tmp_path / "finance.appgen"
     path.write_text(TOOLING_SAMPLE, encoding="utf-8")
