@@ -1,418 +1,417 @@
-# Clinical Care Coordination PBC Better-Than-World-Class Improvement Backlog
+# Clinical Care Coordination PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `clinical_care_coordination`. The backlog is specific to care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This manually curated backlog identifies 50 high-impact improvements for `clinical_care_coordination`. The items are specific to care plans, care teams, referrals, encounters, care gaps, transitions of care, outcome measures, patient coordination operations, and the safeguards needed for an AppGen-X PBC that owns clinical coordination state without sharing tables.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `clinical_care_coordination`.
-- Domain purpose: Care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows.
+- Domain purpose: care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows.
 - Owned domain tables: `patient_care_plan`, `care_team`, `referral`, `encounter`, `care_gap`, `transition_plan`, `outcome_measure`, `clinical_care_coordination_policy_rule`, `clinical_care_coordination_runtime_parameter`, `clinical_care_coordination_schema_extension`, `clinical_care_coordination_control_assertion`, `clinical_care_coordination_governed_model`.
 - Public APIs: `POST /patient-care-plans`, `POST /care-teams`, `POST /referrals`, `POST /encounters`, `POST /care-gaps`, `GET /clinical-care-coordination-workbench`.
 - Emitted AppGen-X events: `ClinicalCareCoordinationCreated`, `ClinicalCareCoordinationUpdated`, `ClinicalCareCoordinationApproved`, `ClinicalCareCoordinationExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `patient_care_plan_management`, `clinical_care_coordination_workflow`, `clinical_care_coordination_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `clinical_care_coordination_event_sourced_operational_history`, `clinical_care_coordination_multi_tenant_policy_isolation`, `clinical_care_coordination_schema_evolution_resilience`, `clinical_care_coordination_autonomous_anomaly_detection`, `clinical_care_coordination_semantic_document_instruction_understanding`, `clinical_care_coordination_predictive_risk_scoring`, `clinical_care_coordination_counterfactual_scenario_simulation`, `clinical_care_coordination_cryptographic_audit_proofs`.
+- UI fragments: `ClinicalCareCoordinationWorkbench`, `ClinicalCareCoordinationDetail`, `ClinicalCareCoordinationAssistantPanel`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Patient Care Plan
+### 1. Longitudinal Patient Care Plan State Machine
 
-**Justification:** This closes shallow CRUD gaps by making every clinical care coordination transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Care plans are longitudinal clinical commitments, not simple tasks. The PBC needs a state model that distinguishes draft goals, active interventions, suspended interventions, partially met goals, clinically contraindicated actions, patient-declined steps, and closed outcomes.
 
-**Improvement:** Define a complete state machine for `patient_care_plan` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Replace the generic `patient_care_plan` lifecycle with a clinical care-plan state machine covering problem linkage, goal hierarchy, planned intervention, responsible discipline, patient preference, target date, review cadence, barrier, variance, and closure reason. Include explicit transitions for care-plan revision after a new encounter, medication change, discharge event, or patient refusal.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ClinicalCareCoordinationCreated, ClinicalCareCoordinationUpdated, ClinicalCareCoordinationApproved. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Package-local tests must prove invalid transitions are rejected, care-plan revisions emit AppGen-X events, closed goals preserve historical targets, and the workbench shows active, overdue, blocked, patient-declined, and achieved plan segments without reading foreign tables.
 
-### 2. Domain intake and normalization for Care Team
+### 2. Interdisciplinary Care Team Roster With Role Semantics
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows, not only already-clean records.
+**Justification:** A clinical care team is not just a list of users. Different team members have clinical authority, communication preferences, coverage periods, escalation responsibility, and consent restrictions.
 
-**Improvement:** Build a typed intake pipeline for `care_team` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `care_team` into a roster model with primary coordinator, attending clinician, specialist, social worker, pharmacist, caregiver, community resource, interpreter, and external partner roles. Track coverage windows, backup contacts, escalation routes, communication channel, patient consent scope, and whether a participant can receive protected details.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests should validate role-specific permissions, overlapping coverage, consent-limited participants, escalation lookup, and UI filtering by active/inactive team members. The assistant must refuse to disclose restricted care-plan data to a care-team member without matching consent scope.
 
-### 3. Specialist validation rules for Referral
+### 3. Referral Lifecycle With Closure Accountability
 
-**Justification:** World-class Clinical Care Coordination requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Referral leakage is a major failure mode in care coordination: referrals are ordered but not scheduled, scheduled but not attended, completed but not resulted, or resulted but not incorporated into the care plan.
 
-**Improvement:** Add a domain rule compiler for `referral` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a referral lifecycle spanning need identified, referral drafted, authorization required, authorization obtained, sent, accepted, scheduled, completed, result received, result reconciled, declined, expired, and closed. Capture specialty, urgency, reason, receiving organization, expected turnaround, authorization evidence, appointment details, result document pointer, and closure accountability.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `CLINICAL_CARE_COORDINATION_DATABASE_URL, CLINICAL_CARE_COORDINATION_EVENT_TOPIC, CLINICAL_CARE_COORDINATION_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests should cover urgent referrals, missing authorization, duplicate referrals to the same specialty, expired referrals, external result receipt, and result reconciliation into care-plan updates. Workbench queues must separate unsent, unscheduled, overdue, awaiting result, and unreconciled referrals.
 
-### 4. Parameter governance and tuning for Encounter
+### 4. Encounter-Derived Coordination Tasks
 
-**Justification:** Parameters are where operations teams tune clinical care coordination; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Coordination work often originates in clinical encounters, but generic encounter records do not prove that follow-up actions were extracted, assigned, and tracked.
 
-**Improvement:** Expose bounded runtime parameters for `encounter` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Make `encounter` intake create explicit coordination tasks for follow-up visits, labs, imaging, medication reviews, home support, care-gap closure, patient education, and social-needs referrals. Each task should retain source encounter, source note span, clinical priority, due date, owner role, and whether patient outreach is required.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Encounter parsing tests must create tasks from structured payloads and document instructions, preserve source traceability, and prevent duplicate tasks when the same encounter is replayed. The workbench must show encounter-derived tasks grouped by patient, due date, and responsible role.
 
-### 5. Deep owned schema expansion for Care Gap
+### 5. Care Gap Taxonomy Specific to Preventive, Chronic, Safety, and Access Gaps
 
-**Justification:** A single payload column cannot express the full surface of care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows or prove cross-PBC boundaries are respected.
+**Justification:** A single care-gap status hides important differences between preventive screening gaps, chronic disease monitoring, medication safety, social needs, access barriers, and transition follow-up.
 
-**Improvement:** Extend the owned schema around `care_gap` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Replace generic `care_gap` records with a typed taxonomy: preventive screening, immunization, chronic monitoring, medication reconciliation, high-risk medication, behavioral health follow-up, social determinant, post-discharge follow-up, missed appointment, and patient outreach gap. Add severity, source, guideline basis, denominator eligibility, exclusion reason, and closure evidence.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `clinical_care_coordination_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove each gap type can be opened, excluded, deferred, closed, reopened, and linked to a care-plan intervention. UI queues must distinguish guideline gaps from operational outreach gaps and show the evidence needed for closure.
 
-### 6. Event-sourced operational history for Transition Plan
+### 6. Transition-of-Care Packet Integrity
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in clinical care coordination.
+**Justification:** Transitions between hospital, clinic, specialist, home health, and community settings are high-risk moments where missing medication lists or follow-up instructions can harm patients.
 
-**Improvement:** Capture every material mutation of `transition_plan` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `transition_plan` with discharge source, receiving setting, medication reconciliation status, pending test results, follow-up appointments, durable equipment, home services, patient instructions, caregiver confirmation, transportation plan, and readmission risk. Include packet completeness scoring before transition closure.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block transition closure when medication reconciliation, follow-up appointment, or patient instruction evidence is missing for configured high-risk transitions. AppGen-X events must distinguish packet completed, packet incomplete, handoff accepted, and follow-up overdue.
 
-### 7. Projection and read-model strategy for Outcome Measure
+### 7. Outcome Measure Registry With Baseline and Target Semantics
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Outcome measures are only meaningful when the PBC knows the baseline, target, measurement method, timing, and whether the measure is patient-reported, clinician-observed, or derived.
 
-**Improvement:** Create purpose-built projections for `outcome_measure`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `outcome_measure` to support baseline value, target value, measure owner, unit, collection cadence, source, numerator/denominator where applicable, patient-reported outcome flag, confidence, and attribution to care-plan goals. Support trend classification: improving, stable, worsening, unreliable, and missing.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests should verify baseline capture, target comparison, missing measurement detection, outlier detection, and trend classification. The workbench must show whether each active care-plan goal has measurable outcome evidence.
 
-### 8. Exception taxonomy and remediation for Clinical Care Coordination Policy Rule
+### 8. Patient Preference and Goal Concordance
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** World-class coordination should not optimize only clinical tasks; it must respect patient preferences, priorities, language, caregiver involvement, transportation constraints, and willingness to act.
 
-**Improvement:** Model the full exception taxonomy for `clinical_care_coordination_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add preference capture to care plans and transitions: preferred language, contact channel, caregiver contact permission, appointment constraints, cultural considerations, education format, care goals in patient wording, and declined interventions. Use these preferences when scheduling outreach, assigning tasks, and suggesting next actions.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove the assistant includes patient preferences in drafted care-plan updates, blocks outreach on disallowed channels, and flags interventions that conflict with documented preferences. UI must display preference conflicts before approval.
 
-### 9. Predictive risk scoring for Clinical Care Coordination Runtime Parameter
+### 9. Social Needs and Barrier Tracking
 
-**Justification:** The package should warn users before clinical care coordination work fails, breaches policy, or creates downstream cost.
+**Justification:** Coordination often fails because of transportation, food insecurity, housing instability, cost, caregiver availability, or digital access barriers.
 
-**Improvement:** Add predictive risk scoring for `clinical_care_coordination_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add barrier records linked to care gaps, referrals, transitions, and care-plan interventions. Model barrier type, severity, patient-reported source, resource referral, follow-up date, responsible role, and resolution evidence. Include barrier-aware risk scoring and task routing.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show unresolved barriers increase risk and block false closure of related gaps. Workbench panels should surface patients whose clinical care plan is blocked by non-clinical barriers.
 
-### 10. Counterfactual simulation for Clinical Care Coordination Schema Extension
+### 10. Medication Reconciliation Handoff
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows operations.
+**Justification:** Medication discrepancies are a core coordination risk after encounters, referrals, and transitions.
 
-**Improvement:** Provide scenario simulation for `clinical_care_coordination_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add medication reconciliation checkpoints that track source medication list, patient-reported medications, discontinued medications, new prescriptions, duplicate therapies, high-risk interactions, reconciliation owner, and unresolved discrepancy reason. Keep the data inside this PBC as coordination evidence, with external medication systems represented only through events or APIs.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove reconciliation tasks are opened after transition events, discrepancies are not silently closed, and care-plan updates reference reconciliation evidence. The assistant must draft discrepancy summaries but require human confirmation before closing medication-related tasks.
 
-### 11. Autonomous anomaly triage for Clinical Care Coordination Control Assertion
+### 11. Closed-Loop Patient Outreach
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Outreach attempts are not enough; coordination requires evidence that the patient or caregiver was reached, understood the next step, and had barriers addressed.
 
-**Improvement:** Implement anomaly detection for `clinical_care_coordination_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add outreach attempts, channel, script version, contact result, patient understanding confirmation, callback request, interpreter need, barrier discovered, and next action. Support closed-loop states: attempted, reached, confirmed, declined, unreachable, escalated, and no further outreach permitted.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove outreach attempts are idempotent, do not violate consent preferences, and drive care-gap or referral state changes only when confirmation evidence exists. UI must show outreach history without mixing it into clinical encounter notes.
 
-### 12. Semantic document understanding for Clinical Care Coordination Governed Model
+### 12. Care Coordination Risk Stratification
 
-**Justification:** Document-heavy work in Clinical Care Coordination cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Coordinators need to know which patients require immediate attention across many plans, gaps, referrals, and transitions.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `clinical_care_coordination_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build a risk score that combines overdue care gaps, unresolved referrals, transition risk, outcome deterioration, social barriers, missed outreach, recent exceptions, and stale care-team coverage. Provide explainable components and configurable weights through `clinical_care_coordination_runtime_parameter`.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must demonstrate low, moderate, high, and critical risk cases with explanations. The workbench should sort queues by risk while showing the contributing reasons and last recalculation event.
 
-### 13. Agent-safe CRUD execution for Patient Care Plan
+### 13. Duplicate and Fragmented Patient Coordination Detection
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Coordination records can fragment when the same patient is represented by multiple identifiers or multiple care plans are opened for the same episode.
 
-**Improvement:** Add a professional chatbot skill for `patient_care_plan` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add duplicate detection for care plans, referrals, transitions, and care gaps using patient identifier projections, encounter timing, specialty, diagnosis/problem references, and source-event lineage. Do not merge automatically; create review tasks with safe suggested merges.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove suspected duplicates are flagged, automatic mutation is blocked, reviewer decisions are audited, and merge suggestions preserve both source histories. No shared patient master table may be mutated.
 
-### 14. Workbench persona coverage for Care Team
+### 14. Clinical Priority and Urgency Rules
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** A two-week routine follow-up and a same-day safety concern cannot share the same workflow semantics.
 
-**Improvement:** Design dedicated workbench panels for `care_team`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add clinical priority rules for referrals, care gaps, transitions, and outreach based on severity, age of task, transition context, high-risk medication, worsening outcome measure, and clinician-entered urgency. Include timer policies and escalation thresholds.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests should validate priority escalation, timer pause/resume, due-date recalculation, and override justification. UI should display the current priority reason and the policy version that assigned it.
 
-### 15. Cross-PBC dependency contracts for Referral
+### 15. Guideline and Measure Versioning
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Preventive care and chronic care guidance changes over time; closure evidence must be evaluated against the correct version.
 
-**Improvement:** Represent dependencies for `referral` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Version guideline basis, measure definitions, denominator rules, exclusion reasons, and closure evidence for each care gap and outcome measure. Add impact analysis for guideline changes so coordinators know which patients need reassessment.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show historical gap decisions remain tied to their original rule version while new evaluations use the active version. Workbench must show guideline update impact lists.
 
-### 16. API completeness and versioning for Encounter
+### 16. Care Plan Goal Hierarchy
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Care plans often include nested goals: a broad outcome goal, several clinical goals, and operational interventions.
 
-**Improvement:** Expand APIs beyond POST /patient-care-plans, POST /care-teams, POST /referrals to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model parent-child care-plan goals with goal type, intervention type, target outcome, responsible role, dependency, and blocker. Support goal-level closure and care-plan-level closure separately.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify a care plan cannot close while required child goals remain active unless an approved override reason exists. UI should show goal trees and blocked dependencies.
 
-### 17. Typed emitted-event expansion for Care Gap
+### 17. Referral Network Performance Evidence
 
-**Justification:** Consumers should understand what happened in Clinical Care Coordination without parsing opaque payloads.
+**Justification:** Coordination quality depends on whether referral destinations accept, schedule, complete, and return results reliably.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `care_gap` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build package-owned referral-destination performance projections from referral states: acceptance lag, scheduling lag, no-show rate, result return lag, denial rate, and unreconciled result count. Do not store external provider master data beyond coordination evidence.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove projections update from AppGen-X events and remain tenant-scoped. Workbench should show destination performance when choosing or reviewing a referral.
 
-### 18. Consumed-event handlers for Transition Plan
+### 18. Transition Readmission Watchlist
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Post-discharge patients can deteriorate quickly if follow-up, medication, equipment, or home support tasks fail.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a watchlist that monitors transition-plan completeness, outcome signals, missed outreach, unresolved barriers, missing follow-up appointment, and care-team coverage. Trigger escalation when risk crosses configured thresholds.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create readmission watchlist entries from transition plans and prove closure requires follow-up evidence. AppGen-X events should identify watchlist opened, escalated, and resolved.
 
-### 19. Retry and dead-letter operations for Outcome Measure
+### 19. Patient Education Assignment and Comprehension
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows.
+**Justification:** Giving instructions is not the same as confirming comprehension.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `outcome_measure` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add education assignments linked to care plans and transitions with topic, literacy level, language, delivery channel, responsible role, comprehension check, teach-back evidence, and unresolved questions.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block education task closure without comprehension evidence where policy requires it. The assistant can draft education summaries but must record source documents and require confirmation.
 
-### 20. RBAC and attribute policy for Clinical Care Coordination Policy Rule
+### 20. Consent-Aware Caregiver Collaboration
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Caregivers are central to coordination but may have limited authority or restricted information access.
 
-**Improvement:** Extend permissions for `clinical_care_coordination_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add caregiver collaboration records with relationship, consent scope, expiration, allowed communication topics, preferred channel, emergency contact flag, and revocation history. Link caregiver tasks to outreach and transition plans.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove caregiver communications are blocked outside consent scope and that consent revocation prevents future assistant disclosures. UI must clearly mark caregiver access limits.
 
-### 21. Continuous control testing for Clinical Care Coordination Runtime Parameter
+### 21. Coordination Command Center Workbench
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** The current workbench must become an operational command center, not a generic record list.
 
-**Improvement:** Embed control assertions for `clinical_care_coordination_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Redesign `ClinicalCareCoordinationWorkbench` around coordinator queues: high-risk patients, overdue referrals, unreconciled results, active transitions, blocked care gaps, outreach due today, care-team coverage gaps, and control failures. Include quick actions, filters, and patient timeline summaries.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `clinical_care_coordination_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI contract tests must prove each queue maps to package-owned tables or declared events, respects permissions, and exposes counts, aging, and action availability.
 
-### 22. Cryptographic audit proofing for Clinical Care Coordination Schema Extension
+### 22. Patient Timeline Projection
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Coordinators need a single temporal view across care-plan changes, encounters, referrals, outreach, gaps, transitions, and outcomes.
 
-**Improvement:** Hash-chain material `clinical_care_coordination_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build a patient coordination timeline projection sourced from package-owned events and consumed AppGen-X events. Include event type, actor, source, linked entity, summary, risk impact, and whether it changed the care plan.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must reconstruct a timeline in order, deduplicate events, and preserve redaction rules. The detail UI must show the timeline without querying foreign tables.
 
-### 23. Privacy, consent, and secrecy controls for Clinical Care Coordination Control Assertion
+### 23. Source Document and Instruction Traceability
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Assistant-generated coordination changes need traceability back to the document text, instruction, or source event that justified them.
 
-**Improvement:** Add field-level privacy classifications for `clinical_care_coordination_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add source evidence records for care plans, referrals, transitions, and care gaps: document ID, source span, extracted field, confidence, reviewer, confirmation timestamp, and resulting command.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove every assistant-drafted mutation includes source evidence and cannot be approved without reviewer confirmation when confidence is below policy threshold.
 
-### 24. Multi-tenant operating model for Clinical Care Coordination Governed Model
+### 24. Care Team Coverage Gap Detection
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Patients can be left unmanaged when a coordinator is unavailable, a specialist leaves the team, or coverage windows expire.
 
-**Improvement:** Support tenant-specific `clinical_care_coordination_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Detect gaps in care-team coverage by role and time window. Open exceptions when primary coordinator, responsible clinician, interpreter, or required specialist coverage is missing for active high-risk care plans or transitions.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove coverage windows are evaluated daily and after team changes. Workbench must show coverage gaps with recommended replacement role, not just a generic exception.
 
-### 25. Schema evolution and extension registry for Patient Care Plan
+### 25. Patient No-Show and Missed-Contact Patterning
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Repeated no-shows and missed contacts are coordination signals that should change outreach strategy and barrier assessment.
 
-**Improvement:** Make schema extensions for `patient_care_plan` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add pattern detection for missed appointments, missed calls, unreturned messages, repeated declined referrals, and incomplete follow-ups. Link patterns to barriers, outreach strategy, and care-plan revision recommendations.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show repeated missed contact opens a barrier review and changes recommended outreach channel according to patient preference and policy.
 
-### 26. Master data quality gates for Care Team
+### 26. Care Gap Exclusion Governance
 
-**Justification:** Many clinical care coordination errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Exclusions can be clinically valid or can hide incomplete work; the PBC must distinguish them.
 
-**Improvement:** Define reference-data contracts for `care_team`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model exclusion reason, evidence type, expiration, approving role, source guideline, and re-evaluation date for care gaps. Support temporary exclusions, permanent contraindications, patient refusal, duplicate measure, and not clinically indicated.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject unsupported exclusions, reopen expired exclusions, and include exclusions in audit evidence. UI must show exclusion rationale and expiration.
 
-### 27. Bulk operations and correction workflows for Referral
+### 27. Result Reconciliation Workflow
 
-**Justification:** Enterprise-scale Clinical Care Coordination users cannot operate one record at a time.
+**Justification:** Referral and test results create little value if they are received but not reconciled into the care plan.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `referral` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add result reconciliation records linked to referrals, encounters, outcome measures, and care-plan goals. Capture result source, clinical significance, action required, responsible role, reviewed by, and care-plan impact.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove results can be received, marked no action required, or converted into care-plan updates, and unreconciled results remain visible as blocking work.
 
-### 28. Lifecycle collaboration and tasking for Encounter
+### 28. High-Risk Medication and Allergy Coordination
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Allergies and high-risk medications influence referrals, transitions, education, and follow-up even when medication management is owned elsewhere.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `encounter` without leaking into external shared task tables. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store coordination evidence for high-risk medication and allergy alerts received through events, and link them to care-plan tasks, transition plans, and patient education. Do not mutate the source medication or allergy system.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Consumed-event handler tests must show allergy/medication risk opens coordination tasks and preserves source lineage. UI must mark medication-related tasks separately.
 
-### 29. SLA and service-level governance for Care Gap
+### 29. Patient Cohort Worklists
 
-**Justification:** Users need to know when care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Coordinators often manage cohorts such as post-discharge, diabetes, oncology navigation, maternal health, frailty, or complex care.
 
-**Improvement:** Define SLAs for `care_gap` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add cohort definitions and worklists based on package-owned evidence and declared event inputs. Support cohort criteria, membership explanation, coordinator assignment, SLA policy, and cohort-level outcome measures.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove cohort membership updates after events and that users can drill from a cohort metric to patient-level coordination work.
 
-### 30. Operational analytics cockpit for Transition Plan
+### 30. Escalation Ladder and Command Authorization
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Clinical coordination has escalation pathways: coordinator, supervisor, clinician, specialist, case conference, emergency escalation.
 
-**Improvement:** Build analytics for `transition_plan`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add escalation ladder rules that decide who can approve overdue referrals, urgent transition failures, patient safety exceptions, or conflicting care instructions. Include escalation reason, target role, due time, and escalation outcome.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must prove only authorized roles can resolve high-severity escalations. Events must distinguish escalation opened, reassigned, resolved, and breached.
 
-### 31. Decision intelligence and recommendations for Outcome Measure
+### 31. Care Conference Planning
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Complex patients often require interdisciplinary care conferences that produce decisions, assignments, and follow-ups.
 
-**Improvement:** Generate ranked recommendations for `outcome_measure` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add care conference records with agenda, participants, patient/caregiver involvement, decisions, follow-up tasks, unresolved disagreements, and next review date. Link conference outputs to care-plan goals and referrals.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove conference decisions generate tasks and preserve participant attendance. UI must show conference history on the patient timeline.
 
-### 32. Quality and completeness scoring for Clinical Care Coordination Policy Rule
+### 32. Patient Safety Exception Playbooks
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Some coordination failures carry immediate patient safety risk and need structured playbooks rather than free-form notes.
 
-**Improvement:** Score each `clinical_care_coordination_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Create playbooks for urgent referral not scheduled, critical result unreconciled, failed discharge follow-up, medication discrepancy, unreachable high-risk patient, and missing caregiver support. Each playbook should specify detection, required evidence, escalation role, allowed commands, and closure criteria.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove each playbook can be opened, escalated, resolved, and audited. The assistant must guide the playbook but cannot close it without required evidence.
 
-### 33. End-to-end scenario library for Clinical Care Coordination Runtime Parameter
+### 33. Coordination Quality Measures
 
-**Justification:** Release evidence is stronger when every important clinical care coordination behavior has executable examples.
+**Justification:** The PBC should measure whether coordination improves outcomes, not merely whether tasks are completed.
 
-**Improvement:** Create seeded scenarios for `clinical_care_coordination_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add quality measures such as referral completion rate, result reconciliation time, post-discharge follow-up within policy, care-gap closure, outreach success, care-plan review timeliness, and outcome target attainment.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Metric tests must prove numerator, denominator, exclusions, and time windows. Workbench analytics must expose measure definitions and drill-through records.
 
-### 34. Domain ontology and terminology model for Clinical Care Coordination Schema Extension
+### 34. Clinician Burden and Task Appropriateness Controls
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Poor coordination systems overload clinicians with administrative tasks or route clinical decisions to non-clinical users.
 
-**Improvement:** Add an ontology for `clinical_care_coordination_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Classify tasks by clinical decision, administrative coordination, patient outreach, evidence collection, and supervisor approval. Route tasks only to appropriate roles and track clinician-review burden.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject routing clinical decision tasks to unauthorized roles and report clinician-review workload in analytics.
 
-### 35. Advanced search and investigation for Clinical Care Coordination Control Assertion
+### 35. Care Plan Review Cadence Automation
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Care plans become stale unless review cadence is enforced based on risk and condition.
 
-**Improvement:** Provide search across `clinical_care_coordination_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add review schedules driven by risk tier, transition status, outcome trend, unresolved barriers, and policy. Open review tasks, escalate overdue reviews, and mark whether the review changed the care plan.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove reviews are scheduled, skipped only with approved reason, and escalated when overdue. UI must show next review due date and staleness.
 
-### 36. Reconciliation and closure controls for Clinical Care Coordination Governed Model
+### 36. Multi-Program Coordination
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Patients may be enrolled in multiple programs that conflict or overlap: chronic care, behavioral health, maternal care, oncology navigation, or social support.
 
-**Improvement:** Add reconciliation workflows that compare `clinical_care_coordination_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add program enrollment evidence, program-specific goals, coordinator ownership, conflicting task detection, shared outcome measures, and program exit reasons. Keep ownership inside this PBC for coordination records only.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove overlapping programs can share a patient timeline without duplicating care gaps or violating program-specific permissions.
 
-### 37. Regulatory and policy reporting for Patient Care Plan
+### 37. Transition Medication, Equipment, and Service Readiness Checklist
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Transition readiness depends on concrete supports, not just discharge status.
 
-**Improvement:** Generate domain reporting packs for `patient_care_plan` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add readiness checklist categories for medications obtained, equipment delivered, home health scheduled, transportation arranged, caregiver prepared, follow-up booked, warning signs taught, and emergency plan understood.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block high-risk transition closure when readiness checklist items are missing and policy requires them. Workbench must display missing readiness evidence prominently.
 
-### 38. Carbon and resource awareness for Care Team
+### 38. Coordination Data Retention and Legal Hold
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Coordination records include sensitive evidence and must support retention, amendment, and legal hold rules.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `care_team` decisions and batch operations. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retention category, legal hold flag, amendment history, deletion eligibility, export restriction, and redaction profile to coordination records and documents.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove legal hold blocks deletion, retention policies are tenant-scoped, and exports apply redaction profiles.
 
-### 39. Resilience and offline behavior for Referral
+### 39. Assistant Draft Quality Scoring
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** The chatbot should draft care-plan updates and referral summaries, but users need confidence, missing evidence, and risk explanation.
 
-**Improvement:** Define resilience modes for `referral`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Score assistant drafts for source evidence coverage, clinical ambiguity, missing required fields, patient preference conflicts, policy compliance, and required reviewer role. Display the score before approval.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove low-confidence drafts require review, unsupported claims are flagged, and every accepted assistant draft emits audit evidence.
 
-### 40. Human-in-the-loop automation for Encounter
+### 40. Coordination-Specific Natural Language Commands
 
-**Justification:** Automation should accelerate care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows while preserving accountability for high-risk decisions.
+**Justification:** Generic CRUD commands are insufficient for coordinators who use phrases like “close the loop,” “reconcile the consult,” or “open a post-discharge watch.”
 
-**Improvement:** Set explicit automation boundaries for `encounter`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add natural language skill intents for open referral, schedule follow-up, close care gap, record outreach, reconcile result, update transition plan, add barrier, create care conference, and escalate patient safety exception.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must map domain phrases to safe command previews and reject ambiguous instructions. The assistant must always show patient, entity, action, and evidence before mutation.
 
-### 41. Package discovery and fit scoring for Care Gap
+### 41. Patient-Level Dependency Freshness
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** A patient coordination summary can be misleading if consumed policy, identity, eligibility, or supplier/provider qualification events are stale.
 
-**Improvement:** Improve package metadata so composition can explain when `clinical_care_coordination` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Score freshness for consumed events and projections affecting each patient. Display stale dependency warnings on care plans, referrals, and transitions with the last event time and fallback behavior.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must simulate stale consumed events and prove the workbench warns users while commands either block or require override according to policy.
 
-### 42. Configuration deployment pipeline for Transition Plan
+### 42. Coordinated Bulk Outreach Campaigns
 
-**Justification:** Configuration changes can materially alter clinical care coordination; they need the same discipline as code releases.
+**Justification:** Care-gap closure and transition follow-up often require outreach to many patients while preserving individualized consent and preferences.
 
-**Improvement:** Add configuration promotion for `transition_plan` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add bulk outreach campaign support for cohorts, with per-patient channel selection, exclusion rules, interpreter needs, retry cadence, response capture, and care-gap update mapping.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show campaigns generate individual outreach records, respect consent, avoid duplicate contacts, and update care gaps only after patient-specific evidence.
 
-### 43. Workbench command completeness for Outcome Measure
+### 43. Clinical Handoff Summary Generation
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Specialists, discharge teams, and community partners need concise handoff summaries that include only relevant coordination evidence.
 
-**Improvement:** Expose every high-value operation for `outcome_measure` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Generate handoff summaries from care plan, referral status, transition readiness, barriers, recent outreach, outcome trends, and unresolved tasks. Include redaction rules and recipient-specific scope.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove summaries differ by recipient permission and include source references. The assistant can draft summaries but must not send them without confirmation.
 
-### 44. Document packet and evidence vault for Clinical Care Coordination Policy Rule
+### 44. Care Plan Conflict Detection
 
-**Justification:** Documents often carry the legal or operational truth behind care plans, referrals, encounters, care teams, transitions, outcomes, and patient coordination workflows.
+**Justification:** Multiple plans and referrals can create conflicting instructions, duplicate outreach, or incompatible appointments.
 
-**Improvement:** Create a governed evidence vault for `clinical_care_coordination_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Detect conflicts between care-plan interventions, referral instructions, transition tasks, patient preferences, and care-team ownership. Create conflict records with suggested resolution paths.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove conflicts are detected, false positives can be suppressed with reason, and approved resolutions update affected records through audited commands.
 
-### 45. Data correction and amendment history for Clinical Care Coordination Runtime Parameter
+### 45. Patient Navigation Pathway Templates
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Common pathways such as post-discharge, oncology navigation, pregnancy care, complex chronic care, and behavioral health require repeatable but configurable coordination patterns.
 
-**Improvement:** Support formal amendments for `clinical_care_coordination_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add pathway templates with default goals, tasks, review cadence, referral types, outcome measures, education items, and escalation rules. Templates should instantiate care plans while preserving patient-specific edits.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must instantiate multiple pathways, verify required tasks, and prove template version remains attached to generated care-plan items.
 
-### 46. External participant collaboration for Clinical Care Coordination Schema Extension
+### 46. Outcome-Driven Closure Review
 
-**Justification:** Many clinical care coordination workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Closing tasks without confirming outcomes can make coordination look complete while patient goals remain unmet.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `clinical_care_coordination_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require closure review that checks outcome measures, open barriers, unresolved referrals, patient understanding, and care-team signoff before closing major care-plan goals or transition plans.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject closure when required outcome or barrier evidence is missing and allow policy-approved exceptions with audit proof.
 
-### 47. Advanced dependency freshness scoring for Clinical Care Coordination Control Assertion
+### 47. Coordinator Workload Balancing
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Uneven workload creates safety risk and missed follow-up.
 
-**Improvement:** Score freshness and reliability of dependencies used by `clinical_care_coordination_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Track coordinator caseload by risk-adjusted patient count, overdue items, active transitions, urgent referrals, outreach tasks, and coverage absences. Recommend reassignment while preserving care-team accountability.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate workload scores and produce reassignment suggestions without directly changing ownership until approved.
 
-### 48. Model governance and explainability for Clinical Care Coordination Governed Model
+### 48. Patient-Reported Update Intake
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Clinical Care Coordination.
+**Justification:** Patients and caregivers often provide updates about symptoms, barriers, appointments, or medication issues between encounters.
 
-**Improvement:** For every predictive or agentic feature around `clinical_care_coordination_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add patient-reported update intake with category, urgency, free-text summary, structured extracted details, attachment evidence, triage decision, and linked care-plan or transition action.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must parse patient-reported updates, triage urgent updates, and require clinical review for safety-sensitive content.
 
-### 49. High-scale partitioning and archival for Patient Care Plan
+### 49. Full Coordination Release Simulation
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Release readiness should prove a complete patient coordination story, not isolated unit behavior.
 
-**Improvement:** Plan scale behavior for `patient_care_plan`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `clinical_care_coordination_create_patient_care_plan_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add an end-to-end release simulation: high-risk patient admitted, transition plan opened, medication discrepancy found, referral ordered, care gap identified, outreach completed, barrier resolved, outcome measured, and care plan revised.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must run side-effect-free in package tests, emit AppGen-X evidence, verify owned-table boundaries, and produce workbench projections for each step.
 
-### 50. Release gate expansion for Care Team
+### 50. Composition DSL and Agent Skill Completeness
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** In composed applications, this PBC must expose its care coordination abilities through DSL and the unified application agent, not only package-local Python functions.
 
-**Improvement:** Expand release gates for `clinical_care_coordination` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `clinical_care_coordination_record_care_team_workflow` where applicable, and make it visible in `ClinicalCareCoordinationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend the composition metadata for `clinical_care_coordination` to express owned tables, APIs, events, UI fragments, rules, parameters, agent skills, patient timeline projection, risk queues, and release gates. Include skill descriptions for care-plan update, referral closure, transition watchlist, outreach documentation, and result reconciliation.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_care_coordination` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL generation tests must prove composed apps include the care coordination workbench, assistant skills, AppGen-X event contracts, and package-local runtime evidence without exposing stream-engine choices or shared-table dependencies.
