@@ -1,418 +1,263 @@
-# Mining Safety and Permits PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `mining_safety_permits`. The backlog is specific to mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Mining Safety and Permits Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `mining_safety_permits`.
-- Domain purpose: Mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence.
-- Owned domain tables: `mine_permit`, `shift_roster`, `blast_plan`, `safety_inspection`, `incident_report`, `regulatory_submission`, `control_action`, `mining_safety_permits_policy_rule`, `mining_safety_permits_runtime_parameter`, `mining_safety_permits_schema_extension`, `mining_safety_permits_control_assertion`, `mining_safety_permits_governed_model`.
-- Public APIs: `POST /mine-permits`, `POST /shift-rosters`, `POST /blast-plans`, `POST /safety-inspections`, `POST /incident-reports`, `GET /mining-safety-permits-workbench`.
-- Emitted AppGen-X events: `MiningSafetyPermitsCreated`, `MiningSafetyPermitsUpdated`, `MiningSafetyPermitsApproved`, `MiningSafetyPermitsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `mine_permit_management`, `mining_safety_permits_workflow`, `mining_safety_permits_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `mining_safety_permits_event_sourced_operational_history`, `mining_safety_permits_multi_tenant_policy_isolation`, `mining_safety_permits_schema_evolution_resilience`, `mining_safety_permits_autonomous_anomaly_detection`, `mining_safety_permits_semantic_document_instruction_understanding`, `mining_safety_permits_predictive_risk_scoring`, `mining_safety_permits_counterfactual_scenario_simulation`, `mining_safety_permits_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Mine Permit
-
-**Justification:** This closes shallow CRUD gaps by making every mining safety and permits transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `mine_permit` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for MiningSafetyPermitsCreated, MiningSafetyPermitsUpdated, MiningSafetyPermitsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Shift Roster
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `shift_roster` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Blast Plan
-
-**Justification:** World-class Mining Safety and Permits requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `blast_plan` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `MINING_SAFETY_PERMITS_DATABASE_URL, MINING_SAFETY_PERMITS_EVENT_TOPIC, MINING_SAFETY_PERMITS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Safety Inspection
-
-**Justification:** Parameters are where operations teams tune mining safety and permits; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `safety_inspection` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Incident Report
-
-**Justification:** A single payload column cannot express the full surface of mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `incident_report` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `mining_safety_permits_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Regulatory Submission
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in mining safety and permits.
-
-**Improvement:** Capture every material mutation of `regulatory_submission` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Control Action
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `control_action`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Mining Safety Permits Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `mining_safety_permits_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Mining Safety Permits Runtime Parameter
-
-**Justification:** The package should warn users before mining safety and permits work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `mining_safety_permits_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Mining Safety Permits Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence operations.
-
-**Improvement:** Provide scenario simulation for `mining_safety_permits_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Mining Safety Permits Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `mining_safety_permits_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Mining Safety Permits Governed Model
-
-**Justification:** Document-heavy work in Mining Safety and Permits cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `mining_safety_permits_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Mine Permit
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `mine_permit` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Shift Roster
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `shift_roster`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Blast Plan
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `blast_plan` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Safety Inspection
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /mine-permits, POST /shift-rosters, POST /blast-plans to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Incident Report
-
-**Justification:** Consumers should understand what happened in Mining Safety and Permits without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `incident_report` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Regulatory Submission
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Control Action
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `control_action` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Mining Safety Permits Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `mining_safety_permits_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Mining Safety Permits Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `mining_safety_permits_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `mining_safety_permits_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Mining Safety Permits Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `mining_safety_permits_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Mining Safety Permits Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `mining_safety_permits_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Mining Safety Permits Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `mining_safety_permits_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Mine Permit
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `mine_permit` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Shift Roster
-
-**Justification:** Many mining safety and permits errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `shift_roster`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Blast Plan
-
-**Justification:** Enterprise-scale Mining Safety and Permits users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `blast_plan` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Safety Inspection
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `safety_inspection` without leaking into external shared task tables. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Incident Report
-
-**Justification:** Users need to know when mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `incident_report` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Regulatory Submission
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `regulatory_submission`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Control Action
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `control_action` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Mining Safety Permits Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `mining_safety_permits_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Mining Safety Permits Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important mining safety and permits behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `mining_safety_permits_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Mining Safety Permits Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `mining_safety_permits_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Mining Safety Permits Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `mining_safety_permits_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Mining Safety Permits Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `mining_safety_permits_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Mine Permit
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `mine_permit` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Shift Roster
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `shift_roster` decisions and batch operations. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Blast Plan
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `blast_plan`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Safety Inspection
-
-**Justification:** Automation should accelerate mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `safety_inspection`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Incident Report
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `mining_safety_permits` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Regulatory Submission
-
-**Justification:** Configuration changes can materially alter mining safety and permits; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `regulatory_submission` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Control Action
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `control_action` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Mining Safety Permits Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence.
-
-**Improvement:** Create a governed evidence vault for `mining_safety_permits_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Mining Safety Permits Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `mining_safety_permits_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Mining Safety Permits Schema Extension
-
-**Justification:** Many mining safety and permits workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `mining_safety_permits_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Mining Safety Permits Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `mining_safety_permits_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Mining Safety Permits Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Mining Safety and Permits.
-
-**Improvement:** For every predictive or agentic feature around `mining_safety_permits_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Mine Permit
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `mine_permit`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `mining_safety_permits_create_mine_permit_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Shift Roster
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `mining_safety_permits` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `mining_safety_permits_record_shift_roster_workflow` where applicable, and make it visible in `MiningSafetyPermitsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/mining_safety_permits` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Manifest key: `mining_safety_permits`.
+- Label: Mining Safety and Permits.
+- Domain description: mine permits, shifts, blasts, inspections, incidents, safety controls, and regulatory evidence.
+- APIs in scope: `POST /mine-permits`, `POST /shift-rosters`, `POST /blast-plans`, `POST /safety-inspections`, `POST /incident-reports`, `GET /mining-safety-permits-workbench`.
+- Core tables in scope: `mine_permit`, `shift_roster`, `blast_plan`, `safety_inspection`, `incident_report`, `regulatory_submission`, `control_action`.
+- Events currently emitted: `MiningSafetyPermitsCreated`, `MiningSafetyPermitsUpdated`, `MiningSafetyPermitsApproved`, `MiningSafetyPermitsExceptionOpened`.
+- Events currently consumed: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- UI fragments named in the manifest: `MiningSafetyPermitsWorkbench`, `MiningSafetyPermitsDetail`, `MiningSafetyPermitsAssistantPanel`.
+- Docs already expected by the PBC: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
+
+### 1. Canonical permit-to-work register
+**Justification:** Mine sites usually run many permit types in parallel, and a single generic permit record does not distinguish excavation, hot work, electrical isolation, confined space, working at height, lifting, blasting, or radiation-related controls.
+**Improvement:** Expand the permit model so every permit-to-work carries permit class, work area, start and expiry windows, simultaneous operations flags, issuing authority, performing crew, affected assets, and mandatory control bundles. Include permit-type-specific rules for underground, open-pit, plant, tailings, laboratory, and workshop work.
+**Acceptance evidence:** Schema fields and tests show each permit class can be created with its own required fields, and the workbench displays permit type, status, expiry, and conflicting work indicators.
+
+### 2. Permit lifecycle with mining-specific hold points
+**Justification:** Mining permits often require more than draft and approval; they need suspension, revalidation, extension, closure, and post-job verification states when conditions change underground or in the pit.
+**Improvement:** Define a state machine for permit draft, supervisor review, safety review, active, suspended, extended, closed, canceled, and expired states with explicit reasons and actor attribution. Require renewed checks before returning a suspended permit to active status.
+**Acceptance evidence:** State-transition tests reject illegal jumps, audit history records each transition reason, and UI badges show whether a permit is awaiting review, active, suspended, or overdue for closure.
+
+### 3. Isolation and lockout verification
+**Justification:** Permit safety fails quickly when isolations are recorded as free text and not tied to energy sources, lock points, and verification steps.
+**Improvement:** Add a structured isolation module capturing electrical, hydraulic, pneumatic, mechanical, gravity, pressure, and stored-energy sources; isolation points; lock and tag IDs; applied-by and verified-by roles; and zero-energy confirmation before work starts.
+**Acceptance evidence:** Permit records cannot be approved when required isolation points are incomplete, zero-energy checks are stored in evidence, and regression tests prove multi-point isolation scenarios work.
+
+### 4. Isolation boundary change control
+**Justification:** Mine plant layouts and work fronts change during a shift, so an approved isolation can become unsafe if a boundary is altered without re-review.
+**Improvement:** Track isolation boundary revisions with versioned diagrams, added or removed lock points, reason for change, and compulsory re-acceptance by the permit issuer and the field supervisor.
+**Acceptance evidence:** Edited isolation boundaries create a new version, active permits enter revalidation state, and the event stream records who changed the boundary and who reapproved it.
+
+### 5. Confined space inventory and classification
+**Justification:** Confined spaces in mining range from tanks and sumps to ore passes, hoppers, ducts, and raise-bore chambers, each with different entry constraints.
+**Improvement:** Maintain a classified confined-space inventory linked to permit records, including space type, dimensions, access points, ventilation arrangements, engulfment hazards, adjacent energy hazards, rescue method, and standby requirements.
+**Acceptance evidence:** Confined-space permits can only reference registered spaces or approved temporary spaces, and tests confirm space classification drives the right control checklist.
+
+### 6. Gas testing sequence and validity logic
+**Justification:** Underground and enclosed mining work depends on current atmospheric readings, not on a single checkbox saying “gas tested.”
+**Improvement:** Model gas testing as a structured sequence with instrument ID, bump-test status, tester competency, reading timestamp, gases measured, permissible limits, retest interval, and invalidation triggers such as blasting, ventilation interruption, or elapsed time.
+**Acceptance evidence:** A confined-space or hot-work permit cannot activate without valid atmospheric readings, expiry timers force retesting when the validity window lapses, and evidence exports show the full reading history.
+
+### 7. Ventilation and atmospheric dependency checks
+**Justification:** Gas conditions in mines depend on ventilation circuits, fans, regulators, and stoppings, so permit safety needs live ventilation context.
+**Improvement:** Introduce ventilation dependency fields for working area, primary and secondary airflow, critical fans, known dead zones, and gas-monitoring points. Add rules that suspend permits when ventilation status is degraded or readings trend toward alarm thresholds.
+**Acceptance evidence:** Simulation and rule tests show a ventilation failure moves impacted permits into hold, and the workbench identifies which permits depend on the affected circuit.
+
+### 8. Ground control pre-start assessment
+**Justification:** Ground falls and rockbursts remain high-consequence mining hazards, and permits need a direct link to local ground conditions rather than a generic “area safe” statement.
+**Improvement:** Add ground control assessments to relevant permits, capturing support type, last scaling date, geotechnical inspection status, seismicity alerts, water ingress observations, brow condition, and unsupported span risk.
+**Acceptance evidence:** Permit approvals are blocked when required ground control fields are missing, inspection evidence can be attached to the permit, and tests verify underground and pit-wall scenarios separately.
+
+### 9. Ground support defect escalation
+**Justification:** A permit process that records defects without escalating them still allows crews into unsafe headings or unstable benches.
+**Improvement:** Create a defect workflow for missing bolts, failed mesh, damaged props, loose ground, crest cracks, berm failures, and shotcrete delamination, with severity, barricade status, corrective owner, and return-to-service criteria.
+**Acceptance evidence:** High-severity defects automatically open exceptions, affected permits are paused, and dashboards show unresolved ground support issues by area and shift.
+
+### 10. Explosives permit prerequisites
+**Justification:** Blasting and explosives handling need a higher control threshold than ordinary work because errors affect people, ventilation, adjacent workings, and production sequencing.
+**Improvement:** Expand blast-plan and explosives permit data to include shotfirer authorization, magazine issue reconciliation, blast-hole readiness, exclusion zone design, firing windows, firing circuit checks, misfire response plan, and blast clearance authority.
+**Acceptance evidence:** Explosives-related permits cannot pass approval without all prerequisite fields, and test cases cover routine production blasts, secondary breakage, and misfire contingencies.
+
+### 11. Blast clearance and re-entry control
+**Justification:** The permit system must govern the period after detonation as tightly as the period before it.
+**Improvement:** Add post-blast checks for fumes clearance, re-entry gas tests, geotechnical inspection, brow and crest inspection, misfire confirmation, and signed release for adjacent crews and mobile equipment.
+**Acceptance evidence:** Post-blast permits remain closed to re-entry until all release steps are complete, re-entry evidence is visible in the workbench, and events show who cleared the area.
+
+### 12. Simultaneous operations conflict detection
+**Justification:** Mining work often overlaps in the same area, and permits need to identify when one activity invalidates another.
+**Improvement:** Build a conflict engine that checks overlapping permits for blasting near confined-space work, energization during maintenance, hot work near hydrocarbons, mobile equipment near suspended loads, and work beneath unsupported ground.
+**Acceptance evidence:** Conflict checks run before approval and at activation time, blocking conflicts appear in the UI with resolution guidance, and test fixtures prove conflict detection across permit classes.
+
+### 13. Shift handover permit continuity
+**Justification:** Many permit failures happen during shift change when outgoing crews know the hazards but incoming crews inherit only a permit number.
+**Improvement:** Add structured handover records with active permits, outstanding isolations, changed conditions, incomplete controls, open exceptions, atmospheric status, pending re-tests, and supervisor signoff from both outgoing and incoming shifts.
+**Acceptance evidence:** Shift handover cannot be closed with unresolved active-permit items, the workbench shows unaccepted handovers, and evidence exports include the handover acknowledgement chain.
+
+### 14. Crew competency and authorization checks
+**Justification:** Permit validity depends on whether the assigned people are trained and authorized for the specific work, not only whether a supervisor approved the task.
+**Improvement:** Introduce competency matching for permit issuer, permit receiver, gas tester, standby person, isolator, electrician, rigger, shotfirer, and geotechnical examiner roles. Validate license dates, medical restrictions, induction status, and area-specific authorizations.
+**Acceptance evidence:** Assignment rules reject workers missing required competencies, expired authorizations trigger clear errors, and tests prove role-based competency checks across multiple permit types.
+
+### 15. Contractor verification for high-risk tasks
+**Justification:** Contractors often perform specialized mining work, but their documentation quality and site familiarity vary widely.
+**Improvement:** Add contractor readiness checks for insurance, scope authorization, inductions, supervisor nomination, equipment compliance, rescue arrangements, and approved work method statements for the specific permit type.
+**Acceptance evidence:** Contractors cannot be attached to high-risk permits without passing readiness checks, the detail view shows missing contractor prerequisites, and audit evidence links the contractor package to the permit.
+
+### 16. Fatigue, fit-for-work, and roster exceptions
+**Justification:** Mining shifts are long and often remote, so fatigue and fitness issues materially change the risk of work authorization.
+**Improvement:** Connect shift-roster records to permit approval checks that flag excessive hours, insufficient rest, unplanned overtime, and medically restricted assignments for safety-critical tasks.
+**Acceptance evidence:** Safety-critical permits warn or block on roster risk conditions, exception logic requires supervisor justification, and analytics show how many permits were impacted by fatigue-related rules.
+
+### 17. Hazard control library aligned to mining work
+**Justification:** Generic hazard checklists do not capture mine-specific controls such as barricading brows, scaling loose ground, testing for toxic gases, or verifying refuge access.
+**Improvement:** Build a control library for ground control, ventilation, explosives, mobile equipment interaction, energy isolation, water management, confined space, working at height, lifting, and hazardous substances. Allow permit templates to require specific controls by work type and area.
+**Acceptance evidence:** Permit templates resolve to concrete control lists, closed permits retain the exact controls applied, and tests verify that omitted mandatory controls are detected.
+
+### 18. Critical control verification before work starts
+**Justification:** A control listed on a permit is not enough unless someone confirms it was physically implemented in the field.
+**Improvement:** Require field verification for selected critical controls with timestamp, verifier identity, evidence attachment, and periodic recheck logic. Examples include barricades in place, ventilation on, scaling completed, gas readings acceptable, and lock points intact.
+**Acceptance evidence:** Active status is blocked until critical controls are verified, recheck reminders are generated when needed, and evidence packs show both planned controls and verified controls.
+
+### 19. Water ingress and inundation risk checks
+**Justification:** Unexpected water is a distinct mining hazard that can invalidate permits even when other controls look adequate.
+**Improvement:** Add water-related assessments for nearby workings, dewatering status, sump capacity, bund integrity, rainfall triggers for surface operations, and known old-workings proximity before permits are approved in exposed areas.
+**Acceptance evidence:** Water-risk conditions can stop approval or trigger extra controls, the workbench highlights permits affected by inundation triggers, and scenario tests cover both underground and surface settings.
+
+### 20. Mobile equipment interaction controls
+**Justification:** Many mine incidents involve collisions between work crews and haul trucks, loaders, drills, or light vehicles operating in the same zone.
+**Improvement:** Add traffic-management fields to permits for equipment exclusion zones, spotters, radio channel, one-way restrictions, parking boundaries, and immobilization checks when maintenance occurs near operating plant or haul roads.
+**Acceptance evidence:** Maintenance and field-work permits capture equipment interaction controls, missing traffic-management controls block approval, and UI maps show equipment-related exclusion areas.
+
+### 21. Incident precursor and near-miss capture
+**Justification:** A mining safety system should learn from weak signals before they become injuries, blast incidents, falls of ground, or environmental releases.
+**Improvement:** Extend incident reporting so near misses, unsafe conditions, permit breaches, gas exceedances, and control failures can be logged quickly and linked to the relevant permit, shift, area, and crew.
+**Acceptance evidence:** Near-miss events appear in incident analytics, linked permits display precursor history, and tests prove precursor records can escalate into formal investigations when severity increases.
+
+### 22. Incident prevention feedback loop
+**Justification:** Capturing incidents without feeding the lessons back into permits and controls leaves the same exposure in place.
+**Improvement:** Add a prevention loop that proposes new controls, template changes, training needs, and policy updates based on incident classifications such as fall of ground, energy release, explosives misfire, atmospheric hazard, vehicle interaction, or procedural breach.
+**Acceptance evidence:** Closed incident records can generate tracked control actions, policy changes emit traceable events, and dashboards show whether corrective actions reduced repeat events.
+
+### 23. High-potential event escalation workflow
+**Justification:** Potentially catastrophic events need tighter governance even when no injury occurred.
+**Improvement:** Introduce a dedicated high-potential pathway for events with blast misfires, serious gas exceedances, ground collapse indicators, uncontrolled energy release, or major permit violations, including immediate area holds, senior review, and evidence preservation.
+**Acceptance evidence:** High-potential incidents trigger accelerated notifications and permit holds, evidence retention is enforced, and tests validate escalation timing and closure requirements.
+
+### 24. Regulatory evidence pack assembly
+**Justification:** Regulators and internal auditors often ask for the entire evidence trail around a job, not a single permit snapshot.
+**Improvement:** Build exportable evidence packs that gather permit forms, approvals, gas tests, isolation records, handovers, inspections, incident links, control verifications, and event history into a reproducible package.
+**Acceptance evidence:** Evidence exports are consistent across repeated runs, export manifests show every included artifact, and sample packs exist for confined-space, blasting, and ground-control jobs.
+
+### 25. Jurisdiction and site rule overlay support
+**Justification:** Mining organizations often operate across sites with different legal duties, standards, and local operating procedures.
+**Improvement:** Add a rule overlay model allowing site, country, commodity, and operation-type variations for permit fields, retention periods, explosives controls, atmospheric limits, and mandatory evidence.
+**Acceptance evidence:** Site-specific rules can change validation outcomes without code edits, policy version is stored with each permit, and tests prove one site can require controls that another site does not.
+
+### 26. Workbench area control board
+**Justification:** Supervisors need to see active work by area, not only a list of permits sorted by creation time.
+**Improvement:** Redesign the workbench with an area control board showing current permits, isolations, confined-space entries, blasting windows, open hazards, incidents, and shift ownership by mining area.
+**Acceptance evidence:** The UI renders area-level summaries with live status counts, conflict indicators, and overdue items, and route tests cover empty, populated, and degraded-data states.
+
+### 27. Permit detail view optimized for field decision-making
+**Justification:** Permit detail screens often bury the highest-risk facts below general metadata, slowing field decisions.
+**Improvement:** Rework the detail panel so hazard controls, atmospheric status, isolations, handover notes, competency gaps, and stop-work conditions appear ahead of less critical metadata. Include a clear “why blocked” section when a permit cannot proceed.
+**Acceptance evidence:** UX tests confirm critical fields are visible without scrolling through unrelated data, and snapshots show distinct layouts for active, blocked, and expired permits.
+
+### 28. Assistant skill for permit drafting from site language
+**Justification:** Supervisors often describe work in operational language, and the system should help translate that into a valid permit without inventing data.
+**Improvement:** Add an agent skill that converts user instructions such as “pump change in decline sump after isolating panel and testing air” into a draft permit with proposed type, work area, controls, and missing-information prompts.
+**Acceptance evidence:** Prompt-to-draft fixtures show the assistant extracts the right permit class and hazards, uncertain fields remain explicitly unresolved, and all mutations require user confirmation before save.
+
+### 29. Assistant skill for incident and handover summarization
+**Justification:** Shift leaders and safety coordinators need fast summaries of what changed without reading every raw note.
+**Improvement:** Add a governed summarization skill that composes shift handover briefs, open-permit digests, and incident summaries with explicit source citations to permits, inspections, gas readings, and control actions.
+**Acceptance evidence:** Summaries show source references, omission tests verify no unsupported claims are inserted, and users can drill from every summary statement to the underlying record.
+
+### 30. Assistant refusal and escalation rules for unsafe requests
+**Justification:** A mining assistant must never normalize bypassing safety controls or approving permits without evidence.
+**Improvement:** Define refusal logic for requests such as approving without gas tests, closing incidents without findings, ignoring competency gaps, or reactivating suspended permits without rechecks. Escalate such requests to named human roles with a preserved audit trail.
+**Acceptance evidence:** Safety-violation prompt tests show the assistant refuses and explains the missing controls, escalations are recorded, and no prohibited command reaches the datastore.
+
+### 31. Event model expanded to domain milestones
+**Justification:** Generic create and update events do not tell downstream systems which mining safety step actually occurred.
+**Improvement:** Emit typed domain events for permit issued, permit suspended, isolation verified, confined-space entry started, gas test failed, blast cleared, handover accepted, incident classified, and regulatory pack exported.
+**Acceptance evidence:** Event schema tests cover each new domain milestone, example payloads exist for consumers, and release evidence includes emitted-event inventories.
+
+### 32. Event-sourced reconstruction of safety decisions
+**Justification:** Investigations often require replaying who knew what at a given time, especially after incidents or regulator questions.
+**Improvement:** Capture immutable decision events with actor, role, shift, area, source record, prior state, new state, and justification for approvals, suspensions, overrides, and closures across permits and incidents.
+**Acceptance evidence:** Replay tests reconstruct the timeline of a complex permit with handover and suspension events, and investigators can retrieve point-in-time views from the audit history.
+
+### 33. Operational anomaly detection for permit misuse
+**Justification:** Repeated short-cuts such as fast approvals, missing evidence, and unusual after-hours activity should surface before they lead to incidents.
+**Improvement:** Add anomaly scoring for patterns such as permits approved too quickly, recurrent use of the same override reason, repeated late gas tests, unusual explosives activity windows, and repeated suspensions in one area.
+**Acceptance evidence:** Anomaly cards appear in the workbench with contributing signals, review actions can confirm or dismiss the anomaly, and feedback changes future scoring behavior.
+
+### 34. Continuous control testing of safety rules
+**Justification:** A release can pass and still fail operationally if policy enforcement quietly drifts.
+**Improvement:** Create automated control assertions that continuously test for expired permits still marked active, confined-space entries lacking current gas tests, blasting permits without exclusion evidence, and closed incidents missing corrective-action closure.
+**Acceptance evidence:** Failing control assertions open exceptions automatically, dashboards show pass and fail rates by control family, and tests prove assertions run against realistic data.
+
+### 35. Policy rule workbench for safety governance
+**Justification:** Safety teams need to change thresholds and checklists with traceability, not by editing code or undocumented data.
+**Improvement:** Add a governance UI for rule creation, approval, activation date, supersession, and rollback of permit, gas-testing, competency, ground-control, and explosives rules.
+**Acceptance evidence:** Rule changes require approval, previous versions remain inspectable, and simulation outputs show the effect of a pending rule before activation.
+
+### 36. Runtime parameter controls for operational thresholds
+**Justification:** Some thresholds change operationally, such as retest intervals, escalation timers, and dashboard warning windows.
+**Improvement:** Separate policy rules from runtime parameters and manage parameters for gas-test validity, handover reminder timing, incident escalation windows, evidence export retention, and stale-permit warnings with approval and rollback support.
+**Acceptance evidence:** Parameter edits are audited, invalid values are rejected, and the system shows which permits or dashboards depend on each parameter.
+
+### 37. Offline-capable field capture for inspections and gas tests
+**Justification:** Mines often have poor connectivity underground or at remote pits, but inspections and gas readings still need accurate capture.
+**Improvement:** Support offline entry of inspections, gas tests, control verifications, and permit acknowledgements with local timestamps, device identity, later synchronization, and conflict resolution rules.
+**Acceptance evidence:** Offline submissions sync successfully when connectivity returns, conflicts are surfaced for human review, and tests cover duplicate or delayed sync events.
+
+### 38. Attachment and evidence provenance handling
+**Justification:** Photos, sketches, permits, and analyzer screenshots lose value if the system cannot prove where they came from or what record they support.
+**Improvement:** Add attachment provenance fields for device, uploader, captured-at time, related area, evidence type, and tamper-evident hashing. Link each artifact to permit steps, inspections, incidents, or regulatory submissions.
+**Acceptance evidence:** Evidence objects retain provenance metadata, export packs include hashes and source linkage, and the UI differentiates required evidence from optional reference material.
+
+### 39. Rescue readiness checks for confined-space and high-risk work
+**Justification:** Confined-space entry and certain underground tasks are unsafe if rescue arrangements are assumed rather than confirmed.
+**Improvement:** Require rescue planning fields for standby person, communication method, retrieval equipment, route to casualty, emergency response team availability, and nearest refuge or muster location where applicable.
+**Acceptance evidence:** High-risk permits cannot activate until rescue readiness is complete, rescue plan evidence is visible in the detail view, and tests cover unavailable-rescue-team scenarios.
+
+### 40. Stop-work authority and rapid suspension controls
+**Justification:** The system should make it easy to stop unsafe work immediately when conditions change.
+**Improvement:** Add a stop-work action that any authorized supervisor or safety role can use to suspend active permits, capture the trigger reason, notify affected crews, and require formal revalidation before restart.
+**Acceptance evidence:** Stop-work actions are available from active permit views, notifications and events are emitted immediately, and suspended permits remain blocked until revalidation evidence is complete.
+
+### 41. Cross-shift analytics for recurring hazards
+**Justification:** Hazard patterns become visible only when the system compares multiple shifts, areas, and crews over time.
+**Improvement:** Add analytics for repeated gas exceedances, recurring ground defects, repeated permit extensions, incident concentration by area, unresolved corrective actions, and frequent handover breakdowns.
+**Acceptance evidence:** The analytics workbench exposes trend lines and drill-downs, queries are backed by tested projections, and operational KPI change events update the right panels.
+
+### 42. Scenario simulation for permit and blasting decisions
+**Justification:** Supervisors need a safe way to explore “what if we delay the blast” or “what if ventilation is down for two hours” before changing live work.
+**Improvement:** Provide simulation tools for blast rescheduling, permit extension, shift reduction, area closure, and ventilation degradation that estimate conflicts, expired gas tests, handover impact, and productivity disruption.
+**Acceptance evidence:** Simulations run without mutating live data, comparison outputs show impacted permits and controls, and regression tests verify core scenarios produce stable results.
+
+### 43. Dead-letter and retry handling for safety events
+**Justification:** Lost or stuck events can hide a suspended permit, a failed control assertion, or a missing regulatory export.
+**Improvement:** Build an operational console for failed event deliveries with reason, retry count, payload summary, affected record, and safe replay controls for safety-critical event types.
+**Acceptance evidence:** Dead-letter records are visible in the workbench, replay operations are audited, and tests confirm idempotent processing after retry.
+
+### 44. Multi-tenant and site isolation of safety data
+**Justification:** Shared platforms for multiple mines or contractors must prevent one tenant from seeing another tenant’s permits, incidents, or rule sets.
+**Improvement:** Enforce tenant and site scoping across records, queries, events, assistant context, analytics, and exports, with explicit policy separation for local rule overlays and release evidence.
+**Acceptance evidence:** Negative-access tests fail across tenant boundaries, event consumers receive only authorized tenant data, and UI filters do not leak cross-tenant counts.
+
+### 45. Competency-driven approval routing
+**Justification:** Approval chains should reflect the risk of the work, the area, and the permit class rather than a single fixed reviewer list.
+**Improvement:** Route approvals dynamically based on hazard profile so that electrical isolation may need an authorized electrician, a blast permit requires a shotfirer or blasting engineer, and a ground-control deviation requires geotechnical review.
+**Acceptance evidence:** Routing tests show different permit types produce different approval chains, routing decisions are explained in the UI, and overrides require recorded justification.
+
+### 46. Formal release evidence for safety-critical changes
+**Justification:** Changes to permit workflows, rules, or control logic need stronger release proof than ordinary CRUD features.
+**Improvement:** Expand `RELEASE_EVIDENCE.md` expectations to include rule-diff summaries, high-risk workflow test results, event compatibility checks, UI evidence for blocked unsafe actions, and sample regulatory pack exports.
+**Acceptance evidence:** Release evidence artifacts include the mandated sections for a mining-safety change, and a release checklist fails when those artifacts are missing.
+
+### 47. Safety-focused contract and integration tests
+**Justification:** Mining-specific logic is brittle if tests only cover endpoint success and generic validation failures.
+**Improvement:** Add contract tests for permit APIs, integration tests for shift handover plus active permits, scenario tests for gas-test expiry, and end-to-end tests for confined-space, blasting, and isolation workflows.
+**Acceptance evidence:** Test suites explicitly name mining scenarios, failing cases prove unsafe transitions are blocked, and CI output demonstrates the safety-critical paths are exercised.
+
+### 48. Audit proof chain for evidence integrity
+**Justification:** When evidence is challenged, the system should prove that attachments, readings, and approvals were not altered after the fact.
+**Improvement:** Hash and chain critical evidence artifacts and decision events so exported proof manifests can show integrity for permit approvals, gas tests, blast clearances, and incident closures without exposing unnecessary content.
+**Acceptance evidence:** Proof verification succeeds for unchanged records, tampering tests fail as expected, and exported manifests list the chained artifacts included in the proof set.
+
+### 49. Domain training sandbox and seeded walkthroughs
+**Justification:** Safety systems are only effective when supervisors, safety officers, and planners can learn the workflows without touching live operations.
+**Improvement:** Provide seeded scenarios covering a confined-space pump repair, a highwall scaling job, an underground electrical isolation, a production blast, and an incident investigation, each with realistic data and guided assistant prompts.
+**Acceptance evidence:** Seeded walkthroughs load reproducibly, trainees can complete scenario-specific tasks, and the sandbox remains isolated from production records and analytics.
+
+### 50. Operational readiness review before go-live
+**Justification:** A mining permit platform is not ready when code passes alone; it must prove that controls, people, evidence, and support processes are ready for live use.
+**Improvement:** Define a go-live readiness gate covering configured rule sets, validated site overlays, trained approvers, tested event handlers, reviewed dashboards, approved release evidence, and incident-response ownership for the PBC.
+**Acceptance evidence:** A readiness checklist can be completed from package artifacts, unresolved readiness gaps block release, and final signoff records identify who approved the production launch of the PBC.

@@ -1,418 +1,416 @@
-# Mortgage Servicing PBC Better-Than-World-Class Improvement Backlog
+# Mortgage Servicing PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `mortgage_servicing`. The backlog is specific to mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This hand-crafted backlog replaces generic roadmap text for `mortgage_servicing` with mortgage-servicing-specific improvements for loan boarding, payment processing, escrow, borrower communications, default management, loss mitigation, foreclosure controls, investor reporting, regulatory evidence, workbench operations, and governed agent assistance.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `mortgage_servicing`.
-- Domain purpose: Mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls.
-- Owned domain tables: `mortgage_loan`, `escrow_account`, `payment_event`, `servicing_statement`, `loss_mitigation_case`, `investor_report`, `foreclosure_milestone`, `mortgage_servicing_policy_rule`, `mortgage_servicing_runtime_parameter`, `mortgage_servicing_schema_extension`, `mortgage_servicing_control_assertion`, `mortgage_servicing_governed_model`.
-- Public APIs: `POST /mortgage-loans`, `POST /escrow-accounts`, `POST /payment-events`, `POST /servicing-statements`, `POST /loss-mitigation-cases`, `GET /mortgage-servicing-workbench`.
-- Emitted AppGen-X events: `MortgageServicingCreated`, `MortgageServicingUpdated`, `MortgageServicingApproved`, `MortgageServicingExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `mortgage_loan_management`, `mortgage_servicing_workflow`, `mortgage_servicing_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `mortgage_servicing_event_sourced_operational_history`, `mortgage_servicing_multi_tenant_policy_isolation`, `mortgage_servicing_schema_evolution_resilience`, `mortgage_servicing_autonomous_anomaly_detection`, `mortgage_servicing_semantic_document_instruction_understanding`, `mortgage_servicing_predictive_risk_scoring`, `mortgage_servicing_counterfactual_scenario_simulation`, `mortgage_servicing_cryptographic_audit_proofs`.
+- Domain purpose: mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls.
+- Owned records include `mortgage_loan`, `escrow_account`, `payment_event`, `servicing_statement`, `loss_mitigation_case`, `investor_report`, `foreclosure_milestone`, policy rules, runtime parameters, schema extensions, control assertions, and governed models.
+- Public APIs include `POST /mortgage-loans`, `POST /escrow-accounts`, `POST /payment-events`, `POST /servicing-statements`, `POST /loss-mitigation-cases`, and `GET /mortgage-servicing-workbench`.
+- Workbench surfaces include `MortgageServicingWorkbench`, `MortgageServicingDetail`, and `MortgageServicingAssistantPanel`.
+- AppGen-X events include `MortgageServicingCreated`, `MortgageServicingUpdated`, `MortgageServicingApproved`, and `MortgageServicingExceptionOpened`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Mortgage Loan
+### 1. Loan boarding data-quality gate
 
-**Justification:** This closes shallow CRUD gaps by making every mortgage servicing transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Servicing defects often begin when loans board with missing terms, wrong escrow flags, stale borrower data, or investor mismatches.
 
-**Improvement:** Define a complete state machine for `mortgage_loan` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add boarding checks for note terms, payment due date, interest method, escrow status, investor projection, borrower projection, property projection, and exception reason.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for MortgageServicingCreated, MortgageServicingUpdated, MortgageServicingApproved. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject active servicing state until required boarding evidence is complete and visible in `MortgageServicingWorkbench`.
 
-### 2. Domain intake and normalization for Escrow Account
+### 2. Servicing transfer reconciliation
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls, not only already-clean records.
+**Justification:** Transfers from prior servicers require reconciling balances, suspense, escrow, payment history, delinquency, and open loss-mitigation activity.
 
-**Improvement:** Build a typed intake pipeline for `escrow_account` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add transfer-in records with prior-servicer trial balance, payment history, escrow ledger, open items, borrower notices, and reconciliation variance workflow.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open exceptions for unresolved transfer variances and prevent first statement generation until approved.
 
-### 3. Specialist validation rules for Payment Event
+### 3. Mortgage loan lifecycle state machine
 
-**Justification:** World-class Mortgage Servicing requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Performing, delinquent, bankruptcy, loss mitigation, foreclosure, REO, paid off, transferred, and closed states drive different legal actions.
 
-**Improvement:** Add a domain rule compiler for `payment_event` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit `mortgage_loan` states, allowed transitions, effective dates, reason codes, required approvals, and AppGen-X event emission.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `MORTGAGE_SERVICING_DATABASE_URL, MORTGAGE_SERVICING_EVENT_TOPIC, MORTGAGE_SERVICING_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Invalid transition tests must fail and the workbench must show next allowed actions by loan state.
 
-### 4. Parameter governance and tuning for Servicing Statement
+### 4. Payment application waterfall
 
-**Justification:** Parameters are where operations teams tune mortgage servicing; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Payments must apply correctly across principal, interest, escrow, fees, late charges, suspense, corporate advances, and unapplied funds.
 
-**Improvement:** Expose bounded runtime parameters for `servicing_statement` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `payment_event` with configurable application order, payment source, effective date, reversal link, component allocations, and reason evidence.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate allocations for full, partial, late, extra-principal, and reversal scenarios.
 
-### 5. Deep owned schema expansion for Loss Mitigation Case
+### 5. Suspense handling controls
 
-**Justification:** A single payload column cannot express the full surface of mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls or prove cross-PBC boundaries are respected.
+**Justification:** Partial payments and unidentified funds require controlled suspense handling instead of silent balance changes.
 
-**Improvement:** Extend the owned schema around `loss_mitigation_case` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add suspense buckets with receipt source, matching status, borrower instruction, aging, release rule, and exception workflow.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `mortgage_servicing_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must keep partial funds in suspense until release conditions are met and show aging in the workbench.
 
-### 6. Event-sourced operational history for Investor Report
+### 6. Late charge assessment rules
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in mortgage servicing.
+**Justification:** Late fees depend on grace period, payment receipt date, investor rules, jurisdiction, borrower protections, and waiver history.
 
-**Improvement:** Capture every material mutation of `investor_report` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add late-charge rules with grace days, fee calculation, waiver authority, cap, protected status, and audit evidence.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must assess, waive, and reverse late charges with cited rule versions.
 
-### 7. Projection and read-model strategy for Foreclosure Milestone
+### 7. Interest accrual and amortization schedule
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Servicing requires accurate scheduled balances, interest accrual, curtailments, recasts, and maturity handling.
 
-**Improvement:** Create purpose-built projections for `foreclosure_milestone`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add amortization projections with scheduled principal, interest, unpaid principal balance, interest method, recast flag, and variance detection.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct balances after normal payments, extra principal, missed payments, and rate changes.
 
-### 8. Exception taxonomy and remediation for Mortgage Servicing Policy Rule
+### 8. Adjustable-rate mortgage change controls
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Adjustable loans require index, margin, caps, floor, lookback, notices, effective dates, and payment recalculation evidence.
 
-**Improvement:** Model the full exception taxonomy for `mortgage_servicing_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add ARM change records with index projection, rate calculation, cap test, payment change, notice schedule, and borrower-facing explanation.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate rate changes and block changes without required notice evidence.
 
-### 9. Predictive risk scoring for Mortgage Servicing Runtime Parameter
+### 9. Escrow account lifecycle
 
-**Justification:** The package should warn users before mortgage servicing work fails, breaches policy, or creates downstream cost.
+**Justification:** Escrow accounts must track setup, analysis, shortage, surplus, disbursement, waiver, cancellation, and reinstatement states.
 
-**Improvement:** Add predictive risk scoring for `mortgage_servicing_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `escrow_account` with lifecycle status, tax/insurance lines, cushion parameters, analysis date, shortage option, surplus disposition, and waiver rules.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce valid escrow lifecycle transitions and reject disbursements on closed escrow accounts.
 
-### 10. Counterfactual simulation for Mortgage Servicing Schema Extension
+### 10. Escrow analysis engine
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls operations.
+**Justification:** Escrow analysis needs projected disbursements, cushion limits, shortage/surplus, payment changes, and statement evidence.
 
-**Improvement:** Provide scenario simulation for `mortgage_servicing_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add annual and short-year analysis calculations with line items, projected balance, minimum balance, borrower options, and approval.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate analysis outputs and borrower notices for shortage, surplus, and no-change cases.
 
-### 11. Autonomous anomaly triage for Mortgage Servicing Control Assertion
+### 11. Tax and insurance disbursement controls
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Missed tax or insurance payments create borrower harm and operational losses.
 
-**Improvement:** Implement anomaly detection for `mortgage_servicing_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add disbursement schedules, payee projection, due dates, invoice evidence, payment status, exception reason, and stop-payment handling.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag upcoming disbursements, block duplicate disbursements, and open overdue exceptions.
 
-### 12. Semantic document understanding for Mortgage Servicing Governed Model
+### 12. Force-placed insurance workflow
 
-**Justification:** Document-heavy work in Mortgage Servicing cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Lapsed hazard or flood coverage requires notices, evidence windows, placement decisions, and cancellation when borrower coverage arrives.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `mortgage_servicing_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add coverage gap records, notice sequence, placement status, premium projection, borrower evidence review, and cancellation/refund workflow.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must enforce notice timing before placement and remove placement after valid coverage evidence.
 
-### 13. Agent-safe CRUD execution for Mortgage Loan
+### 13. Flood-zone monitoring boundary
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Flood determinations affect escrow, insurance, and borrower notices but may come from external compliance services.
 
-**Improvement:** Add a professional chatbot skill for `mortgage_loan` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store flood-zone projections with determination date, map status, required coverage, appeal status, and freshness.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove flood data is consumed as projection evidence and no external compliance table is mutated.
 
-### 14. Workbench persona coverage for Escrow Account
+### 14. Servicing statement generation
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Statements must present due amount, payment history, fees, escrow, delinquency, messages, and required disclosures.
 
-**Improvement:** Design dedicated workbench panels for `escrow_account`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `servicing_statement` with statement period, line items, message blocks, disclosure set, delivery method, suppression reason, and render evidence.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate statements for current, delinquent, escrow-change, and bankruptcy-suppressed cases.
 
-### 15. Cross-PBC dependency contracts for Payment Event
+### 15. Borrower notice schedule
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Servicing events trigger notices for payment changes, delinquency, escrow, ARM changes, loss mitigation, and foreclosure milestones.
 
-**Improvement:** Represent dependencies for `payment_event` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add notice requirements with trigger, deadline, template version, delivery channel, language, proof of delivery, and suppression rules.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open exceptions for missed notices and show notice timeline in loan detail.
 
-### 16. API completeness and versioning for Servicing Statement
+### 16. Communication preference and language controls
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Borrowers may require specific language, accessibility format, authorized contact handling, or restricted communication windows.
 
-**Improvement:** Expand APIs beyond POST /mortgage-loans, POST /escrow-accounts, POST /payment-events to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store borrower communication projections, preferred channel, consent, language, accessibility requirement, and contact restriction status.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must select notices based on preferences and block unauthorized contact changes.
 
-### 17. Typed emitted-event expansion for Loss Mitigation Case
+### 17. Delinquency aging buckets
 
-**Justification:** Consumers should understand what happened in Mortgage Servicing without parsing opaque payloads.
+**Justification:** Current, 30, 60, 90, rolling delinquency, and charge-off candidates need precise aging by contractual due date.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `loss_mitigation_case` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add delinquency calculations with due date, paid-through date, days delinquent, rolling status, cure amount, and trend.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must classify loans across aging buckets after missed, partial, and catch-up payments.
 
-### 18. Consumed-event handlers for Investor Report
+### 18. Collections contact strategy
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Collection actions must respect borrower protections, contact limits, hardship, bankruptcy, and loss mitigation status.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add contact strategies with allowed action, suppression reason, next contact date, script version, outcome, and compliance evidence.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent collection tasks when bankruptcy, cease-contact, or active loss mitigation rules apply.
 
-### 19. Retry and dead-letter operations for Foreclosure Milestone
+### 19. Bankruptcy servicing controls
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls.
+**Justification:** Bankruptcy affects notices, payments, fees, escrow, claims, and collection suppression.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `foreclosure_milestone` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add bankruptcy status projection, chapter, filing date, stay status, claim deadline, payment handling rule, and attorney contact controls.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must suppress prohibited communications and route payments according to bankruptcy status.
 
-### 20. RBAC and attribute policy for Mortgage Servicing Policy Rule
+### 20. Military and protected-status controls
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Protected borrowers may receive rate caps, foreclosure restrictions, fee limits, and notice protections.
 
-**Improvement:** Extend permissions for `mortgage_servicing_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add protected-status projections with effective dates, evidence source, applicable protections, and required approvals.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block protected-status violations in fee, foreclosure, and collection workflows.
 
-### 21. Continuous control testing for Mortgage Servicing Runtime Parameter
+### 21. Loss mitigation intake
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Borrower assistance requests require document checklists, hardship narratives, income evidence, and intake completeness.
 
-**Improvement:** Embed control assertions for `mortgage_servicing_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `loss_mitigation_case` with application status, hardship reason, required documents, received documents, missing items, and review deadline.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `mortgage_servicing_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must distinguish incomplete, complete, approved, denied, appealed, withdrawn, and expired applications.
 
-### 22. Cryptographic audit proofing for Mortgage Servicing Schema Extension
+### 22. Document-driven assistance package review
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Pay stubs, tax returns, bank statements, hardship letters, and occupancy proof arrive as documents.
 
-**Improvement:** Hash-chain material `mortgage_servicing_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add agent-assisted document extraction with confidence, source page, field mapping, reviewer approval, and mutation preview.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require human confirmation before document-derived fields update loss-mitigation records.
 
-### 23. Privacy, consent, and secrecy controls for Mortgage Servicing Control Assertion
+### 23. Workout option decisioning
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Forbearance, repayment plan, deferral, modification, short sale, and deed-in-lieu have distinct eligibility and calculations.
 
-**Improvement:** Add field-level privacy classifications for `mortgage_servicing_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workout option evaluations with eligibility rules, waterfall order, investor constraint, trial requirement, payment impact, and decision rationale.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce eligible and ineligible outcomes with cited rule versions and borrower-facing reasons.
 
-### 24. Multi-tenant operating model for Mortgage Servicing Governed Model
+### 24. Trial payment plan tracking
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Modifications often depend on timely trial payments before permanent terms are offered.
 
-**Improvement:** Support tenant-specific `mortgage_servicing_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add trial plan records with due dates, required amounts, payment matching, missed-payment consequences, and completion evidence.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must mark trial plans successful or failed based on actual payment events.
 
-### 25. Schema evolution and extension registry for Mortgage Loan
+### 25. Loan modification term generation
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Approved modifications must produce precise new principal, rate, term, maturity, escrow, deferred balance, and effective date.
 
-**Improvement:** Make schema extensions for `mortgage_loan` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add modification term package with calculation trace, approval, borrower acceptance, document status, and boarding event.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must board new terms only after approval and signed-document evidence.
 
-### 26. Master data quality gates for Escrow Account
+### 26. Foreclosure referral controls
 
-**Justification:** Many mortgage servicing errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Foreclosure referral must be blocked by notices, protected status, loss mitigation, bankruptcy, and investor requirements.
 
-**Improvement:** Define reference-data contracts for `escrow_account`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add referral checklist with prerequisite validations, approval authority, attorney projection, referral package, and hold reasons.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block referral when any configured precondition is unmet.
 
-### 27. Bulk operations and correction workflows for Payment Event
+### 27. Foreclosure milestone management
 
-**Justification:** Enterprise-scale Mortgage Servicing users cannot operate one record at a time.
+**Justification:** Foreclosure timelines require jurisdiction-specific milestones, deadlines, holds, hearings, sales, and cancellations.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `payment_event` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `foreclosure_milestone` with milestone type, jurisdiction, due date, actual date, responsible party, hold, outcome, and evidence.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate due milestones and open exceptions for missed or blocked milestones.
 
-### 28. Lifecycle collaboration and tasking for Servicing Statement
+### 28. Foreclosure hold and restart governance
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Holds for loss mitigation, bankruptcy, disaster, litigation, or protected status must prevent improper action.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `servicing_statement` without leaking into external shared task tables. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hold records with reason, effective date, blocked actions, owner, review date, release criteria, and restart evidence.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent milestone completion during active holds and require release approval.
 
-### 29. SLA and service-level governance for Loss Mitigation Case
+### 29. Payoff quote generation
 
-**Justification:** Users need to know when mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Payoff quotes need principal, interest through date, fees, escrow, recording charges, wire instructions, and expiry.
 
-**Improvement:** Define SLAs for `loss_mitigation_case` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add payoff quote records with good-through date, component lines, per diem, delivery evidence, and quote cancellation.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate payoff quotes and reject payoff posting against expired quotes.
 
-### 30. Operational analytics cockpit for Investor Report
+### 30. Loan payoff and release tracking
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Paid-off loans require funds validation, escrow disposition, lien release, document recording, and investor reporting.
 
-**Improvement:** Build analytics for `investor_report`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add payoff completion workflow with received funds, balance zeroing, escrow refund, lien-release milestones, and closure event.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent loan closure until payoff funds and release tasks are complete or waived.
 
-### 31. Decision intelligence and recommendations for Foreclosure Milestone
+### 31. Investor remittance reporting
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Investors require scheduled principal, interest, curtailments, fees, delinquencies, advances, and exceptions.
 
-**Improvement:** Generate ranked recommendations for `foreclosure_milestone` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `investor_report` with reporting period, investor projection, pool, remittance lines, certification, exception list, and submission evidence.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconcile payment events to investor report lines and flag unreconciled variances.
 
-### 32. Quality and completeness scoring for Mortgage Servicing Policy Rule
+### 32. Advance tracking
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Servicers advance taxes, insurance, principal, interest, legal fees, inspections, and property preservation costs.
 
-**Improvement:** Score each `mortgage_servicing_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add advance records with type, amount, recoverability, investor eligibility, reimbursement status, and write-off approval.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show advance balances and block unsupported recovery claims.
 
-### 33. End-to-end scenario library for Mortgage Servicing Runtime Parameter
+### 33. Fee assessment and waiver governance
 
-**Justification:** Release evidence is stronger when every important mortgage servicing behavior has executable examples.
+**Justification:** Fees must be permissible, disclosed, capped, and reversible when assessed incorrectly.
 
-**Improvement:** Create seeded scenarios for `mortgage_servicing_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add fee records with type, trigger, rule version, amount, waiver authority, reversal reason, and borrower notice link.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject prohibited fees and preserve waiver/reversal audit evidence.
 
-### 34. Domain ontology and terminology model for Mortgage Servicing Schema Extension
+### 34. Property inspection and preservation boundary
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Delinquent loans may require inspections, occupancy checks, winterization, repairs, or preservation tasks.
 
-**Improvement:** Add an ontology for `mortgage_servicing_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store property-service projections, inspection results, preservation recommendations, cost estimates, and completion status from declared dependencies.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove property-service data is projected and no vendor table is mutated.
 
-### 35. Advanced search and investigation for Mortgage Servicing Control Assertion
+### 35. Disaster assistance workflow
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Declared disasters can alter contact strategy, forbearance, inspections, fees, and foreclosure activity.
 
-**Improvement:** Provide search across `mortgage_servicing_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add disaster-zone projection, affected-property flag, borrower assistance request, relief option, suppression rules, and review dates.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must apply disaster-specific holds and relief options to affected loans.
 
-### 36. Reconciliation and closure controls for Mortgage Servicing Governed Model
+### 36. Complaint and dispute linkage
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Borrower disputes about payments, escrow, fees, credit reporting, or servicing transfers must influence operations.
 
-**Improvement:** Add reconciliation workflows that compare `mortgage_servicing_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add complaint/dispute projections with category, due date, related records, response status, and operational hold effects.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must surface active disputes on loan detail and block affected actions when configured.
 
-### 37. Regulatory and policy reporting for Mortgage Loan
+### 37. Credit reporting furnishing controls
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Payment status, delinquency, bankruptcy, disputes, and forbearance must be reported accurately.
 
-**Improvement:** Generate domain reporting packs for `mortgage_loan` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add credit-reporting snapshot with reporting period, status code, suppression reason, dispute flag, and correction evidence.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate furnishing snapshots and suppress reporting when required.
 
-### 38. Carbon and resource awareness for Escrow Account
+### 38. Compliance rule and parameter workbench
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Servicing rules change by investor, jurisdiction, product, borrower status, and regulatory deadline.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `escrow_account` decisions and batch operations. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workbench editors for late fees, notices, escrow cushions, loss-mitigation waterfalls, foreclosure preconditions, and contact limits.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate parameter bounds, approval history, rollback, and runtime effect.
 
-### 39. Resilience and offline behavior for Payment Event
+### 39. Exception taxonomy and queues
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Boarding, escrow, payment, notice, loss-mitigation, foreclosure, investor, and compliance exceptions need distinct ownership.
 
-**Improvement:** Define resilience modes for `payment_event`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add exception categories, severity, impacted action, owner queue, SLA, escalation, closure evidence, and reopen reason.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route exception types to the correct workbench queues and emit exception events.
 
-### 40. Human-in-the-loop automation for Servicing Statement
+### 40. Borrower-facing account timeline
 
-**Justification:** Automation should accelerate mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls while preserving accountability for high-risk decisions.
+**Justification:** Borrower service teams need a clear timeline of payments, statements, notices, escrow, assistance, and milestones.
 
-**Improvement:** Set explicit automation boundaries for `servicing_statement`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a timeline projection that orders servicing events, documents, notices, exceptions, and decisions with source links.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must show chronological timeline entries with filters by event type.
 
-### 41. Package discovery and fit scoring for Loss Mitigation Case
+### 41. Agent-assisted payment research
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Payment complaints often require comparing receipts, bank files, suspense, reversals, and application history.
 
-**Improvement:** Improve package metadata so composition can explain when `mortgage_servicing` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant skills that summarize payment history, identify likely misapplications, propose corrections, and require confirmation.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject unconfirmed agent corrections and retain source evidence for accepted adjustments.
 
-### 42. Configuration deployment pipeline for Investor Report
+### 42. Agent-assisted loss-mitigation checklist
 
-**Justification:** Configuration changes can materially alter mortgage servicing; they need the same discipline as code releases.
+**Justification:** Borrowers and specialists need help understanding missing documents, deadlines, and eligible workout paths.
 
-**Improvement:** Add configuration promotion for `investor_report` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant prompts that parse borrower instructions, build checklist drafts, explain missing evidence, and generate governed case updates.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show assistant output as a preview, not a committed mutation, until approved.
 
-### 43. Workbench command completeness for Foreclosure Milestone
+### 43. Agent safety and authority limits
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** AI must not silently assess fees, advance foreclosure, deny assistance, or alter borrower obligations.
 
-**Improvement:** Expose every high-value operation for `foreclosure_milestone` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require agent proposals to state command, affected records, rule checks, confidence, source evidence, approval role, and irreversible-impact flag.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block high-impact agent commands without elevated human approval.
 
-### 44. Document packet and evidence vault for Mortgage Servicing Policy Rule
+### 44. AppGen-X event specialization
 
-**Justification:** Documents often carry the legal or operational truth behind mortgage accounts, escrow, payments, statements, loss mitigation, investor reporting, and foreclosure controls.
+**Justification:** Servicing composes with origination, payments, compliance, documents, investors, property services, and accounting through events.
 
-**Improvement:** Create a governed evidence vault for `mortgage_servicing_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Define typed events for loan boarded, payment applied, escrow analyzed, notice sent, loss mitigation decisioned, foreclosure held, and investor report certified.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event tests must verify idempotency keys, retry behavior, dead-letter evidence, and declared dependency use.
 
-### 45. Data correction and amendment history for Mortgage Servicing Runtime Parameter
+### 45. Point-in-time servicing reconstruction
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Audits and disputes require reconstructing loan state as of a specific date.
 
-**Improvement:** Support formal amendments for `mortgage_servicing_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add event-sourced reconstruction for balances, escrow, delinquency, notices, loss mitigation, and foreclosure status.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay owned events to reproduce historical snapshots.
 
-### 46. External participant collaboration for Mortgage Servicing Schema Extension
+### 46. Cryptographic servicing audit packet
 
-**Justification:** Many mortgage servicing workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Regulators, investors, and borrowers may challenge servicing decisions and need tamper-evident evidence.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `mortgage_servicing_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash-linked packets for payment application, escrow analysis, loss-mitigation decision, foreclosure referral, and payoff closure.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect altered packet contents and verify packet generation from owned records.
 
-### 47. Advanced dependency freshness scoring for Mortgage Servicing Control Assertion
+### 47. Operational risk scoring
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Servicers need early warning for loans likely to create borrower harm, compliance breach, or investor loss.
 
-**Improvement:** Score freshness and reliability of dependencies used by `mortgage_servicing_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add risk scores for escrow shortage, payment dispute, missed notice, delinquency roll, foreclosure breach, and investor-report variance.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate risk factors and show score explanations in the workbench.
 
-### 48. Model governance and explainability for Mortgage Servicing Governed Model
+### 48. Release smoke scenarios
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Mortgage Servicing.
+**Justification:** Generated apps need evidence that realistic servicing workflows execute after composition.
 
-**Improvement:** For every predictive or agentic feature around `mortgage_servicing_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add smoke scenarios for boarding, payment application, escrow analysis, statement generation, delinquency, loss mitigation, foreclosure hold, and payoff.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release evidence must show owned records, AppGen-X events, UI artifacts, and boundary checks for each scenario.
 
-### 49. High-scale partitioning and archival for Mortgage Loan
+### 49. Cross-PBC boundary proof
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Mortgage servicing touches payment rails, documents, property, compliance, investors, accounting, and contact systems without owning them.
 
-**Improvement:** Plan scale behavior for `mortgage_loan`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `mortgage_servicing_create_mortgage_loan_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add automated proof that generated models, services, routes, handlers, projections, and agent commands use only owned tables plus declared APIs/events.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared table references and pass for declared projection or event dependency references.
 
-### 50. Release gate expansion for Escrow Account
+### 50. End-to-end borrower assistance workbench
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Specialists need one operational surface for hardship intake, document collection, option review, trial plans, notices, and closure.
 
-**Improvement:** Expand release gates for `mortgage_servicing` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `mortgage_servicing_record_escrow_account_workflow` where applicable, and make it visible in `MortgageServicingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a loss-mitigation workspace with borrower timeline, checklist, eligibility results, payment history, next action, compliance clock, and assistant panel.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/mortgage_servicing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must show complete case context and allow governed updates without raw datastore access.

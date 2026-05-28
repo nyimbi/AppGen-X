@@ -1,418 +1,365 @@
-# Media Rights and Content Monetization PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `media_rights_content_monetization`. The backlog is specific to rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Media Rights and Content Monetization Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `media_rights_content_monetization`.
-- Domain purpose: Rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization.
-- Owned domain tables: `rights_asset`, `license_agreement`, `distribution_window`, `usage_record`, `royalty_statement`, `revenue_share`, `territory_restriction`, `media_rights_content_monetization_policy_rule`, `media_rights_content_monetization_runtime_parameter`, `media_rights_content_monetization_schema_extension`, `media_rights_content_monetization_control_assertion`, `media_rights_content_monetization_governed_model`.
-- Public APIs: `POST /rights-assets`, `POST /license-agreements`, `POST /distribution-windows`, `POST /usage-records`, `POST /royalty-statements`, `GET /media-rights-content-monetization-workbench`.
-- Emitted AppGen-X events: `MediaRightsContentMonetizationCreated`, `MediaRightsContentMonetizationUpdated`, `MediaRightsContentMonetizationApproved`, `MediaRightsContentMonetizationExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `rights_asset_management`, `media_rights_content_monetization_workflow`, `media_rights_content_monetization_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `media_rights_content_monetization_event_sourced_operational_history`, `media_rights_content_monetization_multi_tenant_policy_isolation`, `media_rights_content_monetization_schema_evolution_resilience`, `media_rights_content_monetization_autonomous_anomaly_detection`, `media_rights_content_monetization_semantic_document_instruction_understanding`, `media_rights_content_monetization_predictive_risk_scoring`, `media_rights_content_monetization_counterfactual_scenario_simulation`, `media_rights_content_monetization_cryptographic_audit_proofs`.
+- Manifest key: `media_rights_content_monetization`.
+- Manifest description: rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization.
+- Current APIs: `POST /rights-assets`, `POST /license-agreements`, `POST /distribution-windows`, `POST /usage-records`, `POST /royalty-statements`, `GET /media-rights-content-monetization-workbench`.
+- Owned tables: `rights_asset`, `license_agreement`, `distribution_window`, `usage_record`, `royalty_statement`, `revenue_share`, `territory_restriction`, `media_rights_content_monetization_policy_rule`, `media_rights_content_monetization_runtime_parameter`, `media_rights_content_monetization_schema_extension`, `media_rights_content_monetization_control_assertion`, `media_rights_content_monetization_governed_model`.
+- Existing workflow surfaces: `media_rights_content_monetization_create_rights_asset_workflow` and `media_rights_content_monetization_record_license_agreement_workflow`.
+- Existing UI fragments: `MediaRightsContentMonetizationWorkbench`, `MediaRightsContentMonetizationDetail`, and `MediaRightsContentMonetizationAssistantPanel`.
+- Published events: `MediaRightsContentMonetizationCreated`, `MediaRightsContentMonetizationUpdated`, `MediaRightsContentMonetizationApproved`, and `MediaRightsContentMonetizationExceptionOpened`.
+- Consumed events: `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- Release evidence surfaces already declared in the manifest: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
 
-## 50 High-Impact Improvements
+## Improvement Backlog
 
-### 1. Canonical lifecycle state model for Rights Asset
+### 1. Canonical rights grant model
+**Justification:** The package needs one explicit representation of what is being granted so title, season, episode, clip, trailer, artwork, subtitle, dub, and promotional rights are not mixed together in free text.
 
-**Justification:** This closes shallow CRUD gaps by making every media rights and content monetization transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Extend `rights_asset` and `license_agreement` so every grant records rights type, grantor, grantee, exclusivity, language, version, edit type, and whether the right covers primary exploitation, marketing use, or derivative packaging.
 
-**Improvement:** Define a complete state machine for `rights_asset` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Schema fields and validation rules exist for grant dimensions, seeded fixtures show at least film, episode, clip, trailer, and artwork examples, and workbench detail views display the grant breakdown without manual interpretation.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for MediaRightsContentMonetizationCreated, MediaRightsContentMonetizationUpdated, MediaRightsContentMonetizationApproved. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Rights window versioning
+**Justification:** Window dates change repeatedly during negotiations and amendments, and operators need a defensible history of what was active on any given day.
 
-### 2. Domain intake and normalization for License Agreement
+**Improvement:** Add first-class versioning for `distribution_window` so start, end, embargo, extension, and amendment history are tracked with superseded-by links and amendment reasons.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization, not only already-clean records.
+**Acceptance evidence:** A timeline view shows original and amended windows, replay tests confirm the active version at a prior date, and approval evidence references the exact window version applied to release decisions.
 
-**Improvement:** Build a typed intake pipeline for `license_agreement` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 3. Territory hierarchy and rule inheritance
+**Justification:** Rights often apply to country groups, regions, and exceptions, and flat territory codes cannot express "worldwide except Canada" or "LATAM excluding Brazil."
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Model hierarchical territories in `territory_restriction` with parent-child inheritance, inclusion lists, exclusion lists, and effective precedence for overrides and carve-outs.
 
-### 3. Specialist validation rules for Distribution Window
+**Acceptance evidence:** Territory test cases cover country, region, worldwide, and exclusion scenarios, and the UI can explain why a title is blocked or allowed in a specific market.
 
-**Justification:** World-class Media Rights and Content Monetization requires rules that domain experts can reason about, version, test, and roll back without code edits.
+### 4. Platform and channel entitlement catalog
+**Justification:** Monetization decisions depend on where content is exploited, and rights vary across SVOD, AVOD, FAST, TVOD, linear, inflight, hotel, social, and owned-and-operated apps.
 
-**Improvement:** Add a domain rule compiler for `distribution_window` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Introduce a controlled platform catalog linked to `distribution_window` and `license_agreement`, including platform family, channel class, playback mode, download permission, and offline-viewing entitlement.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `MEDIA_RIGHTS_CONTENT_MONETIZATION_DATABASE_URL, MEDIA_RIGHTS_CONTENT_MONETIZATION_EVENT_TOPIC, MEDIA_RIGHTS_CONTENT_MONETIZATION_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Platform codes are validated at intake, seeded examples span multiple monetization channels, and availability views can filter by platform family without ambiguous labels.
 
-### 4. Parameter governance and tuning for Usage Record
+### 5. Availability state machine
+**Justification:** Availability is not binary; titles move through pending ingest, awaiting clearance, ready, live, expired, suspended, and takedown-required states.
 
-**Justification:** Parameters are where operations teams tune media rights and content monetization; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Add an explicit availability lifecycle tied to `rights_asset` and `distribution_window`, including state transitions for prelaunch readiness, live activation, suspension, expiration, reinstatement, and permanent withdrawal.
 
-**Improvement:** Expose bounded runtime parameters for `usage_record` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Transition tests reject invalid moves, workbench badges expose the lifecycle state, and audit output shows the actor and evidence behind each availability change.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Holdbacks and carve-out management
+**Justification:** Premium windows, pay-one holdbacks, theatrical holdbacks, and partner carve-outs are central to rights exploitation and often cause accidental early releases.
 
-### 5. Deep owned schema expansion for Royalty Statement
+**Improvement:** Create holdback entities linked to `distribution_window` with rule types for blackout period, platform exclusion, partner carve-out, and market-specific delay.
 
-**Justification:** A single payload column cannot express the full surface of rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization or prove cross-PBC boundaries are respected.
+**Acceptance evidence:** Simulation cases show how a holdback delays launch, the detail UI explains active holdbacks per title, and release approval blocks when holdback conflicts remain unresolved.
 
-**Improvement:** Extend the owned schema around `royalty_statement` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 7. Exclusivity and competitive blackout controls
+**Justification:** Exclusive deals lose value when the same content or materially similar edits appear on conflicting channels.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `media_rights_content_monetization_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Encode exclusivity scope in `license_agreement` and add policy checks that compare title, asset family, edit lineage, platform family, territory, and time period to detect competitive overlap.
 
-### 6. Event-sourced operational history for Revenue Share
+**Acceptance evidence:** Conflict tests catch duplicate exploitation during exclusive periods, exception tickets open automatically, and reviewers can see the competing grant that caused the block.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in media rights and content monetization.
+### 8. Licensing boundary between inbound and outbound rights
+**Justification:** The package must distinguish rights acquired from licensors from rights granted downstream to distributors, partners, and ad-supported outlets.
 
-**Improvement:** Capture every material mutation of `revenue_share` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Separate inbound licensing obligations from outbound commercialization rights inside `license_agreement`, and prevent downstream grants that exceed acquired scope by territory, platform, language, or term.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Validation rules fail oversized downstream deals, agreement detail pages show source-rights provenance, and evidence exports include the upstream agreement that authorizes each downstream exploitation.
 
-### 7. Projection and read-model strategy for Territory Restriction
+### 9. Term calculation and renewal workflow
+**Justification:** Rights terms depend on signature date, delivery date, first-air date, launch date, or satisfaction of conditions precedent, not just a static start/end pair.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Support term anchors and renewal formulas in `license_agreement` and `distribution_window`, including auto-renewal, option exercise deadlines, and notice windows.
 
-**Improvement:** Create purpose-built projections for `territory_restriction`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Date-calculation tests cover signature-anchored and launch-anchored terms, renewal reminders appear before cutoff dates, and approval screens display the anchor logic used.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Royalty boundary between owed, accrued, paid, and disputed
+**Justification:** Royalty accounting becomes unreliable when accruals, final statements, payments, and disputes are blended into one status field.
 
-### 8. Exception taxonomy and remediation for Media Rights Content Monetization Policy Rule
+**Improvement:** Expand `royalty_statement` so each line can be marked as calculated, accrued, invoiced, payable, paid, disputed, reversed, or carried forward, with links to the triggering usage or revenue event.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Acceptance evidence:** Statement fixtures show mixed line statuses in one cycle, dispute workflows keep disputed lines out of payable totals, and reconciliation reports clearly separate accrual from cash settlement.
 
-**Improvement:** Model the full exception taxonomy for `media_rights_content_monetization_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 11. Usage ingestion normalization by platform report type
+**Justification:** Usage arrives from many partners in different granularities such as views, watch minutes, ad impressions, clicks, subscriptions, and bundle allocations.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for schedule slippage. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Create typed ingestion profiles for `usage_record` that normalize partner-specific files into a common usage vocabulary while preserving original source units and source file lineage.
 
-### 9. Predictive risk scoring for Media Rights Content Monetization Runtime Parameter
+**Acceptance evidence:** Test fixtures cover at least subscription, ad-supported, transactional, and linear usage reports, normalization logs show source-to-canonical mappings, and rejected rows surface precise reasons.
 
-**Justification:** The package should warn users before media rights and content monetization work fails, breaches policy, or creates downstream cost.
+### 12. Revenue share waterfall engine
+**Justification:** Revenue share is rarely a single percentage; it often follows floors, tiers, commissions, deductions, and recoupment priority.
 
-**Improvement:** Add predictive risk scoring for `media_rights_content_monetization_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model `revenue_share` as a waterfall with ordered stages for gross revenue, allowed deductions, minimum guarantee recoupment, partner splits, commissions, and residual holdbacks.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Calculation tests cover tier changes and waterfall order, statement previews explain each step of the split, and adjustment entries are traceable back to the originating rule.
 
-### 10. Counterfactual simulation for Media Rights Content Monetization Schema Extension
+### 13. Minimum guarantee and recoupment tracking
+**Justification:** Minimum guarantees determine when licensors begin sharing upside, and weak recoupment tracking distorts both partner payouts and internal forecasting.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization operations.
+**Improvement:** Add minimum guarantee balances, recoupment schedules, and recoupment priority rules to `license_agreement`, linked directly to `revenue_share` and `royalty_statement`.
 
-**Improvement:** Provide scenario simulation for `media_rights_content_monetization_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Balance reports show guaranteed amount, recouped amount, outstanding amount, and recoupment source, and tests verify that partner payouts change once recoupment is satisfied.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Ad-supported monetization rights
+**Justification:** AVOD and FAST exploitation requires rights for ad insertion, ad load, ad categories, and monetization geography, not just playback rights.
 
-### 11. Autonomous anomaly triage for Media Rights Content Monetization Control Assertion
+**Improvement:** Add ad monetization flags and restrictions to `distribution_window` and `license_agreement`, including whether pre-roll, mid-roll, dynamic ad insertion, and programmatic monetization are permitted.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Acceptance evidence:** Availability views distinguish playback rights from ad monetization rights, policy rules block unsupported ad modes, and evidence exports show the agreement clause authorizing ad-funded exploitation.
 
-**Improvement:** Implement anomaly detection for `media_rights_content_monetization_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 15. Sponsorship and branded-content constraints
+**Justification:** Sponsored placement, presenting sponsorships, and branded slates can violate talent, sports, or editorial restrictions even when general AVOD is allowed.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Capture sponsorship-specific restrictions for title, series, event, and package exploitation, including prohibited sponsors, prohibited industries, exclusivity promises, and approval-needed cases.
 
-### 12. Semantic document understanding for Media Rights Content Monetization Governed Model
+**Acceptance evidence:** Conflict rules reject forbidden sponsor pairings, assistant drafts ask for sponsor category before approval, and release evidence includes sponsor approval artifacts when required.
 
-**Justification:** Document-heavy work in Media Rights and Content Monetization cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+### 16. Promotional use and marketing-rights exceptions
+**Justification:** Marketing teams often assume promo rights follow exploitation rights, but many agreements tightly limit clip length, still usage, and campaign duration.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `media_rights_content_monetization_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a promo-rights layer to `rights_asset` and `license_agreement` covering clip duration caps, still counts, artwork rights, trailer rights, and campaign term limits by territory and platform.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The workbench shows a separate marketing-rights panel, promotional exports fail when clip duration exceeds the agreement, and sample approvals demonstrate legal signoff for exceptions.
 
-### 13. Agent-safe CRUD execution for Rights Asset
+### 17. Restriction clause registry
+**Justification:** Rights restrictions are where most downstream mistakes occur, and burying them inside long-form agreement text makes them hard to enforce.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Create a structured clause registry for `license_agreement` and `media_rights_content_monetization_policy_rule` covering language restrictions, rating restrictions, sponsor conflicts, exclusivity promises, embargoes, and content edits required for release.
 
-**Improvement:** Add a professional chatbot skill for `rights_asset` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Intake extracts clauses into typed records, operators can search restrictions by clause type, and validation failures cite the exact structured clause that caused the block.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Takedown initiation and SLA management
+**Justification:** When rights expire or are revoked, the package must drive fast takedown action across all markets and platforms with measurable response time.
 
-### 14. Workbench persona coverage for License Agreement
+**Improvement:** Introduce takedown workflows linked to `distribution_window`, `rights_asset`, and `usage_record`, including trigger source, platform targets, deadline, completion evidence, and escalation path.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Acceptance evidence:** Takedown queues show due times and completion state, SLA timers breach when deadlines pass, and release evidence stores platform confirmations or unresolved exceptions.
 
-**Improvement:** Design dedicated workbench panels for `license_agreement`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 19. Rights conflict detection across title lineage
+**Justification:** Conflicts often happen between versions of the same content, such as director's cuts, compilations, dubbed edits, or branded collections, not just identical assets.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add lineage links among `rights_asset` records so conflict checks can compare parent title, cut, season, episode, language, edit family, and packaged derivative relationships.
 
-### 15. Cross-PBC dependency contracts for Distribution Window
+**Acceptance evidence:** Seed data includes related edits and derivatives, overlap scans catch conflicts on lineage-related assets, and reviewers can open the exact relationship that triggered the exception.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+### 20. Rights conflict resolution workbench
+**Justification:** Detecting a conflict is only half the problem; rights teams need a guided way to decide amendment, delay, takedown, or waiver.
 
-**Improvement:** Represent dependencies for `distribution_window` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a conflict-resolution area in `MediaRightsContentMonetizationWorkbench` with side-by-side comparison of overlapping grants, recommended next actions, approval chain, and final resolution type.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI flows support compare, assign, decide, and close actions, conflict tickets capture rationale and approver identity, and history views show how the chosen resolution changed downstream availability.
 
-### 16. API completeness and versioning for Usage Record
+### 21. Chain-of-title evidence tracking
+**Justification:** Monetization rights are only defensible when chain-of-title evidence shows uninterrupted authority from original owner to current exploiter.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Attach chain-of-title documents, amendments, rights confirmations, and approval memos to `rights_asset` and `license_agreement`, with document type, issue date, issuer, and validity status.
 
-**Improvement:** Expand APIs beyond POST /rights-assets, POST /license-agreements, POST /distribution-windows to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Assets cannot reach release-ready state without required evidence classes, audit exports include the chain-of-title packet, and exception queues surface missing or stale documents.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. Derivative and package rights modeling
+**Justification:** Collections, box sets, thematic channels, and clips packages often require separate rights decisions from the source titles they include.
 
-### 17. Typed emitted-event expansion for Royalty Statement
+**Improvement:** Model package rights and derivative exploitation as explicit entities connected to underlying `rights_asset` records, with inherited and overridden restrictions clearly separated.
 
-**Justification:** Consumers should understand what happened in Media Rights and Content Monetization without parsing opaque payloads.
+**Acceptance evidence:** Package examples show inherited and overridden constraints, approval screens list every source title contributing rights, and conflict checks work at both package and component level.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `royalty_statement` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 23. Localization rights by language and material type
+**Justification:** Subtitles, dubs, metadata translations, artwork localization, and title translations are monetizable rights surfaces with different restrictions.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Extend `rights_asset` and `distribution_window` to capture language-specific rights for audio dub, subtitle, captions, descriptive audio, localized metadata, and localized artwork.
 
-### 18. Consumed-event handlers for Revenue Share
+**Acceptance evidence:** Language-specific availability views exist, validation catches missing rights for dubbed launch plans, and sample evidence proves that subtitle-only rights do not unlock dubbed release.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+### 24. Territory-platform availability calendar UI
+**Justification:** Operators need a fast visual answer to when and where a title is available, blocked, or expiring across many territories and channels.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a calendar and matrix view in `MediaRightsContentMonetizationWorkbench` that combines `distribution_window`, `territory_restriction`, and platform entitlements into one explorable grid.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Users can filter by title, territory, and platform family, cell states explain block reasons, and expiring windows are visible without leaving the workbench.
 
-### 19. Retry and dead-letter operations for Territory Restriction
+### 25. Availability read model and API
+**Justification:** Downstream release tooling and partner operations need a stable answer to "can I publish this asset here, now, on this platform?"
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization.
+**Improvement:** Create an availability projection and query API that resolves rights state, territory inclusion, platform rights, restrictions, holdbacks, and takedown state into a single eligibility response.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `territory_restriction` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Query tests cover eligible and ineligible cases, the API response includes machine-readable reasons, and the workbench uses the same read model shown to external consumers.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Agent skill for agreement intake and clause extraction
+**Justification:** Rights teams spend large amounts of time turning agreement language into structured records, and that work benefits from bounded automation with human review.
 
-### 20. RBAC and attribute policy for Media Rights Content Monetization Policy Rule
+**Improvement:** Add an assistant skill in `MediaRightsContentMonetizationAssistantPanel` that drafts `license_agreement`, clause registry, and window records from uploaded deal documents while requiring confirmation before any write.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Acceptance evidence:** Draft extraction previews cite source passages, confidence thresholds trigger review when low, and accepted drafts generate audit events tied to the approving user.
 
-**Improvement:** Extend permissions for `media_rights_content_monetization_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 27. Agent skill for conflict triage and release readiness
+**Justification:** Conflict queues become operational bottlenecks unless the assistant can prepare comparisons, collect missing evidence, and suggest next actions without taking irreversible steps.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add an assistant workflow that summarizes rights conflicts, missing chain-of-title documents, expiring windows, and unresolved takedowns, then proposes assignment and remediation steps.
 
-### 21. Continuous control testing for Media Rights Content Monetization Runtime Parameter
+**Acceptance evidence:** Assistant output contains conflict summaries with linked records, blocked actions remain blocked without approval, and audit logs show every suggestion accepted or rejected by a human reviewer.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+### 28. Expanded domain event model
+**Justification:** Generic create/update events do not tell other packages whether a window opened, a takedown started, or a royalty dispute was raised.
 
-**Improvement:** Embed control assertions for `media_rights_content_monetization_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add typed events for agreement captured, window amended, availability activated, holdback asserted, takedown opened, takedown confirmed, royalty disputed, revenue share recalculated, and rights conflict detected.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `media_rights_content_monetization_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event schemas are documented, example payloads exist for each event, and event-driven tests show downstream projections responding to the new event types.
 
-### 22. Cryptographic audit proofing for Media Rights Content Monetization Schema Extension
+### 29. Event idempotency and replay evidence
+**Justification:** Rights operations cannot tolerate double takedowns, duplicate statements, or repeated revenue allocations when events are retried.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Strengthen idempotent handling for usage, royalty, takedown, and availability events using deterministic dedupe keys, replay-safe projections, and explicit conflict handling for out-of-order delivery.
 
-**Improvement:** Hash-chain material `media_rights_content_monetization_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Duplicate delivery tests prove no duplicate business effect, projection rebuilds match live state, and dead-letter records include actionable remediation metadata.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Release evidence bundle for rights decisions
+**Justification:** Release approval should rest on a packaged evidence trail rather than scattered screenshots or oral signoff.
 
-### 23. Privacy, consent, and secrecy controls for Media Rights Content Monetization Control Assertion
+**Improvement:** Build a release-evidence bundle that captures governing agreement, active windows, territory and platform eligibility, restriction review, takedown status, and final approver decision for each release.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` references generated bundle artifacts, approval records link to the bundle, and audits can retrieve a complete release packet for a selected asset.
 
-**Improvement:** Add field-level privacy classifications for `media_rights_content_monetization_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 31. Royalty statement review workbench
+**Justification:** Statement review needs its own workflow because analysts must inspect source usage, waterfall calculations, disputes, and payable totals together.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a dedicated royalty-review view in `MediaRightsContentMonetizationDetail` showing statement lines, deduction rationale, recoupment state, partner share, and dispute annotations.
 
-### 24. Multi-tenant operating model for Media Rights Content Monetization Governed Model
+**Acceptance evidence:** Review screens support line drill-down, line-level dispute creation, and approval/reject actions, and seeded examples cover both simple percentage splits and waterfall-driven statements.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+### 32. Revenue reconciliation across usage and payout
+**Justification:** Usage data, recognized revenue, royalty output, and partner settlement must reconcile or finance trust breaks down quickly.
 
-**Improvement:** Support tenant-specific `media_rights_content_monetization_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Create reconciliation checks tying `usage_record`, `revenue_share`, and `royalty_statement` together by partner, title, territory, platform, and accounting period, with tolerances and exception routing.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Reconciliation reports show matched and unmatched totals, threshold breaches open exceptions automatically, and tests verify that corrected usage restates downstream royalty values.
 
-### 25. Schema evolution and extension registry for Rights Asset
+### 33. Avails import and export workflows
+**Justification:** Distribution and syndication teams exchange avails constantly, and the package needs to represent what can be sold or launched in a format partners understand.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Add avails import and export support derived from `rights_asset`, `distribution_window`, `territory_restriction`, and platform entitlements, including title metadata, territories, platforms, and rights notes.
 
-**Improvement:** Make schema extensions for `rights_asset` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Round-trip tests prove that exported avails re-import cleanly, error reporting identifies invalid rows, and operators can export only release-ready avails.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Policy rules for prohibited rights combinations
+**Justification:** Many violations come from unsafe combinations such as ad-supported rights without ad approval, dubbed release without dub rights, or worldwide release with excluded territories.
 
-### 26. Master data quality gates for License Agreement
+**Improvement:** Expand `media_rights_content_monetization_policy_rule` to express prohibited combinations, required companion rights, and mandatory review conditions for monetization scenarios.
 
-**Justification:** Many media rights and content monetization errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Acceptance evidence:** Policy simulations show triggered and non-triggered combinations, blocked approvals cite the rule hit, and policy history records who changed the rule and why.
 
-**Improvement:** Define reference-data contracts for `license_agreement`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 35. Window overlap simulator
+**Justification:** Schedulers need to know the impact of changing launch dates before they accidentally overlap exclusives, violate holdbacks, or create revenue gaps.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Provide a simulator that compares proposed `distribution_window` changes against active windows, holdbacks, partner obligations, and territory exceptions without mutating production records.
 
-### 27. Bulk operations and correction workflows for Distribution Window
+**Acceptance evidence:** Scenario results show overlap warnings and safe alternatives, simulations can be attached to approvals, and tests confirm no persisted state changes from simulation runs.
 
-**Justification:** Enterprise-scale Media Rights and Content Monetization users cannot operate one record at a time.
+### 36. Pricing floors and ad-yield guardrails
+**Justification:** Some agreements require minimum rental price, minimum subscription allocation, or minimum ad yield before content can be monetized in certain channels.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `distribution_window` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add monetization floor controls to `license_agreement` and `revenue_share`, including minimum unit price, minimum CPM, minimum guarantee to licensor, and exception flow when economics fall below threshold.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Calculation tests cover floor breaches, release planning views warn when monetization assumptions violate deal terms, and approval records show who authorized any override.
 
-### 28. Lifecycle collaboration and tasking for Usage Record
+### 37. Sponsorship inventory reservation conflict checks
+**Justification:** Sponsored slates and presenting sponsor inventory can be sold in advance, so rights decisions need to avoid double-booking or contractually prohibited sponsor placement.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Add sponsorship reservation tracking linked to title, series, event, territory, platform, and sponsor category, with checks against rights restrictions and exclusivity promises.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `usage_record` without leaking into external shared task tables. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reservation conflict scenarios are blocked before approval, the workbench shows committed sponsor inventory, and sponsor-facing evidence can be exported for approved reservations.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Takedown reversal and reinstatement controls
+**Justification:** Some takedowns are temporary or issued in error, and reinstatement must be controlled so rights are not reactivated without evidence.
 
-### 29. SLA and service-level governance for Royalty Statement
+**Improvement:** Extend the takedown workflow with reversal requests, evidence review, partial reinstatement by territory or platform, and required approvals for reactivation.
 
-**Justification:** Users need to know when rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization is late, blocked, or at risk before customer or regulator impact.
+**Acceptance evidence:** Tests cover full and partial reinstatement, audit history preserves the original takedown and reversal path, and availability states update correctly after reinstatement.
 
-**Improvement:** Define SLAs for `royalty_statement` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 39. Ratings, regulatory, and audience restriction handling
+**Justification:** Monetization rights can depend on local ratings, watershed rules, gambling or alcohol ad restrictions, and child-directed content limitations.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add structured restriction types for rating, audience, and regulatory constraints, and enforce them across territory, platform, ad mode, and sponsorship use cases.
 
-### 30. Operational analytics cockpit for Revenue Share
+**Acceptance evidence:** Territory-specific restriction examples are validated, blocked launches explain the local rule in force, and release evidence shows the rating or compliance artifact reviewed.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+### 40. Rights expiry and sunset alerting
+**Justification:** Expiring rights affect marketing, availability, finance forecasting, and takedown operations well before the actual end date.
 
-**Improvement:** Build analytics for `revenue_share`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Implement alerting for upcoming expiry, renewal notice deadlines, holdback release dates, sponsorship end dates, and recoupment milestones using the existing event and workbench surfaces.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Alert thresholds are configurable, users can see upcoming expiries by title and territory, and reminder events fire at the expected lead times in test scenarios.
 
-### 31. Decision intelligence and recommendations for Territory Restriction
+### 41. Multi-tenant rights segregation
+**Justification:** The package may serve multiple studios, distributors, or brands, and rights evidence must remain tenant-confined throughout intake, review, and export.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Strengthen tenant scoping across `rights_asset`, agreements, windows, usage, statements, events, and evidence bundles so cross-tenant lookup, export, and assistant context are blocked by default.
 
-**Improvement:** Generate ranked recommendations for `territory_restriction` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Isolation tests prove tenant A cannot see tenant B assets or evidence, assistant prompts stay tenant-bound, and audit logs show tenant identity on every sensitive action.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Bulk correction workflow for late source data
+**Justification:** Cue sheets, usage files, and rights amendments often arrive late, forcing large corrections that need traceability and controlled restatement.
 
-### 32. Quality and completeness scoring for Media Rights Content Monetization Policy Rule
+**Improvement:** Add bulk correction flows for `usage_record`, `distribution_window`, and `royalty_statement` with preview diffing, row-level validation, selective approval, and automatic downstream recalculation.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Acceptance evidence:** Bulk correction jobs show accepted and rejected rows separately, recalculation events are emitted for affected statements, and audit history links every corrected record to the batch request.
 
-**Improvement:** Score each `media_rights_content_monetization_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 43. Release readiness checklist
+**Justification:** Teams need one shared release gate that checks rights, materials, restrictions, economics, and takedown risk before launch.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a release-readiness checklist assembled from agreement validity, active windows, territory eligibility, platform rights, promo rights, ad rights, sponsorship restrictions, and chain-of-title completeness.
 
-### 33. End-to-end scenario library for Media Rights Content Monetization Runtime Parameter
+**Acceptance evidence:** Assets cannot be approved for launch while checklist items remain red, checklist snapshots are attached to approval evidence, and users can drill into the failing item from the workbench.
 
-**Justification:** Release evidence is stronger when every important media rights and content monetization behavior has executable examples.
+### 44. Domain KPI dashboard
+**Justification:** Leadership needs a compact readout of rights risk, monetization readiness, and payout accuracy without drilling into record-level screens first.
 
-**Improvement:** Create seeded scenarios for `media_rights_content_monetization_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build KPI projections for expiring rights, blocked launches, open conflicts, takedown SLA performance, royalty dispute rate, recoupment progress, and monetizable title inventory by channel.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Dashboard metrics are defined and tested, drill-through routes land on the underlying queues, and KPI changes can be correlated with emitted operational events.
 
-### 34. Domain ontology and terminology model for Media Rights Content Monetization Schema Extension
+### 45. Exception taxonomy and ownership routing
+**Justification:** Rights issues vary materially between missing paperwork, conflicting windows, invalid usage files, payout disputes, and emergency takedowns.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Create a typed exception model with categories for rights evidence, availability conflict, territory rule, platform rule, economics, takedown, sponsor conflict, and royalty dispute, each with required owner roles and deadlines.
 
-**Improvement:** Add an ontology for `media_rights_content_monetization_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Exceptions open with the right category and assignee defaults, SLA and escalation policies vary by exception type, and reporting can break down backlog by category and owner.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Seed data and test scenarios for real rights cases
+**Justification:** Domain changes are hard to trust without fixtures that resemble actual rights operations rather than generic sample rows.
 
-### 35. Advanced search and investigation for Media Rights Content Monetization Control Assertion
+**Improvement:** Expand `seed_data.py` and contract tests with scenarios for exclusive SVOD windows, AVOD after holdback, dubbed-only rights, sponsor-blocked content, emergency takedown, and disputed royalty statements.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Acceptance evidence:** Seeded records can drive the workbench end to end, tests cover each named scenario, and release evidence examples are generated from seeded cases.
 
-**Improvement:** Provide search across `media_rights_content_monetization_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+### 47. Specification and backlog alignment
+**Justification:** The improvement backlog should map cleanly to implementation and release artifacts so domain gaps are visible rather than implied.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Update `SPECIFICATION.md` structure expectations for rights grant modeling, windows, territories, monetization rules, takedowns, conflict handling, assistant behavior, and evidence bundles so backlog items can trace into delivery work.
 
-### 36. Reconciliation and closure controls for Media Rights Content Monetization Governed Model
+**Acceptance evidence:** Specification sections mirror the major domain areas in this backlog, requirement identifiers can be mapped to tests and events, and release evidence cites the implemented requirement IDs.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+### 48. Cross-PBC boundary hardening with event contracts
+**Justification:** Rights and monetization decisions influence other areas, but ownership breaks down when those integrations drift into table coupling or undocumented side effects.
 
-**Improvement:** Add reconciliation workflows that compare `media_rights_content_monetization_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Define outbound and inbound contracts around availability, takedown, payout, and policy changes using the existing event surfaces and new typed events, keeping other packages outside owned tables.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Contract tests verify event schemas and consumer expectations, no integration relies on direct reads from owned rights tables, and event lineage is visible from the workbench.
 
-### 37. Regulatory and policy reporting for Rights Asset
+### 49. Evidence-based approval gates
+**Justification:** Approval must mean the approver saw the specific facts required for a rights decision, not just clicked a generic approve button.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Require approval screens to present the active grant, windows, territories, platform rights, restrictions, economics, open exceptions, and attached evidence before `MediaRightsContentMonetizationApproved` can be emitted.
 
-**Improvement:** Generate domain reporting packs for `rights_asset` covering statutory, contractual, operational, board, customer, or regulator evidence depending on contractual obligations, site progress evidence, physical asset state, commercial controls, safety constraints, change events, and long-horizon lifecycle accountability. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Approval flows fail when required evidence is missing, approver attestations are stored with the decision, and tests prove approval payloads include the supporting record references.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Post-release monitoring and rollback readiness
+**Justification:** Rights launches need immediate observation because bad availability or monetization settings can create contractual breaches within minutes.
 
-### 38. Carbon and resource awareness for License Agreement
+**Improvement:** Add post-release monitoring for unexpected territory exposure, ad mode violations, sponsor conflicts, usage spikes, missing revenue feeds, and takedown failures, plus a rollback playbook for suspension or takedown by scope.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `license_agreement` decisions and batch operations. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Distribution Window
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `distribution_window`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Usage Record
-
-**Justification:** Automation should accelerate rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `usage_record`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Royalty Statement
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `media_rights_content_monetization` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Revenue Share
-
-**Justification:** Configuration changes can materially alter media rights and content monetization; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `revenue_share` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Territory Restriction
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `territory_restriction` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Media Rights Content Monetization Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind rights, licensing, distribution windows, royalties, usage tracking, revenue share, and content monetization.
-
-**Improvement:** Create a governed evidence vault for `media_rights_content_monetization_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Media Rights Content Monetization Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `media_rights_content_monetization_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Media Rights Content Monetization Schema Extension
-
-**Justification:** Many media rights and content monetization workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `media_rights_content_monetization_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Media Rights Content Monetization Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `media_rights_content_monetization_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Media Rights Content Monetization Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Media Rights and Content Monetization.
-
-**Improvement:** For every predictive or agentic feature around `media_rights_content_monetization_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Rights Asset
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `rights_asset`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `media_rights_content_monetization_create_rights_asset_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for License Agreement
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `media_rights_content_monetization` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `media_rights_content_monetization_record_license_agreement_workflow` where applicable, and make it visible in `MediaRightsContentMonetizationWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/media_rights_content_monetization` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Monitoring alerts fire on seeded failure scenarios, rollback actions can target territory and platform subsets, and release evidence stores the monitoring outcome for the first hours after launch.

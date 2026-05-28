@@ -1,418 +1,412 @@
-# Mining Operations Management PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `mining_operations_management`. The backlog is specific to mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Mining Operations Management Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `mining_operations_management`.
-- Domain purpose: Mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations.
-- Owned domain tables: `mine_plan`, `pit_block`, `extraction_shift`, `haulage_cycle`, `fleet_asset`, `ore_quality`, `stockpile`, `mining_operations_management_policy_rule`, `mining_operations_management_runtime_parameter`, `mining_operations_management_schema_extension`, `mining_operations_management_control_assertion`, `mining_operations_management_governed_model`.
-- Public APIs: `POST /mine-plans`, `POST /pit-blocks`, `POST /extraction-shifts`, `POST /haulage-cycles`, `POST /fleet-assets`, `GET /mining-operations-management-workbench`.
-- Emitted AppGen-X events: `MiningOperationsManagementCreated`, `MiningOperationsManagementUpdated`, `MiningOperationsManagementApproved`, `MiningOperationsManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `mine_plan_management`, `mining_operations_management_workflow`, `mining_operations_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `mining_operations_management_event_sourced_operational_history`, `mining_operations_management_multi_tenant_policy_isolation`, `mining_operations_management_schema_evolution_resilience`, `mining_operations_management_autonomous_anomaly_detection`, `mining_operations_management_semantic_document_instruction_understanding`, `mining_operations_management_predictive_risk_scoring`, `mining_operations_management_counterfactual_scenario_simulation`, `mining_operations_management_cryptographic_audit_proofs`.
+- PBC key: `mining_operations_management`.
+- Manifest description: mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations.
+- Current APIs in manifest: `POST /mine-plans`, `POST /pit-blocks`, `POST /extraction-shifts`, `POST /haulage-cycles`, `POST /fleet-assets`, `GET /mining-operations-management-workbench`.
+- Current tables in manifest: `mine_plan`, `pit_block`, `extraction_shift`, `haulage_cycle`, `fleet_asset`, `ore_quality`, `stockpile`, `mining_operations_management_policy_rule`, `mining_operations_management_runtime_parameter`, `mining_operations_management_schema_extension`, `mining_operations_management_control_assertion`, `mining_operations_management_governed_model`.
+- Current emitted events in manifest: `MiningOperationsManagementCreated`, `MiningOperationsManagementUpdated`, `MiningOperationsManagementApproved`, `MiningOperationsManagementExceptionOpened`.
+- Current consumed events in manifest: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Current UI fragments in manifest: `MiningOperationsManagementWorkbench`, `MiningOperationsManagementDetail`, `MiningOperationsManagementAssistantPanel`.
+- Current workflows in manifest: `mining_operations_management_create_mine_plan_workflow` and `mining_operations_management_record_pit_block_workflow`.
 
-## 50 High-Impact Improvements
+### 1. Hierarchical mine plan structure
 
-### 1. Canonical lifecycle state model for Mine Plan
+**Justification:** Open-pit benches and underground stopes must roll up into a planning hierarchy that production, geology, and plant teams can reconcile without manual spreadsheets.
 
-**Justification:** This closes shallow CRUD gaps by making every mining operations management transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Extend the planning model so one mine plan can contain period versions, pit phases, pushbacks, benches, stopes, drawpoints, and mining blocks with explicit parent-child relationships, sequencing windows, planned tonnage, planned grade, stripping ratio, and ore destination.
 
-**Improvement:** Define a complete state machine for `mine_plan` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Regression tests prove hierarchy creation and edits through the mine-plan workflow, the workbench shows expandable plan trees by phase and mining area, and release evidence includes a sample plan pack with pit and stope rollups.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for MiningOperationsManagementCreated, MiningOperationsManagementUpdated, MiningOperationsManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Spatial identity for pits, benches, stopes, and drawpoints
 
-### 2. Domain intake and normalization for Pit Block
+**Justification:** Dispatching and ore control break down when operational records do not point to the exact mining location where material was drilled, blasted, loaded, or hauled.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations, not only already-clean records.
+**Improvement:** Add canonical location identifiers and boundary metadata for pit, bench, stope, drawpoint, ore drive, and loading point records, including mine coordinate reference, mining method, active status, and linkage to the owning mine plan period.
 
-**Improvement:** Build a typed intake pipeline for `pit_block` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Validation fixtures reject duplicated or ambiguous location IDs, UI detail pages show location lineage from plan to execution record, and release evidence includes boundary examples for both pit and underground layouts.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Drill pattern planning
 
-### 3. Specialist validation rules for Extraction Shift
+**Justification:** Drill-and-blast performance affects fragmentation, dilution, loader productivity, and downstream crusher throughput, so it needs first-class backlog coverage.
 
-**Justification:** World-class Mining Operations Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Introduce drill pattern entities and workflow steps for hole count, hole depth, burden, spacing, sub-drill, explosive type, initiation sequence, powder factor, target fragmentation class, and shift readiness status.
 
-**Improvement:** Add a domain rule compiler for `extraction_shift` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Contract tests cover drill pattern submission and approval, the workbench exposes upcoming and overdue patterns by bench or stope, and release evidence includes a signed-off drill pattern example with design assumptions.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `MINING_OPERATIONS_MANAGEMENT_DATABASE_URL, MINING_OPERATIONS_MANAGEMENT_EVENT_TOPIC, MINING_OPERATIONS_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Blast execution and blast clearance control
 
-### 4. Parameter governance and tuning for Haulage Cycle
+**Justification:** A mine cannot safely execute blasts without verifying exclusion zones, blast windows, pre-clearance, and post-blast release decisions.
 
-**Justification:** Parameters are where operations teams tune mining operations management; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Add blast execution records tied to drill patterns with blast time, clearance confirmation, exclusion zone checks, misfire flags, re-entry approval, and post-blast inspection outcome.
 
-**Improvement:** Expose bounded runtime parameters for `haulage_cycle` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests show that blast completion is blocked until clearance conditions are met, UI badges expose blast status and re-entry hold points, and release evidence includes an auditable blast packet from plan through release.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Dig block and ore parcel definition
 
-### 5. Deep owned schema expansion for Fleet Asset
+**Justification:** Mine planning alone is too coarse for daily mining because equipment operators and ore control geologists need diggable ore parcels with clear destination rules.
 
-**Justification:** A single payload column cannot express the full surface of mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations or prove cross-PBC boundaries are respected.
+**Improvement:** Add dig block or ore parcel records beneath pit blocks and stopes with expected tonnes, expected grade bands, lithology, destination policy, dilution risk, and mining sequence priority.
 
-**Improvement:** Extend the owned schema around `fleet_asset` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workflow tests verify ore parcel creation under approved plan structures, the detail view displays parcel-level destination rules, and release evidence includes parcel snapshots used in a daily production cycle.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `mining_operations_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Shift target planning
 
-### 6. Event-sourced operational history for Ore Quality
+**Justification:** Supervisors need a governed way to convert monthly mine plans into shift-level targets for tonnes, metres, blasts, and equipment hours.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in mining operations management.
+**Improvement:** Add shift target objects for day and night shifts with target ore tonnes, waste tonnes, metres drilled, blasts due, truck loads, plant feed nomination, and critical constraints by mining area.
 
-**Improvement:** Capture every material mutation of `ore_quality` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests verify target versioning and approval, the workbench compares target versus actual per shift, and release evidence contains one daily target board generated from an approved plan.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Haul route catalog and route constraints
 
-### 7. Projection and read-model strategy for Stockpile
+**Justification:** Haul cycles are not meaningful without route context such as ramp status, one-way sections, queue limits, and maximum gross vehicle mass restrictions.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Add haul route definitions with from-point, to-point, ramp segment, distance, gradient band, expected cycle time, traffic direction rule, and temporary closure state.
 
-**Improvement:** Create purpose-built projections for `stockpile`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Route validation tests prevent impossible route assignments, dispatch UI shows active and blocked routes, and release evidence includes a route-status example affecting daily cycle plans.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Dispatch assignment engine
 
-### 8. Exception taxonomy and remediation for Mining Operations Management Policy Rule
+**Justification:** Mining operations depend on the daily pairing of loaders, trucks, operators, and active loading points, not just recorded haulage cycles after the fact.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Add dispatch assignment capabilities that allocate trucks to loaders or stopes, track dispatch board state, capture reassignment reasons, and enforce equipment compatibility by loading point, payload class, and route condition.
 
-**Improvement:** Model the full exception taxonomy for `mining_operations_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scenario tests cover dispatching, reassignment, and blocked allocations, the workbench shows a live dispatch board view, and release evidence includes an assignment log for one full shift.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Equipment boundary and capability model
 
-### 9. Predictive risk scoring for Mining Operations Management Runtime Parameter
+**Justification:** Loader, truck, drill, and ancillary assets operate under boundary rules that determine where they may work and what material classes they can handle.
 
-**Justification:** The package should warn users before mining operations management work fails, breaches policy, or creates downstream cost.
+**Improvement:** Extend fleet asset coverage to include equipment class, payload band, approved mining areas, operator certification requirements, fuel type, communication availability, and whether the unit is cleared for pit, underground, or dual-use operation.
 
-**Improvement:** Add predictive risk scoring for `mining_operations_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests reject dispatches that cross equipment boundary rules, UI screens show asset capability cards, and release evidence includes a blocked-assignment example caused by an equipment boundary violation.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Ore control sampling workflow
 
-### 10. Counterfactual simulation for Mining Operations Management Schema Extension
+**Justification:** Grade control depends on sample points, assay turnaround, and local ore-waste decisions that must stay linked to the material that is actually mined.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations operations.
+**Improvement:** Introduce ore control sample records tied to dig blocks, blast polygons, and stopes with sample type, interval, assay status, provisional grade, final grade, and sampling confidence.
 
-**Improvement:** Provide scenario simulation for `mining_operations_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Assay workflow tests prove status changes and late-result corrections, ore control screens show pending and final samples, and release evidence includes one ore-control chain from sample to dispatch destination change.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Ore-waste boundary decisions
 
-### 11. Autonomous anomaly triage for Mining Operations Management Control Assertion
+**Justification:** Mining loses value when ore-waste boundaries are changed informally without traceable grade reasoning or supervisor approval.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Add boundary decision records that capture dig-line adjustments, visual geology observations, assay references, grade thresholds, destination changes, and who approved the ore or waste call.
 
-**Improvement:** Implement anomaly detection for `mining_operations_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests enforce approval before destination changes take effect, the UI displays before-and-after boundary calls, and release evidence contains a signed boundary adjustment example with grade rationale.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Dilution and ore loss accounting
 
-### 12. Semantic document understanding for Mining Operations Management Governed Model
+**Justification:** Reconciliation is incomplete unless the system can explain where planned ore was lost and where unplanned waste dilution entered the material stream.
 
-**Justification:** Document-heavy work in Mining Operations Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add dilution and ore-loss events linked to dig blocks, stopes, blasts, and haul cycles, with causal categories such as overbreak, underbreak, backfill contamination, poor dig compliance, and sampling uncertainty.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `mining_operations_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Analytics tests roll dilution and ore-loss measures into reconciliation reports, the workbench shows variance drivers by area, and release evidence includes one reconciled month with documented loss categories.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Stockpile genealogy
 
-### 13. Agent-safe CRUD execution for Mine Plan
+**Justification:** ROM, low-grade, high-grade, and blending stockpiles need genealogy so plant feed decisions can be defended after multiple reclaim and topping events.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Extend stockpile handling to track build, top-up, reclaim, depletion, moisture adjustment, and source lineage from pit block, stope, or ore parcel into every stockpile movement.
 
-**Improvement:** Add a professional chatbot skill for `mine_plan` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests prove lineage preservation across multiple stockpile movements, UI views show stockpile genealogy timelines, and release evidence includes a stockpile mass-balance example.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Stockpile quality estimation
 
-### 14. Workbench persona coverage for Pit Block
+**Justification:** Plant feed planning fails if stockpile tonnes and grade are treated as static values rather than continuously updated estimates with confidence bounds.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Add estimated tonnes, estimated grade, moisture, density factor, confidence class, last survey date, and last sample date to stockpiles with governed recalculation rules after each movement or survey adjustment.
 
-**Improvement:** Design dedicated workbench panels for `pit_block`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Recalculation tests cover stockpile build and reclaim events, the workbench highlights stale estimates, and release evidence includes before-and-after quality estimates after a survey correction.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Plant feed nomination and blend planning
 
-### 15. Cross-PBC dependency contracts for Extraction Shift
+**Justification:** The mine-to-plant handoff is where planning, ore control, and stockpile management converge, so it must be explicit in the backlog.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Add plant feed nominations by shift and day with required tonnes, target grade band, blend components, stockpile draw plan, crusher or mill destination, and fallback feed options if a source becomes unavailable.
 
-**Improvement:** Represent dependencies for `extraction_shift` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests prove that nominations reference valid available material, UI panels show planned versus achieved plant feed, and release evidence includes one blend plan with contingency options.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Crusher and ROM pad queue visibility
 
-### 16. API completeness and versioning for Haulage Cycle
+**Justification:** Dispatch decisions must account for queue buildup at crushers, ore passes, ROM pads, and tipping points to avoid hidden delays and rehandle.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Add queue state records for crusher pockets, ROM pads, ore passes, and tipping locations with queue length, wait time band, destination availability, and diversion rules.
 
-**Improvement:** Expand APIs beyond POST /mine-plans, POST /pit-blocks, POST /extraction-shifts to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** UI tests confirm queue indicators on dispatch and haulage screens, projections show queue-driven delay attribution, and release evidence includes one shift where dispatch changed because of crusher congestion.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Payload and tonnage adjustment governance
 
-### 17. Typed emitted-event expansion for Fleet Asset
+**Justification:** Reconciliation becomes unreliable when survey tonnes, truck payload system tonnes, and belt tonnes drift without a controlled adjustment process.
 
-**Justification:** Consumers should understand what happened in Mining Operations Management without parsing opaque payloads.
+**Improvement:** Add tonnage adjustment records that compare payload system, truck count, survey, and plant receipt measures, including approved adjustment method, effective period, and material classes affected.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `fleet_asset` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests cover approval and rollback of tonnage adjustments, reports show adjusted and raw values side by side, and release evidence includes one signed adjustment decision used in month-end reconciliation.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Grade reconciliation chain
 
-### 18. Consumed-event handlers for Ore Quality
+**Justification:** Mining teams need one governed view from reserve model through ore control to stockpile and plant feed to understand grade gain or loss.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Build reconciliation entities and projections for plan grade, control grade, mined grade, stockpile grade, and plant feed grade, including variance reasons and sign-off stages.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests prove roll-forward consistency across reconciliation stages, the workbench exposes variance drill-down by area and period, and release evidence includes a complete reconciliation pack for one reporting month.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Survey and measured volume integration
 
-### 19. Retry and dead-letter operations for Stockpile
+**Justification:** Measured excavation and stockpile surveys are core evidence for tonnes moved, pit advance, and stope void development.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations.
+**Improvement:** Add measured survey capture for excavation progress, stockpile volumes, stope voids, and backfill progress with survey date, source, method, confidence, and linkage to affected production records.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `stockpile` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests verify survey updates trigger dependent recalculations, UI views flag stale or missing surveys, and release evidence contains one survey-based correction pack.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Geotechnical domain and hazard tagging
 
-### 20. RBAC and attribute policy for Mining Operations Management Policy Rule
+**Justification:** Geotechnical hazards such as wall movement, crest risk, brow instability, seismicity, and ground support limits directly affect what can be mined.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Add geotechnical domain tags and hazard states to pits, benches, stopes, and active work areas with risk rating, monitoring source, mitigation requirement, and expiry time for the current ground condition assessment.
 
-**Improvement:** Extend permissions for `mining_operations_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests block mining actions in hazard-tagged areas without approval, the UI shows geotech overlays and restrictions, and release evidence includes one area closure caused by geotechnical risk.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Geotechnical exclusion zones and conditional approvals
 
-### 21. Continuous control testing for Mining Operations Management Runtime Parameter
+**Justification:** Operations need clear boundary logic when a geotechnical engineer allows restricted access under monitored conditions rather than a full closure.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add exclusion zone rules and conditional approval workflows that specify allowed activity, allowed equipment, monitoring checks, escort requirements, and review interval.
 
-**Improvement:** Embed control assertions for `mining_operations_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workflow tests verify conditional approvals expire correctly, dispatch screens show area-specific constraints, and release evidence includes one conditional-access record with sign-off history.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `mining_operations_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. Water, dewatering, and weather constraints
 
-### 22. Cryptographic audit proofing for Mining Operations Management Schema Extension
+**Justification:** Rain, flooded headings, sump limits, and poor road conditions materially change how mine plans are executed and should be reflected in daily decisions.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Add operational constraint records for rainfall, dewatering status, road condition, sump capacity, and visibility windows, with logic that can block drilling, blasting, loading, or haulage by area.
 
-**Improvement:** Hash-chain material `mining_operations_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests cover constraint-driven stoppages and resumptions, workbench banners explain active weather or water limits, and release evidence includes one shift exception opened by wet-condition restrictions.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Maintenance and availability boundary
 
-### 23. Privacy, consent, and secrecy controls for Mining Operations Management Control Assertion
+**Justification:** Fleet availability is not a static attribute; dispatch and shift planning need visibility into planned maintenance, breakdown, and return-to-service readiness.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Extend fleet assets with availability states, breakdown class, maintenance due windows, workshop queue, and return-to-service release checks that feed directly into dispatch eligibility.
 
-**Improvement:** Add field-level privacy classifications for `mining_operations_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests reject assignments for unavailable or unreleased equipment, UI panels show maintenance-driven dispatch shortfalls, and release evidence includes one fleet availability summary tied to missed production.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Shift handover and supervisor notes
 
-### 24. Multi-tenant operating model for Mining Operations Management Governed Model
+**Justification:** Key production context is often lost between shifts unless the PBC captures handover notes, open issues, and required follow-up actions.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add structured shift handover records covering active headings, blocked areas, equipment issues, ore destination changes, outstanding blasts, stockpile concerns, and plant feed risks.
 
-**Improvement:** Support tenant-specific `mining_operations_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests verify handover completion before shift closure, UI screens present unresolved handover items to the next supervisor, and release evidence includes one linked day-night handover record.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Delay code taxonomy
 
-### 25. Schema evolution and extension registry for Mine Plan
+**Justification:** Production reporting is weak when lost time is captured as free text instead of governed delay categories that can be trended and improved.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Add a mine-specific delay taxonomy for drilling, blasting, loading, haulage, ore pass, crusher, geotech, weather, survey, and maintenance interruptions with primary and secondary cause capture.
 
-**Improvement:** Make schema extensions for `mine_plan` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reporting tests roll delay codes into availability and utilization metrics, the workbench supports delay-code drill-down, and release evidence includes one daily delay report.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Shift production reporting
 
-### 26. Master data quality gates for Pit Block
+**Justification:** A mining operations workbench must provide a governed shift production report rather than relying on downstream manual consolidation.
 
-**Justification:** Many mining operations management errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Add shift production reports that summarize ore tonnes, waste tonnes, metres drilled, blasts fired, truck loads, stockpile movements, plant feed sent, delays, and safety or geotech exceptions by area.
 
-**Improvement:** Define reference-data contracts for `pit_block`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests validate report totals against source records, the workbench exports the shift report, and release evidence includes one signed production report with supporting record links.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Variance explanation workflow
 
-### 27. Bulk operations and correction workflows for Extraction Shift
+**Justification:** Supervisors and managers need structured explanations when actual production misses plan, not just a red variance number.
 
-**Justification:** Enterprise-scale Mining Operations Management users cannot operate one record at a time.
+**Improvement:** Add variance records for tonnes, grade, metres, blasts, cycle count, and equipment hours with causal categories, supporting evidence, action owner, and whether the variance impacts future plan commitments.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `extraction_shift` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests require variance completion above configured thresholds, UI views show unresolved variances by period, and release evidence includes one closed variance case with corrective action.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. Rolling forecast update cycle
 
-### 28. Lifecycle collaboration and tasking for Haulage Cycle
+**Justification:** Mine plans change quickly after geotech events, plant constraints, assay returns, and equipment losses, so the PBC needs a short-cycle forecasting surface.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Add rolling forecast versions for next shift, next day, and next week with deltas from the approved plan, confidence band, and dependency assumptions for active mining areas and plant feed.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `haulage_cycle` without leaking into external shared task tables. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests show forecast version history and approval flow, the workbench compares forecast versus committed plan, and release evidence includes one forecast revision caused by changed ore availability.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Underground stope readiness checklist
 
-### 29. SLA and service-level governance for Fleet Asset
+**Justification:** Underground stopes require readiness checks for development completion, services, support, ventilation, and access that differ from open-pit pushback readiness.
 
-**Justification:** Users need to know when mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Add stope readiness checklists with headings for development complete, support installed, ventilation available, services in place, brow condition checked, drawpoint readiness, and backfill status.
 
-**Improvement:** Define SLAs for `fleet_asset` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests block stope activation until checklist items are satisfied or waived by approval, the detail page shows readiness status, and release evidence includes one approved stope readiness packet.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Open-pit phase and pushback readiness checklist
 
-### 30. Operational analytics cockpit for Ore Quality
+**Justification:** Pushback sequencing needs formal readiness control for access, pre-strip completion, wall monitoring, and haul road readiness.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Add pit-phase readiness records for access established, dewatering complete, ramp serviceability, wall monitoring active, pre-strip achieved, and first-blast approval.
 
-**Improvement:** Build analytics for `ore_quality`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests enforce readiness gates before the phase becomes active, the workbench shows incomplete pushback prerequisites, and release evidence includes one approved pit-phase start package.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Typed operational event model
 
-### 31. Decision intelligence and recommendations for Stockpile
+**Justification:** The current generic events do not give downstream consumers enough mining context to react safely to planning, dispatch, ore control, and reconciliation changes.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Expand emitted events into typed mining events such as `MinePlanVersionApproved`, `BlastCleared`, `DispatchAssignmentChanged`, `OreBoundaryAdjusted`, `StockpileReconciled`, and `PlantFeedNominated` while preserving lineage to the generic package lifecycle.
 
-**Improvement:** Generate ranked recommendations for `stockpile` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event-schema tests validate required mining fields, event examples are added to release evidence, and downstream projection tests consume the new event types without ambiguity.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Event-sourced operational history views
 
-### 32. Quality and completeness scoring for Mining Operations Management Policy Rule
+**Justification:** Root-cause analysis is difficult unless users can reconstruct the exact sequence from plan change to blast, haulage, stockpile movement, and plant feed consequence.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Build event-backed timelines for plan versions, shift execution, dispatch changes, ore boundary calls, stockpile genealogy, and reconciliation adjustments with actor, reason, and before-after summaries.
 
-**Improvement:** Score each `mining_operations_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Replay tests rebuild timelines from events, the UI exposes chronological history filters by pit or stope, and release evidence includes one event replay checksum report.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Projection freshness and dead-letter handling
 
-### 33. End-to-end scenario library for Mining Operations Management Runtime Parameter
+**Justification:** A live dispatch or reconciliation board is dangerous if the user cannot see when projections are stale or if critical event handlers have failed.
 
-**Justification:** Release evidence is stronger when every important mining operations management behavior has executable examples.
+**Improvement:** Add freshness indicators, dead-letter queues, replay actions, and operator explanations for mining projections that power dispatch, stockpile, and reporting screens.
 
-**Improvement:** Create seeded scenarios for `mining_operations_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests simulate failed projection handlers and successful replay, the UI shows stale-data warnings with affected areas, and release evidence includes dead-letter remediation evidence for one failed event.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Agent skill for shift planning
 
-### 34. Domain ontology and terminology model for Mining Operations Management Schema Extension
+**Justification:** A useful assistant in this domain should help supervisors prepare shift plans from mine plan, fleet, geotech, and plant feed context without bypassing approvals.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Add an agent skill that drafts a shift plan with proposed tonnes, active areas, equipment assignments, blast windows, ore destination changes, and risk notes, all as preview-only until a human confirms.
 
-**Improvement:** Add an ontology for `mining_operations_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Skill tests prove draft generation uses package APIs and permission checks, the assistant panel shows traceable source data and diff preview, and release evidence includes one approved agent-assisted shift plan.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Agent skill for blast readiness review
 
-### 35. Advanced search and investigation for Mining Operations Management Control Assertion
+**Justification:** Blast preparation gathers dispersed evidence and is a good candidate for governed assistant support.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Add an agent skill that summarizes drill completion, clearance status, explosive plan, exclusion zone checks, geotech status, and outstanding blockers for a specific blast area.
 
-**Improvement:** Provide search across `mining_operations_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests verify the agent refuses to approve or release blasts directly, the assistant panel cites the exact readiness records used, and release evidence includes one blast-readiness summary generated by the skill.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Agent skill for ore control and destination advice
 
-### 36. Reconciliation and closure controls for Mining Operations Management Governed Model
+**Justification:** Ore control teams need rapid, explainable suggestions when assay returns or visual observations imply a destination change.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Add an agent skill that proposes ore-waste boundary adjustments, stockpile destinations, or plant feed substitutions based on grade evidence, reconciliation state, and policy thresholds.
 
-**Improvement:** Add reconciliation workflows that compare `mining_operations_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests verify the skill emits suggestions with confidence and rationale, UI review steps require human approval before any destination change, and release evidence includes one accepted and one rejected suggestion case.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Workbench shift console
 
-### 37. Regulatory and policy reporting for Mine Plan
+**Justification:** Mine supervisors need a single shift console rather than jumping between generic detail forms.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Create a shift console in `MiningOperationsManagementWorkbench` showing active areas, dispatch board, blast windows, queue states, delays, stockpile movements, plant feed nomination, and unresolved safety or geotech constraints.
 
-**Improvement:** Generate domain reporting packs for `mine_plan` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** UI tests cover loading, empty, degraded, and permission-filtered states, the console updates from projections without manual refresh assumptions, and release evidence includes screenshots from a seeded shift scenario.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Pit and stope detail workspace
 
-### 38. Carbon and resource awareness for Pit Block
+**Justification:** Area-specific decisions require one workspace where planning, drilling, blasting, ore control, and geotech evidence are visible together.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Extend `MiningOperationsManagementDetail` into pit and stope workspaces with tabs for plan, readiness, blast status, ore control, active equipment, delays, and reconciliation history.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `pit_block` decisions and batch operations. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** UI integration tests navigate across pit and stope contexts, the workspace shows different components for open-pit and underground records, and release evidence includes one detail walkthrough for each mining method.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Stockpile and plant feed board
 
-### 39. Resilience and offline behavior for Extraction Shift
+**Justification:** ROM management and blending decisions need a dedicated board because they combine material quality, quantity, queue state, and plant demand.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Add a board view for stockpiles and plant feed showing tonnes, grade bands, moisture, reclaim plan, active blend recipes, nomination gaps, and feed risk alerts.
 
-**Improvement:** Define resilience modes for `extraction_shift`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests verify data joins between stockpile, assay, and plant feed projections, UI screenshots show blend cards and alert states, and release evidence includes one day-of-plant-feed board export.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Reconciliation workspace
 
-### 40. Human-in-the-loop automation for Haulage Cycle
+**Justification:** Reconciliation is a distinct operating practice and needs its own guided workflow rather than a static report.
 
-**Justification:** Automation should accelerate mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations while preserving accountability for high-risk decisions.
+**Improvement:** Add a reconciliation workspace for monthly and weekly close that stages survey updates, tonnage adjustments, grade variances, dilution events, and sign-off tasks from mining, geology, survey, and plant stakeholders.
 
-**Improvement:** Set explicit automation boundaries for `haulage_cycle`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workflow tests enforce staged sign-off, the UI shows unresolved reconciliation blockers, and release evidence contains one complete close package with signatories and variance commentary.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Mobile and low-connectivity capture
 
-### 41. Package discovery and fit scoring for Fleet Asset
+**Justification:** Field supervisors and ore control teams often work in pits or underground areas with unstable connectivity, but production records still need to be captured promptly.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Add offline-tolerant capture flows for delay events, sample collection, shift notes, and area readiness checks with local queueing, conflict resolution, and later synchronization through governed APIs.
 
-**Improvement:** Improve package metadata so composition can explain when `mining_operations_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Sync tests cover duplicate prevention and conflict resolution, the UI labels unsynced field records clearly, and release evidence includes one offline capture replay log.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Mine-specific permissions and approvals
 
-### 42. Configuration deployment pipeline for Ore Quality
+**Justification:** Blast release, destination changes, tonnage adjustments, and month-end reconciliation should not share the same approval semantics.
 
-**Justification:** Configuration changes can materially alter mining operations management; they need the same discipline as code releases.
+**Improvement:** Add permission scopes and approval policies for plan approval, blast clearance, ore boundary change, stockpile adjustment, plant feed nomination, and reconciliation sign-off, with thresholds and segregation-of-duties checks.
 
-**Improvement:** Add configuration promotion for `ore_quality` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Permission tests prove role-based denial and approval escalation paths, the UI hides or disables restricted actions, and release evidence includes an approval matrix used in test and demo scenarios.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Scenario simulation for mine-to-plant decisions
 
-### 43. Workbench command completeness for Stockpile
+**Justification:** Mine planners and plant coordinators need to compare options such as opening another bench, changing blend, or diverting trucks before they commit the operation.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Add simulation flows for what-if scenarios covering equipment loss, blast slip, geotech closure, stockpile depletion, and altered plant grade targets, with projected impact on tonnes, grade, queues, and backlog.
 
-**Improvement:** Expose every high-value operation for `stockpile` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Simulation tests produce non-mutating scenario outputs, the workbench shows side-by-side scenario comparison, and release evidence includes one documented scenario review used in planning.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Mining anomaly detection
 
-### 44. Document packet and evidence vault for Mining Operations Management Policy Rule
+**Justification:** Domain anomalies such as impossible cycle times, plant feed without source material, or stockpile growth without inbound movements should be detected automatically.
 
-**Justification:** Documents often carry the legal or operational truth behind mine plans, extraction, haulage, fleet, ore quality, safety, stockpiles, and rehabilitation operations.
+**Improvement:** Build anomaly rules and models for improbable haul cycles, grade jumps, inconsistent tonnage flows, dispatch conflicts, unapproved area activation, and reconciliation mismatches.
 
-**Improvement:** Create a governed evidence vault for `mining_operations_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests cover known anomaly patterns and false-positive suppression, the UI presents anomaly cards with drill-down links, and release evidence includes one anomaly triage report with disposition outcome.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Release evidence pack for operations scenarios
 
-### 45. Data correction and amendment history for Mining Operations Management Runtime Parameter
+**Justification:** This PBC needs evidence that it works across realistic mining flows, not only route-level test output.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Expand release evidence so it contains scenario packs for open-pit production, underground stope mining, blast release, stockpile management, plant feed nomination, and reconciliation close, each with input data, UI proof, events, and outcome summaries.
 
-**Improvement:** Support formal amendments for `mining_operations_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` references scenario IDs and generated artifacts, seeded datasets reproduce the same scenarios, and a verification checklist shows the expected evidence for every packaged release.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Seed data for realistic mine operations
 
-### 46. External participant collaboration for Mining Operations Management Schema Extension
+**Justification:** Reviewers cannot assess plan, haulage, ore control, and reconciliation behavior without representative data for pits, stopes, fleets, stockpiles, and feed targets.
 
-**Justification:** Many mining operations management workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Enrich package seed data with at least one open-pit and one underground mine scenario, including active equipment, drill patterns, blasts, stockpiles, assay results, haul routes, delays, and plant feed targets.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `mining_operations_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Seed-data tests load the scenarios cleanly, workbench screens populate with meaningful records, and release evidence identifies which seeded records drive each demonstration path.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. API surface completeness
 
-### 47. Advanced dependency freshness scoring for Mining Operations Management Control Assertion
+**Justification:** The current manifest exposes only a narrow command surface and does not yet reflect the operational queries and actions miners need daily.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Add governed APIs for dispatch assignments, blast readiness, ore-control samples, stockpile adjustments, plant feed nominations, reconciliation actions, delay capture, and forecast versions, plus read endpoints for area workspaces and boards.
 
-**Improvement:** Score freshness and reliability of dependencies used by `mining_operations_management_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Contract tests cover create, update, query, and validation-only flows, route documentation lists request and response shapes for each mining action, and release evidence includes example calls for the expanded API set.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Mining runbooks and operator guidance
 
-### 48. Model governance and explainability for Mining Operations Management Governed Model
+**Justification:** A feature-rich workbench still fails operationally if supervisors, dispatchers, geologists, and plant coordinators do not have package-local guidance.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Mining Operations Management.
+**Improvement:** Add domain runbooks and assistant help content for shift planning, blast control, dispatch recovery, stockpile correction, plant feed nomination, and reconciliation close, all aligned with package workflows and screens.
 
-**Improvement:** For every predictive or agentic feature around `mining_operations_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Documentation checks verify the runbooks are linked from the UI and assistant panel, release evidence references the runbook versions used during verification, and seeded scenarios map to the documented operating steps.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Test matrix across mining flows
 
-### 49. High-scale partitioning and archival for Mine Plan
+**Justification:** The package needs a test shape that mirrors real mining workflows instead of isolated CRUD checks.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Add a test matrix that covers open-pit and underground plan setup, drill-and-blast control, dispatching, ore control updates, stockpile genealogy, plant feed nominations, geotech restrictions, and reconciliation close.
 
-**Improvement:** Plan scale behavior for `mine_plan`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `mining_operations_management_create_mine_plan_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Test listings show coverage for each flow, failure output identifies the broken mining stage clearly, and release evidence summarizes the executed matrix for the package version.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Operational readiness gate
 
-### 50. Release gate expansion for Pit Block
+**Justification:** The final release decision should depend on mining-domain readiness evidence, not only generic package generation success.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Add a release gate that requires passing scenario tests, fresh UI snapshots, typed event samples, seed-data reproducibility, reconciliation outputs, and sign-off that dispatch, ore control, stockpile, plant feed, and geotech surfaces all behaved as expected.
 
-**Improvement:** Expand release gates for `mining_operations_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `mining_operations_management_record_pit_block_workflow` where applicable, and make it visible in `MiningOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/mining_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The package emits a readiness checklist for the release candidate, the release evidence bundle contains every required artifact, and verification output explicitly states that the mining operations gate passed for the target version.

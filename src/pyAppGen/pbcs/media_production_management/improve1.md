@@ -1,418 +1,262 @@
-# Media Production Management PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `media_production_management`. The backlog is specific to productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Media Production Management Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `media_production_management`.
-- Domain purpose: Productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones.
-- Owned domain tables: `production`, `budget_line`, `crew_booking`, `location_permit`, `shoot_day`, `post_production_task`, `delivery_asset`, `media_production_management_policy_rule`, `media_production_management_runtime_parameter`, `media_production_management_schema_extension`, `media_production_management_control_assertion`, `media_production_management_governed_model`.
-- Public APIs: `POST /productions`, `POST /budget-lines`, `POST /crew-bookings`, `POST /location-permits`, `POST /shoot-days`, `GET /media-production-management-workbench`.
-- Emitted AppGen-X events: `MediaProductionManagementCreated`, `MediaProductionManagementUpdated`, `MediaProductionManagementApproved`, `MediaProductionManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `production_management`, `media_production_management_workflow`, `media_production_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `media_production_management_event_sourced_operational_history`, `media_production_management_multi_tenant_policy_isolation`, `media_production_management_schema_evolution_resilience`, `media_production_management_autonomous_anomaly_detection`, `media_production_management_semantic_document_instruction_understanding`, `media_production_management_predictive_risk_scoring`, `media_production_management_counterfactual_scenario_simulation`, `media_production_management_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Production
-
-**Justification:** This closes shallow CRUD gaps by making every media production management transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `production` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for MediaProductionManagementCreated, MediaProductionManagementUpdated, MediaProductionManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Budget Line
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `budget_line` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Crew Booking
-
-**Justification:** World-class Media Production Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `crew_booking` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `MEDIA_PRODUCTION_MANAGEMENT_DATABASE_URL, MEDIA_PRODUCTION_MANAGEMENT_EVENT_TOPIC, MEDIA_PRODUCTION_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Location Permit
-
-**Justification:** Parameters are where operations teams tune media production management; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `location_permit` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Shoot Day
-
-**Justification:** A single payload column cannot express the full surface of productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `shoot_day` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `media_production_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Post Production Task
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in media production management.
-
-**Improvement:** Capture every material mutation of `post_production_task` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Delivery Asset
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `delivery_asset`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Media Production Management Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `media_production_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for invalid creative approvals. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Media Production Management Runtime Parameter
-
-**Justification:** The package should warn users before media production management work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `media_production_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Media Production Management Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones operations.
-
-**Improvement:** Provide scenario simulation for `media_production_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Media Production Management Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `media_production_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Media Production Management Governed Model
-
-**Justification:** Document-heavy work in Media Production Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `media_production_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Production
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `production` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Budget Line
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `budget_line`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Crew Booking
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `crew_booking` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Location Permit
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /productions, POST /budget-lines, POST /crew-bookings to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Shoot Day
-
-**Justification:** Consumers should understand what happened in Media Production Management without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `shoot_day` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Post Production Task
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Delivery Asset
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `delivery_asset` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Media Production Management Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `media_production_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Media Production Management Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `media_production_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `media_production_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Media Production Management Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `media_production_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Media Production Management Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `media_production_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Media Production Management Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `media_production_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Production
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `production` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Budget Line
-
-**Justification:** Many media production management errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `budget_line`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Crew Booking
-
-**Justification:** Enterprise-scale Media Production Management users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `crew_booking` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Location Permit
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `location_permit` without leaking into external shared task tables. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Shoot Day
-
-**Justification:** Users need to know when productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `shoot_day` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Post Production Task
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `post_production_task`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Delivery Asset
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `delivery_asset` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Media Production Management Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `media_production_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Media Production Management Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important media production management behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `media_production_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Media Production Management Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `media_production_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Media Production Management Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `media_production_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Media Production Management Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `media_production_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Production
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `production` covering statutory, contractual, operational, board, customer, or regulator evidence depending on rights ownership, monetization accuracy, campaign performance, creative workflow evidence, distribution controls, royalty lineage, and channel-specific analytics. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Budget Line
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `budget_line` decisions and batch operations. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Crew Booking
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `crew_booking`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Location Permit
-
-**Justification:** Automation should accelerate productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `location_permit`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Shoot Day
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `media_production_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Post Production Task
-
-**Justification:** Configuration changes can materially alter media production management; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `post_production_task` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Delivery Asset
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `delivery_asset` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Media Production Management Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones.
-
-**Improvement:** Create a governed evidence vault for `media_production_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Media Production Management Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `media_production_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Media Production Management Schema Extension
-
-**Justification:** Many media production management workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `media_production_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Media Production Management Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `media_production_management_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Media Production Management Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Media Production Management.
-
-**Improvement:** For every predictive or agentic feature around `media_production_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Production
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `production`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `media_production_management_create_production_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Budget Line
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `media_production_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `media_production_management_record_budget_line_workflow` where applicable, and make it visible in `MediaProductionManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/media_production_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- PBC key in manifest: `media_production_management`.
+- Current description: productions, budgets, crews, locations, shoots, post-production, assets, and delivery milestones.
+- Current owned tables: `production`, `budget_line`, `crew_booking`, `location_permit`, `shoot_day`, `post_production_task`, `delivery_asset`, policy rules, runtime parameters, schema extensions, control assertions, and governed models.
+- Current APIs: `POST /productions`, `POST /budget-lines`, `POST /crew-bookings`, `POST /location-permits`, `POST /shoot-days`, and `GET /media-production-management-workbench`.
+- Current emitted events: `MediaProductionManagementCreated`, `MediaProductionManagementUpdated`, `MediaProductionManagementApproved`, and `MediaProductionManagementExceptionOpened`.
+- Current consumed events: `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- Current UI fragments: `MediaProductionManagementWorkbench`, `MediaProductionManagementDetail`, and `MediaProductionManagementAssistantPanel`.
+- Current release evidence sections: schema, services, events, handlers, UI, agent, and governance.
+
+### 1. Development slate lifecycle
+**Justification:** Media production starts long before principal photography, and the current `production` surface does not show concept, option, commissioned script, financing, greenlight, prep, production, post, delivery, and library states as first-class milestones.
+**Improvement:** Expand the production lifecycle so development executives can track script drafts, package attachments, financing readiness, greenlight gates, and target release windows before a show or film becomes an active shoot.
+**Acceptance evidence:** Lifecycle contract tests, seeded development-to-greenlight scenarios, workbench lane definitions for each slate stage, and release evidence that shows the lifecycle in UI and service contracts.
+
+### 2. Script package and creative development tracking
+**Justification:** A production record is incomplete if it cannot prove which script draft, treatment, lookbook, and creative package was approved for prep.
+**Improvement:** Add structured development artifacts for script versions, bible or deck references, creative notes, attachment status, and greenlight comments, with dated ownership for development, production, and finance stakeholders.
+**Acceptance evidence:** Document lineage fixtures, approval trail snapshots for script package changes, detail-view mock data for creative artifacts, and tests that reject prep readiness when required development assets are missing.
+
+### 3. Budget top sheet and phase budgeting
+**Justification:** Production budgeting is not a single flat ledger; teams need development, prep, shoot, post, marketing, contingency, and delivery views that reconcile to the approved top sheet.
+**Improvement:** Extend `budget_line` behavior to support phase codes, account groups, above-the-line and below-the-line rollups, contingency buckets, currency handling, and approval thresholds tied to greenlight and reforecast events.
+**Acceptance evidence:** Budget rollup fixtures, top-sheet calculations in workbench projections, approval threshold tests, and release evidence showing drill-down from summary totals to line-level details.
+
+### 4. Budget revision and change-order control
+**Justification:** Productions rarely finish on the first approved budget, so the package needs controlled reforecasting rather than silent overwrites.
+**Improvement:** Add revision numbers, locked approved baselines, change-order reasons, variance attribution, and producer or studio approval routing whenever a budget amendment changes cash flow, shoot days, or delivery scope.
+**Acceptance evidence:** Budget revision tests, before-and-after variance reports, approval events for change orders, and UI evidence showing current forecast against last approved budget.
+
+### 5. Casting versus crew boundary
+**Justification:** Talent attachments, extras, and day players are governed differently from crew hires, and a single `crew_booking` abstraction blurs payroll, contractual, and scheduling rules.
+**Improvement:** Separate cast engagements from crew bookings with distinct fields for role type, billing, union status, fitting dates, rehearsal dates, work guarantees, and release obligations while keeping operational handoffs visible on one production timeline.
+**Acceptance evidence:** Schema design notes in release evidence, validation tests that block cast-specific fields on crew records and vice versa, and workbench cards showing cast and crew lanes with different actions.
+
+### 6. Deal memos and engagement packet intake
+**Justification:** Scheduling decisions depend on confirmed deal points, not just names on a call sheet.
+**Improvement:** Add governed intake for cast and crew deal memos, rate cards, availability windows, travel classes, accommodation rules, and special conditions so operational bookings inherit the terms that actually govern the engagement.
+**Acceptance evidence:** Document extraction fixtures for deal memos, mutation preview examples in the assistant panel, rejection tests for incomplete engagement packets, and detail views that cite the source document for each key term.
+
+### 7. Stripboard and shooting schedule planning
+**Justification:** A production workbench is weak if it can create shoot days but cannot express stripboard logic, day breaks, company moves, and sequence clustering.
+**Improvement:** Introduce schedule planning entities around `shoot_day` for stripboard ordering, scene grouping, unit assignment, weather cover sets, turnaround rules, and schedule versions that producers can compare before locking the plan.
+**Acceptance evidence:** Schedule simulation fixtures, version-diff outputs for stripboard changes, workbench schedule boards, and tests that detect illegal sequence ordering or turnaround violations.
+
+### 8. Call sheet generation and distribution
+**Justification:** Daily execution depends on accurate call sheets, and they carry location, crew, cast, transport, safety, and weather instructions that should not live outside the package.
+**Improvement:** Add call sheet generation from approved schedule data, with crew call times, cast calls, unit assignments, scene blocks, transport pickups, meal breaks, nearest hospital, weather, parking, and emergency contacts.
+**Acceptance evidence:** Call sheet sample outputs, field-completeness checks, distribution audit logs, and UI actions that allow approved issue, revise, and supersede flows for each shoot date.
+
+### 9. Location package readiness
+**Justification:** Location management is more than permit status; productions need site contacts, parking plans, restrictions, curfews, and neighborhood obligations before a day can move to ready.
+**Improvement:** Extend `location_permit` with location packets that capture jurisdiction, site owner terms, police or fire requirements, parking maps, power availability, curfew limits, insurance evidence, and contingency locations.
+**Acceptance evidence:** Readiness checklists for location packets, permit validation tests, evidence attachments for site restrictions, and workbench indicators that show blocking gaps by location.
+
+### 10. Travel, lodging, and movement logistics
+**Justification:** Crew and cast utilization depends on transport and lodging plans, especially for remote shoots, night shoots, and company moves.
+**Improvement:** Add logistics planning linked to schedule and booking data for airport transfers, hotel blocks, rooming lists, vehicle assignments, per diem rules, and company-move timing so operations can spot impossible travel plans before issue.
+**Acceptance evidence:** Logistics conflict tests, movement-time simulations, detail panels for travel status, and scenario seeds showing a company move that affects the next day call sheet.
+
+### 11. Shoot day readiness gate
+**Justification:** Marking a day as ready should require more than a row in `shoot_day`; it should prove budget, people, location, equipment, safety, and approvals are in place.
+**Improvement:** Add a readiness gate for each shoot day that checks cast confirmations, crew assignments, location clearance, call sheet approval, transport readiness, equipment availability, weather review, and open blocking exceptions.
+**Acceptance evidence:** Readiness scorecards, blocking-rule tests, event payload samples for ready or blocked transitions, and workbench badges that explain exactly why a day cannot be released.
+
+### 12. On-set safety planning and incident capture
+**Justification:** Safety is a production control, not an afterthought, and risky scenes need documented mitigations tied to the day they affect.
+**Improvement:** Add safety plans for stunts, weapons, animals, minors, water work, vehicles, special effects, night work, and extreme weather, plus incident and near-miss capture linked to the relevant shoot day and call sheet revision.
+**Acceptance evidence:** Safety-plan templates, required-field tests for high-risk scenarios, incident timeline records, and release evidence showing safety controls in UI, events, and governance sections.
+
+### 13. Departmental checklist coverage
+**Justification:** Assistant directors, camera, sound, art, wardrobe, makeup, locations, transport, and production office each own day-specific tasks that the current package does not model.
+**Improvement:** Add department checklists, owners, due times, and signoff states so shoot readiness can show which department still blocks first shot and which items were waived with approval.
+**Acceptance evidence:** Department checklist fixtures, due-time alerts, signoff audit trails, and workbench views grouped by department and status.
+
+### 14. Daily production report capture
+**Justification:** The package needs a reliable account of what actually happened on set, not just what was scheduled.
+**Improvement:** Add daily production report capture for actual call, first shot, meal, wrap, pages completed, scenes shot, overtime, weather impact, incidents, delays, and reasons, with variance against planned schedule and budget.
+**Acceptance evidence:** Daily report schemas, variance calculations, UI summaries for planned versus actual, and tests that roll delay causes into budget and schedule projections.
+
+### 15. Dailies ingest and review workflow
+**Justification:** Dailies are a core production feedback loop, and the package currently has no explicit way to record ingest, sync, review status, or missing media.
+**Improvement:** Create dailies workflows tied to `delivery_asset` and `post_production_task` for camera card ingest, checksum verification, sync status, review sessions, clip notes, and reshoot flags from editorial or production.
+**Acceptance evidence:** Dailies ingest fixtures, checksum validation tests, review-note examples, and workbench boards that show expected versus received dailies by shoot day and camera unit.
+
+### 16. Script supervision and continuity controls
+**Justification:** Continuity breaks are expensive and often show up only after editorial review unless the system preserves script notes and coverage evidence.
+**Improvement:** Add continuity records for slate, take continuity, prop continuity, costume continuity, line changes, coverage completeness, and notes requiring pick-ups or inserts.
+**Acceptance evidence:** Continuity-note samples, linkage tests between scenes, dailies, and pick-up tasks, and UI evidence that highlights unresolved continuity risks before picture lock.
+
+### 17. Equipment and kit allocation
+**Justification:** Schedules become fiction when camera, grip, lighting, sound, and specialty equipment commitments are not reflected in the operational model.
+**Improvement:** Add equipment package reservations, prep dates, return dates, damaged-kit incidents, sub-rental approvals, and cross-unit conflicts so each shoot day shows the kit plan that supports it.
+**Acceptance evidence:** Equipment conflict simulations, prep-return tracking fixtures, approval logs for substitutions, and schedule warnings when required kit is unavailable.
+
+### 18. Union, turnaround, and labor-rule compliance
+**Justification:** Crew scheduling must respect union and labor commitments, especially across night work, sixth or seventh days, travel, and meal penalties.
+**Improvement:** Add rules for turnaround windows, meal-break timing, overtime triggers, consecutive-day constraints, child labor restrictions, and role-specific rest requirements for cast and crew.
+**Acceptance evidence:** Policy test matrix for labor cases, exception records when a rule is breached, cost-impact projections for penalties, and workbench warnings surfaced before call sheets are issued.
+
+### 19. Extras and background performer operations
+**Justification:** Background casting has different volume, voucher, wardrobe, and crowd-control demands from principal cast or crew.
+**Improvement:** Add dedicated flows for background counts, holding-area plans, wardrobe states, meal planning, voucher capture, crowd wrangling, and release evidence for minors or restricted extras.
+**Acceptance evidence:** Background booking fixtures, count reconciliation tests, voucher audit trails, and call sheet sections proving extras logistics are captured without polluting principal cast records.
+
+### 20. Procurement, petty cash, and expense capture
+**Justification:** Production offices need timely cash and purchasing visibility to control burn rate and avoid missing receipts during audits.
+**Improvement:** Extend budget operations with purchase requests, purchase orders, petty cash envelopes, receipt matching, approver limits, and departmental charge coding linked back to cost reports.
+**Acceptance evidence:** Expense intake examples, approval threshold tests, unmatched-receipt exception queues, and cost-report projections showing committed versus actual spend.
+
+### 21. Cost report cadence and burn analysis
+**Justification:** A budget is not operationally useful unless finance and production can see burn rate by week, by department, and by remaining schedule.
+**Improvement:** Add cost-report views with current actuals, committed costs, estimate to complete, contingency drawdown, overage drivers, and schedule-linked forecast risk.
+**Acceptance evidence:** Cost-report calculations, trend charts in the workbench, scenario seeds for over-budget departments, and release evidence showing finance views in UI and analytics.
+
+### 22. Editorial handoff from set to post
+**Justification:** The transition from production to post is one of the highest-risk handoffs because missing media, metadata, or notes can stall editorial immediately.
+**Improvement:** Create a formal handoff that packages camera and sound manifests, script notes, dailies status, music reports, continuity notes, and open set issues into the first editorial queue.
+**Acceptance evidence:** Handoff packet examples, completeness checks, event emissions for editorial-ready states, and tests that block editorial start when required set artifacts are missing.
+
+### 23. Post-production schedule and milestone board
+**Justification:** `post_production_task` should support real post workflows such as editor's cut, director's cut, producer review, picture lock, sound, color, VFX, QC, and final delivery.
+**Improvement:** Add milestone templates, dependencies, planned dates, owners, and approval states for editorial, sound, music, color, graphics, subtitling, localization, and mastering.
+**Acceptance evidence:** Post milestone fixtures, dependency tests, board views for milestone status, and release evidence demonstrating post-specific UI and task orchestration.
+
+### 24. VFX shot inventory and turnover control
+**Justification:** VFX work cannot be managed as generic post tasks because shot counts, versions, turnovers, bids, temps, finals, and vendor notes are central to delivery risk.
+**Improvement:** Add VFX shot tracking with sequence and shot codes, vendor assignment, bid status, turnover packages, plate availability, temp comps, finals, notes, and approval rounds.
+**Acceptance evidence:** VFX shot fixtures, turnover completeness rules, version-history examples, and workbench views that reconcile vendor status against delivery deadlines.
+
+### 25. Sound, color, and finishing chain
+**Justification:** Final delivery depends on interlocked finishing steps that need explicit dependencies and signoff states.
+**Improvement:** Model sound editorial, ADR, Foley, premix, final mix, conform, color prep, grade, online, graphics, captions, subtitles, and mastering as linked finishing tasks with handoff evidence.
+**Acceptance evidence:** Finishing dependency tests, milestone progress reports, approval trails for mix and grade signoff, and deliverable readiness gates driven by finishing completion.
+
+### 26. Music, archive, and rights clearance
+**Justification:** Music licenses, stock footage rights, archive materials, and performer releases can block exploitation even when the cut is otherwise complete.
+**Improvement:** Add rights and clearance tracking for music cues, archival elements, stock material, trademarks, performer releases, and location releases with dates, terms, territories, and expiry handling.
+**Acceptance evidence:** Rights metadata fixtures, expiry alerts, approval records, and release evidence showing clearance blockers in production and delivery views.
+
+### 27. Approval matrix by stage and function
+**Justification:** Media production approvals vary by stage: development, greenlight, schedule lock, call sheet issue, budget revision, picture lock, VFX finals, and master delivery should not share one generic approve action.
+**Improvement:** Add stage-specific approval types with named approver roles, quorum rules, delegated authority, escalation paths, and rework reasons mapped to production, budget, schedule, post, and deliverable events.
+**Acceptance evidence:** Approval policy matrix, role-based tests, approval event samples, and UI evidence showing who can approve what at each stage.
+
+### 28. Notes, versions, and rework loops
+**Justification:** Creative work depends on notes and versioning, and the package needs to distinguish current approved versions from review drafts and superseded cuts.
+**Improvement:** Add version lineage for scripts, call sheets, schedules, budgets, edits, VFX shots, sound mixes, and deliverables, with note categories, reply chains, and mandatory resolution before closure.
+**Acceptance evidence:** Version tree examples, note-resolution workflows, tests blocking closure with unresolved critical notes, and detail pages that show current approved version versus historical revisions.
+
+### 29. Deliverables matrix by platform and territory
+**Justification:** Final delivery is not a single asset; every platform and territory can require different masters, captions, audio stems, artwork, metadata, and legal packets.
+**Improvement:** Expand `delivery_asset` into a deliverables matrix that tracks package type, spec version, territory, language, audio layout, caption set, artwork set, checksum, QC result, and shipment state.
+**Acceptance evidence:** Deliverables matrix fixtures, per-platform validation tests, asset-package status boards, and release evidence showing platform-specific readiness criteria.
+
+### 30. Technical QC and rejection handling
+**Justification:** Deliverables frequently fail for spec issues, and a package that cannot trace QC failures to responsible upstream tasks will not reduce redelivery cycles.
+**Improvement:** Add QC result capture for video, audio, captions, metadata, packaging, and checksum failures, with root-cause categories that route issues back to editorial, sound, VFX, mastering, or metadata owners.
+**Acceptance evidence:** QC rejection fixtures, retry and reissue workflows, event samples for failed and passed QC, and dashboards showing first-pass success rate by deliverable class.
+
+### 31. Marketing and publicity asset coordination
+**Justification:** Release delivery often depends on posters, key art, trailers, stills, and publicity approvals that are adjacent to but distinct from core picture deliverables.
+**Improvement:** Add coordinated tracking for marketing assets, embargo dates, approval rounds, territory variants, and linkage to final release windows so launch-critical materials are not managed off-system.
+**Acceptance evidence:** Marketing asset samples, approval timelines, embargo validation rules, and workbench views that join release dates to marketing asset readiness.
+
+### 32. Archive, restore, and library package management
+**Justification:** Productions need a provable library package after delivery, including masters, project files, stems, legal packets, and metadata required for future reversioning or restoration.
+**Improvement:** Add archive bundles with source media lineage, retention classes, cold-storage status, retrieval tests, and package manifests that support remastering, clip licensing, or platform redelivery later.
+**Acceptance evidence:** Archive manifest fixtures, retrieval simulation results, retention-policy checks, and evidence that archive bundles can be traced back to the final approved deliverables.
+
+### 33. Release documents and legal packet evidence
+**Justification:** Production readiness depends on more than media assets; networks and distributors also require rights, insurance, compliance, and release paperwork.
+**Improvement:** Create a governed evidence vault for talent releases, location releases, insurance certificates, cue sheets, chain-of-title records, censorship filings, and distribution affidavits linked to the production and deliverable they support.
+**Acceptance evidence:** Evidence packet examples, required-document rules by release target, audit trails for uploads and approvals, and release evidence reports that show document completeness.
+
+### 34. Production workbench UI for executive and line users
+**Justification:** The current UI fragments list only a generic workbench, detail, and assistant panel, but production teams need role-specific boards that answer different questions.
+**Improvement:** Split the workbench into views for slate and development, budget control, casting and crew, schedule and call sheets, locations, shoot-day readiness, post and VFX, deliverables, and release evidence.
+**Acceptance evidence:** UI contract updates, navigation definitions, role-specific mock states, and screenshot-based release evidence for each major board.
+
+### 35. Exception-first UI for blockers and aging
+**Justification:** Producers and coordinators need to see blockers immediately, not infer them from scattered records.
+**Improvement:** Add exception queues for missing approvals, location gaps, cast conflicts, labor-rule breaches, missing dailies, VFX delays, QC rejections, and missing release documents, with aging, owner, and next action.
+**Acceptance evidence:** Queue fixtures, aging calculations, permission-aware actions, and analytics evidence showing blocker counts by stage and severity.
+
+### 36. Assistant skills for production operations
+**Justification:** The current agent surface supports generic read, create, and update patterns, but media production work requires guided skills tuned to domain-specific tasks.
+**Improvement:** Add assistant skills for draft call sheet assembly, budget variance explanation, crew conflict review, location packet validation, dailies completeness checks, VFX turnover prep, and deliverable package review, all using governed previews before mutation.
+**Acceptance evidence:** Skill manifest entries, prompt-to-preview examples, policy tests for blocked mutations, and assistant panel evidence showing domain-specific actions rather than generic CRUD.
+
+### 37. Document instruction intake for production paperwork
+**Justification:** Production teams work from scripts, deal memos, permits, call sheets, daily reports, cue sheets, and spec sheets, so document understanding should target those forms directly.
+**Improvement:** Expand document intake so the assistant can parse and map production paperwork into safe draft updates, cite extracted source spans, flag low-confidence fields, and route ambiguous items to humans.
+**Acceptance evidence:** Form-parsing fixtures, confidence-threshold tests, source citation examples in mutation previews, and release evidence showing document intake in the agent and governance sections.
+
+### 38. Event model for production lifecycle and handoffs
+**Justification:** The current emitted events are too generic to describe real production state changes for dependent packages and audit review.
+**Improvement:** Add typed domain events for development-greenlight, budget-approved, schedule-locked, call-sheet-issued, shoot-day-ready, dailies-missing, editorial-started, VFX-turnover-sent, picture-locked, QC-passed, and package-delivered transitions.
+**Acceptance evidence:** Event contract examples, payload snapshots, handler tests for downstream consumers, and release evidence showing event traceability for key production milestones.
+
+### 39. Consumed-event handling for policy, audit, and KPI signals
+**Justification:** Incoming policy, audit, and KPI events should change production behavior in observable ways instead of remaining abstract background dependencies.
+**Improvement:** Map `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged` to concrete actions such as approval rule recalculation, sealed-evidence locking, KPI-driven risk escalation, and workbench alerts on affected productions.
+**Acceptance evidence:** Idempotent handler tests, lineage records linking inbound events to resulting exceptions or projections, and workbench evidence showing the operational effect of consumed events.
+
+### 40. Predictive risk scoring for schedule and budget drift
+**Justification:** Production management becomes more useful when it warns about likely overtime, schedule slip, undercoverage, missing dailies, or delivery failure before the problem becomes irreversible.
+**Improvement:** Add predictive risk models that score shoot-day readiness, labor-risk exposure, location instability, budget burn risk, post bottlenecks, VFX delay exposure, and delivery miss probability with explainable feature outputs.
+**Acceptance evidence:** Risk feature manifests, calibration examples, explainability cards in the UI, and tests for high-risk scenarios such as weather disruption or major VFX slippage.
+
+### 41. Multi-tenant isolation for productions and vendor data
+**Justification:** Studios, production companies, and service vendors may share infrastructure, but their schedules, talent data, budgets, and release assets must remain isolated.
+**Improvement:** Strengthen tenant scoping for production records, bookings, call sheets, safety plans, post workflows, and deliverables so tenant boundaries hold across API, UI, events, storage, and assistant skills.
+**Acceptance evidence:** Cross-tenant negative tests, tenant-specific workbench snapshots, permission checks across agent actions, and release evidence demonstrating isolation controls.
+
+### 42. Offline and poor-connectivity field capture
+**Justification:** On-set users often work in low-connectivity environments, especially at remote locations, and still need to record incidents, schedule changes, and daily actuals.
+**Improvement:** Add offline draft capture and later reconciliation for daily production reports, safety incidents, location notes, and departmental checklists, with conflict detection when data syncs back to the main record.
+**Acceptance evidence:** Offline-sync fixtures, reconciliation conflict examples, degraded-mode UI states, and tests proving no silent data loss during resync.
+
+### 43. External vendor and facility collaboration
+**Justification:** Post houses, VFX vendors, sound facilities, labs, and logistics providers need scoped interaction without gaining broad internal access.
+**Improvement:** Add controlled external collaboration for turnover receipt, delivery acknowledgement, note response, asset reupload, and status updates using scoped roles, expiring links, and inbound evidence validation.
+**Acceptance evidence:** External access policy tests, vendor activity audit logs, inbound validation fixtures, and release evidence showing collaboration boundaries in governance and UI sections.
+
+### 44. Exception triage, retries, and dead-letter recovery
+**Justification:** Production operations involve message retries, failed ingests, blocked approvals, and incomplete packets that should be handled through operational queues rather than hidden support work.
+**Improvement:** Expand exception handling so dead-letter events, failed dailies ingests, rejected call sheets, broken delivery packages, and stuck approval chains surface in guided triage queues with replay, retry, and closeout actions.
+**Acceptance evidence:** Dead-letter recovery fixtures, retry eligibility rules, queue screenshots, and event evidence showing exception open, retry, and resolved outcomes.
+
+### 45. Release evidence traceability across the package
+**Justification:** The package should prove what is implemented and verified across schema, services, events, handlers, UI, agent, and governance, not just claim it.
+**Improvement:** Tie every production-domain capability in this backlog to explicit release evidence entries, with trace links from schema entities and API actions to UI states, event contracts, agent skills, and tests.
+**Acceptance evidence:** Traceability table in release evidence, failing checks for undocumented capabilities, and generated reports that show which backlog items have executable coverage.
+
+### 46. Seeded production scenarios and release rehearsals
+**Justification:** Media production behavior is easiest to verify through realistic end-to-end examples, not isolated unit assertions alone.
+**Improvement:** Add seeded scenarios for feature film, episodic television, branded content, documentary travel shoot, VFX-heavy show, and urgent redelivery, each exercising development, budgeting, scheduling, shooting, post, approvals, and deliverables.
+**Acceptance evidence:** Scenario seeds, smoke-test runs, workbench screenshots per scenario, and release evidence showing pass or fail status for each rehearsal flow.
+
+### 47. Operational metrics and service levels
+**Justification:** Production leaders need leading indicators such as call-sheet issue timeliness, permit turnaround, daily report completion, dailies lag, VFX aging, approval latency, and deliverable first-pass success.
+**Improvement:** Add domain analytics and service levels across development, prep, shoot, post, and delivery, with drill-down from executive summary to specific blocking records and departments.
+**Acceptance evidence:** Metric definitions, projection tests, dashboards in the workbench, and alert fixtures for breached service levels by production stage.
+
+### 48. Immutable history and audit-proof evidence
+**Justification:** Production disputes often hinge on who approved what and when, especially across budgets, safety, deliveries, and legal documents.
+**Improvement:** Expand event-sourced history and proof sealing so every material approval, schedule issue, budget revision, safety incident, QC outcome, and release packet change can be reconstructed with actor, timestamp, and evidence hashes.
+**Acceptance evidence:** Replay tests, proof-verification outputs, event history views, and release evidence that cites audit-proof coverage in the governance section.
+
+### 49. Schema expansion for media-specific subdomains
+**Justification:** The current owned tables do not yet express several subdomains that real productions depend on, such as call sheets, daily reports, safety plans, dailies, VFX shots, approvals, and legal packets.
+**Improvement:** Plan owned-schema expansion for media-specific tables and projections so the package can represent those concepts directly instead of hiding them in generic payloads or comments.
+**Acceptance evidence:** Proposed schema map in package docs, migration backlog entries, contract updates for new entities, and release evidence showing how schema expansion will stay inside package boundaries.
+
+### 50. Go-live gate for a production release candidate
+**Justification:** A production should only be marked release-ready when the package can prove that creative, operational, legal, technical, and delivery obligations are all satisfied.
+**Improvement:** Add a final release candidate gate that checks approved budget, locked schedule, cleared locations, completed safety review, ingested dailies, completed post milestones, approved VFX finals, passed QC, complete deliverables matrix, and complete legal packet evidence.
+**Acceptance evidence:** Release-candidate checklist results, blocking exception examples, workbench release-readiness panels, and package-level release evidence showing the gate operating end to end.

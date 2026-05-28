@@ -1,418 +1,364 @@
-# Maritime Shipping Operations PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `maritime_shipping_operations`. The backlog is specific to voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Maritime Shipping Operations Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `maritime_shipping_operations`.
-- Domain purpose: Voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations.
-- Owned domain tables: `voyage`, `vessel`, `cargo_booking`, `charter_party`, `port_call`, `demurrage_claim`, `bunker_event`, `maritime_shipping_operations_policy_rule`, `maritime_shipping_operations_runtime_parameter`, `maritime_shipping_operations_schema_extension`, `maritime_shipping_operations_control_assertion`, `maritime_shipping_operations_governed_model`.
-- Public APIs: `POST /voyages`, `POST /vessels`, `POST /cargo-bookings`, `POST /charter-partys`, `POST /port-calls`, `GET /maritime-shipping-operations-workbench`.
-- Emitted AppGen-X events: `MaritimeShippingOperationsCreated`, `MaritimeShippingOperationsUpdated`, `MaritimeShippingOperationsApproved`, `MaritimeShippingOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `voyage_management`, `maritime_shipping_operations_workflow`, `maritime_shipping_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `maritime_shipping_operations_event_sourced_operational_history`, `maritime_shipping_operations_multi_tenant_policy_isolation`, `maritime_shipping_operations_schema_evolution_resilience`, `maritime_shipping_operations_autonomous_anomaly_detection`, `maritime_shipping_operations_semantic_document_instruction_understanding`, `maritime_shipping_operations_predictive_risk_scoring`, `maritime_shipping_operations_counterfactual_scenario_simulation`, `maritime_shipping_operations_cryptographic_audit_proofs`.
+- PBC key: `maritime_shipping_operations`
+- Manifest description: voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations
+- Owned tables: `voyage`, `vessel`, `cargo_booking`, `charter_party`, `port_call`, `demurrage_claim`, `bunker_event`, `maritime_shipping_operations_policy_rule`, `maritime_shipping_operations_runtime_parameter`, `maritime_shipping_operations_schema_extension`, `maritime_shipping_operations_control_assertion`, `maritime_shipping_operations_governed_model`
+- Current APIs: `POST /voyages`, `POST /vessels`, `POST /cargo-bookings`, `POST /charter-partys`, `POST /port-calls`, `GET /maritime-shipping-operations-workbench`
+- Emitted events: `MaritimeShippingOperationsCreated`, `MaritimeShippingOperationsUpdated`, `MaritimeShippingOperationsApproved`, `MaritimeShippingOperationsExceptionOpened`
+- Consumed events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`
+- Workflows: `maritime_shipping_operations_create_voyage_workflow`, `maritime_shipping_operations_record_vessel_workflow`
+- UI fragments: `MaritimeShippingOperationsWorkbench`, `MaritimeShippingOperationsDetail`, `MaritimeShippingOperationsAssistantPanel`
+- Release artifacts named in the manifest: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`
+- Advanced capabilities already declared in the package: event-sourced history, anomaly detection, semantic document understanding, predictive risk scoring, scenario simulation, audit proofs, continuous controls, carbon awareness, cross-PBC event federation, and governed AI execution
 
-## 50 High-Impact Improvements
+### 1. Voyage Leg And Rotation Model
+**Justification:** The package exposes voyage creation, but maritime operators need each voyage decomposed into legs, rotations, sea passages, and terminal stays before schedule promises or cost exposure can be trusted.
 
-### 1. Canonical lifecycle state model for Voyage
+**Improvement:** Expand `voyage` so one record carries service string, trade lane, laden versus ballast status, sequential voyage legs, linked `port_call` milestones, canal transits, and revised versus actual ETA/ETD values. Model voyage status around planning, published, commenced, disrupted, completed, and post-voyage settlement rather than a single flat status field.
 
-**Justification:** This closes shallow CRUD gaps by making every maritime shipping operations transition explainable and testable instead of implicit in free-form status values.
+**Acceptance evidence:** Schema and API examples showing multi-leg voyages, timeline rendering in `MaritimeShippingOperationsDetail`, and tests proving a late upstream leg propagates to downstream calls and customer-facing milestones.
 
-**Improvement:** Define a complete state machine for `voyage` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 2. Vessel Schedule Reliability Baseline
+**Justification:** Shipping operations live or die on schedule reliability, and the current manifest has vessels and voyages but no explicit baseline for on-time performance or recovery logic.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for MaritimeShippingOperationsCreated, MaritimeShippingOperationsUpdated, MaritimeShippingOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add schedule reliability projections that compare proforma versus revised versus actual vessel movements, with berth window adherence, weather delay, canal delay, and congestion delay buckets. Link the schedule baseline to `vessel` and `voyage` so planners can see whether a delay is isolated or part of a persistent string slippage pattern.
 
-### 2. Domain intake and normalization for Vessel
+**Acceptance evidence:** Workbench metrics for schedule reliability, drill-down from vessel to voyage string performance, and test fixtures that differentiate pure port congestion from cascading network delay.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations, not only already-clean records.
+### 3. Port Call Window Commitment Management
+**Justification:** A port call is more than an arrival timestamp; nomination, pilotage, berth assignment, tug requirements, and cutoff commitments must be coordinated in one operational view.
 
-**Improvement:** Build a typed intake pipeline for `vessel` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `port_call` with berth window commitment, terminal code, pilot ordered/boarded timestamps, tug arrangement, gang requested/confirmed, crane intensity assumptions, and load/discharge working windows. Include explicit reasons for call omission, call swap, and berth rollover.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** `MaritimeShippingOperationsWorkbench` views for upcoming port calls, alert badges for missed nomination windows, and route-level tests for berth rollover scenarios.
 
-### 3. Specialist validation rules for Cargo Booking
+### 4. Statement Of Facts And Time-Sheet Capture
+**Justification:** Laytime, demurrage, and post-call disputes depend on an auditable statement of facts rather than after-the-fact commentary.
 
-**Justification:** World-class Maritime Shipping Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Add structured `port_call` event capture for NOR tendered, all fast, first line, hatch open, hose connected, cargo operations start/stop, weather interruption, strike, shifting, and final line. Preserve source, local time zone, and evidence attachment for every event so the sequence can support laytime calculations later.
 
-**Improvement:** Add a domain rule compiler for `cargo_booking` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event timeline screenshots in `MaritimeShippingOperationsDetail`, attachments linked to each operational milestone, and tests proving time-sheet corrections keep full audit lineage.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `MARITIME_SHIPPING_OPERATIONS_DATABASE_URL, MARITIME_SHIPPING_OPERATIONS_EVENT_TOPIC, MARITIME_SHIPPING_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Voyage Capacity And Cargo Booking Allocation
+**Justification:** `cargo_booking` cannot remain a generic order object; bookings need allocation against vessel intake, deadweight, TEU, reefer plugs, and hazardous cargo limits.
 
-### 4. Parameter governance and tuning for Charter Party
+**Improvement:** Add allocation logic that reserves slots by voyage leg, equipment type, commodity class, and stowage constraint, with waitlist handling when a sailing is oversubscribed. Support booking acceptance, conditional acceptance, and rollover recommendation based on remaining vessel capacity and commercial priority.
 
-**Justification:** Parameters are where operations teams tune maritime shipping operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Acceptance evidence:** Capacity utilization projections, booking waitlist tests, and UI evidence that overbooked sailings surface the specific limiting factor instead of a generic rejection.
 
-**Improvement:** Expose bounded runtime parameters for `charter_party` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 6. Booking Amendment And Cutoff Governance
+**Justification:** Late changes to quantity, commodity, or documentation create downstream port and stowage risk if the cutoffs are not explicit.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Introduce booking cutoffs for documentation, customs filing, hazardous declaration, VGM, container release, and gate-in, each tied to the relevant `voyage` and `port_call`. Every amendment should state whether it remains inside cutoff, requires approval, or must be rolled to another sailing.
 
-### 5. Deep owned schema expansion for Port Call
+**Acceptance evidence:** Booking amendment audit trail, cutoff countdown indicators in the workbench, and regression tests covering accepted, conditionally accepted, and rejected late amendments.
 
-**Justification:** A single payload column cannot express the full surface of voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations or prove cross-PBC boundaries are respected.
+### 7. Bill Of Lading Draft To Issue Lifecycle
+**Justification:** Bills of lading are core maritime evidence, yet the current table set does not expose a governed draft, approval, issue, surrender, and amendment lifecycle.
 
-**Improvement:** Extend the owned schema around `port_call` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Represent bill of lading status inside the shipping domain as draft, customer-review, approved-to-issue, issued, surrendered, switched, corrected, and archived, with linkage to `cargo_booking`, `voyage`, and discharge obligations. Capture shipper, consignee, notify party, freight term, original count, and release mode without relying on free-text only.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `maritime_shipping_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Document lifecycle tests, UI trace from booking to issued bill, and release evidence showing who approved each bill transition and which booking instructions were applied.
 
-### 6. Event-sourced operational history for Demurrage Claim
+### 8. Stowage Planning Constraints
+**Justification:** Maritime execution quality depends on where cargo sits on the vessel, not only whether it was booked.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in maritime shipping operations.
+**Improvement:** Add stowage planning data for bay/row/tier intent, discharge sequence, stack weight, segregation rule, lashing requirement, hatch constraint, and restow exposure. Use this to warn when bookings accepted commercially create operationally impossible load lists.
 
-**Improvement:** Capture every material mutation of `demurrage_claim` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Stowage conflict cards, restow-risk indicators for multi-port voyages, and tests proving the system blocks impossible discharge sequences before final load confirmation.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Dangerous Goods And Special Cargo Controls
+**Justification:** Hazardous cargo, breakbulk, OOG, and project cargo need tighter controls than standard container or bulk bookings.
 
-### 7. Projection and read-model strategy for Bunker Event
+**Improvement:** Add class-specific validation for IMDG segregation, flashpoint evidence, packing certificate completeness, over-dimension measurements, lifting requirements, and terminal acceptance prerequisites. Surface exceptions early so planners can reject or reroute hazardous and special cargo before the cargo reaches the quay.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Acceptance evidence:** Rule packs for dangerous goods and OOG cargo, exception queues separated by severity, and evidence that booking approval is blocked when mandatory special-cargo data is missing.
 
-**Improvement:** Create purpose-built projections for `bunker_event`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 10. Reefer And Temperature-Controlled Cargo Assurance
+**Justification:** Reefer bookings fail operationally when plug availability, set-point instructions, and monitoring responsibilities are not explicit.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Extend `cargo_booking` and voyage allocation views with reefer plug reservation, set-point, ventilation, humidity, pre-trip inspection, genset dependency, and temperature deviation handling. Support exception flows for late set-point changes and lost reefer telemetry.
 
-### 8. Exception taxonomy and remediation for Maritime Shipping Operations Policy Rule
+**Acceptance evidence:** Reefer capacity views by sailing, exception tests for missing PTI confirmation, and UI evidence that temperature-controlled bookings are isolated from standard dry cargo work queues.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+### 11. Charter Party Clause Library
+**Justification:** `charter_party` needs to hold operational clauses that drive voyage behavior, not only a signed commercial reference.
 
-**Improvement:** Model the full exception taxonomy for `maritime_shipping_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Normalize charter party terms for laycan, loading/discharge rates, demurrage rate, despatch rate, off-hire triggers, bunker quality obligations, performance warranties, speed and consumption basis, and notice requirements. Each clause should be versioned and mapped to the operational objects it constrains.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Clause registry entries, comparison views between charter versions, and tests proving operational calculations use clause data instead of hand-entered overrides.
 
-### 9. Predictive risk scoring for Maritime Shipping Operations Runtime Parameter
+### 12. Laytime Computation Engine
+**Justification:** Laytime determines whether a call becomes profitable or contentious, and it must be computable directly from operational events.
 
-**Justification:** The package should warn users before maritime shipping operations work fails, breaches policy, or creates downstream cost.
+**Improvement:** Build laytime logic from `port_call` events and charter clauses, including notice validity, reversible versus non-reversible laytime, SHEX/SHINC handling, weather interruption, shifting, strike, and pumping warranty exceptions. Show running used laytime, remaining laytime, and when the clock is stopped or resumed.
 
-**Improvement:** Add predictive risk scoring for `maritime_shipping_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Laytime calculation fixtures for tanker and dry-bulk patterns, detailed computation traces, and audit exports that reconstruct the final statement used in a claim.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Demurrage And Detention Exposure Engine
+**Justification:** The manifest includes `demurrage_claim`, but commercial teams also need forward-looking exposure before a claim is filed.
 
-### 10. Counterfactual simulation for Maritime Shipping Operations Schema Extension
+**Improvement:** Distinguish voyage-level demurrage from equipment detention, calculate exposure from current event sequences, and classify the charge by responsible party, port, container/equipment, and dispute status. Include running exposure, invoiced amount, contested amount, and collected amount so finance and operations read the same truth.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations operations.
+**Acceptance evidence:** Exposure dashboards, test cases for laytime-generated demurrage and container detention, and evidence that disputed claims remain traceable back to the triggering operational events.
 
-**Improvement:** Provide scenario simulation for `maritime_shipping_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 14. Demurrage Claim Dossier Assembly
+**Justification:** Claims succeed or fail on the completeness of supporting evidence, not only on the arithmetic.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a dossier builder for `demurrage_claim` that packages statement of facts, NOR, charter clauses, communications, pumping logs, weather evidence, and approval notes into one governed claim set. Track whether a claim is draft, submitted, rebutted, negotiated, settled, or written off.
 
-### 11. Autonomous anomaly triage for Maritime Shipping Operations Control Assertion
+**Acceptance evidence:** Claim dossier previews, document completeness rules, and release evidence demonstrating a full claim package can be reproduced without manual file hunting.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+### 15. Bunker Uplift Planning
+**Justification:** `bunker_event` should support bunker planning, not only bunker recording after the fact.
 
-**Improvement:** Implement anomaly detection for `maritime_shipping_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model planned uplift port, supplier nomination, grade, quantity, density, sulfur cap context, price basis, barge window, and expected ROB effect for each voyage segment. Let planners compare whether to bunker at the current port, defer to the next port, or hedge against congestion and ECA entry.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario comparison screens for bunker ports, tests for ROB sufficiency across voyage legs, and explicit decision evidence linking uplift plans to the selected voyage plan.
 
-### 12. Semantic document understanding for Maritime Shipping Operations Governed Model
+### 16. ROB And Consumption Variance Tracking
+**Justification:** Fuel cost and schedule risk both hinge on whether actual consumption matches the assumed speed and weather profile.
 
-**Justification:** Document-heavy work in Maritime Shipping Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Track ROB at departure and arrival, noon-report consumption, idle consumption, berth consumption, speed/consumption deviation, and unexplained loss versus expected burn. Associate variance with weather, waiting time, speed-up orders, hull condition, or possible reporting anomalies.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `maritime_shipping_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Consumption variance charts, anomaly flags on missing or implausible ROB changes, and calculations showing how bunker variance alters voyage contribution.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Carbon And Sustainability Operating View
+**Justification:** The manifest already declares carbon and sustainability awareness, so the backlog should turn that flag into operational behavior.
 
-### 13. Agent-safe CRUD execution for Voyage
+**Improvement:** Add voyage-level carbon indicators such as emissions per TEU or ton moved, CII exposure, ECA fuel-switch events, and carbon impact of schedule recovery choices. Show when a speed-up decision improves schedule reliability but materially worsens emissions and bunker spend.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Acceptance evidence:** Carbon-aware voyage scenarios, UI badges for ECA entry and fuel-switch obligations, and tests proving carbon metrics update when voyage distance, speed, or bunker grade changes.
 
-**Improvement:** Add a professional chatbot skill for `voyage` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 18. Crewing Boundary And Hand-Off Rules
+**Justification:** Maritime shipping operations must respect the crewing boundary; this PBC should consume crewing status that affects voyages without becoming a crew management system.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Define a boundary contract where the shipping package reads vessel readiness signals such as minimum safe manning valid, bridge-team deficiency, or crew change restriction, then opens voyage or port-call exceptions when those signals block operations. Avoid storing crew rosters as owned maritime shipping tables; store only the operational impact and source reference.
 
-### 14. Workbench persona coverage for Vessel
+**Acceptance evidence:** Boundary tests showing incoming crewing readiness signals affect voyage release decisions, plus negative tests proving the package does not create crew roster CRUD surfaces.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+### 19. Voyage Compliance Obligation Register
+**Justification:** The same voyage can trigger customs, sanctions, emissions, cargo, and port-state compliance requirements that must be tracked together.
 
-**Improvement:** Design dedicated workbench panels for `vessel`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a compliance register tied to `voyage`, `port_call`, and `cargo_booking` for customs filing, manifest submission, hazardous declaration, ballast water obligation, sulfur compliance, sanctions approval, and discharge permit readiness. Each obligation should carry due date, status, accountable role, source regulation, and closure evidence.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Compliance board views in `MaritimeShippingOperationsWorkbench`, overdue obligation alerts, and test fixtures for missed filing deadlines that automatically open exceptions.
 
-### 15. Cross-PBC dependency contracts for Cargo Booking
+### 20. Restricted Party And Sanctions Screening
+**Justification:** Commercial acceptance and document issue must stop when shipper, consignee, bank, or service counterparty is restricted.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Screen parties connected to bookings, bills of lading, charters, and bunker suppliers, then record screening outcome, list version, analyst disposition, and approval trail. Trigger re-screening when party data changes or when a sailing nears a restricted port or cargo corridor.
 
-**Improvement:** Represent dependencies for `cargo_booking` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Re-screening event tests, blocked-document issue scenarios, and analyst review evidence that matches the screening decision shown to users.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Port And Corridor Restriction Intelligence
+**Justification:** Local rules around draft, congestion, strike action, tidal windows, pilotage, canal booking, and war-risk corridors materially change the voyage plan.
 
-### 16. API completeness and versioning for Charter Party
+**Improvement:** Introduce a rule layer that attaches port and corridor restrictions to `port_call` and `voyage`, including draft limits, daylight-only movements, convoy windows, tug minima, strike notices, and high-risk area routing. Use these rules to explain why a schedule or bunker plan must change.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Acceptance evidence:** Rule simulation examples for tide-limited ports and restricted corridors, decision cards showing which restriction fired, and tests proving schedule options respect those local constraints.
 
-**Improvement:** Expand APIs beyond POST /voyages, POST /vessels, POST /cargo-bookings to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 22. Domain Event Taxonomy Expansion
+**Justification:** The current emitted events are broad lifecycle markers; downstream shipping, finance, and compliance consumers need events at the level of operational truth.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add typed events for voyage published, schedule slipped, berth window missed, cargo booking waitlisted, bill issued, laytime commenced, demurrage claim filed, bunker plan approved, and compliance obligation breached. Keep the existing package-level events for compatibility while making downstream automation depend on the richer event set.
 
-### 17. Typed emitted-event expansion for Port Call
+**Acceptance evidence:** Event schemas, compatibility notes, and tests showing both legacy package events and new maritime-specific events are emitted in the correct order.
 
-**Justification:** Consumers should understand what happened in Maritime Shipping Operations without parsing opaque payloads.
+### 23. Event-Sourced Operational History
+**Justification:** The manifest already claims event-sourced operational history, but voyage disputes and audit reviews require full replayable reconstruction of what changed and why.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `port_call` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Persist immutable domain events for material changes across `voyage`, `port_call`, `cargo_booking`, `charter_party`, `demurrage_claim`, and `bunker_event`, including actor, command, policy version, and source document span where relevant. Use replay to rebuild timeline views and to compare historical projections with current corrected truth.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests, point-in-time read models, and UI evidence that operators can inspect the exact event sequence leading to a disrupted voyage or contested claim.
 
-### 18. Consumed-event handlers for Demurrage Claim
+### 24. Consumed Event Federation
+**Justification:** `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged` are declared consumed events, but each needs a clear maritime reaction path.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Define handler outcomes for each consumed event: policy changes re-evaluate open bookings and compliance obligations, audit seals lock evidence packages, and KPI changes refresh risk and workbench signals. Preserve source event lineage on every resulting maritime state transition or exception.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Idempotency tests, lineage links back to the consumed event, and operator-visible annotations explaining why a booking or voyage changed after external events arrived.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Retry And Dead-Letter Operator Console
+**Justification:** Dead-letter handling is listed as a capability, yet maritime operations teams need a controlled console for resubmitting failed messages without corrupting the operational record.
 
-### 19. Retry and dead-letter operations for Bunker Event
+**Improvement:** Build a dead-letter work queue that shows failed message type, voyage or booking context, retry count, poison-message reason, and safe replay options. Require analyst classification before replay when the failed message could reopen claims, alter document issue, or re-trigger customer notifications.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations.
+**Acceptance evidence:** Dead-letter queue views, retry audit logs, and tests proving duplicate replays do not create duplicate bookings, claims, or bunker events.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `bunker_event` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 26. Policy Rule Governance Workbench
+**Justification:** `maritime_shipping_operations_policy_rule` should be governed by domain users, not edited indirectly through code changes.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Create policy-rule screens for booking acceptance, dangerous-goods checks, sanctions gates, demurrage approval limits, and bunker decision thresholds, each with effective-from dates and controlled rollout. Show impact preview on open voyages and bookings before a rule version is activated.
 
-### 20. RBAC and attribute policy for Maritime Shipping Operations Policy Rule
+**Acceptance evidence:** Rule version history, preview simulations, and approval evidence proving policy edits are visible and auditable in the package UI.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+### 27. Runtime Parameter Guardrails
+**Justification:** `maritime_shipping_operations_runtime_parameter` should hold safe operating tolerances, not undocumented constants embedded in handlers.
 
-**Improvement:** Extend permissions for `maritime_shipping_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Externalize thresholds such as minimum schedule buffer, reefer alert tolerance, laytime warning percentage, demurrage auto-escalation value, bunker variance tolerance, and stale-port-call timer. Add bounds, owner, rationale, and rollback data to every parameter.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Parameter registry screens, validation rules for out-of-range updates, and tests showing changed parameters affect calculations only after approved activation.
 
-### 21. Continuous control testing for Maritime Shipping Operations Runtime Parameter
+### 28. Schema Extension Registry For New Maritime Fields
+**Justification:** Trade lanes, fuel rules, and cargo products evolve, so the package needs a disciplined way to add new fields without breaking projections and evidence packs.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Use `maritime_shipping_operations_schema_extension` to register new attributes, reference lists, and projection dependencies for fields such as alternative fuel indicators, terminal partner references, or new cargo handling flags. Require compatibility checks against APIs, events, analytics, and release evidence templates before activation.
 
-**Improvement:** Embed control assertions for `maritime_shipping_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Extension review checklist, backfill plan artifacts, and tests proving older voyage and booking records remain readable after new fields are enabled.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `maritime_shipping_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Voyage-Centric Workbench Board
+**Justification:** The current `GET /maritime-shipping-operations-workbench` surface needs a clear operating model for planners and supervisors.
 
-### 22. Cryptographic audit proofing for Maritime Shipping Operations Schema Extension
+**Improvement:** Make `MaritimeShippingOperationsWorkbench` default to voyage boards that group work by pre-fixture planning, pre-arrival readiness, in-port execution, post-departure settlement, and exception resolution. Let users pivot between vessel-string view, port view, and cargo commitment view without losing the same operational filters.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Acceptance evidence:** UI route contracts, saved filters for voyage planner personas, and screenshots showing one-click access from a voyage card to bookings, port calls, claims, and bunker plans.
 
-**Improvement:** Hash-chain material `maritime_shipping_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 30. Detail View Narrative Timeline
+**Justification:** Maritime users need one coherent story per voyage or port call rather than scattered tabs with no chronology.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Turn `MaritimeShippingOperationsDetail` into a narrative timeline that merges domain events, documents, policy decisions, consumption updates, laytime clock events, and human comments in strict order. Support local time and UTC display so investigators can reconcile shipboard logs with office actions.
 
-### 23. Privacy, consent, and secrecy controls for Maritime Shipping Operations Control Assertion
+**Acceptance evidence:** Timeline rendering tests, timezone conversion checks, and operator evidence that corrected events retain both original and superseding entries.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+### 31. Assistant Panel With Previewed Maritime Actions
+**Justification:** The manifest includes governed datastore CRUD and AI task assistance, so the assistant must act like a controlled shipping operator, not a side channel.
 
-**Improvement:** Add field-level privacy classifications for `maritime_shipping_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `MaritimeShippingOperationsAssistantPanel` to preview schedule recovery actions, booking amendments, bill-of-lading corrections, claim-note drafts, and bunker plan alternatives before any mutation occurs. Each action should display affected voyages, bookings, documents, obligations, and emitted events.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Preview/confirm flows, denied-action examples when permissions are insufficient, and audit entries showing the assistant path is indistinguishable from a governed human command path.
 
-### 24. Multi-tenant operating model for Maritime Shipping Operations Governed Model
+### 32. Agent Skill For Schedule Recovery
+**Justification:** Late vessels create many small decisions, and operators need an assistant skill dedicated to maritime recovery rather than generic task generation.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add a skill that evaluates skipping a call, swapping berth sequence, cutting cargo, revising cutoffs, or speeding up the next leg, with visible tradeoffs in customer impact, bunker cost, demurrage risk, and emissions. It should propose options, not silently choose one.
 
-**Improvement:** Support tenant-specific `maritime_shipping_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Skill manifests, option-comparison outputs, and tests showing the skill cites the exact schedule, port, and cargo facts behind each recovery recommendation.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Agent Skill For Booking And Bill Intake
+**Justification:** Semantic document understanding becomes valuable only when it can turn booking requests and shipping instructions into safe drafts.
 
-### 25. Schema evolution and extension registry for Voyage
+**Improvement:** Add an intake skill that reads booking forms, shipping instructions, and bill-of-lading amendment requests, extracts parties, container counts, commodity, freight terms, marks, and routing, then builds draft `cargo_booking` or bill changes for review. It should highlight ambiguities such as conflicting consignee names, missing notify party, or inconsistent quantity totals.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Acceptance evidence:** Extraction test set for maritime documents, confidence and ambiguity markers in the assistant panel, and approval evidence that accepted drafts retain source-document references.
 
-**Improvement:** Make schema extensions for `voyage` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 34. Agent Skill For Claims Triage
+**Justification:** Claims handling is repetitive but sensitive; the assistant should assemble facts without masking uncertainty.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Provide a claim-triage skill that reviews statement-of-facts sequences, charter clauses, correspondence, and prior settlements, then drafts a disposition path such as accept, negotiate, rebut, or request more evidence. The skill should surface the exact event gaps or conflicting timestamps that weaken a claim.
 
-### 26. Master data quality gates for Vessel
+**Acceptance evidence:** Triage summaries linked to `demurrage_claim`, rebuttal draft examples, and tests confirming the skill refuses to recommend settlement when mandatory claim evidence is missing.
 
-**Justification:** Many maritime shipping operations errors begin as bad reference data; the PBC should catch them before workflow execution.
+### 35. Counterfactual Voyage Simulation
+**Justification:** The manifest declares scenario simulation, and maritime planners need to ask what happens if a vessel diverts, skips, speeds up, or changes bunker port.
 
-**Improvement:** Define reference-data contracts for `vessel`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build non-mutating simulations for voyage alternatives including call omission, terminal swap, transshipment reroute, speed change, and alternative bunker uplift. Show consequences across schedule reliability, booking fulfillment, laytime risk, claim exposure, bunker cost, and carbon profile.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Side-by-side scenario panels, reproducible simulation inputs, and tests proving simulation results do not mutate live voyage, booking, or claim records.
 
-### 27. Bulk operations and correction workflows for Cargo Booking
+### 36. Predictive Risk Scoring
+**Justification:** Predictive risk scoring is listed in the manifest but needs shipping-specific features to be operationally credible.
 
-**Justification:** Enterprise-scale Maritime Shipping Operations users cannot operate one record at a time.
+**Improvement:** Score voyages, port calls, and bookings using features such as historical terminal delay, weather severity, congestion trend, hazardous cargo mix, short document lead time, repeated supplier variance, and charter clause exposure. Expose the score together with the dominant factors so planners can act before disruption materializes.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `cargo_booking` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Feature manifests, calibration reports, and UI explanation cards that map risk changes back to vessel, port, cargo, and clause conditions.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Autonomous Anomaly Detection
+**Justification:** Maritime data streams contain many subtle contradictions that humans miss under time pressure.
 
-### 28. Lifecycle collaboration and tasking for Charter Party
+**Improvement:** Detect anomalies such as impossible time order, missing departure after completion, bunker quantity inconsistent with ROB change, bill quantities that exceed booking totals, and duplicated port-call milestones. Separate operational anomalies from likely data-entry mistakes so teams know whether to stop execution or simply correct records.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Acceptance evidence:** Anomaly categories with severity, suppression governance, and tests proving the system distinguishes a late but plausible event from a logically impossible one.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `charter_party` without leaking into external shared task tables. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 38. Multi-Tenant And Service-Line Isolation
+**Justification:** The manifest claims multi-tenant policy isolation, and shipping operators often need separation by business unit, liner service, chartering desk, or regional cluster.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Partition workbench data, policy rules, runtime parameters, and evidence packages by tenant and operating segment while still allowing controlled shared reference data. Prevent one operator from viewing or mutating voyages, bookings, or claims outside the assigned tenant boundary.
 
-### 29. SLA and service-level governance for Port Call
+**Acceptance evidence:** Tenant-isolation tests, policy scoping examples, and UI permission checks that hide unrelated service-line data without breaking shared operational metrics.
 
-**Justification:** Users need to know when voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations is late, blocked, or at risk before customer or regulator impact.
+### 39. Maritime Reference Data Quality Gates
+**Justification:** Core shipping records are only as reliable as their reference identifiers.
 
-**Improvement:** Define SLAs for `port_call` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Validate IMO number, call sign, UN/LOCODE, terminal code, carrier/service identifiers, cargo harmonized descriptions, dangerous-goods references, and bunker grade codes at intake and amendment time. Track when values were matched, overridden, or manually justified.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Reference validation fixtures, override audit logs, and workbench warnings that identify exactly which identifier blocks progression to the next workflow step.
 
-### 30. Operational analytics cockpit for Demurrage Claim
+### 40. Bulk Operations For Schedules And Bookings
+**Justification:** Shipping lines and operators often revise dozens of sailings or bookings in one disruption event.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Add bulk update flows for schedule revisions, booking rollover, cutoff changes, party notifications, and claim-status progression with row-level validation and partial success handling. Preserve per-record audit history even when the action begins as one bulk instruction.
 
-**Improvement:** Build analytics for `demurrage_claim`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Bulk action job views, row-level outcome reports, and tests proving one failed booking update does not hide successful updates on the same voyage.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Search, Report, And Export Surfaces
+**Justification:** Maritime operations teams need to answer questions such as which voyages are exposed to demurrage this week or which bills remain unissued for tomorrow's sailings.
 
-### 31. Decision intelligence and recommendations for Bunker Event
+**Improvement:** Add search and export views over voyages, port calls, bookings, bills, claims, and bunker events using shipping-specific filters like service string, load port, discharge port, vessel, charter type, laytime status, and document release mode. Ensure exports retain reference keys back to the governed package records.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Acceptance evidence:** Filter contract tests, export previews with stable identifiers, and report evidence showing users can reach operational answers without ad hoc database access.
 
-**Improvement:** Generate ranked recommendations for `bunker_event` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 42. Partner Integration And Acknowledgement Tracking
+**Justification:** Port agents, terminals, bunker suppliers, and customs intermediaries create operational dependencies that need explicit message tracking.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Track outbound and inbound partner exchanges for berth requests, terminal instructions, manifest filings, bunker nominations, and claim correspondence, including sent time, acknowledgement time, rejection reason, and manual fallback. Link partner exchanges to the voyage, port call, or claim they affect.
 
-### 32. Quality and completeness scoring for Maritime Shipping Operations Policy Rule
+**Acceptance evidence:** Integration status panels, acknowledgement timeout alerts, and tests showing a rejected partner message opens an actionable exception with the correct operational context.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+### 43. Mobile And Responsive Port Operations UX
+**Justification:** Port-call execution often happens away from a desk, so the package UI must support responsive operational use rather than assuming a wide desktop only.
 
-**Improvement:** Score each `maritime_shipping_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Prioritize mobile-ready views for port-call event capture, statement-of-facts updates, exception acknowledgement, and approval actions with large touch targets and low-bandwidth tolerance. Keep the same operational facts visible on both handheld and desktop layouts.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Responsive UI snapshots for `MaritimeShippingOperationsWorkbench` and `MaritimeShippingOperationsDetail`, offline/intermittent-network interaction tests, and evidence that critical actions remain permission-guarded on smaller devices.
 
-### 33. End-to-end scenario library for Maritime Shipping Operations Runtime Parameter
+### 44. Continuous Control Testing
+**Justification:** Continuous release assurance and `maritime_shipping_operations_control_assertion` should verify controls while operations are in motion.
 
-**Justification:** Release evidence is stronger when every important maritime shipping operations behavior has executable examples.
+**Improvement:** Add active controls for segregation of duties on bill issue and claim approval, stale sanction screening, missing charter clause linkage, missing statement-of-facts evidence, and parameter overrides outside approved ranges. Emit control failures as first-class operational exceptions rather than burying them in logs.
 
-**Improvement:** Create seeded scenarios for `maritime_shipping_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Control dashboards, failing-control events, and test fixtures proving control assertions are generated automatically for broken maritime workflows.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Cryptographic Audit Proofs
+**Justification:** Audit logs are more credible when the package can prove the integrity of the evidence set presented to reviewers.
 
-### 34. Domain ontology and terminology model for Maritime Shipping Operations Schema Extension
+**Improvement:** Hash-chain critical maritime artifacts including operational timelines, bill approvals, claim dossiers, policy versions, and release evidence packs so reviewers can verify nothing was altered after sealing. Support redacted proofs when documents contain commercially sensitive freight terms or sanctioned-party references.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Acceptance evidence:** Proof manifests, verification commands or screens, and release artifacts showing sealed evidence for at least one voyage, one claim, and one bill-of-lading workflow.
 
-**Improvement:** Add an ontology for `maritime_shipping_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 46. Maritime Analytics Cockpit
+**Justification:** The declared analytics surface should answer operating questions, not only display generic counts.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Build dashboards for schedule reliability, booking conversion, booking rollover rate, bill issue latency, laytime utilization, demurrage exposure, bunker variance, carbon intensity, and unresolved compliance exceptions. Make every KPI drill into the underlying voyages, calls, bookings, claims, or bunker events that drive it.
 
-### 35. Advanced search and investigation for Maritime Shipping Operations Control Assertion
+**Acceptance evidence:** Metric definitions, drill-through routes, and tests confirming KPI values reconcile with the governed source records for a sample operating period.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+### 47. Release Evidence Pack For Maritime Changes
+**Justification:** The manifest explicitly names `RELEASE_EVIDENCE.md`, so shipping-critical changes need a release pack that proves the domain was exercised, not merely deployed.
 
-**Improvement:** Provide search across `maritime_shipping_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require every material release to capture affected voyage scenarios, booking and bill flows, claim calculations, bunker scenarios, event contracts, control assertions, and UI screenshots for the changed maritime surfaces. Organize the pack so auditors and operators can see what changed, how it was tested, and what residual shipping risk remains.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** A release pack template tied to `RELEASE_EVIDENCE.md`, signed-off scenario checklists, and sample evidence that covers at least one end-to-end voyage from booking through post-call settlement.
 
-### 36. Reconciliation and closure controls for Maritime Shipping Operations Governed Model
+### 48. Test Fixtures And Digital-Twin Voyage Data
+**Justification:** Deep maritime logic cannot be validated with flat placeholder data.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Create fixture sets representing liner, tanker, and dry-bulk patterns with realistic port rotations, laytime events, bunker movements, document flows, and claim outcomes. Use those fixtures across contract tests, analytics checks, assistant skills, and release evidence generation.
 
-**Improvement:** Add reconciliation workflows that compare `maritime_shipping_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Named fixture catalogs, replayable event streams, and tests showing the same digital-twin voyage data drives API, UI, and analytics verification consistently.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Operational Readiness And Incident Drills
+**Justification:** Maritime disruptions are certain, so the package needs practiced responses for congestion spikes, missed cutoffs, and partner outages.
 
-### 37. Regulatory and policy reporting for Voyage
+**Improvement:** Add readiness drills for schedule collapse, berth cancellation, sanctions hit after booking confirmation, dead-letter accumulation, bunker delivery failure, and claim-evidence corruption alerts. Record who responded, what fallback path was used, and whether the operational SLA was preserved.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Acceptance evidence:** Drill playbooks, incident rehearsal logs, and release evidence proving at least one recovery exercise was run for messaging failure and one for severe schedule disruption.
 
-**Improvement:** Generate domain reporting packs for `voyage` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 50. Go-Live Acceptance Gates
+**Justification:** Shipping operations should not promote new logic unless the core voyage, cargo, document, claim, bunker, UI, and evidence paths all work together.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Define go-live gates covering voyage creation, vessel schedule revision, port-call event capture, booking acceptance, bill issue, laytime and demurrage calculation, bunker planning, compliance exception handling, assistant preview flows, event emission, and evidence sealing. A release should fail the gate if any one of those maritime-critical paths lacks current proof.
 
-### 38. Carbon and resource awareness for Vessel
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `vessel` decisions and batch operations. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Cargo Booking
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `cargo_booking`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Charter Party
-
-**Justification:** Automation should accelerate voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `charter_party`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Port Call
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `maritime_shipping_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Demurrage Claim
-
-**Justification:** Configuration changes can materially alter maritime shipping operations; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `demurrage_claim` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Bunker Event
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `bunker_event` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Maritime Shipping Operations Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and marine operations.
-
-**Improvement:** Create a governed evidence vault for `maritime_shipping_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Maritime Shipping Operations Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `maritime_shipping_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Maritime Shipping Operations Schema Extension
-
-**Justification:** Many maritime shipping operations workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `maritime_shipping_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Maritime Shipping Operations Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `maritime_shipping_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Maritime Shipping Operations Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Maritime Shipping Operations.
-
-**Improvement:** For every predictive or agentic feature around `maritime_shipping_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Voyage
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `voyage`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `maritime_shipping_operations_create_voyage_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Vessel
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `maritime_shipping_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `maritime_shipping_operations_record_vessel_workflow` where applicable, and make it visible in `MaritimeShippingOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/maritime_shipping_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** A single acceptance checklist with pass/fail results, linked scenario evidence, and a release decision record showing the package was promoted only after all critical maritime paths passed.
