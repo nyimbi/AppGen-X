@@ -584,9 +584,22 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     explain_group.add_argument("--handler")
     explain_parser.add_argument("--json", action="store_true")
 
+    migration_parser = subparsers.add_parser("migration-plan")
+    migration_parser.add_argument("previous")
+    migration_parser.add_argument("current")
+    migration_parser.add_argument("--backend", default="postgresql")
+    migration_parser.add_argument("--rename-hint", action="append", default=())
+    migration_parser.add_argument("--json", action="store_true")
+
+    nl_parser = subparsers.add_parser("nl-plan")
+    nl_parser.add_argument("path")
+    nl_parser.add_argument("--prompt", required=True)
+    nl_parser.add_argument("--backend", default="postgresql")
+    nl_parser.add_argument("--json", action="store_true")
+
     args = parser.parse_args(tuple(argv or ()))
-    path = Path(args.path)
-    source = path.read_text(encoding="utf-8")
+    path = Path(args.path) if hasattr(args, "path") else None
+    source = path.read_text(encoding="utf-8") if path is not None else ""
 
     if args.command == "lint":
         report = lint_report_dsl(source, source_name=str(path))
@@ -619,6 +632,28 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
             symbol=args.symbol,
             diagnostic=args.diagnostic,
             handler=args.handler,
+        )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "migration-plan":
+        previous_path = Path(args.previous)
+        current_path = Path(args.current)
+        report = migration_plan_dsl(
+            previous_path.read_text(encoding="utf-8"),
+            current_path.read_text(encoding="utf-8"),
+            previous_name=str(previous_path),
+            current_name=str(current_path),
+            backend=args.backend,
+            rename_hints=args.rename_hint,
+        )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "nl-plan":
+        report = nl_plan_dsl(
+            source,
+            prompt=args.prompt,
+            source_name=str(path),
+            backend=args.backend,
         )
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
@@ -796,6 +831,674 @@ def explain_report_dsl(
         "kind": "none",
         "message": "Provide symbol, diagnostic, or handler.",
     }
+
+
+def migration_plan_dsl(
+    previous_text: str,
+    current_text: str,
+    *,
+    previous_name: str | None = None,
+    current_name: str | None = None,
+    backend: str = "postgresql",
+    rename_hints: Iterable[str] | None = None,
+) -> dict:
+    """Compare two DSL semantic models and return appgen.migration-plan.v1."""
+    normalized_backend = backend.strip().lower().replace("-", "_")
+    allowed_backends = {"postgresql", "mysql", "mariadb"}
+    previous = semantic_model_dsl(previous_text, source_name=previous_name)
+    current = semantic_model_dsl(current_text, source_name=current_name)
+    hints = _parse_rename_hints(rename_hints or ())
+    diagnostics: list[dict] = []
+    changes: list[dict] = []
+
+    if normalized_backend not in allowed_backends:
+        diagnostics.append(
+            _spec_diagnostic(
+                current_text,
+                "AGX1102",
+                "error",
+                f"Unsupported migration backend: {backend}",
+            )
+        )
+    if not previous.get("ok"):
+        diagnostics.append(
+            _spec_diagnostic(
+                previous_text,
+                "AGX1100",
+                "error",
+                "Previous semantic model has diagnostics and cannot be used as a migration baseline.",
+            )
+        )
+    if not current.get("ok"):
+        diagnostics.append(
+            _spec_diagnostic(
+                current_text,
+                "AGX1100",
+                "error",
+                "Current semantic model has diagnostics and cannot produce a safe migration plan.",
+            )
+        )
+
+    previous_tables = previous.get("tables", {})
+    current_tables = current.get("tables", {})
+    previous_names = set(previous_tables)
+    current_names = set(current_tables)
+    added_tables = current_names - previous_names
+    dropped_tables = previous_names - current_names
+
+    table_renames = _table_rename_candidates(previous_tables, current_tables, dropped_tables, added_tables, hints)
+    renamed_old = {item["from"] for item in table_renames}
+    renamed_new = {item["to"] for item in table_renames}
+    changes.extend(table_renames)
+
+    for table_name in sorted(added_tables - renamed_new):
+        changes.append(_migration_change("add_table", table=table_name, destructive=False))
+    for table_name in sorted(dropped_tables - renamed_old):
+        changes.append(
+            _migration_change(
+                "drop_table",
+                table=table_name,
+                destructive=True,
+                safe_alternative="Retain the table and mark it archived until data retention is approved.",
+            )
+        )
+
+    for table_name in sorted(previous_names & current_names):
+        changes.extend(
+            _field_migration_changes(
+                table_name,
+                previous_tables[table_name],
+                current_tables[table_name],
+                hints,
+            )
+        )
+        changes.extend(_directive_migration_changes(table_name, previous_tables[table_name], current_tables[table_name]))
+
+    changes.extend(_relationship_migration_changes(previous, current))
+    changes.extend(_calculated_field_migration_changes(previous_tables, current_tables))
+    changes.extend(_pbc_migration_changes(previous, current))
+
+    destructive = any(change.get("destructive") for change in changes)
+    if destructive:
+        diagnostics.append(
+            _spec_diagnostic(
+                current_text,
+                "AGX1101",
+                "warning",
+                "Migration plan contains destructive changes and requires explicit approval.",
+            )
+        )
+
+    return {
+        "format": "appgen.migration-plan.v1",
+        "ok": not any(item["severity"] == "error" for item in diagnostics),
+        "backend": normalized_backend,
+        "allowed_backends": tuple(sorted(allowed_backends)),
+        "source_files": tuple(item for item in (previous_name, current_name) if item),
+        "changes": tuple(changes),
+        "destructive": destructive,
+        "requires_approval": destructive,
+        "diagnostics": tuple(diagnostics),
+        "rename_hints": tuple(hints.values()),
+    }
+
+
+def migration_plan_dsl_files(
+    previous_path: str | Path,
+    current_path: str | Path,
+    *,
+    backend: str = "postgresql",
+    rename_hints: Iterable[str] | None = None,
+) -> dict:
+    previous = Path(previous_path)
+    current = Path(current_path)
+    return migration_plan_dsl(
+        previous.read_text(encoding="utf-8"),
+        current.read_text(encoding="utf-8"),
+        previous_name=str(previous),
+        current_name=str(current),
+        backend=backend,
+        rename_hints=rename_hints,
+    )
+
+
+def nl_plan_dsl(
+    text: str,
+    *,
+    prompt: str,
+    source_name: str | None = None,
+    backend: str = "postgresql",
+) -> dict:
+    """Return a constrained natural-language-to-DSL edit plan."""
+    source = text or ""
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    operation = _classify_nl_operation(prompt, semantic)
+    if operation["kind"] == "unsupported":
+        diagnostic = _spec_diagnostic(
+            source,
+            "AGX1201",
+            "error",
+            "Natural-language plan cannot be represented as a constrained DSL diff.",
+        )
+        return {
+            "format": "appgen.nl-plan.v1",
+            "ok": False,
+            "prompt": prompt,
+            "intent": "unsupported",
+            "edit_operations": (),
+            "dsl_patch": "",
+            "patched_source": source,
+            "affected_symbols": (),
+            "lint": lint_report_dsl(source, source_name=source_name),
+            "migration_preview": migration_plan_dsl(source, source, previous_name=source_name, current_name=source_name, backend=backend),
+            "test_plan": (),
+            "token_budget_notes": _nl_token_budget_notes(),
+            "diagnostics": (diagnostic,),
+        }
+
+    patch = _render_nl_dsl_patch(operation)
+    patched_source = _append_dsl_patch(source, patch)
+    lint = lint_report_dsl(patched_source, source_name=source_name)
+    migration = migration_plan_dsl(
+        source,
+        patched_source,
+        previous_name=source_name,
+        current_name=source_name,
+        backend=backend,
+    )
+    diagnostics = tuple(lint["diagnostics"]) + tuple(migration["diagnostics"])
+    return {
+        "format": "appgen.nl-plan.v1",
+        "ok": lint["ok"] and not any(item["severity"] == "error" for item in migration["diagnostics"]),
+        "prompt": prompt,
+        "intent": operation["intent"],
+        "edit_operations": (operation,),
+        "dsl_patch": patch,
+        "patched_source": patched_source,
+        "affected_symbols": tuple(operation.get("affected_symbols", ())),
+        "lint": lint,
+        "migration_preview": migration,
+        "test_plan": _nl_test_plan(operation),
+        "token_budget_notes": _nl_token_budget_notes(),
+        "diagnostics": diagnostics,
+    }
+
+
+def _parse_rename_hints(rename_hints: Iterable[str]) -> dict[tuple[str, str], dict]:
+    parsed: dict[tuple[str, str], dict] = {}
+    for raw_hint in rename_hints:
+        raw = str(raw_hint).strip()
+        match = re.match(r"(?P<kind>table|field):(?P<old>[A-Za-z_][A-Za-z0-9_.]*)=(?P<new>[A-Za-z_][A-Za-z0-9_.]*)$", raw)
+        if not match:
+            continue
+        key = (match.group("kind"), match.group("old"))
+        parsed[key] = {
+            "kind": match.group("kind"),
+            "from": match.group("old"),
+            "to": match.group("new"),
+            "source": raw,
+        }
+    return parsed
+
+
+def _migration_change(kind: str, **kwargs) -> dict:
+    destructive = bool(kwargs.pop("destructive", False))
+    change = {"kind": kind, "destructive": destructive}
+    change.update(kwargs)
+    if destructive:
+        change.setdefault("requires_approval", True)
+    return change
+
+
+def _table_rename_candidates(
+    previous_tables: dict,
+    current_tables: dict,
+    dropped_tables: set[str],
+    added_tables: set[str],
+    hints: dict[tuple[str, str], dict],
+) -> list[dict]:
+    changes: list[dict] = []
+    for table_name in sorted(dropped_tables):
+        hint = hints.get(("table", table_name))
+        if hint and hint["to"] in added_tables:
+            changes.append(
+                _migration_change(
+                    "rename_table",
+                    table=table_name,
+                    **{"from": table_name, "to": hint["to"]},
+                    confidence="hinted",
+                )
+            )
+            continue
+        previous_fields = set(previous_tables[table_name].get("fields", {}))
+        best_name = None
+        best_score = 0.0
+        for added_name in added_tables:
+            current_fields = set(current_tables[added_name].get("fields", {}))
+            if not previous_fields and not current_fields:
+                continue
+            score = len(previous_fields & current_fields) / max(len(previous_fields | current_fields), 1)
+            if score > best_score:
+                best_name = added_name
+                best_score = score
+        if best_name and best_score >= 0.6:
+            changes.append(
+                _migration_change(
+                    "renamed_table_candidate",
+                    table=table_name,
+                    **{"from": table_name, "to": best_name},
+                    confidence=round(best_score, 2),
+                    requires_approval=True,
+                    safe_alternative="Add an explicit table rename hint before applying the migration.",
+                )
+            )
+    return changes
+
+
+def _field_migration_changes(
+    table_name: str,
+    previous_table: dict,
+    current_table: dict,
+    hints: dict[tuple[str, str], dict],
+) -> tuple[dict, ...]:
+    changes: list[dict] = []
+    previous_fields = previous_table.get("fields", {})
+    current_fields = current_table.get("fields", {})
+    previous_names = set(previous_fields)
+    current_names = set(current_fields)
+    added_fields = current_names - previous_names
+    dropped_fields = previous_names - current_names
+    field_renames = _field_rename_candidates(table_name, previous_fields, current_fields, dropped_fields, added_fields, hints)
+    renamed_old = {item["from"].split(".", 1)[1] for item in field_renames}
+    renamed_new = {item["to"].split(".", 1)[1] for item in field_renames}
+    changes.extend(field_renames)
+
+    for field_name in sorted(added_fields - renamed_new):
+        field = current_fields[field_name]
+        requires_backfill = field.get("required") and field.get("default") is None and not field.get("primary_key")
+        changes.append(
+            _migration_change(
+                "add_field",
+                table=table_name,
+                field=field_name,
+                field_type=field.get("type"),
+                destructive=False,
+                requires_backfill=bool(requires_backfill),
+                safe_alternative="Add a default or nullable rollout field before enforcing required data." if requires_backfill else None,
+            )
+        )
+    for field_name in sorted(dropped_fields - renamed_old):
+        changes.append(
+            _migration_change(
+                "drop_field",
+                table=table_name,
+                field=field_name,
+                destructive=True,
+                safe_alternative="Keep the field hidden until retention and exports are complete.",
+            )
+        )
+
+    for field_name in sorted(previous_names & current_names):
+        before = previous_fields[field_name]
+        after = current_fields[field_name]
+        for attr, kind in (
+            ("type", "type_change"),
+            ("required", "nullability_change"),
+            ("default", "default_change"),
+            ("unique", "unique_change"),
+        ):
+            if before.get(attr) != after.get(attr):
+                destructive = kind in {"type_change", "nullability_change"} and after.get(attr) not in (False, None)
+                changes.append(
+                    _migration_change(
+                        kind,
+                        table=table_name,
+                        field=field_name,
+                        before=before.get(attr),
+                        after=after.get(attr),
+                        destructive=destructive,
+                        requires_backfill=kind in {"type_change", "nullability_change"},
+                    )
+                )
+        if before.get("relationship") != after.get("relationship"):
+            changes.append(
+                _migration_change(
+                    "relationship_change",
+                    table=table_name,
+                    field=field_name,
+                    before=before.get("relationship"),
+                    after=after.get("relationship"),
+                    destructive=True,
+                    safe_alternative="Create a new relationship field, backfill it, then retire the old relationship.",
+                )
+            )
+    return tuple(changes)
+
+
+def _field_rename_candidates(
+    table_name: str,
+    previous_fields: dict,
+    current_fields: dict,
+    dropped_fields: set[str],
+    added_fields: set[str],
+    hints: dict[tuple[str, str], dict],
+) -> list[dict]:
+    changes: list[dict] = []
+    for field_name in sorted(dropped_fields):
+        qualified = f"{table_name}.{field_name}"
+        hint = hints.get(("field", qualified)) or hints.get(("field", field_name))
+        if hint:
+            new_name = hint["to"].split(".")[-1]
+            if new_name in added_fields:
+                changes.append(
+                    _migration_change(
+                        "rename_field",
+                        table=table_name,
+                        field=field_name,
+                        **{"from": qualified, "to": f"{table_name}.{new_name}"},
+                        confidence="hinted",
+                    )
+                )
+                continue
+        before = previous_fields[field_name]
+        for added_name in sorted(added_fields):
+            after = current_fields[added_name]
+            if before.get("type") == after.get("type") and before.get("relationship") == after.get("relationship"):
+                changes.append(
+                    _migration_change(
+                        "renamed_field_candidate",
+                        table=table_name,
+                        field=field_name,
+                        **{"from": qualified, "to": f"{table_name}.{added_name}"},
+                        confidence="type-and-relationship-match",
+                        requires_approval=True,
+                        safe_alternative="Add an explicit field rename hint before applying the migration.",
+                    )
+                )
+                break
+    return changes
+
+
+def _directive_migration_changes(table_name: str, previous_table: dict, current_table: dict) -> tuple[dict, ...]:
+    before = {_directive_signature(item) for item in previous_table.get("directives", ())}
+    after = {_directive_signature(item) for item in current_table.get("directives", ())}
+    changes = [
+        _migration_change("add_table_directive", table=table_name, directive=directive, destructive=False)
+        for directive in sorted(after - before)
+    ]
+    changes.extend(
+        _migration_change("drop_table_directive", table=table_name, directive=directive, destructive=True)
+        for directive in sorted(before - after)
+    )
+    return tuple(changes)
+
+
+def _directive_signature(directive: dict) -> str:
+    return json.dumps(directive, sort_keys=True, default=list)
+
+
+def _relationship_migration_changes(previous: dict, current: dict) -> tuple[dict, ...]:
+    before = {
+        (edge["from"], edge["to"], edge.get("label"), edge.get("cardinality"))
+        for edge in previous.get("graphs", {}).get("er", {}).get("edges", ())
+    }
+    after = {
+        (edge["from"], edge["to"], edge.get("label"), edge.get("cardinality"))
+        for edge in current.get("graphs", {}).get("er", {}).get("edges", ())
+    }
+    changes = [
+        _migration_change(
+            "add_relationship",
+            table=item[0],
+            target_table=item[1],
+            field=item[2],
+            cardinality=item[3],
+            destructive=False,
+        )
+        for item in sorted(after - before)
+    ]
+    changes.extend(
+        _migration_change(
+            "drop_relationship",
+            table=item[0],
+            target_table=item[1],
+            field=item[2],
+            cardinality=item[3],
+            destructive=True,
+            safe_alternative="Retain the existing relationship until dependent forms and reports are migrated.",
+        )
+        for item in sorted(before - after)
+    )
+    return tuple(changes)
+
+
+def _calculated_field_migration_changes(previous_tables: dict, current_tables: dict) -> tuple[dict, ...]:
+    changes: list[dict] = []
+    for table_name in sorted(set(previous_tables) & set(current_tables)):
+        previous_fields = previous_tables[table_name].get("fields", {})
+        current_fields = current_tables[table_name].get("fields", {})
+        for field_name in sorted(set(previous_fields) & set(current_fields)):
+            before = previous_fields[field_name]
+            after = current_fields[field_name]
+            if before.get("calculated") != after.get("calculated") or before.get("expression") != after.get("expression"):
+                changes.append(
+                    _migration_change(
+                        "calculated_field_change",
+                        table=table_name,
+                        field=field_name,
+                        before=before.get("expression"),
+                        after=after.get("expression"),
+                        destructive=False,
+                    )
+                )
+    return tuple(changes)
+
+
+def _pbc_migration_changes(previous: dict, current: dict) -> tuple[dict, ...]:
+    previous_pbcs = set(previous.get("pbcs", {}))
+    current_pbcs = set(current.get("pbcs", {}))
+    changes = [
+        _migration_change("add_pbc_include", pbc=pbc, destructive=False)
+        for pbc in sorted(current_pbcs - previous_pbcs)
+    ]
+    changes.extend(
+        _migration_change(
+            "drop_pbc_include",
+            pbc=pbc,
+            destructive=True,
+            safe_alternative="Deprecate the PBC contract and preserve projections before removal.",
+        )
+        for pbc in sorted(previous_pbcs - current_pbcs)
+    )
+    return tuple(changes)
+
+
+def _classify_nl_operation(prompt: str, semantic: dict) -> dict:
+    normalized = " ".join((prompt or "").strip().split())
+    lower = normalized.lower()
+    if not normalized:
+        return {"kind": "unsupported", "intent": "empty"}
+
+    pbc_match = re.search(r"\b(?:include|add|compose)\s+(?:pbc\s+)?(?P<pbc>[a-z][a-z0-9_]+)\b", lower)
+    if pbc_match and pbc_match.group("pbc") in _pbc_catalog_by_key():
+        pbc = pbc_match.group("pbc")
+        return {
+            "kind": "add_pbc_include",
+            "intent": "composition_change",
+            "pbc": pbc,
+            "composition": _default_composition_name(semantic),
+            "affected_symbols": (f"pbc.{pbc}",),
+        }
+
+    field_match = re.search(r"\badd\s+(?P<field>[A-Za-z][A-Za-z0-9_ ]+?)\s+to\s+(?P<table>[A-Za-z][A-Za-z0-9_ ]+)\b", normalized, re.I)
+    if field_match:
+        table_name = _resolve_nl_table_name(field_match.group("table"), semantic)
+        field_name = _snake_case(field_match.group("field"))
+        if table_name and field_name:
+            return {
+                "kind": "add_field",
+                "intent": "schema_change",
+                "table": table_name,
+                "field": field_name,
+                "field_type": _infer_nl_field_type(field_name),
+                "affected_symbols": (f"table.{table_name}.{field_name}",),
+            }
+
+    table_match = re.search(r"\b(?:add|create)\s+(?P<table>[A-Za-z][A-Za-z0-9_ ]+?)(?:\s+(?:table|record|entity|feature|module))?(?:\s+to\b|$)", normalized, re.I)
+    if table_match:
+        raw_table = table_match.group("table")
+        table_name = _pascal_case(_strip_domain_suffix(raw_table))
+        if table_name:
+            return {
+                "kind": "add_table",
+                "intent": "domain_feature",
+                "table": table_name,
+                "affected_symbols": (f"table.{table_name}",),
+            }
+
+    flow_match = re.search(r"\b(?:add|create)\s+(?P<flow>[A-Za-z][A-Za-z0-9_ ]+?)\s+(?:workflow|flow)\b", normalized, re.I)
+    if flow_match:
+        flow_name = _pascal_case(flow_match.group("flow"))
+        return {
+            "kind": "add_flow",
+            "intent": "workflow_change",
+            "flow": flow_name,
+            "affected_symbols": (f"flow.{flow_name}",),
+        }
+
+    return {"kind": "unsupported", "intent": "unclassified"}
+
+
+def _render_nl_dsl_patch(operation: dict) -> str:
+    if operation["kind"] == "add_table":
+        table = operation["table"]
+        return f"""
+table {table} {{
+  id: int pk
+  name: string required search
+  status: string default draft
+  created_at: datetime
+}}
+
+view {table}Form for {table} {{
+  Main: name, status
+}}
+""".strip()
+    if operation["kind"] == "add_field":
+        return f"// edit table {operation['table']}: add {operation['field']}: {operation['field_type']}"
+    if operation["kind"] == "add_pbc_include":
+        composition = operation["composition"]
+        return f"""
+composition {composition} {{
+  include pbc {operation['pbc']} version 1.0.0
+}}
+""".strip()
+    if operation["kind"] == "add_flow":
+        flow = operation["flow"]
+        return f"""
+flow {flow} {{
+  draft -> review
+  review -> approved
+}}
+""".strip()
+    return ""
+
+
+def _append_dsl_patch(source: str, patch: str) -> str:
+    if not patch:
+        return source
+    if patch.startswith("// edit table "):
+        return _apply_table_field_patch(source, patch)
+    stripped = source.rstrip()
+    return f"{stripped}\n\n{patch}\n" if stripped else f"{patch}\n"
+
+
+def _apply_table_field_patch(source: str, patch: str) -> str:
+    match = re.match(r"// edit table (?P<table>[A-Za-z_][A-Za-z0-9_]*): add (?P<field>[a-z][a-z0-9_]*): (?P<type>[A-Za-z_][A-Za-z0-9_]*)", patch)
+    if not match:
+        return source
+    table = match.group("table")
+    field = match.group("field")
+    field_type = match.group("type")
+    pattern = re.compile(rf"(table\s+{re.escape(table)}\s*\{{)(?P<body>.*?)(\n\}})", re.S)
+    table_match = pattern.search(source)
+    if table_match is None:
+        return _append_dsl_patch(
+            source,
+            f"table {table} {{\n  id: int pk\n  {field}: {field_type}\n}}",
+        )
+    body = table_match.group("body").rstrip()
+    replacement = f"{table_match.group(1)}{body}\n  {field}: {field_type}{table_match.group(3)}"
+    return source[: table_match.start()] + replacement + source[table_match.end() :]
+
+
+def _default_composition_name(semantic: dict) -> str:
+    compositions = semantic.get("composition", {})
+    if compositions:
+        return next(iter(compositions))
+    app_name = semantic.get("app", {}).get("name")
+    return f"{app_name or 'App'}Composition"
+
+
+def _resolve_nl_table_name(raw: str, semantic: dict) -> str | None:
+    candidate = _pascal_case(_strip_domain_suffix(raw))
+    if candidate in semantic.get("tables", {}):
+        return candidate
+    normalized = _snake_case(raw).replace("_", "")
+    for table_name in semantic.get("tables", {}):
+        if table_name.lower() == candidate.lower() or table_name.lower() == normalized:
+            return table_name
+    return candidate if candidate else None
+
+
+def _strip_domain_suffix(raw: str) -> str:
+    value = re.sub(r"\b(accounts receivable|accounts payable|erp|module|feature)\b", "", raw, flags=re.I)
+    value = re.sub(r"\bto\b.*$", "", value, flags=re.I)
+    return value.strip()
+
+
+def _snake_case(raw: str) -> str:
+    words = re.findall(r"[A-Za-z0-9]+", raw or "")
+    return "_".join(word.lower() for word in words)
+
+
+def _pascal_case(raw: str) -> str:
+    words = re.findall(r"[A-Za-z0-9]+", raw or "")
+    if len(words) == 2 and words[-1].lower() == "memos":
+        words[-1] = "memo"
+    elif len(words) == 1 and words[0].lower().endswith("memos"):
+        words[0] = words[0][:-1]
+    elif len(words) > 1 and words[-1].lower().endswith("s") and not words[-1].lower().endswith("ss"):
+        words[-1] = words[-1][:-1]
+    return "".join(word[:1].upper() + word[1:] for word in words if word)
+
+
+def _infer_nl_field_type(field_name: str) -> str:
+    if field_name.endswith("_id"):
+        return "int"
+    if any(token in field_name for token in ("amount", "total", "balance", "price", "cost")):
+        return "decimal"
+    if any(token in field_name for token in ("date", "at", "time")):
+        return "datetime"
+    if field_name.startswith(("is_", "has_", "can_")):
+        return "bool"
+    return "string"
+
+
+def _nl_test_plan(operation: dict) -> tuple[dict, ...]:
+    return (
+        {"id": "lint_patched_dsl", "command": "appgen lint app.appgen --json"},
+        {"id": "validate_patched_dsl", "command": "appgen validate app.appgen --json"},
+        {"id": f"assert_{operation['kind']}", "assertion": "Generated semantic model includes the affected symbols."},
+    )
+
+
+def _nl_token_budget_notes() -> tuple[str, ...]:
+    return (
+        "Send the semantic symbols and the requested edit operation, not the whole generated project.",
+        "Return a DSL patch and let AppGen-X run lint, migration preview, and generation.",
+        "Reject requests that cannot be represented as a bounded DSL operation.",
+    )
 
 
 def _semantic_symbols(source: str, schema: AppSchema) -> dict:

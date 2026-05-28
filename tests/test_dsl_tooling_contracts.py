@@ -6,6 +6,8 @@ from pathlib import Path
 from pyAppGen.dsl import format_report_dsl
 from pyAppGen.dsl import graph_report_dsl
 from pyAppGen.dsl import lint_report_dsl
+from pyAppGen.dsl import migration_plan_dsl
+from pyAppGen.dsl import nl_plan_dsl
 from pyAppGen.dsl import semantic_model_dsl
 from pyAppGen.dsl import validate_report_dsl
 
@@ -109,3 +111,115 @@ def test_appgen_lint_subcommand_emits_json_contract(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.lint-report.v1"
     assert payload["ok"] is True
+
+
+def test_migration_plan_detects_add_drop_type_and_backfill_changes() -> None:
+    previous = """
+    app FinanceOps { targets: web }
+    table Customer { id: int pk; name: string required }
+    table Invoice { id: int pk; total: decimal default 0; note: string }
+    """
+    current = """
+    app FinanceOps { targets: web }
+    table Customer { id: int pk; name: string required; segment: string required }
+    table Invoice { id: int pk; total: string default 0 }
+    table CreditMemo { id: int pk; amount: decimal default 0 }
+    """
+
+    plan = migration_plan_dsl(previous, current, backend="postgresql")
+
+    assert plan["format"] == "appgen.migration-plan.v1"
+    assert plan["ok"] is True
+    assert plan["destructive"] is True
+    assert plan["requires_approval"] is True
+    assert {change["kind"] for change in plan["changes"]} >= {
+        "add_table",
+        "add_field",
+        "drop_field",
+        "type_change",
+    }
+    assert any(change.get("requires_backfill") for change in plan["changes"])
+    assert any(item["code"] == "AGX1101" for item in plan["diagnostics"])
+
+
+def test_nl_plan_returns_linted_dsl_patch_and_migration_preview() -> None:
+    plan = nl_plan_dsl(
+        TOOLING_SAMPLE,
+        prompt="Add credit memos to accounts receivable",
+        source_name="finance.appgen",
+    )
+
+    assert plan["format"] == "appgen.nl-plan.v1"
+    assert plan["ok"] is True
+    assert plan["intent"] == "domain_feature"
+    assert "table CreditMemo" in plan["dsl_patch"]
+    assert plan["lint"]["ok"] is True
+    assert plan["migration_preview"]["format"] == "appgen.migration-plan.v1"
+    assert any(change["kind"] == "add_table" and change["table"] == "CreditMemo" for change in plan["migration_preview"]["changes"])
+    assert plan["token_budget_notes"]
+
+
+def test_appgen_nl_plan_subcommand_emits_json_contract(tmp_path: Path) -> None:
+    path = tmp_path / "finance.appgen"
+    path.write_text(TOOLING_SAMPLE, encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "nl-plan",
+            str(path),
+            "--prompt",
+            "Add credit memos to accounts receivable",
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["format"] == "appgen.nl-plan.v1"
+    assert payload["migration_preview"]["format"] == "appgen.migration-plan.v1"
+
+
+def test_appgen_migration_plan_subcommand_emits_json_contract(tmp_path: Path) -> None:
+    previous = tmp_path / "previous.appgen"
+    current = tmp_path / "current.appgen"
+    previous.write_text(TOOLING_SAMPLE, encoding="utf-8")
+    current.write_text(
+        TOOLING_SAMPLE
+        + """
+
+table Payment {
+  id: int pk
+  invoice_id: int -> Invoice.id
+  amount: decimal default 0
+}
+""",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "migration-plan",
+            str(previous),
+            str(current),
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["format"] == "appgen.migration-plan.v1"
+    assert any(change["kind"] == "add_table" and change["table"] == "Payment" for change in payload["changes"])

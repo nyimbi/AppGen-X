@@ -7,7 +7,15 @@ import sys
 from .gen import main as main
 
 
-_TOOLING_SUBCOMMANDS = {"lint", "format", "validate", "graph", "explain"}
+_TOOLING_SUBCOMMANDS = {
+    "lint",
+    "format",
+    "validate",
+    "graph",
+    "explain",
+    "migration-plan",
+    "nl-plan",
+}
 _legacy_click_main = main.main
 
 
