@@ -3132,3 +3132,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Verification passed: Python compile for touched DSL modules, focused
   JSON-RPC/audit tests, `tests/test_dsl_tooling_contracts.py -q`, scoped diff
   whitespace check, and restricted-name scan. Commit: `9ca46852`.
+- Current lint component-catalog pass makes the documented `appgen lint
+  --strict --catalog` behavior executable. Lint reports now carry
+  `component_catalog` evidence, file and directory lint paths load catalog JSON
+  component names, strict mode accepts catalog-registered visual components,
+  and `appgen.tooling-audit.v1` verifies registered component catalogs as part
+  of the linter gate. Verification passed: Python compile for touched tooling
+  entrypoints, focused component-catalog lint and tooling-audit tests,
+  `tests/test_dsl_tooling_contracts.py -q`, scoped diff whitespace check, and
+  restricted-name scan. Commit: `b6cdfe46`.
