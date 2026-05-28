@@ -730,6 +730,15 @@ The VS Code extension should provide:
   package;
 - PBC catalog browser.
 
+The repository ships the extension scaffold at `extensions/vscode-appgen-x`.
+It contributes the `appgen` language for `.appgen`, `.ag`, and `.ags` files,
+syntax highlighting, language configuration, command palette entries, and a
+dependency-free JSON-RPC client that launches `appgen lsp --stdio`. The client
+registers VS Code providers for diagnostics, completion, hover, definition,
+references, document symbols, workspace symbols, rename, code actions, and
+formatting, while command palette actions call the same CLI contracts for lint,
+format, graph, explain, generate, and package.
+
 ### AppGen-X Studio / Monaco
 
 The web IDE should reuse the same language server or a compatible semantic

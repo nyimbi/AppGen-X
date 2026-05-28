@@ -1,0 +1,114 @@
+{
+  "name": "appgen-x-vscode",
+  "displayName": "AppGen-X",
+  "description": "Language tooling for AppGen-X DSL files.",
+  "version": "0.1.0",
+  "publisher": "appgen-x",
+  "engines": {
+    "vscode": "^1.86.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:appgen",
+    "onCommand:appgen.lint",
+    "onCommand:appgen.format",
+    "onCommand:appgen.graph",
+    "onCommand:appgen.explain",
+    "onCommand:appgen.generate",
+    "onCommand:appgen.package",
+    "onCommand:appgen.restartLanguageServer"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "appgen",
+        "aliases": [
+          "AppGen-X",
+          "appgen"
+        ],
+        "extensions": [
+          ".appgen",
+          ".ag",
+          ".ags"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "appgen",
+        "scopeName": "source.appgen",
+        "path": "./syntaxes/appgen.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "AppGen-X",
+      "properties": {
+        "appgen.command": {
+          "type": "string",
+          "default": "appgen",
+          "description": "Command used to run the AppGen-X CLI and language server."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "appgen.lint",
+        "title": "AppGen-X: Lint Current File"
+      },
+      {
+        "command": "appgen.format",
+        "title": "AppGen-X: Format Current File"
+      },
+      {
+        "command": "appgen.graph",
+        "title": "AppGen-X: Show Graph JSON"
+      },
+      {
+        "command": "appgen.explain",
+        "title": "AppGen-X: Explain Symbol"
+      },
+      {
+        "command": "appgen.generate",
+        "title": "AppGen-X: Generate Application"
+      },
+      {
+        "command": "appgen.package",
+        "title": "AppGen-X: Package Application"
+      },
+      {
+        "command": "appgen.restartLanguageServer",
+        "title": "AppGen-X: Restart Language Server"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "appgen.lint"
+        },
+        {
+          "command": "appgen.format"
+        },
+        {
+          "command": "appgen.graph"
+        },
+        {
+          "command": "appgen.explain"
+        },
+        {
+          "command": "appgen.generate"
+        },
+        {
+          "command": "appgen.package"
+        },
+        {
+          "command": "appgen.restartLanguageServer"
+        }
+      ]
+    }
+  }
+}

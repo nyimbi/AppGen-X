@@ -1024,6 +1024,44 @@ view InvoiceForm for Invoice {
     assert "on Save -> PostInvoice" in changes[form_uri][0]["newText"]
 
 
+def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -> None:
+    extension_dir = Path(__file__).resolve().parents[1] / "extensions" / "vscode-appgen-x"
+    package = json.loads((extension_dir / "package.json").read_text(encoding="utf-8"))
+    language_config = json.loads((extension_dir / "language-configuration.json").read_text(encoding="utf-8"))
+    grammar = json.loads((extension_dir / "syntaxes" / "appgen.tmLanguage.json").read_text(encoding="utf-8"))
+    source = (extension_dir / "src" / "extension.js").read_text(encoding="utf-8")
+
+    commands = {item["command"] for item in package["contributes"]["commands"]}
+    languages = package["contributes"]["languages"]
+
+    assert package["main"] == "./src/extension.js"
+    assert package["activationEvents"][0] == "onLanguage:appgen"
+    assert languages[0]["id"] == "appgen"
+    assert {".appgen", ".ag", ".ags"} <= set(languages[0]["extensions"])
+    assert package["contributes"]["grammars"][0]["path"] == "./syntaxes/appgen.tmLanguage.json"
+    assert {
+        "appgen.lint",
+        "appgen.format",
+        "appgen.graph",
+        "appgen.explain",
+        "appgen.generate",
+        "appgen.package",
+        "appgen.restartLanguageServer",
+    } <= commands
+    assert language_config["comments"]["lineComment"] == "//"
+    assert grammar["scopeName"] == "source.appgen"
+    assert '["lsp", "--stdio"]' in source
+    assert "registerCompletionItemProvider" in source
+    assert "registerHoverProvider" in source
+    assert "registerDefinitionProvider" in source
+    assert "registerReferenceProvider" in source
+    assert "registerDocumentSymbolProvider" in source
+    assert "registerWorkspaceSymbolProvider" in source
+    assert "registerRenameProvider" in source
+    assert "registerCodeActionsProvider" in source
+    assert "registerDocumentFormattingEditProvider" in source
+
+
 def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:
     report = release_verifier_report_dsl(RELEASE_SAMPLE, source_name="release.appgen", targets=("all",))
 

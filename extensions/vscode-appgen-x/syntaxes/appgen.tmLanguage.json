@@ -1,0 +1,81 @@
+{
+  "scopeName": "source.appgen",
+  "name": "AppGen-X",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#operators"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.appgen",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.appgen",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.appgen",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.appgen",
+          "match": "\\b(app|table|group|enum|view|flow|role|rule|llm|agent|pbc|composition|audit|deploy|version|operation|security|api|event|job|report|menu|component|package|test|include|require|expose|connect|unit|health|resource|env|human|timer|compensate|on|for|as|version|targets|provider|mode|tools|permission|target|run)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.appgen",
+          "match": "\\b(int|string|decimal|bool|boolean|date|datetime|text|json|uuid|money|email|url)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.appgen",
+          "match": "\\b\\d+(?:\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.appgen",
+          "match": "->|=>|==|!=|<=|>=|=|:"
+        }
+      ]
+    }
+  }
+}
