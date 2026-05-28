@@ -20,6 +20,7 @@ from pyAppGen.dsl import lsp_server_handle_message
 from pyAppGen.dsl import lsp_service_dsl
 from pyAppGen.dsl import migration_plan_dsl
 from pyAppGen.dsl import nl_plan_dsl
+from pyAppGen.dsl import nl_plan_contract_audit_dsl
 from pyAppGen.dsl import parser_golden_audit_dsl
 from pyAppGen.dsl import pbc_publish_report
 from pyAppGen.dsl import pbc_verifier_report
@@ -814,6 +815,46 @@ def test_appgen_nl_plan_subcommand_emits_json_contract(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.nl-plan.v1"
     assert payload["migration_preview"]["format"] == "appgen.migration-plan.v1"
+
+
+def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections() -> None:
+    audit = nl_plan_contract_audit_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
+    case_ids = {case["id"] for case in audit["cases"]}
+
+    assert audit["format"] == "appgen.nl-plan-contract-audit.v1"
+    assert audit["ok"] is True
+    assert set(audit["required_edit_operations"]) <= {
+        "add_table",
+        "add_field",
+        "add_relationship",
+        "add_view_section",
+        "add_component_placement",
+        "add_handler",
+        "add_operation",
+        "add_rule",
+        "add_flow_transition",
+        "add_pbc_include",
+        "add_api_event_contract",
+        "add_package_deployment_unit",
+        "add_agent_skill_permission",
+    }
+    assert {
+        "add_table",
+        "add_field",
+        "add_relationship",
+        "add_view_section",
+        "add_component_placement",
+        "add_handler",
+        "add_operation",
+        "add_rule",
+        "add_flow_transition",
+        "add_pbc_include",
+        "add_api_event_contract",
+        "add_package_deployment_unit",
+        "add_agent_skill_permission",
+        "reject_unsupported",
+    } <= case_ids
+    assert audit["blocking_gaps"] == ()
 
 
 def test_appgen_migration_plan_subcommand_emits_json_contract(tmp_path: Path) -> None:

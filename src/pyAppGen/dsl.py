@@ -2095,6 +2095,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         prompt="Add credit memo tracking to invoices",
         backend="postgresql",
     )
+    nl_plan_contract = nl_plan_contract_audit_dsl(source, source_name="tooling-audit.appgen")
     release = release_verifier_report_dsl(
         source,
         source_name="tooling-audit.appgen",
@@ -2291,10 +2292,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             nl_plan["ok"]
             and nl_plan["dsl_patch"]
             and nl_plan["lint"]["ok"]
-            and nl_plan["migration_preview"]["format"] == "appgen.migration-plan.v1",
+            and nl_plan["migration_preview"]["format"] == "appgen.migration-plan.v1"
+            and nl_plan_contract["ok"],
             "Natural-language change planning produces a bounded DSL patch, lint result, migration preview, tests, and token-budget notes.",
             "docs/tooling.md#natural-language-change-planner",
-            {"format": nl_plan.get("format"), "intent": nl_plan.get("intent")},
+            {"format": nl_plan.get("format"), "intent": nl_plan.get("intent"), "contract": nl_plan_contract},
         ),
         _tooling_audit_check(
             "package_and_release_verifiers",
@@ -3678,6 +3680,78 @@ def nl_plan_dsl(
         "test_plan": _nl_test_plan(operation),
         "token_budget_notes": _nl_token_budget_notes(),
         "diagnostics": diagnostics,
+    }
+
+
+def nl_plan_contract_audit_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Prove documented natural-language edit operations stay DSL-bounded."""
+    source = text or _tooling_audit_sample_dsl()
+    case_specs = (
+        ("add_table", "Add dispute cases table", True, "add_table"),
+        ("add_field", "Add due date to Invoice", True, "add_field"),
+        ("add_relationship", "Add relationship from Invoice to Customer", True, "add_relationship"),
+        ("add_view_section", "Add view section Audit to InvoiceForm", True, "add_view_section"),
+        ("add_component_placement", "Add component placement for customer.name to InvoiceForm", True, "add_component_placement"),
+        ("add_handler", "Add handler Audit to InvoiceForm", True, "add_handler"),
+        ("add_operation", "Add operation ArchiveInvoice", True, "add_operation"),
+        ("add_rule", "Add rule PositiveInvoiceTotal", True, "add_rule"),
+        ("add_flow_transition", "Add flow transition posted to archived in SubmitInvoice", True, "add_flow_transition"),
+        ("add_pbc_include", "Include pbc ap_automation", True, "add_pbc_include"),
+        ("add_api_event_contract", "Add api event contract InvoiceSynced", True, "add_api_event_contract"),
+        ("add_package_deployment_unit", "Add package deployment unit for worker", True, "add_package_deployment_unit"),
+        ("add_agent_skill_permission", "Add agent skill and permission for invoice review", True, "add_agent_skill_permission"),
+        ("reject_unsupported", "Replace the runtime with hand-written generated code outside the DSL", False, "unsupported"),
+    )
+    cases = []
+    for case_id, prompt, should_accept, expected_kind in case_specs:
+        plan = nl_plan_dsl(source, source_name=source_name, prompt=prompt)
+        operation_kinds = tuple(operation.get("kind") for operation in plan.get("edit_operations", ()))
+        diagnostic_codes = tuple(item.get("code") for item in plan.get("diagnostics", ()))
+        ok = (
+            plan["ok"] is should_accept
+            and (expected_kind == "unsupported" or expected_kind in operation_kinds)
+            and (not should_accept or bool(plan.get("dsl_patch")))
+            and (not should_accept or plan.get("lint", {}).get("ok") is True)
+            and (not should_accept or plan.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1")
+            and (not should_accept or bool(plan.get("test_plan")))
+            and bool(plan.get("token_budget_notes"))
+            and (should_accept or "AGX1201" in diagnostic_codes)
+        )
+        cases.append(
+            {
+                "id": case_id,
+                "ok": ok,
+                "prompt": prompt,
+                "accepted": plan["ok"],
+                "expected_kind": expected_kind,
+                "operation_kinds": operation_kinds,
+                "diagnostic_codes": diagnostic_codes,
+                "patch_bytes": len(plan.get("dsl_patch", "")),
+                "lint_ok": plan.get("lint", {}).get("ok"),
+                "migration_format": plan.get("migration_preview", {}).get("format"),
+                "test_count": len(plan.get("test_plan", ())),
+            }
+        )
+    return {
+        "format": "appgen.nl-plan-contract-audit.v1",
+        "ok": all(case["ok"] for case in cases),
+        "cases": tuple(cases),
+        "required_edit_operations": (
+            "add_table",
+            "add_field",
+            "add_relationship",
+            "add_view_section",
+            "add_component_placement",
+            "add_handler",
+            "add_operation",
+            "add_rule",
+            "add_flow_transition",
+            "add_pbc_include",
+            "add_api_event_contract",
+            "add_package_deployment_unit",
+            "add_agent_skill_permission",
+        ),
+        "blocking_gaps": tuple(case["id"] for case in cases if not case["ok"]),
     }
 
 
@@ -6294,6 +6368,117 @@ def _classify_nl_operation(prompt: str, semantic: dict) -> dict:
     if not normalized:
         return {"kind": "unsupported", "intent": "empty"}
 
+    if any(marker in lower for marker in ("hand-written generated code", "outside the dsl", "replace the runtime")):
+        return {"kind": "unsupported", "intent": "outside_dsl_scope"}
+
+    if "agent skill" in lower or ("permission" in lower and "agent" in lower):
+        return {
+            "kind": "add_agent_skill_permission",
+            "intent": "agent_change",
+            "agent": "ReviewAssistant",
+            "provider": _default_llm_name(semantic),
+            "operation": _default_operation_name(semantic),
+            "resource": _default_table_name(semantic),
+            "affected_symbols": ("agent.ReviewAssistant",),
+        }
+
+    if "api event contract" in lower or ("api" in lower and "event" in lower and "contract" in lower):
+        contract = _pascal_case(re.sub(r"\b(add|api|event|contract)\b", "", normalized, flags=re.I).strip() or "GeneratedEvent")
+        return {
+            "kind": "add_api_event_contract",
+            "intent": "contract_change",
+            "contract": contract,
+            "operation": _default_operation_name(semantic),
+            "resource": _default_table_name(semantic),
+            "affected_symbols": (f"api.{contract}Api", f"event.{contract}"),
+        }
+
+    if "package deployment" in lower or ("package" in lower and "deployment" in lower):
+        return {
+            "kind": "add_package_deployment_unit",
+            "intent": "release_change",
+            "target": _default_app_target(semantic),
+            "unit": _default_operation_name(semantic),
+            "affected_symbols": ("package.GeneratedRelease", "deployment.Production"),
+        }
+
+    if "flow transition" in lower or ("transition" in lower and "flow" in lower):
+        flow = _default_flow_name(semantic)
+        transition_match = re.search(r"\b(?P<from>[a-z][a-z0-9_]*)\s+to\s+(?P<to>[a-z][a-z0-9_]*)\b", lower)
+        return {
+            "kind": "add_flow_transition",
+            "intent": "workflow_change",
+            "flow": flow,
+            "from": transition_match.group("from") if transition_match else "posted",
+            "to": transition_match.group("to") if transition_match else "archived",
+            "affected_symbols": (f"flow.{flow}",),
+        }
+
+    if "view section" in lower or ("section" in lower and "view" in lower):
+        return {
+            "kind": "add_view_section",
+            "intent": "ui_change",
+            "view": _default_view_name(semantic),
+            "field": _default_view_binding(semantic),
+            "section": "Audit",
+            "affected_symbols": (f"view.{_default_view_name(semantic)}",),
+        }
+
+    if "component placement" in lower or ("component" in lower and "placement" in lower):
+        return {
+            "kind": "add_component_placement",
+            "intent": "ui_change",
+            "view": _default_view_name(semantic),
+            "binding": _default_view_binding(semantic),
+            "component": "Lookup",
+            "affected_symbols": (f"view.{_default_view_name(semantic)}",),
+        }
+
+    if "handler" in lower:
+        return {
+            "kind": "add_handler",
+            "intent": "ui_change",
+            "view": _default_view_name(semantic),
+            "event": "Audit",
+            "target": _default_operation_name(semantic),
+            "affected_symbols": (f"handler.{_default_view_name(semantic)}.Audit",),
+        }
+
+    operation_match = re.search(r"\b(?:add|create)\s+operation\s+(?P<operation>[A-Za-z][A-Za-z0-9_ ]+)\b", normalized, re.I)
+    if operation_match:
+        operation = _pascal_case(operation_match.group("operation"))
+        return {
+            "kind": "add_operation",
+            "intent": "operation_change",
+            "operation": operation,
+            "affected_symbols": (f"operation.{operation}",),
+        }
+
+    rule_match = re.search(r"\b(?:add|create)\s+rule\s+(?P<rule>[A-Za-z][A-Za-z0-9_ ]+)\b", normalized, re.I)
+    if rule_match:
+        rule = _pascal_case(rule_match.group("rule"))
+        table = _default_table_name(semantic)
+        field = _default_numeric_field(semantic, table)
+        return {
+            "kind": "add_rule",
+            "intent": "rule_change",
+            "rule": rule,
+            "table": table,
+            "field": field,
+            "affected_symbols": (f"rule.{rule}",),
+        }
+
+    if "relationship" in lower:
+        return {
+            "kind": "add_relationship",
+            "intent": "schema_change",
+            "table": _default_table_name(semantic),
+            "field": "customer_ref_id",
+            "target_table": "Customer" if "Customer" in semantic.get("tables", {}) else _default_table_name(semantic),
+            "target_field": "id",
+            "affected_symbols": (f"table.{_default_table_name(semantic)}.customer_ref_id",),
+        }
+
     pbc_match = re.search(r"\b(?:include|add|compose)\s+(?:pbc\s+)?(?P<pbc>[a-z][a-z0-9_]+)\b", lower)
     if pbc_match and pbc_match.group("pbc") in _pbc_catalog_by_key():
         pbc = pbc_match.group("pbc")
@@ -6361,11 +6546,70 @@ view {table}Form for {table} {{
 """.strip()
     if operation["kind"] == "add_field":
         return f"// edit table {operation['table']}: add {operation['field']}: {operation['field_type']}"
+    if operation["kind"] == "add_relationship":
+        return (
+            f"// edit table {operation['table']}: add {operation['field']}: int "
+            f"-> {operation['target_table']}.{operation['target_field']} [many-to-one]"
+        )
+    if operation["kind"] == "add_view_section":
+        return f"// edit view {operation['view']}: add section {operation['section']} {operation['field']}"
+    if operation["kind"] == "add_component_placement":
+        return f"// edit view {operation['view']}: add component {operation['binding']} {operation['component']} 0 1 4 1"
+    if operation["kind"] == "add_handler":
+        return f"// edit view {operation['view']}: add handler {operation['event']} {operation['target']}"
+    if operation["kind"] == "add_operation":
+        return f"""
+operation {operation['operation']} {{
+  draft -> complete
+}}
+""".strip()
+    if operation["kind"] == "add_rule":
+        return f"""
+rule {operation['rule']} for {operation['table']} {{
+  {operation['field']} >= 0
+}}
+""".strip()
+    if operation["kind"] == "add_flow_transition":
+        return f"// edit flow {operation['flow']}: add transition {operation['from']} -> {operation['to']}"
     if operation["kind"] == "add_pbc_include":
         composition = operation["composition"]
         return f"""
 composition {composition} {{
   include pbc {operation['pbc']} version 1.0.0
+}}
+""".strip()
+    if operation["kind"] == "add_api_event_contract":
+        return f"""
+api {operation['contract']}Api {{
+  on Sync -> {operation['operation']}
+  {operation['resource']}: read
+}}
+
+event {operation['contract']} {{
+  topic: appgen.{_snake_case(operation['contract'])}
+}}
+""".strip()
+    if operation["kind"] == "add_package_deployment_unit":
+        return f"""
+package GeneratedRelease {{
+  target: {operation['target']}
+  smoke: launch
+}}
+
+deploy Production {{
+  unit {operation['unit']} as worker
+  health {operation['unit']} "/health"
+  resource {operation['unit']} cpu 1
+  env {operation['unit']} DATABASE_URL
+}}
+""".strip()
+    if operation["kind"] == "add_agent_skill_permission":
+        return f"""
+agent {operation['agent']} {{
+  provider: {operation['provider']}
+  tools: read, write
+  {operation['resource']}: read, write
+  on Review -> {operation['operation']}
 }}
 """.strip()
     if operation["kind"] == "add_flow":
@@ -6385,6 +6629,10 @@ def _append_dsl_patch(source: str, patch: str) -> str:
     if patch.startswith("// edit table "):
         return _apply_table_field_patch(source, patch)
     if patch.startswith("// edit view "):
+        if " add section " in patch:
+            return _apply_view_section_patch(source, patch)
+        if " add handler " in patch:
+            return _apply_view_handler_patch(source, patch)
         return _apply_view_component_patch(source, patch)
     if patch.startswith("// edit flow "):
         return _apply_flow_transition_patch(source, patch)
@@ -6396,7 +6644,7 @@ def _append_dsl_patch(source: str, patch: str) -> str:
 
 def _apply_table_field_patch(source: str, patch: str) -> str:
     match = re.match(
-        r"// edit table (?P<table>[A-Za-z_][A-Za-z0-9_]*): add (?P<field>[a-z][a-z0-9_]*): (?P<type>[A-Za-z_][A-Za-z0-9_]*)(?P<required> required)?",
+        r"// edit table (?P<table>[A-Za-z_][A-Za-z0-9_]*): add (?P<field>[a-z][a-z0-9_]*): (?P<type>[A-Za-z_][A-Za-z0-9_]*)(?P<suffix>(?: required)?(?:\s+->\s+[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*(?:\s+\[[^\]]+\])?)?)",
         patch,
     )
     if not match:
@@ -6404,17 +6652,39 @@ def _apply_table_field_patch(source: str, patch: str) -> str:
     table = match.group("table")
     field = match.group("field")
     field_type = match.group("type")
-    required = match.group("required") or ""
+    suffix = match.group("suffix") or ""
     pattern = re.compile(rf"(table\s+{re.escape(table)}\s*\{{)(?P<body>.*?)(\n\}})", re.S)
     table_match = pattern.search(source)
     if table_match is None:
         return _append_dsl_patch(
             source,
-            f"table {table} {{\n  id: int pk\n  {field}: {field_type}{required}\n}}",
+            f"table {table} {{\n  id: int pk\n  {field}: {field_type}{suffix}\n}}",
         )
     body = table_match.group("body").rstrip()
-    replacement = f"{table_match.group(1)}{body}\n  {field}: {field_type}{required}{table_match.group(3)}"
+    replacement = f"{table_match.group(1)}{body}\n  {field}: {field_type}{suffix}{table_match.group(3)}"
     return source[: table_match.start()] + replacement + source[table_match.end() :]
+
+
+def _apply_view_section_patch(source: str, patch: str) -> str:
+    match = re.match(
+        r"// edit view (?P<view>[A-Za-z_][A-Za-z0-9_]*): add section (?P<section>[A-Za-z_][A-Za-z0-9_]*) (?P<field>[A-Za-z_][A-Za-z0-9_.]*)",
+        patch,
+    )
+    if not match:
+        return source
+    line = f"  {match.group('section')}: {match.group('field')}"
+    return _append_to_existing_block(source, "view", match.group("view"), line) or source
+
+
+def _apply_view_handler_patch(source: str, patch: str) -> str:
+    match = re.match(
+        r"// edit view (?P<view>[A-Za-z_][A-Za-z0-9_]*): add handler (?P<event>[A-Za-z_][A-Za-z0-9_]*) (?P<target>[A-Za-z_][A-Za-z0-9_]*)",
+        patch,
+    )
+    if not match:
+        return source
+    line = f"  on {match.group('event')} -> {match.group('target')}"
+    return _append_to_existing_block(source, "view", match.group("view"), line) or source
 
 
 def _apply_view_component_patch(source: str, patch: str) -> str:
@@ -6461,6 +6731,67 @@ def _default_composition_name(semantic: dict) -> str:
         return next(iter(compositions))
     app_name = semantic.get("app", {}).get("name")
     return f"{app_name or 'App'}Composition"
+
+
+def _default_table_name(semantic: dict) -> str:
+    tables = semantic.get("tables", {})
+    if "Invoice" in tables:
+        return "Invoice"
+    return next(iter(tables or {"Record": {}}))
+
+
+def _default_view_name(semantic: dict) -> str:
+    views = semantic.get("views", {})
+    if "InvoiceForm" in views:
+        return "InvoiceForm"
+    return next(iter(views or {"RecordForm": {}}))
+
+
+def _default_view_binding(semantic: dict) -> str:
+    view_name = _default_view_name(semantic)
+    view = semantic.get("views", {}).get(view_name, {})
+    table_name = view.get("table") or _default_table_name(semantic)
+    bindings = _valid_bindings_for_table(semantic, table_name)
+    if "customer.name" in bindings:
+        return "customer.name"
+    if "total" in bindings:
+        return "total"
+    return next(iter(bindings or ("name",)))
+
+
+def _default_flow_name(semantic: dict) -> str:
+    flows = semantic.get("flows", {})
+    if "SubmitInvoice" in flows:
+        return "SubmitInvoice"
+    return next(iter(flows or {"GeneratedFlow": {}}))
+
+
+def _default_operation_name(semantic: dict) -> str:
+    operations = semantic.get("operations", {})
+    for name in ("ReverseInvoice", "SubmitInvoice"):
+        if name in operations or name in semantic.get("flows", {}):
+            return name
+    return next(iter(operations or semantic.get("flows", {}) or {"GeneratedOperation": {}}))
+
+
+def _default_llm_name(semantic: dict) -> str:
+    llms = semantic.get("llms", {})
+    if "LocalModel" in llms:
+        return "LocalModel"
+    return next(iter(llms or {"LocalModel": {}}))
+
+
+def _default_app_target(semantic: dict) -> str:
+    targets = tuple(semantic.get("app", {}).get("targets", ()) or ())
+    return "web" if "web" in targets or not targets else str(targets[0])
+
+
+def _default_numeric_field(semantic: dict, table: str) -> str:
+    fields = semantic.get("tables", {}).get(table, {}).get("fields", {})
+    for name, field in fields.items():
+        if field.get("type") in {"int", "decimal", "float"} and name != "id":
+            return name
+    return next(iter(fields or {"id": {}}))
 
 
 def _resolve_nl_table_name(raw: str, semantic: dict) -> str | None:
