@@ -3237,7 +3237,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   default and machine-readable report contract used by CI, IDEs, and agents.
   Verification passed: Python compile for touched tooling entrypoints and full
   `appgen tooling-audit --json` with `16/16` checks and no blocking gaps.
-  Commit: pending.
+  Commit: `141d6c96`.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
@@ -3393,4 +3393,4 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   focused migration/tooling tests (`3 passed`), full `appgen tooling-audit
   --json` with `16/16` checks and no blocking gaps, scoped diff whitespace
   check, and restricted-name scan outside archive, Git internals, and active
-  PBC paths. Commit: pending.
+  PBC paths. Commit: `90be036e`.
