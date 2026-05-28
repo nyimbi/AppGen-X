@@ -893,6 +893,11 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     pbc_verify_parser = pbc_subparsers.add_parser("verify")
     pbc_verify_parser.add_argument("pbc")
     pbc_verify_parser.add_argument("--json", action="store_true")
+    pbc_publish_parser = pbc_subparsers.add_parser("publish")
+    pbc_publish_parser.add_argument("pbc")
+    pbc_publish_parser.add_argument("--catalog", default="local", choices=("local", "file", "registry"))
+    pbc_publish_parser.add_argument("--catalog-path")
+    pbc_publish_parser.add_argument("--json", action="store_true")
 
     designer_parser = subparsers.add_parser("designer-sync")
     designer_parser.add_argument("path")
@@ -1014,6 +1019,14 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     if args.command == "pbc":
         if args.pbc_command == "list":
             report = pbc_verifier_catalog_report()
+            _emit_tooling_payload(report, as_json=args.json)
+            return 0 if report["ok"] else 1
+        if args.pbc_command == "publish":
+            report = pbc_publish_report(
+                args.pbc,
+                catalog=args.catalog,
+                catalog_path=args.catalog_path,
+            )
             _emit_tooling_payload(report, as_json=args.json)
             return 0 if report["ok"] else 1
         report = pbc_verifier_report(args.pbc)
@@ -2747,6 +2760,109 @@ def pbc_verifier_report(pbc_key_or_path: str) -> dict:
         {"pbc": key, "catalog": item or {}},
     )
     return payload
+
+
+def pbc_publish_report(pbc_key_or_path: str, *, catalog: str = "local", catalog_path: str | None = None) -> dict:
+    """Return a side-effect-free PBC publish plan and catalog patch evidence."""
+    package_ref = _pbc_publish_ref(pbc_key_or_path)
+    load_report = _load_pbc_publish_package(package_ref)
+    manifest = load_report.get("manifest") if load_report.get("ok") else None
+    registration = load_report.get("registration", {})
+    validation = registration.get("validation", {})
+    catalog_patch = registration.get("catalog_patch")
+    key = (manifest or {}).get("pbc") or Path(str(pbc_key_or_path)).name
+    release_evidence = _pbc_publish_release_evidence(key)
+    target = {
+        "mode": catalog,
+        "catalog_path": catalog_path,
+        "side_effect_free": True,
+        "write_performed": False,
+    }
+    checks = (
+        _release_check(
+            "package_loads",
+            load_report.get("ok", False),
+            detail={"source": str(package_ref), "error": load_report.get("error")},
+        ),
+        _release_check(
+            "manifest_validates",
+            validation.get("ok", False),
+            detail={"invalid": validation.get("invalid", ())},
+        ),
+        _release_check(
+            "manifest_publishable",
+            validation.get("publishable", False),
+            detail={"missing_publish_artifacts": validation.get("missing_publish_artifacts", ())},
+        ),
+        _release_check("catalog_patch_available", bool(catalog_patch), detail={"catalog": catalog}),
+        _release_check(
+            "release_evidence_exists",
+            bool(release_evidence.get("ok")),
+            detail={"format": release_evidence.get("format")},
+        ),
+        _release_check("publish_is_side_effect_free", True, detail=target),
+    )
+    return {
+        "format": "appgen.pbc-publish-report.v1",
+        "ok": all(check["ok"] for check in checks),
+        "pbc": key,
+        "source": str(pbc_key_or_path),
+        "package_ref": str(package_ref),
+        "target": target,
+        "load_report": load_report,
+        "registration": registration,
+        "catalog_patch": catalog_patch,
+        "release_evidence": release_evidence,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "next_actions": registration.get("next_actions", ()),
+    }
+
+
+def _load_pbc_publish_package(package_ref: str | Path) -> dict:
+    try:
+        from .pbc import load_pbc_package
+    except Exception as exc:  # pragma: no cover - optional package boundary
+        return {
+            "format": "appgen.pbc-package-load-report.v1",
+            "ok": False,
+            "source": str(package_ref),
+            "error": str(exc),
+        }
+    return load_pbc_package(package_ref, existing_catalog={})
+
+
+def _pbc_publish_ref(pbc_key_or_path: str) -> str | Path:
+    raw = Path(str(pbc_key_or_path))
+    if raw.exists():
+        module_ref = _pbc_source_path_to_module(raw)
+        return module_ref or raw
+    return str(pbc_key_or_path)
+
+
+def _pbc_source_path_to_module(path: Path) -> str | None:
+    parts = path.resolve().parts
+    try:
+        index = parts.index("pyAppGen")
+    except ValueError:
+        return None
+    if len(parts) >= index + 3 and parts[index + 1] == "pbcs":
+        return ".".join(parts[index : index + 3])
+    return None
+
+
+def _pbc_publish_release_evidence(key: str) -> dict:
+    catalog = _pbc_catalog_by_key()
+    if key in catalog:
+        return pbc_verifier_report(key)
+    return {
+        "format": "appgen.pbc-package-verifier.v1",
+        "ok": False,
+        "kind": "pbc",
+        "pbc": key,
+        "blocking_gaps": ("release_evidence_not_registered",),
+        "checks": (_release_check("release_evidence_exists", False),),
+    }
 
 
 def _release_requested_targets(targets: Iterable[str] | None, semantic: dict) -> tuple[str, ...]:

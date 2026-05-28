@@ -15,6 +15,7 @@ from pyAppGen.dsl import lint_report_dsl
 from pyAppGen.dsl import lsp_service_dsl
 from pyAppGen.dsl import migration_plan_dsl
 from pyAppGen.dsl import nl_plan_dsl
+from pyAppGen.dsl import pbc_publish_report
 from pyAppGen.dsl import pbc_verifier_report
 from pyAppGen.dsl import release_verifier_report_dsl
 from pyAppGen.dsl import semantic_drift_audit_dsl
@@ -522,6 +523,19 @@ def test_pbc_verifier_accepts_catalog_package_with_release_evidence() -> None:
     assert report["catalog"]["pbc"] == "gl_core"
 
 
+def test_pbc_publish_report_returns_side_effect_free_catalog_patch() -> None:
+    report = pbc_publish_report("src/pyAppGen/pbcs/gl_core", catalog="local")
+
+    assert report["format"] == "appgen.pbc-publish-report.v1"
+    assert report["ok"] is True
+    assert report["pbc"] == "gl_core"
+    assert report["target"]["side_effect_free"] is True
+    assert report["target"]["write_performed"] is False
+    assert "gl_core" in report["catalog_patch"]
+    assert report["registration"]["decision"] == "approved"
+    assert report["release_evidence"]["format"] == "appgen.pbc-package-verifier.v1"
+
+
 def test_appgen_verify_and_pbc_subcommands_emit_json_contracts(tmp_path: Path) -> None:
     path = tmp_path / "release.appgen"
     path.write_text(RELEASE_SAMPLE, encoding="utf-8")
@@ -540,13 +554,34 @@ def test_appgen_verify_and_pbc_subcommands_emit_json_contracts(tmp_path: Path) -
         text=True,
         capture_output=True,
     )
+    publish = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "pbc",
+            "publish",
+            "src/pyAppGen/pbcs/gl_core",
+            "--catalog",
+            "local",
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert verify.returncode == 0, verify.stderr
     assert pbc.returncode == 0, pbc.stderr
+    assert publish.returncode == 0, publish.stderr
     verify_payload = json.loads(verify.stdout)
     pbc_payload = json.loads(pbc.stdout)
+    publish_payload = json.loads(publish.stdout)
     assert verify_payload["format"] == "appgen.release-verifier-report.v1"
     assert pbc_payload["format"] == "appgen.pbc-package-verifier.v1"
+    assert publish_payload["format"] == "appgen.pbc-publish-report.v1"
+    assert publish_payload["catalog_patch"]["gl_core"]["datastore_backend"] == "postgresql"
 
 
 def test_designer_sync_projects_all_required_ide_surfaces_from_semantic_model() -> None:

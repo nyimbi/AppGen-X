@@ -588,6 +588,11 @@ appgen pbc publish src/pyAppGen/pbcs/gl_core --catalog local
 ```
 
 PBC commands operate on manifests and package directories, not grammar changes.
+`publish` emits `appgen.pbc-publish-report.v1`; it loads the package
+entrypoint, validates the manifest, proves the manifest is publishable, returns
+the catalog patch, attaches release-evidence verification, and records that the
+publish plan is side-effect-free. Catalog writes are an explicit downstream
+step, not an implicit CLI side effect.
 
 ### `appgen nl-plan`
 
