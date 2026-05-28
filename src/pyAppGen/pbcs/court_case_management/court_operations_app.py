@@ -1,0 +1,444 @@
+"""Executable one-PBC court case management application surface."""
+from __future__ import annotations
+
+from copy import deepcopy
+from hashlib import sha256
+
+PBC_KEY = "court_case_management"
+OWNED_TABLES = (
+    "court_case_management_court_case",
+    "court_case_management_filing",
+    "court_case_management_hearing",
+    "court_case_management_docket_entry",
+    "court_case_management_party",
+    "court_case_management_judgment",
+    "court_case_management_court_order",
+    "court_case_management_appgen_outbox_event",
+)
+
+FILING_STATES = ("received", "under_clerk_review", "deficient", "cured", "accepted", "rejected", "stricken")
+ORDER_STATES = ("draft", "under_review", "signed", "entered", "corrected", "vacated")
+HEARING_STATUSES = ("tentative", "confirmed", "continued", "completed", "cancelled")
+
+
+def _digest(value: object) -> str:
+    return sha256(repr(value).encode("utf-8")).hexdigest()
+
+
+def empty_court_state() -> dict:
+    return {
+        "cases": {},
+        "case_number_index": {},
+        "parties": {},
+        "filings": {},
+        "hearings": {},
+        "docket_entries": {},
+        "orders": {},
+        "judgments": {},
+        "outbox": [],
+        "idempotency_keys": set(),
+    }
+
+
+def _copy_state(state: dict) -> dict:
+    copied = deepcopy(state)
+    copied["idempotency_keys"] = set(state.get("idempotency_keys", set()))
+    return copied
+
+
+def _emit(state: dict, event_type: str, payload: dict) -> None:
+    state["outbox"].append(
+        {
+            "event_type": event_type,
+            "event_contract": "AppGen-X",
+            "topic": "pbc.court_case_management.events",
+            "payload": dict(payload),
+            "idempotency_key": _digest((event_type, payload)),
+        }
+    )
+
+
+def _case_number(court: str, division: str, year: int, sequence: int) -> str:
+    return f"{court}-{division}-{year}-{sequence:06d}"
+
+
+def create_court_case(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    required = ("court", "division", "filing_year", "case_type", "caption")
+    missing = tuple(field for field in required if not payload.get(field))
+    if missing:
+        return {"ok": False, "state": next_state, "reason": "missing_required_fields", "missing": missing, "side_effects": ()}
+    key = (payload["court"], payload["division"], int(payload["filing_year"]))
+    sequence = int(payload.get("sequence") or next_state["case_number_index"].get(key, 0) + 1)
+    number = payload.get("case_number") or _case_number(payload["court"], payload["division"], int(payload["filing_year"]), sequence)
+    if any(case["case_number"] == number for case in next_state["cases"].values()):
+        return {"ok": False, "state": next_state, "reason": "duplicate_case_number", "case_number": number, "side_effects": ()}
+    case_id = payload.get("case_id") or f"case-{_digest(number)[:10]}"
+    case = {
+        "id": case_id,
+        "table": "court_case_management_court_case",
+        "case_number": number,
+        "court": payload["court"],
+        "division": payload["division"],
+        "original_venue": payload.get("original_venue", payload["court"]),
+        "current_venue": payload.get("current_venue", payload["court"]),
+        "transfer_lineage": tuple(payload.get("transfer_lineage", ())),
+        "case_type": payload["case_type"],
+        "caption": payload["caption"],
+        "assigned_judge": payload.get("assigned_judge"),
+        "access_class": payload.get("access_class", "public"),
+        "status": "open",
+        "docket_sequence": 0,
+    }
+    next_state["case_number_index"][key] = max(next_state["case_number_index"].get(key, 0), sequence)
+    next_state["cases"][case_id] = case
+    _emit(next_state, "CourtCaseManagementCreated", {"entity": "court_case", "id": case_id, "case_number": number})
+    return {"ok": True, "state": next_state, "court_case": case, "side_effects": ()}
+
+
+def add_party(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    if payload.get("case_id") not in next_state["cases"]:
+        return {"ok": False, "state": next_state, "reason": "case_not_found", "side_effects": ()}
+    required = ("case_id", "party_name", "role")
+    missing = tuple(field for field in required if not payload.get(field))
+    if missing:
+        return {"ok": False, "state": next_state, "reason": "missing_required_fields", "missing": missing, "side_effects": ()}
+    party_id = payload.get("party_id") or f"party-{_digest((payload['case_id'], payload['party_name'], payload['role']))[:10]}"
+    party = {
+        "id": party_id,
+        "table": "court_case_management_party",
+        "case_id": payload["case_id"],
+        "party_name": payload["party_name"],
+        "role": payload["role"],
+        "lead_counsel": payload.get("lead_counsel"),
+        "self_represented": bool(payload.get("self_represented", not payload.get("lead_counsel"))),
+        "appearance_date": payload.get("appearance_date"),
+        "withdrawal_date": payload.get("withdrawal_date"),
+        "service_addresses": tuple(payload.get("service_addresses", ())),
+        "aliases": tuple(payload.get("aliases", ())),
+        "representation_history": tuple(payload.get("representation_history", ())),
+    }
+    next_state["parties"][party_id] = party
+    _emit(next_state, "CourtCaseManagementUpdated", {"entity": "party", "id": party_id})
+    return {"ok": True, "state": next_state, "party": party, "side_effects": ()}
+
+
+def receive_filing(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    case = next_state["cases"].get(payload.get("case_id"))
+    if not case:
+        return {"ok": False, "state": next_state, "reason": "case_not_found", "side_effects": ()}
+    deficiency_codes = tuple(payload.get("deficiency_codes", ()))
+    filing_id = payload.get("filing_id") or f"filing-{_digest((payload.get('case_id'), payload.get('document_title'), payload.get('received_at')))[:10]}"
+    state_value = "deficient" if deficiency_codes else "accepted"
+    filing = {
+        "id": filing_id,
+        "table": "court_case_management_filing",
+        "case_id": payload["case_id"],
+        "filing_type": payload.get("filing_type", "pleading"),
+        "document_title": payload.get("document_title"),
+        "received_at": payload.get("received_at"),
+        "state": state_value,
+        "deficiency_codes": deficiency_codes,
+        "cure_deadline": payload.get("cure_deadline") if deficiency_codes else None,
+        "parent_filing_id": payload.get("parent_filing_id"),
+        "supersedes": bool(payload.get("supersedes", False)),
+        "access_class": payload.get("access_class", "public"),
+    }
+    next_state["filings"][filing_id] = filing
+    event_type = "CourtCaseManagementExceptionOpened" if deficiency_codes else "CourtCaseManagementCreated"
+    _emit(next_state, event_type, {"entity": "filing", "id": filing_id, "state": state_value})
+    if not deficiency_codes:
+        docket = add_docket_entry(next_state, {"case_id": payload["case_id"], "source_type": "filing", "source_id": filing_id, "entry_text": filing["document_title"] or filing["filing_type"]})
+        next_state = docket["state"]
+    return {"ok": True, "state": next_state, "filing": filing, "side_effects": ()}
+
+
+def cure_filing(state: dict, filing_id: str, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    filing = deepcopy(next_state["filings"].get(filing_id))
+    if not filing:
+        return {"ok": False, "state": next_state, "reason": "filing_not_found", "side_effects": ()}
+    if filing["state"] != "deficient":
+        return {"ok": False, "state": next_state, "reason": "filing_not_deficient", "side_effects": ()}
+    filing["state"] = "accepted" if payload.get("defects_cured") else "rejected"
+    filing["deficiency_cure_evidence"] = payload.get("evidence")
+    next_state["filings"][filing_id] = filing
+    _emit(next_state, "CourtCaseManagementUpdated", {"entity": "filing", "id": filing_id, "state": filing["state"]})
+    if filing["state"] == "accepted":
+        docket = add_docket_entry(next_state, {"case_id": filing["case_id"], "source_type": "filing", "source_id": filing_id, "entry_text": filing["document_title"] or filing["filing_type"]})
+        next_state = docket["state"]
+    return {"ok": True, "state": next_state, "filing": filing, "side_effects": ()}
+
+
+def add_docket_entry(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    case = deepcopy(next_state["cases"].get(payload.get("case_id")))
+    if not case:
+        return {"ok": False, "state": next_state, "reason": "case_not_found", "side_effects": ()}
+    requested_sequence = payload.get("sequence")
+    expected_sequence = case["docket_sequence"] + 1
+    if requested_sequence is not None and int(requested_sequence) != expected_sequence:
+        return {"ok": False, "state": next_state, "reason": "docket_sequence_gap", "expected_sequence": expected_sequence, "side_effects": ()}
+    entry_id = payload.get("docket_entry_id") or f"docket-{case['id']}-{expected_sequence}"
+    entry = {
+        "id": entry_id,
+        "table": "court_case_management_docket_entry",
+        "case_id": case["id"],
+        "sequence": expected_sequence,
+        "source_type": payload.get("source_type"),
+        "source_id": payload.get("source_id"),
+        "entry_text": payload.get("entry_text"),
+        "access_class": payload.get("access_class", "public"),
+        "correction_of": payload.get("correction_of"),
+    }
+    case["docket_sequence"] = expected_sequence
+    next_state["cases"][case["id"]] = case
+    next_state["docket_entries"][entry_id] = entry
+    _emit(next_state, "CourtCaseManagementUpdated", {"entity": "docket_entry", "id": entry_id, "sequence": expected_sequence})
+    return {"ok": True, "state": next_state, "docket_entry": entry, "side_effects": ()}
+
+
+def schedule_hearing(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    if payload.get("case_id") not in next_state["cases"]:
+        return {"ok": False, "state": next_state, "reason": "case_not_found", "side_effects": ()}
+    required = ("case_id", "hearing_type", "scheduled_at", "courtroom", "session_block", "assigned_judge")
+    missing = tuple(field for field in required if not payload.get(field))
+    if missing:
+        return {"ok": False, "state": next_state, "reason": "missing_required_fields", "missing": missing, "side_effects": ()}
+    conflict = tuple(
+        hearing
+        for hearing in next_state["hearings"].values()
+        if hearing["scheduled_at"] == payload["scheduled_at"]
+        and hearing["courtroom"] == payload["courtroom"]
+        and hearing["status"] in {"tentative", "confirmed"}
+    )
+    if conflict:
+        return {"ok": False, "state": next_state, "reason": "courtroom_double_booked", "conflicts": conflict, "side_effects": ()}
+    hearing_id = payload.get("hearing_id") or f"hearing-{_digest((payload['case_id'], payload['scheduled_at'], payload['courtroom']))[:10]}"
+    hearing = {
+        "id": hearing_id,
+        "table": "court_case_management_hearing",
+        "case_id": payload["case_id"],
+        "hearing_type": payload["hearing_type"],
+        "scheduled_at": payload["scheduled_at"],
+        "courtroom": payload["courtroom"],
+        "session_block": payload["session_block"],
+        "assigned_judge": payload["assigned_judge"],
+        "calendar_status": payload.get("calendar_status", "confirmed"),
+        "status": payload.get("status", "confirmed"),
+        "readiness_prerequisites": tuple(payload.get("readiness_prerequisites", ())),
+        "interpreter_required": bool(payload.get("interpreter_required", False)),
+        "mode": payload.get("mode", "in_person"),
+    }
+    next_state["hearings"][hearing_id] = hearing
+    _emit(next_state, "CourtCaseManagementCreated", {"entity": "hearing", "id": hearing_id})
+    return {"ok": True, "state": next_state, "hearing": hearing, "side_effects": ()}
+
+
+def draft_order(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    if payload.get("case_id") not in next_state["cases"]:
+        return {"ok": False, "state": next_state, "reason": "case_not_found", "side_effects": ()}
+    order_id = payload.get("order_id") or f"order-{_digest((payload.get('case_id'), payload.get('title')))[:10]}"
+    order = {
+        "id": order_id,
+        "table": "court_case_management_court_order",
+        "case_id": payload["case_id"],
+        "title": payload.get("title"),
+        "state": "draft",
+        "draft_text": payload.get("draft_text"),
+        "signature_metadata": None,
+        "effective_date": payload.get("effective_date"),
+        "service_linkage": tuple(payload.get("service_linkage", ())),
+        "version": 1,
+    }
+    next_state["orders"][order_id] = order
+    _emit(next_state, "CourtCaseManagementCreated", {"entity": "court_order", "id": order_id, "state": "draft"})
+    return {"ok": True, "state": next_state, "court_order": order, "side_effects": ()}
+
+
+def sign_and_enter_order(state: dict, order_id: str, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    order = deepcopy(next_state["orders"].get(order_id))
+    if not order:
+        return {"ok": False, "state": next_state, "reason": "order_not_found", "side_effects": ()}
+    if not payload.get("judge_signature") or not payload.get("signed_at"):
+        return {"ok": False, "state": next_state, "reason": "signature_required", "side_effects": ()}
+    order["state"] = "entered"
+    order["signature_metadata"] = {"judge_signature": payload["judge_signature"], "signed_at": payload["signed_at"]}
+    order["version"] += 1
+    next_state["orders"][order_id] = order
+    docket = add_docket_entry(next_state, {"case_id": order["case_id"], "source_type": "court_order", "source_id": order_id, "entry_text": order["title"], "access_class": payload.get("access_class", "public")})
+    next_state = docket["state"]
+    _emit(next_state, "CourtCaseManagementApproved", {"entity": "court_order", "id": order_id, "state": "entered"})
+    return {"ok": True, "state": next_state, "court_order": order, "docket_entry": docket["docket_entry"], "side_effects": ()}
+
+
+def court_workbench(state: dict) -> dict:
+    filings = tuple(state.get("filings", {}).values())
+    hearings = tuple(state.get("hearings", {}).values())
+    orders = tuple(state.get("orders", {}).values())
+    cases = tuple(state.get("cases", {}).values())
+    queues = {
+        "clerk_deficiency_queue": tuple(filing for filing in filings if filing["state"] == "deficient"),
+        "accepted_filings": tuple(filing for filing in filings if filing["state"] == "accepted"),
+        "chambers_order_review": tuple(order for order in orders if order["state"] in {"draft", "under_review"}),
+        "courtroom_calendar": tuple(hearing for hearing in hearings if hearing["status"] in {"tentative", "confirmed"}),
+        "sealed_or_restricted_items": tuple(item for item in filings if item.get("access_class") in {"sealed", "restricted"}),
+        "open_cases": tuple(case for case in cases if case["status"] == "open"),
+    }
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "queues": queues,
+        "queue_counts": {name: len(items) for name, items in queues.items()},
+        "side_effects": (),
+    }
+
+
+def forms_contract() -> dict:
+    return {
+        "ok": True,
+        "forms": (
+            {"form_id": "court_case_intake_form", "writes_table": "court_case_management_court_case", "fields": ("court", "division", "filing_year", "case_type", "caption", "assigned_judge")},
+            {"form_id": "party_representation_form", "writes_table": "court_case_management_party", "fields": ("case_id", "party_name", "role", "lead_counsel", "self_represented", "service_addresses")},
+            {"form_id": "filing_intake_form", "writes_table": "court_case_management_filing", "fields": ("case_id", "filing_type", "document_title", "deficiency_codes", "access_class")},
+            {"form_id": "hearing_schedule_form", "writes_table": "court_case_management_hearing", "fields": ("case_id", "hearing_type", "scheduled_at", "courtroom", "session_block", "assigned_judge")},
+            {"form_id": "order_drafting_form", "writes_table": "court_case_management_court_order", "fields": ("case_id", "title", "draft_text", "effective_date")},
+        ),
+        "side_effects": (),
+    }
+
+
+def wizards_contract() -> dict:
+    return {
+        "ok": True,
+        "wizards": (
+            {"wizard_id": "case_opening_wizard", "steps": ("assign_number", "capture_parties", "review_access_class", "open_case")},
+            {"wizard_id": "filing_deficiency_wizard", "steps": ("receive_packet", "review_defects", "issue_notice", "accept_or_reject_cure")},
+            {"wizard_id": "hearing_calendar_wizard", "steps": ("select_case", "check_readiness", "reserve_courtroom", "confirm_setting")},
+            {"wizard_id": "order_entry_wizard", "steps": ("draft_order", "review_signature", "enter_on_docket", "service_linkage")},
+        ),
+        "side_effects": (),
+    }
+
+
+def controls_contract() -> dict:
+    return {
+        "ok": True,
+        "controls": (
+            {"control_id": "case_number_uniqueness_guard", "blocks_on_failure": True, "table_scope": ("court_case_management_court_case",)},
+            {"control_id": "filing_deficiency_acceptance_guard", "blocks_on_failure": True, "table_scope": ("court_case_management_filing",)},
+            {"control_id": "docket_sequence_integrity_guard", "blocks_on_failure": True, "table_scope": ("court_case_management_docket_entry",)},
+            {"control_id": "courtroom_double_booking_guard", "blocks_on_failure": True, "table_scope": ("court_case_management_hearing",)},
+            {"control_id": "signed_order_entry_guard", "blocks_on_failure": True, "table_scope": ("court_case_management_court_order",)},
+            {"control_id": "sealed_record_access_guard", "blocks_on_failure": True, "table_scope": OWNED_TABLES},
+        ),
+        "side_effects": (),
+    }
+
+
+def single_pbc_app_contract() -> dict:
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "single_pbc_app": True,
+        "database_backed": True,
+        "owned_tables": OWNED_TABLES,
+        "forms": forms_contract()["forms"],
+        "wizards": wizards_contract()["wizards"],
+        "controls": controls_contract()["controls"],
+        "workbench": "CourtCaseManagementWorkbench",
+        "detail_view": "CourtCaseManagementDetail",
+        "assistant_panel": "CourtCaseManagementAssistantPanel",
+        "side_effects": (),
+    }
+
+
+def document_instruction_mutation_plan(document: str, instruction: str) -> dict:
+    text = f"{document} {instruction}".lower()
+    if "hearing" in text:
+        action = "schedule_hearing"
+        table = "court_case_management_hearing"
+    elif "order" in text:
+        action = "draft_order"
+        table = "court_case_management_court_order"
+    elif "party" in text or "counsel" in text:
+        action = "add_party"
+        table = "court_case_management_party"
+    elif "filing" in text or "motion" in text:
+        action = "receive_filing"
+        table = "court_case_management_filing"
+    else:
+        action = "create_court_case"
+        table = "court_case_management_court_case"
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "document_digest": _digest(document),
+        "instruction": instruction,
+        "proposed_action": action,
+        "target_table": table,
+        "requires_human_confirmation": True,
+        "crud_datastore_mutation": True,
+        "event_contract": "AppGen-X",
+        "side_effects": (),
+    }
+
+
+def court_operations_smoke_test() -> dict:
+    state = empty_court_state()
+    case = create_court_case(
+        state,
+        {
+            "court": "CIV",
+            "division": "LAW",
+            "filing_year": 2026,
+            "case_type": "civil",
+            "caption": "Roe v. Example",
+            "assigned_judge": "Judge Lane",
+        },
+    )
+    party = add_party(case["state"], {"case_id": case["court_case"]["id"], "party_name": "Jane Roe", "role": "plaintiff", "lead_counsel": "A. Counsel"})
+    deficient = receive_filing(
+        party["state"],
+        {
+            "case_id": case["court_case"]["id"],
+            "filing_type": "motion",
+            "document_title": "Motion for Temporary Relief",
+            "received_at": "2026-01-02",
+            "deficiency_codes": ("missing_signature",),
+            "cure_deadline": "2026-01-09",
+        },
+    )
+    cured = cure_filing(deficient["state"], deficient["filing"]["id"], {"defects_cured": True, "evidence": "signed packet"})
+    hearing = schedule_hearing(
+        cured["state"],
+        {
+            "case_id": case["court_case"]["id"],
+            "hearing_type": "motion",
+            "scheduled_at": "2026-01-20T09:00:00",
+            "courtroom": "4A",
+            "session_block": "AM",
+            "assigned_judge": "Judge Lane",
+        },
+    )
+    order = draft_order(hearing["state"], {"case_id": case["court_case"]["id"], "title": "Order Setting Hearing", "draft_text": "The motion is set."})
+    entered = sign_and_enter_order(order["state"], order["court_order"]["id"], {"judge_signature": "Judge Lane", "signed_at": "2026-01-03T10:00:00"})
+    workbench = court_workbench(entered["state"])
+    checks = (
+        case["ok"],
+        party["ok"],
+        deficient["ok"] and deficient["filing"]["state"] == "deficient",
+        cured["ok"] and cured["filing"]["state"] == "accepted",
+        hearing["ok"],
+        order["ok"],
+        entered["ok"],
+        workbench["ok"],
+        single_pbc_app_contract()["ok"],
+        document_instruction_mutation_plan("new filing packet", "triage filing")["ok"],
+    )
+    return {"ok": all(checks), "state": entered["state"], "workbench": workbench, "single_pbc_app": single_pbc_app_contract(), "side_effects": ()}

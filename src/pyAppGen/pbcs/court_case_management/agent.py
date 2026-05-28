@@ -1,4 +1,6 @@
 PBC_KEY = 'court_case_management'
+from hashlib import sha256
+from .court_operations_app import document_instruction_mutation_plan
 OWNED_TABLES = ('court_case_management_court_case',
  'court_case_management_filing',
  'court_case_management_hearing',
@@ -23,7 +25,8 @@ def chatbot_interface_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'entrypoint': f'/assistant/pbc/{PBC_KEY}', 'single_agent_contribution': f'{PBC_KEY}_skills', 'capabilities': ('task_guidance','document_instruction_intake','governed_datastore_crud','mutation_preview'), 'side_effects': ()}
 
 def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+    plan = document_instruction_mutation_plan(document, instruction)
+    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': sha256(str(document).encode('utf-8')).hexdigest(), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:5], 'requires_human_confirmation': True, 'domain_plan': plan, 'crud_preview': {'operation': plan['proposed_action'], 'table': plan['target_table'], 'event_contract': 'AppGen-X'}, 'side_effects': ()}
 
 def datastore_crud_plan(action, table=None, payload=None):
     target = table or OWNED_TABLES[0]

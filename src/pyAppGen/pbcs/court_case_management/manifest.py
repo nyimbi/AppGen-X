@@ -1,5 +1,7 @@
 """Package manifest for the court_case_management PBC."""
 
+# Audit trace key: 'court_case_management'
+
 PBC_MANIFEST = {'advanced_capabilities': ('court_case_management_event_sourced_operational_history',
                            'court_case_management_multi_tenant_policy_isolation',
                            'court_case_management_schema_evolution_resilience',
@@ -89,7 +91,11 @@ PBC_MANIFEST = {'advanced_capabilities': ('court_case_management_event_sourced_o
                        'governed_datastore_crud',
                        'ai_agent_task_assistance',
                        'configuration_workbench',
-                       'continuous_release_assurance'),
+                       'continuous_release_assurance',
+                       'single_pbc_domain_app',
+                       'forms',
+                       'wizards',
+                       'controls'),
  'tables': ('court_case',
             'filing',
             'hearing',
