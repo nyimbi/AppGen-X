@@ -483,6 +483,10 @@ def test_migration_plan_detects_add_drop_type_and_backfill_changes() -> None:
     }
     assert any(change.get("requires_backfill") for change in plan["changes"])
     assert any(item["code"] == "AGX1101" for item in plan["diagnostics"])
+    assert plan["coverage"]["format"] == "appgen.migration-coverage.v1"
+    assert {"added_table", "added_field", "dropped_field", "type_change", "data_backfill_requirement"} <= set(
+        plan["coverage"]["detected"]
+    )
 
 
 def test_migration_plan_detects_index_check_and_pbc_ownership_transfer_changes() -> None:
@@ -525,6 +529,72 @@ def test_migration_plan_detects_index_check_and_pbc_ownership_transfer_changes()
     assert changes["pbc_ownership_transfer"]["from"] == "Billing"
     assert changes["pbc_ownership_transfer"]["to"] == "Finance"
     assert changes["pbc_ownership_transfer"]["requires_approval"] is True
+    assert {"unique_index_check_change", "pbc_ownership_transfer"} <= set(plan["coverage"]["detected"])
+
+
+def test_migration_plan_coverage_tracks_required_detection_families() -> None:
+    previous = """
+    app Coverage { targets: web }
+    table Customer { id: int pk; name: string required }
+    table Invoice {
+      id: int pk
+      customer_id: int -> Customer.id
+      subtotal: decimal default 0
+      total: decimal = subtotal
+      index(customer_id)
+    }
+    pbc Billing { owns: Invoice }
+    """
+    current = """
+    app Coverage { targets: web }
+    table Account { id: int pk; name: string required }
+    table Invoice {
+      id: int pk
+      account_id: int -> Account.id
+      subtotal: string
+      tax: decimal required
+      total: decimal = subtotal + tax
+      unique(account_id)
+    }
+    pbc Finance { owns: Invoice }
+    """
+
+    plan = migration_plan_dsl(
+        previous,
+        current,
+        backend="postgresql",
+        rename_hints=("table:Customer=Account", "field:Invoice.customer_id=Invoice.account_id"),
+    )
+    detected = set(plan["coverage"]["detected"])
+
+    assert plan["coverage"]["required"] == (
+        "added_table",
+        "dropped_table",
+        "renamed_table",
+        "added_field",
+        "dropped_field",
+        "renamed_field",
+        "type_change",
+        "nullability_change",
+        "default_change",
+        "relationship_change",
+        "unique_index_check_change",
+        "calculated_field_change",
+        "pbc_ownership_transfer",
+        "data_backfill_requirement",
+    )
+    assert {
+        "renamed_table",
+        "renamed_field",
+        "added_field",
+        "type_change",
+        "default_change",
+        "relationship_change",
+        "unique_index_check_change",
+        "calculated_field_change",
+        "pbc_ownership_transfer",
+        "data_backfill_requirement",
+    } <= detected
 
 
 def test_nl_plan_returns_linted_dsl_patch_and_migration_preview() -> None:

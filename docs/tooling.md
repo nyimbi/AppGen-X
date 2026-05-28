@@ -836,6 +836,13 @@ index directives, uniqueness constraints, constraint/check directives, and PBC
 table ownership transfer. Unknown table directives are still reported as
 generic directive changes so generators can remain conservative.
 
+Every migration report includes `appgen.migration-coverage.v1`, listing the
+required detection families, the families detected by the current comparison,
+and the missing families. CI, IDE previews, and agents should use this coverage
+object to prove that a fixture or migration scenario exercises the required
+table, field, relationship, directive, calculated-field, PBC ownership, and
+backfill cases instead of inferring coverage from prose.
+
 Destructive changes must require explicit approval and should include suggested
 safe alternatives when possible.
 

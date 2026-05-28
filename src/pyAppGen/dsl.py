@@ -64,6 +64,22 @@ REQUIRED_GRAPH_KINDS = (
     "package",
 )
 GRAPH_TEXT_FORMATS = ("json", "mermaid", "dot")
+REQUIRED_MIGRATION_DETECTIONS = (
+    "added_table",
+    "dropped_table",
+    "renamed_table",
+    "added_field",
+    "dropped_field",
+    "renamed_field",
+    "type_change",
+    "nullability_change",
+    "default_change",
+    "relationship_change",
+    "unique_index_check_change",
+    "calculated_field_change",
+    "pbc_ownership_transfer",
+    "data_backfill_requirement",
+)
 
 
 class AppGenSyntaxError(ValueError):
@@ -1847,6 +1863,7 @@ def migration_plan_dsl(
         "allowed_backends": tuple(sorted(allowed_backends)),
         "source_files": tuple(item for item in (previous_name, current_name) if item),
         "changes": tuple(changes),
+        "coverage": _migration_coverage(changes),
         "destructive": destructive,
         "requires_approval": destructive,
         "diagnostics": tuple(diagnostics),
@@ -3843,6 +3860,52 @@ def _migration_change(kind: str, **kwargs) -> dict:
     if destructive:
         change.setdefault("requires_approval", True)
     return change
+
+
+def _migration_coverage(changes: Iterable[dict]) -> dict:
+    detected = set()
+    change_kinds = tuple(change.get("kind") for change in changes)
+    for change in changes:
+        detected.update(_migration_detection_families(change))
+    return {
+        "format": "appgen.migration-coverage.v1",
+        "required": REQUIRED_MIGRATION_DETECTIONS,
+        "detected": tuple(item for item in REQUIRED_MIGRATION_DETECTIONS if item in detected),
+        "missing": tuple(item for item in REQUIRED_MIGRATION_DETECTIONS if item not in detected),
+        "change_kinds": change_kinds,
+    }
+
+
+def _migration_detection_families(change: dict) -> tuple[str, ...]:
+    kind = change.get("kind")
+    families = {
+        "add_table": ("added_table",),
+        "drop_table": ("dropped_table",),
+        "rename_table": ("renamed_table",),
+        "renamed_table_candidate": ("renamed_table",),
+        "add_field": ("added_field",),
+        "drop_field": ("dropped_field",),
+        "rename_field": ("renamed_field",),
+        "renamed_field_candidate": ("renamed_field",),
+        "type_change": ("type_change",),
+        "nullability_change": ("nullability_change",),
+        "default_change": ("default_change",),
+        "relationship_change": ("relationship_change",),
+        "add_relationship": ("relationship_change",),
+        "drop_relationship": ("relationship_change",),
+        "unique_change": ("unique_index_check_change",),
+        "add_unique_constraint": ("unique_index_check_change",),
+        "drop_unique_constraint": ("unique_index_check_change",),
+        "add_index": ("unique_index_check_change",),
+        "drop_index": ("unique_index_check_change",),
+        "add_check": ("unique_index_check_change",),
+        "drop_check": ("unique_index_check_change",),
+        "calculated_field_change": ("calculated_field_change",),
+        "pbc_ownership_transfer": ("pbc_ownership_transfer",),
+    }.get(str(kind), ())
+    if change.get("requires_backfill"):
+        return (*families, "data_backfill_requirement")
+    return families
 
 
 def _table_rename_candidates(
