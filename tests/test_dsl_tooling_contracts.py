@@ -166,6 +166,35 @@ def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:
     assert graph["graph"]["edges"][0]["from"] == "Invoice"
 
 
+def test_formatter_preserves_comments_and_orders_field_modifiers() -> None:
+    source = """
+// file header
+app FormatDemo { targets: web }
+
+// customer table
+table Customer {
+  // identity comment
+  id: int search default 0 required pk unique hidden // inline identity
+  name: string search unique required
+  parent_id: int search default 0 required -> Customer.id [many-to-one]
+}
+
+view CustomerForm for Customer { Main: name, parent.name }
+"""
+
+    report = format_report_dsl(source, source_name="format.appgen")
+    second = format_report_dsl(report["text"], source_name="format.appgen")
+
+    assert report["format"] == "appgen.format-result.v1"
+    assert report["idempotent"] is True
+    assert second["text"] == report["text"]
+    assert report["text"].startswith("// file header\napp FormatDemo")
+    assert "\n// customer table\ntable Customer" in report["text"]
+    assert "  // identity comment\n  id: int pk required unique hidden search default 0 // inline identity" in report["text"]
+    assert "  name: string required unique search" in report["text"]
+    assert "  parent_id: int required search default 0 -> Customer.id [many-to-one]" in report["text"]
+
+
 def test_graph_suite_report_covers_required_kinds_and_formats() -> None:
     report = graph_suite_report_dsl(RELEASE_SAMPLE, source_name="release.appgen")
 

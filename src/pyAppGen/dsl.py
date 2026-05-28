@@ -4718,7 +4718,122 @@ def _normalize_dsl_spacing(unit: str) -> str:
     value = re.sub(r"\s*=\s*", " = ", value)
     value = re.sub(r"\s*\[\s*", " [", value)
     value = re.sub(r"\s*\]\s*", "]", value)
-    return value.strip()
+    return _normalize_field_modifier_order(value.strip())
+
+
+def _normalize_field_modifier_order(value: str) -> str:
+    if value.startswith("//") or ":" not in value:
+        return value
+    code, comment = _split_inline_comment(value)
+    match = re.match(r"^(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<rest>.+)$", code)
+    if match is None:
+        return value
+    tokens = _tokenize_formatter_unit(match.group("rest"))
+    if len(tokens) < 2:
+        return value
+    type_name = tokens[0]
+    if tokens[1] == "=":
+        return value
+    ordered_flags = {"pk": False, "required": False, "unique": False, "hidden": False, "search": False}
+    default_tokens: list[str] = []
+    relation_tokens: list[str] = []
+    other_tokens: list[str] = []
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token in ordered_flags:
+            ordered_flags[token] = True
+            index += 1
+            continue
+        if token == "default":
+            default_tokens = [token]
+            index += 1
+            if index < len(tokens):
+                default_tokens.append(tokens[index])
+                index += 1
+            continue
+        if token == "->":
+            relation_tokens = [token]
+            index += 1
+            if index < len(tokens):
+                relation_tokens.append(tokens[index])
+                index += 1
+            if index < len(tokens) and re.fullmatch(r"\[[^\]]+\]", tokens[index]):
+                relation_tokens.append(tokens[index])
+                index += 1
+            continue
+        other_tokens.append(token)
+        index += 1
+    modifiers = [name for name in ("pk", "required", "unique", "hidden", "search") if ordered_flags[name]]
+    modifiers.extend(default_tokens)
+    modifiers.extend(relation_tokens)
+    modifiers.extend(other_tokens)
+    formatted = f"{match.group('name')}: {' '.join((type_name, *modifiers)).strip()}"
+    return f"{formatted} {comment}" if comment else formatted
+
+
+def _split_inline_comment(value: str) -> tuple[str, str]:
+    quote: str | None = None
+    escape = False
+    for index in range(len(value) - 1):
+        char = value[index]
+        if quote:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            continue
+        if char == "/" and value[index + 1] == "/":
+            return value[:index].rstrip(), value[index:].strip()
+    return value, ""
+
+
+def _tokenize_formatter_unit(value: str) -> list[str]:
+    tokens: list[str] = []
+    buffer: list[str] = []
+    quote: str | None = None
+    bracket_depth = 0
+    escape = False
+
+    def flush() -> None:
+        token = "".join(buffer).strip()
+        buffer.clear()
+        if token:
+            tokens.append(token)
+
+    for char in value:
+        if quote:
+            buffer.append(char)
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            buffer.append(char)
+            continue
+        if char == "[":
+            bracket_depth += 1
+            buffer.append(char)
+            continue
+        if char == "]":
+            bracket_depth = max(bracket_depth - 1, 0)
+            buffer.append(char)
+            continue
+        if char.isspace() and bracket_depth == 0:
+            flush()
+            continue
+        buffer.append(char)
+    flush()
+    return tokens
 
 
 def _apply_lint_fix(source: str, fix: dict) -> str:

@@ -474,6 +474,11 @@ produce byte-identical output.
 }
 ```
 
+The executable formatter contract also proves comment preservation for
+file-level, declaration-adjacent, and inline comments, plus canonical field
+modifier ordering for `pk`, `required`, `unique`, `hidden`, `search`, `default`,
+and relationship arrows.
+
 ## CLI Contracts
 
 The installed command should expose current compatibility flags and the newer
