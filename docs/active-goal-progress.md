@@ -3190,3 +3190,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Python compile for touched tooling entrypoints, focused CLI/audit tests,
   `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
   diff whitespace check, and restricted-name scan. Commit: `b497a0dd`.
+- Current CLI enum-validation pass tightens documented command choices before
+  semantic execution. `appgen graph --kind` is now limited to the required
+  graph kinds, migration/NL planner `--backend` is limited to PostgreSQL and
+  MySQL-compatible profiles, and `appgen.tooling-audit.v1` embeds
+  `appgen.invalid-choice-exit-audit.v1` proving invalid graph/backend values
+  return argparse exit code `2` without traceback output. Verification passed:
+  Python compile for touched tooling entrypoints, focused CLI/audit tests,
+  `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
+  diff whitespace check, and restricted-name scan. Commit: `85455334`.
