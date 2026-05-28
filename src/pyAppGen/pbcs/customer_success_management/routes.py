@@ -1,49 +1,52 @@
 """API route contracts for the customer_success_management PBC."""
-PBC_KEY = 'customer_success_management'
-ROUTES = tuple({'method': api.split()[0], 'path': api.split(maxsplit=1)[1], 'operation': api.lower().replace(' ', '_').replace('/', '_'), 'idempotency_key': f'{PBC_KEY}:{api}'} for api in ('POST /success-accounts', 'POST /health-scores', 'POST /onboarding-plans', 'POST /renewal-plans', 'GET /customer-success-workbench'))
+from __future__ import annotations
+
+from .slice_app import PBC_KEY, build_api_contract, dispatch_route as _dispatch_route
+
+ROUTES = tuple(build_api_contract()["routes"])
 
 
-def api_route_contracts():
-    contracts = tuple({
-        **route,
-        'pbc': PBC_KEY,
-        'event_contract': 'AppGen-X',
-        'stream_engine_picker_visible': False,
-        'shared_table_access': False,
-        'required_permission': f'{PBC_KEY}.operate',
-    } for route in ROUTES)
+def api_route_contracts() -> dict:
     return {
-        'ok': True,
-        'pbc': PBC_KEY,
-        'contracts': contracts,
-        'routes': ROUTES,
-        'stream_engine_picker_visible': False,
-        'side_effects': (),
+        "ok": True,
+        "pbc": PBC_KEY,
+        "contracts": ROUTES,
+        "routes": ROUTES,
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
     }
 
 
-def validate_api_route_contracts():
+def validate_api_route_contracts() -> dict:
     route_contract = api_route_contracts()
-    contracts = route_contract['contracts']
-    missing_idempotency = tuple(item for item in contracts if not item.get('idempotency_key'))
-    invalid_table_scope = tuple(item for item in contracts if item.get('shared_table_access') is not False)
-    service_mismatches = ()
+    missing_idempotency = tuple(item for item in route_contract["contracts"] if not item.get("idempotency_key"))
+    invalid_table_scope = tuple(
+        item for item in route_contract["contracts"] if item.get("shared_table_access") not in {None, False}
+    )
     return {
-        'ok': route_contract['ok'] and not missing_idempotency and not invalid_table_scope,
-        'pbc': PBC_KEY,
-        'contracts': route_contract,
-        'service_mismatches': service_mismatches,
-        'missing_idempotency': missing_idempotency,
-        'invalid_table_scope': invalid_table_scope,
-        'side_effects': (),
+        "ok": route_contract["ok"] and not missing_idempotency and not invalid_table_scope,
+        "pbc": PBC_KEY,
+        "contracts": route_contract,
+        "service_mismatches": (),
+        "missing_idempotency": missing_idempotency,
+        "invalid_table_scope": invalid_table_scope,
+        "side_effects": (),
     }
 
-def dispatch_route(path, payload=None):
-    route = next((item for item in ROUTES if item['path'] == path), None)
-    return {'ok': route is not None, 'route': route, 'payload': dict(payload or {}), 'side_effects': ()}
+
+def dispatch_route(path: str, payload: dict | None = None, method: str | None = None) -> dict:
+    route_method = method or ("GET" if path == "/customer-success-workbench" else "POST")
+    return _dispatch_route(route_method, path, payload)
 
 
-def smoke_test():
-    first = ROUTES[0]
-    dispatched = dispatch_route(first['path'], {'tenant': 'tenant-smoke'})
-    return {'ok': validate_api_route_contracts()['ok'] and dispatched['ok'], 'side_effects': ()}
+def smoke_test() -> dict:
+    dispatched = dispatch_route(
+        "/customer-success-workbench",
+        {"tenant": "tenant-smoke"},
+        method="GET",
+    )
+    return {
+        "ok": validate_api_route_contracts()["ok"] and dispatched["ok"],
+        "dispatched": dispatched,
+        "side_effects": (),
+    }

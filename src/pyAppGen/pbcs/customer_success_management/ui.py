@@ -1,54 +1,83 @@
 """UI fragments for the customer_success_management PBC."""
-PBC_KEY = 'customer_success_management'
-UI_FRAGMENTS = ('CustomerSuccessManagementWorkbench', 'CustomerSuccessManagementDetail', 'CustomerSuccessManagementAssistantPanel')
+from __future__ import annotations
+
+from .domain_depth import DOMAIN_OPERATIONS, DOMAIN_PARAMETERS, DOMAIN_RULES
+from .slice_app import BUSINESS_TABLES, build_standalone_app, build_ui_contract
+
+PBC_KEY = "customer_success_management"
+UI_FRAGMENTS = tuple(build_ui_contract()["fragments"])
 
 
-def customer_success_management_ui_contract():
-    return {'ok': True, 'pbc': PBC_KEY, 'fragments': UI_FRAGMENTS, 'workbench_view': UI_FRAGMENTS[0], 'configuration_editor': True, 'action_permissions': ('customer_success_management.read', 'customer_success_management.create', 'customer_success_management.update', 'customer_success_management.approve', 'customer_success_management.admin'), 'stream_engine_picker_visible': False, 'side_effects': ()}
-
-
-def customer_success_management_render_workbench(state=None):
-    return {'ok': True, 'pbc': PBC_KEY, 'view': UI_FRAGMENTS[0], 'panels': ('overview','records','rules','agent'), 'configuration_editor': True, 'action_permissions': ('customer_success_management.read', 'customer_success_management.create', 'customer_success_management.update', 'customer_success_management.approve', 'customer_success_management.admin'), 'side_effects': ()}
-
-
-def smoke_test():
-    return {'ok': customer_success_management_ui_contract()['ok'] and customer_success_management_render_workbench()['ok'], 'side_effects': ()}
-
-# Full UI capability surface bound to the world-class domain-depth contract.
-from .domain_depth import ui_capability_surface_contract as customer_success_management_ui_capability_surface_contract
-from .domain_depth import domain_capability_surface_contract as customer_success_management_domain_capability_surface_contract
-
-_BASE_CUSTOMER_SUCCESS_MANAGEMENT_UI_CONTRACT = customer_success_management_ui_contract
-_BASE_CUSTOMER_SUCCESS_MANAGEMENT_RENDER_WORKBENCH = customer_success_management_render_workbench
-
-
-def customer_success_management_ui_contract():
-    base = dict(_BASE_CUSTOMER_SUCCESS_MANAGEMENT_UI_CONTRACT())
-    full = customer_success_management_ui_capability_surface_contract()
+def customer_success_management_ui_contract() -> dict:
+    contract = build_ui_contract()
     return {
-        **base,
-        'ok': base.get('ok') is True and full['ok'],
-        'full_capability_surface': full,
-        'operation_actions': full['operation_actions'],
-        'rule_editors': full['rule_editors'],
-        'parameter_editors': full['parameter_editors'],
-        'advanced_panels': full['advanced_panels'],
-        'edge_case_queues': full['edge_case_queues'],
-        'table_browsers': full['table_browsers'],
-        'navigation_sections': full['navigation_sections'],
+        **contract,
+        "stream_engine_picker_visible": False,
+        "full_capability_surface": {
+            "operation_actions": tuple(DOMAIN_OPERATIONS),
+            "rule_editors": tuple(DOMAIN_RULES),
+            "parameter_editors": tuple(DOMAIN_PARAMETERS),
+            "advanced_panels": tuple(contract["advanced_panels"]),
+            "edge_case_queues": ("duplicate_submission", "policy_conflict", "idempotency_replay"),
+            "table_browsers": tuple(BUSINESS_TABLES),
+            "navigation_sections": (
+                "command_center",
+                "accounts",
+                "health_cockpit",
+                "playbook_board",
+                "renewal_room",
+                "agent_assistant",
+                "release_evidence",
+            ),
+        },
+        "operation_actions": tuple(DOMAIN_OPERATIONS),
+        "rule_editors": tuple(DOMAIN_RULES),
+        "parameter_editors": tuple(DOMAIN_PARAMETERS),
+        "edge_case_queues": ("duplicate_submission", "policy_conflict", "idempotency_replay"),
+        "table_browsers": tuple(BUSINESS_TABLES),
+        "navigation_sections": (
+            "command_center",
+            "accounts",
+            "health_cockpit",
+            "playbook_board",
+            "renewal_room",
+            "agent_assistant",
+            "release_evidence",
+        ),
     }
 
 
-def customer_success_management_render_workbench(state=None):
-    base = dict(_BASE_CUSTOMER_SUCCESS_MANAGEMENT_RENDER_WORKBENCH(state=state))
-    full = customer_success_management_ui_capability_surface_contract()
+def customer_success_management_render_workbench(state: dict | None = None) -> dict:
+    tenant = (state or {}).get("tenant", "default")
+    app = build_standalone_app()
+    workbench = app.build_workbench_view(tenant=tenant)
     return {
-        **base,
-        'ok': base.get('ok') is True and full['ok'],
-        'panels': tuple(dict.fromkeys(tuple(base.get('panels', ())) + full['navigation_sections'])),
-        'operation_actions': full['operation_actions'],
-        'advanced_panels': full['advanced_panels'],
-        'edge_case_queues': full['edge_case_queues'],
-        'table_browsers': full['table_browsers'],
-        'agent_tools': full['agent_tools'],
+        "ok": workbench["ok"],
+        "pbc": PBC_KEY,
+        "view": workbench["view"],
+        "panels": workbench["panels"],
+        "forms": workbench["forms"],
+        "wizards": workbench["wizards"],
+        "controls": workbench["controls"],
+        "summary": workbench["summary"],
+        "configuration_editor": True,
+        "stream_engine_picker_visible": False,
+        "action_permissions": tuple(customer_success_management_ui_contract()["action_permissions"]),
+        "advanced_panels": tuple(customer_success_management_ui_contract()["advanced_panels"]),
+        "agent_tools": (
+            "customer_success_management_plan_document_changes",
+            "customer_success_management_preview_mutation",
+        ),
+        "side_effects": (),
+    }
+
+
+def smoke_test() -> dict:
+    contract = customer_success_management_ui_contract()
+    workbench = customer_success_management_render_workbench({"tenant": "tenant-smoke"})
+    return {
+        "ok": contract["ok"] and workbench["ok"] and bool(workbench["forms"]) and bool(workbench["wizards"]) and bool(workbench["controls"]),
+        "contract": contract,
+        "workbench": workbench,
+        "side_effects": (),
     }
