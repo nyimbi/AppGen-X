@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .fundraising_app import controls_contract, forms_contract, fundraising_app_smoke_test, single_pbc_app_contract, wizards_contract
 
 PBC_KEY = 'donor_grant_fundraising'
 DONOR_GRANT_FUNDRAISING_OWNED_TABLES = ('donor_grant_fundraising_donor',
@@ -12,6 +13,13 @@ DONOR_GRANT_FUNDRAISING_OWNED_TABLES = ('donor_grant_fundraising_donor',
  'donor_grant_fundraising_restriction',
  'donor_grant_fundraising_grant_application',
  'donor_grant_fundraising_stewardship_touchpoint',
+ 'donor_grant_fundraising_donor_relationship',
+ 'donor_grant_fundraising_proposal_workspace',
+ 'donor_grant_fundraising_acknowledgement',
+ 'donor_grant_fundraising_briefing_packet',
+ 'donor_grant_fundraising_opportunity_score',
+ 'donor_grant_fundraising_review_chain',
+ 'donor_grant_fundraising_budget_validation',
  'donor_grant_fundraising_donor_grant_fundraising_policy_rule',
  'donor_grant_fundraising_donor_grant_fundraising_runtime_parameter',
  'donor_grant_fundraising_donor_grant_fundraising_schema_extension',
@@ -45,7 +53,14 @@ DONOR_GRANT_FUNDRAISING_STANDARD_FEATURE_KEYS = ('donor_management',
  'governed_datastore_crud',
  'ai_agent_task_assistance',
  'configuration_workbench',
- 'continuous_release_assurance')
+ 'continuous_release_assurance',
+ 'single_pbc_domain_app',
+ 'forms',
+ 'wizards',
+ 'controls',
+ 'prospect_pipeline',
+ 'gift_pledge_campaign_matching',
+ 'grant_submission_workspace')
 DONOR_GRANT_FUNDRAISING_RUNTIME_CAPABILITY_KEYS = ('donor_grant_fundraising_event_sourced_operational_history',
  'donor_grant_fundraising_multi_tenant_policy_isolation',
  'donor_grant_fundraising_schema_evolution_resilience',
@@ -68,6 +83,13 @@ DONOR_GRANT_FUNDRAISING_BUSINESS_TABLES = ('donor_grant_fundraising_donor',
  'donor_grant_fundraising_restriction',
  'donor_grant_fundraising_grant_application',
  'donor_grant_fundraising_stewardship_touchpoint',
+ 'donor_grant_fundraising_donor_relationship',
+ 'donor_grant_fundraising_proposal_workspace',
+ 'donor_grant_fundraising_acknowledgement',
+ 'donor_grant_fundraising_briefing_packet',
+ 'donor_grant_fundraising_opportunity_score',
+ 'donor_grant_fundraising_review_chain',
+ 'donor_grant_fundraising_budget_validation',
  'donor_grant_fundraising_donor_grant_fundraising_policy_rule',
  'donor_grant_fundraising_donor_grant_fundraising_runtime_parameter',
  'donor_grant_fundraising_donor_grant_fundraising_schema_extension',
@@ -139,6 +161,13 @@ def donor_grant_fundraising_build_schema_contract():
         {'table': 'donor_grant_fundraising_restriction', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'donor_grant_fundraising_grant_application', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'donor_grant_fundraising_stewardship_touchpoint', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'donor_grant_fundraising_donor_relationship', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'donor_grant_fundraising_proposal_workspace', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'donor_grant_fundraising_acknowledgement', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'donor_grant_fundraising_briefing_packet', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'donor_grant_fundraising_opportunity_score', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'donor_grant_fundraising_review_chain', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'donor_grant_fundraising_budget_validation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'donor_grant_fundraising_donor_grant_fundraising_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'donor_grant_fundraising_donor_grant_fundraising_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'donor_grant_fundraising_donor_grant_fundraising_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
@@ -162,8 +191,10 @@ def donor_grant_fundraising_build_api_contract():
  'GET /donor-grant-fundraising-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': DONOR_GRANT_FUNDRAISING_OWNED_TABLES}
 
 def donor_grant_fundraising_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
-    return {'format': 'appgen.donor-grant-fundraising-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': donor_grant_fundraising_build_schema_contract()['migrations'], 'models': donor_grant_fundraising_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': DONOR_GRANT_FUNDRAISING_EMITTED_EVENT_TYPES, 'consumes': DONOR_GRANT_FUNDRAISING_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': DONOR_GRANT_FUNDRAISING_UI_FRAGMENT_KEYS}, 'blocking_gaps': ()}
+    app_contract = single_pbc_app_contract()
+    app_smoke = fundraising_app_smoke_test()
+    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'single_pbc_domain_app', 'ok': app_contract['ok']}, {'id': 'forms_wizards_controls', 'ok': bool(app_contract['forms']) and bool(app_contract['wizards']) and bool(app_contract['controls'])}, {'id': 'fundraising_app_smoke', 'ok': app_smoke['ok']})
+    return {'format': 'appgen.donor-grant-fundraising-release-evidence.v1', 'ok': all(check['ok'] for check in checks), 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': donor_grant_fundraising_build_schema_contract()['migrations'], 'models': donor_grant_fundraising_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': DONOR_GRANT_FUNDRAISING_EMITTED_EVENT_TYPES, 'consumes': DONOR_GRANT_FUNDRAISING_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': DONOR_GRANT_FUNDRAISING_UI_FRAGMENT_KEYS, 'single_pbc_app': app_contract}, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
 
 def donor_grant_fundraising_permissions_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('donor_grant_fundraising.read',
@@ -209,6 +240,10 @@ def donor_grant_fundraising_runtime_capabilities():
         'standard_features': DONOR_GRANT_FUNDRAISING_STANDARD_FEATURE_KEYS,
         'capabilities': DONOR_GRANT_FUNDRAISING_RUNTIME_CAPABILITY_KEYS,
         'operations': operations,
+        'forms': forms_contract()['forms'],
+        'wizards': wizards_contract()['wizards'],
+        'controls': controls_contract()['controls'],
+        'single_pbc_app': single_pbc_app_contract(),
         'smoke': smoke,
         'world_class_domain_depth': domain,
         'database_backends': DONOR_GRANT_FUNDRAISING_ALLOWED_DATABASE_BACKENDS,
@@ -236,6 +271,7 @@ def donor_grant_fundraising_runtime_smoke():
     workbench = donor_grant_fundraising_build_workbench_view()
     boundary = donor_grant_fundraising_verify_owned_table_boundary(DONOR_GRANT_FUNDRAISING_OWNED_TABLES + ('foreign_table',))
     domain = domain_depth_contract()
+    app_smoke = fundraising_app_smoke_test()
     checks = (
         {'id': 'configure_runtime', 'ok': cfg['ok']},
         {'id': 'set_parameter', 'ok': param['ok']},
@@ -250,6 +286,7 @@ def donor_grant_fundraising_runtime_smoke():
         {'id': 'build_workbench_view', 'ok': workbench['ok']},
         {'id': 'owned_boundary_rejects_foreign_table', 'ok': boundary['ok'] is False},
         {'id': 'domain_depth', 'ok': domain['ok']},
+        {'id': 'single_pbc_fundraising_app', 'ok': app_smoke['ok']},
     ) + tuple({'id': capability, 'ok': True} for capability in DONOR_GRANT_FUNDRAISING_RUNTIME_CAPABILITY_KEYS)
     return {
         'format': 'appgen.donor-grant-fundraising-runtime-smoke.v1',
@@ -262,6 +299,7 @@ def donor_grant_fundraising_runtime_smoke():
         'release': release,
         'workbench': workbench,
         'domain_depth': domain,
+        'single_pbc_app': app_smoke,
         'blocking_gaps': tuple(check for check in checks if not check['ok']),
         'side_effects': (),
     }

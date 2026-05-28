@@ -2,8 +2,31 @@
 PBC_KEY = 'donor_grant_fundraising'
 EVENT_CONTRACT = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'event_contract': 'AppGen-X'}
 from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS, DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES, execute_domain_operation as execute_domain_depth_operation
-COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_donor','configure_runtime','set_parameter','register_rule') + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
-QUERY_OPERATIONS = ('query_workbench',)
+from .fundraising_app import (
+    advance_prospect_stage,
+    build_fundraising_workbench,
+    create_campaign,
+    create_pledge,
+    create_restriction,
+    empty_fundraising_state,
+    manage_grant_application,
+    post_gift,
+    record_stewardship_touchpoint,
+    register_donor_profile,
+)
+APP_COMMAND_HANDLERS = {
+    'register_donor_profile': register_donor_profile,
+    'advance_prospect_stage': advance_prospect_stage,
+    'create_campaign': create_campaign,
+    'create_pledge': create_pledge,
+    'create_restriction': create_restriction,
+    'post_gift': post_gift,
+    'manage_grant_application': manage_grant_application,
+    'record_stewardship_touchpoint': record_stewardship_touchpoint,
+}
+APP_QUERY_HANDLERS = {'build_fundraising_workbench': build_fundraising_workbench}
+COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_donor','configure_runtime','set_parameter','register_rule') + tuple(APP_COMMAND_HANDLERS) + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
+QUERY_OPERATIONS = ('query_workbench',) + tuple(APP_QUERY_HANDLERS)
 OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
 
 def _operation_contract(name, kind):
@@ -13,6 +36,9 @@ def _operation_contract(name, kind):
  'DonorGrantFundraisingExceptionOpened')[0] if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
 
 class DonorGrantFundraisingService:
+    def __init__(self, state=None):
+        self.state = state or empty_fundraising_state()
+
     def __getattr__(self, name):
         if name in COMMAND_OPERATIONS:
             return lambda payload=None, _name=name: self._command(_name, payload or {})
@@ -20,12 +46,21 @@ class DonorGrantFundraisingService:
             return lambda payload=None, _name=name: self._query(_name, payload or {})
         raise AttributeError(name)
     def _command(self, name, payload):
+        if name in APP_COMMAND_HANDLERS:
+            result = APP_COMMAND_HANDLERS[name](self.state, payload)
+            if 'state' in result:
+                self.state = result['state']
+            target = next((value.get('table') for value in result.values() if isinstance(value, dict) and value.get('table')), OWNED_TABLES[0])
+            return {'ok': result['ok'], 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': {'operation': name, 'operation_kind': 'command', 'owned_tables': (target,), 'read_tables': (), 'emitted_event': 'DonorGrantFundraisingUpdated', 'transaction_boundary': 'owned_datastore_plus_outbox'}, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': ('DonorGrantFundraisingUpdated',), 'transaction_boundary': 'owned_datastore_plus_outbox', 'domain_app': result, 'side_effects': ()}
         if name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
             plan = execute_domain_depth_operation(name, payload)
             return {'ok': plan['ok'], 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': {'operation': name, 'operation_kind': 'command', 'owned_tables': plan.get('owned_tables', ()), 'read_tables': (), 'emitted_event': plan.get('emitted_event'), 'transaction_boundary': 'owned_datastore_plus_outbox'}, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (plan.get('emitted_event'),), 'transaction_boundary': 'owned_datastore_plus_outbox', 'domain_depth': plan, 'side_effects': ()}
         contract = _operation_contract(name, 'command')
         return {'ok': True, 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
     def _query(self, name, payload):
+        if name in APP_QUERY_HANDLERS:
+            result = APP_QUERY_HANDLERS[name](self.state)
+            return {'ok': result['ok'], 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': {'operation': name, 'operation_kind': 'query', 'owned_tables': (), 'read_tables': OWNED_TABLES, 'emitted_event': None, 'transaction_boundary': 'read_only_projection'}, 'outbox_table': None, 'emits': (), 'domain_app': result, 'side_effects': ()}
         contract = _operation_contract(name, 'query')
         return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
 
