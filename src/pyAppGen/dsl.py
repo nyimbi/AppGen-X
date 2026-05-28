@@ -97,6 +97,39 @@ REQUIRED_COMPLETION_SOURCES = (
     "llm_providers",
     "agent_skills",
 )
+REQUIRED_SYMBOL_KINDS = (
+    "app",
+    "table",
+    "field",
+    "group",
+    "enum",
+    "enum_value",
+    "view",
+    "component_binding",
+    "handler",
+    "flow",
+    "flow_state",
+    "operation",
+    "role",
+    "permission",
+    "rule",
+    "llm",
+    "agent",
+    "agent_skill",
+    "pbc",
+    "composition",
+    "api",
+    "event",
+    "job",
+    "report",
+    "menu",
+    "component",
+    "package",
+    "deployment_unit",
+    "audit",
+    "version",
+    "security",
+)
 
 
 class AppGenSyntaxError(ValueError):
@@ -625,7 +658,28 @@ def semantic_model_dsl(text: str, *, source_name: str | None = None) -> dict:
         "diagnostics": tuple(_spec_diagnostic_from_legacy(source, item) for item in lint["diagnostics"]),
         "ok": lint["ok"],
     }
+    model["symbol_coverage"] = symbol_coverage_dsl(source, source_name=source_name, model=model)
     return model
+
+
+def symbol_coverage_dsl(text: str, *, source_name: str | None = None, model: dict | None = None) -> dict:
+    """Return required semantic-symbol kind coverage for docs/tooling.md."""
+    semantic = model if model is not None else semantic_model_dsl(text, source_name=source_name)
+    symbols = tuple(semantic.get("symbols", {}).values())
+    detected = {symbol.get("kind") for symbol in symbols}
+    return {
+        "format": "appgen.symbol-coverage.v1",
+        "source": source_name,
+        "required": REQUIRED_SYMBOL_KINDS,
+        "detected": tuple(kind for kind in REQUIRED_SYMBOL_KINDS if kind in detected),
+        "missing": tuple(kind for kind in REQUIRED_SYMBOL_KINDS if kind not in detected),
+        "counts": {
+            kind: sum(1 for symbol in symbols if symbol.get("kind") == kind)
+            for kind in REQUIRED_SYMBOL_KINDS
+            if kind in detected
+        },
+        "symbol_count": len(symbols),
+    }
 
 
 def semantic_model_dsl_file(path: str | Path) -> dict:
@@ -1639,6 +1693,12 @@ def doctor_report_dsl() -> dict:
             {"report_format": "appgen.completion-coverage.v1"},
         ),
         _doctor_check(
+            "semantic_symbol_coverage",
+            symbol_coverage_dsl(_symbol_coverage_sample(), source_name="symbol-doctor.appgen")["missing"] == (),
+            "Semantic model emits all required symbol kinds for CLI, IDE, tests, and agents.",
+            {"report_format": "appgen.symbol-coverage.v1"},
+        ),
+        _doctor_check(
             "studio_semantic_service",
             designer_sync_report_dsl(_doctor_sample_dsl(), source_name="doctor.appgen")["semantic_model_format"] == "appgen.semantic-model.v1",
             "Studio designer service is bound to the shared semantic model.",
@@ -1738,6 +1798,126 @@ llm LocalModel {
 agent CompletionAssistant {
   provider: LocalModel
   tools: write, schema
+}
+"""
+
+
+def _symbol_coverage_sample() -> str:
+    return """
+app SymbolDemo { targets: web, mobile, desktop }
+
+AddressFields {
+  street: string
+}
+
+table Customer {
+  id: int pk
+  name: string
+  ... AddressFields
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  total: decimal = id
+}
+
+enum Status { draft posted }
+
+view InvoiceForm for Invoice {
+  Main: customer.name, total
+  @ customer.name Lookup 0 0 6 1
+  on Save -> SubmitInvoice
+}
+
+flow SubmitInvoice {
+  draft -> reviewed
+  reviewed -> posted
+}
+
+role Clerk {
+  Invoice: read, write
+}
+
+rule InvoicePolicy for Invoice {
+  id == 1
+}
+
+llm LocalModel {
+  provider: ollama
+  mode: local
+}
+
+agent Builder {
+  provider: LocalModel
+  tools: write, schema
+  Invoice: write
+  on Run -> SubmitInvoice
+}
+
+pbc Billing {
+  owns: Invoice
+  Invoice: read, write
+}
+
+composition Suite {
+  include pbc gl_core version 1.0.0
+}
+
+audit ReleaseAudit {
+  evidence: tests
+}
+
+version Release2026 {
+  number: 1.0.0
+}
+
+operation ReverseInvoice {
+  posted -> reversed
+}
+
+security TenantSecurity {
+  Invoice: read, write
+  tenancy: org
+}
+
+api InvoiceApi {
+  on Create -> SubmitInvoice
+  Invoice: read
+}
+
+event InvoicePosted {
+  topic: invoices
+}
+
+job InvoiceJob {
+  run nightly -> SubmitInvoice
+}
+
+report InvoiceReport {
+  source Invoice -> InvoiceApi
+}
+
+menu MainMenu {
+  on Open -> SubmitInvoice
+}
+
+component CustomerLookup {
+  on Select -> SubmitInvoice
+}
+
+package MobileRelease {
+  target: mobile
+  smoke: launch
+}
+
+test Smoke {
+  run happy -> SubmitInvoice
+}
+
+deploy Production {
+  unit SubmitInvoice as worker
+  health SubmitInvoice "/health"
 }
 """
 
@@ -4745,6 +4925,8 @@ def _semantic_symbols(source: str, schema: AppSchema) -> dict:
 
     if schema.app_name:
         add("app", schema.app_name, detail={"targets": _lint_summary(schema)["targets"]})
+    for group_name in _declared_group_names(source):
+        add("group", group_name)
     for table in schema.tables:
         add("table", table.name)
         for column in table.columns:
@@ -4755,6 +4937,14 @@ def _semantic_symbols(source: str, schema: AppSchema) -> dict:
             add("enum_value", value, parent=f"enum.{enum.name}")
     for view in schema.views:
         add("view", view.name, detail={"table": view.table})
+        for component in view.components:
+            binding = component.field or component.component
+            add(
+                "component_binding",
+                binding,
+                parent=f"view.{view.name}",
+                detail={"component": component.component, "x": component.x, "y": component.y, "w": component.w, "h": component.h},
+            )
         for handler in view.handlers:
             add("handler", handler.event, parent=f"view.{view.name}", detail={"target": handler.target})
     for flow in schema.flows:
@@ -4763,17 +4953,82 @@ def _semantic_symbols(source: str, schema: AppSchema) -> dict:
             add("flow_state", state, parent=f"flow.{flow.name}")
     for role in schema.roles:
         add("role", role.name)
+        for permission in role.permissions:
+            add("permission", _permission_symbol_name(permission), parent=f"role.{role.name}", detail=_semantic_permission(permission))
     for rule in schema.rules:
         add("rule", rule.name, detail={"table": rule.table})
     for provider in schema.llm_providers:
         add("llm", provider.name, detail={"provider": provider.provider})
     for agent in schema.agents:
         add("agent", agent.name, detail={"provider": agent.provider})
+        for tool in agent.tools:
+            add("agent_skill", tool, parent=f"agent.{agent.name}", detail={"source": "tools"})
+        for skill in agent.competencies:
+            add("agent_skill", skill.verb, parent=f"agent.{agent.name}", detail=_semantic_statement(skill))
+        for permission in agent.permissions:
+            add("permission", _permission_symbol_name(permission), parent=f"agent.{agent.name}", detail=_semantic_permission(permission))
+        for handler in agent.handlers:
+            add("handler", handler.event, parent=f"agent.{agent.name}", detail={"target": handler.target})
     for block in schema.platform_blocks:
         add(block.kind, block.name)
+        for unit in block.deployment_units:
+            add("deployment_unit", unit.target, parent=f"{block.kind}.{block.name}", detail={"pattern": unit.pattern})
+        for permission in block.permissions:
+            add("permission", _permission_symbol_name(permission), parent=f"{block.kind}.{block.name}", detail=_semantic_permission(permission))
+        for handler in block.handlers:
+            add("handler", handler.event, parent=f"{block.kind}.{block.name}", detail={"target": handler.target})
     for contract in _enterprise_contracts(schema):
         add(contract.kind, contract.name)
+        for permission in contract.permissions:
+            add("permission", _permission_symbol_name(permission), parent=f"{contract.kind}.{contract.name}", detail=_semantic_permission(permission))
+        for handler in contract.handlers:
+            add("handler", handler.event, parent=f"{contract.kind}.{contract.name}", detail={"target": handler.target})
     return symbols
+
+
+def _permission_symbol_name(permission: PermissionSchema) -> str:
+    actions = ",".join(permission.actions)
+    return f"{permission.resource}:{actions}" if actions else permission.resource
+
+
+def _declared_group_names(source: str) -> tuple[str, ...]:
+    names = []
+    reserved = set(CORE_KEYWORDS) | {"target", "targets", "source", "provider", "mode", "tools"}
+    for match in re.finditer(r"(?m)^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\{", source or ""):
+        name = match.group(1)
+        if name.lower() not in reserved:
+            names.append(name)
+    declared_blocks = {
+        name
+        for kind in (
+            "app",
+            "table",
+            "enum",
+            "view",
+            "flow",
+            "role",
+            "rule",
+            "llm",
+            "agent",
+            "pbc",
+            "composition",
+            "audit",
+            "deploy",
+            "version",
+            "operation",
+            "security",
+            "api",
+            "event",
+            "job",
+            "report",
+            "menu",
+            "component",
+            "package",
+            "test",
+        )
+        for name in _declared_block_names(source, kind)
+    }
+    return tuple(name for name in dict.fromkeys(names) if name not in declared_blocks)
 
 
 def _semantic_range(line: int | None, column: int | None, token: str) -> dict | None:

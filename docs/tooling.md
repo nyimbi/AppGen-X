@@ -160,6 +160,12 @@ Symbol kinds include:
 - `version`
 - `security`
 
+Symbol coverage is executable through `appgen.symbol-coverage.v1`. The semantic
+model includes this report as `symbol_coverage`, and `appgen doctor --json`
+checks `semantic_symbol_coverage` against a fixture that exercises top-level
+declarations plus nested groups, fields, enum values, component bindings,
+handlers, flow states, permissions, agent skills, and deployment units.
+
 ### Table Model
 
 Each table should normalize fields, directives, relationships, calculated

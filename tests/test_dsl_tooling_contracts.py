@@ -24,6 +24,7 @@ from pyAppGen.dsl import pbc_verifier_report
 from pyAppGen.dsl import release_verifier_report_dsl
 from pyAppGen.dsl import semantic_drift_audit_dsl
 from pyAppGen.dsl import semantic_model_dsl
+from pyAppGen.dsl import symbol_coverage_dsl
 from pyAppGen.dsl import validate_report_dsl
 from pyAppGen.dsl import completion_coverage_dsl
 
@@ -139,6 +140,58 @@ def test_semantic_model_exposes_spec_contract_for_tables_views_flows_and_pbcs() 
     assert model["composition"]["FinanceSuite"]["includes"][0]["pbc"] == "gl_core"
     assert model["pbcs"]["gl_core"]["catalog_resolved"] is True
     assert "table.Invoice.customer_id" in model["symbols"]
+    assert model["symbol_coverage"]["format"] == "appgen.symbol-coverage.v1"
+
+
+def test_semantic_symbol_coverage_proves_required_nested_symbol_kinds() -> None:
+    source = """
+    app SymbolDemo { targets: web, mobile, desktop }
+    AddressFields { street: string }
+    table Customer { id: int pk; name: string; ... AddressFields }
+    table Invoice { id: int pk; customer_id: int -> Customer.id; total: decimal = id }
+    enum Status { draft posted }
+    view InvoiceForm for Invoice {
+      Main: customer.name, total
+      @ customer.name Lookup 0 0 6 1
+      on Save -> SubmitInvoice
+    }
+    flow SubmitInvoice { draft -> reviewed; reviewed -> posted }
+    role Clerk { Invoice: read, write }
+    rule InvoicePolicy for Invoice { id == 1 }
+    llm LocalModel { provider: ollama; mode: local }
+    agent Builder { provider: LocalModel; tools: write, schema; Invoice: write; on Run -> SubmitInvoice }
+    pbc Billing { owns: Invoice; Invoice: read, write }
+    composition Suite { include pbc gl_core version 1.0.0 }
+    audit ReleaseAudit { evidence: tests }
+    version Release2026 { number: 1.0.0 }
+    operation ReverseInvoice { posted -> reversed }
+    security TenantSecurity { Invoice: read, write; tenancy: org }
+    api InvoiceApi { on Create -> SubmitInvoice; Invoice: read }
+    event InvoicePosted { topic: invoices }
+    job InvoiceJob { run nightly -> SubmitInvoice }
+    report InvoiceReport { source Invoice -> InvoiceApi }
+    menu MainMenu { on Open -> SubmitInvoice }
+    component CustomerLookup { on Select -> SubmitInvoice }
+    package MobileRelease { target: mobile; smoke: launch }
+    test Smoke { run happy -> SubmitInvoice }
+    deploy Production { unit SubmitInvoice as worker; health SubmitInvoice "/health" }
+    """
+
+    model = semantic_model_dsl(source, source_name="symbols.appgen")
+    coverage = symbol_coverage_dsl(source, source_name="symbols.appgen")
+
+    assert model["ok"] is True
+    assert coverage["format"] == "appgen.symbol-coverage.v1"
+    assert model["symbol_coverage"]["missing"] == ()
+    assert coverage["missing"] == ()
+    assert set(coverage["required"]) <= set(coverage["detected"])
+    assert coverage["counts"]["group"] == 1
+    assert coverage["counts"]["component_binding"] == 1
+    assert coverage["counts"]["permission"] >= 3
+    assert coverage["counts"]["agent_skill"] >= 2
+    assert coverage["counts"]["deployment_unit"] == 1
+    assert any(symbol["kind"] == "component_binding" and symbol["name"] == "customer.name" for symbol in model["symbols"].values())
+    assert any(symbol["kind"] == "deployment_unit" and symbol["name"] == "SubmitInvoice" for symbol in model["symbols"].values())
 
 
 def test_lint_report_maps_existing_linter_errors_to_stable_agx_diagnostics() -> None:
@@ -1610,6 +1663,7 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
         "generator_backends",
         "lsp_semantic_service",
         "lsp_completion_coverage",
+        "semantic_symbol_coverage",
         "studio_semantic_service",
     } <= {check["check"] for check in report["checks"]}
 
