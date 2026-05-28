@@ -1,315 +1,314 @@
-# Multi-Gateway Payment Orchestration PBC Improvement Backlog
+# Payment Orchestration PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `payment_orchestration`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `payment_orchestration`. The items are specific to multi-gateway payment orchestration: gateway registry, token custody, payment intents, gateway routing, fraud handoff, authorization, capture, refunds, voids, settlement, reconciliation handoffs, exceptions, audit traces, payment proofs, federation projections, carbon-aware settlement windows, gateway optimization, provider allocation, anomaly detection, risk modeling, exposure forecasting, instruction parsing, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted payment operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Gateway routing, fee optimization, localized checks, and payment token controls.
-- Representative owned tables: `payment_orchestration_payment_gateway`, `payment_orchestration_payment_intent`, `payment_orchestration_payment_token`, `payment_orchestration_fraud_check`.
-- Representative operations/APIs: `command_payment_intents`, `command_gateway_routes`, `command_tokens`, `query_payment_orchestration_workbench`.
-- Representative events: `PaymentCaptured`, `PaymentFailed`, `FraudCheckRequested`.
-- Representative advanced capabilities: `event_sourced_payment_lifecycle`, `graph_relational_payment_topology`, `multi_tenant_payment_isolation`, `schema_evolution_resilient_payment_schema`, `probabilistic_authorization_fraud_settlement_scoring`, `counterfactual_gateway_routing_simulation`, `temporal_authorization_settlement_forecasting`, `autonomous_payment_exception_resolution`, `semantic_payment_instruction_parsing`, `predictive_payment_risk`, ...
+- Domain purpose: `payment_orchestration` owns payment intent lifecycle, provider routing, payment-token custody, fraud handoff, capture/refund/void execution, settlement and reconciliation evidence, UI fragments, and AppGen-X event handling.
+- Owned boundary: payment gateways, tokens, intents, gateway routes, fraud checks, captures, refunds, voids, settlements, reconciliation handoffs, exceptions, audit traces, payment proofs, federation projections, carbon windows, gateway optimization, provider allocation, anomaly signals, risk models, exposure forecasts, instruction parses, schema extensions, control assertions, governed models, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameters, rules, schema extensions, event receiving, gateway registration, tokenization, intent creation, gateway routing, fraud-check requests, capture/refund/void execution, payment proof generation, policy screening, resilience drills, crypto rotation, carbon-aware settlement, gateway mix optimization, provider allocation, governed-model registration, control tests, workbench, schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `PaymentIntentCreated`, `FraudCheckRequested`, `PaymentCaptured`, `PaymentRefunded`, `PaymentVoided`, and `PaymentFailed`; consumes `CheckoutCompleted` and `FraudRiskScored`; integrates with checkout, fraud, billing, ledger, treasury, customer, and audit only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `payment_orchestration_payment_gateway`
+### 1. Gateway readiness gate
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Provider routing is unsafe when gateway currency, region, method, latency, fee, auth capability, settlement risk, and compliance evidence are incomplete.
 
-**Improvement:** Extend `payment_orchestration_payment_gateway` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `gateway_registry`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for gateway status, supported currencies, regions, methods, authorization/capture modes, refund/void support, fee schedule, latency SLA, settlement window, risk rating, compliance evidence, and route eligibility.
 
-### 2. Deep specialist lifecycle semantics for `payment_orchestration_payment_intent`
+### 2. Gateway health and degradation model
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Payment success depends on live provider health, latency, decline spikes, timeout rates, and settlement delays.
 
-**Improvement:** Extend `payment_orchestration_payment_intent` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `gateway_health_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track gateway health by method, region, currency, error class, latency, timeout, authorization rate, capture rate, refund rate, settlement delay, and degradation state with route-weight effects.
 
-### 3. Deep specialist lifecycle semantics for `payment_orchestration_payment_token`
+### 3. Payment token custody governance
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Tokenized payment methods are sensitive and require vault provenance, lifecycle state, network metadata, wallet metadata, and revocation evidence.
 
-**Improvement:** Extend `payment_orchestration_payment_token` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payment_tokens`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model token status, vault reference, token type, card/network/wallet metadata, customer binding, expiry, refresh eligibility, revocation, portability, assurance level, and sensitive-field redaction.
 
-### 4. Deep specialist lifecycle semantics for `payment_orchestration_fraud_check`
+### 4. Token lifecycle state machine
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Tokens move through created, active, refreshed, suspended, expired, revoked, migrated, and compromised states.
 
-**Improvement:** Extend `payment_orchestration_fraud_check` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payment_intents`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement token state transitions with actor, reason, timestamp, idempotency key, vault event, fraud linkage, affected intents, and invalid-transition explanations.
 
-### 5. Deep specialist lifecycle semantics for `payment_orchestration_payment_gateway`
+### 5. Checkout completion intake readiness
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Payment intents must be created from complete, trusted checkout evidence.
 
-**Improvement:** Extend `payment_orchestration_payment_gateway` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `authorization_controls`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate `CheckoutCompleted` projection fields for tenant, session, amount, currency, line totals, tax, inventory confirmation, risk state, customer, payment method, idempotency key, and event freshness before intent creation.
 
-### 6. Deep specialist lifecycle semantics for `payment_orchestration_payment_intent`
+### 6. Payment intent lifecycle state machine
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Intents coordinate routing, fraud, authorization, capture, refund, void, failure, settlement, and reconciliation.
 
-**Improvement:** Extend `payment_orchestration_payment_intent` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `authorization_capture_refund_void`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement states for created, routed, fraud_pending, authorized, capture_pending, captured, partially_refunded, refunded, voided, failed, disputed, settled, reconciled, and closed with evidence gates.
 
-### 7. Deep specialist lifecycle semantics for `payment_orchestration_payment_token`
+### 7. Amount and currency integrity controls
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Payment amounts must exactly match checkout totals, capture rules, refund limits, and settlement evidence.
 
-**Improvement:** Extend `payment_orchestration_payment_token` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `provider_routing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add amount validation with checkout total, currency, minor-unit precision, rounding, partial capture, capture tolerance, refund ceiling, void eligibility, and mismatch exception creation.
 
-### 8. Deep specialist lifecycle semantics for `payment_orchestration_fraud_check`
+### 8. Gateway route scoring
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Best routing balances authorization probability, fees, latency, method support, region, currency, settlement risk, fraud risk, carbon, and provider capacity.
 
-**Improvement:** Extend `payment_orchestration_fraud_check` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `fraud_handoff`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Score candidate gateways with weighted auth rate, cost, latency, settlement risk, fraud fit, method support, regional compliance, retry availability, carbon window, and health confidence.
 
-### 9. Deep specialist lifecycle semantics for `payment_orchestration_payment_gateway`
+### 9. Counterfactual gateway routing simulation
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Payment teams need to compare routing rules before changing live authorization behavior.
 
-**Improvement:** Extend `payment_orchestration_payment_gateway` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `settlement_execution`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Simulate alternate gateway weights, risk ceilings, retry order, method routing, settlement windows, and regional preferences with predicted authorization, fee, latency, fraud, and settlement outcomes.
 
-### 10. Deep specialist lifecycle semantics for `payment_orchestration_payment_intent`
+### 10. Provider allocation mechanism
 
-**Justification:** This owned table is part of the Multi-Gateway Payment Orchestration operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gateway routing, fee optimization, localized checks, and payment token controls.
+**Justification:** Scarce provider capacity, contractual commitments, fee tiers, and regional constraints require principled allocation.
 
-**Improvement:** Extend `payment_orchestration_payment_intent` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `settlement_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add provider allocation with volume commitments, capacity floors, cost tiers, failure penalties, fairness constraints, merchant priorities, reserve capacity, and override evidence.
 
-### 11. Make `command_payment_intents` a complete command lifecycle
+### 11. Fraud handoff lifecycle
 
-**Justification:** High-value users need `command_payment_intents` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Fraud review must be tied to intent, token, checkout, gateway route, amount, and payment action.
 
-**Improvement:** Implement `command_payment_intents` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PaymentCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add fraud check states requested, pending, scored, review, cleared, blocked, expired, and overridden with `FraudCheckRequested` evidence, consumed `FraudRiskScored` lineage, reviewer, and expiry.
 
-### 12. Make `command_gateway_routes` a complete command lifecycle
+### 12. Fraud-risk route suppression
 
-**Justification:** High-value users need `command_gateway_routes` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Some gateways, methods, regions, or capture policies are unsuitable for high-risk payments.
 
-**Improvement:** Implement `command_gateway_routes` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PaymentFailed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Screen routes against fraud score, rule hits, token assurance, device/customer risk, amount, region, method, and chargeback exposure before authorization or capture.
 
-### 13. Make `command_tokens` a complete command lifecycle
+### 13. Authorization strategy controls
 
-**Justification:** High-value users need `command_tokens` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Authorization behavior varies by method, region, amount, gateway, capture policy, and risk.
 
-**Improvement:** Implement `command_tokens` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FraudCheckRequested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model auth strategy as immediate auth, delayed auth, incremental auth, zero-amount validation, step-up required, or blocked with evidence and gateway compatibility.
 
-### 14. Turn `query_payment_orchestration_workbench` into an expert read-model experience
+### 14. Capture lifecycle controls
 
-**Justification:** Domain experts rely on `query_payment_orchestration_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Captures must respect authorization state, amount, expiry, partial capture rules, shipment readiness, and risk status.
 
-**Improvement:** Build `query_payment_orchestration_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `PaymentCaptured` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add capture states requested, pending, captured, partial, failed, retrying, expired, and reversed with gateway response, capture id, amount, idempotency key, and settlement linkage.
 
-### 15. Make `command_payment_intents` a complete command lifecycle
+### 15. Refund lifecycle controls
 
-**Justification:** High-value users need `command_payment_intents` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Refunds need authorization against captured amount, return reason, refund method, gateway rules, and reconciliation.
 
-**Improvement:** Implement `command_payment_intents` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PaymentFailed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add refund states requested, approved, submitted, succeeded, failed, partial, reversed, and reconciled with amount ceiling, reason, customer communication, gateway id, and ledger/audit handoff.
 
-### 16. Make `command_gateway_routes` a complete command lifecycle
+### 16. Void lifecycle controls
 
-**Justification:** High-value users need `command_gateway_routes` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Voids are only valid before capture or within provider-specific windows.
 
-**Improvement:** Implement `command_gateway_routes` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FraudCheckRequested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add void eligibility checks for auth state, capture state, provider window, amount, settlement status, risk state, idempotency key, and `PaymentVoided` event emission.
 
-### 17. Make `command_tokens` a complete command lifecycle
+### 17. Payment failure taxonomy
 
-**Justification:** High-value users need `command_tokens` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Failures differ by decline, insufficient funds, fraud, timeout, gateway outage, duplicate, invalid token, currency mismatch, and settlement rejection.
 
-**Improvement:** Implement `command_tokens` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PaymentCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Create failure taxonomy with category, retryability, customer visibility, provider responsibility, risk effect, route suppression effect, remediation owner, and event output.
 
-### 18. Turn `query_payment_orchestration_workbench` into an expert read-model experience
+### 18. Smart retry orchestration
 
-**Justification:** Domain experts rely on `query_payment_orchestration_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Retrying payments can recover revenue but also increases duplicate charge, fraud, and customer-friction risk.
 
-**Improvement:** Build `query_payment_orchestration_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `PaymentFailed` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add retry plans by failure class, gateway, method, risk score, amount, customer policy, idempotency key, retry budget, backoff, and provider failover.
 
-### 19. Make `command_payment_intents` a complete command lifecycle
+### 19. Settlement evidence model
 
-**Justification:** High-value users need `command_payment_intents` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Capture success is not final cash; settlement timing, fees, currency, chargebacks, and provider batches must be tracked.
 
-**Improvement:** Implement `command_payment_intents` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FraudCheckRequested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model settlement batch, expected date, settled date, gross, fees, net, currency, FX rate, provider reference, exception state, and reconciliation handoff status.
 
-### 20. Make `command_gateway_routes` a complete command lifecycle
+### 20. Reconciliation handoff governance
 
-**Justification:** High-value users need `command_gateway_routes` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Ledger, billing, treasury, and audit consumers need accurate payment events without shared table access.
 
-**Improvement:** Implement `command_gateway_routes` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PaymentCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Generate reconciliation handoffs with intent, capture/refund/void, settlement, fees, net cash, currency, provider id, ledger event reference, audit reference, and idempotent delivery evidence.
 
-### 21. Operationalize `event_sourced_payment_lifecycle` as a governed decision system
+### 21. Multi-currency and FX controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves authorization rate without hiding assumptions.
+**Justification:** Payment orchestration often handles presentment, authorization, settlement, and reporting currencies.
 
-**Improvement:** Promote `event_sourced_payment_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track currency per intent, gateway, capture, refund, settlement, and reconciliation with FX source, rate timestamp, rounding, minor-unit validation, and mismatch exceptions.
 
-### 22. Operationalize `graph_relational_payment_topology` as a governed decision system
+### 22. Payment proof generation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves route margin without hiding assumptions.
+**Justification:** Disputes, audits, and partner reviews require proof that payment lifecycle events occurred without overexposing sensitive data.
 
-**Improvement:** Promote `graph_relational_payment_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate selective-disclosure proofs for intent creation, route decision, fraud handoff, capture, refund, void, settlement, and reconciliation with proof hashes, verifier, expiry, and revocation.
 
-### 23. Operationalize `multi_tenant_payment_isolation` as a governed decision system
+### 23. Immutable payment audit trace
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves return cycle time without hiding assumptions.
+**Justification:** Payment disputes require exact reconstruction of inputs, decisions, provider responses, retries, and emitted events.
 
-**Improvement:** Promote `multi_tenant_payment_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Hash-chain gateway changes, token events, intents, routes, fraud checks, captures, refunds, voids, settlements, exceptions, proofs, and AppGen-X deliveries with temporal query support.
 
-### 24. Operationalize `schema_evolution_resilient_payment_schema` as a governed decision system
+### 24. Dynamic payment policy screening
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Payment policy varies by tenant, region, currency, method, gateway, risk, amount, customer, and settlement window.
 
-**Improvement:** Promote `schema_evolution_resilient_payment_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Compile deterministic policies for gateway eligibility, method allowance, fraud ceiling, capture timing, refund approval, void eligibility, settlement routing, and proof requirements.
 
-### 25. Operationalize `probabilistic_authorization_fraud_settlement_scoring` as a governed decision system
+### 25. Runtime parameter impact controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves payment captured throughput without hiding assumptions.
+**Justification:** Authorization thresholds, route weights, risk ceilings, retry limits, and settlement weights directly affect revenue and loss.
 
-**Improvement:** Promote `probabilistic_authorization_fraud_settlement_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `payment_captured_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, tenant/region overrides, rollback, and release evidence for all payment parameters.
 
-### 26. Operationalize `counterfactual_gateway_routing_simulation` as a governed decision system
+### 26. Schema extension governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves payment failed throughput without hiding assumptions.
+**Justification:** Payment implementations need provider-specific metadata while preserving owned boundaries and sensitive-data controls.
 
-**Improvement:** Promote `counterfactual_gateway_routing_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `payment_failed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Allow extensions only on owned payment tables with field validation, sensitivity classification, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 27. Operationalize `temporal_authorization_settlement_forecasting` as a governed decision system
+### 27. AppGen-X inbox reliability
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves authorization rate without hiding assumptions.
+**Justification:** Checkout and fraud events are foundational payment inputs and must be processed idempotently.
 
-**Improvement:** Promote `temporal_authorization_settlement_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add inbox schema validation, semantic idempotency, duplicate suppression, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, and replay/quarantine controls.
 
-### 28. Operationalize `autonomous_payment_exception_resolution` as a governed decision system
+### 28. AppGen-X outbox delivery assurance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves route margin without hiding assumptions.
+**Justification:** Payment lifecycle events drive order, billing, ledger, treasury, fraud, audit, and customer workflows.
 
-**Improvement:** Promote `autonomous_payment_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add outbox state, ordering group, payload hash, delivery attempts, next retry, delivery proof, dead-letter linkage, and replay controls for every emitted payment event.
 
-### 29. Operationalize `semantic_payment_instruction_parsing` as a governed decision system
+### 29. Cross-PBC boundary proof
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves return cycle time without hiding assumptions.
+**Justification:** Payment Orchestration must not directly read checkout, billing, fraud, ledger, treasury, customer, or audit tables.
 
-**Improvement:** Promote `semantic_payment_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, workbench bindings, and agent plans for foreign table access, proving dependencies are only APIs, events, or package-local projections.
 
-### 30. Operationalize `predictive_payment_risk` as a governed decision system
+### 30. Payment federation projection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Multi-Gateway Payment Orchestration and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Operators need one view across checkout, fraud, payment, billing, ledger, settlement, and audit state.
 
-**Improvement:** Promote `predictive_payment_risk` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build payment federation projections with source lineage, freshness, authorization, version compatibility, projection lag, and drilldowns into owned payment evidence.
 
-### 31. Create simulation-grade governance for `PAYMENT_ORCHESTRATION_DATABASE_URL` and `PAYMENT_ORCHESTRATION_DATABASE_URL`
+### 31. Carbon-aware settlement windows
 
-**Justification:** Complete Multi-Gateway Payment Orchestration coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Settlement and batch processing can be scheduled to reduce emissions when cash and compliance constraints allow.
 
-**Improvement:** Add a policy cockpit where `PAYMENT_ORCHESTRATION_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYMENT_ORCHESTRATION_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add carbon windows with gateway batch options, treasury cutoff, settlement risk, cash urgency, region energy profile, override policy, and proof of decision.
 
-### 32. Create simulation-grade governance for `PAYMENT_ORCHESTRATION_EVENT_TOPIC` and `PAYMENT_ORCHESTRATION_EVENT_TOPIC`
+### 32. Gateway mix optimization
 
-**Justification:** Complete Multi-Gateway Payment Orchestration coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Payment teams optimize across authorization lift, cost, latency, fraud, chargebacks, settlement, and provider commitments.
 
-**Improvement:** Add a policy cockpit where `PAYMENT_ORCHESTRATION_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYMENT_ORCHESTRATION_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add optimization runs with objective weights, provider constraints, scenario inputs, candidate mixes, expected auth lift, fee impact, risk, settlement profile, and reproducible evidence.
 
-### 33. Create simulation-grade governance for `PAYMENT_ORCHESTRATION_RETRY_LIMIT` and `PAYMENT_ORCHESTRATION_RETRY_LIMIT`
+### 33. Authorization and settlement forecasting
 
-**Justification:** Complete Multi-Gateway Payment Orchestration coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Forecasts help anticipate provider saturation, settlement delays, cash timing, and decline spikes.
 
-**Improvement:** Add a policy cockpit where `PAYMENT_ORCHESTRATION_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYMENT_ORCHESTRATION_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Forecast authorization rate, decline rate, capture success, refund volume, settlement cash, provider latency, and exception load by gateway, method, region, currency, and time window.
 
-### 34. Create simulation-grade governance for `PAYMENT_ORCHESTRATION_DATABASE_URL` and `PAYMENT_ORCHESTRATION_DATABASE_URL`
+### 34. Payment anomaly detection
 
-**Justification:** Complete Multi-Gateway Payment Orchestration coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Abnormal payment patterns can indicate fraud, gateway incidents, integration defects, duplicate charges, or settlement problems.
 
-**Improvement:** Add a policy cockpit where `PAYMENT_ORCHESTRATION_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYMENT_ORCHESTRATION_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Detect anomalies in auth rate, decline codes, retry loops, duplicate idempotency keys, token failures, capture/refund ratio, settlement variance, provider latency, and dead-letter spikes.
 
-### 35. Create simulation-grade governance for `PAYMENT_ORCHESTRATION_EVENT_TOPIC` and `PAYMENT_ORCHESTRATION_EVENT_TOPIC`
+### 35. Stochastic payment exposure model
 
-**Justification:** Complete Multi-Gateway Payment Orchestration coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Payment risk spans fraud loss, authorization loss, duplicate charge, refund abuse, chargeback exposure, FX mismatch, and settlement delay.
 
-**Improvement:** Add a policy cockpit where `PAYMENT_ORCHESTRATION_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYMENT_ORCHESTRATION_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Model exposure distributions by intent, gateway, method, region, currency, customer segment, risk score, settlement window, and provider health with mitigation actions.
 
-### 36. Upgrade `PaymentOrchestrationWorkbench` into a full specialist command center
+### 36. Governed payment model evidence
 
-**Justification:** The PBC UI must expose the complete Multi-Gateway Payment Orchestration surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Routing, fraud, retry, and settlement models influence revenue, loss, fairness, and customer experience.
 
-**Improvement:** Expand `PaymentOrchestrationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track model purpose, training window, feature lineage, validation metrics, drift, false decline/false approve impact, approval status, rollback, and explainability evidence.
 
-### 37. Upgrade `PaymentOrchestrationDetail` into a full specialist command center
+### 37. Semantic payment instruction parsing
 
-**Justification:** The PBC UI must expose the complete Multi-Gateway Payment Orchestration surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Operations teams express payment requests as instructions such as refund half, reroute this region, or pause a gateway.
 
-**Improvement:** Expand `PaymentOrchestrationDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Parse instructions into safe query or command previews with target intent/gateway/token, requested action, amount, reason, policy checks, confidence, and no mutation until confirmed.
 
-### 38. Upgrade `PaymentOrchestrationWorkbench` into a full specialist command center
+### 38. Agent-safe payment plans
 
-**Justification:** The PBC UI must expose the complete Multi-Gateway Payment Orchestration surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** The payment chatbot must never silently capture, refund, void, tokenize, reroute, or change rules.
 
-**Improvement:** Expand `PaymentOrchestrationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Require side-effect-free plans naming command, permission, owned tables, idempotency key, expected event, sensitive fields, risk, rollback limits, and human confirmation for all payment mutations.
 
-### 39. Upgrade `PaymentOrchestrationDetail` into a full specialist command center
+### 39. Payment exception cockpit
 
-**Justification:** The PBC UI must expose the complete Multi-Gateway Payment Orchestration surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Payment failures require fast triage across fraud, provider, token, checkout, settlement, and event causes.
 
-**Improvement:** Expand `PaymentOrchestrationDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add queues for failed intents, fraud review, retry exhaustion, token refresh, capture failure, refund failure, settlement delay, reconciliation mismatch, dead letters, and provider outage with recommended actions.
 
-### 40. Upgrade `PaymentOrchestrationWorkbench` into a full specialist command center
+### 40. Gateway routing board
 
-**Justification:** The PBC UI must expose the complete Multi-Gateway Payment Orchestration surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Payment operators need explainable route decisions and live provider health.
 
-**Improvement:** Expand `PaymentOrchestrationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add board views for gateway eligibility, route scores, health, fees, latency, settlement risk, currency/method support, rule hits, counterfactual alternatives, and selected-route evidence.
 
-### 41. Prove cross-PBC federation for `POST /payment-intents` and `CheckoutCompleted`
+### 41. Token vault UI safeguards
 
-**Justification:** Multi-Gateway Payment Orchestration must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Token visibility must be useful for operations while protecting sensitive data.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /payment-intents` and consumed event `CheckoutCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add redacted token views, lifecycle actions, assurance badges, wallet/network metadata, expiry warnings, revocation controls, access audit, and sensitive-field permission gates.
 
-### 42. Prove cross-PBC federation for `POST /gateway-routes` and `FraudRiskScored`
+### 42. Capture/refund console
 
-**Justification:** Multi-Gateway Payment Orchestration must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Captures, refunds, and voids are high-risk financial actions that need tight UI controls.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /gateway-routes` and consumed event `FraudRiskScored` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add console actions with eligibility checks, amount validation, policy explanation, approval requirements, provider response, event emission, reconciliation linkage, and undo/rollback limitations.
 
-### 43. Prove cross-PBC federation for `POST /tokens` and `CheckoutCompleted`
+### 43. Settlement and reconciliation panel
 
-**Justification:** Multi-Gateway Payment Orchestration must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Finance and operations need visibility into whether captured payments became reconciled cash.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /tokens` and consumed event `CheckoutCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add settlement panels with expected settlements, received settlements, fees, net cash, FX, mismatches, reconciliation handoffs, ledger/audit delivery, and aging alerts.
 
-### 44. Prove cross-PBC federation for `GET /payment-orchestration-workbench` and `FraudRiskScored`
+### 44. Payment resilience drills
 
-**Justification:** Multi-Gateway Payment Orchestration must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Payment systems must degrade safely through gateway outages, retries, duplicate events, and settlement delays.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /payment-orchestration-workbench` and consumed event `FraudRiskScored` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add drills for duplicate checkout event, gateway timeout, fraud event delay, auth retry storm, capture failure, refund failure, outbox dead letter, and settlement reconciliation lag.
 
-### 45. Temporal reconstruction and bitemporal audit for Multi-Gateway Payment Orchestration
+### 45. Continuous payment control testing
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Payment controls should be proven continuously across intent, token, routing, fraud, capture, refund, settlement, and event flows.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add assertions for capture without authorization, refund above capture, void after capture, route to disabled gateway, stale fraud score, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 46. Bulk operations and migration-grade controls for Multi-Gateway Payment Orchestration
+### 46. Crypto-agile payment authorization
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Payment proofs, token references, and audit trails need durable cryptographic evidence with future rotation support.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add crypto epoch, signing profile, key rotation evidence, proof compatibility, revocation, and migration readiness across payment proofs and audit traces.
 
-### 47. Specialist edge-case playbooks for Multi-Gateway Payment Orchestration
+### 47. Chargeback and dispute readiness
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Payment orchestration should preserve evidence needed for chargebacks even if disputes are handled elsewhere.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Assemble dispute-ready packets with checkout proof, token assurance, fraud score, authorization, capture, delivery/payment linkage, customer communication reference, and audit hashes.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Multi-Gateway Payment Orchestration
+### 48. Payment workbench coverage
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Operators need a complete payment command center, not scattered gateway and intent tables.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Expand workbench surfaces for gateways, tokens, intents, routes, fraud checks, captures, refunds, voids, settlements, reconciliation, exceptions, proofs, federation, events, rules, parameters, configuration, controls, and release evidence.
 
-### 49. Continuous control testing and operational assurance for Multi-Gateway Payment Orchestration
+### 49. Payment readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `payment_orchestration` is ready for live payment traffic.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from gateway setup, token custody, intent lifecycle, route scoring, fraud handoff, capture/refund/void controls, settlement, reconciliation, event reliability, UI coverage, model governance, boundary proof, controls, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Multi-Gateway Payment Orchestration
+### 50. End-to-end payment lifecycle proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Payment Orchestration PBC must prove it can execute the full controlled lifecycle from checkout completion to reconciled settlement evidence.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering checkout event intake, tokenization, intent creation, gateway routing, fraud request and score, authorization/capture, refund/void branch, settlement evidence, reconciliation handoff, emitted events, UI evidence, boundary proof, controls, and agent explanation.
