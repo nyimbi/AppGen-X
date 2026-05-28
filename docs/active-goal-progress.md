@@ -3265,7 +3265,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   files for mobile and desktop handoff workflows. Verification passed: Python
   compile for touched tooling entrypoints, direct package/verify CLI audit
   probe, and full in-process `appgen.tooling-audit.v1` with no blocking gaps.
-  Commit: pending.
+  Commit: `baeca47f`.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
