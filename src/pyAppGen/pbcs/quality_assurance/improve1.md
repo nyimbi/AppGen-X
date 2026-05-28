@@ -1,315 +1,314 @@
-# Quality Assurance and Compliance PBC Improvement Backlog
+# Quality Assurance PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `quality_assurance`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `quality_assurance`. The items are specific to inspection planning, sampling, lot and batch quality state, inspection execution, measurement series, SPC, nonconformance, CAPA, quality holds, disposition, release evidence, calibration, procedures, supplier quality, customer quality, audit packets, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted quality operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Inspection checklists, SPC sampling, non-conformance, and quality holds.
-- Representative owned tables: `quality_assurance_inspection_plan`, `quality_assurance_inspection_result`, `quality_assurance_quality_hold`, `quality_assurance_non_conformance`.
-- Representative operations/APIs: `command_inspections`, `command_non_conformances`, `command_quality_holds`, `query_quality_assurance_workbench`.
-- Representative events: `QualityHoldReleased`, `NonConformanceRaised`.
-- Representative advanced capabilities: `event_sourced_quality_lifecycle`, `graph_relational_quality_topology`, `multi_tenant_quality_isolation`, `schema_evolution_resilient_quality_schema`, `probabilistic_defect_escape_compliance_scoring`, `real_time_spc_quality_analytics`, `counterfactual_sampling_release_simulation`, `temporal_defect_escape_forecasting`, `autonomous_quality_exception_resolution`, `semantic_inspection_instruction_parsing`, ...
+- Domain purpose: `quality_assurance` owns inspection planning, sampling, lot and batch quality state, inspection tests, measurement series, nonconformance, CAPA, holds, release evidence, calibration, procedures, supplier quality, customer quality, audit packets, rules, parameters, configuration, event evidence, and release-readiness proof.
+- Owned boundary: inspection plans, sampling schemes, lot/batch profiles, test definitions, inspection results, measurement series, holds, nonconformances, CAPA, quality releases, calibration assets, calibration schedules, procedure revisions, supplier quality profiles and incidents, customer quality cases, audit evidence packets, compliance packages, seed data, governed models, control assertions, schema extensions, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: configuration, parameters, rules, schema extensions, inspection plans, inspection results, holds, nonconformances, disposition, hold release, event inbox, workbench, schema/service/release evidence, UI binding, permissions, and boundary verification.
+- Existing events and dependencies: emits `InspectionPlanCreated`, `InspectionResultRecorded`, `QualityHoldCreated`, `NonConformanceRaised`, `NonConformanceDispositioned`, and `QualityHoldReleased`; consumes `ProductionCompleted`, `GoodsReceiptPosted`, `InventoryLotMoved`, and `SupplierScoreChanged`; integrates with production, inventory, procurement, returns, maintenance, customer, and audit only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `quality_assurance_inspection_plan`
+### 1. Inspection plan readiness gate
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** Inspection plans are unsafe when revision, source, sampling, procedure, measurement, inspector, and release criteria are incomplete.
 
-**Improvement:** Extend `quality_assurance_inspection_plan` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `inspection_plan_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a readiness gate that validates plan type, source process, lot applicability, procedure revision, required tests, sampling scheme, acceptance criteria, defect classes, inspector role, effective dates, and event effects before a plan can be released.
 
-### 2. Deep specialist lifecycle semantics for `quality_assurance_inspection_result`
+### 2. Inspection plan revision control
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** Quality decisions must be traceable to the exact plan version active when an inspection occurred.
 
-**Improvement:** Extend `quality_assurance_inspection_result` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `sampling_plan`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Snapshot released inspection plan revisions with author, approver, change reason, effective window, supersession link, impacted open lots, impacted sampling schemes, and migration guidance for inspections already in progress.
 
-### 3. Deep specialist lifecycle semantics for `quality_assurance_quality_hold`
+### 3. Risk-informed sampling schemes
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** Fixed sample sizes miss supplier, product, process, defect-history, and customer-risk differences.
 
-**Improvement:** Extend `quality_assurance_quality_hold` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lot_batch_profile`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand sampling schemes to support fixed, percentage, AQL, skip-lot, tightened, reduced, risk-weighted, supplier-score-driven, and defect-history-driven sampling with explainable sample-size calculations.
 
-### 4. Deep specialist lifecycle semantics for `quality_assurance_non_conformance`
+### 4. Lot and batch quality genealogy
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** Lot quality state depends on origin, supplier, production run, inventory movements, expiry, holds, releases, nonconformances, and customer escapes.
 
-**Improvement:** Extend `quality_assurance_non_conformance` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `inspection_test_library`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build a package-local lot/batch genealogy projection that links received, produced, moved, inspected, held, released, returned, and customer-impacted lots without directly reading adjacent PBC tables.
 
-### 5. Deep specialist lifecycle semantics for `quality_assurance_inspection_plan`
+### 5. Test definition governance
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** Inspection tests require controlled units, tolerances, methods, equipment, destructive/non-destructive flags, and measurement precision.
 
-**Improvement:** Extend `quality_assurance_inspection_plan` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `inspection_result_capture`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add governed test definitions with measurement unit, target, lower/upper limit, precision, method, required gauge class, destructive flag, qualitative scoring, required evidence attachments, and procedure-revision compatibility.
 
-### 6. Deep specialist lifecycle semantics for `quality_assurance_inspection_result`
+### 6. Procedure revision execution lock
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** Inspectors must not execute tests against obsolete or unapproved procedures.
 
-**Improvement:** Extend `quality_assurance_inspection_result` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `measurement_recording`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Enforce procedure revision locks during result recording, including current revision lookup, grace-period rules, retraining requirement, operator acknowledgement, and exception approval for urgent containment work.
 
-### 7. Deep specialist lifecycle semantics for `quality_assurance_quality_hold`
+### 7. Calibration asset readiness
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** Measurements are unreliable when gauges, fixtures, or metrology equipment are expired, unverified, out of tolerance, or mismatched to the test.
 
-**Improvement:** Extend `quality_assurance_quality_hold` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `spc_metrics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate calibration asset class, serial identity, due date, status, uncertainty, range, last calibration result, and allowed test definitions before a measurement series can be accepted.
 
-### 8. Deep specialist lifecycle semantics for `quality_assurance_non_conformance`
+### 8. Calibration schedule escalation
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** Missed calibration windows create systemic quality exposure across multiple inspections and released lots.
 
-**Improvement:** Extend `quality_assurance_non_conformance` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `quality_hold_creation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add schedule states, reminder windows, overdue escalation, affected inspection identification, quarantine suggestions, release blocks, completion evidence, and audit packets for calibration misses.
 
-### 9. Deep specialist lifecycle semantics for `quality_assurance_inspection_plan`
+### 9. Inspection result lifecycle state machine
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** Results move through draft, submitted, reviewed, accepted, rejected, amended, voided, and disposition-linked states.
 
-**Improvement:** Extend `quality_assurance_inspection_plan` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lot_isolation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement result state transitions with idempotency key, inspector, reviewer, timestamp, plan revision, sample identity, reason code, amendment lineage, emitted event expectations, and invalid-transition explanations.
 
-### 10. Deep specialist lifecycle semantics for `quality_assurance_inspection_result`
+### 10. Measurement series integrity checks
 
-**Justification:** This owned table is part of the Quality Assurance and Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inspection checklists, SPC sampling, non-conformance, and quality holds.
+**Justification:** SPC and release decisions depend on complete, ordered, unit-consistent, tamper-evident measurement data.
 
-**Improvement:** Extend `quality_assurance_inspection_result` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `nonconformance_creation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate measurement count, unit, precision, sequence, duplicate readings, outlier flags, missing samples, device identity, calibration state, and inspector attestation before calculating aggregates.
 
-### 11. Make `command_inspections` a complete command lifecycle
+### 11. SPC control-chart engine
 
-**Justification:** High-value users need `command_inspections` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Quality teams need real-time process capability, not just pass/fail inspection records.
 
-**Improvement:** Implement `command_inspections` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `QualityHoldReleased`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add X-bar, R, S, p, np, c, and u chart descriptors with centerline, control limits, rule violations, Cpk/Ppk, trend signals, and workbench drilldowns by lot, work center, supplier, product, and time window.
 
-### 12. Make `command_non_conformances` a complete command lifecycle
+### 12. Defect taxonomy governance
 
-**Justification:** High-value users need `command_non_conformances` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Nonconformance analysis breaks down when defect classes, severities, root causes, and dispositions are inconsistent.
 
-**Improvement:** Implement `command_non_conformances` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `NonConformanceRaised`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add governed defect taxonomies with severity, criticality, regulatory relevance, customer-impact flag, recurrence grouping, required evidence, allowed dispositions, and compatibility with supplier/customer quality cases.
 
-### 13. Make `command_quality_holds` a complete command lifecycle
+### 13. Quality hold creation policy
 
-**Justification:** High-value users need `command_quality_holds` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Holds must be created consistently when lots, batches, work in process, or releases present unacceptable risk.
 
-**Improvement:** Implement `command_quality_holds` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `QualityHoldReleased`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add hold policy checks for lot identity, reason, severity, containment scope, source event, affected quantity, site, expiry, owner, required review date, and downstream release blocks.
 
-### 14. Turn `query_quality_assurance_workbench` into an expert read-model experience
+### 14. Hold scope and containment map
 
-**Justification:** Domain experts rely on `query_quality_assurance_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** A hold may apply to one sample, lot, batch, pallet, work order, supplier shipment, customer shipment, or related genealogy branch.
 
-**Improvement:** Build `query_quality_assurance_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `NonConformanceRaised` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Model hold scope explicitly and compute containment maps that show directly held records, related lots, suspected sibling lots, open inspections, releases blocked, and customers/suppliers needing notice.
 
-### 15. Make `command_inspections` a complete command lifecycle
+### 15. Hold release governance
 
-**Justification:** High-value users need `command_inspections` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Releasing a quality hold without evidence can create escaped defects, compliance failures, and customer harm.
 
-**Improvement:** Implement `command_inspections` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `QualityHoldReleased`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Require release evidence, disposition, inspection completion, CAPA linkage where needed, approval threshold, risk score, audit packet, and `QualityHoldReleased` outbox evidence before a hold can be released.
 
-### 16. Make `command_non_conformances` a complete command lifecycle
+### 16. Nonconformance intake completeness
 
-**Justification:** High-value users need `command_non_conformances` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Nonconformance records need enough context for containment, root cause, disposition, and CAPA decisions.
 
-**Improvement:** Implement `command_non_conformances` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `NonConformanceRaised`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate source, defect class, severity, lot/batch profile, quantity affected, discovery point, suspected cause, immediate containment, photos/documents, owner, due date, and dependency projection freshness.
 
-### 17. Make `command_quality_holds` a complete command lifecycle
+### 17. Disposition decision engine
 
-**Justification:** High-value users need `command_quality_holds` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Dispositions such as use-as-is, rework, repair, scrap, return, deviation, or concession need consistent evidence and approvals.
 
-**Improvement:** Implement `command_quality_holds` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `QualityHoldReleased`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement disposition templates with allowed defect classes, required tests, required approvals, customer authorization, cost/risk notes, inventory effect, production effect, and event emission rules.
 
-### 18. Turn `query_quality_assurance_workbench` into an expert read-model experience
+### 18. CAPA lifecycle management
 
-**Justification:** Domain experts rely on `query_quality_assurance_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Corrective and preventive actions must prove root cause, containment, action execution, effectiveness, and closure.
 
-**Improvement:** Build `query_quality_assurance_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `NonConformanceRaised` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add CAPA states, root-cause methods, action owners, due dates, verification tests, effectiveness windows, recurrence checks, escalation, linked nonconformances, and closure evidence packets.
 
-### 19. Make `command_inspections` a complete command lifecycle
+### 19. Root-cause analysis workbench
 
-**Justification:** High-value users need `command_inspections` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Quality specialists need structured tools for causal analysis rather than free-text-only notes.
 
-**Improvement:** Implement `command_inspections` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `QualityHoldReleased`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add 5-why, fishbone, fault-tree, process step, supplier, machine, material, method, environment, and operator-factor capture with evidence links and countermeasure tracking.
 
-### 20. Make `command_non_conformances` a complete command lifecycle
+### 20. Supplier quality scorecard
 
-**Justification:** High-value users need `command_non_conformances` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Supplier quality affects sampling intensity, hold policy, receiving release, and procurement risk.
 
-**Improvement:** Implement `command_non_conformances` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `NonConformanceRaised`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build supplier scorecards with PPM, defect recurrence, late containment, audit status, concession rate, corrective-action aging, inspection pass rate, skip-lot eligibility, and trend-based sampling recommendations.
 
-### 21. Operationalize `event_sourced_quality_lifecycle` as a governed decision system
+### 21. Supplier quality incident workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves plan adherence without hiding assumptions.
+**Justification:** Supplier-caused defects require containment, supplier notification, debit/recovery evidence, and corrective action.
 
-**Improvement:** Promote `event_sourced_quality_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `plan_adherence`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add supplier incident states, affected receipts, defect evidence, response SLA, supplier acknowledgement, 8D package tracking, containment proof, closure approval, and supplier score impact.
 
-### 22. Operationalize `graph_relational_quality_topology` as a governed decision system
+### 22. Customer quality case workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves yield rate without hiding assumptions.
+**Justification:** Customer complaints and field escapes require rapid containment, traceability, communication, and corrective action.
 
-**Improvement:** Promote `graph_relational_quality_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `yield_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add customer case intake, affected shipment/lot projection, severity, customer impact, response SLA, containment actions, investigation, customer communication, linked nonconformance/CAPA, and closure evidence.
 
-### 23. Operationalize `multi_tenant_quality_isolation` as a governed decision system
+### 23. Escape risk scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves downtime minutes without hiding assumptions.
+**Justification:** The highest-value quality system identifies likely escapes before customers experience failures.
 
-**Improvement:** Promote `multi_tenant_quality_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `downtime_minutes`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score escape risk by defect severity, sample coverage, process capability, supplier history, lot genealogy, inspection drift, open CAPA, overdue calibration, and customer exposure with confidence intervals.
 
-### 24. Operationalize `schema_evolution_resilient_quality_schema` as a governed decision system
+### 24. Release evidence package
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves quality escape rate without hiding assumptions.
+**Justification:** Quality release must prove what was inspected, which rules passed, who approved, and what residual risks remain.
 
-**Improvement:** Promote `schema_evolution_resilient_quality_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `quality_escape_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate release packages with plan revision, sampling evidence, test results, SPC signals, hold status, nonconformance disposition, CAPA references, approvals, event ids, and audit-ready minimization options.
 
-### 25. Operationalize `probabilistic_defect_escape_compliance_scoring` as a governed decision system
+### 25. Compliance package assembly
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves quality hold released throughput without hiding assumptions.
+**Justification:** Regulated quality operations need repeatable evidence bundles for internal, customer, and external audits.
 
-**Improvement:** Promote `probabilistic_defect_escape_compliance_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `quality_hold_released_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build compliance packages by product, lot, supplier, site, date range, defect class, or customer case with redaction, proof hashes, evidence index, control assertions, and export-safe metadata.
 
-### 26. Operationalize `real_time_spc_quality_analytics` as a governed decision system
+### 26. Audit evidence packet minimization
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves non conformance raised throughput without hiding assumptions.
+**Justification:** Quality audits often require proof without exposing unnecessary commercial, employee, supplier, or customer data.
 
-**Improvement:** Promote `real_time_spc_quality_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `non_conformance_raised_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add audit packet policies that select minimal fields, redact sensitive values, include hashes/proofs, cite source records, preserve chain of custody, and record reviewer approval.
 
-### 27. Operationalize `counterfactual_sampling_release_simulation` as a governed decision system
+### 27. Zero-knowledge quality proof channel
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves plan adherence without hiding assumptions.
+**Justification:** Some counterparties need proof that release or compliance criteria were met without seeing raw measurements or supplier details.
 
-**Improvement:** Promote `counterfactual_sampling_release_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `plan_adherence`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add proof descriptors for threshold compliance, release approval, calibration validity, and hold resolution using proof references, verifier identity, expiry, revocation, and audit trail.
 
-### 28. Operationalize `temporal_defect_escape_forecasting` as a governed decision system
+### 28. Dynamic policy screening
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves yield rate without hiding assumptions.
+**Justification:** Quality rules vary by site, product, supplier, customer, region, severity, and regulatory class.
 
-**Improvement:** Promote `temporal_defect_escape_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `yield_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Compile deterministic policies for sampling, holds, disposition, release, CAPA, calibration, audit packets, and customer notifications with explainable allow/block/review outcomes.
 
-### 29. Operationalize `autonomous_quality_exception_resolution` as a governed decision system
+### 29. Runtime parameter guardrails
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves downtime minutes without hiding assumptions.
+**Justification:** Parameters such as defect threshold, Cpk minimum, hold severity, and CAPA due days affect operational risk.
 
-**Improvement:** Promote `autonomous_quality_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `downtime_minutes`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, rollback, tenant/site overrides, and release evidence before runtime parameter changes become active.
 
-### 30. Operationalize `semantic_inspection_instruction_parsing` as a governed decision system
+### 30. Package-local schema extension governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Quality Assurance and Compliance and measurably improves quality escape rate without hiding assumptions.
+**Justification:** Quality teams need extensibility while preserving the PBC-owned datastore boundary.
 
-**Improvement:** Promote `semantic_inspection_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `quality_escape_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Allow schema extensions only on owned `quality_assurance` tables with type validation, naming policy, migration preview, UI binding preview, API exposure policy, and release-audit evidence.
 
-### 31. Create simulation-grade governance for `QUALITY_ASSURANCE_DATABASE_URL` and `QUALITY_ASSURANCE_DATABASE_URL`
+### 31. Event inbox projection controls
 
-**Justification:** Complete Quality Assurance and Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Consumed production, receipt, inventory, and supplier events drive inspection obligations and hold decisions.
 
-**Improvement:** Add a policy cockpit where `QUALITY_ASSURANCE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `QUALITY_ASSURANCE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Enforce idempotent inbox handling, schema-version validation, dependency freshness, unsupported-event rejection, retry records, dead-letter entries, projection rebuild, and workbench replay/quarantine controls.
 
-### 32. Create simulation-grade governance for `QUALITY_ASSURANCE_EVENT_TOPIC` and `QUALITY_ASSURANCE_EVENT_TOPIC`
+### 32. Outbox delivery assurance
 
-**Justification:** Complete Quality Assurance and Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Inspection, hold, nonconformance, disposition, and release events must be reliable for composed applications.
 
-**Improvement:** Add a policy cockpit where `QUALITY_ASSURANCE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `QUALITY_ASSURANCE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add outbox states, retry counts, idempotency keys, ordering group, payload hash, delivery evidence, dead-letter promotion, replay controls, and route health for each emitted AppGen-X event.
 
-### 33. Create simulation-grade governance for `QUALITY_ASSURANCE_RETRY_LIMIT` and `QUALITY_ASSURANCE_RETRY_LIMIT`
+### 33. Boundary proof for adjacent domains
 
-**Justification:** Complete Quality Assurance and Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Quality Assurance must not bypass PBC composition by reading production, inventory, procurement, returns, maintenance, customer, or audit source tables.
 
-**Improvement:** Add a policy cockpit where `QUALITY_ASSURANCE_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `QUALITY_ASSURANCE_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add tests and release evidence proving all adjacent context enters through declared APIs, consumed AppGen-X events, or package-local projections, with violations surfaced as release blockers.
 
-### 34. Create simulation-grade governance for `QUALITY_ASSURANCE_DATABASE_URL` and `QUALITY_ASSURANCE_DATABASE_URL`
+### 34. Quality workbench coverage
 
-**Justification:** Complete Quality Assurance and Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** A complete PBC UI must expose all specialist quality operations without forcing users into raw data tables.
 
-**Improvement:** Add a policy cockpit where `QUALITY_ASSURANCE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `QUALITY_ASSURANCE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Expand the workbench with plan authoring, sampling, inspection execution, SPC, holds, nonconformances, CAPA, calibration, procedures, supplier/customer quality, audit packets, events, rules, parameters, configuration, and release evidence.
 
-### 35. Create simulation-grade governance for `QUALITY_ASSURANCE_EVENT_TOPIC` and `QUALITY_ASSURANCE_EVENT_TOPIC`
+### 35. Inspector execution console
 
-**Justification:** Complete Quality Assurance and Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Inspectors need a fast, controlled interface for recording samples, measurements, defects, and evidence at the point of work.
 
-**Improvement:** Add a policy cockpit where `QUALITY_ASSURANCE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `QUALITY_ASSURANCE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add an execution console with current assignments, plan revision, sample queue, measurement entry, gauge readiness, defect capture, photo/document evidence, offline draft support, and submit/review controls.
 
-### 36. Upgrade `QualityAssuranceWorkbench` into a full specialist command center
+### 36. Quality manager exception cockpit
 
-**Justification:** The PBC UI must expose the complete Quality Assurance and Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Managers need a prioritized view of holds, escapes, overdue CAPA, supplier incidents, failed controls, and dead letters.
 
-**Improvement:** Expand `QualityAssuranceWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add prioritized queues with severity, financial/customer risk, aging, blocked releases, responsible owner, recommended next action, policy explanation, and one-click drilldown to evidence.
 
-### 37. Upgrade `QualityAssuranceDetail` into a full specialist command center
+### 37. Agent-safe quality mutation planning
 
-**Justification:** The PBC UI must expose the complete Quality Assurance and Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** AI assistance can improve quality throughput only if it cannot silently mutate controlled records.
 
-**Improvement:** Expand `QualityAssuranceDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Require the PBC agent to produce side-effect-free plans for inspection, hold, nonconformance, disposition, CAPA, calibration, and release commands, naming permission, owned tables, idempotency key, expected event, risks, and human confirmation.
 
-### 38. Upgrade `QualityAssuranceWorkbench` into a full specialist command center
+### 38. Document and instruction intake
 
-**Justification:** The PBC UI must expose the complete Quality Assurance and Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Quality facts often arrive in certificates, inspection sheets, supplier 8D documents, calibration records, photos, and customer complaints.
 
-**Improvement:** Expand `QualityAssuranceWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add document intake that extracts candidate facts, maps them to owned tables, flags missing fields, links evidence, cites confidence, rejects foreign-table mutations, and creates a governed preview for approval.
 
-### 39. Upgrade `QualityAssuranceDetail` into a full specialist command center
+### 39. Semantic inspection instruction parsing
 
-**Justification:** The PBC UI must expose the complete Quality Assurance and Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Inspection instructions may be written in natural language and still need conversion into executable tests and acceptance criteria.
 
-**Improvement:** Expand `QualityAssuranceDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Parse instructions into proposed test definitions, sampling rules, measurement limits, evidence requirements, defect classes, and release gates with reviewer approval and procedure-revision traceability.
 
-### 40. Upgrade `QualityAssuranceWorkbench` into a full specialist command center
+### 40. Counterfactual sampling simulation
 
-**Justification:** The PBC UI must expose the complete Quality Assurance and Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Quality leaders need to understand how sampling changes affect escape risk, inspection cost, throughput, and supplier burden.
 
-**Improvement:** Expand `QualityAssuranceWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Simulate alternative sampling schemes, thresholds, supplier score impacts, inspection capacity, hold rates, false accepts, false rejects, and customer exposure before plan or parameter changes are approved.
 
-### 41. Prove cross-PBC federation for `POST /inspections` and `ProductionCompleted`
+### 41. Defect and escape forecasting
 
-**Justification:** Quality Assurance and Compliance must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Proactive quality management depends on predicting likely defects and escapes before they appear in inspection queues.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /inspections` and consumed event `ProductionCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Forecast defect rate, hold probability, CAPA recurrence, supplier incident risk, and customer complaint risk by product, supplier, lot, process, work center, site, and calendar period.
 
-### 42. Prove cross-PBC federation for `POST /non-conformances` and `GoodsReceiptPosted`
+### 42. Quality anomaly detection
 
-**Justification:** Quality Assurance and Compliance must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Abnormal patterns in measurements, inspector behavior, supplier defects, calibration results, or hold releases can reveal systemic issues.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /non-conformances` and consumed event `GoodsReceiptPosted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Detect anomalies across measurement distributions, Cpk drift, repeated borderline passes, unusual release approvals, defect clusters, supplier changes, overdue CAPA, and event replay patterns with explanations.
 
-### 43. Prove cross-PBC federation for `POST /quality-holds` and `ProductionCompleted`
+### 43. Governed model evidence
 
-**Justification:** Quality Assurance and Compliance must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Predictive quality models affect inspection burden, supplier treatment, release decisions, and customer risk.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /quality-holds` and consumed event `ProductionCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Track model purpose, training window, feature lineage, approval status, drift, precision/recall, false release impact, rollback, and explainability evidence for every quality model.
 
-### 44. Prove cross-PBC federation for `GET /quality-assurance-workbench` and `GoodsReceiptPosted`
+### 44. Decentralized lot and certificate identity
 
-**Justification:** Quality Assurance and Compliance must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** High-trust quality networks need verifiable identities for lots, certificates, suppliers, gauges, and release packages.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /quality-assurance-workbench` and consumed event `GoodsReceiptPosted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add credential references, issuer, verification status, expiry, revocation, proof hash, and trust level for lot identity, supplier certificates, calibration records, and release evidence.
 
-### 45. Temporal reconstruction and bitemporal audit for Quality Assurance and Compliance
+### 45. Carbon-aware quality scheduling
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Inspection, rework, testing, and calibration can consume energy and create waste; quality scheduling should include sustainability context.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add optional carbon-aware scheduling for non-urgent inspections, destructive testing, rework verification, audit exports, and model runs while preserving urgent containment and release deadlines.
 
-### 46. Bulk operations and migration-grade controls for Quality Assurance and Compliance
+### 46. Quality resilience drills
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Quality operations must remain controlled when devices, projections, events, suppliers, or workbench surfaces fail.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add drills for duplicate inspection events, supplier projection delay, gauge offline mode, outbox failure, dead-letter replay, lot genealogy rebuild, workbench degraded mode, and audit packet recovery.
 
-### 47. Specialist edge-case playbooks for Quality Assurance and Compliance
+### 47. Continuous quality control testing
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Better-than-world-class quality systems continuously prove controls rather than relying on periodic audits.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add assertions for inspection without released plan, result without calibration, release with open hold, disposition without approval, CAPA overdue, foreign-table access, stale projection, dead-letter aging, and agent-preview bypass.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Quality Assurance and Compliance
+### 48. Shift and quality close packet
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Quality teams need clean handover of open inspections, holds, defects, blocked releases, and urgent containment.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Generate shift close packets with active inspections, missing samples, open holds, new nonconformances, overdue actions, calibration issues, blocked releases, event failures, and supervisor signoff.
 
-### 49. Continuous control testing and operational assurance for Quality Assurance and Compliance
+### 49. Quality Assurance readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `quality_assurance` is ready to run controlled quality operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from plan coverage, sampling coverage, procedure control, calibration readiness, inspection execution, SPC, holds, nonconformance, CAPA, supplier/customer quality, event reliability, UI coverage, model governance, controls, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Quality Assurance and Compliance
+### 50. End-to-end quality release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Quality Assurance PBC must prove it can execute the full lifecycle from source event to release or containment.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering consumed production/receipt event, lot projection, plan selection, sampling, inspection, measurement series, SPC, hold/nonconformance when needed, disposition, CAPA linkage, release evidence, emitted events, audit packet, UI evidence, controls, and agent explanation.
