@@ -617,9 +617,12 @@ linter, formatter, validation/generation contracts, graph/explain tooling,
 language server, code-action application, visual designer round trips, VS Code
 extension surface, Studio semantic service, migration coverage,
 natural-language planner, package/release verifiers, PBC catalog tooling,
-parser golden fixtures, drift audit, and doctor checks. A passing report means
-every audited requirement section has a concrete machine-readable proof instead
-of relying on prose or scattered manual checks.
+parser golden fixtures, drift audit, and doctor checks. The language-server
+portion exercises the JSON-RPC request handlers for open/change diagnostics,
+completion, hover, definition, references, symbols, code actions, formatting,
+rename, and workspace symbol search. A passing report means every audited
+requirement section has a concrete machine-readable proof instead of relying on
+prose or scattered manual checks.
 
 ### `appgen package`
 

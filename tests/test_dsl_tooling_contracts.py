@@ -1104,6 +1104,90 @@ def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() ->
     assert should_exit_after_exit is True
 
 
+def test_lsp_json_rpc_server_serves_code_actions_formatting_and_did_change() -> None:
+    bad_uri = "memory://bad-handler.appgen"
+    format_uri = "memory://format.appgen"
+    bad_source = """
+app Bad { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
+"""
+    changed_source = bad_source.replace("Main: id", "Main: missing")
+    format_source = "app FormatDemo { targets: web }\ntable Invoice { id: int pk }\n"
+    documents: dict[str, str] = {}
+
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": bad_uri,
+                    "languageId": "appgen",
+                    "version": 1,
+                    "text": bad_source,
+                }
+            },
+        },
+        documents,
+    )
+    change_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didChange",
+            "params": {
+                "textDocument": {"uri": bad_uri, "version": 2},
+                "contentChanges": [{"text": changed_source}],
+            },
+        },
+        documents,
+    )
+    code_action_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 12,
+            "method": "textDocument/codeAction",
+            "params": {
+                "textDocument": {"uri": bad_uri},
+                "range": {"start": {"line": 0, "character": 0}, "end": {"line": 4, "character": 0}},
+            },
+        },
+        documents,
+    )
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": format_uri,
+                    "languageId": "appgen",
+                    "version": 1,
+                    "text": format_source,
+                }
+            },
+        },
+        documents,
+    )
+    formatting_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 13,
+            "method": "textDocument/formatting",
+            "params": {"textDocument": {"uri": format_uri}, "options": {"tabSize": 2, "insertSpaces": True}},
+        },
+        documents,
+    )
+
+    assert documents[bad_uri] == changed_source
+    assert change_responses[0]["method"] == "textDocument/publishDiagnostics"
+    assert any(item["severity"] == 1 for item in change_responses[0]["params"]["diagnostics"])
+    action_ids = {item["data"]["id"] for item in code_action_responses[0]["result"]}
+    assert {"create_operation_from_handler", "create_missing_field"} <= action_ids
+    assert formatting_responses[0]["result"]
+    assert "table Invoice" in formatting_responses[0]["result"][0]["newText"]
+
+
 def test_lsp_json_rpc_server_resolves_symbols_across_open_workspace_documents() -> None:
     customer_uri = "memory://customer.appgen"
     invoice_uri = "memory://invoice.appgen"
@@ -1817,6 +1901,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "package_and_release_verifiers",
         "parser_golden_and_drift_gates",
     } <= {check["id"] for check in report["checks"]}
+    lsp_check = next(check for check in report["checks"] if check["id"] == "language_server_core_features")
+    assert lsp_check["detail"]["rpc"]["format"] == "appgen.lsp-json-rpc-audit.v1"
+    assert lsp_check["detail"]["rpc"]["blocking_gaps"] == ()
+    assert {
+        "did_change_diagnostics",
+        "code_action_request",
+        "formatting_request",
+    } <= {check["check"] for check in lsp_check["detail"]["rpc"]["checks"]}
     assert all(check["section"].startswith("docs/tooling.md#") for check in report["checks"])
     assert cli_json.returncode == 0, cli_json.stderr
     assert json.loads(cli_json.stdout)["format"] == "appgen.tooling-audit.v1"

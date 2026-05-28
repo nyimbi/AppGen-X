@@ -1812,6 +1812,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     pbc_catalog = pbc_verifier_catalog_report()
     vscode = _tooling_audit_vscode_extension(root)
     studio = _tooling_audit_studio_semantic_service(source)
+    lsp_rpc = _tooling_audit_lsp_json_rpc(source, broken_handler_source=broken_handler_source)
     package_artifact_names = tuple(Path(item["path"]).name for item in package.get("written_artifacts", ()))
 
     checks = (
@@ -1869,10 +1870,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             lsp["ok"]
             and lsp["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
             and lsp["completionCoverage"]["missing"] == ()
-            and lsp["formatting"]["format"] == "appgen.lsp-formatting.v1",
-            "Language server exposes diagnostics, completion, hover, definitions, references, symbols, rename, code actions, and formatting from the shared model.",
+            and lsp["formatting"]["format"] == "appgen.lsp-formatting.v1"
+            and lsp_rpc["ok"],
+            "Language server exposes and serves diagnostics, completion, hover, definitions, references, symbols, rename, code actions, and formatting from JSON-RPC.",
             "docs/tooling.md#language-server-specification",
-            {"format": lsp.get("format"), "coverage": lsp.get("completionCoverage", {}).get("format")},
+            {"format": lsp.get("format"), "coverage": lsp.get("completionCoverage", {}).get("format"), "rpc": lsp_rpc},
         ),
         _tooling_audit_check(
             "lsp_quick_fix_application",
@@ -2080,6 +2082,204 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "surfaces": tuple(report.get("designer_surfaces", {})),
         "required_surfaces": tuple(sorted(required_surfaces)),
     }
+
+
+def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> dict:
+    documents: dict[str, str] = {}
+    uri = "memory://tooling-audit.appgen"
+    bad_uri = "memory://bad-handler.appgen"
+    format_uri = "memory://format.appgen"
+    format_source = "app FormatDemo { targets: web }\ntable Invoice { id: int pk }\n"
+    checks = []
+
+    init_responses, _ = lsp_server_handle_message(
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        documents,
+    )
+    checks.append(
+        _release_check(
+            "initialize_capabilities",
+            bool(init_responses)
+            and init_responses[0]["result"]["capabilities"].get("codeActionProvider") is True
+            and init_responses[0]["result"]["capabilities"].get("documentFormattingProvider") is True,
+        )
+    )
+
+    open_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {"textDocument": {"uri": uri, "languageId": "appgen", "version": 1, "text": source}},
+        },
+        documents,
+    )
+    checks.append(
+        _release_check(
+            "did_open_diagnostics",
+            bool(open_responses) and open_responses[0]["method"] == "textDocument/publishDiagnostics",
+        )
+    )
+
+    change_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didChange",
+            "params": {
+                "textDocument": {"uri": uri, "version": 2},
+                "contentChanges": ({"text": source},),
+            },
+        },
+        documents,
+    )
+    checks.append(
+        _release_check(
+            "did_change_diagnostics",
+            documents.get(uri) == source
+            and bool(change_responses)
+            and change_responses[0]["method"] == "textDocument/publishDiagnostics",
+        )
+    )
+
+    request_checks = (
+        (
+            "completion",
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "textDocument/completion",
+                "params": {"textDocument": {"uri": uri}, "position": _tooling_lsp_position(source, "Invoice")},
+            },
+            lambda result: any(item.get("label") == "Invoice" for item in result.get("items", ())),
+        ),
+        (
+            "hover",
+            {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "textDocument/hover",
+                "params": {"textDocument": {"uri": uri}, "position": _tooling_lsp_position(source, "Invoice")},
+            },
+            lambda result: bool(result and result.get("contents")),
+        ),
+        (
+            "definition",
+            {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "textDocument/definition",
+                "params": {"textDocument": {"uri": uri}, "position": _tooling_lsp_position(source, "InvoiceForm")},
+            },
+            lambda result: bool(result and result.get("uri") == uri),
+        ),
+        (
+            "references",
+            {
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "textDocument/references",
+                "params": {"textDocument": {"uri": uri}, "position": _tooling_lsp_position(source, "Invoice")},
+            },
+            lambda result: len(result or ()) >= 2,
+        ),
+        (
+            "document_symbols",
+            {
+                "jsonrpc": "2.0",
+                "id": 6,
+                "method": "textDocument/documentSymbol",
+                "params": {"textDocument": {"uri": uri}},
+            },
+            lambda result: any(item.get("name") == "Invoice" for item in result or ()),
+        ),
+        (
+            "rename",
+            {
+                "jsonrpc": "2.0",
+                "id": 7,
+                "method": "textDocument/rename",
+                "params": {
+                    "textDocument": {"uri": uri},
+                    "position": _tooling_lsp_position(source, "ReverseInvoice"),
+                    "newName": "ReversePostedInvoice",
+                },
+            },
+            lambda result: "ReversePostedInvoice" in result.get("changes", {}).get(uri, ({},))[0].get("newText", ""),
+        ),
+        (
+            "workspace_symbol",
+            {"jsonrpc": "2.0", "id": 8, "method": "workspace/symbol", "params": {"query": "Invoice"}},
+            lambda result: any(item.get("name") == "Invoice" for item in result or ()),
+        ),
+    )
+    for name, message, predicate in request_checks:
+        responses, _ = lsp_server_handle_message(message, documents)
+        result = responses[0].get("result") if responses else None
+        checks.append(_release_check(name, bool(responses) and predicate(result)))
+
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {"textDocument": {"uri": bad_uri, "languageId": "appgen", "version": 1, "text": broken_handler_source}},
+        },
+        documents,
+    )
+    code_action_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 9,
+            "method": "textDocument/codeAction",
+            "params": {"textDocument": {"uri": bad_uri}, "range": _lsp_full_document_range(broken_handler_source)},
+        },
+        documents,
+    )
+    code_actions = code_action_responses[0].get("result", ()) if code_action_responses else ()
+    checks.append(
+        _release_check(
+            "code_action_request",
+            any(action.get("data", {}).get("id") == "create_operation_from_handler" for action in code_actions),
+        )
+    )
+
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {"textDocument": {"uri": format_uri, "languageId": "appgen", "version": 1, "text": format_source}},
+        },
+        documents,
+    )
+    formatting_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 10,
+            "method": "textDocument/formatting",
+            "params": {"textDocument": {"uri": format_uri}, "options": {"tabSize": 2, "insertSpaces": True}},
+        },
+        documents,
+    )
+    formatting_edits = formatting_responses[0].get("result", ()) if formatting_responses else ()
+    checks.append(
+        _release_check(
+            "formatting_request",
+            bool(formatting_edits) and "table Invoice" in formatting_edits[0].get("newText", ""),
+        )
+    )
+
+    return {
+        "format": "appgen.lsp-json-rpc-audit.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "blocking_gaps": tuple(check["check"] for check in checks if not check["ok"]),
+    }
+
+
+def _tooling_lsp_position(source: str, token: str) -> dict:
+    index = source.index(token)
+    line = source.count("\n", 0, index)
+    previous_newline = source.rfind("\n", 0, index)
+    character = index if previous_newline < 0 else index - previous_newline - 1
+    return {"line": line, "character": character}
 
 
 def _tooling_audit_migration_reports() -> tuple[dict, ...]:
