@@ -1,4 +1,4 @@
-"""Package-level RAD-style form designer contracts."""
+"""Package-level visual drag-and-drop form designer contracts."""
 
 from __future__ import annotations
 
@@ -771,7 +771,7 @@ RAD_PARITY_REQUIREMENTS = (
 
 
 def component_palette() -> tuple[dict, ...]:
-    """Return draggable RAD-style form components."""
+    """Return draggable visual drag-and-drop form components."""
     return tuple(
         {
             "component": name,
@@ -31954,7 +31954,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
 
 
 def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
-    """Return package-level proof for RAD-style form design readiness."""
+    """Return package-level proof for visual drag-and-drop form design readiness."""
     existing = (
         {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
         if existing_paths is None

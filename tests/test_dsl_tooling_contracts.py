@@ -2085,6 +2085,26 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_text.stdout.startswith("tooling-audit ok:")
 
 
+def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
+    root = Path(__file__).resolve().parents[1]
+    help_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "--help"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    normalized_help = " ".join(help_result.stdout.split())
+
+    assert help_result.returncode == 0, help_result.stderr
+    assert "Tooling subcommands are also available" in normalized_help
+    assert "lint, format, validate, generate, graph, graph-suite" in normalized_help
+    assert "diagnostics, parser-golden, drift, doctor, and tooling-audit" in normalized_help
+    assert "apg =" in pyproject
+    assert "visual drag-and-drop form design" in normalized_help
+
+
 def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_path: Path) -> None:
     source_path = tmp_path / "release.appgen"
     output_dir = tmp_path / "generated"

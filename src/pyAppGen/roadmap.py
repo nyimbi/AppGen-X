@@ -32,7 +32,7 @@ ROADMAP_DOCUMENTS = (
         "path": "docs/base_features.md",
         "required_phrases": (
             "JHipster superset",
-            "RAD-style form design",
+            "visual drag-and-drop form design",
             "ERP templates",
             "agentic-system design",
             "natural-language evolution",
@@ -70,7 +70,7 @@ ROADMAP_CAPABILITY_REQUIREMENTS = (
     },
     {
         "id": "rad-form-designer",
-        "description": "Allow users to drop components onto forms in a RAD-style designer.",
+        "description": "Allow users to drop components onto forms in a visual drag-and-drop designer.",
         "capabilities": ("ui.form-designer", "ui.visual-modeling"),
     },
     {
@@ -173,7 +173,7 @@ APPGEN_ADVANTAGE_REQUIREMENTS = (
     },
     {
         "id": "rad-form-design",
-        "description": "RAD-style drop-target form designer and component palette.",
+        "description": "visual drag-and-drop drop-target form designer and component palette.",
         "capabilities": ("ui.form-designer", "components.templates"),
     },
     {

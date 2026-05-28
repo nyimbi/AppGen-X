@@ -33,7 +33,7 @@ src/pyAppGen/
   source_intake.py       Source-family intake and release evidence
   roadmap.py             Package-level roadmap and goal audits
   studio.py              Package-level Studio/IDE contracts
-  form_designer.py       RAD-style form designer contracts
+  form_designer.py       visual drag-and-drop form designer contracts
   visual_modeling.py     Visual database modeling contracts
   erp.py                 ERP template catalog and generation smoke tests
   nl.py                  Natural-language planning and DSL proposal contracts
@@ -177,7 +177,7 @@ generated app. It is structured around workbench payloads:
 - Application portfolio and lifecycle workbenches.
 - DSL editor/language-service workbench.
 - Database designer and schema-refactor workbench.
-- RAD-style form designer workbench.
+- visual drag-and-drop form designer workbench.
 - Natural-language evolution workbench.
 - Release and capability workbenches.
 - Runtime assurance and diagnostics workbenches.

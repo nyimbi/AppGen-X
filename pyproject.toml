@@ -45,6 +45,7 @@ Changelog = "https://github.com/nyimbi/appgen/releases"
 
 [project.scripts]
 appgen = "pyAppGen.__main__:main"
+apg = "pyAppGen.__main__:main"
 
 [tool.poetry]
 packages = [

@@ -495,7 +495,8 @@ and relationship arrows.
 ## CLI Contracts
 
 The installed command should expose current compatibility flags and the newer
-subcommands below. Existing flags may remain as aliases.
+subcommands below. `apg` is a supported short alias for the same command surface
+as `appgen`. Existing flags may remain as aliases.
 
 ### `appgen lint`
 

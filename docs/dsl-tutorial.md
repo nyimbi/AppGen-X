@@ -192,7 +192,7 @@ After generation, inspect:
 
 - `app/studio.py` for IDE/workbench contracts.
 - `app/dsl_reference.py` for generated DSL examples and lint helpers.
-- `app/form_designer.py` for RAD-style component placement.
+- `app/form_designer.py` for visual drag-and-drop component placement.
 - `app/platforms.py` and `native/` for the aggregate web, PWA, mobile,
   desktop, and chatbot target experience gate.
 - `app/agents.py` for local/API LLM readiness and agent plans.

@@ -42,7 +42,7 @@ Example output:
   "errors": [],
   "warnings": [],
   "suggestions": [
-    "Add view blocks to design forms and RAD-style component layouts."
+    "Add view blocks to design forms and visual drag-and-drop component layouts."
   ],
   "fixes": [
     {
@@ -238,7 +238,7 @@ agent needs the complete authoring payload in one call. The result has
   flow, role, rule, LLM, and agent structure. Valid source is parsed through the
   canonical schema; incomplete drafts fall back to a regex outline so editors
   can still show navigation while the user is typing.
-- `completions`: compact keyword completions, RAD-style component snippets,
+- `completions`: compact keyword completions, visual drag-and-drop component snippets,
   app/table/form/LLM/agent snippets, and schema-aware table, field, reference,
   and provider symbols.
 - `code_actions`: quick-fix commands with related diagnostics, LSP-style edit

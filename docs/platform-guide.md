@@ -26,7 +26,7 @@ Use AppGen in five common modes:
 - **Generate from a schema:** start from DBML, SQL, PonyORM, or a live database.
 - **Generate from DSL:** describe the application explicitly in AppGen DSL.
 - **Design visually:** use generated Studio contracts for database modeling and
-  RAD-style form design.
+  visual drag-and-drop form design.
 - **Evolve with natural language:** turn a prompt into a reviewable plan and DSL
   patch.
 - **Release with evidence:** run targeted audits before claiming a capability is
@@ -40,7 +40,7 @@ A generated app can include:
 - `app/appgen.json` with source fingerprint and generation metadata.
 - `app/studio.py` and `app/templates/appgen_studio.html`.
 - `app/dsl_reference.py`, linter workbench payloads, snippets, and code actions.
-- `app/form_designer.py` for RAD-style drag/drop form contracts.
+- `app/form_designer.py` for visual drag-and-drop drag/drop form contracts.
 - `app/form_designer.py` also exposes `component_usability_workbench()` so every
   built-in palette item is proven usable before release: renderer targets,
   default properties, property editors, events, validation rules, drop defaults,

@@ -314,7 +314,7 @@ appgen --nl-dsl "create table Ticket with fields title required and form TicketF
 appgen --nl-release-audit
 ```
 
-The package-level NL surface emits tables, fields, RAD-style forms, flows,
+The package-level NL surface emits tables, fields, visual drag-and-drop forms, flows,
 rules, report/dashboard comments, chatbot handoff comments, local/API-key LLM
 providers, agents, ERP module commands plus generated ERP tables/flows,
 platform targets, migration impact, and rollback guidance. The release audit
@@ -339,7 +339,7 @@ generated Studio-facing Python modules, and exercises the generated workspace,
 DSL editor, database designer, generation queue, portfolio, release gate, and
 IDE superiority contracts.
 
-Audit the package-level RAD-style form designer contract before claiming
+Audit the package-level visual drag-and-drop form designer contract before claiming
 users can drop components onto generated forms:
 
 ```console
@@ -350,7 +350,7 @@ The form-designer audit proves draggable component palette breadth, a stable
 snap-to-grid canvas, field-to-component mappings, snapped drop proposals,
 property-inspector metadata, placement suggestions, overlap guardrails, and the
 generated form-designer artifact contract. It also generates a temporary app
-from RAD-style component placement DSL, verifies generated form designer,
+from visual drag-and-drop component placement DSL, verifies generated form designer,
 template, model, view, and DSL-reference artifacts, compiles the generated
 form-designer-facing modules, and exercises generated palette, catalog, canvas,
 drop, release-gate, and workbench contracts.
@@ -522,7 +522,7 @@ desktop local-cache/sync replay expectations.
   as `title, status` defines the list order; a labeled row such as
   `Overview: title, status` defines a generated section/tab without adding a
   new keyword.
-- `@ field Component x y w h` inside a `view` places a RAD-style form
+- `@ field Component x y w h` inside a `view` places a visual drag-and-drop form
   component on the generated design canvas without adding a keyword. For
   example, `@ title TextBox 0 0 6 1` pins the `title` field to a text box.
 - `flow` records workflow transitions for generated automation.
@@ -955,12 +955,12 @@ apps include:
   breadth, schema diffs, reviewed migration previews, DSL regeneration, and
   route coverage for model, relationship, ERD, proposal, migration, and DSL
   endpoints.
-- `form_designer.py` and `appgen_form_designer.html` with RAD-style
+- `form_designer.py` and `appgen_form_designer.html` with visual drag-and-drop
   drag-and-drop component palette, snapped form canvas contracts, overlap
   conflict detection, drop proposals, property-inspector metadata, and
   `form_designer_release_gate()` evidence for palette breadth, canvas contracts,
   field-to-component mapping, drop metadata, and overlap guardrails. The
-  generated `form_designer_workbench()` proves the fuller RAD-style design
+  generated `form_designer_workbench()` proves the fuller visual drag-and-drop design
   surface: palette categories, per-table form generation, field mapping
   matrices, snap/bounds behavior, property inspectors, placement suggestions,
   proposal application, conflict guardrails, and workbench route coverage.

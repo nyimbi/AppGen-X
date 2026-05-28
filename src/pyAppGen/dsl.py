@@ -2009,6 +2009,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     vscode = _tooling_audit_vscode_extension(root)
     studio = _tooling_audit_studio_semantic_service(source)
     lsp_rpc = _tooling_audit_lsp_json_rpc(source, broken_handler_source=broken_handler_source)
+    cli_help_surface = _tooling_audit_cli_help_surface(root)
     package_artifact_names = tuple(Path(item["path"]).name for item in package.get("written_artifacts", ()))
 
     checks = (
@@ -2054,6 +2055,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             validation["ok"]
             and format_write["ok"]
             and internal_error_exit["ok"]
+            and cli_help_surface["ok"]
             and generation["ok"]
             and generation["generated"]
             and not warning_generation_blocked["ok"]
@@ -2065,6 +2067,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "validate": validation.get("format"),
                 "format_write": format_write,
                 "internal_error_exit": internal_error_exit,
+                "cli_help_surface": cli_help_surface,
                 "generate": generation.get("format"),
                 "warning_block": warning_generation_blocked.get("blocking_gaps"),
                 "allow_warnings": warning_generation_allowed.get("allow_warnings"),
@@ -2549,6 +2552,41 @@ def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
         "payload_format": payload.get("format"),
         "code": payload.get("code"),
         "error_type": payload.get("error_type"),
+    }
+
+
+def _tooling_audit_cli_help_surface(root: Path) -> dict:
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    entrypoint = (root / "src/pyAppGen/gen.py").read_text(encoding="utf-8")
+    required_subcommands = (
+        "lint",
+        "format",
+        "validate",
+        "generate",
+        "graph",
+        "graph-suite",
+        "explain",
+        "migration-plan",
+        "nl-plan",
+        "lsp",
+        "verify",
+        "package",
+        "pbc",
+        "designer-sync",
+        "diagnostics",
+        "parser-golden",
+        "drift",
+        "doctor",
+        "tooling-audit",
+    )
+    help_has_subcommands = all(command in entrypoint for command in required_subcommands)
+    alias_declared = 'apg = "pyAppGen.__main__:main"' in pyproject
+    return {
+        "format": "appgen.cli-help-surface-audit.v1",
+        "ok": help_has_subcommands and alias_declared,
+        "alias_declared": alias_declared,
+        "subcommands_documented": required_subcommands if help_has_subcommands else tuple(command for command in required_subcommands if command in entrypoint),
+        "required_subcommands": required_subcommands,
     }
 
 
