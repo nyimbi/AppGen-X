@@ -16,9 +16,7 @@ from .runtime import DOM_REQUIRED_EVENT_TOPIC
 from .runtime import dom_apply_inventory_allocation
 from .runtime import dom_apply_tax_projection
 from .runtime import dom_build_api_contract
-from .runtime import dom_build_release_evidence
 from .runtime import dom_build_schema_contract
-from .runtime import dom_build_service_contract
 from .runtime import dom_build_workbench_view
 from .runtime import dom_capture_order
 from .runtime import dom_configure_runtime
@@ -37,6 +35,13 @@ from .runtime import dom_set_parameter
 from .runtime import dom_upsert_customer_projection
 from .runtime import dom_verify_order
 from .runtime import dom_verify_owned_table_boundary
+from .service_contract import build_service_contract as dom_build_service_contract
+from .release_evidence import build_release_evidence as dom_build_release_evidence
+from .standalone import DomStandaloneApplication
+from .standalone import documentation_presence
+from .standalone import standalone_manifest
+from .standalone import standalone_smoke_test
+from .audit import run_dom_pbc_audit
 from .ui import DOM_UI_FRAGMENT_KEYS
 from .ui import dom_render_workbench
 from .ui import dom_ui_contract
@@ -62,6 +67,7 @@ def implementation_contract() -> dict:
         "emits": DOM_EMITTED_EVENT_TYPES,
         "advanced_runtime": runtime,
         "ui_contract": dom_ui_contract(),
+        "standalone_manifest": standalone_manifest(),
     }
 
 
@@ -111,4 +117,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

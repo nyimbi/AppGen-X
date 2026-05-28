@@ -1,6 +1,66 @@
 """Generated service evidence for the dom PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.dom-service-contract.v1', 'ok': True, 'transaction_boundary': 'dom_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'capture_order', 'upsert_customer_projection', 'apply_tax_projection', 'screen_fraud', 'verify_order', 'price_order', 'apply_inventory_allocation', 'create_fulfillment_plan', 'confirm_order_shipped', 'route_fulfillment', 'generate_order_verification_proof', 'screen_order_policy', 'federate_order_view', 'verify_order_identity', 'run_resilience_drill', 'rotate_crypto_epoch', 'schedule_carbon_aware_fulfillment', 'optimize_fulfillment', 'allocate_nodes', 'run_control_tests', 'register_governed_model'), 'query_methods': ('build_workbench_view', 'simulate_fulfillment_policy', 'forecast_promise_demand', 'parse_order_event', 'score_order_risk', 'recommend_exception_resolution', 'detect_order_anomaly', 'model_stochastic_fulfillment_exposure', 'verify_owned_table_boundary'), 'mutates_only': ('sales_order', 'order_line', 'order_status', 'order_note', 'order_hold', 'order_promise', 'order_channel_context', 'order_payment_projection', 'customer_projection', 'customer_identity_projection', 'tax_projection', 'fraud_screen', 'fraud_signal', 'order_verification', 'order_price_component', 'order_discount_projection', 'inventory_allocation_projection', 'inventory_node_projection', 'payment_authorization_projection', 'fulfillment_plan', 'fulfillment_plan_line', 'fulfillment_node_candidate', 'fulfillment_reservation_projection', 'split_shipment', 'backorder', 'substitution', 'cancellation_request', 'shipment_projection', 'shipment_status_projection', 'order_exception', 'route_selection', 'risk_score', 'promise_demand_forecast', 'fulfillment_policy_simulation', 'fulfillment_route_replay', 'order_verification_proof', 'order_policy_screening', 'order_audit_trace', 'order_federation_projection', 'order_carbon_fulfillment', 'order_fulfillment_optimization', 'order_node_allocation', 'order_anomaly_signal', 'order_fulfillment_exposure_model', 'order_parsed_event', 'order_seed_data', 'dom_schema_extension', 'dom_control_assertion', 'dom_governed_model', 'policy_rule', 'dom_parameter', 'dom_configuration', 'dom_appgen_outbox_event', 'dom_appgen_inbox_event', 'dom_dead_letter_event'), 'external_dependencies': {'apis': ('GET /inventory/allocations/{id}', 'GET /tax/calculations/{id}', 'GET /customers/{id}', 'GET /payments/authorizations/{id}', 'GET /shipments/{id}', 'POST /audit/order-events'), 'events': ('InventoryAllocated', 'TaxCalculated', 'CustomerUpdated', 'PaymentAuthorized', 'ShipmentDelivered'), 'api_projections': ('inventory_allocation_projection', 'tax_calculation_projection', 'customer_profile_projection', 'payment_authorization_projection', 'shipment_delivery_projection'), 'shared_tables': ()}, 'pbc': 'dom', 'shared_table_access': False}
+from __future__ import annotations
+
+from . import services
+
+
+SERVICE_CONTRACT = {
+    **services.service_operation_manifest()["standalone_service"],
+    "format": "appgen.dom-service-contract.v1",
+    "transaction_boundary": "dom_owned_datastore_plus_appgen_outbox",
+    "command_methods": tuple(
+        method for method in services.standalone_service_manifest()["service_methods"] if method not in {"workbench", "crud_mutation_plan", "get_order_snapshot"}
+    ),
+    "query_methods": services.standalone_service_manifest()["query_methods"],
+    "mutates_only": (
+        "sales_order",
+        "order_line",
+        "order_status",
+        "order_hold",
+        "order_promise",
+        "tax_projection",
+        "fraud_screen",
+        "inventory_allocation_projection",
+        "fulfillment_plan",
+        "split_shipment",
+        "backorder",
+        "substitution",
+        "cancellation_request",
+        "shipment_projection",
+        "order_exception",
+        "dom_appgen_outbox_event",
+        "dom_appgen_inbox_event",
+        "dom_dead_letter_event",
+    ),
+    "external_dependencies": {
+        "apis": (
+            "GET /inventory/allocations/{id}",
+            "GET /tax/calculations/{id}",
+            "GET /customers/{id}",
+            "GET /payments/authorizations/{id}",
+            "GET /shipments/{id}",
+            "POST /audit/order-events",
+        ),
+        "events": (
+            "InventoryAllocated",
+            "TaxCalculated",
+            "CustomerUpdated",
+            "PaymentAuthorized",
+            "ShipmentDelivered",
+        ),
+        "api_projections": (
+            "inventory_allocation_projection",
+            "tax_calculation_projection",
+            "customer_profile_projection",
+            "payment_authorization_projection",
+            "shipment_delivery_projection",
+        ),
+        "shared_tables": (),
+    },
+    "pbc": "dom",
+    "shared_table_access": False,
+}
 
 
 def build_service_contract():
