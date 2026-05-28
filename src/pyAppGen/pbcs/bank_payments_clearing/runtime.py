@@ -3,6 +3,20 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .payment_operations import (
+    assemble_clearing_batch,
+    build_payment_operations_release_evidence,
+    build_payment_operations_workbench,
+    create_payment_instruction,
+    empty_operations_state,
+    generate_settlement_file,
+    handle_settlement_acknowledgement,
+    process_return_item,
+    reconcile_bank_statement,
+    register_participant_bank,
+    release_payment_instruction,
+    validate_payment_instruction,
+)
 
 PBC_KEY = 'bank_payments_clearing'
 BANK_PAYMENTS_CLEARING_OWNED_TABLES = ('bank_payments_clearing_payment_instruction',
@@ -198,6 +212,16 @@ def bank_payments_clearing_runtime_capabilities():
         'query_workbench',
         'run_advanced_assessment',
         'parse_document_instruction',
+        'register_participant_bank',
+        'validate_payment_instruction',
+        'create_validated_payment_instruction',
+        'release_payment_instruction',
+        'assemble_clearing_batch',
+        'generate_settlement_file',
+        'handle_settlement_acknowledgement',
+        'process_return_item',
+        'reconcile_bank_statement',
+        'build_payment_operations_workbench',
     ) + tuple(DOMAIN_OPERATIONS)
     return {
         'format': 'appgen.bank-payments-clearing-runtime-capabilities.v1',
@@ -233,6 +257,7 @@ def bank_payments_clearing_runtime_smoke():
     schema = bank_payments_clearing_build_schema_contract()
     service = bank_payments_clearing_build_service_contract()
     release = bank_payments_clearing_build_release_evidence()
+    payment_evidence = build_payment_operations_release_evidence()
     workbench = bank_payments_clearing_build_workbench_view()
     boundary = bank_payments_clearing_verify_owned_table_boundary(BANK_PAYMENTS_CLEARING_OWNED_TABLES + ('foreign_table',))
     domain = domain_depth_contract()
@@ -250,6 +275,7 @@ def bank_payments_clearing_runtime_smoke():
         {'id': 'build_workbench_view', 'ok': workbench['ok']},
         {'id': 'owned_boundary_rejects_foreign_table', 'ok': boundary['ok'] is False},
         {'id': 'domain_depth', 'ok': domain['ok']},
+        {'id': 'payment_operations', 'ok': payment_evidence['ok']},
     ) + tuple({'id': capability, 'ok': True} for capability in BANK_PAYMENTS_CLEARING_RUNTIME_CAPABILITY_KEYS)
     return {
         'format': 'appgen.bank-payments-clearing-runtime-smoke.v1',
@@ -262,8 +288,21 @@ def bank_payments_clearing_runtime_smoke():
         'release': release,
         'workbench': workbench,
         'domain_depth': domain,
+        'payment_operations': payment_evidence,
         'blocking_gaps': tuple(check for check in checks if not check['ok']),
         'side_effects': (),
     }
 
 bank_payments_clearing_execute_domain_operation = execute_domain_operation
+bank_payments_clearing_empty_operations_state = empty_operations_state
+bank_payments_clearing_register_participant_bank = register_participant_bank
+bank_payments_clearing_validate_payment_instruction = validate_payment_instruction
+bank_payments_clearing_create_validated_payment_instruction = create_payment_instruction
+bank_payments_clearing_release_payment_instruction = release_payment_instruction
+bank_payments_clearing_assemble_clearing_batch = assemble_clearing_batch
+bank_payments_clearing_generate_settlement_file = generate_settlement_file
+bank_payments_clearing_handle_settlement_acknowledgement = handle_settlement_acknowledgement
+bank_payments_clearing_process_return_item = process_return_item
+bank_payments_clearing_reconcile_bank_statement = reconcile_bank_statement
+bank_payments_clearing_build_payment_operations_workbench = build_payment_operations_workbench
+bank_payments_clearing_build_payment_operations_release_evidence = build_payment_operations_release_evidence

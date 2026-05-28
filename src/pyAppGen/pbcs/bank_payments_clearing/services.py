@@ -2,7 +2,17 @@
 PBC_KEY = 'bank_payments_clearing'
 EVENT_CONTRACT = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'event_contract': 'AppGen-X'}
 from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS, DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES, execute_domain_operation as execute_domain_depth_operation
-COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_payment_instruction','configure_runtime','set_parameter','register_rule') + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
+PAYMENT_OPERATIONS = (
+    'register_participant_bank',
+    'create_validated_payment_instruction',
+    'release_payment_instruction',
+    'assemble_clearing_batch',
+    'generate_settlement_file',
+    'handle_settlement_acknowledgement',
+    'process_return_item',
+    'reconcile_bank_statement',
+)
+COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_payment_instruction','configure_runtime','set_parameter','register_rule') + PAYMENT_OPERATIONS + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
 QUERY_OPERATIONS = ('query_workbench',)
 OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
 
@@ -30,7 +40,7 @@ class BankPaymentsClearingService:
         return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
 
 def service_operation_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'service_class': 'BankPaymentsClearingService', 'command_operations': COMMAND_OPERATIONS, 'query_operations': QUERY_OPERATIONS, 'event_contract': EVENT_CONTRACT, 'side_effects': ()}
+    return {'ok': True, 'pbc': PBC_KEY, 'service_class': 'BankPaymentsClearingService', 'command_operations': COMMAND_OPERATIONS, 'payment_operations': PAYMENT_OPERATIONS, 'query_operations': QUERY_OPERATIONS, 'event_contract': EVENT_CONTRACT, 'side_effects': ()}
 
 def service_operation_contracts():
     contracts = tuple(_operation_contract(name, 'command') for name in COMMAND_OPERATIONS) + tuple(_operation_contract(name, 'query') for name in QUERY_OPERATIONS)

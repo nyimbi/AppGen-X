@@ -1,7 +1,21 @@
 from .runtime import bank_payments_clearing_build_release_evidence
+from .payment_operations import build_payment_operations_release_evidence
+from .ui import bank_payments_clearing_single_pbc_app_contract
 
 def build_release_evidence():
-    return bank_payments_clearing_build_release_evidence()
+    evidence = dict(bank_payments_clearing_build_release_evidence())
+    payment = build_payment_operations_release_evidence()
+    single_pbc_app = bank_payments_clearing_single_pbc_app_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'payment_operations_execution', 'ok': payment['ok']},
+        {'id': 'single_pbc_app_forms_wizards_controls', 'ok': single_pbc_app['ok']},
+    )
+    evidence['payment_operations'] = payment
+    evidence['single_pbc_app'] = single_pbc_app
+    evidence['checks'] = checks
+    evidence['ok'] = evidence.get('ok') is True and all(check['ok'] for check in checks)
+    evidence['blocking_gaps'] = tuple(check for check in checks if not check['ok'])
+    return evidence
 
 def release_readiness_manifest():
     evidence = build_release_evidence()
