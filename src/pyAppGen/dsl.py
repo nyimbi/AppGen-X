@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import argparse
 import ast
 import difflib
+import json
 import re
 import sys
 from pathlib import Path
@@ -355,6 +357,1107 @@ def dsl_language_service(
         "authoring_score": dsl_authoring_score(source, source_name=source_name),
         "language_quality": dsl_language_quality_contract(),
     }
+
+
+def semantic_model_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Return the shared JSON semantic model required by docs/tooling.md."""
+    source = text or ""
+    lint = lint_dsl(source, source_name=source_name)
+    try:
+        schema = schema_from_dsl(source, source_name=source_name)
+    except AppGenSyntaxError:
+        schema = None
+    except Exception as exc:  # pragma: no cover - defensive tooling boundary
+        return {
+            "format": "appgen.semantic-model.v1",
+            "source_files": (source_name,) if source_name else (),
+            "app": {},
+            "symbols": {},
+            "tables": {},
+            "views": {},
+            "flows": {},
+            "operations": {},
+            "rules": {},
+            "roles": {},
+            "security": {},
+            "agents": {},
+            "llms": {},
+            "pbcs": {},
+            "composition": {},
+            "contracts": {},
+            "deployment": {},
+            "packages": {},
+            "graphs": {},
+            "diagnostics": (
+                _spec_diagnostic(
+                    source,
+                    "AGX9000",
+                    "error",
+                    f"Internal semantic model error: {exc}",
+                ),
+            ),
+            "ok": False,
+        }
+
+    if schema is None:
+        return {
+            "format": "appgen.semantic-model.v1",
+            "source_files": (source_name,) if source_name else (),
+            "app": {},
+            "symbols": {},
+            "tables": {},
+            "views": {},
+            "flows": {},
+            "operations": {},
+            "rules": {},
+            "roles": {},
+            "security": {},
+            "agents": {},
+            "llms": {},
+            "pbcs": {},
+            "composition": {},
+            "contracts": {},
+            "deployment": {},
+            "packages": {},
+            "graphs": {},
+            "diagnostics": tuple(_spec_diagnostic_from_legacy(source, item) for item in lint["diagnostics"]),
+            "ok": False,
+        }
+
+    tables = _semantic_tables(schema)
+    views = _semantic_views(schema)
+    flows = _semantic_flows(schema)
+    platform = {block.name: block for block in schema.platform_blocks}
+    contracts = _semantic_contracts(schema)
+    model = {
+        "format": "appgen.semantic-model.v1",
+        "source_files": (source_name,) if source_name else (),
+        "app": {
+            "name": schema.app_name,
+            "options": dict(schema.app_options),
+            "targets": _lint_summary(schema)["targets"],
+        },
+        "symbols": _semantic_symbols(source, schema),
+        "tables": tables,
+        "views": views,
+        "flows": flows,
+        "operations": {
+            name: _semantic_platform_block(block)
+            for name, block in platform.items()
+            if block.kind == "operation"
+        },
+        "rules": {
+            rule.name: {
+                "name": rule.name,
+                "table": rule.table,
+                "conditions": tuple(
+                    {
+                        "field": condition.field,
+                        "operator": condition.operator,
+                        "values": condition.values,
+                        "message": condition.message,
+                        "action": condition.action,
+                    }
+                    for condition in rule.conditions
+                ),
+            }
+            for rule in schema.rules
+        },
+        "roles": {
+            role.name: {
+                "name": role.name,
+                "permissions": tuple(_semantic_permission(permission) for permission in role.permissions),
+            }
+            for role in schema.roles
+        },
+        "security": {
+            name: _semantic_platform_block(block)
+            for name, block in platform.items()
+            if block.kind == "security"
+        },
+        "agents": {
+            agent.name: {
+                "name": agent.name,
+                "provider": agent.provider,
+                "goal": agent.goal,
+                "tools": agent.tools,
+                "memory": agent.memory,
+                "max_steps": agent.max_steps,
+                "skills": tuple(_semantic_statement(item) for item in agent.competencies),
+                "handlers": tuple(_semantic_handler(handler) for handler in agent.handlers),
+                "permissions": tuple(_semantic_permission(permission) for permission in agent.permissions),
+            }
+            for agent in schema.agents
+        },
+        "llms": {
+            provider.name: {
+                "name": provider.name,
+                "provider": provider.provider,
+                "mode": provider.mode,
+                "model": provider.model,
+                "endpoint": provider.endpoint,
+                "api_key": provider.api_key,
+            }
+            for provider in schema.llm_providers
+        },
+        "pbcs": _semantic_pbcs(schema),
+        "composition": _semantic_compositions(schema),
+        "contracts": contracts,
+        "deployment": {
+            name: _semantic_deployment(block)
+            for name, block in platform.items()
+            if block.kind == "deploy"
+        },
+        "packages": contracts.get("package", {}),
+        "graphs": _semantic_graphs(schema),
+        "diagnostics": tuple(_spec_diagnostic_from_legacy(source, item) for item in lint["diagnostics"]),
+        "ok": lint["ok"],
+    }
+    return model
+
+
+def semantic_model_dsl_file(path: str | Path) -> dict:
+    path = Path(path)
+    return semantic_model_dsl(path.read_text(encoding="utf-8"), source_name=str(path))
+
+
+def lint_report_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Return the docs/tooling.md appgen.lint-report.v1 contract."""
+    source = text or ""
+    legacy = lint_dsl(source, source_name=source_name)
+    diagnostics = tuple(_spec_diagnostic_from_legacy(source, item) for item in legacy["diagnostics"])
+    counts = {
+        "error": sum(1 for item in diagnostics if item["severity"] == "error"),
+        "warning": sum(1 for item in diagnostics if item["severity"] == "warning"),
+        "info": sum(1 for item in diagnostics if item["severity"] == "info"),
+        "hint": sum(1 for item in diagnostics if item["severity"] == "hint"),
+    }
+    return {
+        "format": "appgen.lint-report.v1",
+        "ok": not counts["error"],
+        "files": (source_name,) if source_name else (),
+        "severity_counts": counts,
+        "diagnostics": diagnostics,
+        "fixes_available": any(item.get("fixes") for item in diagnostics),
+        "semantic_model_available": legacy["ok"],
+        "legacy_report": legacy,
+    }
+
+
+def lint_report_dsl_file(path: str | Path) -> dict:
+    path = Path(path)
+    return lint_report_dsl(path.read_text(encoding="utf-8"), source_name=str(path))
+
+
+def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
+    """Run docs/tooling.md subcommands without disturbing legacy flags."""
+    parser = argparse.ArgumentParser(prog="appgen")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    lint_parser = subparsers.add_parser("lint")
+    lint_parser.add_argument("path")
+    lint_parser.add_argument("--json", action="store_true")
+    lint_parser.add_argument("--strict", action="store_true")
+    lint_parser.add_argument("--catalog")
+
+    format_parser = subparsers.add_parser("format")
+    format_parser.add_argument("path")
+    format_parser.add_argument("--check", action="store_true")
+    format_parser.add_argument("--write", action="store_true")
+    format_parser.add_argument("--json", action="store_true")
+
+    validate_parser = subparsers.add_parser("validate")
+    validate_parser.add_argument("path")
+    validate_parser.add_argument("--targets")
+    validate_parser.add_argument("--json", action="store_true")
+
+    graph_parser = subparsers.add_parser("graph")
+    graph_parser.add_argument("path")
+    graph_parser.add_argument("--kind", default="er")
+    graph_parser.add_argument("--format", default="json", choices=("json", "mermaid", "dot"))
+
+    explain_parser = subparsers.add_parser("explain")
+    explain_parser.add_argument("path")
+    explain_group = explain_parser.add_mutually_exclusive_group(required=True)
+    explain_group.add_argument("--symbol")
+    explain_group.add_argument("--diagnostic")
+    explain_group.add_argument("--handler")
+    explain_parser.add_argument("--json", action="store_true")
+
+    args = parser.parse_args(tuple(argv or ()))
+    path = Path(args.path)
+    source = path.read_text(encoding="utf-8")
+
+    if args.command == "lint":
+        report = lint_report_dsl(source, source_name=str(path))
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "format":
+        report = format_report_dsl(source, source_name=str(path), include_text=True)
+        if args.write and report["changed"]:
+            path.write_text(report["text"], encoding="utf-8")
+        printable = report if args.json else {key: value for key, value in report.items() if key != "text"}
+        _emit_tooling_payload(printable, as_json=args.json)
+        if args.check and report["changed"]:
+            return 1
+        return 0 if not any(item["severity"] == "error" for item in report["diagnostics"]) else 1
+    if args.command == "validate":
+        report = validate_report_dsl(source, source_name=str(path))
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "graph":
+        report = graph_report_dsl(source, source_name=str(path), kind=args.kind)
+        if args.format == "json":
+            _emit_tooling_payload(report, as_json=True)
+        else:
+            print(_graph_as_text(report.get("graph", {}), args.format))
+        return 0 if report["ok"] else 1
+    if args.command == "explain":
+        report = explain_report_dsl(
+            source,
+            source_name=str(path),
+            symbol=args.symbol,
+            diagnostic=args.diagnostic,
+            handler=args.handler,
+        )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    return 2
+
+
+def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(payload, indent=2, sort_keys=True, default=list))
+        return
+    if payload.get("format") == "appgen.lint-report.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        counts = payload.get("severity_counts", {})
+        print(f"lint {status}: {counts}")
+        for diagnostic in payload.get("diagnostics", ()):
+            print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
+        return
+    if payload.get("format") == "appgen.validate-report.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(f"validate {status}")
+        for check in payload.get("checks", ()):
+            print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
+        return
+    if payload.get("format") == "appgen.explain-report.v1":
+        print(json.dumps(payload, indent=2, sort_keys=True, default=list))
+        return
+    print(json.dumps(payload, indent=2, sort_keys=True, default=list))
+
+
+def _graph_as_text(graph: dict, output_format: str) -> str:
+    nodes = graph.get("nodes", ())
+    edges = graph.get("edges", ())
+    if output_format == "mermaid":
+        lines = ["graph TD"]
+        for node in nodes:
+            lines.append(f"  {node['id'].replace('.', '_')}[{node['id']}]")
+        for edge in edges:
+            source = str(edge.get("from", "")).replace(".", "_").replace("/", "_")
+            target = str(edge.get("to", "")).replace(".", "_").replace("/", "_")
+            label = edge.get("label", "")
+            lines.append(f"  {source} -->|{label}| {target}")
+        return "\n".join(lines)
+    if output_format == "dot":
+        lines = ["digraph appgen {"]
+        for node in nodes:
+            lines.append(f'  "{node["id"]}";')
+        for edge in edges:
+            lines.append(f'  "{edge.get("from")}" -> "{edge.get("to")}" [label="{edge.get("label", "")}"];')
+        lines.append("}")
+        return "\n".join(lines)
+    return json.dumps(graph, indent=2, sort_keys=True, default=list)
+
+
+def format_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    include_text: bool = True,
+) -> dict:
+    """Return the docs/tooling.md appgen.format-result.v1 contract."""
+    result = format_dsl(text, source_name=source_name)
+    second = format_dsl(result["formatted"], source_name=source_name)
+    payload = {
+        "format": "appgen.format-result.v1",
+        "source": source_name,
+        "changed": result["changed"],
+        "idempotent": second["formatted"] == result["formatted"],
+        "diagnostics": lint_report_dsl(result["formatted"], source_name=source_name)["diagnostics"],
+    }
+    if include_text:
+        payload["text"] = result["formatted"]
+    return payload
+
+
+def validate_report_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Return a generator-readiness validation contract without writing files."""
+    lint = lint_report_dsl(text, source_name=source_name)
+    semantic = semantic_model_dsl(text, source_name=source_name)
+    checks = (
+        {"check": "lint", "ok": lint["ok"]},
+        {"check": "semantic_model", "ok": semantic["ok"]},
+        {"check": "has_tables", "ok": bool(semantic.get("tables"))},
+        {"check": "view_bindings", "ok": not any(item["code"] in {"AGX0303", "AGX0402"} for item in lint["diagnostics"])},
+        {"check": "handler_targets", "ok": not any(item["code"] == "AGX0403" for item in lint["diagnostics"])},
+    )
+    return {
+        "format": "appgen.validate-report.v1",
+        "source": source_name,
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "lint": lint,
+        "semantic_model": semantic,
+    }
+
+
+def graph_report_dsl(text: str, *, source_name: str | None = None, kind: str = "er") -> dict:
+    """Return one semantic graph in JSON form."""
+    model = semantic_model_dsl(text, source_name=source_name)
+    graphs = model.get("graphs", {})
+    if kind not in graphs:
+        return {
+            "format": "appgen.graph-report.v1",
+            "source": source_name,
+            "kind": kind,
+            "ok": False,
+            "diagnostics": (
+                {
+                    "code": "AGX9001",
+                    "severity": "error",
+                    "title": "Unknown graph kind",
+                    "message": f"Unknown graph kind: {kind}",
+                    "range": None,
+                    "related_locations": (),
+                    "fixes": (),
+                    "docs_url": "docs/tooling.md#graph-tooling",
+                },
+            ),
+            "available_kinds": tuple(sorted(graphs)),
+        }
+    return {
+        "format": "appgen.graph-report.v1",
+        "source": source_name,
+        "kind": kind,
+        "ok": model["ok"],
+        "graph": graphs[kind],
+        "diagnostics": model["diagnostics"],
+    }
+
+
+def explain_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    symbol: str | None = None,
+    diagnostic: str | None = None,
+    handler: str | None = None,
+) -> dict:
+    """Explain a symbol, diagnostic, or handler using the semantic model."""
+    model = semantic_model_dsl(text, source_name=source_name)
+    if diagnostic:
+        return {
+            "format": "appgen.explain-report.v1",
+            "source": source_name,
+            "ok": True,
+            "kind": "diagnostic",
+            "query": diagnostic,
+            "explanation": _diagnostic_explanation(diagnostic),
+        }
+    if handler:
+        handlers = model.get("graphs", {}).get("handler", {}).get("edges", ())
+        matches = tuple(edge for edge in handlers if edge.get("from") == handler or edge.get("label") == handler)
+        return {
+            "format": "appgen.explain-report.v1",
+            "source": source_name,
+            "ok": bool(matches),
+            "kind": "handler",
+            "query": handler,
+            "matches": matches,
+        }
+    if symbol:
+        symbols = model.get("symbols", {})
+        match = symbols.get(symbol) or symbols.get(_symbol_query_to_id(symbol))
+        return {
+            "format": "appgen.explain-report.v1",
+            "source": source_name,
+            "ok": bool(match),
+            "kind": "symbol",
+            "query": symbol,
+            "symbol": match,
+        }
+    return {
+        "format": "appgen.explain-report.v1",
+        "source": source_name,
+        "ok": False,
+        "kind": "none",
+        "message": "Provide symbol, diagnostic, or handler.",
+    }
+
+
+def _semantic_symbols(source: str, schema: AppSchema) -> dict:
+    symbols: dict[str, dict] = {}
+
+    def add(kind: str, name: str, *, parent: str | None = None, detail: dict | None = None) -> None:
+        symbol_id = f"{kind}.{name}" if parent is None else f"{parent}.{name}"
+        line, column = _locate_token(source, name)
+        symbols[symbol_id] = {
+            "id": symbol_id,
+            "kind": kind,
+            "name": name,
+            "parent": parent,
+            "file": schema.source,
+            "range": _semantic_range(line, column, name),
+            "references": (),
+            "detail": detail or {},
+        }
+
+    if schema.app_name:
+        add("app", schema.app_name, detail={"targets": _lint_summary(schema)["targets"]})
+    for table in schema.tables:
+        add("table", table.name)
+        for column in table.columns:
+            add("field", column.name, parent=f"table.{table.name}", detail={"type": column.type_name})
+    for enum in schema.enums:
+        add("enum", enum.name)
+        for value in enum.values:
+            add("enum_value", value, parent=f"enum.{enum.name}")
+    for view in schema.views:
+        add("view", view.name, detail={"table": view.table})
+        for handler in view.handlers:
+            add("handler", handler.event, parent=f"view.{view.name}", detail={"target": handler.target})
+    for flow in schema.flows:
+        add("flow", flow.name)
+        for state in _flow_states(flow):
+            add("flow_state", state, parent=f"flow.{flow.name}")
+    for role in schema.roles:
+        add("role", role.name)
+    for rule in schema.rules:
+        add("rule", rule.name, detail={"table": rule.table})
+    for provider in schema.llm_providers:
+        add("llm", provider.name, detail={"provider": provider.provider})
+    for agent in schema.agents:
+        add("agent", agent.name, detail={"provider": agent.provider})
+    for block in schema.platform_blocks:
+        add(block.kind, block.name)
+    for contract in _enterprise_contracts(schema):
+        add(contract.kind, contract.name)
+    return symbols
+
+
+def _semantic_range(line: int | None, column: int | None, token: str) -> dict | None:
+    if line is None or column is None:
+        return None
+    return {
+        "start": {"line": line, "character": column},
+        "end": {"line": line, "character": column + len(token)},
+    }
+
+
+def _semantic_tables(schema: AppSchema) -> dict:
+    table_map = {table.name: table for table in schema.tables}
+    field_map = {table.name: _field_names(table) for table in schema.tables}
+    return {
+        table.name: {
+            "name": table.name,
+            "fields": {
+                column.name: {
+                    "name": column.name,
+                    "type": column.type_name,
+                    "required": not column.nullable,
+                    "primary_key": column.primary_key,
+                    "unique": column.unique,
+                    "hidden": column.hidden,
+                    "search": column.searchable,
+                    "default": column.default,
+                    "calculated": column.derived,
+                    "expression": column.expression,
+                    "relationship": _semantic_relationship(column),
+                }
+                for column in table.columns
+            },
+            "directives": tuple(_semantic_table_directive(item) for item in table.directives),
+            "lookup_paths": _semantic_lookup_paths(table, table_map, field_map),
+        }
+        for table in schema.tables
+    }
+
+
+def _semantic_relationship(column: ColumnSchema) -> dict | None:
+    if not column.references:
+        return None
+    target_table, target_field = column.references
+    alias = column.name[:-3] if column.name.endswith("_id") else column.name
+    return {
+        "target_table": target_table,
+        "target_field": target_field,
+        "cardinality": "many-to-one",
+        "alias": alias,
+    }
+
+
+def _semantic_table_directive(directive: TableDirectiveSchema) -> dict:
+    return {
+        "verb": directive.verb,
+        "name": directive.name,
+        "values": directive.values,
+        "targets": directive.targets,
+    }
+
+
+def _semantic_lookup_paths(
+    table: TableSchema,
+    table_map: dict[str, TableSchema],
+    field_map: dict[str, set[str]],
+) -> dict:
+    paths: dict[str, dict] = {}
+    for column in table.columns:
+        if not column.references:
+            continue
+        alias = column.name[:-3] if column.name.endswith("_id") else column.name
+        target_table, _target_field = column.references
+        target = table_map.get(target_table)
+        if target is None:
+            continue
+        for target_column in target.columns:
+            path = f"{alias}.{target_column.name}"
+            paths[path] = {
+                "chain": (f"{table.name}.{column.name}", f"{target_table}.{target_column.name}"),
+                "valid": _valid_lookup_path(table.name, path, table_map, field_map),
+            }
+    for directive in table.directives:
+        if directive.verb.lower() == "lookup":
+            for value in directive.values:
+                paths.setdefault(
+                    value,
+                    {
+                        "chain": (value,),
+                        "valid": _valid_lookup_path(table.name, value, table_map, field_map),
+                    },
+                )
+    return paths
+
+
+def _semantic_views(schema: AppSchema) -> dict:
+    return {
+        view.name: {
+            "name": view.name,
+            "table": view.table,
+            "sections": tuple(
+                {"name": section.name, "fields": section.fields}
+                for section in view.sections
+            ),
+            "fields": view.fields,
+            "components": tuple(
+                {
+                    "binding": component.field,
+                    "component": component.component,
+                    "x": component.x,
+                    "y": component.y,
+                    "w": component.w,
+                    "h": component.h,
+                }
+                for component in view.components
+            ),
+            "handlers": tuple(_semantic_handler(handler) for handler in view.handlers),
+        }
+        for view in schema.views
+    }
+
+
+def _semantic_flows(schema: AppSchema) -> dict:
+    return {
+        flow.name: {
+            "name": flow.name,
+            "states": _flow_states(flow),
+            "transitions": tuple(
+                {"from": step.source, "to": step.target}
+                for step in flow.steps
+            ),
+            "directives": tuple(_semantic_statement(item) for item in flow.directives),
+            "human_tasks": tuple(_semantic_human_task(item) for item in flow.directives if item.verb == "human"),
+            "timers": tuple(_semantic_timer(item) for item in flow.directives if item.verb == "timer"),
+            "compensations": tuple(
+                {"state": item.values[0] if item.values else None, "operation": item.target}
+                for item in flow.directives
+                if item.verb == "compensate"
+            ),
+        }
+        for flow in schema.flows
+    }
+
+
+def _flow_states(flow: FlowSchema) -> tuple[str, ...]:
+    states: list[str] = []
+    for step in flow.steps:
+        states.extend((step.source, step.target))
+    for directive in flow.directives:
+        states.extend(value for value in directive.values if _looks_like_identifier(value))
+        if directive.target:
+            states.append(directive.target)
+    return tuple(dict.fromkeys(states))
+
+
+def _semantic_human_task(statement: EnterpriseStatementSchema) -> dict:
+    values = statement.values
+    return {
+        "name": values[0] if values else None,
+        "assignee": values[2] if len(values) >= 3 and values[1] == "assigned" else None,
+        "to": statement.target,
+    }
+
+
+def _semantic_timer(statement: EnterpriseStatementSchema) -> dict:
+    values = statement.values
+    return {
+        "state": values[0] if values else None,
+        "duration": values[1] if len(values) > 1 else None,
+        "to": statement.target,
+    }
+
+
+def _semantic_pbcs(schema: AppSchema) -> dict:
+    catalog = _pbc_catalog_by_key()
+    pbcs = {
+        block.name: {
+            **_semantic_platform_block(block),
+            "catalog_resolved": block.name in catalog,
+            "catalog": catalog.get(block.name),
+        }
+        for block in schema.platform_blocks
+        if block.kind == "pbc"
+    }
+    for block in schema.platform_blocks:
+        if block.kind != "composition":
+            continue
+        for include in block.options.get("include", ()):
+            key = _composition_include_key(include)
+            if key and key not in pbcs:
+                pbcs[key] = {
+                    "name": key,
+                    "kind": "pbc",
+                    "catalog_resolved": key in catalog,
+                    "catalog": catalog.get(key),
+                    "declared_inline": False,
+                }
+    return pbcs
+
+
+def _semantic_compositions(schema: AppSchema) -> dict:
+    catalog = _pbc_catalog_by_key()
+    return {
+        block.name: {
+            "name": block.name,
+            "includes": tuple(
+                {
+                    "pbc": _composition_include_key(include),
+                    "version": _composition_include_version(include),
+                    "catalog_resolved": _composition_include_key(include) in catalog,
+                }
+                for include in block.options.get("include", ())
+            ),
+            "requires": block.options.get("require", ()),
+            "exposes": block.options.get("expose", ()),
+            "connections": tuple(_semantic_composition_connection(item) for item in block.options.get("connect", ())),
+            "options": dict(block.options),
+        }
+        for block in schema.platform_blocks
+        if block.kind == "composition"
+    }
+
+
+def _composition_include_key(value: str) -> str | None:
+    match = re.match(r"(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?:version(?P<version>.+))?$", value or "")
+    return match.group("key") if match else None
+
+
+def _composition_include_version(value: str) -> str | None:
+    match = re.match(r"(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?:version(?P<version>.+))?$", value or "")
+    if not match:
+        return None
+    version = match.group("version")
+    return version.strip("'\"") if version else None
+
+
+def _semantic_composition_connection(value: str) -> dict:
+    parts = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", value or "")
+    return {
+        "raw": value,
+        "from_pbc": parts[0] if len(parts) > 0 else None,
+        "from_kind": parts[1] if len(parts) > 1 else None,
+        "from_contract": parts[2] if len(parts) > 2 else None,
+        "to_pbc": parts[3] if len(parts) > 3 else None,
+        "to_kind": parts[4] if len(parts) > 4 else None,
+        "to_contract": parts[5] if len(parts) > 5 else None,
+    }
+
+
+def _pbc_catalog_by_key() -> dict[str, dict]:
+    try:
+        from .pbc import pbc_catalog
+    except Exception:  # pragma: no cover - optional catalog boundary
+        return {}
+    return {item["pbc"]: item for item in pbc_catalog()}
+
+
+def _semantic_contracts(schema: AppSchema) -> dict:
+    return {
+        kind: {contract.name: _semantic_contract(contract) for contract in contracts}
+        for kind, contracts in _enterprise_contract_groups(schema).items()
+    }
+
+
+def _semantic_contract(contract: EnterpriseContractSchema) -> dict:
+    return {
+        "kind": contract.kind,
+        "name": contract.name,
+        "options": dict(contract.options),
+        "statements": tuple(_semantic_statement(item) for item in contract.statements),
+        "handlers": tuple(_semantic_handler(item) for item in contract.handlers),
+        "permissions": tuple(_semantic_permission(item) for item in contract.permissions),
+    }
+
+
+def _semantic_platform_block(block: PlatformBlockSchema) -> dict:
+    return {
+        "kind": block.kind,
+        "name": block.name,
+        "options": dict(block.options),
+        "steps": tuple({"from": step.source, "to": step.target} for step in block.steps),
+        "statements": tuple(_semantic_statement(item) for item in block.statements),
+        "handlers": tuple(_semantic_handler(item) for item in block.handlers),
+        "permissions": tuple(_semantic_permission(item) for item in block.permissions),
+    }
+
+
+def _semantic_deployment(block: PlatformBlockSchema) -> dict:
+    return {
+        **_semantic_platform_block(block),
+        "units": tuple(
+            {"target": unit.target, "pattern": unit.pattern}
+            for unit in block.deployment_units
+        ),
+        "scales": tuple(
+            {"target": scale.target, "min": scale.minimum, "max": scale.maximum}
+            for scale in block.deployment_scales
+        ),
+        "health": tuple(
+            {"target": health.target, "kind": health.kind, "path": health.path}
+            for health in block.deployment_health
+        ),
+    }
+
+
+def _semantic_statement(statement: EnterpriseStatementSchema) -> dict:
+    return {"verb": statement.verb, "values": statement.values, "target": statement.target}
+
+
+def _semantic_handler(handler: HandlerSchema) -> dict:
+    return {"trigger": handler.trigger, "event": handler.event, "target": handler.target}
+
+
+def _semantic_permission(permission: PermissionSchema) -> dict:
+    return {"resource": permission.resource, "actions": permission.actions}
+
+
+def _semantic_graphs(schema: AppSchema) -> dict:
+    return {
+        "er": _er_graph(schema),
+        "lookup": _lookup_graph(schema),
+        "workflow": _workflow_graph(schema),
+        "handler": _handler_graph(schema),
+        "pbc": _pbc_graph(schema),
+        "security": _security_graph(schema),
+        "agent": _agent_graph(schema),
+        "deployment": _deployment_graph(schema),
+        "package": _package_graph(schema),
+    }
+
+
+def _er_graph(schema: AppSchema) -> dict:
+    nodes = tuple({"id": table.name, "kind": "table"} for table in schema.tables)
+    edges = tuple(
+        {
+            "from": relation.source_table,
+            "to": relation.target_table,
+            "label": relation.source_column,
+            "cardinality": relation.cardinality,
+        }
+        for relation in schema.relations
+    )
+    return {"format": "appgen.graph.er.v1", "nodes": nodes, "edges": edges}
+
+
+def _lookup_graph(schema: AppSchema) -> dict:
+    nodes: list[dict] = []
+    edges: list[dict] = []
+    table_map = {table.name: table for table in schema.tables}
+    field_map = {table.name: _field_names(table) for table in schema.tables}
+    for table in schema.tables:
+        nodes.append({"id": table.name, "kind": "table"})
+        for path, detail in _semantic_lookup_paths(table, table_map, field_map).items():
+            node_id = f"{table.name}.{path}"
+            nodes.append({"id": node_id, "kind": "lookup_path", "valid": detail["valid"]})
+            edges.append({"from": table.name, "to": node_id, "label": path})
+    return {"format": "appgen.graph.lookup.v1", "nodes": tuple(nodes), "edges": tuple(edges)}
+
+
+def _workflow_graph(schema: AppSchema) -> dict:
+    nodes = []
+    edges = []
+    for flow in schema.flows:
+        nodes.append({"id": flow.name, "kind": "flow"})
+        for state in _flow_states(flow):
+            state_id = f"{flow.name}.{state}"
+            nodes.append({"id": state_id, "kind": "state"})
+        for step in flow.steps:
+            edges.append({"from": f"{flow.name}.{step.source}", "to": f"{flow.name}.{step.target}", "label": "transition"})
+        for directive in flow.directives:
+            if directive.target:
+                edges.append({"from": flow.name, "to": f"{flow.name}.{directive.target}", "label": directive.verb})
+    return {"format": "appgen.graph.workflow.v1", "nodes": tuple(nodes), "edges": tuple(edges)}
+
+
+def _handler_graph(schema: AppSchema) -> dict:
+    nodes = []
+    edges = []
+    for view in schema.views:
+        nodes.append({"id": view.name, "kind": "view"})
+        for handler in view.handlers:
+            event_id = f"{view.name}.{handler.event}"
+            nodes.append({"id": event_id, "kind": "handler"})
+            edges.append({"from": event_id, "to": handler.target, "label": handler.event})
+    for contract in _enterprise_contracts(schema):
+        nodes.append({"id": contract.name, "kind": contract.kind})
+        for handler in contract.handlers:
+            event_id = f"{contract.name}.{handler.event}"
+            nodes.append({"id": event_id, "kind": "handler"})
+            edges.append({"from": event_id, "to": handler.target, "label": handler.event})
+    return {"format": "appgen.graph.handler.v1", "nodes": tuple(nodes), "edges": tuple(edges)}
+
+
+def _pbc_graph(schema: AppSchema) -> dict:
+    nodes = []
+    edges = []
+    for key, pbc in _semantic_pbcs(schema).items():
+        nodes.append({"id": key, "kind": "pbc", "catalog_resolved": pbc.get("catalog_resolved", False)})
+    for composition in _semantic_compositions(schema).values():
+        nodes.append({"id": composition["name"], "kind": "composition"})
+        for include in composition["includes"]:
+            if include["pbc"]:
+                edges.append({"from": composition["name"], "to": include["pbc"], "label": "include"})
+        for connection in composition["connections"]:
+            if connection["from_pbc"] and connection["to_pbc"]:
+                edges.append(
+                    {
+                        "from": connection["from_pbc"],
+                        "to": connection["to_pbc"],
+                        "label": connection["from_contract"],
+                    }
+                )
+    return {"format": "appgen.graph.pbc.v1", "nodes": tuple(nodes), "edges": tuple(edges)}
+
+
+def _security_graph(schema: AppSchema) -> dict:
+    nodes = []
+    edges = []
+    for role in schema.roles:
+        nodes.append({"id": role.name, "kind": "role"})
+        for permission in role.permissions:
+            nodes.append({"id": permission.resource, "kind": "resource"})
+            for action in permission.actions:
+                edges.append({"from": role.name, "to": permission.resource, "label": action})
+    for agent in schema.agents:
+        nodes.append({"id": agent.name, "kind": "agent"})
+        for permission in agent.permissions:
+            nodes.append({"id": permission.resource, "kind": "resource"})
+            for action in permission.actions:
+                edges.append({"from": agent.name, "to": permission.resource, "label": action})
+    return {"format": "appgen.graph.security.v1", "nodes": tuple(nodes), "edges": tuple(edges)}
+
+
+def _agent_graph(schema: AppSchema) -> dict:
+    nodes = []
+    edges = []
+    for provider in schema.llm_providers:
+        nodes.append({"id": provider.name, "kind": "llm"})
+    for agent in schema.agents:
+        nodes.append({"id": agent.name, "kind": "agent"})
+        if agent.provider:
+            edges.append({"from": agent.name, "to": agent.provider, "label": "uses"})
+        for skill in agent.competencies:
+            skill_id = f"{agent.name}.{skill.verb}"
+            nodes.append({"id": skill_id, "kind": "skill"})
+            edges.append({"from": agent.name, "to": skill_id, "label": skill.verb})
+            if skill.target:
+                edges.append({"from": skill_id, "to": skill.target, "label": "target"})
+    return {"format": "appgen.graph.agent.v1", "nodes": tuple(nodes), "edges": tuple(edges)}
+
+
+def _deployment_graph(schema: AppSchema) -> dict:
+    nodes = []
+    edges = []
+    for block in schema.platform_blocks:
+        if block.kind != "deploy":
+            continue
+        nodes.append({"id": block.name, "kind": "deployment"})
+        for unit in block.deployment_units:
+            unit_id = f"{block.name}.{unit.target}"
+            nodes.append({"id": unit_id, "kind": unit.pattern})
+            edges.append({"from": block.name, "to": unit_id, "label": "unit"})
+        for health in block.deployment_health:
+            edges.append({"from": f"{block.name}.{health.target}", "to": health.path, "label": health.kind})
+    return {"format": "appgen.graph.deployment.v1", "nodes": tuple(nodes), "edges": tuple(edges)}
+
+
+def _package_graph(schema: AppSchema) -> dict:
+    nodes = []
+    edges = []
+    for contract in schema.package_contracts:
+        nodes.append({"id": contract.name, "kind": "package"})
+        for target in contract.options.get("target", ()) or contract.options.get("targets", ()):
+            nodes.append({"id": target, "kind": "target"})
+            edges.append({"from": contract.name, "to": target, "label": "builds"})
+    return {"format": "appgen.graph.package.v1", "nodes": tuple(nodes), "edges": tuple(edges)}
+
+
+def _looks_like_identifier(value: str) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value or ""))
+
+
+def _spec_diagnostic_from_legacy(source: str, diagnostic: dict) -> dict:
+    legacy_code = diagnostic.get("code", "dsl_feedback")
+    code = _spec_diagnostic_code(legacy_code, diagnostic.get("message", ""))
+    line = diagnostic.get("line")
+    column = diagnostic.get("column")
+    message = diagnostic.get("message", "")
+    return {
+        "code": code,
+        "legacy_code": legacy_code,
+        "severity": _spec_severity(diagnostic.get("severity", "info")),
+        "title": _spec_diagnostic_title(code),
+        "message": message,
+        "range": _semantic_range(line, column, _diagnostic_token(message) or ""),
+        "related_locations": (),
+        "fixes": tuple(
+            {"id": fix_id, "title": fix_id.replace("_", " ")}
+            for fix_id in diagnostic.get("fix_ids", ())
+        ),
+        "docs_url": _spec_docs_url(code),
+    }
+
+
+def _spec_diagnostic(source: str, code: str, severity: str, message: str) -> dict:
+    line, column = _locate_token(source, _diagnostic_token(message))
+    return {
+        "code": code,
+        "severity": severity,
+        "title": _spec_diagnostic_title(code),
+        "message": message,
+        "range": _semantic_range(line, column, _diagnostic_token(message) or ""),
+        "related_locations": (),
+        "fixes": (),
+        "docs_url": _spec_docs_url(code),
+    }
+
+
+def _spec_severity(value: str) -> str:
+    return {"suggestion": "hint"}.get(value, value if value in {"error", "warning", "info", "hint"} else "info")
+
+
+def _spec_diagnostic_code(legacy_code: str, message: str) -> str:
+    mapping = {
+        "empty_source": "AGX0001",
+        "unbalanced_braces": "AGX0001",
+        "duplicate_declaration": "AGX0101",
+        "unknown_derived_field": "AGX0202",
+        "unknown_relation_target_table": "AGX0301",
+        "unknown_reference_target_table": "AGX0301",
+        "unknown_relation_target_field": "AGX0302",
+        "unknown_reference_target_field": "AGX0302",
+        "unknown_view_field": "AGX0402",
+        "unknown_component_field": "AGX0402",
+        "unknown_agent_provider": "AGX1001",
+        "literal_api_key": "AGX0702",
+        "unknown_app_target": "AGX0802",
+    }
+    if message.startswith("Unknown table directive field"):
+        return "AGX0303"
+    if message.startswith("Unknown table directive target"):
+        return "AGX0302"
+    if message.startswith("Unknown handler target"):
+        return "AGX0403"
+    if message.startswith("Unknown contract target"):
+        return "AGX0801"
+    if message.startswith("Unknown package target"):
+        return "AGX0802"
+    if message.startswith("Unknown deployment"):
+        return "AGX0801"
+    if message.startswith("Invalid deployment"):
+        return "AGX0801"
+    if message.startswith("Unknown role resource"):
+        return "AGX0701"
+    if message.startswith("Unknown rule"):
+        return "AGX0502"
+    return mapping.get(legacy_code, "AGX0000" if legacy_code == "dsl_feedback" else "AGX0100")
+
+
+def _spec_diagnostic_title(code: str) -> str:
+    titles = {
+        "AGX0001": "Source cannot be parsed",
+        "AGX0101": "Duplicate declaration",
+        "AGX0202": "Unknown calculated-field reference",
+        "AGX0301": "Unknown relationship table",
+        "AGX0302": "Unknown relationship field",
+        "AGX0303": "Unresolved lookup path",
+        "AGX0402": "Invalid database-backed view binding",
+        "AGX0403": "Unknown handler target",
+        "AGX0502": "Unknown rule field",
+        "AGX0701": "Unknown permission resource",
+        "AGX0702": "Secret literal in source",
+        "AGX0801": "Invalid deployment or contract reference",
+        "AGX0802": "Invalid package or target reference",
+        "AGX1001": "Unknown agent reference",
+        "AGX9000": "Internal tooling error",
+        "AGX9001": "Unknown graph kind",
+    }
+    return titles.get(code, "DSL diagnostic")
+
+
+def _spec_docs_url(code: str) -> str:
+    if code.startswith("AGX03"):
+        return "docs/tooling.md#diagnostic-specification"
+    if code.startswith("AGX04"):
+        return "docs/tooling.md#linter-rules-by-domain"
+    if code.startswith("AGX09"):
+        return "docs/pbc-catalog.md"
+    return "docs/tooling.md#diagnostic-specification"
+
+
+def _diagnostic_explanation(code: str) -> dict:
+    return {
+        "code": code,
+        "title": _spec_diagnostic_title(code),
+        "docs_url": _spec_docs_url(code),
+        "summary": {
+            "AGX0303": "A lookup path must resolve through declared relationships.",
+            "AGX0402": "A database-backed form binding must resolve to a field, calculated field, or lookup path.",
+            "AGX0403": "A handler must target a declared operation, flow, agent, or contract.",
+            "AGX0901": "A composition can include only locally declared or registered PBC keys.",
+        }.get(code, "See the tooling diagnostic specification for this code."),
+    }
+
+
+def _symbol_query_to_id(symbol: str) -> str:
+    if symbol.startswith(("table.", "view.", "flow.", "operation.", "pbc.", "agent.")):
+        return symbol
+    parts = symbol.split(".")
+    if len(parts) == 2:
+        return f"table.{parts[0]}.{parts[1]}"
+    return symbol
 
 
 def dsl_language_ergonomics_contract(text: str | None = None, *, source_name: str | None = None) -> dict:
