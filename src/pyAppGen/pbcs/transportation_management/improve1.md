@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `transportation_management`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `transportation_management`. The items are specific to freight execution: shipment creation, package and party handling, carrier master data, service levels, lanes, contracts, route planning, tendering, dispatch, tracking, ETA, inbound arrival, delivery proof, exceptions, freight cost governance, cross-border documents, temperature and hazardous controls, scorecards, telematics, carbon-aware routing, event reliability, UI workbenches, and agent-assisted transportation operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
-- Representative owned tables: `transportation_management_shipment`, `transportation_management_shipment_line`, `transportation_management_shipment_package`, `transportation_management_carrier`, `transportation_management_carrier_service_level`, `transportation_management_carrier_lane`, `transportation_management_freight_route`, `transportation_management_route_stop`, `transportation_management_route_leg`, `transportation_management_carrier_tender`, `transportation_management_dispatch_confirmation`, `transportation_management_tracking_event`, ...
-- Representative operations/APIs: `command_transportation_shipments`, `command_transportation_carriers`, `command_transportation_shipments_id_carrier_selection`, `command_transportation_routes`, `command_transportation_tracking_events`, `command_transportation_shipments_id_delivery`, `query_transportation_workbench`.
-- Representative events: `CarrierRegistered`, `ShipmentCreated`, `CarrierSelected`, `FreightRoutePlanned`, `ShipmentDispatched`, `EtaUpdated`, `InboundArrived`, `ShipmentDelivered`.
-- Representative advanced capabilities: `event_sourced_shipment_lifecycle`, `graph_relational_freight_topology`, `multi_tenant_transportation_isolation`, `schema_evolution_resilient_transportation_schema`, `probabilistic_eta_delivery_confidence`, `real_time_freight_execution_analytics`, `counterfactual_carrier_route_simulation`, `temporal_eta_cost_delay_forecasting`, `autonomous_transport_exception_resolution`, `semantic_transport_event_parsing`, ...
+- Domain purpose: freight execution for shipment creation, carrier selection, route planning, tendering, dispatch, tracking, ETA updates, inbound arrival, delivery, exception handling, freight-cost governance, and transportation analytics.
+- Owned boundary: shipments, shipment lines, parties, references, packages, carriers, service levels, lanes, contracts, carrier identity, freight routes, stops, legs, route constraints, tenders, tender responses, dispatch confirmations, tracking events, ETA snapshots, inbound arrivals, delivery proofs, delivery exceptions, transportation exceptions, freight cost accruals, invoice projections, cross-border documents, temperature/hazard controls, carrier scorecards, risk signals, carbon/distance metrics, packed-order projections, PO projections, return projections, transfer projections, access-policy projections, policy screenings, telematics events and replay, delivery proof hashes, audit traces, federation projections, carbon route selections, route optimization, tender allocation, tracking anomaly signals, transit exposure models, ETA/cost forecasts, parsed events, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: shipment creation, carrier registration, carrier selection, route planning, dispatch, tracking-event ingestion, arrival confirmation, delivery confirmation, AppGen-X inbox handling, workbench, rules, parameters, schema extensions, runtime configuration, boundary checks, and release evidence.
+- Existing events and dependencies: emits `CarrierRegistered`, `ShipmentCreated`, `CarrierSelected`, `FreightRoutePlanned`, `ShipmentDispatched`, `EtaUpdated`, `InboundArrived`, and `ShipmentDelivered`; consumes packed-order, purchase-order, return, inventory-transfer, and access-policy events through declared APIs/projections only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `transportation_management_shipment`
+### 1. Shipment creation readiness gate
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Shipments created from incomplete packed orders, purchase orders, transfers, returns, or inbound movements cause routing errors, carrier disputes, and delivery failures.
 
-**Improvement:** Extend `transportation_management_shipment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `shipment_creation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add shipment readiness checks for origin, destination, parties, packages, weights, dimensions, service level, delivery window, handling codes, source projection freshness, access policy, hazardous/temperature requirements, and required references. Block tendering until mandatory evidence is complete.
 
-### 2. Deep specialist lifecycle semantics for `transportation_management_shipment_line`
+### 2. Shipment party and reference governance
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Freight execution depends on correct shipper, consignee, bill-to, broker, carrier, warehouse, supplier, and return parties plus accurate references.
 
-**Improvement:** Extend `transportation_management_shipment_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `shipment_lines`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model party roles, contact channels, address validation, effective dates, privacy flags, document requirements, and reference types. Route, tender, dispatch, and proof workflows should cite the party/reference version used.
 
-### 3. Deep specialist lifecycle semantics for `transportation_management_shipment_package`
+### 3. Package and handling-code completeness
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Package weight, dimensions, count, stackability, fragility, temperature, and hazardous flags drive carrier eligibility, cost, and compliance.
 
-**Improvement:** Extend `transportation_management_shipment_package` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `shipment_parties`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add package-level validation for physical attributes, handling codes, commodity class, temperature range, hazardous class, declared value, seals, and label evidence. Reject carrier selection when package data conflicts with lane or service constraints.
 
-### 4. Deep specialist lifecycle semantics for `transportation_management_carrier`
+### 4. Carrier onboarding and identity lifecycle
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Carriers need verified identity, authority, insurance, modes, equipment, service coverage, and compliance status before tendering.
 
-**Improvement:** Extend `transportation_management_carrier` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `shipment_references`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add carrier lifecycle states from prospect to active, conditional, restricted, suspended, inactive, and archived. Store identity evidence, authority, insurance, equipment, regions, telematics integration, risk signals, and renewal dates.
 
-### 5. Deep specialist lifecycle semantics for `transportation_management_carrier_service_level`
+### 5. Carrier service-level catalog
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Service levels are not generic labels; they encode transit commitments, cutoff rules, pickup windows, proof requirements, and exception obligations.
 
-**Improvement:** Extend `transportation_management_carrier_service_level` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `shipment_packages`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Define service-level capabilities with mode, transit promise, delivery window, weekend/holiday behavior, proof policy, tracking cadence, temperature/hazard eligibility, surcharge rules, and contract applicability.
 
-### 6. Deep specialist lifecycle semantics for `transportation_management_carrier_lane`
+### 6. Carrier lane and contract governance
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Carrier selection must respect contracted lanes, capacity, rate validity, fuel/accessorial terms, service commitments, and blackout windows.
 
-**Improvement:** Extend `transportation_management_carrier_lane` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `carrier_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add lane records with origin/destination zones, modes, capacity, rates, effective dates, blackout calendars, accessorial schedules, carbon profile, and contract references. Selection should explain ineligible lanes.
 
-### 7. Deep specialist lifecycle semantics for `transportation_management_freight_route`
+### 7. Freight route topology model
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Route quality depends on stops, legs, docks, ports, cross-docks, borders, appointment windows, transit time, risk, cost, and carbon.
 
-**Improvement:** Extend `transportation_management_freight_route` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `carrier_service_levels`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build a graph-relational freight topology for lanes, stops, legs, carriers, service levels, facilities, border crossings, and telematics nodes. Route planning should cite topology and constraint versions.
 
-### 8. Deep specialist lifecycle semantics for `transportation_management_route_stop`
+### 8. Route constraint compiler
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Routing must enforce hazardous, temperature, equipment, legal, appointment, carrier, border, service-level, and access-policy constraints.
 
-**Improvement:** Extend `transportation_management_route_stop` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `carrier_lanes`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compile route constraints into explainable eligibility checks with rejected-route reasons, override policy, required documents, appointment windows, and downstream delivery risk. Store route decision evidence with the planned route.
 
-### 9. Deep specialist lifecycle semantics for `transportation_management_route_leg`
+### 9. Multi-leg and intermodal planning
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Real freight often uses multiple legs, modes, carriers, consolidation points, and handoff proofs.
 
-**Improvement:** Extend `transportation_management_route_leg` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `carrier_contracts`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add multi-leg route planning for parcel, LTL, truckload, ocean, air, rail, and intermodal moves with handoff points, leg-level carrier/service, transfer windows, cost, risk, tracking cadence, and proof requirements.
 
-### 10. Deep specialist lifecycle semantics for `transportation_management_carrier_tender`
+### 10. Consolidation and deconsolidation engine
 
-**Justification:** This owned table is part of the Transportation Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Freight routing, carrier choice, shipment tracking, telematics, and ETA updates.
+**Justification:** Consolidation can reduce cost and carbon but risks service failures, damaged freight, and missed windows.
 
-**Improvement:** Extend `transportation_management_carrier_tender` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `carrier_identity`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add consolidation recommendations using origin/destination compatibility, service windows, handling constraints, package compatibility, carrier capacity, cost, carbon, and delivery risk. Show when deconsolidation is safer.
 
-### 11. Make `command_transportation_shipments` a complete command lifecycle
+### 11. Carrier selection scorecard
 
-**Justification:** High-value users need `command_transportation_shipments` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Carrier choice must balance cost, service, risk, capacity, carbon, contract obligations, lane performance, and customer promise.
 
-**Improvement:** Implement `command_transportation_shipments` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CarrierRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build weighted carrier scorecards with eligibility gates, normalized cost, on-time probability, damage risk, tracking quality, capacity confidence, carbon impact, contract fit, and access-policy decisions. Explain all score drivers.
 
-### 12. Make `command_transportation_carriers` a complete command lifecycle
+### 12. Tender strategy and fallback orchestration
 
-**Justification:** High-value users need `command_transportation_carriers` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Tender failures are common and require fast fallback without bypassing policy or losing evidence.
 
-**Improvement:** Implement `command_transportation_carriers` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ShipmentCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add tender strategies for primary, waterfall, broadcast, spot, emergency, and reserved-capacity tenders. Store tender timeout, sequence, response, rejection reason, fallback decision, and cost/service impact.
 
-### 13. Make `command_transportation_shipments_id_carrier_selection` a complete command lifecycle
+### 13. Tender response normalization
 
-**Justification:** High-value users need `command_transportation_shipments_id_carrier_selection` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Carrier responses differ in price, capacity, pickup time, service level, exclusions, accessorials, and validity.
 
-**Improvement:** Implement `command_transportation_shipments_id_carrier_selection` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CarrierSelected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Normalize tender responses into comparable accepted, rejected, countered, expired, and conditional states with cost breakdown, pickup commitment, delivery confidence, exclusions, and required approvals.
 
-### 14. Make `command_transportation_routes` a complete command lifecycle
+### 14. Dispatch confirmation integrity
 
-**Justification:** High-value users need `command_transportation_routes` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Dispatch is the point where a planned shipment becomes an active movement and must be reliable.
 
-**Improvement:** Implement `command_transportation_routes` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FreightRoutePlanned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Require dispatch evidence for selected carrier, driver/equipment where available, pickup appointment, route, documents, tracking channel, package count, access-policy screening, and emitted `ShipmentDispatched` idempotency.
 
-### 15. Make `command_transportation_tracking_events` a complete command lifecycle
+### 15. Tracking event ingestion fabric
 
-**Justification:** High-value users need `command_transportation_tracking_events` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Tracking comes from carrier portals, telematics, mobile events, warehouse docks, manual updates, and external messages with inconsistent semantics.
 
-**Improvement:** Implement `command_transportation_tracking_events` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ShipmentDispatched`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add a canonical tracking event parser with source identity, event type, location, timestamp confidence, sequence validation, duplicate detection, correction handling, and stale-source warnings. Preserve raw payload lineage.
 
-### 16. Make `command_transportation_shipments_id_delivery` a complete command lifecycle
+### 16. Telematics replay and reconciliation
 
-**Justification:** High-value users need `command_transportation_shipments_id_delivery` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** High-volume telematics can arrive late, out of order, or contradictory, and must reconcile with shipment status.
 
-**Improvement:** Implement `command_transportation_shipments_id_delivery` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EtaUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add telematics replay with idempotent correlation to shipment, route leg, stop, ETA snapshot, and exception records. Flag orphan, contradictory, impossible-speed, and missing-gap events for triage.
 
-### 17. Turn `query_transportation_workbench` into an expert read-model experience
+### 17. Probabilistic ETA engine
 
-**Justification:** Domain experts rely on `query_transportation_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Single-point ETAs hide uncertainty and lead to poor warehouse, customer, and procurement decisions.
 
-**Improvement:** Build `query_transportation_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `InboundArrived` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Generate ETA distributions with confidence, latest source event, route leg, weather/traffic abstraction where available, carrier history, dwell risk, border risk, and appointment constraints. Emit `EtaUpdated` only when changes are material and explainable.
 
-### 18. Make `command_transportation_shipments` a complete command lifecycle
+### 18. ETA impact propagation
 
-**Justification:** High-value users need `command_transportation_shipments` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** ETA changes affect inbound receiving, customer delivery, returns, inventory transfers, and exception queues.
 
-**Improvement:** Implement `command_transportation_shipments` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ShipmentDelivered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Classify ETA impact by arrival window, delivery promise, dock appointment, carrier cutoff, late risk, and affected source projection. Workbench panels should show who needs action and which event will be emitted.
 
-### 19. Make `command_transportation_carriers` a complete command lifecycle
+### 19. Inbound arrival governance
 
-**Justification:** High-value users need `command_transportation_carriers` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Inbound arrival bridges transportation and warehouse operations and must be precise without writing WMS tables.
 
-**Improvement:** Implement `command_transportation_carriers` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CarrierRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add arrival confirmation with facility, dock/window reference, carrier, route leg, package count, seal, exception state, arrival timestamp, idempotency key, and emitted `InboundArrived`. WMS-facing context should remain an event/projection.
 
-### 20. Make `command_transportation_shipments_id_carrier_selection` a complete command lifecycle
+### 20. Delivery proof completeness
 
-**Justification:** High-value users need `command_transportation_shipments_id_carrier_selection` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Delivery proof is the legal and operational evidence that freight reached the destination.
 
-**Improvement:** Implement `command_transportation_shipments_id_carrier_selection` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ShipmentCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Require delivery proof for recipient, location, timestamp, package count, condition, photos/signature where applicable, temperature/hazard confirmation, exception notes, and emitted `ShipmentDelivered`. Missing proof should create a delivery exception.
 
-### 21. Operationalize `event_sourced_shipment_lifecycle` as a governed decision system
+### 21. Zero-knowledge delivery proof
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves availability accuracy without hiding assumptions.
+**Justification:** Some parties need proof of delivery integrity without exposing consignee, package, or route details.
 
-**Improvement:** Promote `event_sourced_shipment_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `availability_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate cryptographic proof hashes from delivery proof, tracking, package, route, and carrier evidence. Provide verification APIs that prove integrity and timing while redacting sensitive fields.
 
-### 22. Operationalize `graph_relational_freight_topology` as a governed decision system
+### 22. Delivery exception lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves cycle time without hiding assumptions.
+**Justification:** Damaged freight, missed appointments, refusals, partial deliveries, wrong address, and lost proof require structured recovery.
 
-**Improvement:** Promote `graph_relational_freight_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add exception states, reason taxonomy, owner, SLA, severity, evidence, customer/supplier impact projection, carrier claim path, reattempt plan, and closure proof. Exceptions should never be free-text only.
 
-### 23. Operationalize `multi_tenant_transportation_isolation` as a governed decision system
+### 23. Transportation exception command center
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves service level without hiding assumptions.
+**Justification:** Transportation teams need one operational view for delay, tender, dispatch, tracking, customs, temperature, hazard, proof, and cost exceptions.
 
-**Improvement:** Promote `multi_tenant_transportation_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `service_level`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build an exception queue with severity, aging, shipment status, route leg, carrier, ETA impact, cost exposure, customer promise impact, suggested action, required permission, and escalation route.
 
-### 24. Operationalize `schema_evolution_resilient_transportation_schema` as a governed decision system
+### 24. Freight cost accrual engine
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves exception backlog without hiding assumptions.
+**Justification:** Freight cost must be estimated before invoice receipt so finance and operations can manage exposure.
 
-**Improvement:** Promote `schema_evolution_resilient_transportation_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `exception_backlog`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add accruals for linehaul, fuel, accessorials, detention, demurrage, duties reference, temperature surcharge, hazard fee, and emergency premium. Tie accruals to carrier contract terms and shipment events.
 
-### 25. Operationalize `probabilistic_eta_delivery_confidence` as a governed decision system
+### 25. Freight invoice variance projection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves carrier registered throughput without hiding assumptions.
+**Justification:** Freight invoices often differ from tendered or accrued amounts because of accessorials, reclasses, delays, and routing changes.
 
-**Improvement:** Promote `probabilistic_eta_delivery_confidence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `carrier_registered_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Maintain invoice projections and variance causes using owned cost evidence plus finance-facing projections. Surface expected variance before invoice arrival and preserve the boundary to finance/AP packages.
 
-### 26. Operationalize `real_time_freight_execution_analytics` as a governed decision system
+### 26. Accessorial and detention governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves shipment created throughput without hiding assumptions.
+**Justification:** Accessorial charges and detention can become uncontrolled cost leakage.
 
-**Improvement:** Promote `real_time_freight_execution_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `shipment_created_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track dwell clocks, detention triggers, accessorial eligibility, contractual thresholds, evidence requirements, dispute route, and preventable-cause classification. The workbench should rank avoidable cost exposure.
 
-### 27. Operationalize `counterfactual_carrier_route_simulation` as a governed decision system
+### 27. Cross-border document readiness
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves availability accuracy without hiding assumptions.
+**Justification:** International freight fails when commercial invoices, customs declarations, certificates, and border data are incomplete or inconsistent.
 
-**Improvement:** Promote `counterfactual_carrier_route_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `availability_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add cross-border document requirements by lane, commodity, country, mode, value, party, and incoterm. Block dispatch or flag high-risk routes until document readiness and broker evidence are complete.
 
-### 28. Operationalize `temporal_eta_cost_delay_forecasting` as a governed decision system
+### 28. Temperature and hazardous controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves cycle time without hiding assumptions.
+**Justification:** Cold-chain and hazardous freight require carrier, packaging, route, equipment, and proof controls.
 
-**Improvement:** Promote `temporal_eta_cost_delay_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model temperature range, excursion threshold, monitoring device, hazardous classification, segregation rules, emergency instructions, eligible carriers, route restrictions, and delivery proof requirements. Trigger exceptions on excursions or missing evidence.
 
-### 29. Operationalize `autonomous_transport_exception_resolution` as a governed decision system
+### 29. Carrier scorecard with lane context
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves service level without hiding assumptions.
+**Justification:** Carrier performance varies by lane, mode, service level, season, facility, and shipment type.
 
-**Improvement:** Promote `autonomous_transport_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `service_level`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build scorecards by carrier/lane/service with on-time pickup, on-time delivery, damage, tender acceptance, tracking quality, cost variance, exception rate, carbon intensity, and proof completeness.
 
-### 30. Operationalize `semantic_transport_event_parsing` as a governed decision system
+### 30. Carrier risk signal fusion
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Transportation Management and measurably improves exception backlog without hiding assumptions.
+**Justification:** Carrier risk changes through capacity constraints, compliance events, safety incidents, insurance expiry, strikes, weather exposure, and performance degradation.
 
-**Improvement:** Promote `semantic_transport_event_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `exception_backlog`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Fuse risk signals into a carrier risk timeline with severity, confidence, affected lanes, effective period, mitigation, and decision impact. Carrier selection and tendering should surface risk in context.
 
-### 31. Create simulation-grade governance for `TRANSPORTATION_MANAGEMENT_DATABASE_URL` and `TRANSPORTATION_MANAGEMENT_DATABASE_URL`
+### 31. Carbon-aware route and carrier selection
 
-**Justification:** Complete Transportation Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Transportation has material emissions impact and should show service-cost-carbon tradeoffs.
 
-**Improvement:** Add a policy cockpit where `TRANSPORTATION_MANAGEMENT_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TRANSPORTATION_MANAGEMENT_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add carbon scoring by mode, carrier, distance, utilization, route, consolidation, and service level. Recommend lower-carbon alternatives with expected cost, ETA, risk, and operational constraints.
 
-### 32. Create simulation-grade governance for `TRANSPORTATION_MANAGEMENT_EVENT_TOPIC` and `TRANSPORTATION_MANAGEMENT_EVENT_TOPIC`
+### 32. Route optimization with business objectives
 
-**Justification:** Complete Transportation Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Route optimization must balance cost, service, carbon, risk, capacity, appointments, and freight constraints.
 
-**Improvement:** Add a policy cockpit where `TRANSPORTATION_MANAGEMENT_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TRANSPORTATION_MANAGEMENT_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Optimize routes across weighted objectives with hard constraints, soft preferences, explainable tradeoffs, sensitivity analysis, and fallback routes. Users should see why a route was chosen over near alternatives.
 
-### 33. Create simulation-grade governance for `TRANSPORTATION_MANAGEMENT_RETRY_LIMIT` and `TRANSPORTATION_MANAGEMENT_RETRY_LIMIT`
+### 33. Tender allocation mechanism design
 
-**Justification:** Complete Transportation Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Tender allocation affects carrier behavior, contractual fairness, long-term capacity, and spot-market exposure.
 
-**Improvement:** Add a policy cockpit where `TRANSPORTATION_MANAGEMENT_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TRANSPORTATION_MANAGEMENT_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add allocation mechanisms for primary-carrier compliance, capacity reservation, mini-bids, fair-share, performance rewards, emergency spot, and risk diversification. Simulate allocation outcomes before policy activation.
 
-### 34. Create simulation-grade governance for `TRANSPORTATION_MANAGEMENT_DATABASE_URL` and `TRANSPORTATION_MANAGEMENT_DATABASE_URL`
+### 34. Tracking anomaly detection
 
-**Justification:** Complete Transportation Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Impossible locations, silent tracking, duplicate scans, sudden ETA jumps, and route deviations signal risk or bad data.
 
-**Improvement:** Add a policy cockpit where `TRANSPORTATION_MANAGEMENT_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TRANSPORTATION_MANAGEMENT_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Detect tracking anomalies using event sequence, geography, route plan, dwell, speed, timestamp confidence, source reliability, and carrier history. Route anomalies to review with non-accusatory explanations.
 
-### 35. Create simulation-grade governance for `TRANSPORTATION_MANAGEMENT_EVENT_TOPIC` and `TRANSPORTATION_MANAGEMENT_EVENT_TOPIC`
+### 35. Stochastic transit exposure model
 
-**Justification:** Complete Transportation Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Freight exposure spans delay, damage, cost, customs, temperature, carrier, and customer promise risk.
 
-**Improvement:** Add a policy cockpit where `TRANSPORTATION_MANAGEMENT_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TRANSPORTATION_MANAGEMENT_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Model transit exposure distributions by lane, carrier, mode, package type, route leg, season, and exception history. Provide mitigation actions and confidence.
 
-### 36. Upgrade `TransportationManagementWorkbench` into a full specialist command center
+### 36. ETA and cost forecast governance
 
-**Justification:** The PBC UI must expose the complete Transportation Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Forecasts affect dispatch, receiving, customer communication, and accruals, so model governance matters.
 
-**Improvement:** Expand `TransportationManagementWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add feature lineage, training windows, drift detection, confidence calibration, explainability, approval state, and rollback for ETA, delay, cost, and damage models. The workbench should show model version.
 
-### 37. Upgrade `TransportationManagementDetail` into a full specialist command center
+### 37. Transportation policy screening
 
-**Justification:** The PBC UI must expose the complete Transportation Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Restricted carriers, high-risk lanes, service policies, hazardous rules, and access policies must be enforced before execution.
 
-**Improvement:** Expand `TransportationManagementDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Screen shipment creation, carrier selection, routing, tendering, dispatch, tracking override, arrival, and delivery confirmation. Store policy version, attributes evaluated, decision, explanation, and override path.
 
-### 38. Upgrade `TransportationManagementWorkbench` into a full specialist command center
+### 38. Event reliability cockpit
 
-**Justification:** The PBC UI must expose the complete Transportation Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Transportation relies on consumed packed-order, PO, return, transfer, and access-policy events plus emitted shipment lifecycle events.
 
-**Improvement:** Expand `TransportationManagementWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add inbox/outbox views for idempotency, duplicates, retries, dead letters, handler version, payload lineage, projection freshness, replay eligibility, and downstream event effects. Decisions should warn on stale projections.
 
-### 39. Upgrade `TransportationManagementDetail` into a full specialist command center
+### 39. Cross-PBC federation boundary proof
 
-**Justification:** The PBC UI must expose the complete Transportation Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Transportation must compose with warehouse, procurement, inventory, returns, order, finance, identity, and audit packages without shared tables.
 
-**Improvement:** Expand `TransportationManagementDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add static/runtime checks proving commands touch only transportation-owned tables plus AppGen-X runtime tables. Include failing fixtures for direct WMS, inventory, AP, customer, and supplier-table access.
 
-### 40. Upgrade `TransportationManagementWorkbench` into a full specialist command center
+### 40. Transportation workbench coverage
 
-**Justification:** The PBC UI must expose the complete Transportation Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Dispatchers and logistics managers need direct UI access to the full freight execution surface.
 
-**Improvement:** Expand `TransportationManagementWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand UI fragments into shipment intake, carrier master, lane/contract console, carrier selection board, route planner, tender monitor, dispatch board, tracking console, ETA board, arrival/delivery proof, exception queue, cost variance, cross-border documents, carbon analytics, rules, parameters, configuration, events, and agent panels.
 
-### 41. Prove cross-PBC federation for `POST /transportation/shipments` and `Packed`
+### 41. Agent-safe event and document intake
 
-**Justification:** Transportation Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The transportation chatbot should process carrier messages, tracking payloads, proof documents, customs notes, and dispatch instructions without unsafe writes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /transportation/shipments` and consumed event `Packed` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add intake skills that extract candidate transportation facts, map them to owned tables, validate rules/permissions, reject foreign-table mutations, and produce side-effect-free previews with confidence, risks, confirmations, and expected AppGen-X events.
 
-### 42. Prove cross-PBC federation for `POST /transportation/carriers` and `PurchaseOrderIssued`
+### 42. Agent-safe dispatch and exception guidance
 
-**Justification:** Transportation Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** AI can help dispatchers respond faster, but transportation changes affect customer promises and carrier obligations.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /transportation/carriers` and consumed event `PurchaseOrderIssued` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require agent plans for carrier selection, dispatch, reroute, arrival, delivery, and exception closure to list command, permission, owned tables, idempotency key, emitted event, affected shipments, cost/service impact, and human approval.
 
-### 43. Prove cross-PBC federation for `POST /transportation/shipments/{id}/carrier-selection` and `ReturnAuthorized`
+### 43. Chaos-engineered carrier and telematics tolerance
 
-**Justification:** Transportation Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Carriers, telematics feeds, and external portals fail in ways that can stall logistics operations.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /transportation/shipments/{id}/carrier-selection` and consumed event `ReturnAuthorized` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add resilience drills for carrier non-response, tender timeout, tracking outage, duplicated events, delayed telematics, proof upload failure, route recalculation failure, and dead-letter recovery. Store drill evidence in release gates.
 
-### 44. Prove cross-PBC federation for `POST /transportation/routes` and `InventoryTransferRequested`
+### 44. Crypto-agile transportation authorization
 
-**Justification:** Transportation Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Dispatch, delivery proof, carrier identity, and policy overrides need durable authorization evidence.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /transportation/routes` and consumed event `InventoryTransferRequested` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add cryptographic epoch metadata, key rotation evidence, signed proof references, authorization policy version, and migration readiness for future algorithms. Do not tie business rules to a single cryptographic primitive.
 
-### 45. Temporal reconstruction and bitemporal audit for Transportation Management
+### 45. Rule and parameter simulation
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Changing tender timeout, cost-per-mile threshold, ETA confidence, carbon weight, consolidation threshold, or escalation windows can disrupt logistics.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Simulate rule and parameter changes against historical and active shipments, showing carrier selection changes, cost, on-time risk, carbon, exceptions, dead letters, tender failures, and customer-impact projections.
 
-### 46. Bulk operations and migration-grade controls for Transportation Management
+### 46. Freight audit preparation
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Freight audit should be supported by execution evidence before invoices arrive.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Generate audit packets with tender, route, dispatch, tracking, accessorial evidence, delivery proof, contract rate, accrual, expected invoice projection, variance risk, and dispute-ready documentation.
 
-### 47. Specialist edge-case playbooks for Transportation Management
+### 47. Continuous transportation control testing
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Controls must run continuously across carrier eligibility, route compliance, dispatch, tracking, proof, cost, and event handling.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add assertions for unauthorized carrier, missing service level, restricted lane, stale tracking, ETA confidence breach, missing delivery proof, over-threshold cost, expired carrier insurance, dead-letter aging, and agent-preview bypass.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Transportation Management
+### 48. Multi-tenant and multi-entity logistics isolation
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Transportation data includes sensitive customers, suppliers, routes, costs, carriers, and delivery proofs.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Enforce tenant/entity isolation in shipments, carriers, contracts, routes, tenders, tracking, costs, documents, proofs, projections, UI filters, agent previews, and event handlers with explicit release evidence.
 
-### 49. Continuous control testing and operational assurance for Transportation Management
+### 49. Transportation readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need a concise assessment of whether the PBC is ready for production freight execution.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from carrier setup, lane coverage, contract data, shipment readiness, route constraints, tender strategy, tracking integration, ETA governance, proof policy, cost controls, event reliability, UI coverage, boundary proof, control assertions, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Transportation Management
+### 50. End-to-end freight execution proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete transportation PBC must prove it can run the full logistics lifecycle from source event to delivered shipment.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering packed-order projection, shipment creation, carrier selection, route planning, tender, dispatch, tracking events, ETA update, inbound arrival, delivery proof, emitted `ShipmentDelivered`, cost accrual, exception-free audit trace, UI evidence, controls, and agent explanation.
