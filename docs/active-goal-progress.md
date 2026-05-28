@@ -3255,7 +3255,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   boundary and proves the expected diagnostic fixture, parser golden, semantic
   drift, and doctor report contracts. Verification passed: Python compile for
   touched tooling entrypoints and full `appgen tooling-audit --json` with
-  `16/16` checks and no blocking gaps. Commit: pending.
+  `16/16` checks and no blocking gaps. Commit: `d7f3db47`.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
