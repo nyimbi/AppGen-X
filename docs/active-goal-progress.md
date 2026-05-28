@@ -3286,7 +3286,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   touched tooling entrypoints, direct graph-suite CLI audit helper probe,
   focused graph-suite report/CLI tests (`2 passed`), scoped diff whitespace
   check, and restricted-name scan outside archive, Git internals, and active
-  PBC paths. Commit: pending.
+  PBC paths. Commit: `ec3927b6`.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
