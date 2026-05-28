@@ -2908,3 +2908,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   touched CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`, focused
   DSL platform/CLI regression tests, scoped diff whitespace check, and
   restricted-name scan. Commit: `f02c5851`.
+- Current linter input expansion pass makes the `docs/tooling.md` multi-file
+  linter requirement executable. `appgen lint <directory> --json` now
+  recursively discovers sorted `*.appgen` files, runs the same stable lint
+  contract per file, aggregates diagnostics with file attribution, exposes
+  nested `file_reports`, and records the behavior in doctor evidence via the
+  `directory_lint_input` check. Verification passed: Python compile for touched
+  CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`, focused DSL
+  platform/CLI regression tests, scoped diff whitespace check, and
+  restricted-name scan. Commit: `29b9a15d`.
