@@ -1678,6 +1678,89 @@ def format_report_dsl(
     return payload
 
 
+def formatter_contract_audit_dsl() -> dict:
+    """Prove the executable formatter guarantees documented in docs/tooling.md."""
+    comment_source = """
+// file header
+app FormatDemo { targets: web }
+
+// customer table
+table Customer {
+  // identity comment
+  id: int search default 0 required pk unique hidden // inline identity
+  name: string search unique required
+  parent_id: int search default 0 required -> Customer.id [many-to-one]
+}
+"""
+    organize_source = """
+app OrganizeDemo { targets: web }
+
+table Invoice {
+  total: decimal = subtotal + tax
+  description: string
+  // customer link
+  customer_id: int -> Customer.id
+  updated_at: string
+  invoice_number: string unique
+  subtotal: decimal
+  tax: decimal
+  id: int pk
+  index(total)
+}
+
+table Customer {
+  name: string
+  id: int pk
+}
+"""
+    comment_report = format_report_dsl(comment_source, source_name="formatter-comments.appgen")
+    organize_report = format_report_dsl(organize_source, source_name="formatter-organize.appgen", organize=True)
+    comment_text = comment_report["text"]
+    organize_text = organize_report["text"]
+    checks = (
+        _release_check("idempotent", comment_report["idempotent"] and organize_report["idempotent"]),
+        _release_check("file_level_comments_preserved", comment_text.startswith("// file header\napp FormatDemo")),
+        _release_check("declaration_comments_preserved", "\n// customer table\ntable Customer" in comment_text),
+        _release_check(
+            "inline_comments_preserved",
+            "  id: int pk required unique hidden search default 0 // inline identity" in comment_text,
+        ),
+        _release_check("modifier_ordering", "  name: string required unique search" in comment_text),
+        _release_check(
+            "relationship_modifier_ordering",
+            "  parent_id: int required search default 0 -> Customer.id [many-to-one]" in comment_text,
+        ),
+        _release_check("organize_requested", organize_report["organize"] is True),
+        _release_check("top_level_order_preserved", organize_text.index("table Invoice") < organize_text.index("table Customer")),
+        _release_check(
+            "organize_table_body_ordering",
+            (
+                "table Invoice {\n"
+                "  id: int pk\n"
+                "  invoice_number: string unique\n"
+                "  // customer link\n"
+                "  customer_id: int -> Customer.id\n"
+                "  description: string\n"
+                "  subtotal: decimal\n"
+                "  tax: decimal\n"
+                "  total: decimal = subtotal + tax\n"
+                "  updated_at: string\n"
+                "  index(total)\n"
+                "}"
+            )
+            in organize_text,
+        ),
+    )
+    return {
+        "format": "appgen.formatter-contract-audit.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "comment_report": comment_report["format"],
+        "organize_report": organize_report["format"],
+        "blocking_gaps": tuple(check["check"] for check in checks if not check["ok"]),
+    }
+
+
 def validate_report_dsl(
     text: str,
     *,
@@ -1975,6 +2058,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         component_catalog_source="inline-audit-catalog",
     )
     formatted = format_report_dsl(source, source_name="tooling-audit.appgen")
+    formatter_contract = formatter_contract_audit_dsl()
     validation = validate_report_dsl(source, source_name="tooling-audit.appgen", targets=("web", "mobile", "desktop"))
     graphs = graph_suite_report_dsl(source, source_name="tooling-audit.appgen")
     lsp = lsp_service_dsl(source, source_name="tooling-audit.appgen", prefix="cu")
@@ -2093,10 +2177,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "formatter_idempotent",
-            formatted["format"] == "appgen.format-result.v1" and formatted["idempotent"],
-            "Formatter is deterministic, idempotent, and returns lint diagnostics.",
+            formatted["format"] == "appgen.format-result.v1" and formatted["idempotent"] and formatter_contract["ok"],
+            "Formatter is deterministic, idempotent, preserves comments, orders modifiers, and supports the organize profile.",
             "docs/tooling.md#formatter-specification",
-            {"changed": formatted.get("changed"), "idempotent": formatted.get("idempotent")},
+            {
+                "changed": formatted.get("changed"),
+                "idempotent": formatted.get("idempotent"),
+                "formatter_contract": formatter_contract,
+            },
         ),
         _tooling_audit_check(
             "cli_validation_and_generation_contracts",

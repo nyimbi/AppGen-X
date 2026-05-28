@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from pyAppGen.dsl import format_report_dsl
+from pyAppGen.dsl import formatter_contract_audit_dsl
 from pyAppGen.dsl import designer_visual_edit_matrix_dsl
 from pyAppGen.dsl import designer_sync_report_dsl
 from pyAppGen.dsl import diagnostic_catalog_dsl
@@ -549,6 +550,26 @@ table Customer {
     assert result.returncode == 0, result.stderr
     assert payload["organize"] is True
     assert "  id: int pk" in payload["text"]
+
+
+def test_formatter_contract_audit_proves_documented_formatter_guarantees() -> None:
+    audit = formatter_contract_audit_dsl()
+    check_ids = {check["check"] for check in audit["checks"]}
+
+    assert audit["format"] == "appgen.formatter-contract-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "idempotent",
+        "file_level_comments_preserved",
+        "declaration_comments_preserved",
+        "inline_comments_preserved",
+        "modifier_ordering",
+        "relationship_modifier_ordering",
+        "organize_requested",
+        "top_level_order_preserved",
+        "organize_table_body_ordering",
+    } <= check_ids
+    assert audit["blocking_gaps"] == ()
 
 
 def test_graph_suite_report_covers_required_kinds_and_formats() -> None:

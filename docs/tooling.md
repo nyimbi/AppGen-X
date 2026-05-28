@@ -491,6 +491,11 @@ The executable formatter contract also proves comment preservation for
 file-level, declaration-adjacent, and inline comments, plus canonical field
 modifier ordering for `pk`, `required`, `unique`, `hidden`, `search`, `default`,
 and relationship arrows.
+`appgen.formatter-contract-audit.v1` is the machine-readable proof for these
+guarantees. It also verifies that the organize profile preserves top-level
+declaration order while ordering table bodies by identity, business keys,
+relationships, editable fields, calculated fields, audit fields, and
+directives.
 
 ## CLI Contracts
 
