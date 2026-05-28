@@ -6,6 +6,7 @@ import { DesignerCanvas } from './DesignerCanvas'
 import { DeviceApiWorkbench } from './DeviceApiWorkbench'
 import { InspectorPanel } from './InspectorPanel'
 import { PackageManager } from './PackageManager'
+import { SemanticServicePanel } from './SemanticServicePanel'
 import { StatusRail } from './StatusRail'
 import { StudioChrome } from './StudioChrome'
 import { paletteCategories } from './componentCatalog'
@@ -48,6 +49,7 @@ function App() {
         <DesignerCanvas />
         <InspectorPanel />
       </section>
+      <SemanticServicePanel />
       <PackageManager />
       <DeviceApiWorkbench />
       <DataServiceWorkbench />

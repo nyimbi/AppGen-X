@@ -164,7 +164,14 @@ async function main() {
         'Component Installation',
         'Native Capability Coverage',
         'Sources, Queries, Publishing',
+        'Editor And Designer Bridge',
+        'appgen.lsp-service.v1',
       ],
+    },
+    {
+      id: 'semantic_service_bridge',
+      path: '/',
+      includes: ['Language service', 'Designer sync', 'Graph suite', 'Change planner'],
     },
     {
       id: 'device_palette_filter',

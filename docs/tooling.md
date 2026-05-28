@@ -766,6 +766,17 @@ surfaces, and refreshed projections for accepted visual edits. Form, database,
 workflow, PBC composition, and package/deployment edit paths must validate the
 patched DSL before the Studio accepts the visual operation.
 
+The package-level Studio now exposes `appgen.studio-semantic-service.v1` as the
+shared web IDE bridge. That contract composes `appgen.lsp-service.v1`,
+`appgen.designer-sync-report.v1`, `appgen.graph-suite-report.v1`, and
+`appgen.nl-plan.v1` so the DSL editor, component palette, form designer,
+database designer, workflow designer, PBC composition designer,
+package/deployment designer, diagnostics panel, graph/explain panel, and
+natural-language planner all prove they are reading the same semantic source.
+The frontend renders the same bridge through a dedicated semantic-service
+panel, and the browser smoke contract includes that panel as a required
+scenario.
+
 ## Graph Tooling
 
 Graph output must be available from CLI, IDE, tests, and release evidence.

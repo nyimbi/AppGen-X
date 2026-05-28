@@ -15,8 +15,12 @@ from .dsl import dsl_authoring_release_gate
 from .dsl import dsl_code_actions
 from .dsl import dsl_completion_items
 from .dsl import dsl_outline
+from .dsl import designer_sync_report_dsl
 from .dsl import format_dsl
+from .dsl import graph_suite_report_dsl
 from .dsl import lint_dsl
+from .dsl import lsp_service_dsl
+from .dsl import nl_plan_dsl
 from .schema import schema_source_contract
 
 
@@ -34,22 +38,126 @@ def studio_workspace(source: str = SAMPLE_DSL) -> dict:
     formatted = format_dsl(source)
     stable_source = formatted["formatted"] if formatted["after"]["ok"] else source
     editor = dsl_editor_state(stable_source)
+    semantic_service = studio_semantic_service_workspace(stable_source)
     return {
         "format": "appgen.package-studio-workspace.v1",
         "sections": (
             "dsl_authoring",
+            "semantic_service",
+            "component_palette",
+            "form_designer",
             "database_design",
+            "workflow_designer",
+            "pbc_composition_designer",
+            "package_deployment_designer",
+            "diagnostics_quick_fixes",
+            "graph_explain",
             "source_intake",
             "generation_jobs",
             "application_management",
             "natural_language_evolution",
         ),
         "dsl_authoring": editor,
+        "semantic_service": semantic_service,
+        "component_palette": semantic_service["designer_surfaces"]["component_palette"],
+        "form_designer": semantic_service["designer_surfaces"]["form_designer"],
         "database_design": database_design_workspace(stable_source),
+        "workflow_designer": semantic_service["designer_surfaces"]["workflow_designer"],
+        "pbc_composition_designer": semantic_service["designer_surfaces"]["pbc_composition_designer"],
+        "package_deployment_designer": semantic_service["designer_surfaces"]["package_deployment_designer"],
+        "diagnostics_quick_fixes": semantic_service["diagnostics_quick_fixes"],
+        "graph_explain": semantic_service["graph_explain"],
         "source_intake": source_intake_profiles(),
         "generation_jobs": generation_job_queue((generation_job_manifest(changed_paths=("appgen.dsl",)),)),
         "application_management": application_management_plan(),
+        "natural_language_evolution": semantic_service["natural_language_evolution"],
         "formatted_preview": stable_source,
+    }
+
+
+def studio_semantic_service_workspace(source: str = SAMPLE_DSL) -> dict:
+    """Return the web IDE semantic bridge shared by editor and visual designers."""
+    lsp = lsp_service_dsl(source, source_name="studio.dsl")
+    designer = designer_sync_report_dsl(source, source_name="studio.dsl")
+    graphs = graph_suite_report_dsl(source, source_name="studio.dsl")
+    nl_plan = nl_plan_dsl(
+        source,
+        prompt="Add a governed customer onboarding workflow with an approval task.",
+        source_name="studio.dsl",
+    )
+    designer_surfaces = designer["projections"]
+    diagnostics = lsp["publishDiagnostics"]
+    code_actions = lsp["codeAction"]
+    required_surfaces = (
+        "dsl_editor",
+        "component_palette",
+        "form_designer",
+        "database_designer",
+        "workflow_designer",
+        "pbc_composition_designer",
+        "package_deployment_designer",
+        "diagnostics_panel",
+        "graph_explain_panel",
+        "natural_language_planner",
+    )
+    checks = (
+        {
+            "id": "lsp_semantic_service",
+            "ok": lsp["format"] == "appgen.lsp-service.v1"
+            and lsp["semantic_model_format"] == "appgen.semantic-model.v1",
+        },
+        {
+            "id": "designer_round_trip_service",
+            "ok": designer["format"] == "appgen.designer-sync-report.v1"
+            and set(required_surfaces) <= set(designer["surfaces"]),
+        },
+        {
+            "id": "graph_suite_service",
+            "ok": graphs["format"] == "appgen.graph-suite-report.v1"
+            and {"er", "workflow", "pbc", "package", "deployment"} <= set(graphs["graph_reports"]),
+        },
+        {
+            "id": "natural_language_diff_service",
+            "ok": nl_plan["format"] == "appgen.nl-plan.v1"
+            and nl_plan["migration_preview"]["format"] == "appgen.migration-plan.v1"
+            and bool(nl_plan["dsl_patch"]),
+        },
+        {
+            "id": "quick_fix_service",
+            "ok": diagnostics["format"] == "appgen.lsp-diagnostics.v1"
+            and code_actions["format"] == "appgen.lsp-code-actions.v1",
+        },
+    )
+    return {
+        "format": "appgen.studio-semantic-service.v1",
+        "ok": all(check["ok"] for check in checks),
+        "source": "studio.dsl",
+        "shared_source": "semantic_model",
+        "services": {
+            "lsp": lsp["format"],
+            "designer_sync": designer["format"],
+            "graph_suite": graphs["format"],
+            "natural_language_planner": nl_plan["format"],
+        },
+        "designer_surfaces": designer_surfaces,
+        "diagnostics_quick_fixes": {
+            "format": "appgen.studio-diagnostics-quick-fixes.v1",
+            "diagnostics": diagnostics,
+            "code_actions": code_actions,
+        },
+        "graph_explain": {
+            "format": "appgen.studio-graph-explain.v1",
+            "graph_suite": graphs,
+            "panel": designer_surfaces["graph_explain_panel"],
+        },
+        "natural_language_evolution": {
+            "format": "appgen.studio-natural-language-evolution.v1",
+            "plan": nl_plan,
+            "requires_dsl_diff_preview": True,
+            "applies_through": "appgen designer-sync",
+        },
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -164,13 +272,23 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     frontend = root / "appgen-frontend"
     package_path = frontend / "package.json"
     smoke_script = frontend / "scripts" / "browser-smoke.mjs"
+    semantic_contract = frontend / "src" / "semanticServiceContract.ts"
+    semantic_panel = frontend / "src" / "SemanticServicePanel.tsx"
     workflow_path = root / ".github" / "workflows" / "studio-browser-smoke.yml"
     package = {}
     if package_path.exists():
         package = json.loads(package_path.read_text(encoding="utf-8"))
     script_text = smoke_script.read_text(encoding="utf-8") if smoke_script.exists() else ""
+    semantic_contract_text = semantic_contract.read_text(encoding="utf-8") if semantic_contract.exists() else ""
+    semantic_panel_text = semantic_panel.read_text(encoding="utf-8") if semantic_panel.exists() else ""
     workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
-    scenarios = ("studio_shell", "device_palette_filter", "storage_search_filter", "empty_palette_state")
+    scenarios = (
+        "studio_shell",
+        "semantic_service_bridge",
+        "device_palette_filter",
+        "storage_search_filter",
+        "empty_palette_state",
+    )
     checks = (
         {
             "id": "frontend_package_script",
@@ -198,6 +316,15 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
             and "--disable-crash-reporter" in script_text
             and "--user-data-dir=" in script_text,
         },
+        {
+            "id": "frontend_semantic_service_bridge",
+            "ok": semantic_contract.exists()
+            and semantic_panel.exists()
+            and "appgen.frontend-semantic-service-audit.v1" in semantic_contract_text
+            and "appgen.lsp-service.v1" in semantic_contract_text
+            and "appgen.designer-sync-report.v1" in semantic_contract_text
+            and "Editor And Designer Bridge" in semantic_panel_text,
+        },
     )
     return {
         "format": "appgen.studio-browser-smoke-ci-contract.v1",
@@ -206,6 +333,8 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         "command": "npm run test:browser",
         "workflow": str(workflow_path),
         "script": str(smoke_script),
+        "semantic_contract": str(semantic_contract),
+        "semantic_panel": str(semantic_panel),
         "scenarios": scenarios,
         "environment": {
             "browser_binary": "APPGEN_CHROME_BIN",
@@ -353,6 +482,7 @@ def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
     """Return package-level proof for robust Studio/IDE readiness."""
     workspace = studio_workspace(source)
     editor = workspace["dsl_authoring"]
+    semantic_service = workspace["semantic_service"]
     database = workspace["database_design"]
     jobs = workspace["generation_jobs"]
     management = workspace["application_management"]
@@ -363,7 +493,15 @@ def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
             "id": "workspace_sections",
             "ok": {
                 "dsl_authoring",
+                "semantic_service",
+                "component_palette",
+                "form_designer",
                 "database_design",
+                "workflow_designer",
+                "pbc_composition_designer",
+                "package_deployment_designer",
+                "diagnostics_quick_fixes",
+                "graph_explain",
                 "source_intake",
                 "generation_jobs",
                 "application_management",
@@ -371,6 +509,24 @@ def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
             <= set(workspace["sections"]),
         },
         {"id": "dsl_authoring", "ok": editor["ok"] and editor["release_gate"]["ok"]},
+        {
+            "id": "semantic_service",
+            "ok": semantic_service["ok"]
+            and semantic_service["services"]["lsp"] == "appgen.lsp-service.v1"
+            and semantic_service["natural_language_evolution"]["requires_dsl_diff_preview"],
+        },
+        {
+            "id": "visual_designer_surfaces",
+            "ok": all(
+                workspace[surface]["semantic_model_format"] == "appgen.semantic-model.v1"
+                for surface in (
+                    "form_designer",
+                    "workflow_designer",
+                    "pbc_composition_designer",
+                    "package_deployment_designer",
+                )
+            ),
+        },
         {"id": "database_design", "ok": database["ok"] and "migration_preview" in database["guards"]},
         {"id": "source_intake", "ok": workspace["source_intake"]["ok"]},
         {"id": "generation_queue", "ok": jobs["ok"] and jobs["jobs"][0]["stages"][0] == "lint_dsl"},

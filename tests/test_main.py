@@ -391,6 +391,7 @@ from pyAppGen.studio import generation_job_manifest
 from pyAppGen.studio import studio_browser_smoke_ci_contract
 from pyAppGen.studio import studio_generation_smoke_audit
 from pyAppGen.studio import studio_release_audit
+from pyAppGen.studio import studio_semantic_service_workspace
 from pyAppGen.studio import studio_workspace
 from pyAppGen.targets import desktop_capability_contract
 from pyAppGen.targets import dsl_target_contract
@@ -1628,12 +1629,42 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     assert workspace["format"] == "appgen.package-studio-workspace.v1"
     assert {
         "dsl_authoring",
+        "semantic_service",
+        "component_palette",
+        "form_designer",
         "database_design",
+        "workflow_designer",
+        "pbc_composition_designer",
+        "package_deployment_designer",
+        "diagnostics_quick_fixes",
+        "graph_explain",
         "source_intake",
         "generation_jobs",
         "application_management",
         "natural_language_evolution",
     } <= set(workspace["sections"])
+    assert workspace["semantic_service"]["format"] == "appgen.studio-semantic-service.v1"
+    assert workspace["semantic_service"]["ok"] is True
+    assert workspace["form_designer"]["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert workspace["natural_language_evolution"]["requires_dsl_diff_preview"] is True
+
+    semantic_service = studio_semantic_service_workspace()
+    assert semantic_service["ok"] is True
+    assert semantic_service["services"] == {
+        "lsp": "appgen.lsp-service.v1",
+        "designer_sync": "appgen.designer-sync-report.v1",
+        "graph_suite": "appgen.graph-suite-report.v1",
+        "natural_language_planner": "appgen.nl-plan.v1",
+    }
+    assert {
+        "component_palette",
+        "form_designer",
+        "database_designer",
+        "workflow_designer",
+        "pbc_composition_designer",
+        "package_deployment_designer",
+        "natural_language_planner",
+    } <= set(semantic_service["designer_surfaces"])
 
     editor = dsl_editor_state("app Bad { targets: web, toaster } table Book { title: string ref Author.id }")
     assert editor["format"] == "appgen.package-dsl-editor-state.v1"
@@ -1659,15 +1690,20 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     assert audit["browser_smoke"]["ok"] is True
     assert "generation_smoke" in {gate["id"] for gate in audit["gates"]}
     assert "browser_smoke_ci" in {gate["id"] for gate in audit["gates"]}
+    assert {"semantic_service", "visual_designer_surfaces"} <= {gate["id"] for gate in audit["gates"]}
     assert audit["stop_condition"] == "do-not-claim-robust-ide-unless-ok-is-true"
     assert all(gate["ok"] for gate in audit["gates"])
     browser_smoke = studio_browser_smoke_ci_contract()
     assert browser_smoke["format"] == "appgen.studio-browser-smoke-ci-contract.v1"
     assert browser_smoke["ok"] is True
     assert browser_smoke["command"] == "npm run test:browser"
-    assert {"studio_shell", "device_palette_filter", "storage_search_filter", "empty_palette_state"} <= set(
-        browser_smoke["scenarios"]
-    )
+    assert {
+        "studio_shell",
+        "semantic_service_bridge",
+        "device_palette_filter",
+        "storage_search_filter",
+        "empty_palette_state",
+    } <= set(browser_smoke["scenarios"])
 
     smoke = studio_generation_smoke_audit()
     assert smoke["format"] == "appgen.studio-generation-smoke-audit.v1"

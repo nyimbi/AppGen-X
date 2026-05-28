@@ -12,6 +12,7 @@ import { deviceApiAudit, deviceApiCapabilities } from './deviceApiCatalog'
 import type { DeviceApiGroup } from './deviceApiCatalog'
 import { inspectorEditorAudit } from './inspectorCatalog'
 import { packageInstallAudit } from './packageCatalog'
+import { semanticServiceAudit } from './semanticServiceContract'
 
 const requiredDeviceGroups: DeviceApiGroup[] = [
   'Sensors',
@@ -42,6 +43,7 @@ export function studioInteractionAudit() {
   const deviceAudit = deviceApiAudit()
   const inspectorAudit = inspectorEditorAudit()
   const packageAudit = packageInstallAudit()
+  const semanticAudit = semanticServiceAudit()
 
   const scenarios = [
     {
@@ -93,7 +95,8 @@ export function studioInteractionAudit() {
         dataAudit.ok &&
         deviceAudit.ok &&
         inspectorAudit.ok &&
-        packageAudit.ok,
+        packageAudit.ok &&
+        semanticAudit.ok,
       evidence: {
         bindings: bindingAudit.totalBindings,
         components: componentAudit.totalComponents,
@@ -101,7 +104,13 @@ export function studioInteractionAudit() {
         devices: deviceAudit.totalCapabilities,
         editors: inspectorAudit.totalEditors,
         packages: packageAudit.totalPackages,
+        semanticSurfaces: semanticAudit.surfaceCount,
       },
+    },
+    {
+      id: 'semantic_service_bridge',
+      ok: semanticAudit.ok,
+      evidence: semanticAudit,
     },
   ]
 
