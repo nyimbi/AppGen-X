@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `vendor_supplier_360`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `vendor_supplier_360`. Each item is specific to supplier master data, onboarding, identity proofing, beneficial ownership, supplier sites and contacts, tax profiles, bank validation, payment preferences, certifications, diversity, ESG, sanctions screening, risk signals, quality and delivery performance, scorecards, segmentation, qualification, relationship action plans, agent assistance, and AppGen-X event reliability.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
-- Representative owned tables: `vendor_supplier_360_supplier_profile`, `vendor_supplier_360_supplier_site`, `vendor_supplier_360_supplier_contact`, `vendor_supplier_360_supplier_identity_proof`, `vendor_supplier_360_supplier_beneficial_owner`, `vendor_supplier_360_supplier_tax_profile`, `vendor_supplier_360_supplier_bank_validation`, `vendor_supplier_360_supplier_payment_preference`, `vendor_supplier_360_supplier_certification`, `vendor_supplier_360_supplier_diversity_attribute`, `vendor_supplier_360_supplier_esg_disclosure`, `vendor_supplier_360_supplier_sanctions_screening`, ...
-- Representative operations/APIs: `create_supplier_profile`, `validate_supplier_identity`, `register_supplier_site`, `capture_tax_profile`, `validate_bank_account`, `capture_certification`, `screen_sanctions`, `record_esg_disclosure`, `score_supplier_risk`, `qualify_supplier`, `segment_supplier`, `record_quality_incident`, ...
-- Representative events: `SupplierProfileCreated`, `SupplierBankValidated`, `SupplierQualified`, `SupplierRiskChanged`, `SupplierScorecardPublished`, `SupplierExceptionOpened`.
-- Representative advanced capabilities: `supplier graph intelligence`, `counterfactual supplier disruption simulation`, `semantic document onboarding`, `continuous certification control testing`, `cryptographic credential proof`, `risk-aware sourcing recommendation`.
+- Domain purpose: supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+- Owned operational surface: supplier profiles, sites, contacts, identity proofs, beneficial owners, tax profiles, bank validations, payment preferences, certifications, diversity attributes, ESG disclosures, sanctions screenings, risk signals, quality incidents, delivery performance, scorecards, segmentations, onboarding cases, qualification decisions, contract references, spend snapshots, concentration exposure, action plans, exception cases, policy rules, runtime parameters, schema extensions, control assertions, governed models, and AppGen-X runtime event tables.
+- Declared operations: supplier profile creation, identity validation, site registration, tax profile capture, bank account validation, certification capture, sanctions screening, ESG disclosure recording, risk scoring, supplier qualification, segmentation, quality incident recording, delivery performance update, scorecard calculation, concentration exposure detection, onboarding case opening, supplier approval, supplier action plan creation, exception resolution, supplier rule compilation, and supplier failure impact simulation.
+- Declared events and integrations: emits `SupplierProfileCreated`, `SupplierBankValidated`, `SupplierQualified`, `SupplierRiskChanged`, `SupplierScorecardPublished`, and `SupplierExceptionOpened`; consumes `PurchaseOrderCreated`, `PaymentRejected`, `CompliancePolicyChanged`, and `QualityIncidentRecorded`.
+- Advanced capability evidence: supplier graph intelligence, counterfactual supplier disruption simulation, semantic document onboarding, continuous certification control testing, cryptographic credential proof, risk-aware sourcing recommendation, event-sourced operational history, multi-tenant policy isolation, autonomous anomaly detection, predictive risk scoring, continuous control testing, cross-PBC event federation, and governed agent execution.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_profile`
+### 1. Supplier onboarding readiness gate
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Supplier setup mistakes create payment fraud risk, procurement delays, tax exposure, compliance gaps, and duplicate master data.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `supplier_profile_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a readiness gate that verifies identity proof, legal name, trade names, beneficial ownership, tax profile, bank validation, payment preferences, required certifications, sanctions result, ESG disclosure, sites, contacts, and qualification policy before approval.
 
-### 2. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_site`
+### 2. Supplier profile lifecycle state machine
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Supplier profiles must distinguish prospect, onboarding, active, conditionally approved, suspended, blocked, dormant, merged, terminated, and archived states.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_site` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `vendor_supplier_360_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement state transitions with required evidence, spend/payment effects, sourcing eligibility, action-plan requirements, reactivation checks, and audit proof. Release tests should reject purchase-order or payment eligibility for blocked states.
 
-### 3. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_contact`
+### 3. Duplicate supplier detection
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Duplicate suppliers fragment spend, hide risk exposure, create duplicate payments, and undermine performance analytics.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_contact` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `vendor_supplier_360_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add probabilistic duplicate detection using legal name, tax identifiers, bank accounts, beneficial owners, sites, contacts, domains, addresses, and payment references. Support merge, link, no-match, and investigation decisions with audit evidence.
 
-### 4. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_identity_proof`
+### 4. Supplier identity proof chain
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Supplier identity must be tied to verifiable documents and authoritative checks, not just text fields.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_identity_proof` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store identity proofs with source document, issuer, validation method, extracted fields, confidence, expiration, tamper checks, reviewer, and cryptographic fingerprint. The agent should cite proof evidence when proposing supplier creation.
 
-### 5. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_beneficial_owner`
+### 5. Beneficial ownership graph
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Ownership links reveal sanctions, conflict-of-interest, concentration, diversity, and risk exposure that profile-level data misses.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_beneficial_owner` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build beneficial-owner graph records with ownership percentage, control role, source evidence, effective dates, associated entities, risk flags, and screening status. Expose ownership drilldowns and change history.
 
-### 6. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_tax_profile`
+### 6. Supplier site governance
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Sites determine tax, payment, ship-from, remit-to, service location, compliance, and delivery performance.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_tax_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add site types, address validation, geocoding confidence, active dates, remit-to/ship-from/service usage, tax jurisdiction, risk zone, and approval state. Block use of unapproved or expired sites.
 
-### 7. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_bank_validation`
+### 7. Contact authority and delegation controls
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Supplier contacts can request bank changes, submit certifications, receive POs, resolve quality issues, or approve relationship actions.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_bank_validation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model contact roles, authority scope, verification status, delegation, communication preference, security challenge method, and expiration. Require stronger verification for sensitive changes such as bank account updates.
 
-### 8. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_payment_preference`
+### 8. Tax profile validation
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Incorrect tax identifiers, withholding status, residency, and documentation can create reporting and payment exposure.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_payment_preference` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add tax profile validation with jurisdiction, taxpayer ID format, document type, withholding status, exemption evidence, expiration, name match, and policy result. Store validation history and renewal reminders.
 
-### 9. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_certification`
+### 9. Bank account validation lifecycle
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Bank details are a primary fraud vector and require controlled creation, verification, change, suspension, and expiry handling.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_certification` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add bank validation states, account ownership proof, routing validation, name match, micro-deposit or network check evidence, risk score, change reason, approver, and TTL. Payment preference should only reference approved bank validations.
 
-### 10. Deep specialist lifecycle semantics for `vendor_supplier_360_supplier_diversity_attribute`
+### 10. Bank change fraud controls
 
-**Justification:** This owned table is part of the Vendor and Supplier 360 operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns supplier master data, onboarding, qualification, sites, contacts, tax and bank credentials, certifications, diversity and sustainability evidence, risk, performance, segmentation, relationship planning, and supplier intelligence.
+**Justification:** Supplier bank changes can be socially engineered or compromised through email takeovers.
 
-**Improvement:** Extend `vendor_supplier_360_supplier_diversity_attribute` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add bank-change workflows with independent contact verification, cooldowns, high-risk country checks, payment hold recommendations, duplicate bank detection, and out-of-band confirmation evidence.
 
-### 11. Make `create_supplier_profile` a complete command lifecycle
+### 11. Payment preference policy
 
-**Justification:** High-value users need `create_supplier_profile` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Suppliers may support multiple payment methods with different risk, cost, currency, schedule, and remittance needs.
 
-**Improvement:** Implement `create_supplier_profile` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierProfileCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model payment method, currency, remittance format, priority, effective dates, method risk, bank link, payment terms, and override rules. Explain why a payment preference is eligible or blocked.
 
-### 12. Make `validate_supplier_identity` a complete command lifecycle
+### 12. Certification lifecycle tracking
 
-**Justification:** High-value users need `validate_supplier_identity` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Certifications such as insurance, quality, safety, security, diversity, and regulatory approvals expire and may be site- or category-specific.
 
-**Improvement:** Implement `validate_supplier_identity` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierBankValidated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track certification type, issuing authority, scope, site/category applicability, issue/expiry dates, verification status, document proof, renewal owner, and qualification impact. Surface expiring certifications before they block sourcing.
 
-### 13. Make `register_supplier_site` a complete command lifecycle
+### 13. Continuous certification controls
 
-**Justification:** High-value users need `register_supplier_site` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Expired or missing certifications can invalidate supplier qualification and expose operations to compliance risk.
 
-**Improvement:** Implement `register_supplier_site` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierQualified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Run controls for required certification coverage, expiry windows, unverifiable issuers, missing document proofs, and category-specific gaps. Create action plans and supplier exceptions automatically when thresholds are breached.
 
-### 14. Make `capture_tax_profile` a complete command lifecycle
+### 14. Diversity attribute evidence governance
 
-**Justification:** High-value users need `capture_tax_profile` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Supplier diversity claims require credible evidence and careful handling to support reporting without misclassification.
 
-**Improvement:** Implement `capture_tax_profile` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierRiskChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add diversity attributes with certifying body, classification, ownership evidence, effective dates, verification status, and reporting eligibility. Preserve evidence lineage and restrict visibility where required.
 
-### 15. Make `validate_bank_account` a complete command lifecycle
+### 15. ESG disclosure framework
 
-**Justification:** High-value users need `validate_bank_account` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Supplier sustainability evidence spans emissions, labor practices, human rights, materials, waste, energy, and governance.
 
-**Improvement:** Implement `validate_bank_account` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierScorecardPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Capture ESG disclosures with topic, metric, methodology, reporting period, assurance level, source document, confidence, and improvement commitments. Score disclosure completeness separately from ESG performance.
 
-### 16. Make `capture_certification` a complete command lifecycle
+### 16. Sanctions and watchlist screening
 
-**Justification:** High-value users need `capture_certification` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Suppliers, owners, sites, and contacts may appear on sanctions, denied-party, or watch lists, with fuzzy matching and false-positive challenges.
 
-**Improvement:** Implement `capture_certification` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierExceptionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add screening records with screened party, list, match score, matched fields, jurisdiction, false-positive rationale, escalation owner, and rescreening cadence. Block qualification until unresolved high-risk matches are cleared.
 
-### 17. Make `screen_sanctions` a complete command lifecycle
+### 17. Adverse media and geopolitical risk signals
 
-**Justification:** High-value users need `screen_sanctions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Supplier risk includes legal, reputational, labor, security, and geopolitical signals that may not appear in transactional data.
 
-**Improvement:** Implement `screen_sanctions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierProfileCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add risk signals for adverse media, litigation, country risk, cyber incidents, labor violations, environmental events, and geopolitical disruptions with confidence, source, severity, and action guidance.
 
-### 18. Make `record_esg_disclosure` a complete command lifecycle
+### 18. Supplier risk score explainability
 
-**Justification:** High-value users need `record_esg_disclosure` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Buyers need to understand risk drivers before disqualifying, approving, or remediating a supplier.
 
-**Improvement:** Implement `record_esg_disclosure` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierBankValidated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Score risk by identity, bank, tax, sanctions, certification, ESG, quality, delivery, concentration, financial, country, and payment signals. Store driver weights, model/rule version, confidence, and recommended controls.
 
-### 19. Make `score_supplier_risk` a complete command lifecycle
+### 19. Qualification decision workflow
 
-**Justification:** High-value users need `score_supplier_risk` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Supplier qualification is a formal decision that should combine evidence, policy, reviewer judgment, and scope.
 
-**Improvement:** Implement `score_supplier_risk` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierQualified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add qualification states with eligible categories, sites, regions, spend limits, required remediations, expiration, reviewer, and evidence packet. Prevent qualified status from exceeding certified scope.
 
-### 20. Make `qualify_supplier` a complete command lifecycle
+### 20. Conditional approval controls
 
-**Justification:** High-value users need `qualify_supplier` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Suppliers may need temporary approval while waiting for missing documents, urgent business, or remediation.
 
-**Improvement:** Implement `qualify_supplier` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierRiskChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add conditional approval with reason, allowed categories, spend cap, expiration date, missing evidence, approver, and automatic suspension if conditions are not met.
 
-### 21. Operationalize `supplier graph intelligence` as a governed decision system
+### 21. Supplier segmentation strategy
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 risk score without hiding assumptions.
+**Justification:** Strategic, preferred, transactional, critical, sole-source, innovation, diverse, high-risk, and tail suppliers require different governance.
 
-**Improvement:** Promote `supplier graph intelligence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Segment suppliers using spend, criticality, risk, performance, category, concentration, innovation value, and relationship maturity. Store segment rationale and required management cadence.
 
-### 22. Operationalize `counterfactual supplier disruption simulation` as a governed decision system
+### 22. Spend snapshot lineage
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 workbench metric without hiding assumptions.
+**Justification:** Supplier spend analysis must preserve source, period, currency, category, and projection freshness without reading foreign tables.
 
-**Improvement:** Promote `counterfactual supplier disruption simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store spend snapshots from declared projections with source period, category, currency, amount, buyer unit, staleness, and mapping confidence. Use snapshots in segmentation, concentration, and scorecards.
 
-### 23. Operationalize `semantic document onboarding` as a governed decision system
+### 23. Concentration exposure analysis
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 risk score without hiding assumptions.
+**Justification:** Overdependence on a supplier, owner group, region, site, or category creates continuity risk.
 
-**Improvement:** Promote `semantic document onboarding` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Detect concentration by spend, critical material, geography, ownership graph, single-source status, and category. Simulate impact of supplier failure on operations and sourcing options.
 
-### 24. Operationalize `continuous certification control testing` as a governed decision system
+### 24. Supplier disruption simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 workbench metric without hiding assumptions.
+**Justification:** Buyers need to know what happens if a supplier fails, sanctions change, a site closes, or payment is blocked.
 
-**Improvement:** Promote `continuous certification control testing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate disruption scenarios with affected categories, open orders, alternate supplier readiness, inventory exposure, payment holds, quality impact, and recovery timing. Store assumptions and recommended mitigations.
 
-### 25. Operationalize `cryptographic credential proof` as a governed decision system
+### 25. Delivery performance scorecard
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 risk score without hiding assumptions.
+**Justification:** Supplier reliability depends on on-time, in-full, lead-time adherence, responsiveness, and disruption recovery.
 
-**Improvement:** Promote `cryptographic credential proof` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track delivery performance by site, category, period, purchase-order projection, promised date, delivered quantity, exception reason, and trend. Explain scorecard changes and link action plans.
 
-### 26. Operationalize `risk-aware sourcing recommendation` as a governed decision system
+### 26. Quality incident lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 workbench metric without hiding assumptions.
+**Justification:** Supplier quality incidents require containment, root cause, corrective action, recurrence tracking, and qualification impact.
 
-**Improvement:** Promote `risk-aware sourcing recommendation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add quality incident states, severity, affected materials/services, containment, root cause, corrective action, due date, recurrence, and qualification consequences. Consume quality events through declared handlers only.
 
-### 27. Operationalize `supplier graph intelligence` as a governed decision system
+### 27. Supplier scorecard governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 risk score without hiding assumptions.
+**Justification:** Scorecards drive sourcing decisions and must be transparent, weighted, versioned, and fair.
 
-**Improvement:** Promote `supplier graph intelligence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Version scorecard formulas with metrics, weights, thresholds, category applicability, data freshness, exclusions, and approval. Store calculation traces and data-quality warnings.
 
-### 28. Operationalize `counterfactual supplier disruption simulation` as a governed decision system
+### 28. Relationship action plans
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 workbench metric without hiding assumptions.
+**Justification:** Supplier improvement should be managed through accountable plans, not ad hoc notes.
 
-**Improvement:** Promote `counterfactual supplier disruption simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add action plans with objective, owner, supplier counterpart, due dates, linked risk/performance/certification issue, milestones, evidence, status, and outcome. Escalate overdue high-risk actions.
 
-### 29. Operationalize `semantic document onboarding` as a governed decision system
+### 29. Onboarding case orchestration
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 risk score without hiding assumptions.
+**Justification:** Supplier onboarding spans legal, tax, bank, compliance, category, quality, ESG, and sourcing tasks.
 
-**Improvement:** Promote `semantic document onboarding` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build onboarding case workflows with task templates, owners, dependencies, SLA, evidence requirements, supplier portal status, exceptions, and approval gates. UI should show bottlenecks by evidence type.
 
-### 30. Operationalize `continuous certification control testing` as a governed decision system
+### 30. Supplier portal evidence intake
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Vendor and Supplier 360 and measurably improves vendor supplier 360 workbench metric without hiding assumptions.
+**Justification:** Suppliers submit documents, updates, contacts, and attestations that must be validated before updating master data.
 
-**Improvement:** Promote `continuous certification control testing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_supplier_360_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add portal intake records with submitted field, document, submitter authority, validation status, reviewer, proposed change, and safe diff. The agent should summarize submissions and flag missing evidence.
 
-### 31. Create simulation-grade governance for `qualification_policy` and `risk_review_threshold`
+### 31. Contract reference governance
 
-**Justification:** Complete Vendor and Supplier 360 coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Supplier contracts influence qualification, certifications, payment terms, service obligations, and performance expectations.
 
-**Improvement:** Add a policy cockpit where `qualification_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `risk_review_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Store contract references with scope, category, effective dates, renewal, obligations, SLAs, payment terms, risk clauses, and contract PBC projection links. Avoid storing foreign contract tables directly.
 
-### 32. Create simulation-grade governance for `bank_validation_policy` and `certification_warning_days`
+### 32. Payment rejection feedback loop
 
-**Justification:** Complete Vendor and Supplier 360 coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Rejected payments can reveal stale bank data, blocked suppliers, tax issues, or fraud.
 
-**Improvement:** Add a policy cockpit where `bank_validation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `certification_warning_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Handle `PaymentRejected` events with idempotent evidence, affected payment preference, bank validation review, supplier risk update, exception case, and remediation action. Preserve rejection taxonomy and retry eligibility.
 
-### 33. Create simulation-grade governance for `certification_expiry_policy` and `concentration_limit_percent`
+### 33. Purchase order context projection
 
-**Justification:** Complete Vendor and Supplier 360 coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Supplier 360 needs purchase-order context for activity, spend, category, and performance without owning procurement data.
 
-**Improvement:** Add a policy cockpit where `certification_expiry_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `concentration_limit_percent` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Consume `PurchaseOrderCreated` events into owned projections/snapshots with staleness, category, site, amount, and source evidence. Use the projection for scorecards and concentration while preserving boundary proof.
 
-### 34. Create simulation-grade governance for `sanctions_escalation_policy` and `minimum_delivery_score`
+### 34. Compliance policy change impact
 
-**Justification:** Complete Vendor and Supplier 360 coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Policy changes may invalidate supplier qualification, certifications, sanctions thresholds, bank validation TTL, or concentration limits.
 
-**Improvement:** Add a policy cockpit where `sanctions_escalation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `minimum_delivery_score` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Simulate policy changes against active suppliers to identify affected profiles, required rescreening, expired evidence, changed qualification decisions, and action-plan needs. Require approval for high-impact migrations.
 
-### 35. Create simulation-grade governance for `concentration_limit_policy` and `bank_validation_ttl_days`
+### 35. Supplier graph intelligence
 
-**Justification:** Complete Vendor and Supplier 360 coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Supplier risk and opportunity are networked across owners, sites, contacts, banks, categories, contracts, and incidents.
 
-**Improvement:** Add a policy cockpit where `concentration_limit_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `bank_validation_ttl_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Build graph views connecting suppliers, owners, sites, contacts, bank accounts, certifications, incidents, spend snapshots, and relationships. Use graph reasoning to identify hidden concentration, related-party, and duplicate risks.
 
-### 36. Upgrade `supplier 360 workbench` into a full specialist command center
+### 36. Conflict-of-interest detection
 
-**Justification:** The PBC UI must expose the complete Vendor and Supplier 360 surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Supplier relationships may involve employee relatives, shared ownership, restricted parties, or prohibited gifts.
 
-**Improvement:** Expand `supplier 360 workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add conflict signals with relationship type, evidence source, involved parties, severity, reviewer, decision, and mitigation. Keep sensitive conflict details access-controlled.
 
-### 37. Upgrade `onboarding case board` into a full specialist command center
+### 37. Financial health and continuity risk
 
-**Justification:** The PBC UI must expose the complete Vendor and Supplier 360 surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Supplier financial distress can cause delivery failures, quality issues, or abrupt service interruption.
 
-**Improvement:** Expand `onboarding case board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Capture financial health indicators, payment behavior, insolvency signals, insurance status, continuity plans, and category criticality. Integrate into risk score and action planning.
 
-### 38. Upgrade `bank and tax validation panel` into a full specialist command center
+### 38. ESG and human-rights due diligence
 
-**Justification:** The PBC UI must expose the complete Vendor and Supplier 360 surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Supplier governance must cover labor, human rights, environment, conflict minerals, responsible sourcing, and modern-slavery risk where applicable.
 
-**Improvement:** Expand `bank and tax validation panel` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add due-diligence workflows with questionnaire evidence, geography/category risk, documentation, remediation plans, assurance level, and reporting eligibility. Link high-risk findings to qualification conditions.
 
-### 39. Upgrade `certification tracker` into a full specialist command center
+### 39. Certification and ESG document authenticity
 
-**Justification:** The PBC UI must expose the complete Vendor and Supplier 360 surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Supplier credentials can be forged, outdated, or misapplied to the wrong entity/site.
 
-**Improvement:** Expand `certification tracker` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Validate documents with issuer checks, date consistency, entity name match, scope match, digital signature/hash, and reviewer outcome. Store cryptographic credential proof and renewal reminders.
 
-### 40. Upgrade `risk and sanctions console` into a full specialist command center
+### 40. Supplier anomaly detection
 
-**Justification:** The PBC UI must expose the complete Vendor and Supplier 360 surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Sudden bank changes, spend spikes, quality bursts, delivery collapse, certification churn, or sanctions false positives may indicate risk or data defects.
 
-**Improvement:** Expand `risk and sanctions console` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies by supplier, site, category, bank, contact, spend, delivery, quality, and risk signal. Route severe anomalies to exception cases or immediate holds.
 
-### 41. Prove cross-PBC federation for `POST /suppliers` and `PurchaseOrderCreated`
+### 41. Risk-aware sourcing recommendation
 
-**Justification:** Vendor and Supplier 360 must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Supplier selection should consider capability, performance, risk, certifications, diversity, ESG, concentration, and continuity, not only price.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /suppliers` and consumed event `PurchaseOrderCreated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add recommendation evidence for supplier shortlist decisions with scorecard drivers, qualification scope, risk constraints, diversity/ESG goals, concentration exposure, and policy warnings. Keep sourcing decisions boundary-safe.
 
-### 42. Prove cross-PBC federation for `POST /suppliers/{id}/sites` and `PaymentRejected`
+### 42. Supplier exception case workflow
 
-**Justification:** Vendor and Supplier 360 must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Exceptions such as missing tax forms, failed bank validation, sanctions matches, expired certifications, quality incidents, and payment rejections need structured closure.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /suppliers/{id}/sites` and consumed event `PaymentRejected` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add exception cases with type, severity, supplier/site/contact link, owner, SLA, required evidence, remediation action, qualification impact, and closure proof.
 
-### 43. Prove cross-PBC federation for `POST /suppliers/{id}/certifications` and `CompliancePolicyChanged`
+### 43. Cryptographic supplier credential proof
 
-**Justification:** Vendor and Supplier 360 must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Supplier credentials are relied on by procurement, finance, risk, and audit teams and must be tamper-evident.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /suppliers/{id}/certifications` and consumed event `CompliancePolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Generate cryptographic proofs for identity, tax, bank, certifications, diversity attributes, ESG disclosures, sanctions decisions, qualification decisions, and scorecards. Provide redacted verifier exports.
 
-### 44. Prove cross-PBC federation for `POST /suppliers/{id}/bank-validations` and `QualityIncidentRecorded`
+### 44. AppGen-X event reliability proof
 
-**Justification:** Vendor and Supplier 360 must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Supplier state depends on purchase orders, payment rejections, policy changes, and quality incidents; event loss or duplication creates governance failures.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /suppliers/{id}/bank-validations` and consumed event `QualityIncidentRecorded` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Harden event descriptors with schema versions, idempotency keys, ordering assumptions, retry envelopes, dead-letter taxonomy, replay eligibility, and handler evidence. Add tests for duplicate PO and late payment-rejection events.
 
-### 45. Temporal reconstruction and bitemporal audit for Vendor and Supplier 360
+### 45. Cross-PBC boundary proof
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Supplier 360 needs procurement, payment, compliance, quality, contract, and sourcing context without reading foreign tables.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Generate a boundary proof enumerating every declared event, API, projection, cached field, freshness rule, and retention rule. Release audits should fail undeclared procurement, payment, quality, or contract table access.
 
-### 46. Bulk operations and migration-grade controls for Vendor and Supplier 360
+### 46. Agent-assisted supplier onboarding
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Supplier onboarding is document-heavy and requires careful evidence extraction and policy checks.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Let the agent parse supplier forms, certificates, tax documents, bank letters, ESG questionnaires, and emails into proposed supplier records with source citations, confidence, missing evidence, and side-effect-free CRUD plans.
 
-### 47. Specialist edge-case playbooks for Vendor and Supplier 360
+### 47. Agent-assisted supplier risk review
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Risk reviews require synthesizing identity, bank, sanctions, certifications, ESG, performance, quality, spend, and concentration.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Let the agent produce a risk dossier with evidence-backed drivers, uncertainty, recommended mitigations, action-plan drafts, and approval-ready qualification changes. It must not approve or block suppliers without authorized confirmation.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Vendor and Supplier 360
+### 48. Supplier 360 workbench completeness proof
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** A complete Supplier 360 PBC must expose the full relationship, risk, credential, and performance surface through UI, not generic tables.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add release checks proving UI coverage for profiles, sites, contacts, identity, beneficial owners, tax, bank, payment preferences, certifications, diversity, ESG, sanctions, risk, quality, delivery, scorecards, segmentation, onboarding, qualification, contracts, spend, concentration, action plans, exceptions, policies, parameters, controls, events, and agent tools.
 
-### 49. Continuous control testing and operational assurance for Vendor and Supplier 360
+### 49. Supplier resilience drills
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Supplier governance must recover from policy changes, screening outages, bank validation failures, duplicate supplier merges, and event backlogs.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add drills for sanctions service outage, bank validation backlog, duplicate merge rollback, certification expiry surge, quality incident flood, policy rollback, and dead-letter recovery. Store recovery time, affected suppliers, and control improvements.
 
-### 50. Human-in-the-loop domain agent execution for Vendor and Supplier 360
+### 50. End-to-end supplier release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class Vendor and Supplier 360 PBC needs one evidence package proving that supplier data can move from intake to qualification, performance management, risk monitoring, and relationship improvement safely.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Create an end-to-end proof exercising onboarding intake, profile creation, identity validation, site/contact setup, tax capture, bank validation, certification capture, sanctions screening, ESG disclosure, risk scoring, qualification, segmentation, quality and delivery performance, scorecard, concentration detection, action plan, exception resolution, UI coverage, AppGen-X eventing, boundary verification, and agent-safe CRUD planning.
