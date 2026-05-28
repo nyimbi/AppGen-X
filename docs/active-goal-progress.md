@@ -3219,3 +3219,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   for touched tooling entrypoints, focused designer-sync/audit tests,
   `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
   diff whitespace check, and restricted-name scan. Commit: `a17aa45f`.
+- Current package target validation pass closes the release target fallback
+  gap. `appgen package` and `appgen verify` now constrain `--target` to `web`,
+  `mobile`, `desktop`, `pbc`, `deployment`, or `all`; invalid package targets
+  return argparse exit code `2` instead of silently expanding to all release
+  verifiers. `appgen.tooling-audit.v1` embeds
+  `appgen.package-invalid-target-audit.v1` proving invalid package target
+  rejection. Verification passed: Python compile for touched tooling
+  entrypoints, focused package/audit tests, `tests/test_dsl_tooling_contracts.py
+  -q`, tooling-audit JSON proof, scoped diff whitespace check, and
+  restricted-name scan. Commit: `731f35ae`.
