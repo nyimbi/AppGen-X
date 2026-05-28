@@ -623,6 +623,11 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     pbc_verify_parser.add_argument("pbc")
     pbc_verify_parser.add_argument("--json", action="store_true")
 
+    designer_parser = subparsers.add_parser("designer-sync")
+    designer_parser.add_argument("path")
+    designer_parser.add_argument("--edit-json")
+    designer_parser.add_argument("--json", action="store_true")
+
     args = parser.parse_args(tuple(argv or ()))
     path = Path(args.path) if hasattr(args, "path") else None
     source = path.read_text(encoding="utf-8") if path is not None else ""
@@ -716,6 +721,11 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
             _emit_tooling_payload(report, as_json=args.json)
             return 0 if report["ok"] else 1
         report = pbc_verifier_report(args.pbc)
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "designer-sync":
+        edit = json.loads(args.edit_json) if args.edit_json else None
+        report = designer_sync_report_dsl(source, source_name=str(path), visual_edit=edit)
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     return 2
@@ -1578,6 +1588,240 @@ def _lsp_create_handler_actions(text: str, *, source_name: str | None = None) ->
     return tuple(actions)
 
 
+def designer_sync_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    visual_edit: dict | None = None,
+) -> dict:
+    """Return Studio/visual-designer state synchronized with the DSL model."""
+    source = text or ""
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    lsp = lsp_service_dsl(source, source_name=source_name)
+    projections = {
+        "dsl_editor": {
+            "format": "appgen.designer-dsl-editor.v1",
+            "semantic_model_format": semantic.get("format"),
+            "diagnostics": lsp["publishDiagnostics"],
+            "outline": lsp["documentSymbol"],
+            "code_actions": lsp["codeAction"],
+            "formatting": lsp["formatting"],
+        },
+        "component_palette": _designer_component_palette(semantic),
+        "form_designer": _designer_form_projection(semantic),
+        "database_designer": _designer_database_projection(semantic),
+        "workflow_designer": _designer_workflow_projection(semantic),
+        "pbc_composition_designer": _designer_pbc_projection(semantic),
+        "package_deployment_designer": _designer_package_deployment_projection(semantic),
+        "diagnostics_panel": lsp["publishDiagnostics"],
+        "graph_explain_panel": {
+            "format": "appgen.designer-graph-explain-panel.v1",
+            "graphs": semantic.get("graphs", {}),
+            "available_explain_queries": tuple(semantic.get("symbols", {}).keys()),
+        },
+        "natural_language_planner": {
+            "format": "appgen.designer-nl-planner-panel.v1",
+            "command": "appgen nl-plan",
+            "requires_dsl_diff_preview": True,
+            "token_budget_notes": _nl_token_budget_notes(),
+        },
+    }
+    edit_result = _designer_visual_edit_result(source, visual_edit, source_name=source_name) if visual_edit else None
+    checks = (
+        _release_check("dsl_editor_bound_to_lsp", projections["dsl_editor"]["semantic_model_format"] == "appgen.semantic-model.v1"),
+        _release_check("form_designer_bound_to_semantic_model", projections["form_designer"]["semantic_model_format"] == "appgen.semantic-model.v1"),
+        _release_check("database_designer_bound_to_semantic_model", projections["database_designer"]["semantic_model_format"] == "appgen.semantic-model.v1"),
+        _release_check("workflow_designer_bound_to_semantic_model", projections["workflow_designer"]["semantic_model_format"] == "appgen.semantic-model.v1"),
+        _release_check("pbc_designer_bound_to_semantic_model", projections["pbc_composition_designer"]["semantic_model_format"] == "appgen.semantic-model.v1"),
+        _release_check("package_deployment_designer_bound_to_semantic_model", projections["package_deployment_designer"]["semantic_model_format"] == "appgen.semantic-model.v1"),
+        _release_check("visual_edit_round_trips", edit_result is None or edit_result["round_trip_ok"]),
+        _release_check("invalid_visual_edits_rejected", edit_result is None or edit_result["accepted"] or bool(edit_result["diagnostics"])),
+    )
+    return {
+        "format": "appgen.designer-sync-report.v1",
+        "ok": semantic["ok"] and all(check["ok"] for check in checks),
+        "source": source_name,
+        "semantic_model_format": semantic.get("format"),
+        "surfaces": tuple(projections.keys()),
+        "projections": projections,
+        "visual_edit": edit_result,
+        "checks": checks,
+        "blocking_gaps": tuple(check["check"] for check in checks if not check["ok"]),
+    }
+
+
+def _designer_component_palette(semantic: dict) -> dict:
+    field_types = {
+        field.get("type")
+        for table in semantic.get("tables", {}).values()
+        for field in table.get("fields", {}).values()
+    }
+    return {
+        "format": "appgen.designer-component-palette.v1",
+        "semantic_model_format": semantic.get("format"),
+        "components": (
+            {"component": "TextBox", "binds": ("string", "email", "text"), "icon": "type"},
+            {"component": "NumberInput", "binds": ("int", "decimal", "float"), "icon": "hash"},
+            {"component": "CheckBox", "binds": ("bool",), "icon": "check-square"},
+            {"component": "DatePicker", "binds": ("date", "datetime", "time"), "icon": "calendar"},
+            {"component": "Lookup", "binds": ("relationship", "lookup_path"), "icon": "list-search"},
+            {"component": "Button", "binds": ("handler",), "icon": "square-mouse-pointer"},
+        ),
+        "field_types": tuple(sorted(item for item in field_types if item)),
+    }
+
+
+def _designer_form_projection(semantic: dict) -> dict:
+    return {
+        "format": "appgen.designer-form-projection.v1",
+        "semantic_model_format": semantic.get("format"),
+        "views": tuple(
+            {
+                "view": name,
+                "table": view.get("table"),
+                "sections": view.get("sections", ()),
+                "components": view.get("components", ()),
+                "handlers": view.get("handlers", ()),
+                "valid_bindings": tuple(_valid_bindings_for_table(semantic, view.get("table"))),
+            }
+            for name, view in semantic.get("views", {}).items()
+        ),
+    }
+
+
+def _designer_database_projection(semantic: dict) -> dict:
+    return {
+        "format": "appgen.designer-database-projection.v1",
+        "semantic_model_format": semantic.get("format"),
+        "tables": tuple(semantic.get("tables", {}).values()),
+        "er_graph": semantic.get("graphs", {}).get("er", {}),
+        "lookup_graph": semantic.get("graphs", {}).get("lookup", {}),
+    }
+
+
+def _designer_workflow_projection(semantic: dict) -> dict:
+    return {
+        "format": "appgen.designer-workflow-projection.v1",
+        "semantic_model_format": semantic.get("format"),
+        "flows": tuple(semantic.get("flows", {}).values()),
+        "workflow_graph": semantic.get("graphs", {}).get("workflow", {}),
+        "handler_graph": semantic.get("graphs", {}).get("handler", {}),
+    }
+
+
+def _designer_pbc_projection(semantic: dict) -> dict:
+    return {
+        "format": "appgen.designer-pbc-composition-projection.v1",
+        "semantic_model_format": semantic.get("format"),
+        "pbcs": semantic.get("pbcs", {}),
+        "composition": semantic.get("composition", {}),
+        "pbc_graph": semantic.get("graphs", {}).get("pbc", {}),
+    }
+
+
+def _designer_package_deployment_projection(semantic: dict) -> dict:
+    return {
+        "format": "appgen.designer-package-deployment-projection.v1",
+        "semantic_model_format": semantic.get("format"),
+        "packages": semantic.get("packages", {}),
+        "deployment": semantic.get("deployment", {}),
+        "package_graph": semantic.get("graphs", {}).get("package", {}),
+        "deployment_graph": semantic.get("graphs", {}).get("deployment", {}),
+    }
+
+
+def _valid_bindings_for_table(semantic: dict, table_name: str | None) -> tuple[str, ...]:
+    table = semantic.get("tables", {}).get(table_name or "")
+    if not table:
+        return ()
+    fields = tuple(table.get("fields", {}).keys())
+    lookups = tuple(path for path, detail in table.get("lookup_paths", {}).items() if detail.get("valid"))
+    return fields + lookups
+
+
+def _designer_visual_edit_result(source: str, visual_edit: dict | None, *, source_name: str | None = None) -> dict:
+    patch = _designer_edit_to_patch(source, visual_edit or {})
+    patched_source = _append_dsl_patch(source, patch) if patch else source
+    lint = lint_report_dsl(patched_source, source_name=source_name)
+    semantic = semantic_model_dsl(patched_source, source_name=source_name)
+    accepted = bool(patch) and lint["ok"]
+    return {
+        "format": "appgen.designer-visual-edit-result.v1",
+        "operation": (visual_edit or {}).get("kind"),
+        "accepted": accepted,
+        "dsl_patch": patch,
+        "patched_source": patched_source,
+        "lint": lint,
+        "diagnostics": tuple(lint["diagnostics"]),
+        "round_trip_ok": accepted and semantic["ok"],
+        "semantic_model_format": semantic.get("format"),
+    }
+
+
+def _designer_edit_to_patch(source: str, edit: dict) -> str:
+    kind = edit.get("kind")
+    if kind == "add_table":
+        fields = tuple(edit.get("fields") or ({"name": "name", "type": "string", "required": True},))
+        lines = [f"table {_pascal_case(str(edit.get('table') or edit.get('name') or 'NewTable'))} {{", "  id: int pk"]
+        for field in fields:
+            field_name = _snake_case(str(field.get("name", "field")))
+            type_name = str(field.get("type") or field.get("type_name") or "string")
+            required = " required" if field.get("required") else ""
+            lines.append(f"  {field_name}: {type_name}{required}")
+        lines.append("}")
+        return "\n".join(lines)
+    if kind == "add_field":
+        table = _pascal_case(str(edit.get("table", "")))
+        field = _snake_case(str(edit.get("field") or edit.get("name") or "field"))
+        type_name = str(edit.get("type") or edit.get("type_name") or "string")
+        return f"// edit table {table}: add {field}: {type_name}"
+    if kind == "add_component":
+        return _designer_component_patch(edit)
+    if kind == "add_flow_transition":
+        flow = _pascal_case(str(edit.get("flow", "")))
+        source_state = _snake_case(str(edit.get("from", "draft")))
+        target_state = _snake_case(str(edit.get("to", "done")))
+        if re.search(rf"\bflow\s+{re.escape(flow)}\s*\{{", source):
+            return f"// edit flow {flow}: add transition {source_state} -> {target_state}"
+        return f"flow {flow} {{\n  {source_state} -> {target_state}\n}}"
+    if kind == "add_pbc_include":
+        pbc = str(edit.get("pbc", "")).strip()
+        composition = _pascal_case(str(edit.get("composition") or "AppComposition"))
+        return f"composition {composition} {{\n  include pbc {pbc} version {edit.get('version', '1.0.0')}\n}}"
+    if kind == "add_package":
+        name = _pascal_case(str(edit.get("name") or f"{edit.get('target', 'web')}Package"))
+        target = str(edit.get("target", "web")).lower()
+        return f"package {name} {{\n  target: {target}\n  smoke: launch\n}}"
+    if kind == "add_deployment_unit":
+        deploy = _pascal_case(str(edit.get("deployment") or "Production"))
+        target = str(edit.get("target") or edit.get("unit") or "app")
+        pattern = str(edit.get("pattern") or "service")
+        return f"deploy {deploy} {{\n  unit {target} as {pattern}\n  health {target} \"/health\"\n}}"
+    return ""
+
+
+def _designer_component_patch(edit: dict) -> str:
+    view = _pascal_case(str(edit.get("view", "")))
+    binding = str(edit.get("binding") or edit.get("field") or "")
+    component = str(edit.get("component") or "TextBox")
+    x = int(edit.get("x", 0))
+    y = int(edit.get("y", 0))
+    w = int(edit.get("w", 4))
+    h = int(edit.get("h", 1))
+    return f"// edit view {view}: add component {binding} {component} {x} {y} {w} {h}"
+
+
+def _append_to_existing_block(source: str, kind: str, name: str, line: str) -> str:
+    if not name:
+        return ""
+    pattern = re.compile(rf"({kind}\s+{re.escape(name)}\b[^\{{]*\{{)(?P<body>.*?)(\n\}})", re.S)
+    match = pattern.search(source)
+    if match is None:
+        return ""
+    body = match.group("body").rstrip()
+    return source[: match.start()] + f"{match.group(1)}{body}\n{line}{match.group(3)}" + source[match.end() :]
+
+
 def release_verifier_report_dsl(
     text: str,
     *,
@@ -2389,6 +2633,10 @@ def _append_dsl_patch(source: str, patch: str) -> str:
         return source
     if patch.startswith("// edit table "):
         return _apply_table_field_patch(source, patch)
+    if patch.startswith("// edit view "):
+        return _apply_view_component_patch(source, patch)
+    if patch.startswith("// edit flow "):
+        return _apply_flow_transition_patch(source, patch)
     stripped = source.rstrip()
     return f"{stripped}\n\n{patch}\n" if stripped else f"{patch}\n"
 
@@ -2410,6 +2658,29 @@ def _apply_table_field_patch(source: str, patch: str) -> str:
     body = table_match.group("body").rstrip()
     replacement = f"{table_match.group(1)}{body}\n  {field}: {field_type}{table_match.group(3)}"
     return source[: table_match.start()] + replacement + source[table_match.end() :]
+
+
+def _apply_view_component_patch(source: str, patch: str) -> str:
+    match = re.match(
+        r"// edit view (?P<view>[A-Za-z_][A-Za-z0-9_]*): add component (?P<binding>[A-Za-z_][A-Za-z0-9_.]*) (?P<component>[A-Za-z_][A-Za-z0-9_]*) (?P<x>-?\d+) (?P<y>-?\d+) (?P<w>-?\d+) (?P<h>-?\d+)",
+        patch,
+    )
+    if not match:
+        return source
+    view = match.group("view")
+    line = f"  @ {match.group('binding')} {match.group('component')} {match.group('x')} {match.group('y')} {match.group('w')} {match.group('h')}"
+    return _append_to_existing_block(source, "view", view, line) or source
+
+
+def _apply_flow_transition_patch(source: str, patch: str) -> str:
+    match = re.match(
+        r"// edit flow (?P<flow>[A-Za-z_][A-Za-z0-9_]*): add transition (?P<source>[A-Za-z_][A-Za-z0-9_]*) -> (?P<target>[A-Za-z_][A-Za-z0-9_]*)",
+        patch,
+    )
+    if not match:
+        return source
+    line = f"  {match.group('source')} -> {match.group('target')}"
+    return _append_to_existing_block(source, "flow", match.group("flow"), line) or source
 
 
 def _default_composition_name(semantic: dict) -> str:

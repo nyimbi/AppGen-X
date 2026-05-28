@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from pyAppGen.dsl import format_report_dsl
+from pyAppGen.dsl import designer_sync_report_dsl
 from pyAppGen.dsl import graph_report_dsl
 from pyAppGen.dsl import lint_report_dsl
 from pyAppGen.dsl import lsp_service_dsl
@@ -411,3 +412,81 @@ def test_appgen_verify_and_pbc_subcommands_emit_json_contracts(tmp_path: Path) -
     pbc_payload = json.loads(pbc.stdout)
     assert verify_payload["format"] == "appgen.release-verifier-report.v1"
     assert pbc_payload["format"] == "appgen.pbc-package-verifier.v1"
+
+
+def test_designer_sync_projects_all_required_ide_surfaces_from_semantic_model() -> None:
+    report = designer_sync_report_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
+
+    assert report["format"] == "appgen.designer-sync-report.v1"
+    assert report["ok"] is True
+    assert report["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert set(report["surfaces"]) >= {
+        "dsl_editor",
+        "component_palette",
+        "form_designer",
+        "database_designer",
+        "workflow_designer",
+        "pbc_composition_designer",
+        "package_deployment_designer",
+        "diagnostics_panel",
+        "graph_explain_panel",
+        "natural_language_planner",
+    }
+    assert report["projections"]["form_designer"]["views"][0]["valid_bindings"]
+    assert report["projections"]["database_designer"]["er_graph"]["format"] == "appgen.graph.er.v1"
+    assert report["projections"]["workflow_designer"]["workflow_graph"]["format"] == "appgen.graph.workflow.v1"
+
+
+def test_designer_sync_accepts_round_trippable_visual_edit_and_rejects_invalid_binding() -> None:
+    valid = designer_sync_report_dsl(
+        TOOLING_SAMPLE,
+        source_name="finance.appgen",
+        visual_edit={
+            "kind": "add_component",
+            "view": "InvoiceForm",
+            "binding": "customer.name",
+            "component": "Lookup",
+            "x": 1,
+            "y": 2,
+            "w": 4,
+            "h": 1,
+        },
+    )
+    invalid = designer_sync_report_dsl(
+        TOOLING_SAMPLE,
+        source_name="finance.appgen",
+        visual_edit={
+            "kind": "add_component",
+            "view": "InvoiceForm",
+            "binding": "missing.field",
+            "component": "Lookup",
+            "x": 1,
+            "y": 2,
+            "w": 4,
+            "h": 1,
+        },
+    )
+
+    assert valid["visual_edit"]["accepted"] is True
+    assert valid["visual_edit"]["round_trip_ok"] is True
+    assert invalid["visual_edit"]["accepted"] is False
+    assert invalid["ok"] is False
+    assert any(item["code"] == "AGX0402" for item in invalid["visual_edit"]["diagnostics"])
+
+
+def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> None:
+    path = tmp_path / "finance.appgen"
+    path.write_text(TOOLING_SAMPLE, encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "designer-sync", str(path), "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["format"] == "appgen.designer-sync-report.v1"
+    assert payload["projections"]["dsl_editor"]["semantic_model_format"] == "appgen.semantic-model.v1"
