@@ -1,418 +1,416 @@
-# Electronic Health Records Core PBC Better-Than-World-Class Improvement Backlog
+# Electronic Health Records Core PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `electronic_health_records_core`. The backlog is specific to clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `electronic_health_records_core` with a hand-curated clinical record roadmap. The scope is the owned electronic chart: patient charts, encounters, orders, observations, allergies, medication lists, care notes, summaries, documentation integrity, clinical safety, consent-aware access, governed agent assistance, and release evidence for a composable AppGen-X PBC.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `electronic_health_records_core`.
-- Domain purpose: Clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries.
+- Domain purpose: clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries.
 - Owned domain tables: `patient_chart`, `clinical_encounter`, `clinical_order`, `observation`, `allergy`, `medication_list`, `care_note`, `electronic_health_records_core_policy_rule`, `electronic_health_records_core_runtime_parameter`, `electronic_health_records_core_schema_extension`, `electronic_health_records_core_control_assertion`, `electronic_health_records_core_governed_model`.
 - Public APIs: `POST /patient-charts`, `POST /clinical-encounters`, `POST /clinical-orders`, `POST /observations`, `POST /allergys`, `GET /electronic-health-records-core-workbench`.
 - Emitted AppGen-X events: `ElectronicHealthRecordsCoreCreated`, `ElectronicHealthRecordsCoreUpdated`, `ElectronicHealthRecordsCoreApproved`, `ElectronicHealthRecordsCoreExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `patient_chart_management`, `electronic_health_records_core_workflow`, `electronic_health_records_core_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `electronic_health_records_core_event_sourced_operational_history`, `electronic_health_records_core_multi_tenant_policy_isolation`, `electronic_health_records_core_schema_evolution_resilience`, `electronic_health_records_core_autonomous_anomaly_detection`, `electronic_health_records_core_semantic_document_instruction_understanding`, `electronic_health_records_core_predictive_risk_scoring`, `electronic_health_records_core_counterfactual_scenario_simulation`, `electronic_health_records_core_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Patient Chart
+### 1. Longitudinal Chart Identity and Merge Review
 
-**Justification:** This closes shallow CRUD gaps by making every electronic health records core transition explainable and testable instead of implicit in free-form status values.
+**Justification:** A clinical chart can be fragmented by duplicate identities, registration corrections, or imported records, and unsafe automatic merging can corrupt the longitudinal record.
 
-**Improvement:** Define a complete state machine for `patient_chart` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add chart identity confidence, duplicate candidate review, provisional chart state, merge recommendation, merge rejection reason, source-system lineage, and reversible chart-link decisions inside `patient_chart`.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ElectronicHealthRecordsCoreCreated, ElectronicHealthRecordsCoreUpdated, ElectronicHealthRecordsCoreApproved. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove duplicate charts are flagged but not merged automatically, reviewers can accept or reject links with audit evidence, and generated summaries show identity uncertainty without reading a foreign master table.
 
-### 2. Domain intake and normalization for Clinical Encounter
+### 2. Encounter Type and Care Setting Semantics
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries, not only already-clean records.
+**Justification:** Ambulatory visits, emergency visits, virtual visits, inpatient rounds, procedures, and external consults require different documentation, signature, and order rules.
 
-**Improvement:** Build a typed intake pipeline for `clinical_encounter` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `clinical_encounter` with encounter class, care setting, visit modality, attending role, service line, arrival/discharge timestamps, external source, and required documentation checklist.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate setting-specific required fields, incomplete encounter warnings, and workbench queues for unsigned, incomplete, amended, and externally sourced encounters.
 
-### 3. Specialist validation rules for Clinical Order
+### 3. Clinical Note Authorship and Attestation
 
-**Justification:** World-class Electronic Health Records Core requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** A care note is a clinical assertion with authorship, co-signature, addendum, and amendment rules, not a mutable text blob.
 
-**Improvement:** Add a domain rule compiler for `clinical_order` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add note author, contributor, supervising signer, attestation status, co-signature requirement, addendum chain, correction reason, late-entry marker, and source evidence to `care_note`.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `ELECTRONIC_HEALTH_RECORDS_CORE_DATABASE_URL, ELECTRONIC_HEALTH_RECORDS_CORE_EVENT_TOPIC, ELECTRONIC_HEALTH_RECORDS_CORE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject unauthorized note signing, preserve original note text after amendment, and show attestation state in the EHR workbench and generated patient summary.
 
-### 4. Parameter governance and tuning for Observation
+### 4. Problem-Oriented Chart Sections
 
-**Justification:** Parameters are where operations teams tune electronic health records core; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Clinicians need records organized by active problems and episodes, not only chronological documents.
 
-**Improvement:** Expose bounded runtime parameters for `observation` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add chart section projections that group encounters, observations, orders, medications, allergies, and notes by problem, episode, acuity, and responsible clinician.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must rebuild problem-oriented views from owned events and package-owned records while preserving tenant boundaries and redaction rules.
 
-### 5. Deep owned schema expansion for Allergy
+### 5. Clinical Order Lifecycle
 
-**Justification:** A single payload column cannot express the full surface of clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries or prove cross-PBC boundaries are respected.
+**Justification:** Orders move through draft, signed, released, scheduled, performed, resulted, canceled, discontinued, expired, and corrected states.
 
-**Improvement:** Extend the owned schema around `allergy` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `clinical_order` with order type, priority, ordering clinician, indication, required specimen or procedure details, scheduling dependency, result expectation, cancellation reason, and discontinuation authority.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `electronic_health_records_core_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove invalid order transitions are rejected, result-required orders cannot close without evidence, and order cancellation emits AppGen-X events.
 
-### 6. Event-sourced operational history for Medication List
+### 6. Order Set Governance
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in electronic health records core.
+**Justification:** Order sets reduce variability but can create unsafe defaults if not versioned and reviewed.
 
-**Improvement:** Capture every material mutation of `medication_list` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add governed order-set templates with indication, included orders, optional orders, contraindication prompts, version, approving committee, activation window, and rollback plan.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must instantiate order sets, preserve template version on each order, block retired templates, and run policy impact simulation before activation.
 
-### 7. Projection and read-model strategy for Care Note
+### 7. Observation Units and Reference Ranges
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Observations are unsafe without units, methods, reference ranges, abnormality interpretation, and specimen context.
 
-**Improvement:** Create purpose-built projections for `care_note`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `observation` with unit, method, specimen type, collection time, result time, reference range, abnormal flag, critical flag, performer, and corrected-result lineage.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate unit compatibility, critical-result routing, corrected-result history, and trend displays for numeric and categorical observations.
 
-### 8. Exception taxonomy and remediation for Electronic Health Records Core Policy Rule
+### 8. Critical Result Acknowledgement
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Critical lab, imaging, and device observations require closed-loop acknowledgement and escalation.
 
-**Improvement:** Model the full exception taxonomy for `electronic_health_records_core_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add acknowledgement owner, deadline, notified party, notification channel, read-back evidence, escalation tier, and unresolved critical result queue.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open critical-result exceptions, escalate missed acknowledgements, and prevent false closure without acknowledgement evidence.
 
-### 9. Predictive risk scoring for Electronic Health Records Core Runtime Parameter
+### 9. Allergy Substance and Reaction Specificity
 
-**Justification:** The package should warn users before electronic health records core work fails, breaches policy, or creates downstream cost.
+**Justification:** Allergy records must distinguish intolerance, adverse reaction, contraindication, inactive allergy, and unverified patient report.
 
-**Improvement:** Add predictive risk scoring for `electronic_health_records_core_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `allergy` with substance class, specific substance, reaction, severity, onset, verification status, source, inactive reason, and clinical override guidance.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove duplicate allergy entries are detected, inactive allergies remain visible, and medication order warnings reference reaction and severity.
 
-### 10. Counterfactual simulation for Electronic Health Records Core Schema Extension
+### 10. Medication List Reconciliation
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries operations.
+**Justification:** Medication lists drift across encounters, transitions, external data, and patient reports.
 
-**Improvement:** Provide scenario simulation for `electronic_health_records_core_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add medication-list reconciliation sessions with source list, patient-reported medication, start/stop/change action, discrepancy reason, reviewer, and unresolved discrepancy.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve reconciliation history, block encounter closure when required reconciliation is incomplete, and require confirmation before agent-proposed medication changes.
 
-### 11. Autonomous anomaly triage for Electronic Health Records Core Control Assertion
+### 11. Medication Safety Screening Projection
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** The EHR core must expose medication safety evidence without becoming a pharmacy claims or dispensing system.
 
-**Improvement:** Implement anomaly detection for `electronic_health_records_core_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build projections for allergy conflict, duplicate therapy, dose-range warning, medication-observation conflict, pregnancy or renal caution, and active high-risk medication.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove safety warnings are derived from owned chart evidence and declared event/API inputs, never from shared tables.
 
-### 12. Semantic document understanding for Electronic Health Records Core Governed Model
+### 12. Patient Summary Assembly
 
-**Justification:** Document-heavy work in Electronic Health Records Core cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Patient summaries need curated clinical sections, freshness markers, and redaction, not raw record dumps.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `electronic_health_records_core_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Generate summaries with active problems, recent encounters, active medications, allergies, key observations, pending orders, care notes, risk flags, and source freshness.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show summaries differ by permission, include source timestamps, and flag stale or incomplete sections.
 
-### 13. Agent-safe CRUD execution for Patient Chart
+### 13. Snapshot and Point-in-Time Chart Review
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Legal, safety, and clinical review often require seeing what the chart looked like at a past time.
 
-**Improvement:** Add a professional chatbot skill for `patient_chart` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add immutable event history and projection checkpoints for patient chart, encounter, order, observation, allergy, medication list, and note mutations.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must reconstruct chart state at a requested time and prove amendments do not erase prior clinical assertions.
 
-### 14. Workbench persona coverage for Clinical Encounter
+### 14. Clinical Documentation Deficiency Workqueue
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Missing signatures, incomplete fields, absent diagnosis links, and late notes create operational and compliance risk.
 
-**Improvement:** Design dedicated workbench panels for `clinical_encounter`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add deficiency records with type, responsible role, due date, severity, blocker status, linked encounter or note, remediation action, and closure evidence.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open deficiencies automatically from incomplete records and close them only after the underlying evidence is fixed.
 
-### 15. Cross-PBC dependency contracts for Clinical Order
+### 15. Patient-Generated Data Intake
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Patient-reported symptoms, device readings, questionnaires, and attachments can enrich care but must be triaged before becoming chart evidence.
 
-**Improvement:** Represent dependencies for `clinical_order` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add intake states for submitted, parsed, clinically relevant, needs review, accepted into chart, rejected, and escalated, with source and reviewer evidence.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require review for safety-sensitive patient submissions and preserve rejected submissions with reason and audit trail.
 
-### 16. API completeness and versioning for Observation
+### 16. External Document Reconciliation
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Imported summaries, referral notes, diagnostic reports, and scanned documents need structured reconciliation before they affect the chart.
 
-**Improvement:** Expand APIs beyond POST /patient-charts, POST /clinical-encounters, POST /clinical-orders to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add document extraction evidence, matched chart section, extracted finding, confidence, reviewer, accepted field, rejected field, and source span.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove agent-extracted fields cannot mutate chart state without reviewer approval when confidence or policy requires review.
 
-### 17. Typed emitted-event expansion for Allergy
+### 17. Consent-Aware Chart Access
 
-**Justification:** Consumers should understand what happened in Electronic Health Records Core without parsing opaque payloads.
+**Justification:** Clinical records include sensitive sections that need purpose, role, patient consent, and break-glass controls.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `allergy` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add access purpose, consent scope, sensitive-section labels, emergency override reason, review queue, and post-access audit notification.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must block restricted sections, allow policy-governed emergency override, and record override evidence for audit.
 
-### 18. Consumed-event handlers for Medication List
+### 18. Segment-Level Redaction
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Sharing a full note when only a medication list or problem summary is needed exposes unnecessary clinical detail.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Support redaction profiles for patient summary, specialist handoff, patient portal, legal export, research export, and public-health report.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove each profile includes required fields, excludes restricted sections, and cites redaction reasons.
 
-### 19. Retry and dead-letter operations for Care Note
+### 19. Clinical Coding Support Boundary
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries.
+**Justification:** Diagnoses and procedures matter for documentation and downstream workflows, but this PBC should not own payer adjudication.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `care_note` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add chart-owned coding evidence for encounter diagnosis, procedure evidence, clinical indication, documentation support, and unresolved coding clarification.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show coding evidence can be emitted through AppGen-X events while claims and payment workflows remain external dependencies.
 
-### 20. RBAC and attribute policy for Electronic Health Records Core Policy Rule
+### 20. Clinical Decision Support Rule Registry
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Safety alerts and reminders need governed rules, versioning, explainability, and override capture.
 
-**Improvement:** Extend permissions for `electronic_health_records_core_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add rule definitions for allergy warnings, overdue observations, missing follow-up, unsafe orders, contraindications, and documentation gaps with severity and override policies.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Rule tests must show versioned evaluation, visible explanation, override justification, and rollback behavior.
 
-### 21. Continuous control testing for Electronic Health Records Core Runtime Parameter
+### 21. Override Fatigue Controls
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Excessive alerts train users to ignore clinically important warnings.
 
-**Improvement:** Embed control assertions for `electronic_health_records_core_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Track alert frequency, accepted overrides, duplicate alerts, low-value rules, user burden, and suppression candidates with governance review.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `electronic_health_records_core_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compute alert burden and require approval before suppressing a rule.
 
-### 22. Cryptographic audit proofing for Electronic Health Records Core Schema Extension
+### 22. Chart Search With Clinical Semantics
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Search should understand chart concepts such as active allergies, abnormal observations, unsigned notes, and pending orders.
 
-**Improvement:** Hash-chain material `electronic_health_records_core_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add package-owned search indexes for chart sections, note text, order status, observation trends, allergy reaction, medication name, and source documents.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Search tests must return permission-filtered results and prove sensitive segments are not exposed through snippets.
 
-### 23. Privacy, consent, and secrecy controls for Electronic Health Records Core Control Assertion
+### 23. Problem List Quality Review
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Active, inactive, duplicate, vague, and stale problems reduce clinical usefulness.
 
-**Improvement:** Add field-level privacy classifications for `electronic_health_records_core_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add problem quality signals derived from note references, encounter relevance, active orders, observation evidence, medication links, and last reviewed date.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open quality review tasks for stale or conflicting problem evidence and require human confirmation for problem status changes.
 
-### 24. Multi-tenant operating model for Electronic Health Records Core Governed Model
+### 24. Longitudinal Trend Panels
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Single observations rarely explain clinical trajectory.
 
-**Improvement:** Support tenant-specific `electronic_health_records_core_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add trend panels for configurable observation groups with baseline, latest value, slope, abnormality pattern, missing measurements, and clinical note references.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must classify improving, stable, worsening, missing, and unreliable trends with unit consistency.
 
-### 25. Schema evolution and extension registry for Patient Chart
+### 25. Encounter Timeline Reconstruction
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Clinicians need a coherent timeline across arrival, notes, orders, observations, medications, and discharge events.
 
-**Improvement:** Make schema extensions for `patient_chart` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build encounter timelines with actor, event type, timestamp, source, linked entity, and whether the event changed chart state.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must sort concurrent events deterministically and show amended events without hiding the original sequence.
 
-### 26. Master data quality gates for Clinical Encounter
+### 26. Agent-Assisted Chart Summarization
 
-**Justification:** Many electronic health records core errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** The EHR agent must help summarize records while staying evidence-cited and permission-aware.
 
-**Improvement:** Define reference-data contracts for `clinical_encounter`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add chart summarization skills for encounter recap, medication history, allergy review, observation trend, pending work, and patient-friendly summary with source citations.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove every generated sentence is backed by chart evidence or marked as an inference, and restricted sections are omitted by permission.
 
-### 27. Bulk operations and correction workflows for Clinical Order
+### 27. Governed Agent CRUD Previews
 
-**Justification:** Enterprise-scale Electronic Health Records Core users cannot operate one record at a time.
+**Justification:** The agent should help create and update chart entries, but it must not silently mutate clinical records.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `clinical_order` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for create encounter, draft note, add allergy, record observation, reconcile medication, and close order, each with required fields and evidence.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject ambiguous commands, require confirmation for mutation, and store the instruction, source evidence, actor, and resulting command.
 
-### 28. Lifecycle collaboration and tasking for Observation
+### 28. Documented Clinical Ambiguity Handling
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Clinical documents often contain uncertain, conflicting, or negated statements.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `observation` without leaking into external shared task tables. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add ambiguity markers for suspected condition, ruled-out condition, historical condition, family history, patient-reported item, conflicting source, and low-confidence extraction.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Extraction tests must preserve uncertainty instead of converting it into confirmed chart facts.
 
-### 29. SLA and service-level governance for Allergy
+### 29. Configurable Chart Section Schema Extensions
 
-**Justification:** Users need to know when clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Specialty practices need custom fields without breaking the core chart contract.
 
-**Improvement:** Define SLAs for `allergy` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `electronic_health_records_core_schema_extension` for governed specialty templates, validation rules, UI placement, migration evidence, and backward-compatible projections.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must add, activate, deprecate, and read specialty extensions without invalidating existing chart records.
 
-### 30. Operational analytics cockpit for Medication List
+### 30. Tenant-Specific Clinical Policy Isolation
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Health systems, regions, and programs can have different documentation and consent rules.
 
-**Improvement:** Build analytics for `medication_list`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add tenant-scoped policies for signature timing, observation critical thresholds, order review, access restrictions, retention, and agent approval gates.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove tenant policies do not leak and identical chart events can evaluate differently by tenant.
 
-### 31. Decision intelligence and recommendations for Care Note
+### 31. Retention, Amendment, and Legal Hold
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Clinical records require long-term retention, amendment visibility, export support, and legal hold.
 
-**Improvement:** Generate ranked recommendations for `care_note` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retention category, amendment chain, legal hold flag, export eligibility, deletion prohibition reason, and evidence packet generation.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block deletion under retention or legal hold and produce redacted evidence packets by request type.
 
-### 32. Quality and completeness scoring for Electronic Health Records Core Policy Rule
+### 32. Privacy-Safe Analytics Extracts
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Operational analytics should not expose raw notes or sensitive chart sections unnecessarily.
 
-**Improvement:** Score each `electronic_health_records_core_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add de-identified and limited-data-set projections for encounter volume, documentation lag, order turnaround, observation abnormality, and deficiency aging.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify low-count suppression, redaction, permission gating, and explicit analytic purpose.
 
-### 33. End-to-end scenario library for Electronic Health Records Core Runtime Parameter
+### 33. Public Health and Reporting Readiness
 
-**Justification:** Release evidence is stronger when every important electronic health records core behavior has executable examples.
+**Justification:** Some chart data must support reportable-condition, immunization, and surveillance workflows while preserving ownership boundaries.
 
-**Improvement:** Create seeded scenarios for `electronic_health_records_core_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reportability indicators, reporting trigger evidence, destination profile, required fields, submission state, and correction history.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create reportable-event candidates and emit AppGen-X events without owning external public-health registry tables.
 
-### 34. Domain ontology and terminology model for Electronic Health Records Core Schema Extension
+### 34. Downtime and Offline Documentation Mode
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Clinical care continues during connectivity or dependency failures.
 
-**Improvement:** Add an ontology for `electronic_health_records_core_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add offline draft capture, local sequence numbers, delayed reconciliation, conflict detection, degraded-mode warnings, and recovery audit.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay offline entries, detect conflicts, and require review before conflicting records become active chart evidence.
 
-### 35. Advanced search and investigation for Electronic Health Records Core Control Assertion
+### 35. Data Quality Controls for Core Chart Fields
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Incorrect dates, units, patient age conflicts, impossible values, and missing authorship create safety risk.
 
-**Improvement:** Provide search across `electronic_health_records_core_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add controls for demographic projection freshness, encounter time consistency, observation plausibility, order indication completeness, allergy severity, and note signer validity.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Control tests must open exceptions with severity, owner, due date, and closure evidence.
 
-### 36. Reconciliation and closure controls for Electronic Health Records Core Governed Model
+### 36. Dead-Letter and Retry Clinical Inbox
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Consumed events and document imports can fail and must be remediated without losing clinical evidence.
 
-**Improvement:** Add reconciliation workflows that compare `electronic_health_records_core_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retry classification, dead-letter reason, clinical risk, reprocess eligibility, human remediation note, and replay checkpoint.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove failed events are idempotent on replay and visible in a clinical operations queue.
 
-### 37. Regulatory and policy reporting for Patient Chart
+### 37. Cross-PBC Boundary Proofs
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** The EHR core must integrate with care coordination, revenue cycle, pharmacy, and analytics without sharing tables.
 
-**Improvement:** Generate domain reporting packs for `patient_chart` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add release checks that every dependency is represented as declared API, event, projection, or package metadata rather than foreign table reads.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail if generated EHR artifacts reference undeclared external tables.
 
-### 38. Carbon and resource awareness for Clinical Encounter
+### 38. Patient Portal Summary Controls
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Patient-facing records need language level, release timing, sensitive-result handling, and correction request workflows.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `clinical_encounter` decisions and batch operations. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add portal summary profiles, delayed-release rules, patient-friendly terminology, correction-request intake, and clinician review tasks.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must hold sensitive results when policy requires delay and track patient correction requests through resolution.
 
-### 39. Resilience and offline behavior for Clinical Order
+### 39. Clinical Attachment Handling
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Images, PDFs, scanned forms, device files, and external reports need metadata, source, retention, and review state.
 
-**Improvement:** Define resilience modes for `clinical_order`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add attachment descriptors with type, source, linked entity, extracted text status, review state, checksum, redaction profile, and retention class.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate checksum preservation, linked-record visibility, and redacted export behavior.
 
-### 40. Human-in-the-loop automation for Observation
+### 40. Workbench Role Views
 
-**Justification:** Automation should accelerate clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries while preserving accountability for high-risk decisions.
+**Justification:** Clinicians, nurses, health information managers, administrators, and privacy officers need different EHR work queues.
 
-**Improvement:** Set explicit automation boundaries for `observation`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Redesign `ElectronicHealthRecordsCoreWorkbench` around role views for unsigned notes, critical results, pending orders, chart deficiencies, privacy overrides, imports, and patient correction requests.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI contract tests must prove each view maps to owned data, declared dependencies, and permission-aware actions.
 
-### 41. Package discovery and fit scoring for Allergy
+### 41. Specialty Template Library
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Pediatrics, oncology, behavioral health, surgery, chronic disease, and emergency care require different documentation structures.
 
-**Improvement:** Improve package metadata so composition can explain when `electronic_health_records_core` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add specialty templates with required sections, order prompts, observation panels, note headings, summary fragments, and review cadence.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must instantiate specialty templates and preserve template version on created notes and encounters.
 
-### 42. Configuration deployment pipeline for Medication List
+### 42. Clinical Quality Measure Traceability
 
-**Justification:** Configuration changes can materially alter electronic health records core; they need the same discipline as code releases.
+**Justification:** Quality measures require denominator, numerator, exclusion, and source evidence, not informal reporting.
 
-**Improvement:** Add configuration promotion for `medication_list` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add measure trace records linking chart facts to quality measure candidates, exclusions, and unresolved evidence gaps.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove measure candidates cite chart evidence and emit events to reporting PBCs without owning their reporting state.
 
-### 43. Workbench command completeness for Care Note
+### 43. Record Locking and Concurrent Editing
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Concurrent edits to notes, medication lists, and orders can overwrite clinical work.
 
-**Improvement:** Expose every high-value operation for `care_note` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add optimistic versioning, edit sessions, conflict previews, merge suggestions, and required signoff for conflicting clinical updates.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must simulate concurrent edits and preserve both user changes until a reviewer resolves the conflict.
 
-### 44. Document packet and evidence vault for Electronic Health Records Core Policy Rule
+### 44. Chart Completeness Score
 
-**Justification:** Documents often carry the legal or operational truth behind clinical encounters, orders, observations, allergies, medication lists, care notes, and patient summaries.
+**Justification:** Users need an actionable measure of whether a chart is clinically usable.
 
-**Improvement:** Create a governed evidence vault for `electronic_health_records_core_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Score chart completeness using identity confidence, active allergies, medication reconciliation, recent encounter documentation, pending orders, critical results, and deficiencies.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate completeness components and show missing evidence rather than a single opaque score.
 
-### 45. Data correction and amendment history for Electronic Health Records Core Runtime Parameter
+### 45. Clinical Safety Exception Taxonomy
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Safety exceptions need precise categories for response and governance.
 
-**Improvement:** Support formal amendments for `electronic_health_records_core_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add exception types for critical result missed, unsafe order, medication conflict, missing allergy review, incomplete encounter, privacy override, data-quality risk, and stale projection.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route exceptions by severity and close only with remediation evidence.
 
-### 46. External participant collaboration for Electronic Health Records Core Schema Extension
+### 46. Cryptographic Chart Integrity Proofs
 
-**Justification:** Many electronic health records core workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Auditors and regulators may need proof that chart history was not altered.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `electronic_health_records_core_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash-chained evidence packets for chart mutations, note signatures, order transitions, observation corrections, and export bundles.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and fail on tampered event order or modified payload hashes.
 
-### 47. Advanced dependency freshness scoring for Electronic Health Records Core Control Assertion
+### 47. Governed Model Registry for Clinical Agent Features
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Clinical agent recommendations need model, prompt, evaluation, and drift evidence.
 
-**Improvement:** Score freshness and reliability of dependencies used by `electronic_health_records_core_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Register summarization, extraction, risk, and recommendation models with version, evaluation cohort, intended use, confidence thresholds, and human feedback.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block model-backed commands when model approval is missing or expired.
 
-### 48. Model governance and explainability for Electronic Health Records Core Governed Model
+### 48. Seeded Clinical Scenario Library
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Electronic Health Records Core.
+**Justification:** Release audits need realistic clinical stories rather than isolated fixtures.
 
-**Improvement:** For every predictive or agentic feature around `electronic_health_records_core_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seed scenarios for routine visit, critical lab, medication reconciliation, allergy conflict, external document import, patient correction, privacy override, and amended note.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load seeds side-effect-free and prove workbench queues, events, and summaries reflect each story.
 
-### 49. High-scale partitioning and archival for Patient Chart
+### 49. Full EHR Release Simulation
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** A complete PBC should prove the chart lifecycle end to end.
 
-**Improvement:** Plan scale behavior for `patient_chart`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `electronic_health_records_core_create_patient_chart_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a release simulation where a patient chart is created, an encounter opens, notes are drafted and signed, orders are placed, observations result, allergy and medication lists reconcile, a summary is generated, and an amendment is audited.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned tables, AppGen-X events, idempotent handlers, UI fragments, agent skills, permissions, and release evidence.
 
-### 50. Release gate expansion for Clinical Encounter
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** The EHR core must compose cleanly into generated applications and expose its skills through the unified application agent.
 
-**Improvement:** Expand release gates for `electronic_health_records_core` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `electronic_health_records_core_record_clinical_encounter_workflow` where applicable, and make it visible in `ElectronicHealthRecordsCoreWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for chart entities, order workflows, observation contracts, summary projections, UI fragments, rule parameters, agent skills, and boundary proof gates.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/electronic_health_records_core` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL generation tests must prove composed apps include EHR-owned models, routes, services, workbench views, assistant skills, and AppGen-X event contracts without exposing stream-engine picker choices.
