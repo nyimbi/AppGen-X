@@ -1,315 +1,315 @@
-# Streaming Analytics and Real-Time Aggregation PBC Improvement Backlog
+# Streaming Analytics PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `streaming_analytics`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `streaming_analytics`. Each improvement is specific to real-time metric ingestion, event-time processing, aggregation windows, KPI snapshots, dashboard projections, replay, watermarks, quality gates, alerts, forecasting, operational risk scoring, metric governance, and telemetry operations so the PBC can move toward complete specialist-grade domain coverage.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
-- Representative owned tables: `streaming_analytics_metric_stream`, `streaming_analytics_aggregation_window`, `streaming_analytics_kpi_snapshot`, `streaming_analytics_dashboard_projection`, `streaming_analytics_metric_event`, `streaming_analytics_ingestion_checkpoint`, `streaming_analytics_data_quality_result`, `streaming_analytics_replay_job`, `streaming_analytics_watermark_state`, `streaming_analytics_retention_policy`, `streaming_analytics_threshold_alert`, `streaming_analytics_metric_forecast`, ...
-- Representative operations/APIs: `configure_runtime`, `set_parameter`, `register_rule`, `register_schema_extension`, `register_metric_stream`, `define_window`, `receive_event`, `ingest_metric_event`, `create_dashboard_projection`, `record_ingestion_checkpoint`, `evaluate_data_quality`, `open_replay_job`, ...
-- Representative events: `ForecastUpdated`, `OperationalKpiChanged`.
-- Representative advanced capabilities: `event_sourced_metric_lifecycle`, `owned_analytics_schema_boundary`, `multi_tenant_metric_isolation`, `schema_evolution_resilient_metric_context`, `metric_stream_definition`, `real_time_event_ingestion`, `windowed_aggregation_engine`, `kpi_snapshot_publication`, `dashboard_projection_management`, `late_event_and_replay_handling`, ...
+- Domain scope: operational metric streams, metric events, aggregation windows, KPI snapshots, dashboard projections, ingestion checkpoints, data quality results, replay jobs, watermarks, retention policies, threshold alerts, metric forecasts, operational risk scores, metric exceptions, window recomputations, control assertions, snapshot proofs, policy screenings, audit entries, federation views, and governed analytics models.
+- Owned analytics surface: `metric_stream`, `aggregation_window`, `kpi_snapshot`, `dashboard_projection`, `metric_event`, `ingestion_checkpoint`, `data_quality_result`, `replay_job`, `watermark_state`, `retention_policy`, `threshold_alert`, `metric_forecast`, `operational_risk_score`, `metric_exception`, `window_recomputation`, `kpi_control_assertion`, `kpi_snapshot_proof`, `metric_policy_screening`, `analytics_audit_entry`, `analytics_federation_view`, and `analytics_governed_model`.
+- Declared operations: stream registration, window definition, event receipt, metric ingestion, dashboard projection creation, checkpoint recording, quality evaluation, replay job opening, watermark advancement, retention application, threshold alerts, metric forecasting, operational risk scoring, exception resolution, window recomputation, KPI controls, snapshot proofs, policy screening, federation views, governed model registration, workbench views, and owned-table boundary verification.
+- Declared integrations: consumed `AuditEventSealed`, `OrderShipped`, and `PaymentCaptured` events plus emitted `OperationalKpiChanged` and `ForecastUpdated` through the AppGen-X event contract.
+- Declared advanced posture: event-sourced metric lifecycle, real-time ingestion, windowed aggregation, late-event handling, replay controls, data-quality gatekeeping, probabilistic KPI confidence, temporal forecasting, self-healing recomputation, immutable audit trails, dynamic policy screening, governed models, idempotent handlers, retry/dead-letter evidence, UI fragments, rules, parameters, and release audits.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `streaming_analytics_metric_stream`
+### 1. Metric stream semantic contract registry
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** A metric stream is operationally useful only when its event type, metric field, aggregation semantics, dimensions, freshness expectation, and business meaning are unambiguous.
 
-**Improvement:** Extend `streaming_analytics_metric_stream` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `metric_streams`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `metric_stream` into a versioned semantic contract with metric definition, unit, dimensional keys, allowed aggregations, owner, consumer list, freshness SLA, compatibility policy, deprecation state, and generated API documentation. Stream registration should reject ambiguous or incompatible metric definitions before ingestion begins.
 
-### 2. Deep specialist lifecycle semantics for `streaming_analytics_aggregation_window`
+### 2. Event-time processing model
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** Real-time analytics becomes misleading when processing-time arrival order is confused with event time, especially for delayed orders, payments, and audit events.
 
-**Improvement:** Extend `streaming_analytics_aggregation_window` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `event_ingestion`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add event-time semantics to `metric_event`, `aggregation_window`, and `watermark_state`, including event timestamp, ingestion timestamp, processing timestamp, allowed lateness, time-zone normalization, and clock-skew evidence. KPI snapshots should expose whether values are final, provisional, corrected, or late-adjusted.
 
-### 3. Deep specialist lifecycle semantics for `streaming_analytics_kpi_snapshot`
+### 3. Window taxonomy and lifecycle governance
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** Tumbling, sliding, session, cumulative, business-calendar, and custom fiscal windows have different correctness and recomputation behavior.
 
-**Improvement:** Extend `streaming_analytics_kpi_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `aggregation_windows`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `aggregation_window` with window type, alignment rule, duration, slide interval, session gap, calendar source, finalization policy, backfill policy, and lifecycle state. The UI should show window coverage, open windows, closed windows, late-adjusted windows, and recomputation eligibility.
 
-### 4. Deep specialist lifecycle semantics for `streaming_analytics_dashboard_projection`
+### 4. High-cardinality dimension controls
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** Unbounded dimensions can explode storage, increase latency, create privacy leakage, and make dashboards unusable.
 
-**Improvement:** Extend `streaming_analytics_dashboard_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `kpi_snapshots`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add dimension cardinality policies with allowed keys, maximum distinct count, top-k retention, bucketing, suppression, privacy thresholds, and exception workflows. Data quality checks should quarantine streams that exceed dimensional limits.
 
-### 5. Deep specialist lifecycle semantics for `streaming_analytics_metric_event`
+### 5. Metric event identity and idempotency ledger
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** Duplicate, retried, corrected, and replayed events can corrupt aggregates unless identity and supersession are explicit.
 
-**Improvement:** Extend `streaming_analytics_metric_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `dashboard_projections`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add metric-event identity fields for source event ID, AppGen-X event ID, business key, sequence number, correction marker, superseded event ID, deduplication hash, and idempotency result. Workbench views should explain exactly why an event was accepted, ignored, corrected, or dead-lettered.
 
-### 6. Deep specialist lifecycle semantics for `streaming_analytics_ingestion_checkpoint`
+### 6. Ingestion backpressure and overload policy
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** Analytics systems must degrade predictably under event bursts rather than silently dropping events or producing stale dashboards.
 
-**Improvement:** Extend `streaming_analytics_ingestion_checkpoint` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `threshold_alerts`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add overload state, queue depth, ingestion lag, throttling policy, priority class, shedding strategy, and recovery evidence to `ingestion_checkpoint`. Operators should see which streams are lagging, which tenants are throttled, and which KPIs are stale because of backpressure.
 
-### 7. Deep specialist lifecycle semantics for `streaming_analytics_data_quality_result`
+### 7. Source freshness and completeness scoring
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** KPI confidence depends on whether all expected event sources have reported within their freshness windows.
 
-**Improvement:** Extend `streaming_analytics_data_quality_result` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `late_event_replay`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add source completeness metrics by stream, tenant, event type, region, source system, and window. KPI snapshots should include expected source count, received source count, missing source list, freshness score, and confidence reduction when sources are stale.
 
-### 8. Deep specialist lifecycle semantics for `streaming_analytics_replay_job`
+### 8. Data quality rule library
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** Generic quality scores are insufficient for streaming metrics that need type checks, range checks, monotonicity, referential projections, unit consistency, and anomaly gates.
 
-**Improvement:** Extend `streaming_analytics_replay_job` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `quality_checks`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `data_quality_result` with rule type, evaluated field, expected range, observed value, severity, disposition, remediation owner, and effect on aggregates. The rule studio should let operators compose quality checks without exposing stream-engine choices.
 
-### 9. Deep specialist lifecycle semantics for `streaming_analytics_watermark_state`
+### 9. Late event impact analysis
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** Late events may have no material effect, may change a dashboard, or may require downstream KPI republication.
 
-**Improvement:** Extend `streaming_analytics_watermark_state` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retention_policy`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add late-event impact calculation that identifies affected windows, snapshots, projections, alerts, forecasts, and emitted events. The UI should show whether the event will be ignored, applied prospectively, applied retroactively, or require controlled replay.
 
-### 10. Deep specialist lifecycle semantics for `streaming_analytics_retention_policy`
+### 10. Watermark drift diagnostics
 
-**Justification:** This owned table is part of the Streaming Analytics and Real-Time Aggregation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Operational metric streams, event ingestion, aggregation windows, KPI snapshots, dashboard projections, replay, quality controls, forecasting, rules, parameters, governance, and AppGen-X event orchestration.
+**Justification:** Watermarks can stall or move too aggressively, causing incorrect finality or unbounded provisional state.
 
-**Improvement:** Extend `streaming_analytics_retention_policy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `audit_event_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `watermark_state` with source-specific watermark lag, drift reason, clock-skew estimate, stalled-source evidence, advancement policy, and override approvals. Operators should be able to diagnose why a stream cannot finalize windows.
 
-### 11. Make `configure_runtime` a complete command lifecycle
+### 11. Replay planning and dry-run simulation
 
-**Justification:** High-value users need `configure_runtime` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Replay can repair analytics but can also duplicate alerts, overwrite dashboards, or alter historical evidence if not planned safely.
 
-**Improvement:** Implement `configure_runtime` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `replay_job` with source range, target windows, expected event count, dry-run delta, affected snapshots, alert suppression policy, emitted-event strategy, and rollback evidence. Replay commands should require a preview before execution.
 
-### 12. Make `set_parameter` a complete command lifecycle
+### 12. Deterministic recomputation proofs
 
-**Justification:** High-value users need `set_parameter` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Recomputed windows must be provably equivalent to replaying the accepted event history under a specific stream definition and rule version.
 
-**Improvement:** Implement `set_parameter` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OperationalKpiChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add recomputation proofs that hash input event IDs, stream contract version, window definition, quality rules, aggregation code version, and output snapshot. `window_recomputation` should expose deterministic equality or explain divergence.
 
-### 13. Make `register_rule` a complete command lifecycle
+### 13. KPI snapshot finality states
 
-**Justification:** High-value users need `register_rule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Dashboards need to distinguish provisional, late-adjusted, replayed, certified, and superseded KPI values.
 
-**Improvement:** Implement `register_rule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `kpi_snapshot` with finality state, completeness score, supersession link, certification proof, late adjustment amount, replay marker, and publication policy. APIs should return finality metadata with every KPI value.
 
-### 14. Make `register_schema_extension` a complete command lifecycle
+### 14. Metric lineage graph
 
-**Justification:** High-value users need `register_schema_extension` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Users need to trace a KPI from dashboard number back to stream, window, events, quality decisions, replay jobs, and policy screens.
 
-**Improvement:** Implement `register_schema_extension` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OperationalKpiChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add a lineage graph linking `dashboard_projection`, `kpi_snapshot`, `aggregation_window`, `metric_stream`, `metric_event`, `data_quality_result`, `watermark_state`, `replay_job`, and `kpi_snapshot_proof`. The workbench should support drill-down and evidence export for any KPI.
 
-### 15. Make `register_metric_stream` a complete command lifecycle
+### 15. Dashboard projection dependency management
 
-**Justification:** High-value users need `register_metric_stream` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Dashboards can break or mislead when upstream streams change, retire, lag, or alter semantics.
 
-**Improvement:** Implement `register_metric_stream` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `dashboard_projection` with stream dependencies, compatibility requirements, freshness SLA, projection owner, consumer impact, refresh policy, and change alerts. Stream contract changes should list every affected dashboard before activation.
 
-### 16. Make `define_window` a complete command lifecycle
+### 16. Projection personalization and permission safety
 
-**Justification:** High-value users need `define_window` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Real-time dashboards often expose sensitive operational, payment, and audit metrics that should vary by role, tenant, region, and purpose.
 
-**Improvement:** Implement `define_window` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OperationalKpiChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add projection-level permission filters, aggregation thresholds, masked dimensions, tenant/region partitions, and purpose tags. The UI should prove that users see only authorized KPI slices and that suppressed values cannot be inferred through low-count breakdowns.
 
-### 17. Make `receive_event` a complete command lifecycle
+### 17. Alert fatigue and threshold governance
 
-**Justification:** High-value users need `receive_event` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Threshold alerts lose value when thresholds are noisy, duplicated, unowned, or disconnected from action.
 
-**Improvement:** Implement `receive_event` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `threshold_alert` with threshold rationale, hysteresis, cooldown, suppression, escalation path, owner, action playbook, false-positive outcome, and alert quality score. Alert policies should be backtested before activation.
 
-### 18. Make `ingest_metric_event` a complete command lifecycle
+### 18. Dynamic baseline and seasonality-aware alerts
 
-**Justification:** High-value users need `ingest_metric_event` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Static thresholds fail for seasonal, weekly, daily, promotional, or operational cycle patterns.
 
-**Improvement:** Implement `ingest_metric_event` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OperationalKpiChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add dynamic baselines using historical window profiles, seasonality, daypart, region, tenant, event type, and calendar context. Alerts should explain whether a value is abnormal relative to the correct seasonal baseline, not just an absolute limit.
 
-### 19. Make `create_dashboard_projection` a complete command lifecycle
+### 19. Metric anomaly triage workflow
 
-**Justification:** High-value users need `create_dashboard_projection` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Spikes, drops, missing events, duplicated sources, schema shifts, fraud patterns, and operational incidents require different responses.
 
-**Improvement:** Implement `create_dashboard_projection` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add `metric_exception` categories for spike, drop, flatline, missing source, duplicate surge, quality failure, schema drift, threshold breach, forecast miss, and policy violation. Each exception should include owner, severity, evidence, remediation steps, and closure proof.
 
-### 20. Make `record_ingestion_checkpoint` a complete command lifecycle
+### 20. Operational risk scoring explainability
 
-**Justification:** High-value users need `record_ingestion_checkpoint` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Risk scores based on metrics can drive urgent operational action and must be explainable and auditable.
 
-**Improvement:** Implement `record_ingestion_checkpoint` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OperationalKpiChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `operational_risk_score` with contributing metrics, weights, baseline, trend, anomaly contribution, quality penalty, confidence, recommended action, and model evidence. UI should let users inspect why risk changed and what action is expected.
 
-### 21. Operationalize `event_sourced_metric_lifecycle` as a governed decision system
+### 21. Metric forecast horizon governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves event ingestion rate without hiding assumptions.
+**Justification:** Forecasts over streaming metrics have different reliability at seconds, minutes, hours, days, and planning horizons.
 
-**Improvement:** Promote `event_sourced_metric_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `event_ingestion_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `metric_forecast` with horizon type, model family, training window, forecast quantiles, calibration evidence, prediction interval, and validity limits. Forecast outputs should clearly mark when a horizon is too long for the selected stream.
 
-### 22. Operationalize `owned_analytics_schema_boundary` as a governed decision system
+### 22. Forecast-versus-actual backtesting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves kpi snapshot count without hiding assumptions.
+**Justification:** Forecasted KPIs and operational risks need continuous accuracy monitoring before users trust generated forecasts.
 
-**Improvement:** Promote `owned_analytics_schema_boundary` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `kpi_snapshot_count`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add backtests by stream, window, horizon, model version, tenant, and event type, with error metrics, bias, interval coverage, and drift evidence. Governed model records should fail release checks when forecast backtesting is missing.
 
-### 23. Operationalize `multi_tenant_metric_isolation` as a governed decision system
+### 23. Metric policy screening before publication
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves late event rate without hiding assumptions.
+**Justification:** Some KPIs should not be published because of privacy, sensitivity, tenant, region, low-count, or policy restrictions.
 
-**Improvement:** Promote `multi_tenant_metric_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `late_event_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `metric_policy_screening` with screening reason, matched rule, affected dimensions, publication decision, masking strategy, waiver workflow, and expiry. Dashboard and API publication should require policy screening for sensitive metrics.
 
-### 24. Operationalize `schema_evolution_resilient_metric_context` as a governed decision system
+### 24. Retention policy impact simulator
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves quality score without hiding assumptions.
+**Justification:** Retention changes can affect replay capability, audit reconstruction, forecasting, compliance, and storage cost.
 
-**Improvement:** Promote `schema_evolution_resilient_metric_context` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `quality_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add retention simulations that calculate affected streams, historical window coverage, replay loss, audit risk, forecast training impact, storage savings, and required approvals. Retention policies should not activate until impact is reviewed.
 
-### 25. Operationalize `metric_stream_definition` as a governed decision system
+### 25. Privacy-safe low-count suppression
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves forecast confidence without hiding assumptions.
+**Justification:** Real-time operational metrics can leak sensitive individual or customer information through small slices.
 
-**Improvement:** Promote `metric_stream_definition` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `forecast_confidence`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add low-count and rare-dimension suppression rules with configurable thresholds, aggregation fallback, noise policy, and proof of suppression. KPI APIs should return suppression metadata rather than raw sensitive values.
 
-### 26. Operationalize `real_time_event_ingestion` as a governed decision system
+### 26. Multi-tenant isolation proofs
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves operational risk without hiding assumptions.
+**Justification:** Streaming analytics often aggregates high-volume events where tenant leakage can be hard to detect after the fact.
 
-**Improvement:** Promote `real_time_event_ingestion` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `operational_risk`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add isolation proofs that hash tenant partitions, stream definitions, event IDs, snapshots, and projections. Release audits should prove every command and query includes tenant scope and no cross-tenant aggregate can be emitted without explicit policy.
 
-### 27. Operationalize `windowed_aggregation_engine` as a governed decision system
+### 27. Cross-PBC federation contracts
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves forecast updated throughput without hiding assumptions.
+**Justification:** Streaming analytics depends on audit, order, payment, and operational events while preserving boundaries and avoiding shared tables.
 
-**Improvement:** Promote `windowed_aggregation_engine` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `forecast_updated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add federation contract descriptors for every consumed external event and projection, including schema version, semantic mapping, freshness SLA, quality expectations, and failure mode. Boundary tests should reject direct references to order, payment, audit, or source PBC tables.
 
-### 28. Operationalize `kpi_snapshot_publication` as a governed decision system
+### 28. Schema evolution compatibility testing
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves operational kpi changed throughput without hiding assumptions.
+**Justification:** Event payloads and metric definitions evolve; analytics must detect breaking changes before dashboards silently change meaning.
 
-**Improvement:** Promote `kpi_snapshot_publication` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `operational_kpi_changed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add compatibility tests for event schema additions, removals, type changes, renamed fields, unit changes, and semantic meaning changes. Stream contracts should require migration plans and consumer impact reports for breaking changes.
 
-### 29. Operationalize `dashboard_projection_management` as a governed decision system
+### 29. Metric unit and currency normalization
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves event ingestion rate without hiding assumptions.
+**Justification:** KPI aggregates become invalid when values with different units, currencies, precision, or scale are combined.
 
-**Improvement:** Promote `dashboard_projection_management` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `event_ingestion_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add unit/currency metadata, conversion policies, precision rules, rounding evidence, and normalization audit fields to metric events and snapshots. Quality checks should reject or quarantine incompatible units before aggregation.
 
-### 30. Operationalize `late_event_and_replay_handling` as a governed decision system
+### 30. Derived metric dependency graph
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Streaming Analytics and Real-Time Aggregation and measurably improves kpi snapshot count without hiding assumptions.
+**Justification:** Dashboards often depend on derived KPIs such as conversion rate, revenue per order, payment success rate, or risk-adjusted throughput.
 
-**Improvement:** Promote `late_event_and_replay_handling` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `kpi_snapshot_count`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add derived metric definitions with numerator/denominator dependencies, calculation formula, null/zero handling, finality rules, freshness propagation, and lineage. Derived metrics should recompute when any base stream changes or is replayed.
 
-### 31. Create simulation-grade governance for `STREAMING_ANALYTICS_DATABASE_URL` and `STREAMING_ANALYTICS_DATABASE_URL`
+### 31. Incremental materialized projection strategy
 
-**Justification:** Complete Streaming Analytics and Real-Time Aggregation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Recomputing full dashboard projections for every event is inefficient and can create latency spikes.
 
-**Improvement:** Add a policy cockpit where `STREAMING_ANALYTICS_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `STREAMING_ANALYTICS_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add projection refresh strategies for incremental update, full rebuild, scheduled refresh, event-triggered refresh, and degraded refresh. Store refresh cost, freshness, affected snapshots, and fallback state in `dashboard_projection`.
 
-### 32. Create simulation-grade governance for `STREAMING_ANALYTICS_EVENT_TOPIC` and `STREAMING_ANALYTICS_EVENT_TOPIC`
+### 32. Query latency and freshness SLA monitoring
 
-**Justification:** Complete Streaming Analytics and Real-Time Aggregation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Real-time analytics must prove dashboards and KPI APIs meet latency and freshness commitments.
 
-**Improvement:** Add a policy cockpit where `STREAMING_ANALYTICS_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `STREAMING_ANALYTICS_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add SLA measurements for ingestion latency, window finalization, snapshot publication, projection refresh, query response, and alert delivery. Workbench views should show breaches, trends, owners, and remediation tasks.
 
-### 33. Create simulation-grade governance for `STREAMING_ANALYTICS_RETRY_LIMIT` and `STREAMING_ANALYTICS_RETRY_LIMIT`
+### 33. Analytics cost and storage governance
 
-**Justification:** Complete Streaming Analytics and Real-Time Aggregation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** High-volume metric events, replay windows, dimensions, and snapshots can grow without business value.
 
-**Improvement:** Add a policy cockpit where `STREAMING_ANALYTICS_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `STREAMING_ANALYTICS_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add storage usage, compute cost, event volume, query cost, replay cost, dashboard usage, and value scoring by stream. Operators should be able to retire, aggregate, sample, or archive low-value expensive streams with impact evidence.
 
-### 34. Create simulation-grade governance for `STREAMING_ANALYTICS_DEFAULT_TIMEZONE` and `STREAMING_ANALYTICS_DEFAULT_TIMEZONE`
+### 34. Sampling and approximation controls
 
-**Justification:** Complete Streaming Analytics and Real-Time Aggregation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Some high-volume metrics require approximate algorithms, but users need to know accuracy, error bounds, and when approximation is unacceptable.
 
-**Improvement:** Add a policy cockpit where `STREAMING_ANALYTICS_DEFAULT_TIMEZONE` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `STREAMING_ANALYTICS_DEFAULT_TIMEZONE` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add sampling policies and approximate aggregation descriptors for cardinality, percentiles, quantiles, and top-k metrics with error bounds, confidence, and eligibility rules. KPI snapshots should disclose approximation status and uncertainty.
 
-### 35. Create simulation-grade governance for `STREAMING_ANALYTICS_RETENTION_DAYS` and `STREAMING_ANALYTICS_RETENTION_DAYS`
+### 35. Percentile and distribution metrics
 
-**Justification:** Complete Streaming Analytics and Real-Time Aggregation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Count, sum, average, and max are insufficient for latency, risk, payment processing, fulfillment performance, and operational quality.
 
-**Improvement:** Add a policy cockpit where `STREAMING_ANALYTICS_RETENTION_DAYS` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `STREAMING_ANALYTICS_RETENTION_DAYS` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add percentile, histogram, distribution, unique-count, rate, ratio, and change-point aggregations with validation and UI rendering. Stream definitions should specify which advanced aggregations are mathematically valid for each metric.
 
-### 36. Upgrade `StreamingAnalyticsWorkbench` into a full specialist command center
+### 36. Data replay audit narrative
 
-**Justification:** The PBC UI must expose the complete Streaming Analytics and Real-Time Aggregation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Replays can materially change historical KPIs, so users need a clear narrative of why the replay occurred and what changed.
 
-**Improvement:** Expand `StreamingAnalyticsWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add replay narratives with cause, authorizer, data range, affected streams, before/after snapshots, downstream events, suppressed alerts, and validation results. The agent should draft narratives from replay evidence for audit review.
 
-### 37. Upgrade `MetricStreamRegistry` into a full specialist command center
+### 37. Immutable analytics audit ledger
 
-**Justification:** The PBC UI must expose the complete Streaming Analytics and Real-Time Aggregation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Metric definitions, quality decisions, replays, retention changes, alerts, and KPI publications require tamper-evident auditability.
 
-**Improvement:** Expand `MetricStreamRegistry` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand `analytics_audit_entry` with chained hashes, actor, command, affected objects, policy version, before/after evidence, and verification API. Snapshot proof generation should include audit entry hashes.
 
-### 38. Upgrade `MetricEventMonitor` into a full specialist command center
+### 38. Cryptographic KPI proof packets
 
-**Justification:** The PBC UI must expose the complete Streaming Analytics and Real-Time Aggregation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Operational KPIs can drive executive, financial, customer, and regulatory decisions and must be independently verifiable.
 
-**Improvement:** Expand `MetricEventMonitor` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Extend `kpi_snapshot_proof` into sealed proof packets containing stream contract hashes, window hashes, accepted event hashes, quality decisions, replay references, policy screens, snapshot values, and publication signatures. Provide verification APIs for auditors and consuming PBCs.
 
-### 39. Upgrade `AggregationWindowDesigner` into a full specialist command center
+### 39. Control assertion automation for KPIs
 
-**Justification:** The PBC UI must expose the complete Streaming Analytics and Real-Time Aggregation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** KPI pipelines need controls over ingestion completeness, quality rules, finality, replay, policy screening, and dashboard publication.
 
-**Improvement:** Expand `AggregationWindowDesigner` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand `kpi_control_assertion` with control objective, stream scope, test method, sample window, failure evidence, owner, remediation, and next run. Release audits should require executable controls for material streams.
 
-### 40. Upgrade `KpiSnapshotBoard` into a full specialist command center
+### 40. Governed model lifecycle for analytics intelligence
 
-**Justification:** The PBC UI must expose the complete Streaming Analytics and Real-Time Aggregation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Forecast, anomaly, risk, and confidence models affect operational decisions and require model governance.
 
-**Improvement:** Expand `KpiSnapshotBoard` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand `analytics_governed_model` with purpose, stream scope, features, training data range, evaluation metrics, drift checks, calibration, approval state, challenger model, rollback plan, and usage constraints. Model output should carry model-version evidence.
 
-### 41. Prove cross-PBC federation for `POST /metric-streams` and `AuditEventSealed`
+### 41. Self-healing recomputation playbooks
 
-**Justification:** Streaming Analytics and Real-Time Aggregation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Window recomputation should be controlled by explicit playbooks instead of ad hoc operator actions.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /metric-streams` and consumed event `AuditEventSealed` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add playbooks for late events, failed quality rules, schema changes, replay correction, missing source recovery, and watermark repair. Each playbook should define trigger, dry run, approval need, recomputation steps, validation, and publication behavior.
 
-### 42. Prove cross-PBC federation for `POST /aggregation-windows` and `OrderShipped`
+### 42. Incident-aware analytics degradation
 
-**Justification:** Streaming Analytics and Real-Time Aggregation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** During source outages or event floods, analytics should make degradation visible rather than presenting stale metrics as healthy.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /aggregation-windows` and consumed event `OrderShipped` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add degradation states for streams, windows, projections, and dashboards, with reason, start time, affected consumers, confidence impact, and recovery condition. APIs should return degradation metadata alongside KPI values.
 
-### 43. Prove cross-PBC federation for `POST /metric-events` and `PaymentCaptured`
+### 43. Metric exception collaboration workflow
 
-**Justification:** Streaming Analytics and Real-Time Aggregation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Resolving metric exceptions may require source owners, analysts, auditors, operations, and consuming PBC teams.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /metric-events` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add collaboration fields to `metric_exception` for participants, comments, tasks, decisions, handoffs, SLA, escalation, and closure evidence. Agent summaries should separate evidence, assumptions, proposed fixes, and unresolved owners.
 
-### 44. Prove cross-PBC federation for `POST /ingestion-checkpoints` and `AuditEventSealed`
+### 44. Real-time metric catalog and discovery
 
-**Justification:** Streaming Analytics and Real-Time Aggregation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Users need to find trustworthy streams, understand meaning, see owners, and avoid duplicating metrics.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /ingestion-checkpoints` and consumed event `AuditEventSealed` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Build a metric catalog UI with stream definitions, owners, freshness, quality score, usage, dashboards, lineage, certified status, sensitivity, and examples. The agent should recommend existing streams before allowing duplicate stream creation.
 
-### 45. Temporal reconstruction and bitemporal audit for Streaming Analytics and Real-Time Aggregation
+### 45. Natural-language metric definition assistant
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Business users can describe desired KPIs in natural language, but the PBC must convert them into safe, typed, governed stream definitions.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add agent skills that parse KPI requests into metric stream proposals, dimensions, windows, aggregations, quality rules, policy screens, and dashboard projections. The assistant must preview generated contracts, highlight ambiguity, and require approval.
 
-### 46. Bulk operations and migration-grade controls for Streaming Analytics and Real-Time Aggregation
+### 46. Dashboard storytelling with evidence
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Dashboards need concise operational explanations, not just charts, when KPIs change materially.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add evidence-cited narrative generation for KPI movement, threshold breaches, forecast changes, replay adjustments, quality failures, and risk score shifts. Narratives should distinguish measured facts, provisional values, forecasts, and recommendations.
 
-### 47. Specialist edge-case playbooks for Streaming Analytics and Real-Time Aggregation
+### 47. Operator command center
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Streaming analytics operators need a single surface for lag, quality, replay, watermarks, alerts, exceptions, dead letters, projections, and controls.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Build an operator command center that aggregates stream health, ingestion lag, watermark status, data-quality failures, replay jobs, projection freshness, alert noise, control failures, and dead-letter queues. Every panel should link to safe remediation commands and agent guidance.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Streaming Analytics and Real-Time Aggregation
+### 48. Consumer impact and contract-change workflow
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Metric changes can break executive dashboards, downstream PBC decisions, forecasts, alerts, and audit reports.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add consumer impact analysis for stream and KPI changes with affected projections, APIs, events, alerts, forecasts, models, and PBC consumers. Contract changes should require notification, compatibility evidence, and controlled activation.
 
-### 49. Continuous control testing and operational assurance for Streaming Analytics and Real-Time Aggregation
+### 49. Streaming analytics agent command skills
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** The PBC agent should safely execute operational analytics work, not merely explain dashboards.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Define first-class skills for stream creation, quality-rule drafting, replay planning, watermark diagnosis, alert tuning, KPI proof generation, exception triage, forecast explanation, projection impact review, and retention impact simulation. Each skill should use typed previews, RBAC checks, human confirmation, and audit evidence.
 
-### 50. Human-in-the-loop domain agent execution for Streaming Analytics and Real-Time Aggregation
+### 50. End-to-end streaming analytics release evidence matrix
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class PBC must prove every streaming analytics capability has schema, services, APIs, events, handlers, UI, agent skills, rules, parameters, tests, and boundary evidence.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add a release evidence matrix mapping every Streaming Analytics capability to owned tables, commands, routes, AppGen-X event contracts, idempotent handlers, workbench panels, agent skills, permissions, smoke tests, and cross-PBC boundary checks. Release audits should fail whenever a claimed analytics capability lacks executable proof.
