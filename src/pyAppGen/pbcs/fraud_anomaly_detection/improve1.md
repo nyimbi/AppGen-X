@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `fraud_anomaly_detection`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `fraud_anomaly_detection`. Each item is specific to fraud and anomaly operations: risk signal ingestion, behavior baselines, anomaly scores, fraud rules, risk cases, identity links, device fingerprints, network indicators, velocity windows, decision explanations, loss exposure, analyst queues, runtime parameters, configuration, adversarial tactics, and governed fraud intelligence. The intent is complete domain coverage for a better-than-world-class fraud detection PBC while preserving AppGen-X package boundaries.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
-- Representative owned tables: `fraud_anomaly_detection_risk_signal`, `fraud_anomaly_detection_anomaly_score`, `fraud_anomaly_detection_fraud_rule`, `fraud_anomaly_detection_risk_case`, `fraud_anomaly_detection_identity_link`, `fraud_anomaly_detection_behavior_baseline`, `fraud_anomaly_detection_device_fingerprint`, `fraud_anomaly_detection_network_indicator`, `fraud_anomaly_detection_velocity_window`, `fraud_anomaly_detection_decision_explanation`, `fraud_anomaly_detection_loss_exposure`, `fraud_anomaly_detection_analyst_queue_item`, ...
-- Representative operations/APIs: `configure_runtime`, `set_parameter`, `register_rule`, `register_schema_extension`, `register_fraud_rule`, `ingest_risk_signal`, `score_anomaly`, `open_risk_case`, `receive_event`, `build_workbench_view`.
-- Representative events: `FraudRiskScored`, `RiskCaseOpened`.
-- Representative advanced capabilities: `event_sourced_risk_signal_lifecycle`, `owned_fraud_schema_boundary`, `multi_tenant_risk_isolation`, `schema_evolution_resilient_risk_context`, `checkout_and_payment_event_ingestion`, `access_policy_change_intelligence`, `behavior_baseline_anomaly_scoring`, `fraud_rule_compilation_and_execution`, `risk_case_management_and_escalation`, `graph_identity_link_analysis`, ...
+- Domain purpose: owns behavior-derived risk signals, anomaly scores, fraud rule execution, risk case management, and fraud/risk workbench operations for AppGen-X composable applications.
+- Owned tables include risk signal, anomaly score, fraud rule, risk case, identity link, behavior baseline, device fingerprint, network indicator, velocity window, decision explanation, loss exposure, analyst queue item, fraud parameter, fraud configuration, outbox, inbox, and dead-letter evidence.
+- Operations include runtime configuration, parameter/rule registration, risk-signal ingestion, identity linking, behavior baseline refresh, device/network indicator capture, velocity calculation, anomaly scoring, decision explanation, loss projection, analyst queueing, risk-case opening, and idempotent AppGen-X event handling.
+- Events include `FraudRiskScored` and `RiskCaseOpened`; consumed events include `CheckoutCompleted`, `PaymentCaptured`, and `AccessPolicyChanged`.
+- Existing advanced claims include event-sourced risk signal lifecycle, probabilistic fraud scoring, graph identity-link analysis, temporal attack forecasting, counterfactual rule simulation, explainable decisions, autonomous triage, semantic signal interpretation, loss exposure prediction, threshold tuning, dynamic policy screening, continuous control testing, cryptographic audit proofs, and cross-system federation.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `fraud_anomaly_detection_risk_signal`
+### 1. Risk Signal Canonicalization and Provenance
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** Fraud signals arrive from checkout, payment, identity, access, device, network, and analyst inputs with different semantics, trust levels, and timestamps. Poor normalization creates unreliable scores and duplicate cases.
 
-**Improvement:** Extend `fraud_anomaly_detection_risk_signal` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `risk_signal_ingestion`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a canonical risk-signal envelope with source event, source PBC, actor, entity, channel, signal type, capture time, received time, confidence, provenance hash, tenant, and idempotency key. Reject or quarantine malformed signals before scoring.
 
-### 2. Deep specialist lifecycle semantics for `fraud_anomaly_detection_anomaly_score`
+### 2. Signal Quality and Trust Scoring
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** Fraud systems can be poisoned by stale, incomplete, synthetic, duplicated, or low-trust signals. Scoring should know signal quality before making decisions.
 
-**Improvement:** Extend `fraud_anomaly_detection_anomaly_score` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `anomaly_scoring`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add quality attributes for completeness, freshness, source reliability, schema validity, duplicate status, replay suspicion, and confidence. Use quality scores to downweight or quarantine signals and show quality evidence in analyst views.
 
-### 3. Deep specialist lifecycle semantics for `fraud_anomaly_detection_fraud_rule`
+### 3. Event-Sourced Fraud Signal Timeline
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** Fraud investigations require a defensible chronology of signals, scores, rules, analyst actions, and decisions. Mutable latest-state records are insufficient for disputes and audits.
 
-**Improvement:** Extend `fraud_anomaly_detection_fraud_rule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `fraud_rule_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Persist immutable signal timeline entries and derived projections for current risk state. Link every score, case, explanation, and rule execution to the exact input signal versions and AppGen-X event lineage.
 
-### 4. Deep specialist lifecycle semantics for `fraud_anomaly_detection_risk_case`
+### 4. Behavior Baseline Segmentation
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** Normal behavior differs by customer segment, device, geography, merchant, product, payment method, access pattern, time, and season. One global baseline creates false positives and misses targeted attacks.
 
-**Improvement:** Extend `fraud_anomaly_detection_risk_case` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `risk_case_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand behavior baselines with segment, cohort, entity type, channel, seasonality, baseline window, decay factor, confidence, and drift status. Support multiple baseline layers and show which layer influenced the score.
 
-### 5. Deep specialist lifecycle semantics for `fraud_anomaly_detection_identity_link`
+### 5. Cold-Start Risk Handling
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** New users, devices, merchants, accounts, or payment instruments lack baseline history and are vulnerable to both false positives and fraud exploitation.
 
-**Improvement:** Extend `fraud_anomaly_detection_identity_link` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `checkout_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add cold-start strategies with cohort baselines, bootstrap thresholds, progressive trust, required evidence, step-up review, and confidence bands. Track when entities graduate from cold-start handling.
 
-### 6. Deep specialist lifecycle semantics for `fraud_anomaly_detection_behavior_baseline`
+### 6. Identity Link Graph Confidence
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** Fraud rings exploit weak links across accounts, emails, devices, addresses, payment instruments, IPs, and access events. Graph edges need confidence and evidence.
 
-**Improvement:** Extend `fraud_anomaly_detection_behavior_baseline` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payment_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand identity links with edge type, source evidence, confidence, decay, first/last seen, contradiction flags, and risk contribution. The workbench should visualize identity clusters, shared attributes, and suspicious bridge nodes.
 
-### 7. Deep specialist lifecycle semantics for `fraud_anomaly_detection_device_fingerprint`
+### 7. Synthetic Identity and Mule Network Detection
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** Synthetic identities and mule networks do not always look anomalous transaction by transaction; they emerge from linked behavior and lifecycle patterns.
 
-**Improvement:** Extend `fraud_anomaly_detection_device_fingerprint` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `access_policy_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add detection patterns for thin-file behavior, identity attribute reuse, rapid credential changes, shared devices, payment instrument reuse, shipping/payment mismatches, and ring expansion. Generate graph-backed risk cases with evidence.
 
-### 8. Deep specialist lifecycle semantics for `fraud_anomaly_detection_network_indicator`
+### 8. Device Fingerprint Stability and Spoofing Signals
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** Device fingerprints can change naturally or be spoofed by fraud tooling. Treating each fingerprint as equally reliable causes incorrect decisions.
 
-**Improvement:** Extend `fraud_anomaly_detection_network_indicator` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `identity_link_analysis`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add device confidence, entropy, spoofing indicators, emulator/proxy hints, fingerprint drift, cookie reset patterns, hardware/browser contradictions, and known-good history. Explain how device signals affect risk.
 
-### 9. Deep specialist lifecycle semantics for `fraud_anomaly_detection_velocity_window`
+### 9. Network Intelligence and Proxy Risk
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** IPs, ASNs, VPNs, proxies, hosting providers, TOR-like patterns, impossible travel, and geo-velocity are central to online fraud.
 
-**Improvement:** Extend `fraud_anomaly_detection_velocity_window` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `velocity_checks`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand network indicators with ASN, proxy type, hosting risk, geolocation confidence, reputation, impossible travel score, shared-network context, and historical behavior. Use network context in velocity and anomaly scoring.
 
-### 10. Deep specialist lifecycle semantics for `fraud_anomaly_detection_decision_explanation`
+### 10. Velocity Window Library
 
-**Justification:** This owned table is part of the Anomalous Activity and Fraud Detection operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Behavior baselines, identity graph risk, anomaly scores, fraud rules, decision explanations, loss exposure, analyst queues, and operational risk flags for checkout, payment, and access-policy activity.
+**Justification:** Velocity rules vary by entity, channel, amount, geography, failed attempts, payment method, access change, and time horizon. Hardcoded windows miss complex attacks.
 
-**Improvement:** Extend `fraud_anomaly_detection_decision_explanation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `device_and_network_indicators`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a velocity-window library with configurable keys, time buckets, sliding windows, thresholds, reset rules, entity scopes, and rule bindings. Record window state used for every score and decision.
 
-### 11. Make `configure_runtime` a complete command lifecycle
+### 11. Multi-Entity Velocity Correlation
 
-**Justification:** High-value users need `configure_runtime` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Fraud bursts often span many accounts, devices, cards, IPs, or checkout sessions. Single-entity velocity misses coordinated behavior.
 
-**Improvement:** Implement `configure_runtime` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FraudRiskScored`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add correlation velocity across linked identities, shared devices, shipping addresses, payment instruments, network ranges, and rule-trigger clusters. Open risk cases when correlated velocity exceeds thresholds.
 
-### 12. Make `set_parameter` a complete command lifecycle
+### 12. Probabilistic Anomaly Score Composition
 
-**Justification:** High-value users need `set_parameter` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Fraud scores should combine uncertain signals, rule adjustments, baselines, graph risk, velocity, and analyst feedback with confidence rather than a simple additive score.
 
-**Improvement:** Implement `set_parameter` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RiskCaseOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add score components, posterior probability, confidence interval, uncertainty drivers, calibration version, and score decomposition. Store raw, adjusted, and decision-ready scores separately.
 
-### 13. Make `register_rule` a complete command lifecycle
+### 13. Score Calibration and Backtesting
 
-**Justification:** High-value users need `register_rule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Fraud scores drift as behavior, fraud tactics, products, and controls change. Scores need regular calibration against outcomes and losses.
 
-**Improvement:** Implement `register_rule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FraudRiskScored`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add calibration datasets, backtests, precision/recall, false-positive cost, missed-fraud cost, threshold impact, and calibration approval evidence. Block production threshold changes without backtest evidence.
 
-### 14. Make `register_schema_extension` a complete command lifecycle
+### 14. Fraud Rule Lifecycle Governance
 
-**Justification:** High-value users need `register_schema_extension` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Fraud rules can cause customer harm, revenue loss, or missed fraud if deployed without testing, authority, scope, and rollback.
 
-**Improvement:** Implement `register_schema_extension` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RiskCaseOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade fraud rules with draft, simulation, approved, active, paused, retired states; owner; allowed event types; score adjustment bounds; decision intent; effective windows; rollback; and impact evidence.
 
-### 15. Make `register_fraud_rule` a complete command lifecycle
+### 15. Counterfactual Rule Simulation
 
-**Justification:** High-value users need `register_fraud_rule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Analysts need to know what would have happened if a rule or threshold had been active before deploying it. Otherwise rule changes are guesses.
 
-**Improvement:** Implement `register_fraud_rule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FraudRiskScored`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add simulation over historical signals showing affected approvals, reviews, denials, cases, false positives, losses prevented, queue load, and customer friction. Persist simulation assumptions and reviewer decisions.
 
-### 16. Make `ingest_risk_signal` a complete command lifecycle
+### 16. Policy-Aware Decisioning
 
-**Justification:** High-value users need `ingest_risk_signal` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Fraud decisioning must respect access policies, payment rules, checkout rules, regulatory constraints, and customer experience requirements. Fraud rules alone are insufficient.
 
-**Improvement:** Implement `ingest_risk_signal` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RiskCaseOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add policy screening that combines fraud score, rule intent, access-policy projections, payment policy, checkout policy, regional restrictions, and appeal rights. Show policy blockers and required human approvals.
 
-### 17. Make `score_anomaly` a complete command lifecycle
+### 17. Decision Explanation Ledger
 
-**Justification:** High-value users need `score_anomaly` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Review, denial, step-up, or approval decisions need explainability for analysts, customers, auditors, and model governance. Explanations must be traceable to signals.
 
-**Improvement:** Implement `score_anomaly` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FraudRiskScored`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand decision explanations with top factors, rule hits, baseline deltas, graph links, velocity windows, policy constraints, uncertainty, model version, and human overrides. Prevent explanations from exposing sensitive fraud tactics to unauthorized users.
 
-### 18. Make `open_risk_case` a complete command lifecycle
+### 18. Human Override Governance
 
-**Justification:** High-value users need `open_risk_case` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Analyst overrides are necessary but can introduce inconsistency, fraud leakage, or unfair treatment. Overrides must be tracked and learned from.
 
-**Improvement:** Implement `open_risk_case` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RiskCaseOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add override records with analyst, reason, authority, original decision, new decision, evidence, expiration, review requirement, and outcome feedback. Use override quality to tune models and analyst coaching.
 
-### 19. Make `receive_event` a complete command lifecycle
+### 19. Risk Case Typology and Severity
 
-**Justification:** High-value users need `receive_event` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Risk cases differ: account takeover, payment fraud, refund abuse, promo abuse, synthetic identity, bot attack, access anomaly, merchant abuse, insider risk, or mule network.
 
-**Improvement:** Implement `receive_event` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FraudRiskScored`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand risk cases with typology, severity, affected entities, suspected tactic, urgency, queue, financial exposure, customer impact, policy impact, and required playbook. Route cases by type and skill.
 
-### 20. Make `build_workbench_view` a complete command lifecycle
+### 20. Analyst Queue Prioritization
 
-**Justification:** High-value users need `build_workbench_view` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Fraud teams cannot review every alert. Queue order must account for loss exposure, confidence, customer harm, time sensitivity, linked cases, and SLA.
 
-**Improvement:** Implement `build_workbench_view` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RiskCaseOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade analyst queue items with priority score, due time, queue reason, skill requirement, linked cases, expected loss, false-positive risk, and recommended action. The workbench should show why each item is prioritized.
 
-### 21. Operationalize `event_sourced_risk_signal_lifecycle` as a governed decision system
+### 21. Case Investigation Workspace
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves risk precision without hiding assumptions.
+**Justification:** Analysts need one workspace with signals, graph links, device, network, velocity, history, decision explanations, notes, actions, and outcomes. Fragmented views slow investigations.
 
-**Improvement:** Promote `event_sourced_risk_signal_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `risk_precision`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build a case workspace with evidence timeline, entity graph, score decomposition, rule hits, related cases, communications, analyst notes, actions, outcome capture, and audit-ready evidence export.
 
-### 22. Operationalize `owned_fraud_schema_boundary` as a governed decision system
+### 22. Loss Exposure Projection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves risk recall without hiding assumptions.
+**Justification:** Fraud triage depends on potential loss, not only score. Exposure varies by payment amount, recoverability, chargeback risk, account value, downstream obligations, and linked activity.
 
-**Improvement:** Promote `owned_fraud_schema_boundary` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `risk_recall`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand loss exposure with gross exposure, probable loss, recoverability, linked transactions, customer friction cost, operational cost, and confidence. Use exposure in case priority and threshold simulations.
 
-### 23. Operationalize `multi_tenant_risk_isolation` as a governed decision system
+### 23. Outcome Feedback and Label Governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves case open rate without hiding assumptions.
+**Justification:** Fraud models and rules need reliable labels from chargebacks, analyst outcomes, customer appeals, payment reversals, and confirmed benign activity. Bad labels degrade detection.
 
-**Improvement:** Promote `multi_tenant_risk_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_open_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add outcome labels with source, confidence, finality, dispute status, label delay, reviewer, and contradiction handling. Use labels for backtesting, calibration, and model governance.
 
-### 24. Operationalize `schema_evolution_resilient_risk_context` as a governed decision system
+### 24. False Positive Management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves false positive rate without hiding assumptions.
+**Justification:** Excessive false positives damage customer trust, conversion, and operations. Fraud systems must actively measure and reduce unnecessary friction.
 
-**Improvement:** Promote `schema_evolution_resilient_risk_context` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `false_positive_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add false-positive analytics by rule, model, cohort, channel, region, device, analyst, and decision type. Recommend threshold/rule changes and customer recovery workflows.
 
-### 25. Operationalize `checkout_and_payment_event_ingestion` as a governed decision system
+### 25. Missed Fraud and Loss Root Cause
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves decision latency without hiding assumptions.
+**Justification:** Confirmed losses should feed root-cause learning. Teams need to know whether misses were due to missing signals, weak thresholds, stale baselines, blind graph links, or analyst error.
 
-**Improvement:** Promote `checkout_and_payment_event_ingestion` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `decision_latency`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add missed-fraud reviews with loss source, detection gap, contributing signals, failed controls, remediation, rule/model change, and prevention estimate. Link findings to configuration and rule backlog.
 
-### 26. Operationalize `access_policy_change_intelligence` as a governed decision system
+### 26. Adversarial Drift and Attack Campaign Detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves loss exposure without hiding assumptions.
+**Justification:** Fraudsters adapt to controls and launch coordinated campaigns. Drift detection must identify changing tactics, not just statistical anomalies.
 
-**Improvement:** Promote `access_policy_change_intelligence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `loss_exposure`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add campaign clustering by tactic, entity graph, network, device, timing, product, and rule evasion. Track adversarial drift, campaign lifecycle, countermeasures, and effectiveness.
 
-### 27. Operationalize `behavior_baseline_anomaly_scoring` as a governed decision system
+### 27. Bot and Automation Pattern Detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves drift score without hiding assumptions.
+**Justification:** Automated abuse affects checkout, access, payments, inventory, promotions, and credential attacks. It can look like many small anomalies.
 
-**Improvement:** Promote `behavior_baseline_anomaly_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `drift_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add bot-pattern signals for timing regularity, browser automation hints, impossible interaction speed, repeated paths, IP rotation, device entropy, and failure cadence. Route bot campaigns to specialized cases.
 
-### 28. Operationalize `fraud_rule_compilation_and_execution` as a governed decision system
+### 28. Account Takeover Playbooks
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves identity link density without hiding assumptions.
+**Justification:** Account takeover requires rapid containment, customer notification, credential reset, payment review, and access policy coordination. Generic fraud cases are too slow.
 
-**Improvement:** Promote `fraud_rule_compilation_and_execution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `identity_link_density`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add ATO playbooks with identity changes, impossible travel, device change, payment change, unusual checkout, access event linkage, containment actions, and customer recovery steps through declared APIs/events.
 
-### 29. Operationalize `risk_case_management_and_escalation` as a governed decision system
+### 29. Payment Fraud and Chargeback Intelligence
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves velocity alert rate without hiding assumptions.
+**Justification:** Payment fraud requires linking authorization behavior, capture events, payment methods, chargebacks, refunds, disputes, and recovery likelihood.
 
-**Improvement:** Promote `risk_case_management_and_escalation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `velocity_alert_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add payment-risk features from allowed payment projections, including method risk, authorization/capture timing, refund pattern, chargeback labels, dispute outcomes, and recovery actions. Keep payment data boundary-safe.
 
-### 30. Operationalize `graph_identity_link_analysis` as a governed decision system
+### 30. Refund, Return, and Promotion Abuse Detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Anomalous Activity and Fraud Detection and measurably improves fraud risk scored throughput without hiding assumptions.
+**Justification:** Fraud is not limited to payment authorization; abuse often occurs through returns, refunds, coupons, loyalty, and promotional arbitrage.
 
-**Improvement:** Promote `graph_identity_link_analysis` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fraud_risk_scored_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add abuse patterns for refund frequency, return reason inconsistency, promotion stacking, loyalty account linking, suspicious reversals, and repeated policy-edge behavior. Emit risk signals and cases without mutating commerce domains.
 
-### 31. Create simulation-grade governance for `database_backend` and `database_backend`
+### 31. Access Policy Change Intelligence
 
-**Justification:** Complete Anomalous Activity and Fraud Detection coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Access changes can indicate insider risk, account takeover, privilege escalation, or policy misconfiguration. Fraud detection needs access context.
 
-**Improvement:** Add a policy cockpit where `database_backend` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `database_backend` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Consume access policy changes into identity-link, behavior baseline, and risk-case projections. Score risky access changes based on actor, timing, privilege, device, network, velocity, and prior behavior.
 
-### 32. Create simulation-grade governance for `event_topic` and `event_topic`
+### 32. Insider and Privileged User Anomaly Detection
 
-**Justification:** Complete Anomalous Activity and Fraud Detection coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Privileged actors create high-impact risk even with low event volume. Ordinary consumer fraud scoring may miss insider abuse.
 
-**Improvement:** Add a policy cockpit where `event_topic` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `event_topic` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add privileged-actor baselines, sensitive action risk, unusual access paths, separation-of-duty signals, peer-group comparison, and required human review for high-impact anomalies.
 
-### 33. Create simulation-grade governance for `retry_limit` and `retry_limit`
+### 33. Tenant and Region Isolation Controls
 
-**Justification:** Complete Anomalous Activity and Fraud Detection coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Fraud signals and decisions can be sensitive and regionally regulated. Cross-tenant leakage or improper region processing is unacceptable.
 
-**Improvement:** Add a policy cockpit where `retry_limit` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `retry_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add tenant/region isolation checks for signal ingestion, scoring, rules, cases, analyst queues, exports, and model outputs. Release evidence should prove no cross-tenant mutation or unauthorized region use.
 
-### 34. Create simulation-grade governance for `default_region` and `default_region`
+### 34. Privacy and Data Minimization Controls
 
-**Justification:** Complete Anomalous Activity and Fraud Detection coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Fraud detection uses sensitive behavior, identity, device, and network data. Controls must minimize collection and govern retention without weakening detection.
 
-**Improvement:** Add a policy cockpit where `default_region` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `default_region` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add data minimization, masking, retention, purpose, access, export, and deletion policy metadata to signals, links, fingerprints, and cases. Ensure agent output redacts sensitive attributes by role.
 
-### 35. Create simulation-grade governance for `supported_regions` and `supported_regions`
+### 35. Fairness and Protected-Class Safeguards
 
-**Justification:** Complete Anomalous Activity and Fraud Detection coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Fraud decisions can create unfair friction across regions, languages, devices, payment methods, or vulnerable customer groups. Governance must detect disparate impact.
 
-**Improvement:** Add a policy cockpit where `supported_regions` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `supported_regions` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add fairness monitoring, proxy-attribute risk review, protected-class exclusion controls, threshold impact analysis, appeal tracking, and human review requirements for adverse decisions.
 
-### 36. Upgrade `FraudAnomalyDetectionWorkbench` into a full specialist command center
+### 36. Customer Appeal and Review Workflow
 
-**Justification:** The PBC UI must expose the complete Anomalous Activity and Fraud Detection surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Denials or step-up challenges should have a path for appeal, evidence review, correction, and learning. Otherwise false positives become permanent harm.
 
-**Improvement:** Expand `FraudAnomalyDetectionWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add appeal records with customer claim, supporting evidence, reviewer, original explanation, decision outcome, correction actions, and label feedback. Link appeals to rules, model versions, and false-positive analytics.
 
-### 37. Upgrade `RiskSignalMonitor` into a full specialist command center
+### 37. Step-Up and Friction Strategy
 
-**Justification:** The PBC UI must expose the complete Anomalous Activity and Fraud Detection surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Fraud response is not just approve/review/deny. Step-up authentication, hold, delayed capture, manual review, reduced limits, or soft warnings can balance risk and conversion.
 
-**Improvement:** Expand `RiskSignalMonitor` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add decision actions with friction strategy, eligibility, customer impact, policy basis, and outcome measurement. Simulate conversion and loss effects for each friction strategy.
 
-### 38. Upgrade `AnomalyScoreBoard` into a full specialist command center
+### 38. Self-Healing Threshold Recommendations
 
-**Justification:** The PBC UI must expose the complete Anomalous Activity and Fraud Detection surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Thresholds become stale as attacks and customer behavior change. Manual tuning is slow, but autonomous changes require governance.
 
-**Improvement:** Expand `AnomalyScoreBoard` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add threshold recommendations with evidence, expected loss reduction, false-positive impact, queue impact, backtest results, confidence, and approval workflow. Block unattended production changes unless policy explicitly permits.
 
-### 39. Upgrade `FraudRuleStudio` into a full specialist command center
+### 39. Fraud Rule Conflict and Shadowing Detection
 
-**Justification:** The PBC UI must expose the complete Anomalous Activity and Fraud Detection surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Rules can conflict, duplicate, shadow, or cancel each other, causing inconsistent decisions and unnecessary review load.
 
-**Improvement:** Expand `FraudRuleStudio` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add rule conflict analysis for overlapping predicates, contradictory decisions, redundant triggers, score saturation, dead rules, and priority inversions. Show conflicts before activation.
 
-### 40. Upgrade `RiskCaseConsole` into a full specialist command center
+### 40. Explainability Quality Testing
 
-**Justification:** The PBC UI must expose the complete Anomalous Activity and Fraud Detection surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Explanations must be accurate, concise, non-leaky, and useful. Poor explanations mislead analysts or expose fraud defenses.
 
-**Improvement:** Expand `RiskCaseConsole` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add explanation tests for factor accuracy, sensitive tactic leakage, completeness, role-appropriate detail, and consistency with scores/rules. Include explanation quality in release evidence.
 
-### 41. Prove cross-PBC federation for `POST /risk-events` and `CheckoutCompleted`
+### 41. Analyst Performance and Coaching
 
-**Justification:** Anomalous Activity and Fraud Detection must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Analyst decisions affect fraud loss and customer friction. Teams need coaching metrics without unfairly penalizing high-complexity queues.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /risk-events` and consumed event `CheckoutCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add analyst metrics for decision accuracy, override quality, review time, appeal outcomes, queue complexity, false positives, and missed fraud. Provide coaching recommendations and workload balancing.
 
-### 42. Prove cross-PBC federation for `POST /fraud-checks` and `PaymentCaptured`
+### 42. Fraud Operations Metrics Layer
 
-**Justification:** Anomalous Activity and Fraud Detection must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Leaders need consistent metrics for attack volume, loss, prevented loss, false positives, review rate, precision, recall, queue SLA, appeals, and rule impact.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /fraud-checks` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add governed metric definitions with grain, numerator/denominator, exclusions, latency, owner, and freshness. Provide dashboards by channel, region, product, rule, model, analyst queue, and tactic.
 
-### 43. Prove cross-PBC federation for `GET /risk-cases` and `AccessPolicyChanged`
+### 43. Fraud Configuration Change Impact
 
-**Justification:** Anomalous Activity and Fraud Detection must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Changing parameters, rules, thresholds, and weights can alter thousands of decisions. Operators need impact before activation.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /risk-cases` and consumed event `AccessPolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add configuration impact analysis showing affected signals, decisions, queues, losses, false positives, case volume, fairness metrics, and consumer friction. Require approval for high-impact changes.
 
-### 44. Prove cross-PBC federation for `GET /risk-workbench` and `CheckoutCompleted`
+### 44. Agent-Assisted Fraud Investigation
 
-**Justification:** Anomalous Activity and Fraud Detection must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Fraud analysts need help summarizing signals, graph links, rules, evidence, and likely tactics, but the agent must not hallucinate or mutate state without approval.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /risk-workbench` and consumed event `CheckoutCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Give the PBC agent skills to build source-cited investigation summaries, propose risk cases, draft analyst notes, recommend actions, and create CRUD plans with affected tables, event plans, confidence, and human confirmation.
 
-### 45. Temporal reconstruction and bitemporal audit for Anomalous Activity and Fraud Detection
+### 45. Semantic Signal Interpretation
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Analyst notes, dispute descriptions, access reasons, checkout metadata, and payment narratives contain fraud clues that structured rules may miss.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add semantic extraction for unstructured signal text with intent, tactic hints, contradiction, urgency, sensitive data redaction, and evidence citations. Store extracted features with confidence and reviewer feedback.
 
-### 46. Bulk operations and migration-grade controls for Anomalous Activity and Fraud Detection
+### 46. Cryptographic Fraud Evidence Packets
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Fraud decisions, denials, appeals, audits, and chargeback defense may require tamper-evident evidence of signals, rules, scores, and analyst actions.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Generate evidence packets with signal hashes, rule versions, score decomposition, decision explanation, case actions, analyst notes, event lineage, and export manifests. Support restricted redaction for customer-facing packets.
 
-### 47. Specialist edge-case playbooks for Anomalous Activity and Fraud Detection
+### 47. Cross-PBC Boundary Proofs
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Fraud detection references checkout, payment, identity, access, case management, returns, loyalty, and customer data. It must not mutate those domains directly.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add projection contracts for consumed context, including source PBC, allowed fields, freshness, authorization, idempotency, and fallback. Add tests proving services mutate only `fraud_anomaly_detection_` tables and AppGen-X runtime tables.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Anomalous Activity and Fraud Detection
+### 48. Dead-Letter and Replay Operations
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Fraud signals are time-sensitive and high-stakes. Duplicate, late, malformed, or failed events must be visible and safely replayable.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add operations UI for inbox, outbox, retry, dead-letter, quarantine, payload lineage, idempotency keys, replay eligibility, and dependency health. Unknown events should never mutate domain state.
 
-### 49. Continuous control testing and operational assurance for Anomalous Activity and Fraud Detection
+### 49. Fraud Release Evidence Packs
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Fraud detection changes can affect revenue, customer trust, and compliance. Release evidence must prove scoring, rules, cases, handlers, UI, and agent skills behave safely.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Generate release evidence packs containing schema hashes, migration manifests, service contracts, route contracts, event schemas, handler idempotency proofs, retry/dead-letter tests, rule simulations, scoring backtests, fairness checks, UI coverage, and agent manifests.
 
-### 50. Human-in-the-loop domain agent execution for Anomalous Activity and Fraud Detection
+### 50. Complete Fraud Workbench Coverage
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Fraud managers, analysts, model reviewers, rule owners, operations leads, and compliance reviewers need full operational surfaces. Hidden APIs are not enough.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Expand the UI into role-specific workbenches for analyst, queue manager, rule owner, model reviewer, compliance reviewer, operations lead, and executive sponsor. Cover signals, scores, rules, cases, identity graphs, devices, networks, velocity, explanations, loss exposure, queues, metrics, configuration, agent panels, and release evidence.
