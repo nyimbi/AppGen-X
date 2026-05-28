@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `mrp_engine`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `mrp_engine`. The items are specific to material requirements planning: BOMs, revisions, components, alternates, substitutions, item planning profiles, source rules, demand projections, forecasts, sales-order demand, inventory and lot projections, reservations, quality holds, capacity projections, MRP runs, scenarios, plan versions, planned orders, planned purchase suggestions, planned production orders, transfers, shortages, pegging, exceptions, release routes, policy screening, planning proofs, event reliability, UI workbenches, and agent-assisted planning operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
-- Representative owned tables: `mrp_engine_bill_of_material`, `mrp_engine_bom_revision`, `mrp_engine_bom_component`, `mrp_engine_item_planning_profile`, `mrp_engine_material_demand`, `mrp_engine_inventory_projection`, `mrp_engine_capacity_projection`, `mrp_engine_mrp_run`, `mrp_engine_mrp_run_item`, `mrp_engine_planned_order`, `mrp_engine_planned_purchase_suggestion`, `mrp_engine_planned_production_order`, ...
-- Representative operations/APIs: `command_mrp_boms`, `command_mrp_demand_projections`, `command_mrp_inventory_projections`, `command_mrp_runs`, `command_mrp_runs_id_calculate`, `command_mrp_planned_orders_id_release`, `command_mrp_events_inbox`, `query_mrp_workbench`.
-- Representative events: `BomRegistered`, `DemandProjectionIngested`, `InventoryProjectionIngested`, `MrpRunStarted`, `MaterialShortageDetected`, `PlannedOrderReleased`.
-- Representative advanced capabilities: `event_sourced_planning_lifecycle`, `graph_relational_bom_topology`, `multi_tenant_site_planning_isolation`, `schema_evolution_resilient_planning_schema`, `probabilistic_shortage_capacity_risk_scoring`, `real_time_material_plan_analytics`, `counterfactual_planning_policy_simulation`, `temporal_demand_shortage_forecasting`, `autonomous_planning_exception_resolution`, `semantic_demand_bom_instruction_parsing`, ...
+- Domain purpose: package-local planning graph that turns demand, supply projections, bill-of-material structure, site policy, capacity signals, lead times, lot sizing, safety stock, scrap, yield, and release rules into executable planned production orders and planned purchase suggestions.
+- Owned boundary: BOMs, revisions, components, alternates, substitution rules, item planning profiles, source rules, material demand, demand lines, forecast snapshots, sales-order demand projections, safety stock policies, inventory/lot/reservation projections, quality hold projections, capacity projections and buckets, work-center and production capacity projections, supplier lead-time projections, MRP runs, run items and buckets, scenarios, plan versions, planned orders and components, purchase suggestions, production orders, transfer orders, shortages, shortage pegging, supply-demand pegging, planning exceptions, resolution plans, release routes, policy screening, audit traces, supply proofs, federation projections, carbon planning windows, allocation optimization, capacity allocation, anomaly signals, risk models, shortage forecasts, parsed instructions, seed data, schema extensions, controls, governed models, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: configuration, rules, parameters, schema extensions, event handling, BOM registration, demand and inventory projection ingestion, run creation/calculation, BOM explosion, material plan calculation, planned-order release, supply routing, proofs, screening, federation, identity checks, resilience drills, crypto epochs, carbon batching, allocation optimization, controls, governed models, workbench, simulations, forecasts, parsing, risk scoring, exceptions, anomaly detection, stochastic exposure, and boundary verification.
+- Existing events and dependencies: emits `BomRegistered`, `DemandProjectionIngested`, `InventoryProjectionIngested`, `MrpRunStarted`, `MaterialShortageDetected`, and `PlannedOrderReleased`; consumes inventory, order, forecast, production capacity, quality hold, and supplier lead-time events through declared APIs/projections only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `mrp_engine_bill_of_material`
+### 1. BOM master readiness gate
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** MRP output is only as good as BOM structure, component quantities, units, sites, scrap, yield, and release state.
 
-**Improvement:** Extend `mrp_engine_bill_of_material` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `bom_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add BOM readiness checks for parent item, site, revision, component completeness, UOM consistency, scrap/yield, alternate links, lifecycle status, and approval. Block planning against unapproved or incomplete BOMs.
 
-### 2. Deep specialist lifecycle semantics for `mrp_engine_bom_revision`
+### 2. BOM revision effectivity control
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** Engineering changes and date/lot/serial effectivity can alter requirements materially.
 
-**Improvement:** Extend `mrp_engine_bom_revision` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `bom_revision_control`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model revision effectivity by date, site, lot/serial range, product configuration, approval state, and supersession. MRP runs should cite the revision snapshot used for every explosion.
 
-### 3. Deep specialist lifecycle semantics for `mrp_engine_bom_component`
+### 3. BOM component quantity governance
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** Component quantities, scrap, phantom behavior, and yield assumptions drive shortage and planned order quantities.
 
-**Improvement:** Extend `mrp_engine_bom_component` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `bom_component_control`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add component-level UOM, quantity basis, scrap percent, yield, phantom flag, rounding, optionality, and effective dates. Explosion traces should show every quantity transformation.
 
-### 4. Deep specialist lifecycle semantics for `mrp_engine_item_planning_profile`
+### 4. Alternate BOM and routing selection
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** Alternative structures can mitigate shortages, capacity constraints, or site-specific production rules.
 
-**Improvement:** Extend `mrp_engine_item_planning_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `alternate_bom`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add alternate BOM selection policies by site, demand type, capacity, component availability, cost, quality hold, and approval. Simulate alternate selection before changing active planning rules.
 
-### 5. Deep specialist lifecycle semantics for `mrp_engine_material_demand`
+### 5. Substitution rule engine
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** Substitutes can resolve shortages but may violate quality, regulatory, customer, or engineering rules.
 
-**Improvement:** Extend `mrp_engine_material_demand` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `substitution_rule`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model substitutions with eligibility, priority, equivalence quantity, site/channel/customer restrictions, quality status, expiry, and approval. Shortage recommendations should explain substitute acceptance or rejection.
 
-### 6. Deep specialist lifecycle semantics for `mrp_engine_inventory_projection`
+### 6. Item planning profile completeness
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** Lead time, lot sizing, safety stock, sourcing method, make/buy, and planning fence settings determine correct MRP behavior.
 
-**Improvement:** Extend `mrp_engine_inventory_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `item_planning_profile`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add profile readiness checks for make/buy, source rule, lead time, lot-size policy, min/max, safety stock, scrap factor, planning fence, time bucket, and planner ownership.
 
-### 7. Deep specialist lifecycle semantics for `mrp_engine_capacity_projection`
+### 7. Source rule governance
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** Planned orders must know whether to buy, make, transfer, subcontract, or defer.
 
-**Improvement:** Extend `mrp_engine_capacity_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `item_source_rule`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Define source rules by item, site, supplier/source site, effective dates, capacity, lead time, minimum quantity, priority, cost, and release route. Planned order release should cite source rule evidence.
 
-### 8. Deep specialist lifecycle semantics for `mrp_engine_mrp_run`
+### 8. Demand projection normalization
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** Forecasts, verified orders, dependent demand, and manual planning demand have different priority and reliability.
 
-**Improvement:** Extend `mrp_engine_mrp_run` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `bom_explosion`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Normalize demand with source type, item, site, quantity, due date, priority, confidence, consumption policy, event lineage, and stale status. MRP should preserve source demand identity for pegging.
 
-### 9. Deep specialist lifecycle semantics for `mrp_engine_mrp_run_item`
+### 9. Forecast snapshot versioning
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** Forecast changes can swing planned supply and must be reproducible.
 
-**Improvement:** Extend `mrp_engine_mrp_run_item` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `demand_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store forecast snapshots with version, horizon, bucket, model/source, confidence, override reason, and supersession. Scenario runs should compare forecast versions.
 
-### 10. Deep specialist lifecycle semantics for `mrp_engine_planned_order`
+### 10. Sales-order demand pegging
 
-**Justification:** This owned table is part of the Material Requirements Planning Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by BOM graph analysis, demand/supply/capacity projections, planning runs, shortages, pegging, release routes, and governed material plans.
+**Justification:** Planners need to know which customer or order demand drives each shortage or planned order without reading order tables.
 
-**Improvement:** Extend `mrp_engine_planned_order` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `demand_projection_lines`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store sales-order demand projections with source event, due date, priority, promised date, quantity, and projection freshness. Peg planned supply and shortages back to these projections.
 
-### 11. Make `command_mrp_boms` a complete command lifecycle
+### 11. Inventory projection freshness
 
-**Justification:** High-value users need `command_mrp_boms` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** MRP should not rely on stale or incomplete inventory availability.
 
-**Improvement:** Implement `command_mrp_boms` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BomRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track inventory projection source, position timestamp, available quantity, reservations, in-transit, quality holds, confidence, and freshness. Warn or hold runs when critical projections are stale.
 
-### 12. Make `command_mrp_demand_projections` a complete command lifecycle
+### 12. Lot and reservation-aware planning
 
-**Justification:** High-value users need `command_mrp_demand_projections` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Lots, reservations, expiry, and holds materially change usable supply.
 
-**Improvement:** Implement `command_mrp_demand_projections` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DemandProjectionIngested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Include lot attributes, expiry, reservation status, hold state, FEFO policy, and allocation confidence in supply netting. Planned orders should not consume projected supply that is not planning-eligible.
 
-### 13. Make `command_mrp_inventory_projections` a complete command lifecycle
+### 13. Quality hold projection integration
 
-**Justification:** High-value users need `command_mrp_inventory_projections` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Quality holds can make apparent inventory unusable for planning.
 
-**Improvement:** Implement `command_mrp_inventory_projections` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InventoryProjectionIngested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Project quality holds with affected item/site/lot, status, release confidence, expected release date, and reason. Planning should include conditional supply only when policy allows.
 
-### 14. Make `command_mrp_runs` a complete command lifecycle
+### 14. Capacity bucket modeling
 
-**Justification:** High-value users need `command_mrp_runs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Material plans that ignore capacity create infeasible production orders.
 
-**Improvement:** Implement `command_mrp_runs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MrpRunStarted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model capacity buckets by work center/site/date, available hours, constraints, load, downtime projection, confidence, and bottleneck status. Planned production orders should show capacity feasibility.
 
-### 15. Make `command_mrp_runs_id_calculate` a complete command lifecycle
+### 15. Supplier lead-time projection governance
 
-**Justification:** High-value users need `command_mrp_runs_id_calculate` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Purchase suggestions depend on supplier lead times that vary by item, site, season, risk, and performance.
 
-**Improvement:** Implement `command_mrp_runs_id_calculate` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaterialShortageDetected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store supplier lead-time projection with source, confidence, minimum/expected/worst-case days, supplier/source rule, validity, and risk. Purchase suggestions should include lead-time confidence.
 
-### 16. Make `command_mrp_planned_orders_id_release` a complete command lifecycle
+### 16. Planning horizon and time bucket strategy
 
-**Justification:** High-value users need `command_mrp_planned_orders_id_release` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Horizon and bucket size affect nervousness, performance, and decision quality.
 
-**Improvement:** Implement `command_mrp_planned_orders_id_release` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PlannedOrderReleased`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add horizon/bucket policies by item class, site, demand type, and planner. Simulate changes to show shortage, planned-order count, and release workload impact.
 
-### 17. Make `command_mrp_events_inbox` a complete command lifecycle
+### 17. MRP run lifecycle state machine
 
-**Justification:** High-value users need `command_mrp_events_inbox` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Planning runs need controlled states for draft, queued, running, calculated, reviewed, partially released, released, superseded, and archived.
 
-**Improvement:** Implement `command_mrp_events_inbox` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BomRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add run transitions with planner, scenario, input snapshot hashes, rule/parameter versions, start/end time, exception count, approval state, and audit trace.
 
-### 18. Turn `query_mrp_workbench` into an expert read-model experience
+### 18. Input snapshot freeze
 
-**Justification:** Domain experts rely on `query_mrp_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Reproducible planning requires freezing demand, supply, BOM, capacity, and policy inputs at run start.
 
-**Improvement:** Build `query_mrp_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `DemandProjectionIngested` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Create immutable run snapshots for BOM revisions, demand, inventory, reservations, quality holds, capacity, lead times, rules, and parameters. Recalculation should create a new plan version.
 
-### 19. Make `command_mrp_boms` a complete command lifecycle
+### 19. Multi-scenario planning
 
-**Justification:** High-value users need `command_mrp_boms` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Planners need compare-and-choose behavior for demand upside, supplier delay, capacity outage, and policy changes.
 
-**Improvement:** Implement `command_mrp_boms` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InventoryProjectionIngested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add scenarios with input deltas, assumptions, owner, status, comparison metrics, and recommended action. Workbench should compare shortages, supply orders, capacity load, cost, and carbon.
 
-### 20. Make `command_mrp_demand_projections` a complete command lifecycle
+### 20. Plan version control
 
-**Justification:** High-value users need `command_mrp_demand_projections` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Plans evolve as inputs change, but decisions must remain traceable.
 
-**Improvement:** Implement `command_mrp_demand_projections` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MrpRunStarted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Version MRP plans with parent run, scenario, input snapshots, calculation algorithm, changed orders, supersession, and release status. Pegging and approvals should reference plan version.
 
-### 21. Operationalize `event_sourced_planning_lifecycle` as a governed decision system
+### 21. Supply and demand netting trace
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves plan adherence without hiding assumptions.
+**Justification:** Planners need to explain why MRP created or did not create supply.
 
-**Improvement:** Promote `event_sourced_planning_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `plan_adherence`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store netting traces by item/site/bucket showing gross demand, on-hand projection, reservations, scheduled receipts, planned receipts, safety stock, lot size, shortage, and recommended supply.
 
-### 22. Operationalize `graph_relational_bom_topology` as a governed decision system
+### 22. Safety stock policy intelligence
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves yield rate without hiding assumptions.
+**Justification:** Safety stock can protect service or create excess; MRP should make its effect explicit.
 
-**Improvement:** Promote `graph_relational_bom_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `yield_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model safety stock by item/site/bucket, demand variability, service level, lead-time variability, seasonality, and override reason. Show shortages caused solely by safety-stock policy.
 
-### 23. Operationalize `multi_tenant_site_planning_isolation` as a governed decision system
+### 23. Lot-sizing and rounding engine
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves downtime minutes without hiding assumptions.
+**Justification:** Minimum, maximum, fixed, multiple, economic, and supplier pack quantities strongly affect planned order quantities.
 
-**Improvement:** Promote `multi_tenant_site_planning_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `downtime_minutes`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add lot-sizing policies with minimum, maximum, multiple, fixed order quantity, rounding, source constraints, and cost impact. Planned order traces should show lot-size transformations.
 
-### 24. Operationalize `schema_evolution_resilient_planning_schema` as a governed decision system
+### 24. Planned purchase suggestion lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves quality escape rate without hiding assumptions.
+**Justification:** Purchase suggestions need review, consolidation, supplier/source rule, release route, and exception handling.
 
-**Improvement:** Promote `schema_evolution_resilient_planning_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `quality_escape_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model suggestion states, item/site, supplier/source, quantity, due date, lead time, pegged demand, approval, consolidation group, and release evidence to procurement.
 
-### 25. Operationalize `probabilistic_shortage_capacity_risk_scoring` as a governed decision system
+### 25. Planned production order lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves bom registered throughput without hiding assumptions.
+**Justification:** Production suggestions must be feasible by BOM, capacity, routing, and material availability.
 
-**Improvement:** Promote `probabilistic_shortage_capacity_risk_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `bom_registered_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model planned production orders with parent item, site, quantity, start/due date, BOM revision, component requirements, capacity feasibility, release route, and production handoff evidence.
 
-### 26. Operationalize `real_time_material_plan_analytics` as a governed decision system
+### 26. Planned transfer order lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves demand projection ingested throughput without hiding assumptions.
+**Justification:** Transfers can resolve shortages across sites but affect inventory, transportation, and service constraints.
 
-**Improvement:** Promote `real_time_material_plan_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `demand_projection_ingested_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add transfer suggestions with source site, destination site, transit lead time, availability confidence, transportation projection, carbon impact, and release route. Respect site policies and reservations.
 
-### 27. Operationalize `counterfactual_planning_policy_simulation` as a governed decision system
+### 27. Shortage severity model
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves plan adherence without hiding assumptions.
+**Justification:** Not all shortages are equal; severity depends on due date, demand priority, customer impact, substitute availability, and lead-time risk.
 
-**Improvement:** Promote `counterfactual_planning_policy_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `plan_adherence`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score shortages with quantity, days late, demand priority, pegged orders, substitute options, capacity risk, supplier lead time, and customer/service impact. Workbench should rank shortage resolution.
 
-### 28. Operationalize `temporal_demand_shortage_forecasting` as a governed decision system
+### 28. Pegging graph explorer
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves yield rate without hiding assumptions.
+**Justification:** Planners must navigate from demand to components, supply, shortages, and release actions.
 
-**Improvement:** Promote `temporal_demand_shortage_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `yield_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build pegging graph views for demand, BOM levels, supply projections, planned orders, shortages, reservations, and release routes. Support upstream/downstream trace by plan version.
 
-### 29. Operationalize `autonomous_planning_exception_resolution` as a governed decision system
+### 29. Exception resolution planning
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves downtime minutes without hiding assumptions.
+**Justification:** Shortages, capacity overloads, quality holds, stale projections, and source gaps need actionable resolution plans.
 
-**Improvement:** Promote `autonomous_planning_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `downtime_minutes`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate resolution plans with option type, impacted demand, feasibility, cost, risk, lead time, policy requirements, owner, and expected event effects. Require approval for high-impact actions.
 
-### 30. Operationalize `semantic_demand_bom_instruction_parsing` as a governed decision system
+### 30. Planned order release governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Material Requirements Planning Engine and measurably improves quality escape rate without hiding assumptions.
+**Justification:** Releasing planned orders creates downstream procurement or production commitments.
 
-**Improvement:** Promote `semantic_demand_bom_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `quality_escape_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Validate release route, source rule, approval threshold, pegging, quantity, due date, capacity/material feasibility, and stale input status. Emit `PlannedOrderReleased` with idempotent evidence.
 
-### 31. Create simulation-grade governance for `MRP_ENGINE_DATABASE_URL` and `MRP_ENGINE_DATABASE_URL`
+### 31. Release route resilience
 
-**Justification:** Complete Material Requirements Planning Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Procurement and production routes can fail or be temporarily unavailable.
 
-**Improvement:** Add a policy cockpit where `MRP_ENGINE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MRP_ENGINE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add release route health, fallback path, retry policy, dead-letter linkage, and requeue logic. Workbench should show route failures and safe replay options.
 
-### 32. Create simulation-grade governance for `MRP_ENGINE_EVENT_TOPIC` and `MRP_ENGINE_EVENT_TOPIC`
+### 32. Planning policy screening
 
-**Justification:** Complete Material Requirements Planning Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** MRP must enforce restricted sites, blocked runs, item status, sourcing policy, quality holds, and approval thresholds.
 
-**Improvement:** Add a policy cockpit where `MRP_ENGINE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MRP_ENGINE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Screen BOM registration, projection ingestion, run creation, calculation, planned-order release, and exception closure. Store policy version, attributes evaluated, decision, explanation, and override path.
 
-### 33. Create simulation-grade governance for `MRP_ENGINE_RETRY_LIMIT` and `MRP_ENGINE_RETRY_LIMIT`
+### 33. Material risk forecasting
 
-**Justification:** Complete Material Requirements Planning Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Shortage risk can be anticipated before demand becomes late.
 
-**Improvement:** Add a policy cockpit where `MRP_ENGINE_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MRP_ENGINE_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Forecast shortage probability by item/site/bucket using demand variability, supplier lead time, inventory confidence, quality holds, capacity, and historical plan stability. Provide mitigation and confidence.
 
-### 34. Create simulation-grade governance for `MRP_ENGINE_DATABASE_URL` and `MRP_ENGINE_DATABASE_URL`
+### 34. Capacity allocation mechanism
 
-**Justification:** Complete Material Requirements Planning Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Scarce capacity must be allocated across items, demand priorities, customers, and sites transparently.
 
-**Improvement:** Add a policy cockpit where `MRP_ENGINE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MRP_ENGINE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add capacity allocation policies for priority, due date, margin/service class, fairness, setup efficiency, and contractual demand. Simulate outcomes before activation.
 
-### 35. Create simulation-grade governance for `MRP_ENGINE_EVENT_TOPIC` and `MRP_ENGINE_EVENT_TOPIC`
+### 35. Material allocation optimization
 
-**Justification:** Complete Material Requirements Planning Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Limited supply should be allocated to maximize service while respecting rules and commitments.
 
-**Improvement:** Add a policy cockpit where `MRP_ENGINE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `MRP_ENGINE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Optimize material allocation across pegged demands, planned orders, substitutions, transfers, and safety stock with explainable constraints and sensitivity analysis.
 
-### 36. Upgrade `MrpEngineWorkbench` into a full specialist command center
+### 36. Carbon-aware planning windows
 
-**Justification:** The PBC UI must expose the complete Material Requirements Planning Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Non-urgent planning batches and release timing can account for energy and logistics emissions.
 
-**Improvement:** Expand `MrpEngineWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add carbon planning windows for batch runs, release timing, transfer choices, and production suggestions. Show cost/service/carbon tradeoffs rather than silently delaying supply.
 
-### 37. Upgrade `MrpEngineDetail` into a full specialist command center
+### 37. Supply availability proof
 
-**Justification:** The PBC UI must expose the complete Material Requirements Planning Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Planners and downstream consumers may need proof of projected supply without exposing all inventory or supplier details.
 
-**Improvement:** Expand `MrpEngineDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate redacted proofs for availability, shortage, pegging, input freshness, and planned supply with hash, plan version, and verification API.
 
-### 38. Upgrade `MrpEngineWorkbench` into a full specialist command center
+### 38. Immutable planning audit trace
 
-**Justification:** The PBC UI must expose the complete Material Requirements Planning Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** MRP decisions affect procurement, production, customer promises, and cash.
 
-**Improvement:** Expand `MrpEngineWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Hash-chain BOM changes, projection ingestion, run snapshots, netting, planned orders, shortages, exceptions, releases, agent previews, and event handling. Support temporal reconstruction.
 
-### 39. Upgrade `MrpEngineDetail` into a full specialist command center
+### 39. AppGen-X event reliability cockpit
 
-**Justification:** The PBC UI must expose the complete Material Requirements Planning Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** MRP depends on consumed inventory, order, forecast, capacity, quality, and supplier events and emitted planning events.
 
-**Improvement:** Expand `MrpEngineDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add inbox/outbox/dead-letter views for idempotency, duplicates, retries, handler version, payload lineage, projection freshness, replay eligibility, and downstream release effects.
 
-### 40. Upgrade `MrpEngineWorkbench` into a full specialist command center
+### 40. Boundary proof for MRP ownership
 
-**Justification:** The PBC UI must expose the complete Material Requirements Planning Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** MRP must compose with inventory, order, forecast, procurement, production, quality, supplier, and audit packages without shared tables.
 
-**Improvement:** Expand `MrpEngineWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add static/runtime checks proving commands touch only MRP-owned tables plus AppGen-X runtime tables. Include failing fixtures for direct inventory balance, customer order, supplier, production, quality, and audit table access.
 
-### 41. Prove cross-PBC federation for `POST /mrp/boms` and `InventoryReleased`
+### 41. MRP workbench coverage
 
-**Justification:** Material Requirements Planning Engine must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Planners need the full planning surface, not hidden backend commands.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /mrp/boms` and consumed event `InventoryReleased` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand UI into BOM explorer, revision control, demand console, forecast snapshots, inventory projections, capacity board, run control, scenario comparison, shortage board, pegging graph, planned order board, release queue, exception resolution, rules, parameters, configuration, events, and agent panels.
 
-### 42. Prove cross-PBC federation for `POST /mrp/demand-projections` and `OrderVerified`
+### 42. Agent-safe planning instruction intake
 
-**Justification:** Material Requirements Planning Engine must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The MRP chatbot should parse planning notes, BOM change requests, demand overrides, and shortage instructions without unsafe writes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /mrp/demand-projections` and consumed event `OrderVerified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add intake skills that extract candidate planning facts, map them to owned MRP tables, validate rules/permissions/projections, reject foreign-table mutations, and produce side-effect-free previews with confidence, risks, approvals, and expected AppGen-X events.
 
-### 43. Prove cross-PBC federation for `POST /mrp/inventory-projections` and `ForecastUpdated`
+### 43. Agent-safe release and exception planning
 
-**Justification:** Material Requirements Planning Engine must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** AI planning actions can create supply commitments and must be human-governed.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /mrp/inventory-projections` and consumed event `ForecastUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require agent plans for BOM registration, projection ingestion, run calculation, planned-order release, substitution, transfer, and exception closure to list command, permission, owned tables, idempotency key, emitted event, affected demand, rollback limits, and human approval.
 
-### 44. Prove cross-PBC federation for `POST /mrp/runs` and `ProductionCapacityChanged`
+### 44. Counterfactual planning-policy simulation
 
-**Justification:** Material Requirements Planning Engine must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Changing safety stock, lead time, lot size, capacity threshold, or release rules can materially change supply commitments.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /mrp/runs` and consumed event `ProductionCapacityChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Simulate parameter and rule changes against historical and active runs, showing shortages, planned orders, inventory exposure, capacity load, release volume, carbon, and dead-letter volume.
 
-### 45. Temporal reconstruction and bitemporal audit for Material Requirements Planning Engine
+### 45. Semantic BOM and demand parsing
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Planners often receive BOM notes, demand changes, supplier updates, and expedite instructions in unstructured form.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Parse instructions into candidate BOM components, demand deltas, lead-time updates, substitution proposals, and exception notes with confidence, validation results, and reviewer approval.
 
-### 46. Bulk operations and migration-grade controls for Material Requirements Planning Engine
+### 46. Shortage anomaly detection
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Sudden or unusual shortages may indicate bad projections, BOM errors, supplier disruption, or demand spikes.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Detect anomalies in demand changes, component usage, lead time, inventory projection drops, quality holds, capacity changes, and release failures. Route findings to planners with explanations.
 
-### 47. Specialist edge-case playbooks for Material Requirements Planning Engine
+### 47. Planning MLOps governance
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Shortage, forecast, risk, anomaly, and optimization models influence supply commitments.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add model registry, feature lineage, training windows, approval status, drift monitoring, explainability, fairness/coverage checks, rollback, and release evidence for every planning model.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Material Requirements Planning Engine
+### 48. Continuous MRP control testing
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Planning controls should run continuously across BOMs, projections, runs, netting, releases, and events.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add assertions for inactive BOM planning, stale inventory projections, negative component demand, lot-size violations, release without pegging, blocked quality supply use, dead-letter aging, direct foreign-table access, and agent-preview bypass.
 
-### 49. Continuous control testing and operational assurance for Material Requirements Planning Engine
+### 49. MRP readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether MRP is ready for production planning.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from BOM completeness, planning profiles, demand projections, inventory freshness, capacity coverage, source rules, parameter validation, event reliability, UI coverage, boundary proof, controls, model governance, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Material Requirements Planning Engine
+### 50. End-to-end material plan proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete MRP PBC must prove it can convert demand and supply projections into governed planned orders.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering BOM registration, demand projection ingestion, inventory projection ingestion, capacity projection, MRP run, BOM explosion, netting, shortage detection, pegging, planned purchase and production suggestions, release route, emitted events, UI evidence, controls, and agent explanation.
