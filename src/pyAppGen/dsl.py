@@ -1063,14 +1063,51 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         for diagnostic in payload.get("diagnostics", ()):
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return
+    if payload.get("format") == "appgen.format-result.v1":
+        status = "changed" if payload.get("changed") else "ok"
+        idempotent = "idempotent" if payload.get("idempotent") else "not-idempotent"
+        print(f"format {status}: {idempotent}")
+        for diagnostic in payload.get("diagnostics", ()):
+            print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
+        return
     if payload.get("format") == "appgen.validate-report.v1":
         status = "ok" if payload.get("ok") else "failed"
         print(f"validate {status}")
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
+    if payload.get("format") == "appgen.generate-report.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(f"generate {status}: generated={payload.get('generated', False)}")
+        for artifact in payload.get("artifacts", ()):
+            print(f"artifact {artifact['path']}")
+        for gap in payload.get("blocking_gaps", ()):
+            print(f"gap {gap}")
+        return
+    if payload.get("format") == "appgen.graph-suite-report.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        kind_count = len(payload.get("required_kinds", ()))
+        format_count = len(payload.get("formats", ()))
+        print(f"graph-suite {status}: {kind_count} kinds, {format_count} formats")
+        for check in payload.get("checks", ()):
+            print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
+        return
     if payload.get("format") == "appgen.explain-report.v1":
         print(json.dumps(payload, indent=2, sort_keys=True, default=list))
+        return
+    if payload.get("format") == "appgen.doctor-report.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(f"doctor {status}")
+        for check in payload.get("checks", ()):
+            print(f"{'ok' if check['ok'] else 'fail'} {check['check']}: {check.get('message', '')}")
+        return
+    if payload.get("format") == "appgen.pbc-publish-report.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        target = payload.get("target", {})
+        print(f"pbc publish {status}: {payload.get('pbc')} -> {target.get('mode')}")
+        print(f"side_effect_free={target.get('side_effect_free')} write_performed={target.get('write_performed')}")
+        for check in payload.get("checks", ()):
+            print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
     print(json.dumps(payload, indent=2, sort_keys=True, default=list))
 

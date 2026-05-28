@@ -844,3 +844,86 @@ def test_appgen_doctor_and_generate_subcommands_emit_json_contracts(tmp_path: Pa
     assert json.loads(doctor_result.stdout)["format"] == "appgen.doctor-report.v1"
     assert json.loads(generate_result.stdout)["format"] == "appgen.generate-report.v1"
     assert (output_dir / "appgen.json").exists()
+
+
+def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_path: Path) -> None:
+    source_path = tmp_path / "release.appgen"
+    output_dir = tmp_path / "generated"
+    source_path.write_text(RELEASE_SAMPLE, encoding="utf-8")
+    root = Path(__file__).resolve().parents[1]
+
+    lint_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "lint", str(source_path)],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    format_check = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "format", str(source_path), "--check"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    graph_suite_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "graph-suite", str(source_path)],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    doctor_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "doctor"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    generate_text = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "generate",
+            str(source_path),
+            "--target",
+            "web",
+            "--out",
+            str(output_dir),
+        ],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    invalid_graph_format = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "graph", str(source_path), "--format", "svg"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    missing_required_arg = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "generate", str(source_path)],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+
+    assert lint_text.returncode == 0, lint_text.stderr
+    assert "lint ok:" in lint_text.stdout
+    assert format_check.returncode == 1
+    assert "format changed: idempotent" in format_check.stdout
+    assert graph_suite_text.returncode == 0, graph_suite_text.stderr
+    assert "graph-suite ok: 9 kinds, 3 formats" in graph_suite_text.stdout
+    assert doctor_text.returncode == 0, doctor_text.stderr
+    assert doctor_text.stdout.startswith("doctor ok")
+    assert generate_text.returncode == 0, generate_text.stderr
+    assert "generate ok: generated=True" in generate_text.stdout
+    assert "artifact appgen.json" in generate_text.stdout
+    assert invalid_graph_format.returncode == 2
+    assert "invalid choice" in invalid_graph_format.stderr
+    assert missing_required_arg.returncode == 2
+    assert "--out" in missing_required_arg.stderr

@@ -499,6 +499,10 @@ Exit codes:
 - `2`: CLI usage/configuration error;
 - `3`: internal tool error.
 
+The executable CLI contract tests cover JSON schemas, default text summaries,
+success and failure exit codes, and argparse usage failures for invalid choices
+or missing required options.
+
 ### `appgen format`
 
 ```console
