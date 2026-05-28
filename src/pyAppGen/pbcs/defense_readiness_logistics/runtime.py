@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .defense_app import controls_contract, defense_app_smoke_test, forms_contract, single_pbc_app_contract, wizards_contract
 
 PBC_KEY = 'defense_readiness_logistics'
 DEFENSE_READINESS_LOGISTICS_OWNED_TABLES = ('defense_readiness_logistics_unit_readiness',
@@ -12,6 +13,13 @@ DEFENSE_READINESS_LOGISTICS_OWNED_TABLES = ('defense_readiness_logistics_unit_re
  'defense_readiness_logistics_deployment_plan',
  'defense_readiness_logistics_readiness_inspection',
  'defense_readiness_logistics_logistics_movement',
+ 'defense_readiness_logistics_personnel_qualification',
+ 'defense_readiness_logistics_ammunition_lot',
+ 'defense_readiness_logistics_fuel_allocation',
+ 'defense_readiness_logistics_movement_load_plan',
+ 'defense_readiness_logistics_theater_support_request',
+ 'defense_readiness_logistics_controlled_item_custody',
+ 'defense_readiness_logistics_readiness_exception',
  'defense_readiness_logistics_defense_readiness_logistics_policy_rule',
  'defense_readiness_logistics_defense_readiness_logistics_runtime_parameter',
  'defense_readiness_logistics_defense_readiness_logistics_schema_extension',
@@ -45,7 +53,13 @@ DEFENSE_READINESS_LOGISTICS_STANDARD_FEATURE_KEYS = ('unit_readiness_management'
  'governed_datastore_crud',
  'ai_agent_task_assistance',
  'configuration_workbench',
- 'continuous_release_assurance')
+ 'continuous_release_assurance',
+ 'single_pbc_domain_app',
+ 'forms',
+ 'wizards',
+ 'controls',
+ 'mission_capability_rollup',
+ 'movement_order_control')
 DEFENSE_READINESS_LOGISTICS_RUNTIME_CAPABILITY_KEYS = ('defense_readiness_logistics_event_sourced_operational_history',
  'defense_readiness_logistics_multi_tenant_policy_isolation',
  'defense_readiness_logistics_schema_evolution_resilience',
@@ -139,6 +153,13 @@ def defense_readiness_logistics_build_schema_contract():
         {'table': 'defense_readiness_logistics_deployment_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'defense_readiness_logistics_readiness_inspection', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'defense_readiness_logistics_logistics_movement', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'defense_readiness_logistics_personnel_qualification', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'defense_readiness_logistics_ammunition_lot', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'defense_readiness_logistics_fuel_allocation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'defense_readiness_logistics_movement_load_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'defense_readiness_logistics_theater_support_request', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'defense_readiness_logistics_controlled_item_custody', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+        {'table': 'defense_readiness_logistics_readiness_exception', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'defense_readiness_logistics_defense_readiness_logistics_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'defense_readiness_logistics_defense_readiness_logistics_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
         {'table': 'defense_readiness_logistics_defense_readiness_logistics_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
@@ -162,8 +183,10 @@ def defense_readiness_logistics_build_api_contract():
  'GET /defense-readiness-logistics-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': DEFENSE_READINESS_LOGISTICS_OWNED_TABLES}
 
 def defense_readiness_logistics_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
-    return {'format': 'appgen.defense-readiness-logistics-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': defense_readiness_logistics_build_schema_contract()['migrations'], 'models': defense_readiness_logistics_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': DEFENSE_READINESS_LOGISTICS_EMITTED_EVENT_TYPES, 'consumes': DEFENSE_READINESS_LOGISTICS_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': DEFENSE_READINESS_LOGISTICS_UI_FRAGMENT_KEYS}, 'blocking_gaps': ()}
+    app_contract = single_pbc_app_contract()
+    app_smoke = defense_app_smoke_test()
+    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'single_pbc_domain_app', 'ok': app_contract['ok']}, {'id': 'forms_wizards_controls', 'ok': bool(app_contract['forms']) and bool(app_contract['wizards']) and bool(app_contract['controls'])}, {'id': 'defense_app_smoke', 'ok': app_smoke['ok']})
+    return {'format': 'appgen.defense-readiness-logistics-release-evidence.v1', 'ok': all(check['ok'] for check in checks), 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': defense_readiness_logistics_build_schema_contract()['migrations'], 'models': defense_readiness_logistics_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': DEFENSE_READINESS_LOGISTICS_EMITTED_EVENT_TYPES, 'consumes': DEFENSE_READINESS_LOGISTICS_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': DEFENSE_READINESS_LOGISTICS_UI_FRAGMENT_KEYS, 'single_pbc_app': app_contract}, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
 
 def defense_readiness_logistics_permissions_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('defense_readiness_logistics.read',
@@ -209,6 +232,10 @@ def defense_readiness_logistics_runtime_capabilities():
         'standard_features': DEFENSE_READINESS_LOGISTICS_STANDARD_FEATURE_KEYS,
         'capabilities': DEFENSE_READINESS_LOGISTICS_RUNTIME_CAPABILITY_KEYS,
         'operations': operations,
+        'forms': forms_contract()['forms'],
+        'wizards': wizards_contract()['wizards'],
+        'controls': controls_contract()['controls'],
+        'single_pbc_app': single_pbc_app_contract(),
         'smoke': smoke,
         'world_class_domain_depth': domain,
         'database_backends': DEFENSE_READINESS_LOGISTICS_ALLOWED_DATABASE_BACKENDS,
@@ -236,6 +263,7 @@ def defense_readiness_logistics_runtime_smoke():
     workbench = defense_readiness_logistics_build_workbench_view()
     boundary = defense_readiness_logistics_verify_owned_table_boundary(DEFENSE_READINESS_LOGISTICS_OWNED_TABLES + ('foreign_table',))
     domain = domain_depth_contract()
+    app_smoke = defense_app_smoke_test()
     checks = (
         {'id': 'configure_runtime', 'ok': cfg['ok']},
         {'id': 'set_parameter', 'ok': param['ok']},
@@ -250,6 +278,7 @@ def defense_readiness_logistics_runtime_smoke():
         {'id': 'build_workbench_view', 'ok': workbench['ok']},
         {'id': 'owned_boundary_rejects_foreign_table', 'ok': boundary['ok'] is False},
         {'id': 'domain_depth', 'ok': domain['ok']},
+        {'id': 'single_pbc_defense_app', 'ok': app_smoke['ok']},
     ) + tuple({'id': capability, 'ok': True} for capability in DEFENSE_READINESS_LOGISTICS_RUNTIME_CAPABILITY_KEYS)
     return {
         'format': 'appgen.defense-readiness-logistics-runtime-smoke.v1',
@@ -261,6 +290,7 @@ def defense_readiness_logistics_runtime_smoke():
         'service': service,
         'release': release,
         'workbench': workbench,
+        'single_pbc_app': app_smoke,
         'domain_depth': domain,
         'blocking_gaps': tuple(check for check in checks if not check['ok']),
         'side_effects': (),
