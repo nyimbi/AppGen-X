@@ -2938,3 +2938,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`, focused DSL
   platform/CLI regression tests, scoped diff whitespace check, and
   restricted-name scan. Commit: `73d2009f`.
+- Current strict linter profile pass makes the documented `appgen lint
+  --strict` component-catalog gate executable. Normal linting continues to
+  surface unknown visual components as `AGX0404` warnings for draft authoring,
+  while strict mode promotes the same diagnostics to errors, returns exit code
+  `1`, preserves file and directory lint aggregation semantics, and exposes the
+  `strict` flag in `appgen.lint-report.v1`. Verification passed: Python compile
+  for touched CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`,
+  focused DSL platform/CLI regression tests, scoped diff whitespace check, and
+  restricted-name scan. Commit: `21fbfbfb`.
