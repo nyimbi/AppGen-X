@@ -2060,10 +2060,11 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
             position=position,
             prefix=_lsp_prefix_at_position(source, position),
         )
+        items = _lsp_completion_items_with_workspace(result["items"], docs)
         responses.append(
             _lsp_rpc_result(
                 request_id,
-                {"isIncomplete": result["isIncomplete"], "items": result["items"]},
+                {"isIncomplete": result["isIncomplete"], "items": items},
             )
         )
     elif method == "textDocument/hover":
@@ -2080,10 +2081,10 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
             )
         )
     elif method == "textDocument/definition":
-        result = lsp_definition_dsl(source, source_name=source_uri, position=position)
+        result = lsp_definition_dsl_documents(docs, source_uri=source_uri, position=position)
         responses.append(_lsp_rpc_result(request_id, result["location"] if result["ok"] else None))
     elif method == "textDocument/references":
-        result = lsp_references_dsl(source, source_name=source_uri, position=position)
+        result = lsp_references_dsl_documents(docs, source_uri=source_uri, position=position)
         responses.append(_lsp_rpc_result(request_id, result["locations"]))
     elif method == "textDocument/documentSymbol":
         result = lsp_document_symbols_dsl(source, source_name=source_uri)
@@ -2109,8 +2110,10 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
         )
     elif method == "workspace/symbol":
         query = params.get("query", "")
-        joined = "\n\n".join(docs.values()) if docs else source
-        result = lsp_workspace_symbols_dsl(joined, source_name=source_uri, query=query)
+        result = lsp_workspace_symbols_dsl_documents(
+            docs or {source_uri or "memory://appgen": source},
+            query=query,
+        )
         responses.append(_lsp_rpc_result(request_id, result["symbols"]))
     elif is_request:
         responses.append(_lsp_rpc_error(request_id, -32601, f"Unsupported AppGen-X LSP method: {method}"))
@@ -2159,6 +2162,36 @@ def _lsp_publish_diagnostics_notification(uri: str, source: str) -> dict:
 def _lsp_prefix_at_position(source: str, position: dict | None) -> str:
     token = _lsp_token_at_position(source, position)
     return token if token else ""
+
+
+def _lsp_completion_items_with_workspace(items: Iterable[dict], documents: dict[str, str]) -> tuple[dict, ...]:
+    merged = list(items)
+    for symbol in lsp_workspace_symbols_dsl_documents(documents).get("symbols", ()):
+        data = symbol.get("data", {})
+        if data.get("kind") not in {
+            "table",
+            "field",
+            "flow",
+            "operation",
+            "pbc",
+            "api",
+            "event",
+            "package",
+            "deploy",
+            "llm",
+            "agent",
+        }:
+            continue
+        merged.append(
+            {
+                "label": symbol["name"],
+                "kind": symbol["kind"],
+                "detail": f"workspace {data.get('kind')}",
+                "insertText": symbol["name"],
+                "data": {"source": "workspace_symbols", **data},
+            }
+        )
+    return tuple({(item.get("label"), item.get("detail")): item for item in merged}.values())
 
 
 def _lsp_rpc_result(request_id, result) -> dict:
@@ -2301,6 +2334,50 @@ def lsp_references_dsl(text: str, *, source_name: str | None = None, position: d
     }
 
 
+def lsp_definition_dsl_documents(
+    documents: dict[str, str],
+    *,
+    source_uri: str | None = None,
+    position: dict | None = None,
+) -> dict:
+    source = _lsp_document_source(source_uri, documents)
+    local = lsp_definition_dsl(source, source_name=source_uri, position=position)
+    if local["ok"]:
+        return {**local, "workspace": True}
+    token = _lsp_token_at_position(source, position)
+    for uri, document_source in documents.items():
+        symbol = _lsp_symbol_for_token(document_source, token, source_name=uri)
+        if symbol:
+            return {
+                "format": "appgen.lsp-definition.v1",
+                "ok": True,
+                "workspace": True,
+                "token": token,
+                "location": _lsp_location(uri, symbol.get("range")),
+            }
+    return {**local, "workspace": True}
+
+
+def lsp_references_dsl_documents(
+    documents: dict[str, str],
+    *,
+    source_uri: str | None = None,
+    position: dict | None = None,
+) -> dict:
+    source = _lsp_document_source(source_uri, documents)
+    token = _lsp_token_at_position(source, position)
+    locations: list[dict] = []
+    for uri, document_source in documents.items():
+        locations.extend(_lsp_location(uri, item) for item in _lsp_occurrence_ranges(document_source, token))
+    return {
+        "format": "appgen.lsp-references.v1",
+        "ok": bool(locations),
+        "workspace": True,
+        "token": token,
+        "locations": tuple(locations),
+    }
+
+
 def lsp_document_symbols_dsl(text: str, *, source_name: str | None = None) -> dict:
     semantic = semantic_model_dsl(text, source_name=source_name)
     symbols = []
@@ -2336,6 +2413,32 @@ def lsp_workspace_symbols_dsl(text: str, *, source_name: str | None = None, quer
         if not needle or needle in symbol["name"].lower() or needle in symbol["id"].lower()
     )
     return {"format": "appgen.lsp-workspace-symbols.v1", "ok": semantic["ok"], "symbols": symbols}
+
+
+def lsp_workspace_symbols_dsl_documents(documents: dict[str, str], *, query: str = "") -> dict:
+    needle = (query or "").lower()
+    symbols: list[dict] = []
+    models: list[dict] = []
+    for uri, source in documents.items():
+        semantic = semantic_model_dsl(source, source_name=uri)
+        models.append(semantic)
+        symbols.extend(
+            {
+                "name": symbol["name"],
+                "kind": _lsp_symbol_kind(symbol["kind"]),
+                "location": _lsp_location(uri, symbol.get("range")),
+                "containerName": symbol.get("parent"),
+                "data": {"id": symbol["id"], "kind": symbol["kind"], "uri": uri},
+            }
+            for symbol in semantic.get("symbols", {}).values()
+            if not needle or needle in symbol["name"].lower() or needle in symbol["id"].lower()
+        )
+    return {
+        "format": "appgen.lsp-workspace-symbols.v1",
+        "ok": all(model.get("ok") for model in models),
+        "workspace": True,
+        "symbols": tuple(symbols),
+    }
 
 
 def lsp_code_actions_dsl(text: str, *, source_name: str | None = None) -> dict:

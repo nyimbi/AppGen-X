@@ -650,7 +650,10 @@ accepts `initialize`, `shutdown`, `exit`, `textDocument/didOpen`,
 symbols, rename, code actions, formatting, and workspace symbol requests. The
 server keeps an in-memory document cache for open `.appgen` buffers and
 publishes diagnostics after open/change notifications using the same
-`appgen.semantic-model.v1` and linter reports as the CLI.
+`appgen.semantic-model.v1` and linter reports as the CLI. Workspace symbol,
+definition, reference, and completion requests scan each open DSL document
+individually instead of concatenating files, so editor features keep working
+when an application is split across multiple `.appgen` files.
 
 ### Capabilities
 

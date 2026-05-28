@@ -879,6 +879,95 @@ def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() ->
     assert should_exit_after_exit is True
 
 
+def test_lsp_json_rpc_server_resolves_symbols_across_open_workspace_documents() -> None:
+    customer_uri = "memory://customer.appgen"
+    invoice_uri = "memory://invoice.appgen"
+    customer_source = """
+app CustomerWorkspace { targets: web }
+table Customer {
+  id: int pk
+  name: string
+}
+"""
+    invoice_source = """
+app InvoiceWorkspace { targets: web }
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+}
+view InvoiceForm for Invoice { Main: customer_id }
+"""
+    documents: dict[str, str] = {}
+    for uri, source in ((customer_uri, customer_source), (invoice_uri, invoice_source)):
+        lsp_server_handle_message(
+            {
+                "jsonrpc": "2.0",
+                "method": "textDocument/didOpen",
+                "params": {
+                    "textDocument": {
+                        "uri": uri,
+                        "languageId": "appgen",
+                        "version": 1,
+                        "text": source,
+                    }
+                },
+            },
+            documents,
+        )
+
+    definition_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "textDocument/definition",
+            "params": {
+                "textDocument": {"uri": invoice_uri},
+                "position": _position_of(invoice_source, "Customer.id"),
+            },
+        },
+        documents,
+    )
+    reference_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 8,
+            "method": "textDocument/references",
+            "params": {
+                "textDocument": {"uri": invoice_uri},
+                "position": _position_of(invoice_source, "Customer.id"),
+            },
+        },
+        documents,
+    )
+    completion_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 9,
+            "method": "textDocument/completion",
+            "params": {
+                "textDocument": {"uri": invoice_uri},
+                "position": _position_of(invoice_source, "Customer.id"),
+            },
+        },
+        documents,
+    )
+    workspace_responses, _ = lsp_server_handle_message(
+        {"jsonrpc": "2.0", "id": 10, "method": "workspace/symbol", "params": {"query": "Customer"}},
+        documents,
+    )
+
+    assert definition_responses[0]["result"]["uri"] == customer_uri
+    assert {item["uri"] for item in reference_responses[0]["result"]} == {customer_uri, invoice_uri}
+    assert any(
+        item["label"] == "Customer" and item["data"]["source"] == "workspace_symbols"
+        for item in completion_responses[0]["result"]["items"]
+    )
+    assert any(
+        item["location"]["uri"] == customer_uri and item["name"] == "Customer"
+        for item in workspace_responses[0]["result"]
+    )
+
+
 def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:
     report = release_verifier_report_dsl(RELEASE_SAMPLE, source_name="release.appgen", targets=("all",))
 
