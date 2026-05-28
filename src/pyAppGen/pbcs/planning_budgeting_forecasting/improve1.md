@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `planning_budgeting_forecasting`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `planning_budgeting_forecasting`. Each item is specific to enterprise planning models, dimensions, planning versions, budget versions, forecast cycles, forecast lines, driver assumptions, driver actuals, allocations, scenarios, variance analysis, approvals, plan locks, import batches, rolling forecasts, commentary, agent assistance, and AppGen-X event reliability.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
-- Representative owned tables: `planning_budgeting_forecasting_planning_model`, `planning_budgeting_forecasting_planning_dimension`, `planning_budgeting_forecasting_planning_version`, `planning_budgeting_forecasting_budget_version`, `planning_budgeting_forecasting_budget_line`, `planning_budgeting_forecasting_forecast_cycle`, `planning_budgeting_forecasting_forecast_line`, `planning_budgeting_forecasting_driver_assumption`, `planning_budgeting_forecasting_driver_actual`, `planning_budgeting_forecasting_allocation_rule`, `planning_budgeting_forecasting_allocation_run`, `planning_budgeting_forecasting_planning_scenario`, ...
-- Representative operations/APIs: `create_planning_model`, `define_dimension`, `open_budget_version`, `capture_budget_line`, `start_forecast_cycle`, `capture_forecast_line`, `register_driver_assumption`, `ingest_driver_actual`, `run_allocation`, `create_scenario`, `calculate_scenario_result`, `analyze_variance`, ...
-- Representative events: `BudgetVersionOpened`, `BudgetApproved`, `ForecastPublished`, `ScenarioModeled`, `VarianceFlagged`, `PlanningExceptionOpened`.
-- Representative advanced capabilities: `driver-based rolling forecasts`, `counterfactual scenario simulation`, `AI variance explanation`, `continuous forecast freshness scoring`, `cryptographic plan version proof`, `multi-tenant planning model isolation`.
+- Domain purpose: enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+- Owned operational surface: planning models, dimensions, planning versions, budget versions, budget lines, forecast cycles, forecast lines, driver assumptions, driver actuals, allocation rules and runs, scenarios, scenario results, variance analysis, variance commentary, approvals, planning tasks, rolling forecast snapshots, plan locks, import batches, exception cases, policy rules, runtime parameters, schema extensions, control assertions, governed models, and AppGen-X runtime event tables.
+- Declared operations: planning model creation, dimension definition, budget version opening, budget line capture, forecast cycle start, forecast line capture, driver assumption registration, driver actual ingestion, allocation runs, scenario creation, scenario result calculation, variance analysis, plan approval submission, version locking, rolling forecast publication, plan import, exception resolution, planning rule compilation, and assumption shock simulation.
+- Declared events and integrations: emits `BudgetVersionOpened`, `BudgetApproved`, `ForecastPublished`, `ScenarioModeled`, `VarianceFlagged`, and `PlanningExceptionOpened`; consumes `TrialBalanceCalculated`, `RevenueRecognized`, `DemandForecastPublished`, and `HeadcountChanged`.
+- Advanced capability evidence: driver-based rolling forecasts, counterfactual scenario simulation, AI variance explanation, continuous forecast freshness scoring, cryptographic plan version proof, multi-tenant planning model isolation, event-sourced operational history, schema-evolution resilience, predictive risk scoring, continuous control testing, cross-PBC event federation, and governed agent execution.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_planning_model`
+### 1. Planning model readiness gate
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** A planning model without dimensions, measures, calendars, ownership, security, data sources, and workflow rules cannot support reliable budgeting or forecasting.
 
-**Improvement:** Extend `planning_budgeting_forecasting_planning_model` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `planning_model_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for model purpose, planning horizon, calendar, dimensionality, measures, driver sources, ownership, access scope, approval policy, import rules, and AppGen-X dependencies before model activation.
 
-### 2. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_planning_dimension`
+### 2. Model lifecycle state machine
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** Planning models evolve through draft, validated, active, locked, retired, superseded, archived, and emergency-disabled states.
 
-**Improvement:** Extend `planning_budgeting_forecasting_planning_dimension` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `planning_budgeting_forecasting_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement model lifecycle transitions with required evidence, owner approval, downstream version impact, import blocking, scenario handling, and rollback instructions. Release tests should reject active forecasts against retired models.
 
-### 3. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_planning_version`
+### 3. Dimension governance and hierarchy integrity
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** Dimensions such as account, cost center, product, customer, region, project, entity, and time determine planning accuracy and access control.
 
-**Improvement:** Extend `planning_budgeting_forecasting_planning_version` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `planning_budgeting_forecasting_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add hierarchy validation for parent/child consistency, effective dating, alternate rollups, shared members, orphan detection, duplicate codes, and security inheritance. Store dimension version evidence for every plan version.
 
-### 4. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_budget_version`
+### 4. Dimension change impact analysis
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** Changing dimensions can invalidate historical budgets, forecasts, allocations, approvals, and variance commentary.
 
-**Improvement:** Extend `planning_budgeting_forecasting_budget_version` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Simulate dimension changes against open versions and scenarios, showing impacted lines, aggregation shifts, orphaned data, approval resets, and required restatements. Require governance approval for material hierarchy changes.
 
-### 5. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_budget_line`
+### 5. Planning version branching
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** Organizations need baseline, working, what-if, board, locked, and archived plan versions without losing lineage.
 
-**Improvement:** Extend `planning_budgeting_forecasting_budget_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add branching with parent version, fork reason, inherited assumptions, change log, merge policy, comparison views, and permissions. UI should show lineage from model to budget/forecast/scenario versions.
 
-### 6. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_forecast_cycle`
+### 6. Budget version workflow
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** Budgets move through kickoff, contributor input, manager review, finance review, executive approval, lock, publish, and archive states.
 
-**Improvement:** Extend `planning_budgeting_forecasting_forecast_cycle` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add workflow states, owner assignments, due dates, submission completeness, approval routing, lock conditions, reopen controls, and publication evidence. Prevent edits after lock except through controlled amendments.
 
-### 7. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_forecast_line`
+### 7. Budget line validation
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** Budget lines need valid dimensions, time periods, currency, scenario/version, driver linkage, spread method, and approval state.
 
-**Improvement:** Extend `planning_budgeting_forecasting_forecast_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate every budget line for dimensional integrity, calendar period, currency, amount type, driver link, comments, supporting evidence, and edit permissions. Flag orphaned or stale lines after dimension changes.
 
-### 8. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_driver_assumption`
+### 8. Budget spread and phasing engine
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** Annual targets must be phased across periods based on seasonality, working days, historical spend, driver curves, or manual patterns.
 
-**Improvement:** Extend `planning_budgeting_forecasting_driver_assumption` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add spread methods with seasonality profiles, working-day calendars, historical patterns, driver weights, manual overrides, and rounding controls. Store spread trace and allow side-by-side comparison of phasing methods.
 
-### 9. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_driver_actual`
+### 9. Forecast cycle governance
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** Rolling forecasts need consistent cadence, horizons, submission windows, data cutoffs, and lock dates.
 
-**Improvement:** Extend `planning_budgeting_forecasting_driver_actual` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add forecast cycle setup with horizon, cutoff, owner, participating units, submission windows, refresh frequency, data-source freshness rules, and publication criteria. Track missed submissions and stale projections.
 
-### 10. Deep specialist lifecycle semantics for `planning_budgeting_forecasting_allocation_rule`
+### 10. Forecast line freshness scoring
 
-**Justification:** This owned table is part of the Planning Budgeting and Forecasting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise planning models, budgets, forecasts, scenarios, drivers, assumptions, allocations, approvals, variance explanations, and rolling forecast intelligence.
+**Justification:** Forecast lines can be technically present but stale because drivers, actuals, revenue, demand, or headcount projections changed.
 
-**Improvement:** Extend `planning_budgeting_forecasting_allocation_rule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Score forecast freshness using last update, driver actual age, source projection freshness, contributor confirmation, variance volatility, and policy threshold. Highlight stale lines before publication.
 
-### 11. Make `create_planning_model` a complete command lifecycle
+### 11. Driver catalog governance
 
-**Justification:** High-value users need `create_planning_model` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Driver-based planning depends on well-defined drivers such as headcount, units, demand, utilization, rates, prices, churn, and capacity.
 
-**Improvement:** Implement `create_planning_model` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BudgetVersionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add driver metadata with definition, source, owner, unit of measure, refresh cadence, allowed model usage, sensitivity, and lineage. Require driver registration before assumptions can reference it.
 
-### 12. Make `define_dimension` a complete command lifecycle
+### 12. Driver assumption lifecycle
 
-**Justification:** High-value users need `define_dimension` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Assumptions change as business expectations shift and need evidence, approval, and scenario linkage.
 
-**Improvement:** Implement `define_dimension` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BudgetApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track assumptions through draft, submitted, approved, superseded, rejected, and expired states with rationale, source data, confidence, owner, effective period, and impacted plan lines.
 
-### 13. Make `open_budget_version` a complete command lifecycle
+### 13. Driver actual ingestion controls
 
-**Justification:** High-value users need `open_budget_version` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Actual driver values from headcount, demand, revenue, or trial balance feeds can arrive late, duplicate, corrected, or at mismatched grain.
 
-**Improvement:** Implement `open_budget_version` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate driver actuals for grain, period, unit, source projection, idempotency, correction state, and staleness. Store reconciliation to assumed values and trigger forecast refresh when material.
 
-### 14. Make `capture_budget_line` a complete command lifecycle
+### 14. Assumption shock simulation
 
-**Justification:** High-value users need `capture_budget_line` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Planners need to test inflation, demand drops, hiring freezes, churn spikes, price changes, and supply constraints before they happen.
 
-**Improvement:** Implement `capture_budget_line` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ScenarioModeled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add shock simulations with driver deltas, affected dimensions, time windows, propagation rules, confidence, and financial impact. Compare baseline, downside, upside, and management-case outputs.
 
-### 15. Make `start_forecast_cycle` a complete command lifecycle
+### 15. Allocation rule versioning
 
-**Justification:** High-value users need `start_forecast_cycle` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Allocations for shared services, overhead, cost pools, revenue, and headcount can materially affect budgets and forecasts.
 
-**Improvement:** Implement `start_forecast_cycle` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `VarianceFlagged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Version allocation rules with source pool, target basis, driver, exclusions, effective dates, precision, owner, and approval. Allocation runs should store the exact rule version and calculation trace.
 
-### 16. Make `capture_forecast_line` a complete command lifecycle
+### 16. Allocation run reconciliation
 
-**Justification:** High-value users need `capture_forecast_line` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Allocation outputs must reconcile to input pools and avoid orphaned, duplicate, or overallocated amounts.
 
-**Improvement:** Implement `capture_forecast_line` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PlanningExceptionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add reconciliation for source totals, allocated totals, rounding, residuals, excluded members, target validation, and exception lines. Block publication where allocation variance exceeds precision thresholds.
 
-### 17. Make `register_driver_assumption` a complete command lifecycle
+### 17. Scenario governance
 
-**Justification:** High-value users need `register_driver_assumption` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Scenario sprawl creates confusion unless scenarios have owners, assumptions, purpose, status, and lineage.
 
-**Improvement:** Implement `register_driver_assumption` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BudgetVersionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add scenario states, purpose, owner, baseline link, assumption set, access scope, expiry date, and approval state. Limit active scenarios by configured policy and archive stale scenarios.
 
-### 18. Make `ingest_driver_actual` a complete command lifecycle
+### 18. Scenario result explainability
 
-**Justification:** High-value users need `ingest_driver_actual` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Scenario outputs are only useful if users can see which assumptions drove the change.
 
-**Improvement:** Implement `ingest_driver_actual` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BudgetApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store result drivers, delta decomposition, affected dimensions, sensitivity ranking, confidence, and source assumptions. UI should allow drilldown from total variance to driver and line.
 
-### 19. Make `run_allocation` a complete command lifecycle
+### 19. Counterfactual scenario comparison
 
-**Justification:** High-value users need `run_allocation` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Planning teams need to compare alternatives, not just view one scenario at a time.
 
-**Improvement:** Implement `run_allocation` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add multi-scenario comparison with waterfall deltas, driver contribution, probability weighting, risk bands, and tradeoff summaries. The agent should explain the practical implications of each scenario.
 
-### 20. Make `create_scenario` a complete command lifecycle
+### 20. Rolling forecast publication controls
 
-**Justification:** High-value users need `create_scenario` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Rolling forecasts should not publish while lines are stale, approvals missing, driver actuals unreconciled, or high-impact exceptions open.
 
-**Improvement:** Implement `create_scenario` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ScenarioModeled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add publication gates for freshness, completeness, approvals, variance explanations, import errors, allocations, and plan locks. Store publication evidence and outbox event payload.
 
-### 21. Operationalize `driver-based rolling forecasts` as a governed decision system
+### 21. Forecast accuracy backtesting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting risk score without hiding assumptions.
+**Justification:** Forecast quality improves only when prior forecast accuracy is measured and fed back into the process.
 
-**Improvement:** Promote `driver-based rolling forecasts` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Backtest forecast lines against actuals by dimension, driver, contributor, model, and horizon. Track bias, mean error, volatility, and coaching recommendations.
 
-### 22. Operationalize `counterfactual scenario simulation` as a governed decision system
+### 22. Variance analysis engine
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting workbench metric without hiding assumptions.
+**Justification:** Variance analysis must distinguish price, volume, mix, timing, currency, headcount, demand, and one-time effects.
 
-**Improvement:** Promote `counterfactual scenario simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add variance decomposition by measure, dimension, period, driver, and source. Store threshold, root-cause hypothesis, materiality, owner, and required commentary.
 
-### 23. Operationalize `AI variance explanation` as a governed decision system
+### 23. AI variance commentary with controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting risk score without hiding assumptions.
+**Justification:** AI can draft explanations, but finance commentary must be sourced, accurate, and reviewable.
 
-**Improvement:** Promote `AI variance explanation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Let the agent draft commentary from variance drivers, actuals, forecasts, budget lines, and known events, with citations, confidence, and omitted data warnings. Require human approval and preserve revision history.
 
-### 24. Operationalize `continuous forecast freshness scoring` as a governed decision system
+### 24. Commentary quality scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting workbench metric without hiding assumptions.
+**Justification:** Variance commentary that says “timing” or “business change” without evidence is not useful for decision-making.
 
-**Improvement:** Promote `continuous forecast freshness scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score commentary for specificity, driver linkage, quantified impact, owner, corrective action, forecast implication, and source evidence. Escalate weak commentary before close or forecast publication.
 
-### 25. Operationalize `cryptographic plan version proof` as a governed decision system
+### 25. Approval workflow by planning grain
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting risk score without hiding assumptions.
+**Justification:** Budgets may require approval by department, entity, account, project, product, or total spend threshold.
 
-**Improvement:** Promote `cryptographic plan version proof` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Route approvals at configurable grain with rollup status, partial approvals, rejection comments, delegation, conflict checks, and reopened-line handling. Store approval proof tied to version and dimension slice.
 
-### 26. Operationalize `multi-tenant planning model isolation` as a governed decision system
+### 26. Plan lock and freeze governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting workbench metric without hiding assumptions.
+**Justification:** Locked plans must preserve reporting integrity while still allowing governed amendments.
 
-**Improvement:** Promote `multi-tenant planning model isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add locks for version, period, dimension slice, scenario, and measure with owner, reason, allowed edits, amendment workflow, and emergency unlock controls. Prevent imports and allocations from changing locked data.
 
-### 27. Operationalize `driver-based rolling forecasts` as a governed decision system
+### 27. Plan import batch validation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting risk score without hiding assumptions.
+**Justification:** Spreadsheets and external planning imports can introduce invalid dimensions, stale versions, wrong currency, duplicate rows, and formula artifacts.
 
-**Improvement:** Promote `driver-based rolling forecasts` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Validate import batches with schema checks, dimension mapping, duplicate detection, currency, period, version, line ownership, and variance preview. Provide row-level errors and side-effect-free preview before commit.
 
-### 28. Operationalize `counterfactual scenario simulation` as a governed decision system
+### 28. Spreadsheet lineage and formula audit
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting workbench metric without hiding assumptions.
+**Justification:** Planning teams often rely on spreadsheets whose formulas and assumptions are opaque.
 
-**Improvement:** Promote `counterfactual scenario simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Capture spreadsheet source, tabs, named ranges, formulas, hardcoded values, modified cells, and mapping to plan lines. Flag risky formulas and unsupported transformations.
 
-### 29. Operationalize `AI variance explanation` as a governed decision system
+### 29. Actuals integration reconciliation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting risk score without hiding assumptions.
+**Justification:** Trial balances, recognized revenue, demand forecasts, and headcount changes must reconcile to planning grain before variance analysis.
 
-**Improvement:** Promote `AI variance explanation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Reconcile consumed actuals/projections to dimensions, periods, currency, measures, and source freshness. Store unmatched items, mappings, and staleness evidence without direct foreign-table access.
 
-### 30. Operationalize `continuous forecast freshness scoring` as a governed decision system
+### 30. Headcount planning depth
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Planning Budgeting and Forecasting and measurably improves planning budgeting forecasting workbench metric without hiding assumptions.
+**Justification:** Headcount drives labor, benefits, capacity, hiring plans, and expense forecasts.
 
-**Improvement:** Promote `continuous forecast freshness scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `planning_budgeting_forecasting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add headcount driver assumptions for roles, locations, start dates, attrition, salary bands, benefits, vacancy, and hiring probability. Connect only through declared headcount events/projections.
 
-### 31. Create simulation-grade governance for `budget_approval_policy` and `variance_threshold_percent`
+### 31. Revenue and demand planning linkage
 
-**Justification:** Complete Planning Budgeting and Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Revenue forecasts and demand forecasts should influence budgets and scenarios while preserving PBC boundaries.
 
-**Improvement:** Add a policy cockpit where `budget_approval_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `variance_threshold_percent` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add projection mapping for recognized revenue and demand forecast inputs with freshness, confidence, scenario applicability, and driver transformation rules. Show lineage from external projection to plan lines.
 
-### 32. Create simulation-grade governance for `forecast_refresh_policy` and `forecast_horizon_months`
+### 32. Cash and working-capital planning hooks
 
-**Justification:** Complete Planning Budgeting and Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Plans often need cash timing, collections, payments, inventory, and working-capital assumptions beyond P&L totals.
 
-**Improvement:** Add a policy cockpit where `forecast_refresh_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `forecast_horizon_months` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add driver categories for cash timing, receivables, payables, inventory, capex, and working capital, with projection dependencies and scenario impact evidence. Keep all external data as declared projections.
 
-### 33. Create simulation-grade governance for `allocation_policy` and `approval_amount_limit`
+### 33. Multi-currency planning controls
 
-**Justification:** Complete Planning Budgeting and Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Global planning requires local, functional, and reporting currencies with rate assumptions and translation effects.
 
-**Improvement:** Add a policy cockpit where `allocation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `approval_amount_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add rate tables, rate scenarios, rate source, translation method, constant-currency views, and FX variance decomposition. Store rate assumption evidence and approval.
 
-### 34. Create simulation-grade governance for `scenario_governance_policy` and `allocation_precision`
+### 34. Security and contributor access by slice
 
-**Justification:** Complete Planning Budgeting and Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Planning data is sensitive and often restricted by entity, department, account, or scenario.
 
-**Improvement:** Add a policy cockpit where `scenario_governance_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `allocation_precision` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Enforce access by dimension slice, version, workflow role, and scenario sensitivity. UI should hide unauthorized plan lines and agent summaries should obey the same slice permissions.
 
-### 35. Create simulation-grade governance for `plan_lock_policy` and `scenario_count_limit`
+### 35. Driver-based forecast model governance
 
-**Justification:** Complete Planning Budgeting and Forecasting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Forecast models need governance for inputs, coefficients, refresh cadence, drift, and explainability.
 
-**Improvement:** Add a policy cockpit where `plan_lock_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `scenario_count_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Register governed forecast models with input drivers, training window, owner, validation metrics, drift thresholds, explainability, and safe-use limits. Block model-driven forecast publication without current governance evidence.
 
-### 36. Upgrade `planning workbench` into a full specialist command center
+### 36. Forecast anomaly detection
 
-**Justification:** The PBC UI must expose the complete Planning Budgeting and Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Outlier assumptions, sudden line changes, impossible growth, and inconsistent driver relationships can distort forecasts.
 
-**Improvement:** Expand `planning workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies by line, contributor, dimension, driver, scenario, period, and model. Provide explainable alerts and require disposition before approval or publication.
 
-### 37. Upgrade `budget version grid` into a full specialist command center
+### 37. Predictive planning risk scoring
 
-**Justification:** The PBC UI must expose the complete Planning Budgeting and Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Planners need to know which versions are likely to miss deadlines, produce inaccurate forecasts, or fail approval.
 
-**Improvement:** Expand `budget version grid` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Score plan versions by completeness, stale drivers, variance volatility, contributor history, import errors, approval bottlenecks, and model drift. Show drivers and recommended actions.
 
-### 38. Upgrade `forecast cycle board` into a full specialist command center
+### 38. Planning task orchestration
 
-**Justification:** The PBC UI must expose the complete Planning Budgeting and Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Budget and forecast cycles rely on many contributors, deadlines, data refreshes, reviews, and signoffs.
 
-**Improvement:** Expand `forecast cycle board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add tasks with owner, dimension slice, dependency, due date, reminder, completion evidence, escalation, and workflow state. Link task completion to version readiness and approval.
 
-### 39. Upgrade `driver assumption studio` into a full specialist command center
+### 39. Planning exception case workflow
 
-**Justification:** The PBC UI must expose the complete Planning Budgeting and Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Planning exceptions such as invalid imports, disputed assumptions, allocation failures, missing commentary, or late submissions need structured resolution.
 
-**Improvement:** Expand `driver assumption studio` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add exception cases with type, severity, owner, affected version/slice, required evidence, financial impact, resolution action, and closure proof. Agent summaries should group related exceptions by root cause.
 
-### 40. Upgrade `scenario simulation lab` into a full specialist command center
+### 40. Cryptographic plan version proof
 
-**Justification:** The PBC UI must expose the complete Planning Budgeting and Forecasting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Locked budgets and forecasts must be provably unchanged after approval and publication.
 
-**Improvement:** Expand `scenario simulation lab` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate cryptographic proofs for model, dimensions, assumptions, lines, allocations, scenario results, approvals, locks, and publication events. Provide verifier exports for board and audit evidence.
 
-### 41. Prove cross-PBC federation for `POST /plans` and `TrialBalanceCalculated`
+### 41. AppGen-X event reliability proof
 
-**Justification:** Planning Budgeting and Forecasting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Planning depends on trial balance, revenue, demand, and headcount events; missed or duplicated events distort forecasts and variances.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /plans` and consumed event `TrialBalanceCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Harden event descriptors with schema versions, idempotency keys, ordering assumptions, retry envelopes, dead-letter taxonomy, replay eligibility, and handler evidence. Add tests for late actuals and duplicate projection updates.
 
-### 42. Prove cross-PBC federation for `POST /budgets` and `RevenueRecognized`
+### 42. Cross-PBC boundary proof
 
-**Justification:** Planning Budgeting and Forecasting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Planning needs finance, revenue, demand, headcount, cash, and operational context without reading foreign tables directly.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /budgets` and consumed event `RevenueRecognized` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Generate a boundary proof listing every external projection, consumed event, cached field, transformation, freshness rule, and retention rule. Release audits should fail undeclared trial balance, revenue, demand, or headcount table access.
 
-### 43. Prove cross-PBC federation for `POST /forecasts` and `DemandForecastPublished`
+### 43. Agent-assisted budget build
 
-**Justification:** Planning Budgeting and Forecasting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Contributors need help converting goals, spreadsheets, prior-year actuals, and assumptions into budget lines.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /forecasts` and consumed event `DemandForecastPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent draft budget lines, map dimensions, explain assumptions, identify missing evidence, and preview policy/approval effects. It must require confirmation before writing or submitting data.
 
-### 44. Prove cross-PBC federation for `POST /scenarios` and `HeadcountChanged`
+### 44. Agent-assisted forecast refresh
 
-**Justification:** Planning Budgeting and Forecasting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Forecast refresh combines latest actuals, driver changes, contributor updates, and commentary.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /scenarios` and consumed event `HeadcountChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent identify stale lines, recommend driver updates, draft forecast changes, explain deltas, and prepare publication checklists with side-effect-free plans for approval.
 
-### 45. Temporal reconstruction and bitemporal audit for Planning Budgeting and Forecasting
+### 45. Planning operations cockpit
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Finance teams need a live surface for cycle progress, task status, submissions, variance, stale drivers, approvals, locks, exceptions, and event health.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Build cockpit panels for cycle readiness, version status, contributor progress, forecast freshness, scenario comparison, variance flags, approval queues, import errors, dead letters, and control assertions.
 
-### 46. Bulk operations and migration-grade controls for Planning Budgeting and Forecasting
+### 46. UI capability surface proof
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** A complete PBF PBC must expose all planning capabilities through dedicated UI surfaces.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add release checks proving UI coverage for models, dimensions, versions, budget lines, forecast cycles, driver assumptions, driver actuals, allocations, scenarios, variance, commentary, approvals, tasks, rolling snapshots, locks, imports, exceptions, rules, parameters, controls, models, events, and agent tools.
 
-### 47. Specialist edge-case playbooks for Planning Budgeting and Forecasting
+### 47. Planning control testing library
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Planning requires controls over locks, approvals, imports, allocations, dimensions, commentary, and publication.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Ship controls for unlocked published versions, missing approvals, invalid dimensions, stale forecasts, allocation imbalance, weak commentary, import errors, and unauthorized changes. Store owners, frequency, results, and remediation.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Planning Budgeting and Forecasting
+### 48. Planning resilience drills
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Planning cycles must recover from import failures, event backlogs, bad allocation rules, model drift, lock conflicts, and deadline surges.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add drills for import rollback, duplicate actuals replay, allocation failure, policy rollback, model disablement, lock conflict, and dead-letter recovery. Store recovery time, impacted versions, and decision consequences.
 
-### 49. Continuous control testing and operational assurance for Planning Budgeting and Forecasting
+### 49. Planning readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Operators need a concise signal showing whether the PBC is ready for a budget or forecast cycle.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from model quality, dimension integrity, driver freshness, import health, allocation reconciliation, workflow progress, approvals, locks, commentary, event health, UI coverage, and agent safety. Show blockers and remediation links.
 
-### 50. Human-in-the-loop domain agent execution for Planning Budgeting and Forecasting
+### 50. End-to-end planning release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class Planning Budgeting and Forecasting PBC needs one evidence package proving that models, budgets, forecasts, scenarios, approvals, and rolling intelligence work together.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Create an end-to-end proof exercising model readiness, dimension governance, budget version opening, budget line capture, forecast cycle start, driver assumption and actual ingestion, allocation run, scenario simulation, variance analysis, commentary, approval, lock, rolling forecast publication, import validation, exception resolution, UI coverage, AppGen-X eventing, boundary verification, and agent-safe CRUD planning.
