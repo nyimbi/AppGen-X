@@ -3364,4 +3364,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   package, deployment unit, audit, version, and security symbols are explicitly
   proven. Verification passed: Python compile for touched tooling entrypoints,
   focused symbol/tooling tests (`2 passed`), full `appgen tooling-audit --json`
-  with `16/16` checks and no blocking gaps. Commit: pending.
+  with `16/16` checks and no blocking gaps. Commit: `fce7c4b0`.
+- Current graph CLI audit hardening pass closes the gap between the graph
+  builder evidence and the concrete `appgen graph` command examples in
+  `docs/tooling.md`. `appgen.tooling-audit.v1` now embeds
+  `appgen.graph-cli-format-audit.v1`, which runs the CLI for workflow JSON,
+  workflow Mermaid, and PBC DOT outputs and proves the command emits parseable
+  `appgen.graph-report.v1` JSON plus text renderings with the expected graph
+  prefixes. Verification passed: full `appgen tooling-audit --json` with
+  `16/16` checks and no blocking gaps. Commit: pending.

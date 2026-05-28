@@ -2134,6 +2134,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         missing_input_exit = _tooling_audit_missing_input_exit(Path(tmp))
         invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
         designer_sync_cli = _tooling_audit_designer_sync_cli(Path(tmp), source)
+        graph_cli = _tooling_audit_graph_cli_formats(Path(tmp), source)
         generation = generate_report_dsl(
             source,
             source_name="tooling-audit.appgen",
@@ -2251,12 +2252,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             graphs["ok"]
             and set(REQUIRED_GRAPH_KINDS) <= set(graphs["graph_reports"])
             and set(GRAPH_TEXT_FORMATS) <= set(next(iter(graphs["renderings"].values())).keys())
+            and graph_cli["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", symbol="table.Invoice")["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", diagnostic="AGX0303")["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", handler="Save")["ok"],
-            "Graph suite emits every required graph in JSON/Mermaid/DOT and explain covers symbols, diagnostics, and handlers.",
+            "Graph suite and appgen graph CLI emit JSON/Mermaid/DOT, and explain covers symbols, diagnostics, and handlers.",
             "docs/tooling.md#graph-tooling",
-            {"format": graphs.get("format"), "graphs": graphs.get("required_kinds")},
+            {"format": graphs.get("format"), "graphs": graphs.get("required_kinds"), "cli": graph_cli},
         ),
         _tooling_audit_check(
             "language_server_core_features",
@@ -2877,6 +2879,45 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         "valid_round_trip": valid_payload.get("visual_edit", {}).get("round_trip_ok"),
         "invalid_exit": invalid_exit,
         "invalid_stderr": invalid_stderr.strip(),
+    }
+
+
+def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
+    source_path = tmp / "graph-cli.appgen"
+    source_path.write_text(source, encoding="utf-8")
+    cases = (
+        ("json", ("graph", str(source_path), "--kind", "workflow", "--format", "json")),
+        ("mermaid", ("graph", str(source_path), "--kind", "workflow", "--format", "mermaid")),
+        ("dot", ("graph", str(source_path), "--kind", "pbc", "--format", "dot")),
+    )
+    results = []
+    for output_format, argv in cases:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        stdout = output.getvalue().strip()
+        json_ok = False
+        if output_format == "json":
+            try:
+                payload = json.loads(stdout)
+            except json.JSONDecodeError:
+                payload = {}
+            json_ok = payload.get("format") == "appgen.graph-report.v1" and payload.get("kind") == "workflow"
+        text_ok = (output_format == "mermaid" and stdout.startswith("graph TD")) or (
+            output_format == "dot" and stdout.startswith("digraph appgen")
+        )
+        results.append(
+            {
+                "format": output_format,
+                "ok": exit_code == 0 and (json_ok or text_ok),
+                "exit_code": exit_code,
+                "stdout_prefix": stdout[:80],
+            }
+        )
+    return {
+        "format": "appgen.graph-cli-format-audit.v1",
+        "ok": all(result["ok"] for result in results),
+        "cases": tuple(results),
     }
 
 
