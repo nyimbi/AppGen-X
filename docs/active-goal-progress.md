@@ -2896,3 +2896,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   for 147 PBCs, all-catalog `pbc_implemented_capability_audit`, 160 generated
   expansion runtime tests, `tests/test_pbc_source_packages.py`, and focused
   industry expansion tests. Commit: `d44802b`.
+- Current tooling expansion pass makes parser-golden coverage executable for
+  the full AppGen-X grammar surface described in `docs/tooling.md`. The
+  platform now exposes `appgen parser-golden --json` with an
+  `appgen.parser-golden-audit.v1` report, built-in valid/invalid parser
+  fixtures, doctor integration, JSON/text CLI contracts, and tests proving
+  coverage for application, table, relationship, view, workflow, rule, LLM,
+  agent, PBC, composition, audit, deployment, versioning, operations, security,
+  API, event, job, report, menu, component, package, and test constructs.
+  Verification passed: parser-golden CLI JSON audit, Python compile for the
+  touched CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`, focused
+  DSL platform/CLI regression tests, scoped diff whitespace check, and
+  restricted-name scan. Commit: `f02c5851`.
