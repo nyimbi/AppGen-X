@@ -160,17 +160,89 @@ def service_operation_manifest():
     }
 
 
+AP_EXECUTION_OPERATIONS = (
+    'configure_runtime',
+    'set_parameter',
+    'register_rule',
+    'onboard_vendor',
+    'validate_vendor_bank_account',
+    'register_vendor_tax_profile',
+    'issue_purchase_order',
+    'record_goods_receipt',
+    'extract_invoice_artifact',
+    'capture_invoice',
+    'match_invoice',
+    'create_approval_task',
+    'schedule_payments',
+    'create_payment_batch',
+    'execute_payment',
+    'generate_remittance_advice',
+    'reconcile_vendor_statement',
+    'receive_event',
+    'build_workbench_view',
+)
+
+
+class ApAutomationExecutionService:
+    """Runtime-backed AP service facade with owned-table and outbox boundaries."""
+
+    def plan(self, operation, payload=None):
+        supplied = dict(payload or {})
+        return {
+            'ok': operation in AP_EXECUTION_OPERATIONS,
+            'pbc': 'ap_automation',
+            'operation': operation,
+            'payload_keys': tuple(sorted(supplied)),
+            'owned_tables': tuple(
+                table for table in service_operation_manifest()['operation_contracts'][0]['owned_tables']
+                if table.startswith('ap_automation_')
+            ),
+            'event_contract': 'AppGen-X',
+            'transaction_boundary': 'owned_datastore_plus_outbox',
+            'side_effects': (),
+        }
+
+    def execution_operations(self):
+        return AP_EXECUTION_OPERATIONS
+
+
+def execution_service_manifest():
+    """Return the AP domain execution-service surface."""
+    service = ApAutomationExecutionService()
+    operations = service.execution_operations()
+    sample_plan = service.plan('capture_invoice', {'invoice_id': 'sample'})
+    return {
+        'ok': bool(operations) and sample_plan['ok'] and sample_plan['event_contract'] == 'AppGen-X',
+        'pbc': 'ap_automation',
+        'service_class': service.__class__.__name__,
+        'operations': operations,
+        'domain_slices': (
+            'vendor_readiness',
+            'invoice_capture_and_duplicate_control',
+            'three_way_match_and_exception_control',
+            'payment_scheduling_batching_execution',
+            'remittance_and_statement_reconciliation',
+            'agent_guided_document_crud',
+        ),
+        'sample_plan': sample_plan,
+        'side_effects': (),
+    }
+
+
 def smoke_test():
     """Execute one side-effect-free service operation through the facade."""
     manifest = service_operation_manifest()
     service = ApAutomationService()
     operation = manifest['operations'][0] if manifest['operations'] else None
     result = getattr(service, operation)({'smoke': True}) if operation else {'ok': False}
+    execution = execution_service_manifest()
     return {
         'ok': manifest['ok']
         and result.get('ok') is True
-        and result.get('operation_contract', {}).get('ok') is True,
+        and result.get('operation_contract', {}).get('ok') is True
+        and execution['ok'],
         'manifest': manifest,
+        'execution': execution,
         'result': result,
         'side_effects': (),
     }

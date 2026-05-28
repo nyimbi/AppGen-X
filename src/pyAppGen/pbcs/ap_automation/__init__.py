@@ -22,11 +22,15 @@ from .runtime import ap_automation_build_service_contract
 from .runtime import ap_automation_build_workbench_view
 from .runtime import ap_automation_capture_invoice
 from .runtime import ap_automation_configure_runtime
+from .runtime import ap_automation_create_approval_task
+from .runtime import ap_automation_create_payment_batch
 from .runtime import ap_automation_detect_fraud_information_shift
 from .runtime import ap_automation_empty_state
 from .runtime import ap_automation_execute_payment
+from .runtime import ap_automation_extract_invoice_artifact
 from .runtime import ap_automation_federate_cross_border_payment
 from .runtime import ap_automation_forecast_cash_flow
+from .runtime import ap_automation_generate_remittance_advice
 from .runtime import ap_automation_integrate_supply_chain_finance
 from .runtime import ap_automation_issue_purchase_order
 from .runtime import ap_automation_match_invoice
@@ -35,10 +39,12 @@ from .runtime import ap_automation_negotiate_dynamic_discount
 from .runtime import ap_automation_onboard_vendor
 from .runtime import ap_automation_optimize_algebraic_routing
 from .runtime import ap_automation_optimize_payment_route
+from .runtime import ap_automation_reconcile_vendor_statement
 from .runtime import ap_automation_record_goods_receipt
 from .runtime import ap_automation_register_governed_model
 from .runtime import ap_automation_register_rule
 from .runtime import ap_automation_register_schema_extension
+from .runtime import ap_automation_register_vendor_tax_profile
 from .runtime import ap_automation_receive_event
 from .runtime import ap_automation_resolve_exception
 from .runtime import ap_automation_rotate_crypto_epoch
@@ -53,6 +59,7 @@ from .runtime import ap_automation_score_vendor_risk
 from .runtime import ap_automation_screen_vendor_network
 from .runtime import ap_automation_set_parameter
 from .runtime import ap_automation_submit_e_invoice
+from .runtime import ap_automation_validate_vendor_bank_account
 from .runtime import ap_automation_validate_tax_proof
 from .runtime import ap_automation_verify_formal_invariants
 from .runtime import ap_automation_verify_owned_table_boundary
@@ -131,4 +138,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

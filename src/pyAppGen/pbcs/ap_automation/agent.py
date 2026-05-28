@@ -131,13 +131,16 @@ def composed_agent_contribution():
     """Return the package contribution to the application's single assistant."""
     skills = agent_skill_manifest()
     chatbot = chatbot_interface_contract()
+    execution = services.execution_service_manifest()
     return {
-        'ok': skills['ok'] and chatbot['ok'],
+        'ok': skills['ok'] and chatbot['ok'] and execution['ok'],
         'pbc': PBC_KEY,
         'agent': AGENT_NAME,
         'single_agent_skill_namespace': f'{PBC_KEY}_skills',
         'dsl_tools': (f'{PBC_KEY}_skills', f'{PBC_KEY}_documents', f'{PBC_KEY}_crud'),
         'skills': tuple(item['name'] for item in skills['skills']),
+        'execution_operations': execution['operations'],
+        'domain_slices': execution['domain_slices'],
         'chatbot': chatbot,
         'side_effects': (),
     }
