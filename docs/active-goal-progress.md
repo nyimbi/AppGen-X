@@ -3075,3 +3075,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `npm run build`, scoped diff whitespace check, and restricted-name scan.
   Browser smoke execution was attempted but local Chrome exited before DOM
   capture in this environment. Commit: `66e9a06d`.
+- Current package manifest pass makes target package handoffs concrete.
+  `appgen package --out` now writes `appgen-release-evidence.json` plus
+  deterministic `appgen-package-<target>.json` files using
+  `appgen.package-manifest.v1` for web, mobile, desktop, PBC, and deployment
+  targets. Mobile manifests carry signing/offline/smoke-launch posture;
+  desktop manifests carry installer/startup/smoke-launch posture; PBC and
+  deployment manifests carry their verifier-derived handoff artifacts.
+  Verification passed: Python compile for touched DSL modules, focused package
+  manifest tests, `tests/test_dsl_tooling_contracts.py -q`, scoped diff
+  whitespace check, and restricted-name scan. Commit: `fefbd493`.
