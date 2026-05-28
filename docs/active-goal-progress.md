@@ -3006,3 +3006,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
   tests, scoped diff whitespace check, and restricted-name scan. Commit:
   `ecf54000`.
+- Current workspace rename pass makes open-document rename behavior executable.
+  The stdio language server now validates the rename against the active
+  document and migration preview, then returns a workspace edit for every open
+  DSL document containing the same identifier so split applications do not leave
+  stale handler, operation, or symbol references behind. Verification passed:
+  Python compile for touched CLI/parser modules,
+  `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
+  tests, scoped diff whitespace check, and restricted-name scan. Commit:
+  `e035c0dd`.
